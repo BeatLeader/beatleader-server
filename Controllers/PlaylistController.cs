@@ -1,26 +1,44 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using BeatLeader_Server.Extensions;
+using BeatLeader_Server.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace BeatLeader_Server.Controllers
 {
+    [ApiController]
+    [Route("[controller]")]
     public class PlaylistController : Controller
     {
-        [ApiController]
-        [Route("[controller]")]
-        public class CurrentUserController : ControllerBase
+        private readonly AppContext _context;
+
+        public PlaylistController(AppContext context)
         {
-            [HttpGet("~/playlists")]
-            public String Get()
+            _context = context;
+        }
+
+        [HttpGet("~/playlists")]
+        public async Task<ActionResult<IEnumerable<Playlist>>> Get()
+        {
+            return await _context.Playlists.Where(t=>t.IsShared).ToListAsync();
+        }
+
+        [HttpGet("~/playlist")]
+        public async Task<ActionResult<Playlist>> Get([FromQuery] int id)
+        {
+            var playlist = await _context.Playlists.FindAsync(id);
+
+            if (playlist == null)
             {
-                String user = HttpContext.User.Claims.First().Value.Split("/").Last();
-                return user;
+                return NotFound();
             }
 
-            [HttpGet("~/playlist")]
-            public void Post(int id)
+            if (!playlist.IsShared && playlist.OwnerId != HttpContext.CurrentUserID())
             {
-
+                return Unauthorized();
             }
+
+            return playlist;
         }
     }
 }

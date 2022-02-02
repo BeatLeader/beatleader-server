@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.EntityFrameworkCore;
 
 namespace BeatLeader_Server
 {
@@ -31,8 +32,10 @@ namespace BeatLeader_Server
                     return Task.CompletedTask;
                 };
             });
+            
 
-
+            var connection = // Insert connection string to your database
+            services.AddDbContext<AppContext>(options => options.UseSqlServer(connection));
 
             services.AddControllersWithViews();
         }

@@ -1,5 +1,8 @@
+using BeatLeader_Server.Extensions;
+using BeatLeader_Server.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -8,40 +11,99 @@ namespace BeatLeader_Server.Controllers
     [Authorize]
     public class CurrentUserController : ControllerBase
     {
-        [HttpGet("~/user/id")]
-        public String GetId()
+        private readonly AppContext _context;
+
+        public CurrentUserController(AppContext context)
         {
-            return HttpContext.User.Claims.First().Value.Split("/").Last();
+            _context = context;
+        }
+
+        [HttpGet("~/user/id")]
+        public string GetId()
+        {
+            return HttpContext.CurrentUserID();
         }
 
         [HttpGet("~/user/playlists")]
-        public String GetAllPlaylists()
+        public async Task<ActionResult<IEnumerable<Playlist>>> GetAllPlaylists()
         {
-            return HttpContext.User.Claims.First().Value.Split("/").Last();
+            string currentId = HttpContext.CurrentUserID();
+            return await _context.Playlists.Where(t => t.OwnerId == currentId).ToListAsync();
         }
 
         [HttpGet("~/user/playlist")]
-        public String GetPlaylist(int id)
+        public async Task<ActionResult<Playlist>> Get([FromQuery]int id)
         {
-            return HttpContext.User.Claims.First().Value.Split("/").Last();
+            var playlist = await _context.Playlists.FindAsync(id);
+
+            if (playlist == null)
+            {
+                return NotFound();
+            }
+
+            if (!playlist.IsShared && playlist.OwnerId != HttpContext.CurrentUserID())
+            {
+                return Unauthorized();
+            }
+
+            return playlist;
         }
 
-        [HttpGet("~/user/playlistshare")]
-        public String SharePlaylist(int id)
+        [HttpPatch("~/user/playlist")]
+        public async Task<ActionResult<Playlist>> SharePlaylist([FromBody] dynamic content, [FromQuery] bool shared, [FromQuery] int id)
         {
-            return HttpContext.User.Claims.First().Value.Split("/").Last();
+            var playlist = await _context.Playlists.FindAsync(id);
+
+            if (playlist == null)
+            {
+                return NotFound();
+            }
+
+            if (playlist.OwnerId != HttpContext.CurrentUserID())
+            {
+                return Unauthorized();
+            }
+
+            playlist.Value = content.GetRawText();
+            playlist.IsShared = shared;
+
+            _context.Playlists.Update(playlist);
+
+            await _context.SaveChangesAsync();
+
+            return playlist;
         }
 
         [HttpPost("~/user/playlist")]
-        public String PostPlaylist()
+        public async Task<ActionResult<int>> PostPlaylist([FromBody] dynamic content, [FromQuery] bool shared)
         {
-            return HttpContext.User.Claims.First().Value.Split("/").Last();
+            Playlist newPlaylist = new Playlist();
+            newPlaylist.Value = content.GetRawText();
+            newPlaylist.OwnerId = HttpContext.CurrentUserID();
+            newPlaylist.IsShared = shared;
+            _context.Playlists.Add(newPlaylist);
+            
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction("GetPlaylist", new { id = newPlaylist.Id }, newPlaylist);
         }
 
         [HttpDelete("~/user/playlist")]
-        public String DeletePlaylist(int id)
+        public async Task<ActionResult<int>> DeletePlaylist([FromQuery] int id)
         {
-            return HttpContext.User.Claims.First().Value.Split("/").Last();
+            var playlist = await _context.Playlists.FindAsync(id);
+            if (playlist == null)
+            {
+                return NotFound();
+            }
+
+            if (playlist.OwnerId != HttpContext.CurrentUserID())
+            {
+                return Unauthorized();
+            }
+            _context.Playlists.Remove(playlist);
+
+            return Ok();
         }
     }
 }

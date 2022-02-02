@@ -29,5 +29,10 @@ namespace BeatLeader_Server.Extensions
                     where string.Equals(scheme.Name, provider, StringComparison.OrdinalIgnoreCase)
                     select scheme).Any();
         }
+
+        public static string CurrentUserID(this HttpContext context)
+        {
+            return context.User.Claims.First().Value.Split("/").Last();
+        }
     }
 }
