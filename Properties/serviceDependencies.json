@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "mssql1": {
+      "type": "mssql",
+      "connectionId": "ConnectionStrings:TesterString"
+    },
+    "storage1": {
+      "type": "storage",
+      "connectionId": "CDN"
+    }
+  }
+}

@@ -1,8 +1,11 @@
+using Azure.Identity;
+using Azure.Storage.Blobs;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -12,10 +15,23 @@ namespace BeatLeader_Server.Controllers
     public class CurrentUserController : ControllerBase
     {
         private readonly AppContext _context;
+        BlobContainerClient _containerClient;
 
-        public CurrentUserController(AppContext context)
+        public CurrentUserController(AppContext context, IOptions<AzureStorageConfig> config, IWebHostEnvironment env)
         {
             _context = context;
+   //         if (env.IsDevelopment())
+			//{
+			//	_containerClient = new BlobContainerClient(config.Value.AccountName, config.Value.ContainerName);
+			//}
+			//else
+			//{
+			//	string containerEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
+			//											config.Value.AccountName,
+			//										   config.Value.ContainerName);
+
+			//	_containerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
+			//}
         }
 
         [HttpGet("~/user/id")]
@@ -64,7 +80,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            playlist.Value = content.GetRawText();
+            //playlist.Value = content.GetRawText();
             playlist.IsShared = shared;
 
             _context.Playlists.Update(playlist);
@@ -78,14 +94,14 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<int>> PostPlaylist([FromBody] dynamic content, [FromQuery] bool shared)
         {
             Playlist newPlaylist = new Playlist();
-            newPlaylist.Value = content.GetRawText();
+            //newPlaylist.Value = content.GetRawText();
             newPlaylist.OwnerId = HttpContext.CurrentUserID();
             newPlaylist.IsShared = shared;
             _context.Playlists.Add(newPlaylist);
             
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetPlaylist", new { id = newPlaylist.Id }, newPlaylist);
+            return CreatedAtAction("PostPlaylist", new { id = newPlaylist.Id }, newPlaylist);
         }
 
         [HttpDelete("~/user/playlist")]
@@ -102,6 +118,8 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
             _context.Playlists.Remove(playlist);
+
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
