@@ -28,7 +28,7 @@
                 case "Easy":
                     return 1;
                 case "Normal":
-                    return 5;
+                    return 3;
                 case "Hard":
                     return 5;
                 case "Expert":

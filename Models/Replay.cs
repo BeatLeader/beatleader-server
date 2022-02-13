@@ -28,7 +28,10 @@ namespace BeatLeader_Server.Models
         public string playerID;
         public string playerName;
         public string platform;
+
+        public string trackingSytem;
         public string hmd;
+        public string controller;
 
         public string hash;
         public string songName;
@@ -189,7 +192,10 @@ namespace BeatLeader_Server.Models
             EncodeString(info.playerID, stream);
             EncodeString(info.playerName, stream);
             EncodeString(info.platform, stream);
+
+            EncodeString(info.trackingSytem, stream);
             EncodeString(info.hmd, stream);
+            EncodeString(info.controller, stream);
 
             EncodeString(info.hash, stream);
             EncodeString(info.songName, stream);
@@ -375,7 +381,10 @@ namespace BeatLeader_Server.Models
                 result.playerID = DecodeString(buffer, ref pointer);
                 result.playerName = DecodeString(buffer, ref pointer);
                 result.platform = DecodeString(buffer, ref pointer);
+
+                result.trackingSytem = DecodeString(buffer, ref pointer);
                 result.hmd = DecodeString(buffer, ref pointer);
+                result.controller = DecodeString(buffer, ref pointer);
 
                 result.hash = DecodeString(buffer, ref pointer);
                 result.songName = DecodeString(buffer, ref pointer);

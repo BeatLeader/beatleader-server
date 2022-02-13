@@ -26,7 +26,7 @@ namespace BeatLeader_Server.Controllers
             Song? song = await _context.Songs.Include(song => song.Difficulties).FirstOrDefaultAsync(i => i.Id == id);
 
             if (song == null) {
-                song = await GetSongFromBeatSaver("https://api.beatsaver.com/maps/id/" + id);
+                song = await SongById(id);
                 if (song == null) {
                     return NotFound();
                 } else {
@@ -36,6 +36,11 @@ namespace BeatLeader_Server.Controllers
             }
 
             return song;
+        }
+
+        public Task<Song?> SongById(string id)
+        {
+            return GetSongFromBeatSaver("https://api.beatsaver.com/maps/id/" + id);
         }
 
         [HttpGet("~/maps/hash")]

@@ -15,7 +15,7 @@ namespace BeatLeader_Server.Controllers
             _songController = songController;
         }
 
-        [HttpGet("~/leaderboards/id")]
+        [HttpGet("~/leaderboards/id/{id}")]
         public async Task<ActionResult<Leaderboard>> Get(string id)
         {
             Leaderboard? leaderboard = await _context.Leaderboards.Include(lb => lb.Scores).FirstOrDefaultAsync(i => i.Id == id);
@@ -42,6 +42,11 @@ namespace BeatLeader_Server.Controllers
             }
 
             return leaderboard;
+        }
+
+        [HttpGet("~/leaderboards/")]
+        public async Task<ActionResult<List<Leaderboard>>> GetAll() {
+            return await _context.Leaderboards.Include(lb => lb.Scores).ThenInclude(s => s.player).Include(lb => lb.Difficulty).Include(lb => lb.Song).ToListAsync();
         }
     }
 }
