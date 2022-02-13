@@ -18,7 +18,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/leaderboards/id/{id}")]
         public async Task<ActionResult<Leaderboard>> Get(string id)
         {
-            Leaderboard? leaderboard = await _context.Leaderboards.Include(lb => lb.Scores).FirstOrDefaultAsync(i => i.Id == id);
+            Leaderboard? leaderboard = await _context.Leaderboards.Include(lb => lb.Scores).ThenInclude(s => s.player).Include(lb => lb.Difficulty).Include(lb => lb.Song).FirstOrDefaultAsync(i => i.Id == id);
 
             if (leaderboard == null) {
                 Song? song = (await _songController.Get(id.Substring(0, id.Length - 2))).Value;

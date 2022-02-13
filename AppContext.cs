@@ -14,5 +14,6 @@ namespace BeatLeader_Server
         public DbSet<Song> Songs { get; set; }
         public DbSet<Leaderboard> Leaderboards { get; set; }
         public DbSet<Player> Players { get; set; }
+        public DbSet<Score> Scores { get; set; }
     }
 }

@@ -19,7 +19,7 @@ namespace BeatLeader_Server.Controllers
             _configuration = configuration;
         }
 
-        [HttpGet("~/players/id")]
+        [HttpGet("~/player/{id}")]
         public async Task<ActionResult<Player>> Get(string id)
         {
             Player? player = await _context.Players.FindAsync(id);
@@ -42,6 +42,12 @@ namespace BeatLeader_Server.Controllers
             }
 
             return player;
+        }
+
+        [HttpGet("~/player/{id}/scores")]
+        public async Task<ActionResult<IEnumerable<Score>>> GetScores(string id, [FromQuery] string sortBy, [FromQuery] int count = 8)
+        {
+            return _context.Scores.Where(t=>t.PlayerId == id).OrderBy(t => t.Timeset).Take(count).ToList();
         }
 
         public Task<Player?> GetPlayerFromSteam(string url)
