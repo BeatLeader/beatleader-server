@@ -54,9 +54,9 @@ namespace BeatLeader_Server
                     return Task.CompletedTask;
                 };
             });
-            
 
-            var connection = // Insert connection string to your database
+
+            var connection = "Data Source = tcp:localhost,1433; Initial Catalog = BeatLeader_DEBUG; User Id = sa; Password = SuperStrong!";
             services.AddDbContext<AppContext>(options => options.UseSqlServer(connection));
 
             services.Configure<AzureStorageConfig>(Configuration.GetSection("AzureStorageConfig"));

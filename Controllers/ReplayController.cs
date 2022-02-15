@@ -34,6 +34,7 @@ namespace BeatLeader_Server.Controllers
 			if (env.IsDevelopment())
 			{
 				_containerClient = new BlobContainerClient(config.Value.AccountName, config.Value.ReplaysContainerName);
+                SetPublicContainerPermissions(_containerClient);
 			}
 			else
 			{
@@ -137,6 +138,11 @@ namespace BeatLeader_Server.Controllers
             }
 
 			
+        }
+
+        public static void SetPublicContainerPermissions(BlobContainerClient container)
+        {
+            container.SetAccessPolicy(accessType: Azure.Storage.Blobs.Models.PublicAccessType.BlobContainer);
         }
     }
 }
