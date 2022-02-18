@@ -17,10 +17,12 @@
         public int MissedNotes { get; set; }
         public int BombCuts { get; set; }
         public int WallsHit { get; set; }
+        public int Pauses { get; set; }
         public bool FullCombo { get; set; }
         public int Hmd { get; set; }
         public string Timeset { get; set; }
-        public Player player { get; set; }
+        public Player Player { get; set; }
+        public Leaderboard Leaderboard { get; set; }
 
         public ReplayIdentification Identification { get; set; }
     }

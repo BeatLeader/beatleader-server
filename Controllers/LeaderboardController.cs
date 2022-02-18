@@ -15,10 +15,10 @@ namespace BeatLeader_Server.Controllers
             _songController = songController;
         }
 
-        [HttpGet("~/leaderboards/id/{id}")]
+        [HttpGet("~/leaderboard/id/{id}")]
         public async Task<ActionResult<Leaderboard>> Get(string id)
         {
-            Leaderboard? leaderboard = await _context.Leaderboards.Include(lb => lb.Scores).ThenInclude(s => s.player).Include(lb => lb.Difficulty).Include(lb => lb.Song).FirstOrDefaultAsync(i => i.Id == id);
+            Leaderboard? leaderboard = await _context.Leaderboards.Include(lb => lb.Scores).ThenInclude(s => s.Player).Include(lb => lb.Difficulty).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).FirstOrDefaultAsync(i => i.Id == id);
 
             if (leaderboard == null) {
                 Song? song = (await _songController.Get(id.Substring(0, id.Length - 2))).Value;
@@ -46,7 +46,7 @@ namespace BeatLeader_Server.Controllers
 
         [HttpGet("~/leaderboards/")]
         public async Task<ActionResult<List<Leaderboard>>> GetAll() {
-            return await _context.Leaderboards.Include(lb => lb.Scores).ThenInclude(s => s.player).Include(lb => lb.Difficulty).Include(lb => lb.Song).ToListAsync();
+            return await _context.Leaderboards.Include(lb => lb.Scores).ThenInclude(s => s.Player).Include(lb => lb.Difficulty).Include(lb => lb.Song).ToListAsync();
         }
     }
 }

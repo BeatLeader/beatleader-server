@@ -10,5 +10,10 @@
         public float Pp { get; set; }
         public int Rank { get; set; }
         public int CountryRank { get; set; }
+
+        public void SetDefaultAvatar()
+        {
+            this.Avatar = "https://www.cdn.beatleader.xyz/assets/" + this.Platform + "avatar.png";
+        }
     }
 }

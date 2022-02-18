@@ -7,6 +7,7 @@ using Azure.Storage.Queues;
 using Azure.Storage.Blobs;
 using Azure.Core.Extensions;
 using System;
+using System.Text.Json.Serialization;
 
 namespace BeatLeader_Server
 {
@@ -15,8 +16,10 @@ namespace BeatLeader_Server
         public string AccountName { get; set; }
         public string ReplaysContainerName { get; set; }
     }
+
     public class Startup
     {
+        static string MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
@@ -61,11 +64,23 @@ namespace BeatLeader_Server
 
             services.Configure<AzureStorageConfig>(Configuration.GetSection("AzureStorageConfig"));
 
-            services.AddMvc().AddControllersAsServices();
+            services.AddMvc().AddControllersAsServices().AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+            });
             services.AddAzureClients(builder =>
             {
                 builder.AddBlobServiceClient(Configuration["CDN:blob"], preferMsi: true);
                 builder.AddQueueServiceClient(Configuration["CDN:queue"], preferMsi: true);
+            });
+            services.AddCors(options =>
+            {
+                options.AddPolicy(name: MyAllowSpecificOrigins,
+                                  builder =>
+                                  {
+                                      builder.WithOrigins("http://localhost:8888",
+                                                          "https://www.beatleader.xyz");
+                                  });
             });
         }
 
@@ -77,6 +92,8 @@ namespace BeatLeader_Server
 
             app.UseAuthentication();
             app.UseAuthorization();
+
+            app.UseCors(MyAllowSpecificOrigins);
 
             app.UseEndpoints(endpoints =>
             {

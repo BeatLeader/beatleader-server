@@ -1,10 +1,14 @@
-﻿using Azure.Identity;
+﻿using System.Dynamic;
+using System.Net;
+using Azure.Identity;
 using Azure.Storage.Blobs;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -89,7 +93,23 @@ namespace BeatLeader_Server.Controllers
                 }
                 Player? player = (await _playerController.Get(replay.info.playerID)).Value;
                 if (player == null) {
-                    return NotFound("Such player not exists");
+                    player = new Player();
+                    player.Id = replay.info.playerID;
+                    player.Name = replay.info.playerName;
+                    player.Platform = replay.info.platform;
+                    player.SetDefaultAvatar();
+                    player.Country = "not set";
+
+                    _context.Players.Add(player);
+                }
+
+                if (player.Country == "not set")
+                {
+                    var ip = Request.HttpContext.Connection.RemoteIpAddress;
+                    if (ip != null)
+                    {
+                        player.Country = GetCountryByIp(ip.ToString());
+                    }
                 }
                 Score? resultScore;
 
@@ -100,9 +120,9 @@ namespace BeatLeader_Server.Controllers
                         player.Pp += score.Pp;
                     }
                     
-                    score.Rank = leaderboard.Scores.OrderBy(el => el.ModifiedScore).ToList().IndexOf(score) + 1;
                     score.PlayerId = replay.info.playerID;
-                    score.player = player;
+                    score.Player = player;
+                    score.Leaderboard = leaderboard;
                     resultScore = score;
                 } else {
                     return Unauthorized("Another's replays posting is forbidden");
@@ -119,10 +139,32 @@ namespace BeatLeader_Server.Controllers
                     ReplayEncoder.Encode(replay, new BinaryWriter(stream));
                     stream.Position = 0;
 
+                    await _containerClient.DeleteBlobIfExistsAsync(fileName);
 				    await _containerClient.UploadBlobAsync(fileName, stream);
 
 
                     leaderboard.Scores.Add(resultScore);
+
+                    var rankedScores = leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();
+                    foreach ((int i, Score p) in rankedScores.Select((value, i) => (i, value)))
+                    {
+                        p.Rank = i + 1;
+                    }
+
+                    var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
+                    var country = player.Country; var countryRank = 1;
+                    foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
+                    {
+                        p.Rank = i + 1;
+                        if (p.Country == country)
+                        {
+                            p.CountryRank = countryRank;
+                            countryRank++;
+                        }
+                    }
+
+                    leaderboard.Plays = rankedScores.Count;
+
                     await _context.SaveChangesAsync();
                     resultScore.Identification = null;
 
@@ -143,6 +185,25 @@ namespace BeatLeader_Server.Controllers
         public static void SetPublicContainerPermissions(BlobContainerClient container)
         {
             container.SetAccessPolicy(accessType: Azure.Storage.Blobs.Models.PublicAccessType.BlobContainer);
+        }
+
+        public static string GetCountryByIp(string ip)
+        {
+            string result = "not set";
+            try
+            {
+                string jsonResult = new WebClient().DownloadString("http://ipinfo.io/" + ip);
+                dynamic? info = JsonConvert.DeserializeObject<ExpandoObject>(jsonResult, new ExpandoObjectConverter());
+                if (info != null)
+                {
+                    result = info.country;
+                }
+            }
+            catch (Exception)
+            {
+            }
+
+            return result;
         }
     }
 }

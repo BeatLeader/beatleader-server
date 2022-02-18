@@ -12,7 +12,7 @@ namespace BeatLeader_Server.Utils
                 byte[] data = item.Identification.Value;
                 int[] order = BlobToOrder(item.Identification.Order);
 
-                int treshold = (int)((float)data.Length * similarityRate);
+                int treshold = (int)((float)order.Length * similarityRate);
                 int sameBits = 0;
 
                 int byteIndex = 0;
@@ -48,6 +48,7 @@ namespace BeatLeader_Server.Utils
             score.Modifiers = replay.info.modifiers;
             score.Timeset = replay.info.timestamp;
             score.WallsHit = replay.walls.Count;
+            score.Pauses = replay.pauses.Count;
             foreach (var item in replay.notes)
             {
                 switch (item.eventType)

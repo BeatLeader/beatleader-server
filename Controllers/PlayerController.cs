@@ -1,6 +1,7 @@
 ﻿using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System.Dynamic;
@@ -45,9 +46,39 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/player/{id}/scores")]
-        public async Task<ActionResult<IEnumerable<Score>>> GetScores(string id, [FromQuery] string sortBy, [FromQuery] int count = 8)
+        public async Task<ActionResult<IEnumerable<Score>>> GetScores(string id, [FromQuery] string sortBy = "recent", [FromQuery] int page = 0, [FromQuery] int count = 8)
         {
-            return _context.Scores.Where(t=>t.PlayerId == id).OrderBy(t => t.Timeset).Take(count).ToList();
+            var sequence = _context.Scores.Where(t => t.PlayerId == id);
+            switch (sortBy)
+            {
+                case "recent":
+                    sequence = sequence.OrderByDescending(t => t.Timeset);
+                    break;
+                case "topPP":
+                    sequence = sequence.OrderByDescending(t => t.Pp);
+                    break;
+                case "topAcc":
+                    sequence = sequence.OrderByDescending(t => t.Accuracy);
+                    break;
+                case "pauses":
+                    sequence = sequence.OrderByDescending(t => t.Pauses);
+                    break;
+                default:
+                    break;
+            }
+            return sequence.Take(count).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).ToList();
+        }
+
+        [HttpGet("~/players")]
+        public async Task<ActionResult<IEnumerable<Player>>> GetPlayers([FromQuery] string sortBy = "recent", [FromQuery] int page = 0, [FromQuery] int count = 50, [FromQuery] string search = "", [FromQuery] string countries = "")
+        {
+            return _context.Players.OrderByDescending(p => p.Pp).OrderByDescending(p => p.Pp).ToList();
+        }
+
+        [HttpGet("~/players/count")]
+        public async Task<ActionResult<int>> GetPlayers()
+        {
+            return _context.Players.Count();
         }
 
         public Task<Player?> GetPlayerFromSteam(string url)

@@ -20,7 +20,7 @@ namespace BeatLeader_Server.Controllers
             _context = context;
         }
 
-        [HttpGet("~/maps/id/{id}")]
+        [HttpGet("~/map/id/{id}")]
         public async Task<ActionResult<Song>> Get(string id)
         {
             Song? song = await _context.Songs.Include(song => song.Difficulties).FirstOrDefaultAsync(i => i.Id == id);
@@ -43,7 +43,7 @@ namespace BeatLeader_Server.Controllers
             return GetSongFromBeatSaver("https://api.beatsaver.com/maps/id/" + id);
         }
 
-        [HttpGet("~/maps/hash")]
+        [HttpGet("~/map/hash/{hash}")]
         public async Task<ActionResult<Song>> GetHash(string hash)
         {
             Song? song = (await _context.Songs.Include(song => song.Difficulties).Where(el => el.Hash == hash).ToListAsync()).FirstOrDefault((Song?)null);
@@ -59,6 +59,12 @@ namespace BeatLeader_Server.Controllers
             }
 
             return song;
+        }
+
+        [HttpGet("~/maps")]
+        public async Task<ActionResult<ICollection<Song>>> GetAll([FromQuery] bool ranked = false, [FromQuery] int page = 0, [FromQuery] int count = 100)
+        {
+            return _context.Songs.ToList();
         }
 
         public Task<Song?> GetSongFromBeatSaver(string url)
@@ -116,7 +122,13 @@ namespace BeatLeader_Server.Controllers
                     result.CoverImage = currentVersion.coverURL;
                     result.DownloadUrl = currentVersion.downloadURL;
                     result.Hash = currentVersion.hash;
-                    result.Id = currentVersion.key;
+                    if (ExpandantoObject.HasProperty(info, "id"))
+                    {
+                        result.Id = info.id;
+                    } else
+                    {
+                        result.Id = currentVersion.key;
+                    }
 
                     List<DifficultyDescription> difficulties = new List<DifficultyDescription>();
                     dynamic diffs = currentVersion.diffs;
