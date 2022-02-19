@@ -88,7 +88,7 @@ namespace BeatLeader_Server.Controllers
                 leaderboard = await _context.Leaderboards.Include(lb => lb.Scores).ThenInclude(score => score.Identification).FirstOrDefaultAsync(i => i.Id == leaderboard.Id);
 
                 Score? currentScore = leaderboard.Scores.FirstOrDefault(el => el.PlayerId == replay.info.playerID, (Score?)null);
-                if (currentScore != null && currentScore.ModifiedScore > replay.info.score) {
+                if (currentScore != null && currentScore.ModifiedScore >= replay.info.score) {
                     return BadRequest("Score is lower than existing one");
                 }
                 Player? player = (await _playerController.Get(replay.info.playerID)).Value;
@@ -131,7 +131,7 @@ namespace BeatLeader_Server.Controllers
                 string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
                 try
 			    {
-                    resultScore.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/replays/" : "https://www.cdn.beatleader.xyz/replays/") + fileName;
+                    resultScore.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/replays/" : "https://cdn.beatleader.xyz/replays/") + fileName;
                     
 				    await _containerClient.CreateIfNotExistsAsync();
 

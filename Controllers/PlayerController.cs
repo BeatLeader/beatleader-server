@@ -1,5 +1,7 @@
-﻿using BeatLeader_Server.Models;
+﻿using BeatLeader_Server.Extensions;
+using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
@@ -23,7 +25,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/player/{id}")]
         public async Task<ActionResult<Player>> Get(string id)
         {
-            Player? player = await _context.Players.FindAsync(id);
+            Player? player = await _context.Players.Include(p => p.ScoreStats).FirstOrDefaultAsync(p => p.Id == id);
 
             if (player == null) {
                 Int64 userId = Int64.Parse(id);
@@ -34,6 +36,9 @@ namespace BeatLeader_Server.Controllers
                     } else {
                         player.Id = id;
                         player.Platform = "steam";
+                        player.ScoreStats = new PlayerScoreStats();
+                        player.Histories = "";
+                        player.Role = "";
                         _context.Players.Add(player);
                         await _context.SaveChangesAsync();
                     }
@@ -43,6 +48,71 @@ namespace BeatLeader_Server.Controllers
             }
 
             return player;
+        }
+
+        [HttpPatch("~/player/{id}")]
+        [Authorize]
+        public async Task<ActionResult> PatchPlayer(string id, [FromQuery] string? role, [FromQuery] string? country, [FromQuery] string? avatar, [FromQuery] bool? banned)
+        {
+            string currentId = HttpContext.CurrentUserID();
+            Player? currentPlayer = _context.Players.Find(currentId);
+            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && currentId != GolovaID))
+            {
+                return Unauthorized();
+            }
+            if (currentId != GolovaID && (role != null))
+            {
+                return Unauthorized();
+            }
+            Player? playerToUpdate = _context.Players.Find(id);
+            if (playerToUpdate == null)
+            {
+                return NotFound();
+            }
+            if (role != null)
+            {
+                playerToUpdate.Role = role;
+            }
+            if (country != null)
+            {
+                playerToUpdate.Country = country;
+            }
+            if (avatar != null)
+            {
+                playerToUpdate.Avatar = avatar;
+            }
+            if (banned != null)
+            {
+                playerToUpdate.Banned = (bool)banned;
+            }
+            _context.Players.Update(playerToUpdate);
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+
+        [HttpDelete("~/player/{id}")]
+        [Authorize]
+        public async Task<ActionResult> DeletePlayer(string id)
+        {
+            string currentId = HttpContext.CurrentUserID();
+            Player? currentPlayer = _context.Players.Find(currentId);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+            Player? player = await _context.Players.FindAsync(id);
+
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            _context.Players.Remove(player);
+            await _context.SaveChangesAsync();
+
+            return Ok();
         }
 
         [HttpGet("~/player/{id}/scores")]
@@ -67,6 +137,32 @@ namespace BeatLeader_Server.Controllers
                     break;
             }
             return sequence.Take(count).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).ToList();
+        }
+
+        [HttpDelete("~/player/{id}/score/{leaderboardID}")]
+        [Authorize]
+        public async Task<ActionResult> DeleteScore(string id, string leaderboardID)
+        {
+            string currentId = HttpContext.CurrentUserID();
+            Player? currentPlayer = _context.Players.Find(currentId);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+            Leaderboard? leaderboard = _context.Leaderboards.Where(l => l.Id == leaderboardID).Include(l => l.Scores).FirstOrDefault();
+            if (leaderboard == null) {
+                return NotFound();
+            } 
+            Score? scoreToDelete = leaderboard.Scores.Where(t => t.PlayerId == id).FirstOrDefault();
+
+            if (scoreToDelete == null) {
+                return NotFound();
+            }
+
+            _context.Scores.Remove(scoreToDelete);
+            await _context.SaveChangesAsync();
+            return Ok ();
+
         }
 
         [HttpGet("~/players")]
@@ -138,5 +234,7 @@ namespace BeatLeader_Server.Controllers
             }
             
         }
+
+        public static string GolovaID = "76561198059961776";
     }
 }

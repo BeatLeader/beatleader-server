@@ -73,13 +73,12 @@ namespace BeatLeader_Server
                 builder.AddBlobServiceClient(Configuration["CDN:blob"], preferMsi: true);
                 builder.AddQueueServiceClient(Configuration["CDN:queue"], preferMsi: true);
             });
-            services.AddCors(options =>
-            {
-                options.AddPolicy(name: MyAllowSpecificOrigins,
-                                  builder =>
-                                  {
-                                      builder.WithOrigins("http://localhost:8888",
-                                                          "https://www.beatleader.xyz");
+            services.AddCors (options => {
+                options.AddPolicy (name: MyAllowSpecificOrigins,
+                                  builder => {
+                                      builder.WithOrigins ("http://localhost:8888",
+                                                          "https://www.beatleader.xyz",
+                                                          "https://agitated-ptolemy-7d772c.netlify.app");
                                   });
             });
         }
