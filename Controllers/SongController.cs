@@ -64,7 +64,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/maps")]
         public async Task<ActionResult<ICollection<Song>>> GetAll([FromQuery] bool ranked = false, [FromQuery] int page = 0, [FromQuery] int count = 100)
         {
-            return _context.Songs.ToList();
+            return _context.Songs.Where(s => s.Difficulties.First(d => d.Ranked == ranked) != null).Include(s => s.Difficulties).ToList();
         }
 
         public Task<Song?> GetSongFromBeatSaver(string url)

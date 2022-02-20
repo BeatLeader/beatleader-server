@@ -36,9 +36,6 @@ namespace BeatLeader_Server.Controllers
                     } else {
                         player.Id = id;
                         player.Platform = "steam";
-                        player.ScoreStats = new PlayerScoreStats();
-                        player.Histories = "";
-                        player.Role = "";
                         _context.Players.Add(player);
                         await _context.SaveChangesAsync();
                     }
@@ -168,13 +165,49 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/players")]
         public async Task<ActionResult<IEnumerable<Player>>> GetPlayers([FromQuery] string sortBy = "recent", [FromQuery] int page = 0, [FromQuery] int count = 50, [FromQuery] string search = "", [FromQuery] string countries = "")
         {
-            return _context.Players.OrderByDescending(p => p.Pp).OrderByDescending(p => p.Pp).ToList();
+            IQueryable<Player> request = _context.Players;
+            if (countries.Length != 0)
+            {
+                request = request.Where(p => countries.Contains(p.Country));
+            }
+            if (search.Length != 0)
+            {
+                request = request.Where(p => p.Name.Contains(search));
+            }
+            return request.OrderByDescending(p => p.Pp).ToList();
         }
 
         [HttpGet("~/players/count")]
         public async Task<ActionResult<int>> GetPlayers()
         {
             return _context.Players.Count();
+        }
+
+        [HttpGet("~/players/refresh")]
+        public async Task<ActionResult> RefreshPlayers()
+        {
+            var ranked = _context.Players.ToList();
+            Dictionary<string, int> countries = new Dictionary<string, int>();
+            foreach (Player p in ranked)
+            {
+                _context.RecalculatePP(p);
+            }
+            ranked = ranked.OrderByDescending(t => t.Pp).ToList();
+            foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
+            {
+                p.Rank = i + 1;
+                if (!countries.ContainsKey(p.Country))
+                {
+                    countries[p.Country] = 1;
+                }
+
+                p.CountryRank = countries[p.Country];
+                countries[p.Country]++;
+                _context.Players.Update(p);
+            }
+            await _context.SaveChangesAsync();
+
+            return Ok();
         }
 
         public Task<Player?> GetPlayerFromSteam(string url)

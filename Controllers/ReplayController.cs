@@ -86,6 +86,10 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 leaderboard = await _context.Leaderboards.Include(lb => lb.Scores).ThenInclude(score => score.Identification).FirstOrDefaultAsync(i => i.Id == leaderboard.Id);
+                if (leaderboard == null)
+                {
+                    return NotFound("Such leaderboard not exists");
+                }
 
                 Score? currentScore = leaderboard.Scores.FirstOrDefault(el => el.PlayerId == replay.info.playerID, (Score?)null);
                 if (currentScore != null && currentScore.ModifiedScore >= replay.info.score) {
@@ -98,7 +102,6 @@ namespace BeatLeader_Server.Controllers
                     player.Name = replay.info.playerName;
                     player.Platform = replay.info.platform;
                     player.SetDefaultAvatar();
-                    player.Country = "not set";
 
                     _context.Players.Add(player);
                 }
@@ -117,7 +120,6 @@ namespace BeatLeader_Server.Controllers
                     (replay, Score score) = ReplayUtils.ProcessReplay(replay, replayData);
                     if (leaderboard.Difficulty.Ranked) {
                         score.Pp = (float)score.ModifiedScore / ((float)score.BaseScore / score.Accuracy) * (float)leaderboard.Difficulty.Stars * 50;
-                        player.Pp += score.Pp;
                     }
                     
                     score.PlayerId = replay.info.playerID;
@@ -141,53 +143,63 @@ namespace BeatLeader_Server.Controllers
 
                     await _containerClient.DeleteBlobIfExistsAsync(fileName);
 				    await _containerClient.UploadBlobAsync(fileName, stream);
-
-
-                    leaderboard.Scores.Add(resultScore);
-
-                    var rankedScores = leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();
-                    foreach ((int i, Score p) in rankedScores.Select((value, i) => (i, value)))
-                    {
-                        p.Rank = i + 1;
-                    }
-
-                    var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
-                    var country = player.Country; var countryRank = 1;
-                    foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
-                    {
-                        p.Rank = i + 1;
-                        if (p.Country == country)
-                        {
-                            p.CountryRank = countryRank;
-                            countryRank++;
-                        }
-                    }
-
-                    leaderboard.Plays = rankedScores.Count;
-
-                    await _context.SaveChangesAsync();
-                    resultScore.Identification = null;
-
-                    return resultScore;
 			    }
 			    catch (Exception)
 			    {
 				    return BadRequest("Error saving replay");
 			    }
+
+                if (currentScore != null)
+                {
+                    resultScore.Id = currentScore.Id;
+                    _context.Scores.Update(resultScore);
+                }
+                else
+                {
+                    leaderboard.Scores.Add(resultScore);
+                }
+
+                var rankedScores = leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();
+                foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
+                {
+                    s.Rank = i + 1;
+                    _context.Scores.Update(s);
+                }
+
+                _context.RecalculatePP(player);
+
+                var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
+                var country = player.Country; var countryRank = 1;
+                foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
+                {
+                    p.Rank = i + 1;
+                    if (p.Country == country)
+                    {
+                        p.CountryRank = countryRank;
+                        countryRank++;
+                    }
+                    _context.Players.Update(p);
+                }
+
+                leaderboard.Plays = rankedScores.Count;
+                _context.Leaderboards.Update(leaderboard);
+
+                await _context.SaveChangesAsync();
+                resultScore.Identification = null;
+
+                return resultScore;
             }
             else {
                 return BadRequest("It's not a replay or it has old version.");
             }
-
-			
         }
 
-        public static void SetPublicContainerPermissions(BlobContainerClient container)
+        private static void SetPublicContainerPermissions(BlobContainerClient container)
         {
             container.SetAccessPolicy(accessType: Azure.Storage.Blobs.Models.PublicAccessType.BlobContainer);
         }
 
-        public static string GetCountryByIp(string ip)
+        private static string GetCountryByIp(string ip)
         {
             string result = "not set";
             try
