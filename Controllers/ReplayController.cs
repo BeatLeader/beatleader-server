@@ -51,8 +51,9 @@ namespace BeatLeader_Server.Controllers
 		}
 
         [HttpPost("~/replay"), DisableRequestSizeLimit]
-        public async Task<ActionResult<Score>> PostReplay() //, [FromQuery] bool shared)
+        public async Task<ActionResult<Score>> PostReplay([FromQuery] string ticket)
         {
+            string? authenticatedPlayerID = await GetPlayerIDFromTicket(ticket);
             if (!ModelState.IsValid)
 			{
 				return NotFound();
@@ -76,6 +77,11 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (replay != null) {
+                if (authenticatedPlayerID == null || authenticatedPlayerID != replay.info.playerID)
+                {
+                    return Unauthorized("Session ticket is not valid");
+                }
+
                 Song? song = (await _songController.GetHash(replay.info.hash)).Value;
                 if (song == null) {
                     return NotFound("Such song id not exists");
@@ -119,7 +125,7 @@ namespace BeatLeader_Server.Controllers
                 if (ReplayUtils.CheckReplay(replayData, leaderboard.Scores)) {
                     (replay, Score score) = ReplayUtils.ProcessReplay(replay, replayData);
                     if (leaderboard.Difficulty.Ranked) {
-                        score.Pp = (float)score.ModifiedScore / ((float)score.BaseScore / score.Accuracy) * (float)leaderboard.Difficulty.Stars * 50;
+                        score.Pp = (float)score.ModifiedScore / ((float)score.BaseScore / score.Accuracy) * (float)leaderboard.Difficulty.Stars * 44;
                     }
                     
                     score.PlayerId = replay.info.playerID;
@@ -216,6 +222,64 @@ namespace BeatLeader_Server.Controllers
             }
 
             return result;
+        }
+
+        public Task<string?> GetPlayerIDFromTicket(string ticket)
+        {
+            string url = "https://api.steampowered.com/ISteamUserAuth/AuthenticateUserTicket/v0001?appid=620980&key=B0A7AF33E804D0ABBDE43BA9DD5DAB48&ticket=" + ticket;
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+            request.Method = "GET";
+            request.Proxy = null;
+
+            WebResponse response = null;
+            string? playerID = null;
+            var stream =
+            Task<(WebResponse, string)>.Factory.FromAsync(request.BeginGetResponse, result =>
+            {
+                try
+                {
+                    response = request.EndGetResponse(result);
+                }
+                catch (Exception e)
+                {
+                    playerID = null;
+                }
+
+                return (response, playerID);
+            }, request);
+
+            return stream.ContinueWith(t => ReadStreamFromResponse(t.Result));
+        }
+
+        private string? ReadStreamFromResponse((WebResponse, string?) response)
+        {
+            if (response.Item1 != null)
+            {
+                using (Stream responseStream = response.Item1.GetResponseStream())
+                using (StreamReader reader = new StreamReader(responseStream))
+                {
+                    string results = reader.ReadToEnd();
+                    if (!string.IsNullOrEmpty(results))
+                    {
+
+                    }
+                    try
+                    {
+                        var info = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, Dictionary<string, string>>>>(results);
+
+                        return info["response"]["params"]["steamid"];
+                    } catch
+                    {
+                        return null;
+                    }
+                    
+                }
+            }
+            else
+            {
+                return response.Item2;
+            }
+
         }
     }
 }
