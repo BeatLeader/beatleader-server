@@ -121,7 +121,7 @@ namespace BeatLeader_Server.Controllers
                 if (ReplayUtils.CheckReplay(replayData, leaderboard.Scores)) {
                     (replay, Score score) = ReplayUtils.ProcessReplay(replay, replayData);
                     if (leaderboard.Difficulty.Ranked && leaderboard.Difficulty.Stars != null) {
-                        score.Pp = (float)score.BaseScore * score.Accuracy * (float)leaderboard.Difficulty.Stars * 44;
+                        score.Pp = (float)score.ModifiedScore / ((float)score.BaseScore / score.Accuracy) * (float)leaderboard.Difficulty.Stars * 44;
                     }
                     
                     score.PlayerId = replay.info.playerID;
