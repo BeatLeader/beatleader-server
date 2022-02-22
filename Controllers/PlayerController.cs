@@ -133,7 +133,7 @@ namespace BeatLeader_Server.Controllers
                 default:
                     break;
             }
-            return sequence.Take(count).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).ToList();
+            return sequence.Skip((page - 1) * count).Take(count).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).ToList();
         }
 
         [HttpDelete("~/player/{id}/score/{leaderboardID}")]
@@ -165,7 +165,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/players")]
         public async Task<ActionResult<IEnumerable<Player>>> GetPlayers([FromQuery] string sortBy = "recent", [FromQuery] int page = 0, [FromQuery] int count = 50, [FromQuery] string search = "", [FromQuery] string countries = "")
         {
-            IQueryable<Player> request = _context.Players;
+            IQueryable<Player> request = _context.Players.Include(p => p.ScoreStats);
             if (countries.Length != 0)
             {
                 request = request.Where(p => countries.Contains(p.Country));
@@ -174,7 +174,7 @@ namespace BeatLeader_Server.Controllers
             {
                 request = request.Where(p => p.Name.Contains(search));
             }
-            return request.OrderByDescending(p => p.Pp).ToList();
+            return request.OrderByDescending(p => p.Pp).Skip((page - 1) * count).Take(count).ToList();
         }
 
         [HttpGet("~/players/count")]
@@ -186,10 +186,27 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/players/refresh")]
         public async Task<ActionResult> RefreshPlayers()
         {
-            var ranked = _context.Players.ToList();
+            var ranked = _context.Players.Include(p => p.ScoreStats).ToList();
             Dictionary<string, int> countries = new Dictionary<string, int>();
             foreach (Player p in ranked)
             {
+                if (p.ScoreStats == null)
+                {
+                    p.ScoreStats = new PlayerScoreStats();
+                    _context.Stats.Add(p.ScoreStats);
+                }
+                var allScores = _context.Scores.Where(s => s.PlayerId == p.Id);
+                var rankedScores = allScores.Where(s => s.Pp != 0);
+                p.ScoreStats.TotalPlayCount = allScores.Count();
+                p.ScoreStats.TotalScore = allScores.Sum(s => s.ModifiedScore);
+                p.ScoreStats.RankedPlayCount = rankedScores.Count();
+                p.ScoreStats.AverageAccuracy = allScores.Average(s => s.Accuracy);
+                if (p.ScoreStats.RankedPlayCount > 0)
+                {
+                    p.ScoreStats.AverageRankedAccuracy = rankedScores.Average(s => s.Accuracy);
+                }
+                
+                _context.Stats.Update(p.ScoreStats);
                 _context.RecalculatePP(p);
             }
             ranked = ranked.OrderByDescending(t => t.Pp).ToList();
@@ -205,6 +222,7 @@ namespace BeatLeader_Server.Controllers
                 countries[p.Country]++;
                 _context.Players.Update(p);
             }
+
             await _context.SaveChangesAsync();
 
             return Ok();
