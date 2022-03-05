@@ -133,24 +133,26 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/player/{id}/scores")]
         public async Task<ActionResult<IEnumerable<Score>>> GetScores(
             string id,
-            [FromQuery] string sortBy = "recent",
+            [FromQuery] string sortBy = "date",
             [FromQuery] string order = "desc",
             [FromQuery] int page = 1,
             [FromQuery] int count = 8,
             [FromQuery] string? search = null,
             [FromQuery] string? difficulty = null,
-            [FromQuery] string? type = null)
+            [FromQuery] string? type = null,
+            [FromQuery] float? stars_from = null,
+            [FromQuery] float? stars_to = null)
         {
             var sequence = _context.Scores.Where(t => t.PlayerId == id);
             switch (sortBy)
             {
-                case "recent":
+                case "date":
                     sequence = sequence.Order(order, t => t.Timeset);
                     break;
-                case "topPP":
+                case "pp":
                     sequence = sequence.Order(order, t => t.Pp);
                     break;
-                case "topAcc":
+                case "acc":
                     sequence = sequence.Order(order, t => t.Accuracy);
                     break;
                 case "pauses":
@@ -176,6 +178,14 @@ namespace BeatLeader_Server.Controllers
             if (type != null)
             {
                 sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Ranked : !p.Leaderboard.Difficulty.Ranked);
+            }
+            if (stars_from != null)
+            {
+                sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.Stars >= stars_from);
+            }
+            if (stars_to != null)
+            {
+                sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.Stars <= stars_to);
             }
             return sequence.Skip((page - 1) * count).Take(count).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).ToList();
         }
