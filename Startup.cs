@@ -57,7 +57,6 @@ namespace BeatLeader_Server {
 
 
             var connection = "Data Source = tcp:localhost,1433; Initial Catalog = BeatLeader_DEBUG; User Id = sa; Password = SuperStrong!";
-            services.AddDbContext<AppContext>(options => options.UseSqlServer(connection));
             services.AddDbContext<AppContext> (options => options.UseSqlServer (connection));
 
             services.Configure<AzureStorageConfig> (Configuration.GetSection ("AzureStorageConfig"));
@@ -71,9 +70,9 @@ namespace BeatLeader_Server {
             });
             services.AddCors (options => {
                 options.AddPolicy (name: MyAllowSpecificOrigins,
-                                  builder => {
-                                      builder.WithOrigins ("*");
-                                  });
+                    builder => {
+                        builder.WithOrigins ("*");
+                    });
             });
         }
 

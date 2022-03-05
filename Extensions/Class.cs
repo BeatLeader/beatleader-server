@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authentication;
+using System.Linq;
+using System.Linq.Expressions;
 
 namespace BeatLeader_Server.Extensions
 {
@@ -33,6 +35,21 @@ namespace BeatLeader_Server.Extensions
         public static string CurrentUserID(this HttpContext context)
         {
             return context.User.Claims.First().Value.Split("/").Last();
+        }
+    }
+
+    public static class LinqExtensions
+    {
+
+        public static IOrderedQueryable<TSource> Order<TSource, TKey>(this IQueryable<TSource> source, string by, Expression<Func<TSource, TKey>> keySelector)
+        {
+            if (by == "desc")
+            {
+                return source.OrderByDescending(keySelector);
+            } else
+            {
+                return source.OrderBy(keySelector);
+            }
         }
     }
 }

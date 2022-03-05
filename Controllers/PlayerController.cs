@@ -131,25 +131,51 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/player/{id}/scores")]
-        public async Task<ActionResult<IEnumerable<Score>>> GetScores(string id, [FromQuery] string sortBy = "recent", [FromQuery] int page = 1, [FromQuery] int count = 8)
+        public async Task<ActionResult<IEnumerable<Score>>> GetScores(
+            string id,
+            [FromQuery] string sortBy = "recent",
+            [FromQuery] string order = "desc",
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 8,
+            [FromQuery] string? search = null,
+            [FromQuery] string? difficulty = null,
+            [FromQuery] string? type = null)
         {
             var sequence = _context.Scores.Where(t => t.PlayerId == id);
             switch (sortBy)
             {
                 case "recent":
-                    sequence = sequence.OrderByDescending(t => t.Timeset);
+                    sequence = sequence.Order(order, t => t.Timeset);
                     break;
                 case "topPP":
-                    sequence = sequence.OrderByDescending(t => t.Pp);
+                    sequence = sequence.Order(order, t => t.Pp);
                     break;
                 case "topAcc":
-                    sequence = sequence.OrderByDescending(t => t.Accuracy);
+                    sequence = sequence.Order(order, t => t.Accuracy);
                     break;
                 case "pauses":
-                    sequence = sequence.OrderByDescending(t => t.Pauses);
+                    sequence = sequence.Order(order, t => t.Pauses);
+                    break;
+                case "rank":
+                    sequence = sequence.Order(order, t => t.Rank);
+                    break;
+                case "stars":
+                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Order(order, t => t.Leaderboard.Difficulty.Stars);
                     break;
                 default:
                     break;
+            }
+            if (search != null)
+            {
+                sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).Where(p => p.Leaderboard.Song.Name.ToLower().Contains(search.ToLower()));
+            }
+            if (difficulty != null)
+            {
+                sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.DifficultyName.ToLower().Contains(difficulty.ToLower()));
+            }
+            if (type != null)
+            {
+                sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Ranked : !p.Leaderboard.Difficulty.Ranked);
             }
             return sequence.Skip((page - 1) * count).Take(count).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).ToList();
         }
