@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BeatLeader_Server.Models
+namespace BeatLeader_Server.Models.Old
 {
     class Replay
     {
@@ -24,7 +24,7 @@ namespace BeatLeader_Server.Models
         public string version;
         public string gameVersion;
         public string timestamp;
-        
+
         public string playerID;
         public string playerName;
         public string platform;
@@ -240,7 +240,8 @@ namespace BeatLeader_Server.Models
                 stream.Write(note.eventTime);
                 stream.Write(note.spawnTime);
                 stream.Write((int)note.eventType);
-                if (note.eventType == NoteEventType.good || note.eventType == NoteEventType.bad) {
+                if (note.eventType == NoteEventType.good || note.eventType == NoteEventType.bad)
+                {
                     EncodeNoteInfo(note.noteCutInfo, stream);
                 }
             }
@@ -359,7 +360,7 @@ namespace BeatLeader_Server.Models
                         case StructType.pauses:
                             replay.pauses = DecodePauses(buffer, ref pointer);
                             break;
-                        }
+                    }
                 }
 
                 return replay;
@@ -372,39 +373,39 @@ namespace BeatLeader_Server.Models
 
         private static ReplayInfo DecodeInfo(byte[] buffer, ref int pointer)
         {
-                ReplayInfo result = new ReplayInfo();
+            ReplayInfo result = new ReplayInfo();
 
-                result.version = DecodeString(buffer, ref pointer);
-                result.gameVersion = DecodeString(buffer, ref pointer);
-                result.timestamp = DecodeString(buffer, ref pointer);
+            result.version = DecodeString(buffer, ref pointer);
+            result.gameVersion = DecodeString(buffer, ref pointer);
+            result.timestamp = DecodeString(buffer, ref pointer);
 
-                result.playerID = DecodeString(buffer, ref pointer);
-                result.playerName = DecodeString(buffer, ref pointer);
-                result.platform = DecodeString(buffer, ref pointer);
+            result.playerID = DecodeString(buffer, ref pointer);
+            result.playerName = DecodeString(buffer, ref pointer);
+            result.platform = DecodeString(buffer, ref pointer);
 
-                result.trackingSytem = DecodeString(buffer, ref pointer);
-                result.hmd = DecodeString(buffer, ref pointer);
-                result.controller = DecodeString(buffer, ref pointer);
+            result.trackingSytem = DecodeString(buffer, ref pointer);
+            result.hmd = DecodeString(buffer, ref pointer);
+            result.controller = DecodeString(buffer, ref pointer);
 
-                result.hash = DecodeString(buffer, ref pointer);
-                result.songName = DecodeString(buffer, ref pointer);
-                result.mapper = DecodeString(buffer, ref pointer);
-                result.difficulty = DecodeString(buffer, ref pointer);
-                
-                result.score = DecodeInt(buffer, ref pointer);
-                result.mode = DecodeString(buffer, ref pointer);
-                result.environment = DecodeString(buffer, ref pointer);
-                result.modifiers = DecodeString(buffer, ref pointer);
-                result.jumpDistance = DecodeFloat(buffer, ref pointer);
-                result.leftHanded = DecodeBool(buffer, ref pointer);
-                result.height = DecodeFloat(buffer, ref pointer);
+            result.hash = DecodeString(buffer, ref pointer);
+            result.songName = DecodeString(buffer, ref pointer);
+            result.mapper = DecodeString(buffer, ref pointer);
+            result.difficulty = DecodeString(buffer, ref pointer);
 
-                result.startTime = DecodeFloat(buffer, ref pointer);
-                result.failTime = DecodeFloat(buffer, ref pointer);
-                result.speed = DecodeFloat(buffer, ref pointer);
+            result.score = DecodeInt(buffer, ref pointer);
+            result.mode = DecodeString(buffer, ref pointer);
+            result.environment = DecodeString(buffer, ref pointer);
+            result.modifiers = DecodeString(buffer, ref pointer);
+            result.jumpDistance = DecodeFloat(buffer, ref pointer);
+            result.leftHanded = DecodeBool(buffer, ref pointer);
+            result.height = DecodeFloat(buffer, ref pointer);
 
-                return result;
-         }
+            result.startTime = DecodeFloat(buffer, ref pointer);
+            result.failTime = DecodeFloat(buffer, ref pointer);
+            result.speed = DecodeFloat(buffer, ref pointer);
+
+            return result;
+        }
 
         private static List<Frame> DecodeFrames(byte[] buffer, ref int pointer)
         {
@@ -491,7 +492,8 @@ namespace BeatLeader_Server.Models
             result.eventTime = DecodeFloat(buffer, ref pointer);
             result.spawnTime = DecodeFloat(buffer, ref pointer);
             result.eventType = (NoteEventType)DecodeInt(buffer, ref pointer);
-            if (result.eventType == NoteEventType.good || result.eventType == NoteEventType.bad) {
+            if (result.eventType == NoteEventType.good || result.eventType == NoteEventType.bad)
+            {
                 result.noteCutInfo = DecodeCutInfo(buffer, ref pointer);
             }
 
@@ -566,8 +568,8 @@ namespace BeatLeader_Server.Models
         private static string DecodeString(byte[] buffer, ref int pointer)
         {
             int length = BitConverter.ToInt32(buffer, pointer);
-            string @string = Encoding.UTF8.GetString(buffer, pointer + 4, length);
-            pointer += length + 4;
+            string @string = Encoding.Unicode.GetString(buffer, pointer + 4, length * 2);
+            pointer += length * 2 + 4;
             return @string;
         }
 
@@ -586,4 +588,3 @@ namespace BeatLeader_Server.Models
         }
     }
 }
-

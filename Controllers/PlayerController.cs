@@ -26,22 +26,40 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<Player>> Get(string id)
         {
             Player? player = await _context.Players.Include(p => p.ScoreStats).FirstOrDefaultAsync(p => p.Id == id);
+            if (player == null)
+            {
+                return NotFound();
+            }
+            return player;
+        }
+
+        public async Task<ActionResult<Player>> GetLazy(string id)
+        {
+            Player? player = await _context.Players.Include(p => p.ScoreStats).FirstOrDefaultAsync(p => p.Id == id);
 
             if (player == null) {
                 Int64 userId = Int64.Parse(id);
                 if (userId > 70000000000000000) {
-                    player = await GetPlayerFromSteam("http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=" + _configuration.GetValue<string>("SteamKey") + "&steamids=" + id);
+                    player = await GetPlayerFromSteam(id);
                     if (player == null) {
                         return NotFound();
                     } else {
-                        player.Id = id;
                         player.Platform = "steam";
-                        _context.Players.Add(player);
-                        await _context.SaveChangesAsync();
                     }
                 } else {
-                    return NotFound();
+                    player = await GetPlayerFromOculus(id);
+                    if (player == null)
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        player.Platform = "oculus";
+                    }
                 }
+                player.Id = id;
+                _context.Players.Add(player);
+                await _context.SaveChangesAsync();
             }
 
             return player;
@@ -113,7 +131,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/player/{id}/scores")]
-        public async Task<ActionResult<IEnumerable<Score>>> GetScores(string id, [FromQuery] string sortBy = "recent", [FromQuery] int page = 0, [FromQuery] int count = 8)
+        public async Task<ActionResult<IEnumerable<Score>>> GetScores(string id, [FromQuery] string sortBy = "recent", [FromQuery] int page = 1, [FromQuery] int count = 8)
         {
             var sequence = _context.Scores.Where(t => t.PlayerId == id);
             switch (sortBy)
@@ -198,9 +216,14 @@ namespace BeatLeader_Server.Controllers
                 var allScores = _context.Scores.Where(s => s.PlayerId == p.Id);
                 var rankedScores = allScores.Where(s => s.Pp != 0);
                 p.ScoreStats.TotalPlayCount = allScores.Count();
-                p.ScoreStats.TotalScore = allScores.Sum(s => s.ModifiedScore);
+                
                 p.ScoreStats.RankedPlayCount = rankedScores.Count();
-                p.ScoreStats.AverageAccuracy = allScores.Average(s => s.Accuracy);
+                if (p.ScoreStats.TotalPlayCount > 0)
+                {
+                    p.ScoreStats.TotalScore = allScores.Sum(s => s.ModifiedScore);
+                    p.ScoreStats.AverageAccuracy = allScores.Average(s => s.Accuracy);
+                }
+                
                 if (p.ScoreStats.RankedPlayCount > 0)
                 {
                     p.ScoreStats.AverageRankedAccuracy = rankedScores.Average(s => s.Accuracy);
@@ -228,16 +251,60 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
-        public Task<Player?> GetPlayerFromSteam(string url)
+        public async Task<Player?> GetPlayerFromSteam(string playerID)
+        {
+            dynamic? info = await GetPlayer("http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=" + _configuration.GetValue<string>("SteamKey") + "&steamids=" + playerID);
+
+            if (info == null) return null;
+
+            dynamic playerInfo = info.response.players[0];
+            Player result = new Player();
+            result.Name = playerInfo.personaname;
+            result.Avatar = playerInfo.avatarfull;
+            if (ExpandantoObject.HasProperty(playerInfo, "loccountrycode"))
+            {
+                result.Country = playerInfo.loccountrycode;
+            }
+            else
+            {
+                result.Country = "not set";
+            }
+
+            return result;
+        }
+
+        public async Task<Player?> GetPlayerFromOculus(string playerID)
+        {
+            OculusAuthInfo? authInfo = _context.OculusAuths.First(el => el.UserID == playerID);
+
+            if (authInfo == null) return null;
+
+            dynamic? info = await GetPlayer("https://graph.oculus.com/" + playerID + "?access_token=" + authInfo.AuthToken + "&fields=id,alias");
+
+            if (info == null) return null;
+
+            Player result = new Player();
+            result.Name = info.alias;
+
+            info = await GetPlayer("https://graph.oculus.com/" + playerID + "?access_token=" + authInfo.AuthToken + "&fields=avatar_v2{avatar_image{uri}}");
+            if (ExpandantoObject.HasProperty(info, "avatar_v2") && ExpandantoObject.HasProperty(info.avatar_v2, "avatar_image"))
+            {
+                result.Avatar = info.avatar_v2.avatar_image.uri;
+            }
+
+            return result;
+        }
+
+        public Task<dynamic?> GetPlayer(string url)
         {
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
             request.Method = "GET";
             request.Proxy = null;
 
             WebResponse? response = null;
-            Player? song = null;
+            dynamic? song = null;
             var stream = 
-            Task<(WebResponse?, Player?)>.Factory.FromAsync(request.BeginGetResponse, result =>
+            Task<(WebResponse?, dynamic?)>.Factory.FromAsync(request.BeginGetResponse, result =>
             {
                 try
                 {
@@ -254,7 +321,7 @@ namespace BeatLeader_Server.Controllers
             return stream.ContinueWith(t => ReadPlayerFromResponse(t.Result));
         }
 
-        private Player? ReadPlayerFromResponse((WebResponse?, Player?) response)
+        private dynamic? ReadPlayerFromResponse((WebResponse?, dynamic?) response)
         {
             if (response.Item1 != null) {
                 using (Stream responseStream = response.Item1.GetResponseStream())
@@ -266,19 +333,7 @@ namespace BeatLeader_Server.Controllers
                         return null;
                     }
 
-                    dynamic? info = JsonConvert.DeserializeObject<ExpandoObject>(results, new ExpandoObjectConverter());
-                    if (info == null) return null;
-
-                    dynamic playerInfo = info.response.players[0];
-                    Player result = new Player();
-                    result.Name = playerInfo.personaname;
-                    result.Avatar = playerInfo.avatarfull;
-                    if (ExpandantoObject.HasProperty(playerInfo, "loccountrycode")) {
-                        result.Country = playerInfo.loccountrycode;
-                    } else {
-                        result.Country = "not set";
-                    }
-                    return result;
+                    return JsonConvert.DeserializeObject<ExpandoObject>(results, new ExpandoObjectConverter());
                 }
             } else {
                 return response.Item2;

@@ -2,8 +2,10 @@
 using System.Net;
 using Azure.Identity;
 using Azure.Storage.Blobs;
+using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -51,10 +53,20 @@ namespace BeatLeader_Server.Controllers
 		}
 
         [HttpPost("~/replay"), DisableRequestSizeLimit]
-        public async Task<ActionResult<Score>> PostReplay([FromQuery] string ticket)
+        public async Task<ActionResult<Score>> PostSteamReplay([FromQuery] string ticket)
         {
-            string? authenticatedPlayerID = await GetPlayerIDFromTicket(ticket);
+            return await PostReplay(await GetPlayerIDFromTicket(ticket));
+        }
 
+        [HttpPut("~/replayoculus"), DisableRequestSizeLimit]
+        [Authorize]
+        public async Task<ActionResult<Score>> PostOculusReplay()
+        {
+            return await PostReplay(HttpContext.CurrentUserID());
+        }
+
+        public async Task<ActionResult<Score>> PostReplay(string? authenticatedPlayerID)
+        {
             Replay replay;
             byte[] replayData;
 
@@ -73,10 +85,12 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (replay != null) {
-                if (authenticatedPlayerID == null || authenticatedPlayerID != replay.info.playerID)
+                if (authenticatedPlayerID == null || (authenticatedPlayerID != replay.info.playerID && Int64.Parse(authenticatedPlayerID) > 70000000000000000))
                 {
                     return Unauthorized("Session ticket is not valid");
                 }
+
+                replay.info.playerID = authenticatedPlayerID;
 
                 Song? song = (await _songController.GetHash(replay.info.hash)).Value;
                 if (song == null) {
@@ -97,7 +111,8 @@ namespace BeatLeader_Server.Controllers
                 if (currentScore != null && currentScore.ModifiedScore >= replay.info.score) {
                     return BadRequest("Score is lower than existing one");
                 }
-                Player? player = (await _playerController.Get(replay.info.playerID)).Value;
+                
+                Player? player = (await _playerController.GetLazy(replay.info.playerID)).Value;
                 if (player == null) {
                     player = new Player();
                     player.Id = replay.info.playerID;
@@ -152,15 +167,14 @@ namespace BeatLeader_Server.Controllers
 			    }
 
                 if (currentScore != null)
-                {
-                    resultScore.Id = currentScore.Id;
-                    _context.Scores.Update(resultScore);
+                {   
                     player.ScoreStats.TotalScore -= currentScore.ModifiedScore;
                     player.ScoreStats.AverageAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, currentScore.Accuracy);
                     if (leaderboard.Difficulty.Ranked)
                     {
                         player.ScoreStats.AverageRankedAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, currentScore.Accuracy);
                     }
+                    leaderboard.Scores.Remove(currentScore);
                 }
                 else
                 {
@@ -169,9 +183,8 @@ namespace BeatLeader_Server.Controllers
                         player.ScoreStats.RankedPlayCount++;
                     }
                     player.ScoreStats.TotalPlayCount++;
-
-                    leaderboard.Scores.Add(resultScore);
                 }
+                leaderboard.Scores.Add(resultScore);
                 player.ScoreStats.TotalScore += resultScore.ModifiedScore;
                 player.ScoreStats.AverageAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, resultScore.Accuracy);
                 if (leaderboard.Difficulty.Ranked)
@@ -185,6 +198,9 @@ namespace BeatLeader_Server.Controllers
                     s.Rank = i + 1;
                     _context.Scores.Update(s);
                 }
+
+                leaderboard.Plays = rankedScores.Count;
+                _context.Leaderboards.Update(leaderboard);
 
                 await _context.SaveChangesAsync();
 
@@ -203,9 +219,6 @@ namespace BeatLeader_Server.Controllers
                     _context.Players.Update(p);
                 }
 
-                leaderboard.Plays = rankedScores.Count;
-                _context.Leaderboards.Update(leaderboard);
-
                 await _context.SaveChangesAsync();
                 resultScore.Identification = null;
 
@@ -216,7 +229,69 @@ namespace BeatLeader_Server.Controllers
             }
         }
 
-        private static void SetPublicContainerPermissions(BlobContainerClient container)
+        [HttpPost("~/replays/migrate")]
+        public async Task<ActionResult> MigrateReplays()
+        {
+            var scores = _context.Scores.ToList();
+            int migrated = 0;
+            var result = "";
+            foreach (var score in scores)
+            {
+                string replayFile = score.Replay;
+
+                var net = new System.Net.WebClient();
+                var data = net.DownloadData(replayFile);
+                var readStream = new System.IO.MemoryStream(data);
+
+                int arrayLength = (int)readStream.Length;
+                byte[] buffer = new byte[arrayLength];
+                readStream.Read(buffer, 0, arrayLength);
+
+                try
+                {
+                    Models.Old.Replay replay = Models.Old.ReplayDecoder.Decode(buffer);
+
+                    migrated++;
+
+                    Stream stream = new MemoryStream();
+                    Models.Old.ReplayEncoder.Encode(replay, new BinaryWriter(stream));
+                    stream.Position = 0;
+
+                    string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
+
+                    await _containerClient.DeleteBlobIfExistsAsync(fileName);
+                    await _containerClient.UploadBlobAsync(fileName, stream);
+
+                    
+                }
+                catch (Exception e) {
+                    result += "\n" + replayFile + "  " + e.ToString();
+                }
+            }
+            return Ok(result + "\nMigrated " + migrated + " out of " + _context.Scores.Count());
+        }
+
+        [HttpGet("~/replay/check")]
+        public async Task<ActionResult> CheckReplay([FromQuery] string link)
+        {
+            var net = new System.Net.WebClient();
+            var data = net.DownloadData(link);
+            var readStream = new System.IO.MemoryStream(data);
+
+            int arrayLength = (int)readStream.Length;
+            byte[] buffer = new byte[arrayLength];
+            readStream.Read(buffer, 0, arrayLength);
+            try
+            {
+                Models.Old.Replay replay = Models.Old.ReplayDecoder.Decode(buffer);
+            }
+            catch {
+                arrayLength = 10;
+            }
+            return Ok();
+        }
+
+            private static void SetPublicContainerPermissions(BlobContainerClient container)
         {
             container.SetAccessPolicy(accessType: Azure.Storage.Blobs.Models.PublicAccessType.BlobContainer);
         }

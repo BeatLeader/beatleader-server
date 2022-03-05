@@ -20,6 +20,8 @@ namespace BeatLeader_Server.Utils
                 for (int i = 0; i < order.Length; i++)
                 {
                     int index = order[i];
+                    if (index >= replay.Length || byteIndex >= data.Length) break;
+
                     byte current = replay[index];
 
                     if ((current & (1 << (index % 4))) == (data[byteIndex] & (1 << bitIndex))) {

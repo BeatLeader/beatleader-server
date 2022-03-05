@@ -1,4 +1,5 @@
-﻿using BeatLeader_Server.Extensions;
+﻿using System.Security.Claims;
+using BeatLeader_Server.Extensions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
@@ -29,6 +30,16 @@ namespace BeatLeader_Server.Controllers
             // provider to redirect the user agent to its own authorization endpoint.
             // Note: the authenticationScheme parameter must match the value configured in Startup.cs
             return Challenge(new AuthenticationProperties { RedirectUri = "/" }, provider);
+        }
+
+        [HttpGet("~/signinoculus")]
+        public async Task<IActionResult> SignInOculus()
+        {
+
+            // Instruct the middleware corresponding to the requested external identity
+            // provider to redirect the user agent to its own authorization endpoint.
+            // Note: the authenticationScheme parameter must match the value configured in Startup.cs
+            return Challenge(new AuthenticationProperties { RedirectUri = "/" }, "oculus");
         }
 
         [HttpGet("~/signout"), HttpPost("~/signout")]

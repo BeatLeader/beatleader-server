@@ -29,8 +29,14 @@
 
   <ItemGroup>
     <Folder Include="Migrations\" />
+    <Folder Include="Auth\SteamTicket\" />
+    <Folder Include="Auth\Oculus\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Remove="Auth\SteamTicket\" />
+    <None Remove="Auth\Oculus\" />
+  </ItemGroup>
   <ProjectExtensions>
     <MonoDevelop>
       <Properties>

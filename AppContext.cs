@@ -16,5 +16,6 @@ namespace BeatLeader_Server
         public DbSet<Player> Players { get; set; }
         public DbSet<Score> Scores { get; set; }
         public DbSet<PlayerScoreStats> Stats { get; set; }
+        public DbSet<OculusAuthInfo> OculusAuths { get; set; }
     }
 }
