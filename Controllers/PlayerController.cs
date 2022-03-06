@@ -131,14 +131,14 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/player/{id}/scores")]
-        public async Task<ActionResult<IEnumerable<Score>>> GetScores(
+        public async Task<ActionResult<ResponseWithMetadata<Score>>> GetScores(
             string id,
             [FromQuery] string sortBy = "date",
             [FromQuery] string order = "desc",
             [FromQuery] int page = 1,
             [FromQuery] int count = 8,
             [FromQuery] string? search = null,
-            [FromQuery] string? difficulty = null,
+            [FromQuery] string? diff = null,
             [FromQuery] string? type = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null)
@@ -169,11 +169,17 @@ namespace BeatLeader_Server.Controllers
             }
             if (search != null)
             {
-                sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).Where(p => p.Leaderboard.Song.Name.ToLower().Contains(search.ToLower()));
+                string lowSearch = search.ToLower();
+                sequence = sequence
+                    .Include(lb => lb.Leaderboard)
+                    .ThenInclude(lb => lb.Song)
+                    .Where(p => p.Leaderboard.Song.Author.ToLower().Contains(lowSearch) ||
+                                p.Leaderboard.Song.Mapper.ToLower().Contains(lowSearch) ||
+                                p.Leaderboard.Song.Name.ToLower().Contains(lowSearch));
             }
-            if (difficulty != null)
+            if (diff != null)
             {
-                sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.DifficultyName.ToLower().Contains(difficulty.ToLower()));
+                sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.DifficultyName.ToLower().Contains(diff.ToLower()));
             }
             if (type != null)
             {
@@ -187,7 +193,16 @@ namespace BeatLeader_Server.Controllers
             {
                 sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.Stars <= stars_to);
             }
-            return sequence.Skip((page - 1) * count).Take(count).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).ToList();
+            return new Models.ResponseWithMetadata<Score>()
+            {
+                Metadata = new Metadata()
+                {
+                    Page = page,
+                    ItemsPerPage = count,
+                    Total = sequence.Count()
+                },
+                Data = sequence.Skip((page - 1) * count).Take(count).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).ToList()
+            };
         }
 
         [HttpDelete("~/player/{id}/score/{leaderboardID}")]
