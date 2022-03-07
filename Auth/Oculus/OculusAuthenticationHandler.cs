@@ -39,66 +39,98 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (Request.Query["token"].Count == 0) {
-            return AuthenticateResult.Fail("No token found");
-        } else {
-            string? token = Request.Query["token"].First();
-            if (token == null) return AuthenticateResult.Fail("No token found");
-            string? tokenJSON = Encoding.UTF8.GetString(Convert.FromBase64String(token));
-            if (tokenJSON == null) return AuthenticateResult.Fail("Token is not valid");
-            dynamic? decodedToken = JsonConvert.DeserializeObject<ExpandoObject>(tokenJSON, new ExpandoObjectConverter());
-            if (decodedToken == null) return AuthenticateResult.Fail("Token is not valid");
-
-            OculusAuthInfo authInfo = new OculusAuthInfo();
-            authInfo.ScoredID = decodedToken.org_scoped_id.ToString();
-            authInfo.Code = decodedToken.code.ToString();
-
-            dynamic? auth_token_info = await MakeAsyncRequest("https://graph.oculus.com/sso_authorize_code?code=" + authInfo.Code + "&access_token=&org_scoped_id=" + authInfo.ScoredID, "POST");
-            dynamic? request = await MakeAsyncRequest("https://graph.oculus.com/me?access_token=" + auth_token_info.oauth_token + "&fields=id,alias", "GET");
-
-            authInfo.UserID = request.id;
-            authInfo.AuthToken = auth_token_info.oauth_token;
-
-            using (var scope = _serviceProvider.CreateScope())
-            {
-                var dbContext = scope.ServiceProvider.GetRequiredService<BeatLeader_Server.AppContext>();
-
-                OculusAuthInfo? oculusAuth = dbContext.OculusAuths.Count() > 0 ? dbContext.OculusAuths.First(el => el.UserID == authInfo.UserID) : null;
-                if (oculusAuth == null)
-                {
-                    dbContext.OculusAuths.Add(authInfo);
-                } else
-                {
-                    oculusAuth.ScoredID = decodedToken.org_scoped_id.ToString();
-                    oculusAuth.Code = decodedToken.code.ToString();
-                    oculusAuth.AuthToken = auth_token_info.oauth_token;
-                    dbContext.OculusAuths.Update(oculusAuth);
-                }
-                await dbContext.SaveChangesAsync();
-            }
-
-            var claims = new[] { new Claim(ClaimTypes.NameIdentifier, request.id) };
-            var identity = new ClaimsIdentity(claims, "Test");
-            var principal = new ClaimsPrincipal(identity);
-            var ticket = new AuthenticationTicket(principal, "Cookies");
-
-            await AuthenticationHttpContextExtensions.SignInAsync(Context, CookieAuthenticationDefaults.AuthenticationScheme, principal);
-
-            var result = AuthenticateResult.Success(ticket);
-
-            return result;
+        string? action = Request.Query["action"].FirstOrDefault();
+        if (action == null || (action != "login" && action != "signup"))
+        {
+            Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await Context.Response.WriteAsync("Specify action");
+            return AuthenticateResult.Fail("Specify action");
         }
+        string? login = Request.Query["login"].FirstOrDefault();
+        if (login == null)
+        {
+            Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await Context.Response.WriteAsync("Specify login");
+            return AuthenticateResult.Fail("Specify login");
+        }
+        string? password = Request.Query["password"].FirstOrDefault();
+        if (password == null)
+        {
+            Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await Context.Response.WriteAsync("Specify password");
+            return AuthenticateResult.Fail("Specify password");
+        }
+        var scope = _serviceProvider.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<BeatLeader_Server.AppContext>();
+
+        string id = "";
+
+        if (action == "login")
+        {
+            AuthInfo? authInfo = dbContext.Auths.FirstOrDefault(el => el.Login == login);
+            if (authInfo == null || authInfo.Password != password)
+            {
+                Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await Context.Response.WriteAsync("Login or password is not valid");
+                return AuthenticateResult.Fail("Login or password is not valid");
+            }
+            id = authInfo.Id.ToString();
+        }
+        else
+        {
+            AuthInfo? authInfo = dbContext.Auths.FirstOrDefault(el => el.Login == login);
+            if (authInfo != null)
+            {
+                Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await Context.Response.WriteAsync("User with such login already exists");
+                return AuthenticateResult.Fail("User with such login already exists");
+            }
+            Player? player = dbContext.Players.FirstOrDefault(el => el.Name == login);
+            if (player != null)
+            {
+                Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await Context.Response.WriteAsync("User with such login already exists");
+                return AuthenticateResult.Fail("User with such login already exists");
+            }
+            if (login.Trim().Length < 2)
+            {
+                Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await Context.Response.WriteAsync("Use two or more symbols for the login");
+                return AuthenticateResult.Fail("Use two or more symbols for the login");
+            }
+            if (password.Trim().Length < 8)
+            {
+                Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await Context.Response.WriteAsync("Come on, type at least 8 symbols password");
+                return AuthenticateResult.Fail("Come on, type at least 8 symbols password");
+            }
+            
+            authInfo = new AuthInfo
+            {
+                Password = password,
+                Login = login
+            };
+            dbContext.Auths.Add(authInfo);
+            dbContext.SaveChanges();
+
+            id = authInfo.Id.ToString();
+        }
+
+        var claims = new[] { new Claim(ClaimTypes.NameIdentifier, id) };
+        var identity = new ClaimsIdentity(claims, "Test");
+        var principal = new ClaimsPrincipal(identity);
+        var ticket = new AuthenticationTicket(principal, "Cookies");
+
+        await AuthenticationHttpContextExtensions.SignInAsync(Context, CookieAuthenticationDefaults.AuthenticationScheme, principal);
+
+        var result = AuthenticateResult.Success(ticket);
+
+        return result;
     }
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties) {
-        var task2 = ((Func<Task<AuthenticateResult>>)(async () => {
-            AuthenticateResult result = await HandleAuthenticateOnceAsync();
-            //Response.Redirect("https://beatleader.azurewebsites.net/user/id");
-            return result;
-        }))();
-
-        return task2;
-     }
+        return HandleAuthenticateOnceAsync();
+    }
 
     public Task<dynamic?> MakeAsyncRequest(string url, string method)
     {

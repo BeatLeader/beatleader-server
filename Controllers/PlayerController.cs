@@ -326,22 +326,15 @@ namespace BeatLeader_Server.Controllers
 
         public async Task<Player?> GetPlayerFromOculus(string playerID)
         {
-            OculusAuthInfo? authInfo = _context.OculusAuths.First(el => el.UserID == playerID);
+            AuthInfo? authInfo = _context.Auths.First(el => el.Id.ToString() == playerID);
 
             if (authInfo == null) return null;
 
-            dynamic? info = await GetPlayer("https://graph.oculus.com/" + playerID + "?access_token=" + authInfo.AuthToken + "&fields=id,alias");
-
-            if (info == null) return null;
-
             Player result = new Player();
-            result.Name = info.alias;
-
-            info = await GetPlayer("https://graph.oculus.com/" + playerID + "?access_token=" + authInfo.AuthToken + "&fields=avatar_v2{avatar_image{uri}}");
-            if (ExpandantoObject.HasProperty(info, "avatar_v2") && ExpandantoObject.HasProperty(info.avatar_v2, "avatar_image"))
-            {
-                result.Avatar = info.avatar_v2.avatar_image.uri;
-            }
+            result.Id = playerID;
+            result.Name = authInfo.Login;
+            result.Platform = "oculus";
+            result.SetDefaultAvatar();
 
             return result;
         }

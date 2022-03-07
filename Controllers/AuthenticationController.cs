@@ -33,13 +33,15 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/signinoculus")]
-        public async Task<IActionResult> SignInOculus()
+        public IActionResult SignInOculus()
         {
 
             // Instruct the middleware corresponding to the requested external identity
             // provider to redirect the user agent to its own authorization endpoint.
             // Note: the authenticationScheme parameter must match the value configured in Startup.cs
-            return Challenge(new AuthenticationProperties { RedirectUri = "/" }, "oculus");
+            var result = Challenge(new AuthenticationProperties { RedirectUri = "/" }, "oculus");
+
+            return result;
         }
 
         [HttpGet("~/signout"), HttpPost("~/signout")]
