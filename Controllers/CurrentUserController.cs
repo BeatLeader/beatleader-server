@@ -15,29 +15,39 @@ namespace BeatLeader_Server.Controllers
     public class CurrentUserController : ControllerBase
     {
         private readonly AppContext _context;
-        BlobContainerClient _containerClient;
+        BlobContainerClient _assetsContainerClient;
+        PlayerController _playerController;
+        IWebHostEnvironment _environment;
 
-        public CurrentUserController(AppContext context, IOptions<AzureStorageConfig> config, IWebHostEnvironment env)
+        public CurrentUserController(
+            AppContext context,
+            IOptions<AzureStorageConfig> config,
+            IWebHostEnvironment env,
+            PlayerController playerController)
         {
             _context = context;
-   //         if (env.IsDevelopment())
-			//{
-			//	_containerClient = new BlobContainerClient(config.Value.AccountName, config.Value.ContainerName);
-			//}
-			//else
-			//{
-			//	string containerEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
-			//											config.Value.AccountName,
-			//										   config.Value.ContainerName);
+            _playerController = playerController;
+            _environment = env;
+            if (env.IsDevelopment())
+            {
+                _assetsContainerClient = new BlobContainerClient(config.Value.AccountName, config.Value.AssetsContainerName);
+            }
+            else
+            {
+                string containerEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
+                                                        config.Value.AccountName,
+                                                       config.Value.AssetsContainerName);
 
-			//	_containerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
-			//}
+                _assetsContainerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
+            }
         }
 
         [HttpGet("~/user/id")]
         public string GetId()
         {
-            return HttpContext.CurrentUserID();
+            string currentID = HttpContext.CurrentUserID();
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == Int64.Parse(currentID));
+            return accountLink != null ? accountLink.SteamID : currentID;
         }
 
         [HttpGet("~/user/playlists")]
@@ -88,6 +98,126 @@ namespace BeatLeader_Server.Controllers
             await _context.SaveChangesAsync();
 
             return playlist;
+        }
+
+        [HttpPatch("~/user/avatar")]
+        public async Task<ActionResult> ChangeAvatar()
+        {
+            string userId = GetId();
+            var player = await _context.Players.FindAsync(userId);
+
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            string fileName = userId + ".png";
+            try
+            {
+                await _assetsContainerClient.CreateIfNotExistsAsync();
+
+                var ms = new MemoryStream(5);
+                await Request.Body.CopyToAsync(ms);
+                ms.Position = 0;
+
+                await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
+                await _assetsContainerClient.UploadBlobAsync(fileName, ms);
+            }
+            catch (Exception)
+            {
+                return BadRequest("Error saving avatar");
+            }
+
+            player.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://cdn.beatleader.xyz/assets/") + fileName;
+            _context.Players.Update(player);
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpPost("~/user/migrate")]
+        public async Task<ActionResult<int>> MigrateToSteam([FromForm] string login, [FromForm] string password)
+        {
+            string steamID = HttpContext.CurrentUserID();
+
+            AuthInfo? authInfo = _context.Auths.FirstOrDefault(el => el.Login == login);
+            if (authInfo == null || authInfo.Password != password)
+            {
+                return Unauthorized("Login or password is invalid");
+            }
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.SteamID == steamID || el.OculusID == authInfo.Id);
+            if (accountLink != null)
+            {
+                return Unauthorized("Accounts are already linked");
+            }
+
+            return await MigratePrivate(authInfo.Id);
+        }
+
+        public async Task<ActionResult<int>> MigratePrivate(int id)
+        {
+            string steamID = HttpContext.CurrentUserID();
+            
+            if (Int64.Parse(steamID) < 70000000000000000)
+            {
+                return Unauthorized("You need to be logged in with Steam");
+            }
+
+            AccountLink? accountLink = new AccountLink
+            {
+                OculusID = id,
+                SteamID = steamID
+            };
+
+            _context.AccountLinks.Add(accountLink);
+
+            Player? currentPlayer = _context.Players.Find(id.ToString());
+            Player? migratedToPlayer = _context.Players.Find(steamID);
+
+            if (currentPlayer == null || migratedToPlayer == null)
+            {
+                return BadRequest("Could not find one of the players =(");
+            }
+
+            if (migratedToPlayer.Country == "Not set" && currentPlayer.Country != "Not set")
+            {
+                migratedToPlayer.Country = currentPlayer.Country;
+            }
+
+            dynamic scores = _context.Scores.Include(el => el.Player).Where(el => el.Player.Id == currentPlayer.Id).Include(el => el.Leaderboard).ThenInclude(el => el.Scores);
+            foreach (Score score in scores)
+            {
+                Score? migScore = score.Leaderboard.Scores.FirstOrDefault(el => el.PlayerId == steamID);
+                if (migScore != null)
+                {
+                    if (migScore.ModifiedScore >= score.ModifiedScore)
+                    {
+                        score.Leaderboard.Scores.Remove(score);
+                    } else
+                    {
+                        score.Leaderboard.Scores.Remove(migScore);
+                    }
+
+                    var rankedScores = score.Leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();
+                    foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
+                    {
+                        s.Rank = i + 1;
+                        _context.Scores.Update(s);
+                    }
+                }
+                else
+                {
+                    score.Player = migratedToPlayer;
+                    score.PlayerId = steamID;
+                }
+            }
+
+            _context.Players.Remove(currentPlayer);
+            await _context.SaveChangesAsync();
+            await _playerController.RefreshPlayers();
+
+            return Ok();
         }
 
         [HttpPost("~/user/playlist")]

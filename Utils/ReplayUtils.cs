@@ -4,11 +4,16 @@ namespace BeatLeader_Server.Utils
 {
     class ReplayUtils
     {
-        public static bool CheckReplay(byte[] replay, ICollection<Score> scores) {
+        public static bool CheckReplay(byte[] replay, ICollection<Score> scores, Score? currentScore) {
             float similarityRate = 0.4f;
 
             foreach (var item in scores)
             {
+                if (currentScore != null && currentScore.Player.Id == item.Player.Id)
+                {
+                    continue;
+                }
+
                 byte[] data = item.Identification.Value;
                 int[] order = BlobToOrder(item.Identification.Order);
 
@@ -46,7 +51,7 @@ namespace BeatLeader_Server.Utils
         public static (Replay, Score) ProcessReplay(Replay replay, byte[] replayData) {
             Score score = new Score();
             score.Identification = ReplayIdentificationForReplay(replayData);
-            score.ModifiedScore = replay.info.score; // TODO: recalculate score based on note info
+            score.BaseScore = replay.info.score; // TODO: recalculate score based on note info
             score.Modifiers = replay.info.modifiers;
             score.Timeset = replay.info.timestamp;
             score.WallsHit = replay.walls.Count;
@@ -70,8 +75,8 @@ namespace BeatLeader_Server.Utils
             }
             score.FullCombo = score.BombCuts == 0 && score.MissedNotes == 0 && score.WallsHit == 0 && score.BadCuts == 0;
             score.Hmd = HMD(replay.info.hmd);
-            score.BaseScore = (int)(score.ModifiedScore / GetTotalMultiplier(replay.info.modifiers));
-            score.Accuracy = (float)score.BaseScore / (float)MaxScoreForNote(replay.notes.Count - score.BombCuts);
+            score.ModifiedScore = (int)(score.BaseScore * GetTotalMultiplier(replay.info.modifiers));
+            score.Accuracy = (float)score.ModifiedScore / (float)MaxScoreForNote(replay.notes.Count - score.BombCuts);
             score.Modifiers = replay.info.modifiers;
             
             return (replay, score);
@@ -149,15 +154,15 @@ namespace BeatLeader_Server.Utils
           return note_score * (41 + (notes - 13) * 8);
         }
 
-        private static float GetTotalMultiplier(string modifiers)
+        public static float GetTotalMultiplier(string modifiers)
 		{
 			float multiplier = 1;
 
-			if (modifiers.Contains("DA")) { multiplier += 0.02f; }
+			if (modifiers.Contains("DA")) { multiplier += 0.07f; }
 			if (modifiers.Contains("FS")) { multiplier += 0.08f; }
 			if (modifiers.Contains("SS")) { multiplier -= 0.3f; }
 			if (modifiers.Contains("SF")) { multiplier += 0.1f; }
-			if (modifiers.Contains("GN")) { multiplier += 0.04f; }
+			if (modifiers.Contains("GN")) { multiplier += 0.11f; }
 			if (modifiers.Contains("NA")) { multiplier -= 0.3f; }
 			if (modifiers.Contains("NB")) { multiplier -= 0.1f; }
 			if (modifiers.Contains("NF")) { multiplier -= 0.5f; }

@@ -46,7 +46,7 @@ namespace BeatLeader_Server.Controllers
             var allScores = _context.Scores.Where(s => s.Pp != 0).Include(s => s.Leaderboard).ThenInclude(l => l.Difficulty).ToList();
             foreach (Score s in allScores)
             {
-                s.Pp = ((float)s.ModifiedScore / ((float)s.BaseScore / s.Accuracy)) * (float)s.Leaderboard.Difficulty.Stars * 44;
+                s.Pp = (float)s.Accuracy * (float)s.Leaderboard.Difficulty.Stars * 44;
                 _context.Scores.Update(s);
             }
             await _context.SaveChangesAsync();

@@ -62,7 +62,9 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult<Score>> PostOculusReplay()
         {
-            return await PostReplay(HttpContext.CurrentUserID());
+            string currentID = HttpContext.CurrentUserID();
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == Int64.Parse(currentID));
+            return await PostReplay(accountLink != null ? accountLink.SteamID : currentID);
         }
 
         public async Task<ActionResult<Score>> PostReplay(string? authenticatedPlayerID)
@@ -85,7 +87,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (replay != null) {
-                if (authenticatedPlayerID == null || (authenticatedPlayerID != replay.info.playerID && Int64.Parse(authenticatedPlayerID) > 70000000000000000))
+                if (authenticatedPlayerID == null)
                 {
                     return Unauthorized("Session ticket is not valid");
                 }
@@ -108,7 +110,7 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 Score? currentScore = leaderboard.Scores.FirstOrDefault(el => el.PlayerId == replay.info.playerID, (Score?)null);
-                if (currentScore != null && currentScore.ModifiedScore >= replay.info.score) {
+                if (currentScore != null && currentScore.ModifiedScore >= replay.info.score * ReplayUtils.GetTotalMultiplier(replay.info.modifiers)) {
                     return BadRequest("Score is lower than existing one");
                 }
                 
@@ -133,10 +135,10 @@ namespace BeatLeader_Server.Controllers
                 }
                 Score? resultScore;
 
-                if (ReplayUtils.CheckReplay(replayData, leaderboard.Scores)) {
+                if (ReplayUtils.CheckReplay(replayData, leaderboard.Scores, currentScore)) {
                     (replay, Score score) = ReplayUtils.ProcessReplay(replay, replayData);
                     if (leaderboard.Difficulty.Ranked && leaderboard.Difficulty.Stars != null) {
-                        score.Pp = (float)score.ModifiedScore / ((float)score.BaseScore / score.Accuracy) * (float)leaderboard.Difficulty.Stars * 44;
+                        score.Pp = (float)score.Accuracy * (float)leaderboard.Difficulty.Stars * 44;
                     }
                     
                     score.PlayerId = replay.info.playerID;

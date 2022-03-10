@@ -25,7 +25,10 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/player/{id}")]
         public async Task<ActionResult<Player>> Get(string id)
         {
-            Player? player = await _context.Players.Include(p => p.ScoreStats).FirstOrDefaultAsync(p => p.Id == id);
+            Int64 oculusId = Int64.Parse(id);
+            AccountLink? link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
+            string userId = (link != null ? link.SteamID : id);
+            Player? player = await _context.Players.Include(p => p.ScoreStats).FirstOrDefaultAsync(p => p.Id == userId);
             if (player == null)
             {
                 return NotFound();
@@ -232,7 +235,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/players")]
-        public async Task<ActionResult<IEnumerable<Player>>> GetPlayers([FromQuery] string sortBy = "recent", [FromQuery] int page = 0, [FromQuery] int count = 50, [FromQuery] string search = "", [FromQuery] string countries = "")
+        public async Task<ActionResult<IEnumerable<Player>>> GetPlayers([FromQuery] string sortBy = "recent", [FromQuery] int page = 1, [FromQuery] int count = 50, [FromQuery] string search = "", [FromQuery] string countries = "")
         {
             IQueryable<Player> request = _context.Players.Include(p => p.ScoreStats);
             if (countries.Length != 0)
@@ -294,6 +297,7 @@ namespace BeatLeader_Server.Controllers
 
                 p.CountryRank = countries[p.Country];
                 countries[p.Country]++;
+
                 _context.Players.Update(p);
             }
 

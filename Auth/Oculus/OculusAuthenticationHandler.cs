@@ -39,21 +39,21 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        string? action = Request.Query["action"].FirstOrDefault();
+        string? action = Request.Form["action"].FirstOrDefault();
         if (action == null || (action != "login" && action != "signup"))
         {
             Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             await Context.Response.WriteAsync("Specify action");
             return AuthenticateResult.Fail("Specify action");
         }
-        string? login = Request.Query["login"].FirstOrDefault();
+        string? login = Request.Form["login"].FirstOrDefault();
         if (login == null)
         {
             Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             await Context.Response.WriteAsync("Specify login");
             return AuthenticateResult.Fail("Specify login");
         }
-        string? password = Request.Query["password"].FirstOrDefault();
+        string? password = Request.Form["password"].FirstOrDefault();
         if (password == null)
         {
             Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -104,6 +104,22 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
                 await Context.Response.WriteAsync("Come on, type at least 8 symbols password");
                 return AuthenticateResult.Fail("Come on, type at least 8 symbols password");
             }
+
+            IPAddress? iPAddress = Request.HttpContext.Connection.RemoteIpAddress;
+            if (iPAddress == null)
+            {
+                Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await Context.Response.WriteAsync("You don't have an IP adress? Tell #NSGolova how you get this error.");
+                return AuthenticateResult.Fail("You don't have an IP adress? Tell #NSGolova how you get this error.");
+            }
+            string ip = iPAddress.ToString();
+            int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+            if (dbContext.AuthIPs.FirstOrDefault(el => el.IP == ip && (timestamp - el.Timestamp) < 60 * 60 * 24) != null)
+            {
+                Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await Context.Response.WriteAsync("You can create only one account a day, sorry");
+                return AuthenticateResult.Fail("You can create only one account a day, sorry");
+            }
             
             authInfo = new AuthInfo
             {
@@ -111,6 +127,12 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
                 Login = login
             };
             dbContext.Auths.Add(authInfo);
+            dbContext.AuthIPs.Add(new AuthIP
+            {
+                IP = ip,
+                Timestamp = timestamp
+            });
+
             dbContext.SaveChanges();
 
             id = authInfo.Id.ToString();

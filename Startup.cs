@@ -13,6 +13,7 @@ namespace BeatLeader_Server {
     public class AzureStorageConfig {
         public string AccountName { get; set; }
         public string ReplaysContainerName { get; set; }
+        public string AssetsContainerName { get; set; }
     }
 
     public class Startup {
@@ -36,6 +37,9 @@ namespace BeatLeader_Server {
                     c.Response.StatusCode = StatusCodes.Status401Unauthorized;
                     return Task.FromResult<object> (null);
                 };
+                options.Cookie.SameSite = SameSiteMode.None;
+                options.Cookie.Domain = ".beatleader.xyz";
+                options.Cookie.HttpOnly = false;
             })
             //.AddSteamTicket(options =>
             //{
@@ -71,7 +75,10 @@ namespace BeatLeader_Server {
             services.AddCors (options => {
                 options.AddPolicy (name: MyAllowSpecificOrigins,
                     builder => {
-                        builder.WithOrigins ("*");
+                        builder.WithOrigins("http://localhost:8888",
+                                            "https://www.beatleader.xyz",
+                                            "https://agitated-ptolemy-7d772c.netlify.app");
+                        builder.AllowCredentials();
                     });
             });
         }

@@ -28,10 +28,9 @@ After everything is installed:
 2) `npm install -g azurite`
 3) `sudo docker run --cap-add SYS_PTRACE -e 'ACCEPT_EULA=Y' -e 'MSSQL_SA_PASSWORD=SuperStrong!' -p 1433:1433 --name sqledge -d mcr.microsoft.com/azure-sql-edge`
 4) `dotnet tool install --global dotnet-ef`
-5) `dotnet ef migrations add InitialDb`
-6) `dotnet ef database update`
-7) `azurite -s -l azstorage -d azstorage\debug.log`
-8) Open the .sln in Visual Studio and run the project.
+5) `dotnet ef database update`
+6) `azurite -s -l azstorage -d azstorage\debug.log`
+7) Open the .sln in Visual Studio and run the project.
 
 The server should be accessible at https://localhost:7040/
 
@@ -49,10 +48,11 @@ This API is in a very early stage and will certainly change.
 
 ```
 GET /signin - will open web Login with Steam authentication
-GET /signout - will delete Steam cookie.
+GET /signinoculus - Login and password authentication
+GET /signout - will delete auth cookie.
 
 // Only for the authenticated user
-GET /user/id - Steam ID of the signed user.
+GET /user/id - ID of the signed user.
 ```
 
 ### Replay posting

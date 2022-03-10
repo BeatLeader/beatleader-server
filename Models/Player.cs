@@ -22,7 +22,7 @@
 
         public void SetDefaultAvatar()
         {
-            this.Avatar = "https://www.cdn.beatleader.xyz/assets/" + this.Platform + "avatar.png";
+            this.Avatar = "https://cdn.beatleader.xyz/assets/" + this.Platform + "avatar.png";
         }
     }
 }
