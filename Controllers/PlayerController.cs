@@ -256,8 +256,15 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/players/refresh")]
+        [Authorize]
         public async Task<ActionResult> RefreshPlayers()
         {
+            string currentId = HttpContext.CurrentUserID();
+            Player? currentPlayer = _context.Players.Find(currentId);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
             var ranked = _context.Players.Include(p => p.ScoreStats).ToList();
             Dictionary<string, int> countries = new Dictionary<string, int>();
             foreach (Player p in ranked)

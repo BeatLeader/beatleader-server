@@ -5,7 +5,7 @@ namespace BeatLeader_Server.Utils
     class ReplayUtils
     {
         public static bool CheckReplay(byte[] replay, ICollection<Score> scores, Score? currentScore) {
-            float similarityRate = 0.4f;
+            float similarityRate = 0.6f;
 
             foreach (var item in scores)
             {
@@ -48,7 +48,7 @@ namespace BeatLeader_Server.Utils
             return true;
         }
 
-        public static (Replay, Score) ProcessReplay(Replay replay, byte[] replayData) {
+        public static (Replay, Score) ProcessReplay(Replay replay, byte[] replayData, Leaderboard leaderboard) {
             Score score = new Score();
             score.Identification = ReplayIdentificationForReplay(replayData);
             score.BaseScore = replay.info.score; // TODO: recalculate score based on note info
@@ -76,7 +76,7 @@ namespace BeatLeader_Server.Utils
             score.FullCombo = score.BombCuts == 0 && score.MissedNotes == 0 && score.WallsHit == 0 && score.BadCuts == 0;
             score.Hmd = HMD(replay.info.hmd);
             score.ModifiedScore = (int)(score.BaseScore * GetTotalMultiplier(replay.info.modifiers));
-            score.Accuracy = (float)score.ModifiedScore / (float)MaxScoreForNote(replay.notes.Count - score.BombCuts);
+            score.Accuracy = (float)score.ModifiedScore / (float)MaxScoreForNote(leaderboard.Difficulty.Notes);
             score.Modifiers = replay.info.modifiers;
             
             return (replay, score);
@@ -140,18 +140,17 @@ namespace BeatLeader_Server.Utils
             return 0;
         }
 
-        private static int MaxScoreForNote(int index) {
+        public static int MaxScoreForNote(int count) {
           int note_score = 115;
-          int notes = index + 1;
 
-          if (notes <= 1) // x1 (+1 note)
-              return note_score * (0 + (notes - 0) * 1);
-          if (notes <= 5) // x2 (+4 notes)
-              return note_score * (1 + (notes - 1) * 2);
-          if (notes <= 13) // x4 (+8 notes)
-              return note_score * (9 + (notes - 5) * 4);
+          if (count <= 1) // x1 (+1 note)
+              return note_score * (0 + (count - 0) * 1);
+          if (count <= 5) // x2 (+4 notes)
+              return note_score * (1 + (count - 1) * 2);
+          if (count <= 13) // x4 (+8 notes)
+              return note_score * (9 + (count - 5) * 4);
           // x8
-          return note_score * (41 + (notes - 13) * 8);
+          return note_score * (41 + (count - 13) * 8);
         }
 
         public static float GetTotalMultiplier(string modifiers)

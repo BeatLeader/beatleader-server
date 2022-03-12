@@ -136,7 +136,7 @@ namespace BeatLeader_Server.Controllers
                 Score? resultScore;
 
                 if (ReplayUtils.CheckReplay(replayData, leaderboard.Scores, currentScore)) {
-                    (replay, Score score) = ReplayUtils.ProcessReplay(replay, replayData);
+                    (replay, Score score) = ReplayUtils.ProcessReplay(replay, replayData, leaderboard);
                     if (leaderboard.Difficulty.Ranked && leaderboard.Difficulty.Stars != null) {
                         score.Pp = (float)score.Accuracy * (float)leaderboard.Difficulty.Stars * 44;
                     }
@@ -171,12 +171,33 @@ namespace BeatLeader_Server.Controllers
                 if (currentScore != null)
                 {   
                     player.ScoreStats.TotalScore -= currentScore.ModifiedScore;
-                    player.ScoreStats.AverageAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, currentScore.Accuracy);
+                    if (player.ScoreStats.TotalPlayCount == 1)
+                    {
+                        player.ScoreStats.AverageAccuracy = 0.0f;
+                    } else
+                    {
+                        player.ScoreStats.AverageAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, currentScore.Accuracy);
+                    }
+                    
                     if (leaderboard.Difficulty.Ranked)
                     {
-                        player.ScoreStats.AverageRankedAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, currentScore.Accuracy);
+                        if (player.ScoreStats.RankedPlayCount == 1)
+                        {
+                            player.ScoreStats.AverageRankedAccuracy = 0.0f;
+                        } else
+                        {
+                            player.ScoreStats.AverageRankedAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, currentScore.Accuracy);
+                        }
                     }
-                    leaderboard.Scores.Remove(currentScore);
+                    try
+                    {
+                        leaderboard.Scores.Remove(currentScore);
+                    }
+                    catch (Exception)
+                    {
+                        leaderboard.Scores = new List<Score>(leaderboard.Scores);
+                        leaderboard.Scores.Remove(currentScore);
+                    }
                 }
                 else
                 {
@@ -186,7 +207,15 @@ namespace BeatLeader_Server.Controllers
                     }
                     player.ScoreStats.TotalPlayCount++;
                 }
-                leaderboard.Scores.Add(resultScore);
+                try
+                {
+                    leaderboard.Scores.Add(resultScore);
+                } catch (Exception)
+                {
+                    leaderboard.Scores = new List<Score>(leaderboard.Scores);
+                    leaderboard.Scores.Add(resultScore);
+                }
+                
                 player.ScoreStats.TotalScore += resultScore.ModifiedScore;
                 player.ScoreStats.AverageAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, resultScore.Accuracy);
                 if (leaderboard.Difficulty.Ranked)
@@ -200,7 +229,7 @@ namespace BeatLeader_Server.Controllers
                     s.Rank = i + 1;
                     _context.Scores.Update(s);
                 }
-
+                
                 leaderboard.Plays = rankedScores.Count;
                 _context.Leaderboards.Update(leaderboard);
 

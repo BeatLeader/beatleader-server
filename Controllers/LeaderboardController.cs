@@ -41,12 +41,35 @@ namespace BeatLeader_Server.Controllers
                 await _context.SaveChangesAsync();
             }
 
+            leaderboard.Scores = leaderboard.Scores.OrderByDescending(s => s.ModifiedScore).ToArray();
+
             return leaderboard;
         }
 
         [HttpGet("~/leaderboards/")]
         public async Task<ActionResult<List<Leaderboard>>> GetAll() {
             return await _context.Leaderboards.Include(lb => lb.Scores).ThenInclude(s => s.Player).Include(lb => lb.Difficulty).Include(lb => lb.Song).ToListAsync();
+        }
+
+        [HttpGet("~/leaderboards/refresh")]
+        public ActionResult Refresh()
+        {
+            var leaderboards = _context.Leaderboards.Include(lb => lb.Scores).ToArray();
+            foreach (var leaderboard in leaderboards)
+            {
+                var rankedScores = leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();
+                foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
+                {
+                    s.Rank = i + 1;
+                    _context.Scores.Update(s);
+                }
+                leaderboard.Scores = rankedScores;
+                _context.Leaderboards.Update(leaderboard);
+            }
+            _context.SaveChanges();
+            
+
+            return Ok();
         }
     }
 }

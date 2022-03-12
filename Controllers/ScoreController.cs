@@ -1,6 +1,7 @@
 ﻿using System;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -43,9 +44,16 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> RefreshScores()
         {
+            string currentId = HttpContext.CurrentUserID();
+            Player? currentPlayer = _context.Players.Find(currentId);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
             var allScores = _context.Scores.Where(s => s.Pp != 0).Include(s => s.Leaderboard).ThenInclude(l => l.Difficulty).ToList();
             foreach (Score s in allScores)
             {
+                s.Accuracy = (float)s.ModifiedScore / (float)ReplayUtils.MaxScoreForNote(s.Leaderboard.Difficulty.Notes);
                 s.Pp = (float)s.Accuracy * (float)s.Leaderboard.Difficulty.Stars * 44;
                 _context.Scores.Update(s);
             }
@@ -74,6 +82,21 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
                 return query.OrderByDescending(p => p.ModifiedScore).Skip((page - 1) * count).Take(count).ToArray();
+            }
+            else
+            {
+                return NotFound();
+            }
+        }
+
+        [HttpGet("~/score/{playerID}/{hash}/{diff}/{mode}")]
+        public ActionResult<Score> GetPlayer(string playerID, string hash, string diff, string mode)
+        {
+            var leaderboard = _context.Leaderboards.Include(el => el.Song).Include(el => el.Difficulty).Where(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+
+            if (leaderboard != null && leaderboard.Count() != 0)
+            {
+                return leaderboard.Include(el => el.Scores).ThenInclude(el => el.Player).First().Scores.FirstOrDefault(el => el.Player.Id == playerID);
             }
             else
             {
