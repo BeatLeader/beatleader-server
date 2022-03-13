@@ -75,6 +75,11 @@ namespace BeatLeader_Server.Controllers
             using (var ms = new MemoryStream(5))
             {
                 await Request.Body.CopyToAsync(ms);
+                long length = ms.Length;
+                if (length > 200000000)
+                {
+                    return BadRequest("Replay is too big to save, sorry");
+                }
                 replayData = ms.ToArray();
                 try
 			    {
@@ -233,7 +238,13 @@ namespace BeatLeader_Server.Controllers
                 leaderboard.Plays = rankedScores.Count;
                 _context.Leaderboards.Update(leaderboard);
 
-                await _context.SaveChangesAsync();
+                try
+                {
+                    await _context.SaveChangesAsync();
+                } catch (Exception e)
+                {
+                    return BadRequest(e);
+                }
 
                 _context.RecalculatePP(player);
 

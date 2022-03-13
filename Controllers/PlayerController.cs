@@ -25,7 +25,11 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/player/{id}")]
         public async Task<ActionResult<Player>> Get(string id)
         {
-            Int64 oculusId = Int64.Parse(id);
+            Int64 oculusId = 0;
+            try
+            {
+                oculusId = Int64.Parse(id);
+            } catch {}
             AccountLink? link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
             string userId = (link != null ? link.SteamID : id);
             Player? player = await _context.Players.Include(p => p.ScoreStats).FirstOrDefaultAsync(p => p.Id == userId);
@@ -128,6 +132,100 @@ namespace BeatLeader_Server.Controllers
             }
 
             _context.Players.Remove(player);
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpGet("~/playerlink/{login}")]
+        [Authorize]
+        public async Task<ActionResult<AccountLink>> GetPlayerLink(string login)
+        {
+            string currentId = HttpContext.CurrentUserID();
+            Player? currentPlayer = _context.Players.Find(currentId);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+            AuthInfo? info = _context.Auths.FirstOrDefault(el => el.Login == login);
+            if (info == null)
+            {
+                return NotFound("No info");
+            }
+            AccountLink? link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == info.Id);
+            if (link == null)
+            {
+                return NotFound("No link");
+            }
+
+            return link;
+        }
+
+        [HttpDelete("~/authinfo/{login}")]
+        [Authorize]
+        public async Task<ActionResult> DeleteAuthInfo(string login)
+        {
+            string currentId = HttpContext.CurrentUserID();
+            Player? currentPlayer = _context.Players.Find(currentId);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+            AuthInfo? info = _context.Auths.FirstOrDefault(el => el.Login == login);
+            if (info == null)
+            {
+                return NotFound("No info");
+            }
+            _context.Auths.Remove(info);
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpDelete("~/authips/")]
+        [Authorize]
+        public async Task<ActionResult> DeleteAuthIps()
+        {
+            string currentId = HttpContext.CurrentUserID();
+            Player? currentPlayer = _context.Players.Find(currentId);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+            var info = _context.AuthIPs.ToArray();
+            foreach (var item in info)
+            {
+                _context.AuthIPs.Remove(item);
+            }
+            
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpDelete("~/playerlink/{id}")]
+        [Authorize]
+        public async Task<ActionResult> DeletePlayerLinked(string id)
+        {
+            string currentId = HttpContext.CurrentUserID();
+            Player? currentPlayer = _context.Players.Find(currentId);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+            AccountLink? link = _context.AccountLinks.FirstOrDefault(el => el.SteamID == id);
+            if (link == null)
+            {
+                return NotFound();
+            }
+            AuthInfo? info = _context.Auths.FirstOrDefault(el => el.Id == link.OculusID);
+            if (info == null)
+            {
+                return NotFound();
+            }
+            _context.AccountLinks.Remove(link);
+            _context.Auths.Remove(info);
+
             await _context.SaveChangesAsync();
 
             return Ok();

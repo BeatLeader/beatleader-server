@@ -62,23 +62,31 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/scores/{hash}/{diff}/{mode}")]
-        public async Task<ActionResult<IEnumerable<Score>>> GetByHash(string hash, string diff, string mode, [FromQuery] string? country, [FromQuery] string? player, [FromQuery] int page = 1, [FromQuery] int count = 10)
+        public async Task<ActionResult<IEnumerable<Score>>> GetByHash(string hash, string diff, string mode, [FromQuery] string? country, [FromQuery] string? player, [FromQuery] int page = 1, [FromQuery] int count = 8)
         {
             var leaderboard = _context.Leaderboards.Include(el => el.Song).Include(el => el.Difficulty).FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             if (leaderboard != null)
             {
                 IEnumerable<Score> query = _context.Leaderboards.Include(el => el.Scores).ThenInclude(s => s.Player).First(el => el.Id == leaderboard.Id).Scores;
+                if (query.Count() == 0)
+                {
+                    return NotFound();
+                }
                 if (country != null)
                 {
                     query = query.Where(s => s.Player.Country == country);
                 }
                 if (player != null)
                 {
-                    Score playerScore = query.First(el => el.Player.Id == player);
+                    Score? playerScore = query.FirstOrDefault(el => el.Player.Id == player);
                     if (playerScore != null)
                     {
                         page = (int)Math.Floor((double)(playerScore.Rank - 1) / (double)count) + 1;
+                    }
+                    else
+                    {
+                        return NotFound();
                     }
                 }
                 return query.OrderByDescending(p => p.ModifiedScore).Skip((page - 1) * count).Take(count).ToArray();
@@ -96,7 +104,10 @@ namespace BeatLeader_Server.Controllers
 
             if (leaderboard != null && leaderboard.Count() != 0)
             {
-                return leaderboard.Include(el => el.Scores).ThenInclude(el => el.Player).First().Scores.FirstOrDefault(el => el.Player.Id == playerID);
+                Int64 oculusId = Int64.Parse(playerID);
+                AccountLink? link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
+                string userId = (link != null ? link.SteamID : playerID);
+                return leaderboard.Include(el => el.Scores).ThenInclude(el => el.Player).First().Scores.FirstOrDefault(el => el.Player.Id == userId);
             }
             else
             {

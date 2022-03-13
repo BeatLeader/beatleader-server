@@ -136,6 +136,30 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpPatch("~/user/name")]
+        public async Task<ActionResult> ChangeName([FromQuery] string newName)
+        {
+            string userId = GetId();
+            var player = await _context.Players.FindAsync(userId);
+
+            if (player == null)
+            {
+                return NotFound();
+            }
+            if (newName.Length < 3 || newName.Length > 30)
+            {
+                return BadRequest("Use name between the 3 and 30 symbols");
+            }
+
+            player.Name = newName;
+
+            _context.Players.Update(player);
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
         [HttpPost("~/user/migrate")]
         public async Task<ActionResult<int>> MigrateToSteam([FromForm] string login, [FromForm] string password)
         {
