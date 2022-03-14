@@ -31,7 +31,11 @@ namespace BeatLeader_Server.Controllers
                     return NotFound();
                 } else {
                     _context.Songs.Add(song);
-                    await _context.SaveChangesAsync();
+                    try
+                    {
+                        await _context.SaveChangesAsync();
+                    }
+                    catch (Exception) {}
                 }
             }
 
@@ -54,7 +58,10 @@ namespace BeatLeader_Server.Controllers
                     return NotFound();
                 } else {
                     _context.Songs.Add(song);
-                    await _context.SaveChangesAsync();
+                    try
+                    {
+                        await _context.SaveChangesAsync();
+                    } catch (Exception) {}
                 }
             }
 

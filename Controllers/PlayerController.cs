@@ -333,9 +333,9 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/players")]
-        public async Task<ActionResult<IEnumerable<Player>>> GetPlayers([FromQuery] string sortBy = "recent", [FromQuery] int page = 1, [FromQuery] int count = 50, [FromQuery] string search = "", [FromQuery] string countries = "")
+        public async Task<ActionResult<ResponseWithMetadata<Player>>> GetPlayers([FromQuery] string sortBy = "recent", [FromQuery] int page = 1, [FromQuery] int count = 50, [FromQuery] string search = "", [FromQuery] string countries = "")
         {
-            IQueryable<Player> request = _context.Players.Include(p => p.ScoreStats);
+            IQueryable<Player> request = _context.Players;
             if (countries.Length != 0)
             {
                 request = request.Where(p => countries.Contains(p.Country));
@@ -344,13 +344,59 @@ namespace BeatLeader_Server.Controllers
             {
                 request = request.Where(p => p.Name.Contains(search));
             }
-            return request.OrderByDescending(p => p.Pp).Skip((page - 1) * count).Take(count).ToList();
+            return new ResponseWithMetadata<Player>()
+            {
+                Metadata = new Metadata()
+                {
+                    Page = page,
+                    ItemsPerPage = count,
+                    Total = request.Count()
+                },
+                Data = await request.OrderByDescending(p => p.Pp).Skip((page - 1) * count).Take(count).Include(p => p.ScoreStats).ToListAsync()
+            };
         }
 
         [HttpGet("~/players/count")]
         public async Task<ActionResult<int>> GetPlayers()
         {
             return _context.Players.Count();
+        }
+
+        [HttpGet("~/players/sethistories")]
+        public async Task<ActionResult> SetHistories()
+        {
+            int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+            CronTimestamps? cronTimestamps = _context.cronTimestamps.Find(1);
+            if (cronTimestamps != null) {
+                if ((timestamp - cronTimestamps.HistoriesTimestamp) < 60 * 60 * 24 - 30)
+                {
+                    return BadRequest("Allowed only at midnight");
+                } else
+                {
+                    cronTimestamps.HistoriesTimestamp = timestamp;
+                    _context.Update(cronTimestamps);
+                }
+            } else
+            {
+                cronTimestamps = new CronTimestamps();
+                cronTimestamps.HistoriesTimestamp = timestamp;
+                _context.Add(cronTimestamps);
+            }
+            var ranked = _context.Players.Include(p => p.ScoreStats).ToList();
+            foreach (Player p in ranked)
+            {
+                var histories = p.Histories.Length == 0 ? new string[0] : p.Histories.Split(",");
+                if (histories.Length == 7)
+                {
+                    histories = histories.Skip(1).Take(6).ToArray();
+                }
+                histories = histories.Append(p.Rank.ToString()).ToArray();
+                p.Histories = string.Join(",", histories);
+                _context.Players.Update(p);
+            }
+            await _context.SaveChangesAsync();
+
+            return Ok();
         }
 
         [HttpGet("~/players/refresh")]

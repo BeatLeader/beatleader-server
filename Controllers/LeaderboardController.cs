@@ -16,7 +16,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/leaderboard/id/{id}")]
-        public async Task<ActionResult<Leaderboard>> Get(string id)
+        public async Task<ActionResult<Leaderboard>> Get(string id, [FromQuery] int page = 1, [FromQuery] int count = 10)
         {
             Leaderboard? leaderboard = await _context.Leaderboards.Include(lb => lb.Scores).ThenInclude(s => s.Player).Include(lb => lb.Difficulty).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).FirstOrDefaultAsync(i => i.Id == id);
 
@@ -41,14 +41,25 @@ namespace BeatLeader_Server.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            leaderboard.Scores = leaderboard.Scores.OrderByDescending(s => s.ModifiedScore).ToArray();
+            leaderboard.Scores = leaderboard.Scores.OrderByDescending(s => s.ModifiedScore).Skip((page - 1) * count).Take(count).ToArray();
 
             return leaderboard;
         }
 
         [HttpGet("~/leaderboards/")]
-        public async Task<ActionResult<List<Leaderboard>>> GetAll() {
-            return await _context.Leaderboards.Include(lb => lb.Scores).ThenInclude(s => s.Player).Include(lb => lb.Difficulty).Include(lb => lb.Song).ToListAsync();
+        public async Task<ActionResult<ResponseWithMetadata<Leaderboard>>> GetAll([FromQuery] int page = 1,
+            [FromQuery] int count = 10) {
+            var sequence = _context.Leaderboards;
+            return new Models.ResponseWithMetadata<Leaderboard>()
+            {
+                Metadata = new Metadata()
+                {
+                    Page = page,
+                    ItemsPerPage = count,
+                    Total = sequence.Count()
+                },
+                Data = await sequence.Skip((page - 1) * count).Take(count).Include(lb => lb.Difficulty).Include(lb => lb.Song).ToListAsync()
+            };
         }
 
         [HttpGet("~/leaderboards/refresh")]

@@ -157,18 +157,31 @@ namespace BeatLeader_Server.Utils
 		{
 			float multiplier = 1;
 
-			if (modifiers.Contains("DA")) { multiplier += 0.07f; }
-			if (modifiers.Contains("FS")) { multiplier += 0.08f; }
-			if (modifiers.Contains("SS")) { multiplier -= 0.3f; }
-			if (modifiers.Contains("SF")) { multiplier += 0.1f; }
-			if (modifiers.Contains("GN")) { multiplier += 0.11f; }
-			if (modifiers.Contains("NA")) { multiplier -= 0.3f; }
-			if (modifiers.Contains("NB")) { multiplier -= 0.1f; }
-			if (modifiers.Contains("NF")) { multiplier -= 0.5f; }
-			if (modifiers.Contains("NO")) { multiplier -= 0.05f; }
+            var modifiersMap = Modifiers();
+            foreach (var modifier in modifiersMap.Keys)
+            {
+                if (modifiers.Contains(modifier)) { multiplier += modifiersMap[modifier]; }
+            }
+            
 
 			return multiplier;
 		}
+
+        public static Dictionary<string, float> Modifiers()
+        {
+            return new Dictionary<string, float>
+            {
+                ["DA"] = 0.07f,
+                ["FS"] = 0.08f,
+                ["SS"] = -0.03f,
+                ["SF"] = 0.1f,
+                ["GN"] = 0.11f,
+                ["NA"] = -0.3f,
+                ["NB"] = -0.1f,
+                ["NF"] = -0.5f,
+                ["NO"] = -0.05f
+            };
+        }
 
         private static byte[] OrderToBlob(int[] order) {
             Stream stream = new MemoryStream();

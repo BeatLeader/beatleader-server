@@ -32,9 +32,16 @@ namespace BeatLeader_Server.Extensions
                     select scheme).Any();
         }
 
-        public static string CurrentUserID(this HttpContext context)
+        public static string? CurrentUserID(this HttpContext context)
         {
-            return context.User.Claims.First().Value.Split("/").Last();
+            try
+            {
+                return context.User.Claims.First().Value.Split("/").Last();
+            } catch (Exception)
+            {
+                return null;
+            }
+            
         }
     }
 
