@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20220317160314_ScoreStatistic")]
+    partial class ScoreStatistic
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -277,9 +279,6 @@ namespace BeatLeader_Server.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<float>("AllTime")
-                        .HasColumnType("real");
-
                     b.Property<string>("Avatar")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -294,19 +293,12 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int>("CountryRank")
                         .HasColumnType("int");
 
-                    b.Property<string>("ExternalProfileUrl")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Histories")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("Inactive")
                         .HasColumnType("bit");
-
-                    b.Property<float>("LastTwoWeeksTime")
-                        .HasColumnType("real");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -633,9 +625,6 @@ namespace BeatLeader_Server.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
 
                     b.Property<float>("EndTime")
-                        .HasColumnType("real");
-
-                    b.Property<float>("JumpDistance")
                         .HasColumnType("real");
 
                     b.Property<int>("NbOfPause")

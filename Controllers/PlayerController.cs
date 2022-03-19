@@ -368,7 +368,7 @@ namespace BeatLeader_Server.Controllers
             int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             CronTimestamps? cronTimestamps = _context.cronTimestamps.Find(1);
             if (cronTimestamps != null) {
-                if ((timestamp - cronTimestamps.HistoriesTimestamp) < 60 * 60 * 24 - 30)
+                if ((timestamp - cronTimestamps.HistoriesTimestamp) < 60 * 60 * 24 - 5 * 60)
                 {
                     return BadRequest("Allowed only at midnight");
                 } else
@@ -399,7 +399,89 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
-        [HttpGet("~/players/refresh")]
+        [HttpGet("~/players/steam/refresh")]
+        public async Task<ActionResult> RefreshSteamPlayers()
+        {
+            var players = _context.Players.ToList();
+            foreach (Player p in players)
+            {
+                if (Int64.Parse(p.Id) <= 70000000000000000) { continue; }
+                Player? update = await GetPlayerFromSteam(p.Id);
+
+                if (update != null)
+                {
+                    p.ExternalProfileUrl = update.ExternalProfileUrl;
+                    p.AllTime = update.AllTime;
+                    p.LastTwoWeeksTime = update.LastTwoWeeksTime;
+
+                    if (p.Avatar.Contains("steamcdn"))
+                    {
+                        p.Avatar = update.Avatar;
+                    }
+
+                    if (p.Country == "not set" && update.Country != "not set")
+                    {
+                        p.Country = update.Country;
+                    }
+
+                    _context.Players.Update(p);
+                    await _context.SaveChangesAsync();
+                }
+            }
+
+            return Ok();
+        }
+
+        [HttpGet("~/player/{id}/refresh")]
+        [Authorize]
+        public async Task<ActionResult> RefreshPlayer(string id)
+        {
+            Player? p = _context.Players.Find(id);
+            if (p == null)
+            {
+                return NotFound();
+            }
+
+            var scores = _context.Scores.Where(s => s.PlayerId == id).Include(s => s.Leaderboard).ThenInclude(l => l.Difficulty).Where(s => s.Leaderboard.Difficulty.Stars != null && s.Leaderboard.Difficulty.Stars != 0).ToList();
+            foreach (Score s in scores)
+            {
+                s.Accuracy = (float)s.ModifiedScore / (float)ReplayUtils.MaxScoreForNote(s.Leaderboard.Difficulty.Notes);
+                s.Pp = (float)s.Accuracy * (float)s.Leaderboard.Difficulty.Stars * 44;
+                _context.Scores.Update(s);
+            }
+
+            _context.SaveChanges();
+
+            if (p.ScoreStats == null)
+                {
+                    p.ScoreStats = new PlayerScoreStats();
+                    _context.Stats.Add(p.ScoreStats);
+                }
+                var allScores = _context.Scores.Where(s => s.PlayerId == p.Id);
+                var rankedScores = allScores.Where(s => s.Pp != 0);
+                p.ScoreStats.TotalPlayCount = allScores.Count();
+
+                p.ScoreStats.RankedPlayCount = rankedScores.Count();
+                if (p.ScoreStats.TotalPlayCount > 0)
+                {
+                    p.ScoreStats.TotalScore = allScores.Sum(s => s.ModifiedScore);
+                    p.ScoreStats.AverageAccuracy = allScores.Average(s => s.Accuracy);
+                }
+
+                if (p.ScoreStats.RankedPlayCount > 0)
+                {
+                    p.ScoreStats.AverageRankedAccuracy = rankedScores.Average(s => s.Accuracy);
+                }
+
+                _context.Stats.Update(p.ScoreStats);
+                _context.RecalculatePP(p);
+            _context.SaveChanges();
+
+            return Ok();
+            
+        }
+
+            [HttpGet("~/players/refresh")]
         [Authorize]
         public async Task<ActionResult> RefreshPlayers()
         {
@@ -450,9 +532,9 @@ namespace BeatLeader_Server.Controllers
                 countries[p.Country]++;
 
                 _context.Players.Update(p);
-            }
 
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
+            }
 
             return Ok();
         }
@@ -474,6 +556,28 @@ namespace BeatLeader_Server.Controllers
             else
             {
                 result.Country = "not set";
+            }
+            result.ExternalProfileUrl = playerInfo.profileurl;
+
+            dynamic? gamesInfo = await GetPlayer("http://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v0001/?key=" + _configuration.GetValue<string>("SteamKey") + "&steamid=" + playerID);
+            if (gamesInfo != null && ExpandantoObject.HasProperty(gamesInfo, "response") && ExpandantoObject.HasProperty(gamesInfo.response, "total_count"))
+            {
+                dynamic response = gamesInfo.response;
+                dynamic? beatSaber = null;
+
+                for (int i = 0; i < response.total_count; i++)
+                {
+                    if (response.games[i].appid == 620980)
+                    {
+                        beatSaber = response.games[i];
+                    }
+                }
+
+                if (beatSaber != null)
+                {
+                    result.AllTime = beatSaber.playtime_forever / 60.0f;
+                    result.LastTwoWeeksTime = beatSaber.playtime_2weeks / 60.0f;
+                }
             }
 
             return result;

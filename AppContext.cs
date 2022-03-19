@@ -19,6 +19,7 @@ namespace BeatLeader_Server
         public DbSet<AuthInfo> Auths { get; set; }
         public DbSet<AuthIP> AuthIPs { get; set; }
         public DbSet<AccountLink> AccountLinks { get; set; }
+        public DbSet<ScoreStatistic> ScoreStatistics { get; set; }
         public DbSet<CronTimestamps> cronTimestamps { get; set; }
     }
 }

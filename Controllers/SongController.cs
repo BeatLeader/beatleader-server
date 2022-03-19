@@ -50,7 +50,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/map/hash/{hash}")]
         public async Task<ActionResult<Song>> GetHash(string hash)
         {
-            Song? song = (await _context.Songs.Include(song => song.Difficulties).Where(el => el.Hash == hash).ToListAsync()).FirstOrDefault((Song?)null);
+            Song? song = _context.Songs.Where(el => el.Hash == hash).Include(song => song.Difficulties).FirstOrDefault();
 
             if (song == null) {
                 song = await GetSongFromBeatSaver("https://api.beatsaver.com/maps/hash/" + hash);

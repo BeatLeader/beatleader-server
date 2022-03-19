@@ -1,20 +1,39 @@
 ﻿using System;
+using Azure.Identity;
+using Azure.Storage.Blobs;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace BeatLeader_Server.Controllers
 {
     public class ScoreController : Controller
     {
         private readonly AppContext _context;
+        BlobContainerClient _containerClient;
 
-        public ScoreController(AppContext context)
+        public ScoreController(
+            AppContext context,
+            IOptions<AzureStorageConfig> config,
+            IWebHostEnvironment env)
         {
             _context = context;
+            if (env.IsDevelopment())
+            {
+                _containerClient = new BlobContainerClient(config.Value.AccountName, config.Value.ReplaysContainerName);
+            }
+            else
+            {
+                string containerEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
+                                                        config.Value.AccountName,
+                                                       config.Value.ReplaysContainerName);
+
+                _containerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
+            }
         }
 
         [HttpDelete("~/score/{id}")]
@@ -50,14 +69,15 @@ namespace BeatLeader_Server.Controllers
             {
                 return Unauthorized();
             }
-            var allScores = _context.Scores.Where(s => s.Pp != 0).Include(s => s.Leaderboard).ThenInclude(l => l.Difficulty).ToList();
+            var allScores = _context.Scores.Include(s => s.Leaderboard).ThenInclude(l => l.Difficulty).Where(s => s.Leaderboard.Difficulty.Stars != null && s.Leaderboard.Difficulty.Stars != 0).ToList();
             foreach (Score s in allScores)
             {
                 s.Accuracy = (float)s.ModifiedScore / (float)ReplayUtils.MaxScoreForNote(s.Leaderboard.Difficulty.Notes);
                 s.Pp = (float)s.Accuracy * (float)s.Leaderboard.Difficulty.Stars * 44;
                 _context.Scores.Update(s);
+                await _context.SaveChangesAsync();
             }
-            await _context.SaveChangesAsync();
+            
             return Ok();
         }
 
@@ -71,7 +91,7 @@ namespace BeatLeader_Server.Controllers
                 IEnumerable<Score> query = _context.Leaderboards.Include(el => el.Scores).ThenInclude(s => s.Player).First(el => el.Id == leaderboard.Id).Scores;
                 if (query.Count() == 0)
                 {
-                    return NotFound();
+                    return new List<Score>();
                 }
                 if (country != null)
                 {
@@ -86,7 +106,7 @@ namespace BeatLeader_Server.Controllers
                     }
                     else
                     {
-                        return NotFound();
+                        return new List<Score>();
                     }
                 }
                 return query.OrderByDescending(p => p.ModifiedScore).Skip((page - 1) * count).Take(count).ToArray();
@@ -113,6 +133,111 @@ namespace BeatLeader_Server.Controllers
             {
                 return NotFound();
             }
+        }
+
+        [HttpGet("~/score/statistic/{id}")]
+        public async Task<ActionResult<ScoreStatistic>> GetStatistic(string id)
+        {
+            ScoreStatistic? scoreStatistic = _context.ScoreStatistics.Where(s => s.ScoreId == Int64.Parse(id)).Include(s => s.AccuracyTracker).Include(s => s.HitTracker).Include(s => s.ScoreGraphTracker).Include(s => s.WinTracker).FirstOrDefault();
+            if (scoreStatistic == null)
+            {
+                return NotFound();
+            }
+            ReplayStatisticUtils.DecodeArrays(scoreStatistic);
+            return scoreStatistic;
+        }
+
+        [HttpGet("~/score/calculatestatistic/players")]
+        public async Task<ActionResult> CalculateStatisticPlayers()
+        {
+            var players = _context.Players.ToList();
+            foreach (Player p in players)
+            {
+                await CalculateStatisticPlayer(p.Id);
+            }
+
+            return Ok();
+        }
+
+        [HttpGet("~/score/calculatestatistic/player/{id}")]
+        public async Task<ActionResult> CalculateStatisticPlayer(string id)
+        {
+           Player? player = _context.Players.Find(id);
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            var scores = _context.Scores.Where(s => s.PlayerId == id).Include(s => s.Leaderboard).ThenInclude(l => l.Song).ToArray();
+            foreach (var score in scores)
+            {
+                await CalculateStatisticScore(score);
+            }
+            return Ok();
+        }
+
+        [HttpGet("~/score/calculatestatistic/{id}")]
+        public async Task<ActionResult<ScoreStatistic>> CalculateStatistic(string id)
+        {
+            Score? score = _context.Scores.Where(s => s.Id == Int64.Parse(id)).Include(s => s.Leaderboard).ThenInclude(l => l.Song).FirstOrDefault();
+            if (score == null)
+            {
+                return NotFound("Score not found");
+            }
+            return await CalculateStatisticScore(score);
+        }
+
+        public async Task<ActionResult<ScoreStatistic>> CalculateStatisticScore(Score score)
+        {
+            string blobName = score.Replay.Split("/").Last();
+
+            BlobClient blobClient = _containerClient.GetBlobClient(blobName);
+            MemoryStream ms = new MemoryStream(5);
+            await blobClient.DownloadToAsync(ms);
+            Replay replay;
+            try
+            {
+                replay = ReplayDecoder.Decode(ms.ToArray());
+            }
+            catch (Exception)
+            {
+                return BadRequest("Error decoding replay");
+            }
+
+            return await CalculateStatisticReplay(replay, score);
+        }
+
+        public async Task<ActionResult<ScoreStatistic>> CalculateStatisticReplay(Replay replay, Score score)
+        {
+            //ScoreStatistic statistic = await Task.Run(() =>
+            //{
+            ScoreStatistic? statistic = null;
+
+            try
+            {
+                statistic = ReplayStatisticUtils.ProcessReplay(replay, score.Leaderboard);
+                statistic.ScoreId = score.Id;
+                ReplayStatisticUtils.EncodeArrays(statistic);
+            } catch { }
+
+            if (statistic == null)
+            {
+                return Ok();
+            }
+            
+
+                //return statistic;
+            //});
+
+            ScoreStatistic? currentStatistic = _context.ScoreStatistics.FirstOrDefault(s => s.ScoreId == score.Id);
+            _context.ScoreStatistics.Add(statistic);
+            if (currentStatistic != null)
+            {
+                _context.ScoreStatistics.Remove(currentStatistic);
+            }
+            await _context.SaveChangesAsync();
+
+            return statistic;
         }
     }
 }

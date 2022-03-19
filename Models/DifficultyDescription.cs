@@ -7,7 +7,12 @@
         public int Mode { get; set; }
         public string DifficultyName { get; set; }
         public string ModeName { get; set; }
+
+        public bool Qualified { get; set; }
+        public string QualifiedTime { get; set; } = "";
+
         public bool Ranked { get; set; }
+        public string RankedTime { get; set; } = "";
         public float? Stars { get; set; }
 
         public float Njs { get; set; }

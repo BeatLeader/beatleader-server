@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace BeatLeader_Server.Models
 {
-    class Replay
+    public class Replay
     {
         public ReplayInfo info = new ReplayInfo();
 
@@ -19,7 +19,7 @@ namespace BeatLeader_Server.Models
         public List<Pause> pauses = new List<Pause>();
     }
 
-    class ReplayInfo
+    public class ReplayInfo
     {
         public string version;
         public string gameVersion;
@@ -51,7 +51,7 @@ namespace BeatLeader_Server.Models
         public float speed;
     }
 
-    class Frame
+    public class Frame
     {
         public float time;
         public int fps;
@@ -60,7 +60,7 @@ namespace BeatLeader_Server.Models
         public Transform rightHand;
     };
 
-    enum NoteEventType
+    public enum NoteEventType
     {
         good = 0,
         bad = 1,
@@ -68,7 +68,7 @@ namespace BeatLeader_Server.Models
         bomb = 3
     }
 
-    class NoteEvent
+    public class NoteEvent
     {
         public int noteID;
         public float eventTime;
@@ -77,7 +77,7 @@ namespace BeatLeader_Server.Models
         public NoteCutInfo noteCutInfo;
     };
 
-    class WallEvent
+    public class WallEvent
     {
         public int wallID;
         public float energy;
@@ -85,19 +85,19 @@ namespace BeatLeader_Server.Models
         public float spawnTime;
     };
 
-    class AutomaticHeight
+    public class AutomaticHeight
     {
         public float height;
         public float time;
     };
 
-    class Pause
+    public class Pause
     {
         public long duration;
         public float time;
     };
 
-    class NoteCutInfo
+    public class NoteCutInfo
     {
         public bool speedOK;
         public bool directionOK;
@@ -116,7 +116,7 @@ namespace BeatLeader_Server.Models
         public float afterCutRating;
     };
 
-    enum StructType
+    public enum StructType
     {
         info = 0,
         frames = 1,
@@ -126,14 +126,14 @@ namespace BeatLeader_Server.Models
         pauses = 5
     }
 
-    struct Vector3
+    public struct Vector3
     {
         public float x;
         public float y;
         public float z;
     }
 
-    struct Quaternion
+    public struct Quaternion
     {
         public float x;
         public float y;
@@ -141,13 +141,13 @@ namespace BeatLeader_Server.Models
         public float w;
     }
 
-    class Transform
+    public class Transform
     {
         public Vector3 position;
         public Quaternion rotation;
     }
 
-    static class ReplayEncoder
+    public static class ReplayEncoder
     {
         public static void Encode(Replay replay, BinaryWriter stream)
         {

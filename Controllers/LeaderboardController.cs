@@ -1,4 +1,5 @@
-﻿using BeatLeader_Server.Models;
+﻿using BeatLeader_Server.Extensions;
+using BeatLeader_Server.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,7 +19,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/leaderboard/id/{id}")]
         public async Task<ActionResult<Leaderboard>> Get(string id, [FromQuery] int page = 1, [FromQuery] int count = 10)
         {
-            Leaderboard? leaderboard = await _context.Leaderboards.Include(lb => lb.Scores).ThenInclude(s => s.Player).Include(lb => lb.Difficulty).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).FirstOrDefaultAsync(i => i.Id == id);
+            Leaderboard? leaderboard = await _context.Leaderboards.Include(lb => lb.Scores.OrderByDescending(s => s.ModifiedScore).Skip((page - 1) * count).Take(count)).ThenInclude(s => s.Player).Include(lb => lb.Difficulty).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).FirstOrDefaultAsync(i => i.Id == id);
 
             if (leaderboard == null) {
                 Song? song = (await _songController.Get(id.Substring(0, id.Length - 2))).Value;
@@ -41,15 +42,59 @@ namespace BeatLeader_Server.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            leaderboard.Scores = leaderboard.Scores.OrderByDescending(s => s.ModifiedScore).Skip((page - 1) * count).Take(count).ToArray();
-
             return leaderboard;
         }
 
         [HttpGet("~/leaderboards/")]
-        public async Task<ActionResult<ResponseWithMetadata<Leaderboard>>> GetAll([FromQuery] int page = 1,
-            [FromQuery] int count = 10) {
-            var sequence = _context.Leaderboards;
+        public async Task<ActionResult<ResponseWithMetadata<Leaderboard>>> GetAll(
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10,
+            [FromQuery] string sortBy = "date",
+            [FromQuery] string order = "desc",
+            [FromQuery] string? search = null,
+            [FromQuery] string? diff = null,
+            [FromQuery] string? type = null,
+            [FromQuery] float? stars_from = null,
+            [FromQuery] float? stars_to = null) {
+
+            var sequence = _context.Leaderboards.AsQueryable();
+            //switch (sortBy)
+            //{
+            //    //case "date":
+            //    //    sequence = sequence.Order(order, t => t.Difficulty.);
+            //    //    break;
+            //    case "stars":
+            //        sequence = sequence.Include(lb => lb.Difficulty).Order(order, t => t.Difficulty.Stars);
+            //        break;
+            //    default:
+            //        break;
+            //}
+            if (search != null)
+            {
+                string lowSearch = search.ToLower();
+                sequence = sequence
+                    .Include(lb => lb.Song)
+                    .Where(p => p.Song.Author.ToLower().Contains(lowSearch) ||
+                                p.Song.Mapper.ToLower().Contains(lowSearch) ||
+                                p.Song.Name.ToLower().Contains(lowSearch));
+            }
+            if (diff != null)
+            {
+                sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.DifficultyName.ToLower().Contains(diff.ToLower()));
+            }
+            if (type != null && type.Length != 0)
+            {
+                sequence = sequence.Include(lb => lb.Difficulty).Where(p => type == "ranked" ? p.Difficulty.Ranked : !p.Difficulty.Ranked);
+            }
+            if (stars_from != null)
+            {
+                sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.Stars >= stars_from);
+            }
+            if (stars_to != null)
+            {
+                sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.Stars <= stars_to);
+            }
+
             return new Models.ResponseWithMetadata<Leaderboard>()
             {
                 Metadata = new Metadata()

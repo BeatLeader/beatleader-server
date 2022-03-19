@@ -21,6 +21,7 @@ namespace BeatLeader_Server.Controllers
         LeaderboardController _leaderboardController;
         PlayerController _playerController;
         SongController _songController;
+        ScoreController _scoreController;
         IWebHostEnvironment _environment;
 
 		public ReplayController(
@@ -29,12 +30,14 @@ namespace BeatLeader_Server.Controllers
             IWebHostEnvironment env, 
             SongController songController, 
             LeaderboardController leaderboardController, 
-            PlayerController playerController
+            PlayerController playerController,
+            ScoreController scoreController
             )
 		{
             _leaderboardController = leaderboardController;
             _playerController = playerController;
             _songController = songController;
+            _scoreController = scoreController;
             _context = context;
             _environment = env;
 			if (env.IsDevelopment())
@@ -261,8 +264,18 @@ namespace BeatLeader_Server.Controllers
                     _context.Players.Update(p);
                 }
 
-                await _context.SaveChangesAsync();
+                try
+                {
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception e)
+                {
+                    return BadRequest(e);
+                }
+                _scoreController.CalculateStatisticReplay(replay, resultScore);
+                
                 resultScore.Identification = null;
+                resultScore.Leaderboard = null;
 
                 return resultScore;
             }
@@ -313,7 +326,131 @@ namespace BeatLeader_Server.Controllers
             return Ok(result + "\nMigrated " + migrated + " out of " + _context.Scores.Count());
         }
 
-        [HttpGet("~/replay/check")]
+        [HttpGet("~/player/{id}/restore")]
+        [Authorize]
+        public async Task<ActionResult> RestorePlayer(string id) {
+
+            Player? player = _context.Players.Find(id);
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            //var scores = _context.Scores.Where(s => s.PlayerId == id).ToList();
+            //foreach (var score in scores)
+            //{
+            //    if (!score.Replay.Split("/").Last().StartsWith(id + "-"))
+            //    {
+            //        _context.Scores.Remove(score);
+            //    }
+            //}
+
+            //_context.SaveChanges();
+
+            var resultSegment = _containerClient.GetBlobsAsync();
+            await foreach (var file in resultSegment)
+            {
+                var parsedName = file.Name.Split("-");
+                if (parsedName.Length == 4 && parsedName[0] == id)
+                {
+                    string playerId = parsedName[0];
+                    string difficultyName = parsedName[1];
+                    string modeName = parsedName[2];
+                    string hash = parsedName[3].Split(".").First();
+
+                    Score? score = _context
+                            .Scores
+                            .Include(s => s.Leaderboard)
+                            .ThenInclude(l => l.Song)
+                            .Include(s => s.Leaderboard)
+                            .ThenInclude(l => l.Difficulty)
+                            .FirstOrDefault(s => s.PlayerId == playerId
+                            && s.Leaderboard.Song.Hash == hash
+                            && s.Leaderboard.Difficulty.DifficultyName == difficultyName
+                            && s.Leaderboard.Difficulty.ModeName == modeName);
+
+                    if (score != null) { continue; }
+
+                    BlobClient blobClient = _containerClient.GetBlobClient(file.Name);
+                    MemoryStream ms = new MemoryStream(5);
+                    await blobClient.DownloadToAsync(ms);
+                    Replay? replay = null;
+                    byte[]? replayData = null;
+                    try
+                    {
+                        replayData = ms.ToArray();
+                        replay = ReplayDecoder.Decode(replayData);
+                    }
+                    catch (Exception)
+                    {
+                    }
+
+                    if (replay != null)
+                    {
+                        
+                        if (score == null)
+                        {
+                            Song? song = (await _songController.GetHash(replay.info.hash)).Value;
+                            if (song == null)
+                            {
+                                continue;
+                            }
+                            Leaderboard? leaderboard = (await _leaderboardController.Get(song.Id + SongUtils.DiffForDiffName(replay.info.difficulty) + SongUtils.ModeForModeName(replay.info.mode))).Value;
+                            if (leaderboard == null)
+                            {
+                                continue;
+                            }
+
+                            leaderboard = await _context.Leaderboards.Include(lb => lb.Scores).ThenInclude(score => score.Identification).FirstOrDefaultAsync(i => i.Id == leaderboard.Id);
+                            if (leaderboard == null)
+                            {
+                                continue;
+                            }
+
+                                (replay, Score newScore) = ReplayUtils.ProcessReplay(replay, replayData, leaderboard);
+                                if (leaderboard.Difficulty.Ranked && leaderboard.Difficulty.Stars != null)
+                                {
+                                newScore.Pp = (float)newScore.Accuracy * (float)leaderboard.Difficulty.Stars * 44;
+                                }
+
+                            newScore.PlayerId = replay.info.playerID;
+                            newScore.Player = player;
+                            newScore.Leaderboard = leaderboard;
+                            newScore.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/replays/" : "https://cdn.beatleader.xyz/replays/") + file.Name;
+
+                            try
+                            {
+                                leaderboard.Scores.Add(newScore);
+                            }
+                            catch (Exception)
+                            {
+                                leaderboard.Scores = new List<Score>(leaderboard.Scores);
+                                leaderboard.Scores.Add(newScore);
+                            }
+                            _context.Leaderboards.Update(leaderboard);
+                            var rankedScores = leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();
+                            foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
+                            {
+                                s.Rank = i + 1;
+                                _context.Scores.Update(s);
+                            }
+                            try
+                            {
+                                _context.SaveChanges();
+                            } catch { }
+                        }
+                    }
+                }
+            }
+
+            _context.SaveChanges();
+
+            await _playerController.RefreshPlayer(id);
+
+            return Ok();
+        }
+
+    [HttpGet("~/replay/check")]
         public async Task<ActionResult> CheckReplay([FromQuery] string link)
         {
             var net = new System.Net.WebClient();

@@ -14,6 +14,7 @@
         public double Bpm { get; set; }
         public double Duration { get; set; }
         public string? Tags { get; set; }
+        public string CreatedTime { get; set; } = "";
         public ICollection<DifficultyDescription> Difficulties { get; set; }
     }
 }

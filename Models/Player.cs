@@ -18,6 +18,10 @@
         public bool Banned { get; set; }
         public bool Inactive { get; set; }
 
+        public string ExternalProfileUrl { get; set; } = "";
+        public float LastTwoWeeksTime { get; set; }
+        public float AllTime { get; set; }
+
         public PlayerScoreStats ScoreStats { get; set; } = new PlayerScoreStats();
 
         public void SetDefaultAvatar()
