@@ -246,7 +246,7 @@ namespace BeatLeader_Server.Controllers
                     await _context.SaveChangesAsync();
                 } catch (Exception e)
                 {
-                    return BadRequest(e);
+                    return BadRequest(e.ToString());
                 }
 
                 _context.RecalculatePP(player);
@@ -270,9 +270,9 @@ namespace BeatLeader_Server.Controllers
                 }
                 catch (Exception e)
                 {
-                    return BadRequest(e);
+                    return BadRequest(e.ToString());
                 }
-                _scoreController.CalculateStatisticReplay(replay, resultScore);
+                await _scoreController.CalculateStatisticReplay(replay, resultScore);
                 
                 resultScore.Identification = null;
                 resultScore.Leaderboard = null;

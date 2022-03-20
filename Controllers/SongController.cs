@@ -30,7 +30,16 @@ namespace BeatLeader_Server.Controllers
                 if (song == null) {
                     return NotFound();
                 } else {
-                    _context.Songs.Add(song);
+                    Song? currentSong = await _context.Songs.Include(song => song.Difficulties).FirstOrDefaultAsync(i => i.Id == song.Id);
+                    if (currentSong != null)
+                    {
+                        return currentSong;
+                    }
+                    else
+                    {
+                        _context.Songs.Add(song);
+                    }
+                    
                     try
                     {
                         await _context.SaveChangesAsync();
@@ -54,10 +63,19 @@ namespace BeatLeader_Server.Controllers
 
             if (song == null) {
                 song = await GetSongFromBeatSaver("https://api.beatsaver.com/maps/hash/" + hash);
+
                 if (song == null) {
                     return NotFound();
                 } else {
-                    _context.Songs.Add(song);
+                    Song? currentSong = await _context.Songs.Include(song => song.Difficulties).FirstOrDefaultAsync(i => i.Id == song.Id);
+                    if (currentSong != null)
+                    {
+                        return currentSong;
+                    }
+                    else
+                    {
+                        _context.Songs.Add(song);
+                    }
                     try
                     {
                         await _context.SaveChangesAsync();
