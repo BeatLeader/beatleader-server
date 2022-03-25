@@ -117,6 +117,102 @@ namespace BeatLeader_Server.Controllers
             }
         }
 
+        private Score RemoveLeaderboard(Score s)
+        {
+            return new Score
+            {
+                Id = s.Id,
+                BaseScore = s.BaseScore,
+                ModifiedScore = s.ModifiedScore,
+                Accuracy = s.Accuracy,
+                PlayerId = s.PlayerId,
+                Pp = s.Pp,
+                Weight = s.Weight,
+                Rank = s.Rank,
+                CountryRank = s.CountryRank,
+                Replay = s.Replay,
+                Modifiers = s.Modifiers,
+                BadCuts = s.BadCuts,
+                MissedNotes = s.MissedNotes,
+                BombCuts = s.BombCuts,
+                WallsHit = s.WallsHit,
+                Pauses = s.Pauses,
+                FullCombo = s.FullCombo,
+                Hmd = s.Hmd,
+                Timeset = s.Timeset,
+                Player = s.Player,
+            };
+        }
+
+        [HttpGet("~/v2/scores/{hash}/{diff}/{mode}")]
+        public ActionResult<ResponseWithMetadata<Score>> GetByHash2(
+            string hash,
+            string diff,
+            string mode,
+            [FromQuery] string? country,
+            [FromQuery] string? aroundPlayer,
+            [FromQuery] string? player,
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 8)
+        {
+            var leaderboard = _context.Leaderboards.Include(el => el.Song).Include(el => el.Difficulty).Where(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+
+            if (leaderboard != null)
+            {
+                dynamic result = new ResponseWithMetadata<Score>
+                {
+                    Data = new List<Score>(),
+                    Metadata =
+                    {
+                        ItemsPerPage = count,
+                        Page = page,
+                        Total = 0
+                    }
+                };
+
+                IEnumerable<Score> query = leaderboard.Include(el => el.Scores).ThenInclude(s => s.Player).FirstOrDefault().Scores;
+                Score? highlightedScore = query.FirstOrDefault(el => el.Player.Id == player);
+                if (query.Count() == 0)
+                {
+                    return result;
+                }
+                if (country != null)
+                {
+                    query = query.Where(s => s.Player.Country == country);
+                }
+                if (aroundPlayer != null)
+                {
+                    Score? playerScore = query.FirstOrDefault(el => el.Player.Id == aroundPlayer);
+                    if (playerScore != null)
+                    {
+                        page += (int)Math.Floor((double)(playerScore.Rank - 1) / (double)count);
+                    }
+                    else
+                    {
+                        return result;
+                    }
+                }
+                List<Score> resultList = query
+                    .OrderByDescending(p => p.ModifiedScore)
+                    .Skip((page - 1) * count)
+                    .Take(count)
+                    .Select(RemoveLeaderboard)
+                    .ToList();
+                result.Metadata.Total = query.Count();
+                result.Data = resultList;
+                if (highlightedScore != null && resultList.FirstOrDefault(s => s.PlayerId == highlightedScore.PlayerId) == null)
+                {
+                    resultList.Add(RemoveLeaderboard(highlightedScore));
+                }
+
+                return result;
+            }
+            else
+            {
+                return NotFound();
+            }
+        }
+
         [HttpGet("~/score/{playerID}/{hash}/{diff}/{mode}")]
         public ActionResult<Score> GetPlayer(string playerID, string hash, string diff, string mode)
         {

@@ -111,7 +111,7 @@ namespace BeatLeader_Server.Controllers
                     return NotFound("Such leaderboard not exists");
                 }
 
-                leaderboard = await _context.Leaderboards.Include(lb => lb.Scores).ThenInclude(score => score.Identification).FirstOrDefaultAsync(i => i.Id == leaderboard.Id);
+                leaderboard = await _context.Leaderboards.Include(lb => lb.Scores).ThenInclude(score => score.Identification).Include(lb => lb.Scores).ThenInclude(score => score.Player).FirstOrDefaultAsync(i => i.Id == leaderboard.Id);
                 if (leaderboard == null)
                 {
                     return NotFound("Such leaderboard not exists");

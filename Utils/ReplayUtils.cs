@@ -4,11 +4,12 @@ namespace BeatLeader_Server.Utils
 {
     class ReplayUtils
     {
-        public static bool CheckReplay(byte[] replay, ICollection<Score> scores, Score? currentScore) {
+        public static bool CheckReplay(byte[] replay, ICollection<Score?> scores, Score? currentScore) {
             float similarityRate = 0.6f;
 
-            foreach (var item in scores)
+            foreach (Score? item in scores)
             {
+                if (item == null) { continue; }
                 if (currentScore != null && currentScore.Player.Id == item.Player.Id)
                 {
                     continue;

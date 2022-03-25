@@ -49,7 +49,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<ResponseWithMetadata<Leaderboard>>> GetAll(
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
-            [FromQuery] string sortBy = "date",
+            [FromQuery] string sortBy = "stars",
             [FromQuery] string order = "desc",
             [FromQuery] string? search = null,
             [FromQuery] string? diff = null,
@@ -58,17 +58,20 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] float? stars_to = null) {
 
             var sequence = _context.Leaderboards.AsQueryable();
-            //switch (sortBy)
-            //{
-            //    //case "date":
-            //    //    sequence = sequence.Order(order, t => t.Difficulty.);
-            //    //    break;
-            //    case "stars":
-            //        sequence = sequence.Include(lb => lb.Difficulty).Order(order, t => t.Difficulty.Stars);
-            //        break;
-            //    default:
-            //        break;
-            //}
+            switch (sortBy)
+            {
+                case "ranked":
+                    sequence = sequence.Order(order, t => t.Difficulty.RankedTime);
+                    break;
+                case "qualified":
+                    sequence = sequence.Order(order, t => t.Difficulty.QualifiedTime);
+                    break;
+                case "stars":
+                    sequence = sequence.Include(lb => lb.Difficulty).Order(order, t => t.Difficulty.Stars);
+                    break;
+                default:
+                    break;
+            }
             if (search != null)
             {
                 string lowSearch = search.ToLower();
@@ -84,7 +87,15 @@ namespace BeatLeader_Server.Controllers
             }
             if (type != null && type.Length != 0)
             {
-                sequence = sequence.Include(lb => lb.Difficulty).Where(p => type == "ranked" ? p.Difficulty.Ranked : !p.Difficulty.Ranked);
+                if (type == "ranked")
+                {
+                    sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.Ranked);
+                } else if (type == "qualified")
+                {
+                    sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.Qualified);
+                } else {
+                    sequence = sequence.Include(lb => lb.Difficulty).Where(p => !p.Difficulty.Ranked);
+                }
             }
             if (stars_from != null)
             {

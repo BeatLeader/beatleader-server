@@ -9,8 +9,8 @@ namespace BeatLeader_Server.Models
     }
     public class ResponseWithMetadata<T>
     {
-        public Metadata Metadata { get; set; }
-        public IEnumerable<T> Data { get; set; }
+        public Metadata Metadata { get; set; } = new Metadata();
+        public IEnumerable<T> Data { get; set; } = new List<T>();
     }
 }
 

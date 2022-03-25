@@ -223,11 +223,14 @@ namespace BeatLeader_Server.Controllers
                         score.Leaderboard.Scores.Remove(migScore);
                     }
 
-                    var rankedScores = score.Leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();
-                    foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
+                    var rankedScores = score.Leaderboard.Scores.Where(sc => sc != null).OrderByDescending(el => el.ModifiedScore).ToList();
+                    foreach ((int i, Score? s) in rankedScores.Select((value, i) => (i, value)))
                     {
-                        s.Rank = i + 1;
-                        _context.Scores.Update(s);
+                        if (s != null)
+                        {
+                            s.Rank = i + 1;
+                            _context.Scores.Update(s);
+                        }
                     }
                 }
                 else

@@ -332,6 +332,27 @@ namespace BeatLeader_Server.Controllers
 
         }
 
+        [HttpGet("~/player/{id}/scorevalue/{hash}/{difficulty}/{mode}")]
+        public ActionResult<int> GetScoreValue(string id, string hash, string difficulty, string mode)
+        {
+            Score? score = _context
+                .Scores
+                .Include(s => s.Leaderboard)
+                .ThenInclude(l => l.Song)
+                .Include(s => s.Leaderboard)
+                .ThenInclude(l => l.Difficulty)
+                .Where(s => s.PlayerId == id && s.Leaderboard.Song.Hash == hash && s.Leaderboard.Difficulty.DifficultyName == difficulty && s.Leaderboard.Difficulty.ModeName == mode)
+                .FirstOrDefault();
+
+            if (score == null)
+            {
+                return NotFound();
+            }
+
+            return score.ModifiedScore;
+
+        }
+
         [HttpGet("~/players")]
         public async Task<ActionResult<ResponseWithMetadata<Player>>> GetPlayers([FromQuery] string sortBy = "recent", [FromQuery] int page = 1, [FromQuery] int count = 50, [FromQuery] string search = "", [FromQuery] string countries = "")
         {
