@@ -117,9 +117,33 @@ namespace BeatLeader_Server.Controllers
             }
         }
 
-        private Score RemoveLeaderboard(Score s)
+        public class ScoreResponse
         {
-            return new Score
+            public int Id { get; set; }
+            public int BaseScore { get; set; }
+            public int ModifiedScore { get; set; }
+            public float Accuracy { get; set; }
+            public string PlayerId { get; set; }
+            public float Pp { get; set; }
+            public float Weight { get; set; }
+            public int Rank { get; set; }
+            public int CountryRank { get; set; }
+            public string Replay { get; set; }
+            public string Modifiers { get; set; }
+            public int BadCuts { get; set; }
+            public int MissedNotes { get; set; }
+            public int BombCuts { get; set; }
+            public int WallsHit { get; set; }
+            public int Pauses { get; set; }
+            public bool FullCombo { get; set; }
+            public int Hmd { get; set; }
+            public string Timeset { get; set; }
+            public Player Player { get; set; }
+        }
+
+        private ScoreResponse RemoveLeaderboard(Score s)
+        {
+            return new ScoreResponse
             {
                 Id = s.Id,
                 BaseScore = s.BaseScore,
@@ -145,7 +169,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/v2/scores/{hash}/{diff}/{mode}")]
-        public ActionResult<ResponseWithMetadata<Score>> GetByHash2(
+        public ActionResult<ResponseWithMetadataAndSelection<ScoreResponse>> GetByHash2(
             string hash,
             string diff,
             string mode,
@@ -159,9 +183,9 @@ namespace BeatLeader_Server.Controllers
 
             if (leaderboard != null)
             {
-                dynamic result = new ResponseWithMetadata<Score>
+                ResponseWithMetadataAndSelection<ScoreResponse> result = new ResponseWithMetadataAndSelection<ScoreResponse>
                 {
-                    Data = new List<Score>(),
+                    Data = new List<ScoreResponse>(),
                     Metadata =
                     {
                         ItemsPerPage = count,
@@ -170,7 +194,12 @@ namespace BeatLeader_Server.Controllers
                     }
                 };
 
-                IEnumerable<Score> query = leaderboard.Include(el => el.Scores).ThenInclude(s => s.Player).FirstOrDefault().Scores;
+                IEnumerable<Score> query = leaderboard
+                    .Include(el => el.Scores)
+                    .ThenInclude(s => s.Player)
+                    .ThenInclude(p => p.ScoreStats)
+                    .FirstOrDefault()
+                    .Scores;
                 Score? highlightedScore = query.FirstOrDefault(el => el.Player.Id == player);
                 if (query.Count() == 0)
                 {
@@ -186,13 +215,14 @@ namespace BeatLeader_Server.Controllers
                     if (playerScore != null)
                     {
                         page += (int)Math.Floor((double)(playerScore.Rank - 1) / (double)count);
+                        result.Metadata.Page = page;
                     }
                     else
                     {
                         return result;
                     }
                 }
-                List<Score> resultList = query
+                List<ScoreResponse> resultList = query
                     .OrderByDescending(p => p.ModifiedScore)
                     .Skip((page - 1) * count)
                     .Take(count)
@@ -200,9 +230,9 @@ namespace BeatLeader_Server.Controllers
                     .ToList();
                 result.Metadata.Total = query.Count();
                 result.Data = resultList;
-                if (highlightedScore != null && resultList.FirstOrDefault(s => s.PlayerId == highlightedScore.PlayerId) == null)
+                if (highlightedScore != null)
                 {
-                    resultList.Add(RemoveLeaderboard(highlightedScore));
+                    result.Selection = RemoveLeaderboard(highlightedScore);
                 }
 
                 return result;
@@ -212,6 +242,93 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
         }
+
+        [HttpGet("~/v3/scores/{hash}/{diff}/{mode}/{context}/{scope}/{method}")]
+        public ActionResult<ResponseWithMetadataAndSelection<ScoreResponse>> GetByHash3(
+            string hash,
+            string diff,
+            string mode,
+            string context,
+            string scope,
+            string method,
+            [FromQuery] string player,
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 8)
+        {
+            var leaderboard = _context.Leaderboards.Include(el => el.Song).Include(el => el.Difficulty).Where(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+
+            if (leaderboard != null)
+            {
+                ResponseWithMetadataAndSelection<ScoreResponse> result = new ResponseWithMetadataAndSelection<ScoreResponse>
+                {
+                    Data = new List<ScoreResponse>(),
+                    Metadata =
+                    {
+                        ItemsPerPage = count,
+                        Page = page,
+                        Total = 0
+                    }
+                };
+
+                IEnumerable<Score> query = leaderboard
+                    .Include(el => el.Scores)
+                    .ThenInclude(s => s.Player)
+                    .ThenInclude(p => p.ScoreStats)
+                    .FirstOrDefault()
+                    .Scores;
+
+                if (method != "around")
+                {
+                    Score? highlightedScore = query.FirstOrDefault(el => el.Player.Id == player);
+                    if (highlightedScore != null)
+                    {
+                        result.Selection = RemoveLeaderboard(highlightedScore);
+                    }
+                }
+                
+                if (query.Count() == 0)
+                {
+                    return result;
+                }
+                if (scope == "friends")
+                {
+
+                } else if (scope != "global")
+                {
+                    query = query.Where(s => s.Player.Country.ToLower() == scope.ToLower());
+                }
+
+                if (method == "around")
+                {
+                    Score? playerScore = query.FirstOrDefault(el => el.Player.Id == player);
+                    if (playerScore != null)
+                    {
+                        page += (int)Math.Floor((double)(playerScore.Rank - 1) / (double)count);
+                        result.Metadata.Page = page;
+                    }
+                    else
+                    {
+                        return result;
+                    }
+                }
+
+                List<ScoreResponse> resultList = query
+                    .OrderByDescending(p => p.ModifiedScore)
+                    .Skip((page - 1) * count)
+                    .Take(count)
+                    .Select(RemoveLeaderboard)
+                    .ToList();
+                result.Metadata.Total = query.Count();
+                result.Data = resultList;
+
+                return result;
+            }
+            else
+            {
+                return NotFound();
+            }
+        }
+
 
         [HttpGet("~/score/{playerID}/{hash}/{diff}/{mode}")]
         public ActionResult<Score> GetPlayer(string playerID, string hash, string diff, string mode)
