@@ -255,6 +255,12 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int count = 8)
         {
+            Player? currentPlayer = _context.Players.Find(player);
+            if (currentPlayer == null)
+            {
+                return NotFound("Player was not found");
+            }
+
             var leaderboard = _context.Leaderboards.Include(el => el.Song).Include(el => el.Difficulty).Where(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             if (leaderboard != null)
@@ -293,9 +299,9 @@ namespace BeatLeader_Server.Controllers
                 if (scope == "friends")
                 {
 
-                } else if (scope != "global")
+                } else if (scope == "country")
                 {
-                    query = query.Where(s => s.Player.Country.ToLower() == scope.ToLower());
+                    query = query.Where(s => s.Player.Country == currentPlayer.Country);
                 }
 
                 if (method == "around")
