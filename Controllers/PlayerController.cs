@@ -373,7 +373,7 @@ namespace BeatLeader_Server.Controllers
                     ItemsPerPage = count,
                     Total = request.Count()
                 },
-                Data = await request.OrderByDescending(p => p.Pp).Skip((page - 1) * count).Take(count).Include(p => p.ScoreStats).ToListAsync()
+                Data = await request.OrderBy(p => p.Rank).Skip((page - 1) * count).Take(count).Include(p => p.ScoreStats).ToListAsync()
             };
         }
 

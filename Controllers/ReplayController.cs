@@ -99,6 +99,9 @@ namespace BeatLeader_Server.Controllers
                 {
                     return Unauthorized("Session ticket is not valid");
                 }
+                if (replay.info.score == 0) {
+                    return BadRequest("No time for ZEN!");
+                }
 
                 replay.info.playerID = authenticatedPlayerID;
 
@@ -146,7 +149,7 @@ namespace BeatLeader_Server.Controllers
                 if (ReplayUtils.CheckReplay(replayData, leaderboard.Scores, currentScore)) {
                     (replay, Score score) = ReplayUtils.ProcessReplay(replay, replayData, leaderboard);
                     if (leaderboard.Difficulty.Ranked && leaderboard.Difficulty.Stars != null) {
-                        score.Pp = (float)score.Accuracy * (float)leaderboard.Difficulty.Stars * 44;
+                        score.Pp = (1.2f + (float)score.Accuracy) * (float)leaderboard.Difficulty.Stars * 44;
                     }
                     
                     score.PlayerId = replay.info.playerID;
@@ -160,7 +163,7 @@ namespace BeatLeader_Server.Controllers
                 string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
                 try
 			    {
-                    resultScore.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/replays/" : "https://cdn.beatleader.xyz/replays/") + fileName;
+                    resultScore.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/replays/" : "https://cdn.beatleader.xyz/foolreplays/") + fileName;
                     
 				    await _containerClient.CreateIfNotExistsAsync();
 
@@ -416,7 +419,7 @@ namespace BeatLeader_Server.Controllers
                             newScore.PlayerId = replay.info.playerID;
                             newScore.Player = player;
                             newScore.Leaderboard = leaderboard;
-                            newScore.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/replays/" : "https://cdn.beatleader.xyz/replays/") + file.Name;
+                            newScore.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/replays/" : "https://cdn.beatleader.xyz/foolreplays/") + file.Name;
 
                             try
                             {
