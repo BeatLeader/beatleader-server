@@ -141,7 +141,7 @@ namespace BeatLeader_Server.Controllers
             public Player Player { get; set; }
         }
 
-        private ScoreResponse RemoveLeaderboard(Score s)
+        private ScoreResponse RemoveLeaderboard(Score s, int i)
         {
             return new ScoreResponse
             {
@@ -152,7 +152,7 @@ namespace BeatLeader_Server.Controllers
                 PlayerId = s.PlayerId,
                 Pp = s.Pp,
                 Weight = s.Weight,
-                Rank = s.Rank,
+                Rank = i >= 0 ? i + 1 : s.Rank,
                 CountryRank = s.CountryRank,
                 Replay = s.Replay,
                 Modifiers = s.Modifiers,
@@ -232,7 +232,7 @@ namespace BeatLeader_Server.Controllers
                 result.Data = resultList;
                 if (highlightedScore != null)
                 {
-                    result.Selection = RemoveLeaderboard(highlightedScore);
+                    result.Selection = RemoveLeaderboard(highlightedScore, -1);
                 }
 
                 return result;
@@ -276,21 +276,17 @@ namespace BeatLeader_Server.Controllers
                     }
                 };
 
-                IEnumerable<Score> query = leaderboard
+                Leaderboard? selectedLeaderboard = leaderboard
                     .Include(el => el.Scores)
                     .ThenInclude(s => s.Player)
                     .ThenInclude(p => p.ScoreStats)
-                    .FirstOrDefault()
-                    .Scores;
+                    .FirstOrDefault();
 
-                if (method != "around")
-                {
-                    Score? highlightedScore = query.FirstOrDefault(el => el.Player.Id == player);
-                    if (highlightedScore != null)
-                    {
-                        result.Selection = RemoveLeaderboard(highlightedScore);
-                    }
+                if (selectedLeaderboard == null) {
+                    return result;
                 }
+
+                IEnumerable<Score> query = selectedLeaderboard.Scores.OrderByDescending(p => p.ModifiedScore);
                 
                 if (query.Count() == 0)
                 {
@@ -309,20 +305,36 @@ namespace BeatLeader_Server.Controllers
                     Score? playerScore = query.FirstOrDefault(el => el.Player.Id == player);
                     if (playerScore != null)
                     {
-                        page += (int)Math.Floor((double)(playerScore.Rank - 1) / (double)count);
+                        if (scope == "global")
+                        {
+                            page += (int)Math.Floor((double)(playerScore.Rank - 1) / (double)count);
+                        }
+                        else if (scope == "country")
+                        {
+                            int rank = query.TakeWhile(s => s.PlayerId != player).Count();
+                            page += (int)Math.Floor((double)(rank) / (double)count);
+                        }
                         result.Metadata.Page = page;
                     }
                     else
                     {
                         return result;
                     }
+                } else
+                {
+                    Score? highlightedScore = query.FirstOrDefault(el => el.Player.Id == player);
+                    if (highlightedScore != null)
+                    {
+                        int rank = query.TakeWhile(s => s.PlayerId != player).Count();
+                        result.Selection = RemoveLeaderboard(highlightedScore, rank);
+                    }
                 }
 
                 List<ScoreResponse> resultList = query
                     .OrderByDescending(p => p.ModifiedScore)
+                    .Select(RemoveLeaderboard)
                     .Skip((page - 1) * count)
                     .Take(count)
-                    .Select(RemoveLeaderboard)
                     .ToList();
                 result.Metadata.Total = query.Count();
                 result.Data = resultList;

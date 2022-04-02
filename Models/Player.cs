@@ -24,6 +24,8 @@
 
         public PlayerScoreStats ScoreStats { get; set; } = new PlayerScoreStats();
 
+        public ICollection<Badge>? Badges { get; set; }
+
         public void SetDefaultAvatar()
         {
             this.Avatar = "https://cdn.beatleader.xyz/assets/" + this.Platform + "avatar.png";

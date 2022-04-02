@@ -32,7 +32,7 @@ namespace BeatLeader_Server.Controllers
             } catch {}
             AccountLink? link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
             string userId = (link != null ? link.SteamID : id);
-            Player? player = await _context.Players.Include(p => p.ScoreStats).FirstOrDefaultAsync(p => p.Id == userId);
+            Player? player = await _context.Players.Include(p => p.ScoreStats).Include(p => p.Badges).FirstOrDefaultAsync(p => p.Id == userId);
             if (player == null)
             {
                 return NotFound();
@@ -502,7 +502,7 @@ namespace BeatLeader_Server.Controllers
             
         }
 
-            [HttpGet("~/players/refresh")]
+        [HttpGet("~/players/refresh")]
         [Authorize]
         public async Task<ActionResult> RefreshPlayers()
         {
@@ -558,6 +558,59 @@ namespace BeatLeader_Server.Controllers
             }
 
             return Ok();
+        }
+
+        [HttpPut("~/badge")]
+        [Authorize]
+        public ActionResult<Badge> CreateBadge([FromQuery] string description, [FromQuery] string image) {
+            string currentId = HttpContext.CurrentUserID();
+            Player? currentPlayer = _context.Players.Find(currentId);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            Badge badge = new Badge {
+                Description = description,
+                Image = image
+            };
+
+            _context.Badges.Add(badge);
+            _context.SaveChanges();
+
+            return badge;
+        }
+
+        [HttpPut("~/player/badge/{playerId}/{badgeId}")]
+        [Authorize]
+        public async Task<ActionResult<Player>> AddBadge(string playerId, int badgeId)
+        {
+            string currentId = HttpContext.CurrentUserID();
+            Player? currentPlayer = _context.Players.Find(currentId);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            Player? player = await _context.Players.Include(p => p.Badges).FirstOrDefaultAsync(p => p.Id == playerId);
+            if (player == null)
+            {
+                return NotFound("Player not found");
+            }
+
+            Badge? badge = _context.Badges.Find(badgeId);
+            if (badge == null)
+            {
+                return NotFound("Badge not found");
+            }
+            if (player.Badges == null) {
+                player.Badges = new List<Badge>();
+            }
+
+            player.Badges.Add(badge);
+            _context.SaveChanges();
+
+            return player;
         }
 
         public async Task<Player?> GetPlayerFromSteam(string playerID)
