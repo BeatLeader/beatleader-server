@@ -49,13 +49,14 @@ namespace BeatLeader_Server.Controllers
             {
                 return Unauthorized();
             }
-            var score = await _context.Scores.FindAsync(id);
+            var score = _context.Scores.Where(s => s.Id == id).Include(s => s.Leaderboard).FirstOrDefault();
             if (score == null)
             {
                 return NotFound();
             }
 
-            _context.Scores.Remove(score);
+            score.Leaderboard.Scores.Remove(score);
+            _context.Leaderboards.Update(score.Leaderboard);
 
             await _context.SaveChangesAsync();
 
@@ -139,6 +140,12 @@ namespace BeatLeader_Server.Controllers
             }
         }
 
+        [HttpGet("~/failedscores/")]
+        public async Task<ActionResult<IEnumerable<FailedScore>>> FailedSсores()
+        {
+            return _context.FailedScores.OrderByDescending(s => s.Id).Include(el => el.Leaderboard).Include(el => el.Player).ToList();
+        }
+
         public class ScoreResponse
         {
             public int Id { get; set; }
@@ -163,7 +170,7 @@ namespace BeatLeader_Server.Controllers
             public Player Player { get; set; }
         }
 
-        private ScoreResponse RemoveLeaderboard(Score s, int i)
+        public ScoreResponse RemoveLeaderboard(Score s, int i)
         {
             return new ScoreResponse
             {
@@ -212,81 +219,6 @@ namespace BeatLeader_Server.Controllers
             }
         }
 
-        [HttpGet("~/v2/scores/{hash}/{diff}/{mode}")]
-        public ActionResult<ResponseWithMetadataAndSelection<ScoreResponse>> GetByHash2(
-            string hash,
-            string diff,
-            string mode,
-            [FromQuery] string? country,
-            [FromQuery] string? aroundPlayer,
-            [FromQuery] string? player,
-            [FromQuery] int page = 1,
-            [FromQuery] int count = 8)
-        {
-            var leaderboard = _context.Leaderboards.Include(el => el.Song).Include(el => el.Difficulty).Where(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
-
-            if (leaderboard != null)
-            {
-                ResponseWithMetadataAndSelection<ScoreResponse> result = new ResponseWithMetadataAndSelection<ScoreResponse>
-                {
-                    Data = new List<ScoreResponse>(),
-                    Metadata =
-                    {
-                        ItemsPerPage = count,
-                        Page = page,
-                        Total = 0
-                    }
-                };
-
-                IEnumerable<Score> query = leaderboard
-                    .Include(el => el.Scores)
-                    .ThenInclude(s => s.Player)
-                    .ThenInclude(p => p.ScoreStats)
-                    .FirstOrDefault()
-                    .Scores;
-                Score? highlightedScore = query.FirstOrDefault(el => el.Player.Id == player);
-                if (query.Count() == 0)
-                {
-                    return result;
-                }
-                if (country != null)
-                {
-                    query = query.Where(s => s.Player.Country == country);
-                }
-                if (aroundPlayer != null)
-                {
-                    Score? playerScore = query.FirstOrDefault(el => el.Player.Id == aroundPlayer);
-                    if (playerScore != null)
-                    {
-                        page += (int)Math.Floor((double)(playerScore.Rank - 1) / (double)count);
-                        result.Metadata.Page = page;
-                    }
-                    else
-                    {
-                        return result;
-                    }
-                }
-
-                List<ScoreResponse> resultList = query
-                    .Skip((page - 1) * count)
-                    .Take(count)
-                    .Select(RemoveLeaderboard)
-                    .ToList();
-                result.Metadata.Total = query.Count();
-                result.Data = resultList;
-                if (highlightedScore != null)
-                {
-                    result.Selection = RemoveLeaderboard(highlightedScore, -1);
-                }
-
-                return result;
-            }
-            else
-            {
-                return NotFound();
-            }
-        }
-
         [HttpGet("~/v3/scores/{hash}/{diff}/{mode}/{context}/{scope}/{method}")]
         public async Task<ActionResult<ResponseWithMetadataAndSelection<ScoreResponse>>> GetByHash3(
             string hash,
@@ -297,7 +229,7 @@ namespace BeatLeader_Server.Controllers
             string method,
             [FromQuery] string player,
             [FromQuery] int page = 1,
-            [FromQuery] int count = 8)
+            [FromQuery] int count = 10)
         {
             Player? currentPlayer = (await _playerController.Get(player)).Value;
             if (currentPlayer == null) {
@@ -461,7 +393,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/score/calculatestatistic/{id}")]
-        public async Task<ActionResult<ScoreStatistic>> CalculateStatistic(string id)
+        public async Task<ActionResult<ScoreStatistic?>> CalculateStatistic(string id)
         {
             Score? score = _context.Scores.Where(s => s.Id == Int64.Parse(id)).Include(s => s.Leaderboard).ThenInclude(l => l.Song).FirstOrDefault();
             if (score == null)
@@ -471,7 +403,8 @@ namespace BeatLeader_Server.Controllers
             return await CalculateStatisticScore(score);
         }
 
-        public async Task<ActionResult<ScoreStatistic>> CalculateStatisticScore(Score score)
+        [NonAction]
+        public async Task<ActionResult<ScoreStatistic?>> CalculateStatisticScore(Score score)
         {
             string blobName = score.Replay.Split("/").Last();
 
@@ -488,13 +421,17 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Error decoding replay");
             }
 
-            return await CalculateStatisticReplay(replay, score);
+            (ScoreStatistic? statistic, string? error) = CalculateStatisticReplay(replay, score);
+            if (statistic == null) {
+                return BadRequest(error);
+            }
+
+            return statistic;
         }
 
-        public async Task<ActionResult<ScoreStatistic>> CalculateStatisticReplay(Replay replay, Score score)
+        [NonAction]
+        public (ScoreStatistic?, string?) CalculateStatisticReplay(Replay replay, Score score)
         {
-            //ScoreStatistic statistic = await Task.Run(() =>
-            //{
             ScoreStatistic? statistic = null;
 
             try
@@ -502,16 +439,14 @@ namespace BeatLeader_Server.Controllers
                 statistic = ReplayStatisticUtils.ProcessReplay(replay, score.Leaderboard);
                 statistic.ScoreId = score.Id;
                 ReplayStatisticUtils.EncodeArrays(statistic);
-            } catch { }
+            } catch (Exception e) {
+                return (null, e.ToString());
+            }
 
             if (statistic == null)
             {
-                return Ok();
+                return (null, "Could not calculate statistics");
             }
-            
-
-                //return statistic;
-            //});
 
             ScoreStatistic? currentStatistic = _context.ScoreStatistics.FirstOrDefault(s => s.ScoreId == score.Id);
             _context.ScoreStatistics.Add(statistic);
@@ -519,9 +454,9 @@ namespace BeatLeader_Server.Controllers
             {
                 _context.ScoreStatistics.Remove(currentStatistic);
             }
-            await _context.SaveChangesAsync();
+            _context.SaveChanges();
 
-            return statistic;
+            return (statistic, null);
         }
     }
 }

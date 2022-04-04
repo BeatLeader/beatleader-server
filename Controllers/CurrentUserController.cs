@@ -17,16 +17,19 @@ namespace BeatLeader_Server.Controllers
         private readonly AppContext _context;
         BlobContainerClient _assetsContainerClient;
         PlayerController _playerController;
+        ReplayController _replayController;
         IWebHostEnvironment _environment;
 
         public CurrentUserController(
             AppContext context,
             IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env,
-            PlayerController playerController)
+            PlayerController playerController,
+            ReplayController replayController)
         {
             _context = context;
             _playerController = playerController;
+            _replayController = replayController;
             _environment = env;
             if (env.IsDevelopment())
             {
@@ -186,6 +189,7 @@ namespace BeatLeader_Server.Controllers
             return await MigratePrivate(authInfo.Id);
         }
 
+        [NonAction]
         public async Task<ActionResult<int>> MigratePrivate(int id)
         {
             string steamID = HttpContext.CurrentUserID();
@@ -284,6 +288,62 @@ namespace BeatLeader_Server.Controllers
             _context.Playlists.Remove(playlist);
 
             await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpGet("~/user/failedscores")]
+        public async Task<ActionResult<IEnumerable<FailedScore>>> GetFailedScores()
+        {
+            string? id = GetId().Value;
+            if (id == null) {
+                return NotFound();
+            }
+            return _context.FailedScores.Where(t => t.PlayerId == id).Include(lb => lb.Player).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).ToList();
+        }
+
+        [HttpPost("~/user/failedscore/remove")]
+        public async Task<ActionResult<IEnumerable<FailedScore>>> RemoveFailedScore([FromQuery] int id)
+        {
+            string? playerId = GetId().Value;
+            if (playerId == null)
+            {
+                return NotFound();
+            }
+            var score = _context.FailedScores.FirstOrDefault(t => t.PlayerId == playerId && t.Id == id);
+            if (score == null) {
+                return NotFound();
+            }
+
+            _context.FailedScores.Remove(score);
+            _context.SaveChanges();
+            return Ok();
+        }
+
+        [HttpPost("~/user/failedscore/retry")]
+        public async Task<ActionResult<IEnumerable<FailedScore>>> RetryFailedScore([FromQuery] int id)
+        {
+            string? playerId = GetId().Value;
+            if (playerId == null)
+            {
+                return NotFound();
+            }
+            var score = _context.FailedScores.FirstOrDefault(t => t.PlayerId == playerId && t.Id == id);
+            if (score == null)
+            {
+                return NotFound();
+            }
+
+            _context.FailedScores.Remove(score);
+            _context.SaveChanges();
+
+            string? name = score.Replay.Split("/").LastOrDefault();
+            if (name == null)
+            {
+                return Ok();
+            }
+
+            await _replayController.PostReplayFromCDN(playerId, name);
 
             return Ok();
         }

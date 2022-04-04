@@ -51,6 +51,7 @@ namespace BeatLeader_Server.Controllers
             return song;
         }
 
+        [NonAction]
         public Task<Song?> SongById(string id)
         {
             return GetSongFromBeatSaver("https://api.beatsaver.com/maps/id/" + id);
@@ -92,6 +93,7 @@ namespace BeatLeader_Server.Controllers
             return _context.Songs.Where(s => s.Difficulties.First(d => d.Ranked == ranked) != null).Include(s => s.Difficulties).ToList();
         }
 
+        [NonAction]
         public Task<Song?> GetSongFromBeatSaver(string url)
         {
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
@@ -118,6 +120,7 @@ namespace BeatLeader_Server.Controllers
             return stream.ContinueWith(t => ReadSongFromResponse(t.Result));
         }
 
+        [NonAction]
         private Song? ReadSongFromResponse((WebResponse?, Song?) response)
         {
             if (response.Item1 != null) {

@@ -11,14 +11,25 @@ public class NoteParams
     public NoteParams(int noteId)
     {
         int id = noteId;
-        lineIndex = id / 1000;
-        id -= lineIndex * 1000;
+        if (id < 100000) {
+            lineIndex = id / 1000;
+            id -= lineIndex * 1000;
 
-        noteLineLayer = id / 100;
-        id -= noteLineLayer * 100;
+            noteLineLayer = id / 100;
+            id -= noteLineLayer * 100;
 
-        colorType = id / 10;
-        cutDirection = id - colorType * 10;
+            colorType = id / 10;
+            cutDirection = id - colorType * 10;
+        } else {
+            lineIndex = id / 1000000;
+            id -= lineIndex * 1000000;
+
+            noteLineLayer = id / 100000;
+            id -= noteLineLayer * 100000;
+
+            colorType = id / 10;
+            cutDirection = id - colorType * 10;
+        }
     }
 }
 
@@ -95,6 +106,7 @@ namespace BeatLeader_Server.Utils
             }
             (AccuracyTracker accuracy, List<NoteStruct> structs, int maxCombo) = Accuracy(replay);
             result.HitTracker.MaxCombo = maxCombo;
+            result.WinTracker.TotalScore = structs.Last().totalScore;
             result.AccuracyTracker = accuracy;
             result.ScoreGraphTracker = ScoreGraph(structs, leaderboard);
 
@@ -121,6 +133,10 @@ namespace BeatLeader_Server.Utils
                 if (scoreValue > 0)
                 {
                     int index = param.noteLineLayer * 4 + param.lineIndex;
+                    if (index > 11 || index < 0) {
+                        index = 0;
+                    }
+
                     gridCounts[index]++;
                     result.GridAcc[index] += (float)scoreValue;
 
@@ -372,7 +388,9 @@ namespace BeatLeader_Server.Utils
             statistic.AccuracyTracker.RightAverageCut = statistic.AccuracyTracker.RightAverageCutS.Split(",").Select(x => float.Parse(x)).ToList();
             statistic.AccuracyTracker.GridAcc = statistic.AccuracyTracker.GridAccS.Split(",").Select(x => float.Parse(x)).ToList();
 
-            statistic.ScoreGraphTracker.Graph = statistic.ScoreGraphTracker.GraphS.Split(",").Select(x => float.Parse(x)).ToList();
+            if (statistic.ScoreGraphTracker.GraphS.Length > 0) {
+                statistic.ScoreGraphTracker.Graph = statistic.ScoreGraphTracker.GraphS.Split(",").Select(x => float.Parse(x)).ToList();
+            }
         }
     }
 }

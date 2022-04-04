@@ -40,6 +40,7 @@ namespace BeatLeader_Server.Controllers
             return player;
         }
 
+        [NonAction]
         public async Task<ActionResult<Player>> GetLazy(string id, bool addToBase = true)
         {
             Player? player = await _context.Players.Include(p => p.ScoreStats).FirstOrDefaultAsync(p => p.Id == id);
@@ -615,6 +616,7 @@ namespace BeatLeader_Server.Controllers
             return player;
         }
 
+        [NonAction]
         public async Task<Player?> GetPlayerFromSteam(string playerID)
         {
             dynamic? info = await GetPlayer("http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=" + _configuration.GetValue<string>("SteamKey") + "&steamids=" + playerID);
@@ -659,9 +661,10 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
+        [NonAction]
         public async Task<Player?> GetPlayerFromOculus(string playerID)
         {
-            AuthInfo? authInfo = _context.Auths.First(el => el.Id.ToString() == playerID);
+            AuthInfo? authInfo = _context.Auths.FirstOrDefault(el => el.Id.ToString() == playerID);
 
             if (authInfo == null) return null;
 
@@ -674,6 +677,7 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
+        [NonAction]
         public Task<dynamic?> GetPlayer(string url)
         {
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
@@ -700,6 +704,7 @@ namespace BeatLeader_Server.Controllers
             return stream.ContinueWith(t => ReadPlayerFromResponse(t.Result));
         }
 
+        [NonAction]
         private dynamic? ReadPlayerFromResponse((WebResponse?, dynamic?) response)
         {
             if (response.Item1 != null) {

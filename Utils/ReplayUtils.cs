@@ -4,7 +4,7 @@ namespace BeatLeader_Server.Utils
 {
     class ReplayUtils
     {
-        public static bool CheckReplay(byte[] replay, ICollection<Score?> scores, Score? currentScore) {
+        public static (bool, string?) CheckReplay(byte[] replay, ICollection<Score?> scores, Score? currentScore) {
             float similarityRate = 0.6f;
 
             foreach (Score? item in scores)
@@ -12,6 +12,10 @@ namespace BeatLeader_Server.Utils
                 if (item == null) { continue; }
                 if (currentScore != null && currentScore.Player.Id == item.Player.Id)
                 {
+                    continue;
+                }
+
+                if (item.Identification.Value.Length == 0 || item.Identification.Order.Length == 0) {
                     continue;
                 }
 
@@ -35,7 +39,7 @@ namespace BeatLeader_Server.Utils
                     }
 
                     if (sameBits > treshold) {
-                        return false;
+                        return (false, item.PlayerId);
                     }
                 
                     if (bitIndex == 0) {
@@ -46,17 +50,21 @@ namespace BeatLeader_Server.Utils
                     }
                 }
             }
-            return true;
+            return (true, null);
         }
 
-        public static (Replay, Score) ProcessReplay(Replay replay, byte[] replayData, Leaderboard leaderboard) {
+        public static (Replay, Score) ProcessReplay(Replay replay, Leaderboard leaderboard) {
             Score score = new Score();
-            score.Identification = ReplayIdentificationForReplay(replayData);
+            
             score.BaseScore = replay.info.score; // TODO: recalculate score based on note info
             score.Modifiers = replay.info.modifiers;
             score.Timeset = replay.info.timestamp;
             score.WallsHit = replay.walls.Count;
             score.Pauses = replay.pauses.Count;
+            score.Identification = new ReplayIdentification {
+                Order = new byte[0],
+                Value = new byte[0]
+            };
             foreach (var item in replay.notes)
             {
                 switch (item.eventType)
@@ -83,7 +91,7 @@ namespace BeatLeader_Server.Utils
             return (replay, score);
         }
 
-        private static ReplayIdentification ReplayIdentificationForReplay(byte[] replayData) {
+        public static ReplayIdentification ReplayIdentificationForReplay(byte[] replayData) {
             int dataLength = replayData.Length;
             int length = dataLength / 200;
             int[] randomList = new int[length];
