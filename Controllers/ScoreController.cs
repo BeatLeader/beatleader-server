@@ -168,23 +168,26 @@ namespace BeatLeader_Server.Controllers
             };
         }
 
-        private ScoreResponse RemoveModifiersAndLeaderboard(Score s, int i)
+        private void RemovePositiveModifiers(Score s)
         {
-            ScoreResponse result = RemoveLeaderboard(s, i);
-            result.Modifiers = "";
-            if (result.Accuracy > 0) {
-                if (result.Pp > 0) {
-                    result.Pp /= result.Accuracy;
-                }
-                result.Accuracy = result.BaseScore / (result.ModifiedScore / result.Accuracy);
-                if (result.Pp > 0)
-                {
-                    result.Pp *= result.Accuracy;
-                }
-            }
-            result.ModifiedScore = result.BaseScore;
+            Score result = s;
 
-            return result;
+            int maxScore = (int)(result.ModifiedScore / result.Accuracy);
+            if (result.Pp > 0)
+            {
+                result.Pp /= result.Accuracy;
+            }
+
+            (string modifiers, float value) = ReplayUtils.GetNegativeMultipliers(s.Modifiers);
+
+            result.ModifiedScore = (int)(result.BaseScore * value);
+            result.Accuracy = (float)result.ModifiedScore / (float)maxScore;
+            result.Modifiers = modifiers;
+
+            if (result.Pp > 0)
+            {
+                result.Pp *= result.Accuracy;
+            }
         }
 
         [HttpGet("~/v2/scores/{hash}/{diff}/{mode}")]
@@ -305,29 +308,39 @@ namespace BeatLeader_Server.Controllers
                     return result;
                 }
 
-                IEnumerable<Score> query;
-                Func<Score, int,ScoreResponse> selector;
-                if (context == "standard") {
-                    selector = RemoveModifiersAndLeaderboard;
-                    query = selectedLeaderboard.Scores.OrderByDescending(p => p.BaseScore);
-                } else {
-                    selector = RemoveLeaderboard;
-                    query = selectedLeaderboard.Scores.OrderByDescending(p => p.ModifiedScore);
+                IEnumerable<Score> query = selectedLeaderboard.Scores.ToList();
+                if (context.ToLower() == "standard") {
+                    query.ToList().ForEach(RemovePositiveModifiers);
                 }
-                
+
+                query = query.OrderByDescending(p => p.ModifiedScore);
+
                 if (query.Count() == 0)
                 {
                     return result;
                 }
-                if (scope == "friends")
+                Dictionary<string, int> countries = new Dictionary<string, int>();
+                query = query.Select((s, i) => {
+                    if (s.CountryRank == 0) {
+                        if (!countries.ContainsKey(s.Player.Country))
+                        {
+                            countries[s.Player.Country] = 1;
+                        }
+
+                        s.CountryRank = countries[s.Player.Country];
+                        countries[s.Player.Country]++;
+                    }
+                    return s;
+                });
+                if (scope.ToLower() == "friends")
                 {
 
-                } else if (scope == "country")
+                } else if (scope.ToLower() == "country")
                 {
                     query = query.Where(s => s.Player.Country == currentPlayer.Country);
                 }
 
-                if (method == "around")
+                if (method.ToLower() == "around")
                 {
                     Score? playerScore = query.FirstOrDefault(el => el.Player.Id == player);
                     if (playerScore != null)
@@ -346,25 +359,14 @@ namespace BeatLeader_Server.Controllers
                     if (highlightedScore != null)
                     {
                         int rank = query.TakeWhile(s => s.PlayerId != player).Count();
-                        result.Selection = selector(highlightedScore, rank);
+                        result.Selection = RemoveLeaderboard(highlightedScore, rank);
                     }
                 }
-                Dictionary<string, int> countries = new Dictionary<string, int>();
-                query = query.Select((s, i) => {
-                    if (!countries.ContainsKey(s.Player.Country))
-                    {
-                        countries[s.Player.Country] = 1;
-                    }
-
-                    s.CountryRank = countries[s.Player.Country];
-                    countries[s.Player.Country]++;
-                    return s;
-                });
 
                 List<ScoreResponse> resultList = query
+                    .Select(RemoveLeaderboard)
                     .Skip((page - 1) * count)
                     .Take(count)
-                    .Select(selector)
                     .ToList();
                 result.Metadata.Total = query.Count();
                 result.Data = resultList;

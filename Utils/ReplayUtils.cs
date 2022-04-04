@@ -168,6 +168,25 @@ namespace BeatLeader_Server.Utils
 			return multiplier;
 		}
 
+        public static (string, float) GetNegativeMultipliers(string modifiers)
+        {
+            float multiplier = 1;
+            List<string> modifierArray = new List<string>();
+
+            var modifiersMap = Modifiers();
+            foreach (var modifier in modifiersMap.Keys)
+            {
+                if (modifiers.Contains(modifier)) {
+                    if (modifiersMap[modifier] < 0) {
+                        multiplier += modifiersMap[modifier]; 
+                        modifierArray.Add(modifier);
+                    }
+                }
+            }
+
+            return (String.Join(",", modifierArray), multiplier);
+        }
+
         public static Dictionary<string, float> Modifiers()
         {
             return new Dictionary<string, float>
