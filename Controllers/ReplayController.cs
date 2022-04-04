@@ -58,7 +58,7 @@ namespace BeatLeader_Server.Controllers
         [HttpPost("~/replay"), DisableRequestSizeLimit]
         public async Task<ActionResult<Score>> PostSteamReplay([FromQuery] string ticket)
         {
-            return await PostReplay(await GetPlayerIDFromTicket(ticket));
+            return await PostReplay(await SteamHelper.GetPlayerIDFromTicket(ticket));
         }
 
         [HttpPut("~/replayoculus"), DisableRequestSizeLimit]
@@ -450,7 +450,7 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
-    [HttpGet("~/replay/check")]
+        [HttpGet("~/replay/check")]
         public async Task<ActionResult> CheckReplay([FromQuery] string link)
         {
             var net = new System.Net.WebClient();
@@ -470,7 +470,7 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
-            private static void SetPublicContainerPermissions(BlobContainerClient container)
+        private static void SetPublicContainerPermissions(BlobContainerClient container)
         {
             container.SetAccessPolicy(accessType: Azure.Storage.Blobs.Models.PublicAccessType.BlobContainer);
         }
@@ -492,64 +492,6 @@ namespace BeatLeader_Server.Controllers
             }
 
             return result;
-        }
-
-        public Task<string?> GetPlayerIDFromTicket(string ticket)
-        {
-            string url = "https://api.steampowered.com/ISteamUserAuth/AuthenticateUserTicket/v0001?appid=620980&key=B0A7AF33E804D0ABBDE43BA9DD5DAB48&ticket=" + ticket;
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-            request.Method = "GET";
-            request.Proxy = null;
-
-            WebResponse response = null;
-            string? playerID = null;
-            var stream =
-            Task<(WebResponse, string)>.Factory.FromAsync(request.BeginGetResponse, result =>
-            {
-                try
-                {
-                    response = request.EndGetResponse(result);
-                }
-                catch (Exception e)
-                {
-                    playerID = null;
-                }
-
-                return (response, playerID);
-            }, request);
-
-            return stream.ContinueWith(t => ReadStreamFromResponse(t.Result));
-        }
-
-        private string? ReadStreamFromResponse((WebResponse, string?) response)
-        {
-            if (response.Item1 != null)
-            {
-                using (Stream responseStream = response.Item1.GetResponseStream())
-                using (StreamReader reader = new StreamReader(responseStream))
-                {
-                    string results = reader.ReadToEnd();
-                    if (!string.IsNullOrEmpty(results))
-                    {
-
-                    }
-                    try
-                    {
-                        var info = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, Dictionary<string, string>>>>(results);
-
-                        return info["response"]["params"]["steamid"];
-                    } catch
-                    {
-                        return null;
-                    }
-                    
-                }
-            }
-            else
-            {
-                return response.Item2;
-            }
-
         }
     }
 }

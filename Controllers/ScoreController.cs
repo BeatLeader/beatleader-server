@@ -168,6 +168,25 @@ namespace BeatLeader_Server.Controllers
             };
         }
 
+        private ScoreResponse RemoveModifiersAndLeaderboard(Score s, int i)
+        {
+            ScoreResponse result = RemoveLeaderboard(s, i);
+            result.Modifiers = "";
+            if (result.Accuracy > 0) {
+                if (result.Pp > 0) {
+                    result.Pp /= result.Accuracy;
+                }
+                result.Accuracy = result.BaseScore / (result.ModifiedScore / result.Accuracy);
+                if (result.Pp > 0)
+                {
+                    result.Pp *= result.Accuracy;
+                }
+            }
+            result.ModifiedScore = result.BaseScore;
+
+            return result;
+        }
+
         [HttpGet("~/v2/scores/{hash}/{diff}/{mode}")]
         public ActionResult<ResponseWithMetadataAndSelection<ScoreResponse>> GetByHash2(
             string hash,
@@ -222,8 +241,8 @@ namespace BeatLeader_Server.Controllers
                         return result;
                     }
                 }
+
                 List<ScoreResponse> resultList = query
-                    .OrderByDescending(p => p.ModifiedScore)
                     .Skip((page - 1) * count)
                     .Take(count)
                     .Select(RemoveLeaderboard)
@@ -286,7 +305,15 @@ namespace BeatLeader_Server.Controllers
                     return result;
                 }
 
-                IEnumerable<Score> query = selectedLeaderboard.Scores.OrderByDescending(p => p.ModifiedScore);
+                IEnumerable<Score> query;
+                Func<Score, int,ScoreResponse> selector;
+                if (context == "standard") {
+                    selector = RemoveModifiersAndLeaderboard;
+                    query = selectedLeaderboard.Scores.OrderByDescending(p => p.BaseScore);
+                } else {
+                    selector = RemoveLeaderboard;
+                    query = selectedLeaderboard.Scores.OrderByDescending(p => p.ModifiedScore);
+                }
                 
                 if (query.Count() == 0)
                 {
@@ -305,15 +332,8 @@ namespace BeatLeader_Server.Controllers
                     Score? playerScore = query.FirstOrDefault(el => el.Player.Id == player);
                     if (playerScore != null)
                     {
-                        if (scope == "global")
-                        {
-                            page += (int)Math.Floor((double)(playerScore.Rank - 1) / (double)count);
-                        }
-                        else if (scope == "country")
-                        {
-                            int rank = query.TakeWhile(s => s.PlayerId != player).Count();
-                            page += (int)Math.Floor((double)(rank) / (double)count);
-                        }
+                        int rank = query.TakeWhile(s => s.PlayerId != player).Count();
+                        page += (int)Math.Floor((double)(rank) / (double)count);
                         result.Metadata.Page = page;
                     }
                     else
@@ -326,15 +346,25 @@ namespace BeatLeader_Server.Controllers
                     if (highlightedScore != null)
                     {
                         int rank = query.TakeWhile(s => s.PlayerId != player).Count();
-                        result.Selection = RemoveLeaderboard(highlightedScore, rank);
+                        result.Selection = selector(highlightedScore, rank);
                     }
                 }
+                Dictionary<string, int> countries = new Dictionary<string, int>();
+                query = query.Select((s, i) => {
+                    if (!countries.ContainsKey(s.Player.Country))
+                    {
+                        countries[s.Player.Country] = 1;
+                    }
+
+                    s.CountryRank = countries[s.Player.Country];
+                    countries[s.Player.Country]++;
+                    return s;
+                });
 
                 List<ScoreResponse> resultList = query
-                    .OrderByDescending(p => p.ModifiedScore)
-                    .Select(RemoveLeaderboard)
                     .Skip((page - 1) * count)
                     .Take(count)
+                    .Select(selector)
                     .ToList();
                 result.Metadata.Total = query.Count();
                 result.Data = resultList;

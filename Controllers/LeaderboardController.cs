@@ -53,7 +53,7 @@ namespace BeatLeader_Server.Controllers
                 leaderboard.Song = song;
                 Int32 iddd = Int32.Parse(id.Substring(id.Length - 2, 1));
                 IEnumerable<DifficultyDescription> difficulties = song.Difficulties.Where(x => x.Mode == Int32.Parse(id.Substring(id.Length - 1, 1)));
-                leaderboard.Difficulty = difficulties.First(el => el.Value == Int32.Parse(id.Substring(id.Length - 2, 1)));
+                leaderboard.Difficulty = difficulties.FirstOrDefault(el => el.Value == Int32.Parse(id.Substring(id.Length - 2, 1)));
                 if (leaderboard.Difficulty == null) {
                     return NotFound();
                 }
