@@ -35,12 +35,12 @@ namespace BeatLeader_Server.Controllers
             Player? player = await _context.Players.Include(p => p.ScoreStats).Include(p => p.Badges).FirstOrDefaultAsync(p => p.Id == userId);
             if (player == null)
             {
-                return NotFound();
+                return await GetLazy(id, false);
             }
             return player;
         }
 
-        public async Task<ActionResult<Player>> GetLazy(string id)
+        public async Task<ActionResult<Player>> GetLazy(string id, bool addToBase = true)
         {
             Player? player = await _context.Players.Include(p => p.ScoreStats).FirstOrDefaultAsync(p => p.Id == id);
 
@@ -65,8 +65,10 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
                 player.Id = id;
-                _context.Players.Add(player);
-                await _context.SaveChangesAsync();
+                if (addToBase) {
+                    _context.Players.Add(player);
+                    await _context.SaveChangesAsync();
+                }
             }
 
             return player;

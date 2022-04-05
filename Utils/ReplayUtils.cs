@@ -129,12 +129,16 @@ namespace BeatLeader_Server.Utils
 
         private static int HMD(string hmdName) {
             if (hmdName.Contains("Quest 2")) return 256;
+            if (hmdName.Contains("Quest_2")) return 256;
             if (hmdName.Contains("Vive Cosmos")) return 128;
+            if (hmdName.Contains("Vive_Cosmos")) return 128;
             if (hmdName.Contains("Index")) return 64;
             if (hmdName.Contains("Quest")) return 32;
             if (hmdName.Contains("Rift S")) return 16;
+            if (hmdName.Contains("Rift_S")) return 16;
             if (hmdName.Contains("Windows")) return 8;
             if (hmdName.Contains("Vive Pro")) return 4;
+            if (hmdName.Contains("Vive_Pro")) return 4;
             if (hmdName.Contains("Vive")) return 2;
             if (hmdName.Contains("Rift")) return 1;
 

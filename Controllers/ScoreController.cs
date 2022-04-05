@@ -15,13 +15,16 @@ namespace BeatLeader_Server.Controllers
     {
         private readonly AppContext _context;
         BlobContainerClient _containerClient;
+        PlayerController _playerController;
 
         public ScoreController(
             AppContext context,
             IOptions<AzureStorageConfig> config,
-            IWebHostEnvironment env)
+            IWebHostEnvironment env,
+            PlayerController playerController)
         {
             _context = context;
+            _playerController = playerController;
             if (env.IsDevelopment())
             {
                 _containerClient = new BlobContainerClient(config.Value.AccountName, config.Value.ReplaysContainerName);
@@ -266,7 +269,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/v3/scores/{hash}/{diff}/{mode}/{context}/{scope}/{method}")]
-        public ActionResult<ResponseWithMetadataAndSelection<ScoreResponse>> GetByHash3(
+        public async Task<ActionResult<ResponseWithMetadataAndSelection<ScoreResponse>>> GetByHash3(
             string hash,
             string diff,
             string mode,
@@ -277,10 +280,9 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int count = 8)
         {
-            Player? currentPlayer = _context.Players.Find(player);
-            if (currentPlayer == null)
-            {
-                return NotFound("Player was not found");
+            Player? currentPlayer = (await _playerController.Get(player)).Value;
+            if (currentPlayer == null) {
+               return NotFound();
             }
 
             var leaderboard = _context.Leaderboards.Include(el => el.Song).Include(el => el.Difficulty).Where(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
