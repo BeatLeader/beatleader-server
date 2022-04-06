@@ -75,6 +75,21 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
                 return AuthenticateResult.Fail("Login or password is not valid");
             }
             id = authInfo.Id.ToString();
+
+            int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+            AuthID? authID = dbContext.AuthIDs.FirstOrDefault(a => a.Id == id);
+            if (authID == null) {
+                authID = new AuthID {
+                    Id = id,
+                    Timestamp = timestamp
+                };
+                dbContext.AuthIDs.Add(authID);
+            } else {
+                authID.Timestamp = timestamp;
+                dbContext.AuthIDs.Update(authID);
+            }
+
+            dbContext.SaveChanges();
         }
         else
         {

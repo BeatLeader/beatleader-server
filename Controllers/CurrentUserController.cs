@@ -43,10 +43,17 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/user/id")]
-        public string GetId()
+        public ActionResult<string> GetId()
         {
             string currentID = HttpContext.CurrentUserID();
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == Int64.Parse(currentID));
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+            if (intId == 1 || (intId > 2050 && intId < 2100)) {
+                AuthID? authID = _context.AuthIDs.FirstOrDefault(a => a.Id == currentID);
+                if (authID == null) {
+                    return Redirect("/signout");
+                }
+            }
             return accountLink != null ? accountLink.SteamID : currentID;
         }
 
@@ -103,7 +110,7 @@ namespace BeatLeader_Server.Controllers
         [HttpPatch("~/user/avatar")]
         public async Task<ActionResult> ChangeAvatar()
         {
-            string userId = GetId();
+            string userId = GetId().Value;
             var player = await _context.Players.FindAsync(userId);
 
             if (player == null)
@@ -139,7 +146,7 @@ namespace BeatLeader_Server.Controllers
         [HttpPatch("~/user/name")]
         public async Task<ActionResult> ChangeName([FromQuery] string newName)
         {
-            string userId = GetId();
+            string userId = GetId().Value;
             var player = await _context.Players.FindAsync(userId);
 
             if (player == null)
