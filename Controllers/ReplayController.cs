@@ -58,7 +58,11 @@ namespace BeatLeader_Server.Controllers
         [HttpPost("~/replay"), DisableRequestSizeLimit]
         public async Task<ActionResult<Score>> PostSteamReplay([FromQuery] string ticket)
         {
-            return await PostReplay(await SteamHelper.GetPlayerIDFromTicket(ticket));
+            (string? id, string? error) = await SteamHelper.GetPlayerIDFromTicket(ticket);
+            if (id == null && error != null) {
+                return Unauthorized(error);
+            }
+            return await PostReplay(id);
         }
 
         [HttpPut("~/replayoculus"), DisableRequestSizeLimit]
