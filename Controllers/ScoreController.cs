@@ -72,15 +72,34 @@ namespace BeatLeader_Server.Controllers
             {
                 return Unauthorized();
             }
-            var allScores = _context.Scores.Include(s => s.Leaderboard).ThenInclude(l => l.Difficulty).Where(s => s.Leaderboard.Difficulty.Stars != null && s.Leaderboard.Difficulty.Stars != 0).ToList();
-            foreach (Score s in allScores)
-            {
-                s.Accuracy = (float)s.ModifiedScore / (float)ReplayUtils.MaxScoreForNote(s.Leaderboard.Difficulty.Notes);
-                s.Pp = (float)s.Accuracy * (float)s.Leaderboard.Difficulty.Stars * 44;
-                _context.Scores.Update(s);
-                await _context.SaveChangesAsync();
+            var allLeaderboards = _context.Leaderboards.Include(s => s.Scores).Include(l => l.Difficulty).ToList();
+            foreach (Leaderboard leaderboard in allLeaderboards) {
+                var allScores = leaderboard.Scores;
+                foreach (Score s in allScores)
+                {
+                    s.ModifiedScore = (int)((float)s.BaseScore * ReplayUtils.GetTotalMultiplier(s.Modifiers));
+                    s.Accuracy = (float)s.ModifiedScore / (float)ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
+                    if (leaderboard.Difficulty.Ranked) {
+                        s.Pp = (float)s.Accuracy * (float)leaderboard.Difficulty.Stars * 44;
+                    }
+                }
+
+                var rankedScores = leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();
+                foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
+                {
+                    s.Rank = i + 1;
+                    _context.Scores.Update(s);
+                }
+                leaderboard.Scores = rankedScores;
+                _context.Leaderboards.Update(leaderboard);
+                try {
+                    await _context.SaveChangesAsync();
+                } catch (Exception e) {
+                    _context.RejectChanges();
+                    int l = 0;
+                }
             }
-            
+
             return Ok();
         }
 

@@ -459,21 +459,17 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> RefreshPlayer(string id)
         {
+            string currentId = HttpContext.CurrentUserID();
+            Player? currentPlayer = _context.Players.Find(currentId);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
             Player? p = _context.Players.Find(id);
             if (p == null)
             {
                 return NotFound();
             }
-
-            var scores = _context.Scores.Where(s => s.PlayerId == id).Include(s => s.Leaderboard).ThenInclude(l => l.Difficulty).Where(s => s.Leaderboard.Difficulty.Stars != null && s.Leaderboard.Difficulty.Stars != 0).ToList();
-            foreach (Score s in scores)
-            {
-                s.Accuracy = (float)s.ModifiedScore / (float)ReplayUtils.MaxScoreForNote(s.Leaderboard.Difficulty.Notes);
-                s.Pp = (float)s.Accuracy * (float)s.Leaderboard.Difficulty.Stars * 44;
-                _context.Scores.Update(s);
-            }
-
-            _context.SaveChanges();
 
             if (p.ScoreStats == null)
                 {
@@ -501,7 +497,6 @@ namespace BeatLeader_Server.Controllers
             _context.SaveChanges();
 
             return Ok();
-            
         }
 
         [HttpGet("~/players/refresh")]
@@ -514,35 +509,13 @@ namespace BeatLeader_Server.Controllers
             {
                 return Unauthorized();
             }
-            var ranked = _context.Players.Include(p => p.ScoreStats).ToList();
+            var players = _context.Players.ToList();
             Dictionary<string, int> countries = new Dictionary<string, int>();
-            foreach (Player p in ranked)
+            foreach (Player p in players)
             {
-                if (p.ScoreStats == null)
-                {
-                    p.ScoreStats = new PlayerScoreStats();
-                    _context.Stats.Add(p.ScoreStats);
-                }
-                var allScores = _context.Scores.Where(s => s.PlayerId == p.Id);
-                var rankedScores = allScores.Where(s => s.Pp != 0);
-                p.ScoreStats.TotalPlayCount = allScores.Count();
-                
-                p.ScoreStats.RankedPlayCount = rankedScores.Count();
-                if (p.ScoreStats.TotalPlayCount > 0)
-                {
-                    p.ScoreStats.TotalScore = allScores.Sum(s => s.ModifiedScore);
-                    p.ScoreStats.AverageAccuracy = allScores.Average(s => s.Accuracy);
-                }
-                
-                if (p.ScoreStats.RankedPlayCount > 0)
-                {
-                    p.ScoreStats.AverageRankedAccuracy = rankedScores.Average(s => s.Accuracy);
-                }
-                
-                _context.Stats.Update(p.ScoreStats);
-                _context.RecalculatePP(p);
+                await RefreshPlayer(p.Id);
             }
-            ranked = ranked.OrderByDescending(t => t.Pp).ToList();
+            var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
             foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
             {
                 p.Rank = i + 1;
@@ -555,9 +528,36 @@ namespace BeatLeader_Server.Controllers
                 countries[p.Country]++;
 
                 _context.Players.Update(p);
-
-                await _context.SaveChangesAsync();
             }
+            await _context.SaveChangesAsync();
+            var playersWithStats = _context.Players.Include(p => p.ScoreStats).ToList();
+
+            foreach (Player p in playersWithStats)
+            {
+                if (p.ScoreStats == null)
+                {
+                    p.ScoreStats = new PlayerScoreStats();
+                    _context.Stats.Add(p.ScoreStats);
+                }
+                var allScores = _context.Scores.Where(s => s.PlayerId == p.Id);
+                var rankedScores = allScores.Where(s => s.Pp != 0);
+                p.ScoreStats.TotalPlayCount = allScores.Count();
+
+                p.ScoreStats.RankedPlayCount = rankedScores.Count();
+                if (p.ScoreStats.TotalPlayCount > 0)
+                {
+                    p.ScoreStats.TotalScore = allScores.Sum(s => s.ModifiedScore);
+                    p.ScoreStats.AverageAccuracy = allScores.Average(s => s.Accuracy);
+                }
+
+                if (p.ScoreStats.RankedPlayCount > 0)
+                {
+                    p.ScoreStats.AverageRankedAccuracy = rankedScores.Average(s => s.Accuracy);
+                }
+
+                _context.Stats.Update(p.ScoreStats);
+            }
+            await _context.SaveChangesAsync();
 
             return Ok();
         }

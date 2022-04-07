@@ -195,15 +195,15 @@ namespace BeatLeader_Server.Utils
         {
             return new Dictionary<string, float>
             {
-                ["DA"] = 0.07f,
-                ["FS"] = 0.08f,
-                ["SS"] = -0.03f,
-                ["SF"] = 0.1f,
-                ["GN"] = 0.11f,
+                ["DA"] = 0.01f,
+                ["FS"] = 0.04f,
+                ["SS"] = -0.3f,
+                ["SF"] = 0.08f,
+                ["GN"] = 0.05f,
                 ["NA"] = -0.3f,
-                ["NB"] = -0.1f,
+                ["NB"] = -0.2f,
                 ["NF"] = -0.5f,
-                ["NO"] = -0.05f
+                ["NO"] = -0.2f
             };
         }
 

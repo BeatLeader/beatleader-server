@@ -23,5 +23,23 @@ namespace BeatLeader_Server
         public DbSet<ScoreStatistic> ScoreStatistics { get; set; }
         public DbSet<CronTimestamps> cronTimestamps { get; set; }
         public DbSet<Badge> Badges { get; set; }
+
+        public void RejectChanges()
+        {
+            foreach (var entry in ChangeTracker.Entries())
+            {
+                switch (entry.State)
+                {
+                    case EntityState.Modified:
+                    case EntityState.Deleted:
+                        entry.State = EntityState.Modified; //Revert changes made to deleted entity.
+                        entry.State = EntityState.Unchanged;
+                        break;
+                    case EntityState.Added:
+                        entry.State = EntityState.Detached;
+                        break;
+                }
+            }
+        }
     }
 }
