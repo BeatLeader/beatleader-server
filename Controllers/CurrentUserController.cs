@@ -51,12 +51,7 @@ namespace BeatLeader_Server.Controllers
             string currentID = HttpContext.CurrentUserID();
             long intId = Int64.Parse(currentID);
             AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-            if (intId == 1 || (intId > 2050 && intId < 2100)) {
-                AuthID? authID = _context.AuthIDs.FirstOrDefault(a => a.Id == currentID);
-                if (authID == null) {
-                    return Redirect("/signout");
-                }
-            }
+            
             return accountLink != null ? accountLink.SteamID : currentID;
         }
 
@@ -299,11 +294,17 @@ namespace BeatLeader_Server.Controllers
             if (id == null) {
                 return NotFound();
             }
-            return _context.FailedScores.Where(t => t.PlayerId == id).Include(lb => lb.Player).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).ToList();
+            Player? currentPlayer = _context.Players.Find(id);
+            if (currentPlayer != null && currentPlayer.Role.Contains("admin"))
+            {
+                return _context.FailedScores.Include(lb => lb.Player).Take(3).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).ToList();
+            } else {
+                return _context.FailedScores.Where(t => t.PlayerId == id).Take(3).Include(lb => lb.Player).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).ToList();
+            }
         }
 
         [HttpPost("~/user/failedscore/remove")]
-        public async Task<ActionResult<IEnumerable<FailedScore>>> RemoveFailedScore([FromQuery] int id)
+        public async Task<ActionResult> RemoveFailedScore([FromQuery] int id)
         {
             string? playerId = GetId().Value;
             if (playerId == null)
@@ -321,21 +322,25 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpPost("~/user/failedscore/retry")]
-        public async Task<ActionResult<IEnumerable<FailedScore>>> RetryFailedScore([FromQuery] int id)
+        public async Task<ActionResult> RetryFailedScore([FromQuery] int id)
         {
             string? playerId = GetId().Value;
             if (playerId == null)
             {
                 return NotFound();
             }
-            var score = _context.FailedScores.FirstOrDefault(t => t.PlayerId == playerId && t.Id == id);
+            Player? currentPlayer = _context.Players.Find(playerId);
+            FailedScore? score;
+            if (currentPlayer != null && currentPlayer.Role.Contains("admin"))
+            {
+                score = _context.FailedScores.FirstOrDefault(t => t.Id == id);
+            } else {
+                score = _context.FailedScores.FirstOrDefault(t => t.PlayerId == playerId && t.Id == id);
+            }
             if (score == null)
             {
                 return NotFound();
             }
-
-            _context.FailedScores.Remove(score);
-            _context.SaveChanges();
 
             string? name = score.Replay.Split("/").LastOrDefault();
             if (name == null)
@@ -343,7 +348,7 @@ namespace BeatLeader_Server.Controllers
                 return Ok();
             }
 
-            await _replayController.PostReplayFromCDN(playerId, name);
+            await _replayController.PostReplayFromCDN(score.PlayerId, name, HttpContext);
 
             return Ok();
         }

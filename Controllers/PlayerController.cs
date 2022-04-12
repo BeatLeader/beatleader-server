@@ -32,7 +32,7 @@ namespace BeatLeader_Server.Controllers
             } catch {}
             AccountLink? link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
             string userId = (link != null ? link.SteamID : id);
-            Player? player = await _context.Players.Include(p => p.ScoreStats).Include(p => p.Badges).FirstOrDefaultAsync(p => p.Id == userId);
+            Player? player = await _context.Players.Include(p => p.ScoreStats).Include(p => p.Badges).Include(p => p.StatsHistory).FirstOrDefaultAsync(p => p.Id == userId);
             if (player == null)
             {
                 return await GetLazy(id, false);
@@ -380,10 +380,25 @@ namespace BeatLeader_Server.Controllers
             };
         }
 
-        [HttpGet("~/players/count")]
-        public async Task<ActionResult<int>> GetPlayers()
+        private string GenerateListString(string current, int value) {
+            var histories = current.Length == 0 ? new string[0] : current.Split(",");
+            if (histories.Length == 50)
+            {
+                histories = histories.Skip(1).Take(49).ToArray();
+            }
+            histories = histories.Append(value.ToString()).ToArray();
+            return string.Join(",", histories);
+        }
+
+        private string GenerateListString(string current, float value)
         {
-            return _context.Players.Count();
+            var histories = current.Length == 0 ? new string[0] : current.Split(",");
+            if (histories.Length == 50)
+            {
+                histories = histories.Skip(1).Take(49).ToArray();
+            }
+            histories = histories.Append(value.ToString("#.##")).ToArray();
+            return string.Join(",", histories);
         }
 
         [HttpGet("~/players/sethistories")]
@@ -406,16 +421,33 @@ namespace BeatLeader_Server.Controllers
                 cronTimestamps.HistoriesTimestamp = timestamp;
                 _context.Add(cronTimestamps);
             }
-            var ranked = _context.Players.Include(p => p.ScoreStats).ToList();
+            var ranked = _context.Players.Include(p => p.ScoreStats).Include(p => p.StatsHistory).ToList();
             foreach (Player p in ranked)
             {
-                var histories = p.Histories.Length == 0 ? new string[0] : p.Histories.Split(",");
-                if (histories.Length == 7)
-                {
-                    histories = histories.Skip(1).Take(6).ToArray();
+                p.Histories = GenerateListString(p.Histories, p.Rank);
+
+                var stats = p.ScoreStats;
+                var statsHistory = p.StatsHistory;
+                if (statsHistory == null) {
+                    statsHistory = new PlayerStatsHistory();
                 }
-                histories = histories.Append(p.Rank.ToString()).ToArray();
-                p.Histories = string.Join(",", histories);
+
+                statsHistory.Pp = GenerateListString(statsHistory.Pp, p.Pp);
+                statsHistory.Rank = p.Histories;
+                statsHistory.CountryRank = GenerateListString(statsHistory.CountryRank, p.CountryRank);
+                statsHistory.TotalScore = GenerateListString(statsHistory.TotalScore, stats.TotalScore);
+                statsHistory.AverageRankedAccuracy = GenerateListString(statsHistory.AverageRankedAccuracy, stats.AverageRankedAccuracy);
+                statsHistory.TopAccuracy = GenerateListString(statsHistory.TopAccuracy, stats.TopAccuracy);
+                statsHistory.TopPp = GenerateListString(statsHistory.TopPp, stats.TopPp);
+                statsHistory.AverageAccuracy = GenerateListString(statsHistory.AverageAccuracy, stats.AverageAccuracy);
+                statsHistory.MedianAccuracy = GenerateListString(statsHistory.MedianAccuracy, stats.MedianAccuracy);
+                statsHistory.MedianRankedAccuracy = GenerateListString(statsHistory.MedianRankedAccuracy, stats.MedianRankedAccuracy);
+                statsHistory.TotalPlayCount = GenerateListString(statsHistory.TotalPlayCount, stats.TotalPlayCount);
+                statsHistory.RankedPlayCount = GenerateListString(statsHistory.RankedPlayCount, stats.RankedPlayCount);
+                statsHistory.ReplaysWatched = GenerateListString(statsHistory.ReplaysWatched, stats.ReplaysWatched);
+
+                p.StatsHistory = statsHistory;
+
                 _context.Players.Update(p);
             }
             await _context.SaveChangesAsync();
@@ -473,28 +505,32 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (p.ScoreStats == null)
-                {
-                    p.ScoreStats = new PlayerScoreStats();
-                    _context.Stats.Add(p.ScoreStats);
-                }
-                var allScores = _context.Scores.Where(s => s.PlayerId == p.Id);
-                var rankedScores = allScores.Where(s => s.Pp != 0);
-                p.ScoreStats.TotalPlayCount = allScores.Count();
+            {
+                p.ScoreStats = new PlayerScoreStats();
+                _context.Stats.Add(p.ScoreStats);
+            }
+            var allScores = _context.Scores.Where(s => s.PlayerId == p.Id);
+            var rankedScores = allScores.Where(s => s.Pp != 0);
+            p.ScoreStats.TotalPlayCount = allScores.Count();
 
-                p.ScoreStats.RankedPlayCount = rankedScores.Count();
-                if (p.ScoreStats.TotalPlayCount > 0)
-                {
-                    p.ScoreStats.TotalScore = allScores.Sum(s => s.ModifiedScore);
-                    p.ScoreStats.AverageAccuracy = allScores.Average(s => s.Accuracy);
-                }
+            p.ScoreStats.RankedPlayCount = rankedScores.Count();
+            if (p.ScoreStats.TotalPlayCount > 0)
+            {
+                p.ScoreStats.TotalScore = allScores.Sum(s => s.ModifiedScore);
+                p.ScoreStats.AverageAccuracy = allScores.Average(s => s.Accuracy);
+                p.ScoreStats.MedianAccuracy = allScores.OrderByDescending(s => s.Accuracy).ElementAt(allScores.Count() / 2).Accuracy;
+            }
 
-                if (p.ScoreStats.RankedPlayCount > 0)
-                {
-                    p.ScoreStats.AverageRankedAccuracy = rankedScores.Average(s => s.Accuracy);
-                }
+            if (p.ScoreStats.RankedPlayCount > 0)
+            {
+                p.ScoreStats.AverageRankedAccuracy = rankedScores.Average(s => s.Accuracy);
+                p.ScoreStats.MedianRankedAccuracy = rankedScores.OrderByDescending(s => s.Accuracy).ElementAt(rankedScores.Count() / 2).Accuracy;
+                p.ScoreStats.TopAccuracy = rankedScores.Max(s => s.Accuracy);
+                p.ScoreStats.TopPp = rankedScores.Max(s => s.Pp);
+            }
 
-                _context.Stats.Update(p.ScoreStats);
-                _context.RecalculatePP(p);
+            _context.Stats.Update(p.ScoreStats);
+            _context.RecalculatePP(p);
             _context.SaveChanges();
 
             return Ok();

@@ -22,6 +22,7 @@ namespace BeatLeader_Server
         public DbSet<AuthID> AuthIDs { get; set; }
         public DbSet<AccountLink> AccountLinks { get; set; }
         public DbSet<ScoreStatistic> ScoreStatistics { get; set; }
+        public DbSet<PlayerStatsHistory> StatsHistory { get; set; }
         public DbSet<CronTimestamps> cronTimestamps { get; set; }
         public DbSet<Badge> Badges { get; set; }
 

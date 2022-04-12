@@ -69,7 +69,6 @@ namespace BeatLeader_Server.Controllers
             return Challenge(new AuthenticationProperties { RedirectUri = redirectUrl }, provider);
         }
 
-        [NonAction]
         public async Task<IActionResult> SteamLoginCallback(string returnUrl, int? migrateProfile = null)
         {
             string userId = HttpContext.CurrentUserID();

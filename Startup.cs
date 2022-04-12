@@ -42,11 +42,11 @@ namespace BeatLeader_Server {
                 options.Cookie.Domain = ".beatleader.xyz";
                 options.Cookie.HttpOnly = false;
             })
-            //.AddSteamTicket(options =>
-            //{
-            //    options.Key = "B0A7AF33E804D0ABBDE43BA9DD5DAB48";
-            //    options.ApplicationID = "620980";
-            //})
+            .AddSteamTicket(options =>
+            {
+                options.Key = "B0A7AF33E804D0ABBDE43BA9DD5DAB48";
+                options.ApplicationID = "620980";
+            })
             .AddOculus(options =>
             {
                 options.Key = "B0A7AF33E804D0ABBDE43BA9DD5DAB48";

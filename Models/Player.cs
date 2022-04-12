@@ -23,6 +23,7 @@
         public float AllTime { get; set; }
 
         public PlayerScoreStats ScoreStats { get; set; } = new PlayerScoreStats();
+        public PlayerStatsHistory? StatsHistory { get; set; }
 
         public ICollection<Badge>? Badges { get; set; }
 
