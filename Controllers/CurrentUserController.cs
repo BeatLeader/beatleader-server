@@ -2,6 +2,7 @@ using Azure.Identity;
 using Azure.Storage.Blobs;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -207,7 +208,7 @@ namespace BeatLeader_Server.Controllers
 
             if (currentPlayer == null || migratedToPlayer == null)
             {
-                return BadRequest("Could not find one of the players =(");
+                return BadRequest("Could not find one of the players =( Make sure you posted at least one score from the mod.");
             }
 
             if (migratedToPlayer.Country == "Not set" && currentPlayer.Country != "Not set")
@@ -248,7 +249,52 @@ namespace BeatLeader_Server.Controllers
 
             _context.Players.Remove(currentPlayer);
             await _context.SaveChangesAsync();
-            await _playerController.RefreshPlayers();
+
+            return Ok();
+        }
+
+        [HttpPatch("~/user/country")]
+        public async Task<ActionResult> ChangeCountry([FromQuery] string newCountry)
+        {
+            string userId = GetId().Value;
+            var player = await _context.Players.FindAsync(userId);
+
+            if (player == null)
+            {
+                return NotFound();
+            }
+            if (!PlayerUtils.AllowedCountries().Contains(newCountry))
+            {
+                return BadRequest("This country code is not allowed.");
+            }
+
+            int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+            var lastCountryChange = _context.CountryChanges.FirstOrDefault(el => el.Id == player.Id);
+            if (lastCountryChange != null && (timestamp - lastCountryChange.Timestamp) < 60 * 60 * 24 * 30)
+            {
+                return BadRequest("Error. You can change country after " + (int)((timestamp - lastCountryChange.Timestamp) / 60 * 60 * 24) + " day(s)");
+            }
+            if (lastCountryChange == null) {
+                lastCountryChange = new AuthID { Id = player.Id };
+                _context.CountryChanges.Add(lastCountryChange);
+            }
+            lastCountryChange.Timestamp = timestamp;
+
+            var oldCountryList = _context.Players.Where(p => p.Country == player.Country && p.Id != player.Id).OrderByDescending(p => p.Pp).ToList();
+            foreach ((int i, Player p) in oldCountryList.Select((value, i) => (i, value)))
+            {
+                p.CountryRank = i + 1;
+            }
+
+            player.Country = newCountry;
+
+            var newCountryList = _context.Players.Where(p => p.Country == newCountry).OrderByDescending(p => p.Pp).ToList();
+            foreach ((int i, Player p) in newCountryList.Select((value, i) => (i, value)))
+            {
+                p.CountryRank = i + 1;
+            }
+
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
@@ -311,7 +357,14 @@ namespace BeatLeader_Server.Controllers
             {
                 return NotFound();
             }
-            var score = _context.FailedScores.FirstOrDefault(t => t.PlayerId == playerId && t.Id == id);
+            Player? currentPlayer = _context.Players.Find(id);
+            FailedScore? score;
+            if (currentPlayer != null && currentPlayer.Role.Contains("admin"))
+            {
+                score = _context.FailedScores.FirstOrDefault(t => t.Id == id);
+            } else {
+                score = _context.FailedScores.FirstOrDefault(t => t.PlayerId == playerId && t.Id == id);
+            }
             if (score == null) {
                 return NotFound();
             }

@@ -160,6 +160,7 @@ namespace BeatLeader_Server.Controllers
             Score? currentScore = leaderboard.Scores.FirstOrDefault(el => el.PlayerId == replay.info.playerID);
             if (currentScore != null && currentScore.ModifiedScore >= (int)(((float)replay.info.score) * ReplayUtils.GetTotalMultiplier(replay.info.modifiers)))
             {
+                transaction.Commit();
                 return BadRequest("Score is lower than existing one");
             }
 
