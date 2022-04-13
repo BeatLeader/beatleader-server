@@ -272,7 +272,7 @@ namespace BeatLeader_Server.Controllers
             var lastCountryChange = _context.CountryChanges.FirstOrDefault(el => el.Id == player.Id);
             if (lastCountryChange != null && (timestamp - lastCountryChange.Timestamp) < 60 * 60 * 24 * 30)
             {
-                return BadRequest("Error. You can change country after " + (int)((timestamp - lastCountryChange.Timestamp) / 60 * 60 * 24) + " day(s)");
+                return BadRequest("Error. You can change country after " + (int)(30 - (timestamp - lastCountryChange.Timestamp) / 60 * 60 * 24) + " day(s)");
             }
             if (lastCountryChange == null) {
                 lastCountryChange = new AuthID { Id = player.Id };
@@ -287,8 +287,9 @@ namespace BeatLeader_Server.Controllers
             }
 
             player.Country = newCountry;
+            _context.Players.Update(player);
 
-            var newCountryList = _context.Players.Where(p => p.Country == newCountry).OrderByDescending(p => p.Pp).ToList();
+            var newCountryList = _context.Players.Where(p => p.Country == newCountry || p.Id == player.Id).OrderByDescending(p => p.Pp).ToList();
             foreach ((int i, Player p) in newCountryList.Select((value, i) => (i, value)))
             {
                 p.CountryRank = i + 1;
@@ -357,12 +358,14 @@ namespace BeatLeader_Server.Controllers
             {
                 return NotFound();
             }
-            Player? currentPlayer = _context.Players.Find(id);
+            Player? currentPlayer = _context.Players.Find(playerId);
             FailedScore? score;
             if (currentPlayer != null && currentPlayer.Role.Contains("admin"))
             {
                 score = _context.FailedScores.FirstOrDefault(t => t.Id == id);
-            } else {
+            }
+            else
+            {
                 score = _context.FailedScores.FirstOrDefault(t => t.PlayerId == playerId && t.Id == id);
             }
             if (score == null) {

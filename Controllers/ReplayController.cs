@@ -401,36 +401,35 @@ namespace BeatLeader_Server.Controllers
             Player player = score.Player;
             
             player.ScoreStats.TotalScore -= score.ModifiedScore;
-                if (player.ScoreStats.TotalPlayCount == 1)
+            if (player.ScoreStats.TotalPlayCount == 1)
+            {
+                player.ScoreStats.AverageAccuracy = 0.0f;
+            }
+            else
+            {
+                player.ScoreStats.AverageAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, score.Accuracy);
+            }
+
+            if (leaderboard.Difficulty.Ranked)
+            {
+                if (player.ScoreStats.RankedPlayCount == 1)
                 {
-                    player.ScoreStats.AverageAccuracy = 0.0f;
+                    player.ScoreStats.AverageRankedAccuracy = 0.0f;
                 }
                 else
                 {
-                    player.ScoreStats.AverageAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, score.Accuracy);
+                    player.ScoreStats.AverageRankedAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, score.Accuracy);
                 }
-
-                if (leaderboard.Difficulty.Ranked)
-                {
-                    if (player.ScoreStats.RankedPlayCount == 1)
-                    {
-                        player.ScoreStats.AverageRankedAccuracy = 0.0f;
-                    }
-                    else
-                    {
-                        player.ScoreStats.AverageRankedAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, score.Accuracy);
-                    }
-                }
-                try
-                {
-                    leaderboard.Scores.Remove(score);
-                }
-                catch (Exception)
-                {
-                    leaderboard.Scores = new List<Score>(leaderboard.Scores);
-                    leaderboard.Scores.Remove(score);
-                }
-            
+            }
+            try
+            {
+                leaderboard.Scores.Remove(score);
+            }
+            catch (Exception)
+            {
+                leaderboard.Scores = new List<Score>(leaderboard.Scores);
+                leaderboard.Scores.Remove(score);
+            }
 
             if (previousScore == null) {
                 if (leaderboard.Difficulty.Ranked)

@@ -599,6 +599,38 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpGet("~/players/rankrefresh")]
+        [Authorize]
+        public async Task<ActionResult> RefreshRanks()
+        {
+            string currentId = HttpContext.CurrentUserID();
+            Player? currentPlayer = _context.Players.Find(currentId);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+            var players = _context.Players.ToList();
+            Dictionary<string, int> countries = new Dictionary<string, int>();
+            
+            var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
+            foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
+            {
+                p.Rank = i + 1;
+                if (!countries.ContainsKey(p.Country))
+                {
+                    countries[p.Country] = 1;
+                }
+
+                p.CountryRank = countries[p.Country];
+                countries[p.Country]++;
+
+                _context.Players.Update(p);
+            }
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
         [HttpPut("~/badge")]
         [Authorize]
         public ActionResult<Badge> CreateBadge([FromQuery] string description, [FromQuery] string image) {
