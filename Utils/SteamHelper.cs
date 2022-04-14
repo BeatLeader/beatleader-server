@@ -7,9 +7,12 @@ namespace BeatLeader_Server.Utils
 {
     public class SteamHelper
     {
-        public static Task<(string?, string?)> GetPlayerIDFromTicket(string ticket)
+        public static Task<(string?, string?)> GetPlayerIDFromTicket(string ticket, IConfiguration configuration)
         {
-            string url = "https://api.steampowered.com/ISteamUserAuth/AuthenticateUserTicket/v0001?appid=620980&key=B0A7AF33E804D0ABBDE43BA9DD5DAB48&ticket=" + ticket;
+            string steamKey = configuration.GetValue<string>("SteamKey");
+            string steamApi = configuration.GetValue<string>("SteamApi");
+
+            string url = steamApi + "/ISteamUserAuth/AuthenticateUserTicket/v1?appid=620980&key=" + steamKey  + "&ticket=" + ticket;
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
             request.Method = "GET";
             request.Proxy = null;

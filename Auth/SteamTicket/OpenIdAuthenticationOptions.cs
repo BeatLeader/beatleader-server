@@ -14,6 +14,7 @@ public class SteamTicketAuthenticationOptions : RemoteAuthenticationOptions
     {
         ApplicationID = "";
         Key = "";
+        ApiUrl = "";
         CallbackPath = "/id";
         ForwardAuthenticate = null;
     }
@@ -32,4 +33,6 @@ public class SteamTicketAuthenticationOptions : RemoteAuthenticationOptions
     /// or <see cref="ConfigurationManager"/> are set.
     /// </summary>
     public String Key { get; set; }
+
+    public String ApiUrl { get; set; }
 }

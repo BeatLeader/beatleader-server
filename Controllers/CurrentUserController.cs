@@ -117,7 +117,7 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            string fileName = userId + ".png";
+            string fileName = userId;
             try
             {
                 await _assetsContainerClient.CreateIfNotExistsAsync();
@@ -126,8 +126,11 @@ namespace BeatLeader_Server.Controllers
                 await Request.Body.CopyToAsync(ms);
                 ms.Position = 0;
 
+                (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(ms);
+                fileName += extension;
+
                 await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
-                await _assetsContainerClient.UploadBlobAsync(fileName, ms);
+                await _assetsContainerClient.UploadBlobAsync(fileName, stream);
             }
             catch (Exception)
             {
@@ -136,6 +139,49 @@ namespace BeatLeader_Server.Controllers
 
             player.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://cdn.beatleader.xyz/assets/") + fileName;
             _context.Players.Update(player);
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpGet("~/players/avatarsrefresh")]
+        public async Task<ActionResult> ResizeAvatars([FromQuery] int hundred)
+        {
+            string userId = GetId().Value;
+            var player = await _context.Players.FindAsync(userId);
+
+            if (player == null || !player.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var players = _context.Players.Where(p => p.Avatar.Contains("cdn.beatleader.xyz") && !p.Avatar.Contains("avatar.png")).Skip(hundred * 100).Take(100).ToList();
+
+            foreach (var p in players)
+            {
+                string fileName = p.Id;
+                try
+                {
+                    var ms = new MemoryStream(5);
+                    _assetsContainerClient.GetBlobClient(p.Avatar.Split("/").Last()).DownloadTo(ms);
+
+                    ms.Position = 0;
+
+                    (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(ms);
+                    fileName += extension;
+
+                    await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
+                    await _assetsContainerClient.UploadBlobAsync(fileName, stream);
+                }
+                catch (Exception)
+                {
+                    return BadRequest("Error saving avatar");
+                }
+
+                p.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://cdn.beatleader.xyz/assets/") + fileName;
+                _context.Players.Update(p);
+            }
 
             await _context.SaveChangesAsync();
 

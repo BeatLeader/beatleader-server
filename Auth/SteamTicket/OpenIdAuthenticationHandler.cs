@@ -39,7 +39,7 @@ public partial class SteamTicketAuthenticationHandler<TOptions> : Authentication
             }))();
             return task2;
         } else {
-            return MakeAsyncRequest("https://api.steampowered.com/ISteamUserAuth/AuthenticateUserTicket/v0001?appid=" + Options.ApplicationID + "&key=" + Options.Key + "&ticket=" + Request.Query["ticket"].First(), "");
+            return MakeAsyncRequest(Options.ApiUrl + "/ISteamUserAuth/AuthenticateUserTicket/v1?appid=" + Options.ApplicationID + "&key=" + Options.Key + "&ticket=" + Request.Query["ticket"].First(), "");
         }
     }
 

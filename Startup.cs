@@ -19,15 +19,22 @@ namespace BeatLeader_Server {
 
     public class Startup {
         static string MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
-        public Startup (IConfiguration configuration)
+        public Startup (IConfiguration configuration, IWebHostEnvironment env)
         {
             Configuration = configuration;
+            Environment = env;
         }
 
         public IConfiguration Configuration { get; }
+        public IWebHostEnvironment Environment { get; }
 
         public void ConfigureServices (IServiceCollection services)
         {
+            string steamKey = Configuration.GetValue<string>("SteamKey");
+            string steamApi = Configuration.GetValue<string>("SteamApi");
+
+            string? cookieDomain = Configuration.GetValue<string>("CookieDomain");
+
             services.AddAuthentication (options => {
                 options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
             })
@@ -39,29 +46,33 @@ namespace BeatLeader_Server {
                     return Task.FromResult<object> (null);
                 };
                 options.Cookie.SameSite = SameSiteMode.None;
-                options.Cookie.Domain = ".beatleader.xyz";
+                if (cookieDomain != null) {
+                    options.Cookie.Domain = cookieDomain;
+                }
                 options.Cookie.HttpOnly = false;
             })
             .AddSteamTicket(options =>
             {
-                options.Key = "B0A7AF33E804D0ABBDE43BA9DD5DAB48";
+                options.Key = steamKey;
                 options.ApplicationID = "620980";
+                options.ApiUrl = steamApi;
             })
-            .AddOculus(options =>
-            {
-                options.Key = "B0A7AF33E804D0ABBDE43BA9DD5DAB48";
-                options.ApplicationID = "620980";
-            })
+            .AddOculus(options => {})
             .AddSteam (options => {
-                options.ApplicationKey = "B0A7AF33E804D0ABBDE43BA9DD5DAB48";
+                options.ApplicationKey = steamKey;
                 options.Events.OnAuthenticated = ctx => {
                     /* ... */
                     return Task.CompletedTask;
                 };
             });
-
-
-            var connection = "Data Source = tcp:localhost,1433; Initial Catalog = BeatLeader_DEBUG; User Id = sa; Password = SuperStrong!";
+            
+            string connection;
+            if (Environment.IsDevelopment()) {
+                connection = "Data Source = tcp:localhost,1433; Initial Catalog = BeatLeader; User Id = sa; Password = SuperStrong!";
+            } else {
+                connection = Configuration.GetConnectionString("DefaultConnection");
+            }
+            
             services.AddDbContext<AppContext> (options => options.UseSqlServer (connection));
 
             services.Configure<AzureStorageConfig> (Configuration.GetSection ("AzureStorageConfig"));

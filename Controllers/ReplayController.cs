@@ -24,11 +24,14 @@ namespace BeatLeader_Server.Controllers
         SongController _songController;
         ScoreController _scoreController;
         IWebHostEnvironment _environment;
+        IConfiguration _configuration;
 
-		public ReplayController(
+
+        public ReplayController(
             AppContext context,
             IOptions<AzureStorageConfig> config, 
-            IWebHostEnvironment env, 
+            IWebHostEnvironment env,
+            IConfiguration configuration,
             SongController songController, 
             LeaderboardController leaderboardController, 
             PlayerController playerController,
@@ -41,7 +44,9 @@ namespace BeatLeader_Server.Controllers
             _scoreController = scoreController;
             _context = context;
             _environment = env;
-			if (env.IsDevelopment())
+            _configuration = configuration;
+
+            if (env.IsDevelopment())
 			{
 				_containerClient = new BlobContainerClient(config.Value.AccountName, config.Value.ReplaysContainerName);
                 SetPublicContainerPermissions(_containerClient);
@@ -59,7 +64,7 @@ namespace BeatLeader_Server.Controllers
         [HttpPost("~/replay"), DisableRequestSizeLimit]
         public async Task<ActionResult<ScoreController.ScoreResponse>> PostSteamReplay([FromQuery] string ticket)
         {
-            (string? id, string? error) = await SteamHelper.GetPlayerIDFromTicket(ticket);
+            (string? id, string? error) = await SteamHelper.GetPlayerIDFromTicket(ticket, _configuration);
             if (id == null && error != null) {
                 return Unauthorized(error);
             }
