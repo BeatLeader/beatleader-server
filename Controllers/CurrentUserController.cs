@@ -321,9 +321,11 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Error. You can change country after " + (int)(30 - (timestamp - lastCountryChange.Timestamp) / 60 * 60 * 24) + " day(s)");
             }
             if (lastCountryChange == null) {
-                lastCountryChange = new AuthID { Id = player.Id };
+                lastCountryChange = new CountryChange { Id = player.Id };
                 _context.CountryChanges.Add(lastCountryChange);
             }
+            lastCountryChange.OldCountry = player.Country;
+            lastCountryChange.NewCountry = newCountry;
             lastCountryChange.Timestamp = timestamp;
 
             var oldCountryList = _context.Players.Where(p => p.Country == player.Country && p.Id != player.Id).OrderByDescending(p => p.Pp).ToList();

@@ -25,7 +25,7 @@ namespace BeatLeader_Server
         public DbSet<PlayerStatsHistory> StatsHistory { get; set; }
         public DbSet<CronTimestamps> cronTimestamps { get; set; }
         public DbSet<Badge> Badges { get; set; }
-        public DbSet<AuthID> CountryChanges { get; set; }
+        public DbSet<CountryChange> CountryChanges { get; set; }
 
         public void RejectChanges()
         {

@@ -13,5 +13,14 @@ namespace BeatLeader_Server.Models
         public string Id { get; set; }
         public int Timestamp { get; set; }
     }
+
+    public class CountryChange
+    {
+        public string Id { get; set; }
+        public int Timestamp { get; set; }
+
+        public string OldCountry { get; set; }
+        public string NewCountry { get; set; }
+    }
 }
 

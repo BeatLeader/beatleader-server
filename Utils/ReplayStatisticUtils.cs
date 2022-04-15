@@ -365,8 +365,8 @@ namespace BeatLeader_Server.Utils
         public static (int, int, int) CutScoresForNote(NoteEvent note)
         {
             var cut = note.noteCutInfo;
-            double beforeCutRawScore = Math.Round(70 * cut.beforeCutRating);
-            double afterCutRawScore = Math.Round(30 * cut.afterCutRating);
+            double beforeCutRawScore = Math.Clamp(Math.Round(70 * cut.beforeCutRating), 0, 70);
+            double afterCutRawScore = Math.Clamp(Math.Round(30 * cut.afterCutRating), 0, 30);
             double num = 1 - Clamp(cut.cutDistanceToCenter / 0.3f);
             double cutDistanceRawScore = Math.Round(15 * num);
 
