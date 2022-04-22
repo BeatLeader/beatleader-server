@@ -19,6 +19,13 @@ namespace BeatLeader_Server.Models
         public T? Selection { get; set; }
     }
 
+    public class ResponseWithMetadataAndContainer<T, C>
+    {
+        public Metadata Metadata { get; set; } = new Metadata();
+        public IEnumerable<T> Data { get; set; } = new List<T>();
+        public C? Container { get; set; }
+    }
+
     public class RangeMetadata
     {
         public int First { get; set; }

@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20220419002615_FriendsAndClans")]
+    partial class FriendsAndClans
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -39,7 +41,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AccountLinks", (string)null);
+                    b.ToTable("AccountLinks");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.AccuracyTracker", b =>
@@ -91,7 +93,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AccuracyTracker", (string)null);
+                    b.ToTable("AccuracyTracker");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.AuthID", b =>
@@ -104,7 +106,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AuthIDs", (string)null);
+                    b.ToTable("AuthIDs");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.AuthInfo", b =>
@@ -125,7 +127,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Auths", (string)null);
+                    b.ToTable("Auths");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.AuthIP", b =>
@@ -145,7 +147,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AuthIPs", (string)null);
+                    b.ToTable("AuthIPs");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Badge", b =>
@@ -171,7 +173,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("Badges", (string)null);
+                    b.ToTable("Badges");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Clan", b =>
@@ -231,7 +233,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("Clans", (string)null);
+                    b.ToTable("Clans");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.CountryChange", b =>
@@ -252,7 +254,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CountryChanges", (string)null);
+                    b.ToTable("CountryChanges");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.CronTimestamps", b =>
@@ -268,24 +270,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("cronTimestamps", (string)null);
-                });
-
-            modelBuilder.Entity("BeatLeader_Server.Models.CustomMode", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("CustomModes", (string)null);
+                    b.ToTable("cronTimestamps");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.DifficultyDescription", b =>
@@ -349,7 +334,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("SongId");
 
-                    b.ToTable("DifficultyDescription", (string)null);
+                    b.ToTable("DifficultyDescription");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.FailedScore", b =>
@@ -431,7 +416,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("FailedScores", (string)null);
+                    b.ToTable("FailedScores");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.HitTracker", b =>
@@ -465,7 +450,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("HitTracker", (string)null);
+                    b.ToTable("HitTracker");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Leaderboard", b =>
@@ -488,7 +473,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("SongId");
 
-                    b.ToTable("Leaderboards", (string)null);
+                    b.ToTable("Leaderboards");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Player", b =>
@@ -562,7 +547,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("StatsHistoryId");
 
-                    b.ToTable("Players", (string)null);
+                    b.ToTable("Players");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.PlayerFriends", b =>
@@ -572,7 +557,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Friends", (string)null);
+                    b.ToTable("Friends");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.PlayerScoreStats", b =>
@@ -591,9 +576,6 @@ namespace BeatLeader_Server.Migrations
 
                     b.Property<float>("AverageRankedAccuracy")
                         .HasColumnType("real");
-
-                    b.Property<int>("DailyImprovements")
-                        .HasColumnType("int");
 
                     b.Property<float>("MedianAccuracy")
                         .HasColumnType("real");
@@ -640,7 +622,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Stats", (string)null);
+                    b.ToTable("Stats");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.PlayerStatsHistory", b =>
@@ -705,7 +687,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("StatsHistory", (string)null);
+                    b.ToTable("StatsHistory");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Playlist", b =>
@@ -734,7 +716,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Playlists", (string)null);
+                    b.ToTable("Playlists");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ReplayIdentification", b =>
@@ -753,7 +735,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ReplayIdentification", (string)null);
+                    b.ToTable("ReplayIdentification");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Score", b =>
@@ -841,7 +823,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("Scores", (string)null);
+                    b.ToTable("Scores");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ScoreGraphTracker", b =>
@@ -858,7 +840,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ScoreGraphTracker", (string)null);
+                    b.ToTable("ScoreGraphTracker");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ScoreRemovalLog", b =>
@@ -882,7 +864,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ScoreRemovalLogs", (string)null);
+                    b.ToTable("ScoreRemovalLogs");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ScoreStatistic", b =>
@@ -918,7 +900,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("WinTrackerId");
 
-                    b.ToTable("ScoreStatistics", (string)null);
+                    b.ToTable("ScoreStatistics");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Song", b =>
@@ -971,7 +953,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Songs", (string)null);
+                    b.ToTable("Songs");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.User", b =>
@@ -987,7 +969,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.WinTracker", b =>
@@ -1015,7 +997,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("WinTracker", (string)null);
+                    b.ToTable("WinTracker");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Badge", b =>

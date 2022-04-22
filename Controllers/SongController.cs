@@ -20,43 +20,6 @@ namespace BeatLeader_Server.Controllers
             _context = context;
         }
 
-        [HttpGet("~/map/id/{id}")]
-        public async Task<ActionResult<Song>> Get(string id)
-        {
-            Song? song = await _context.Songs.Include(song => song.Difficulties).FirstOrDefaultAsync(i => i.Id == id);
-
-            if (song == null) {
-                song = await SongById(id);
-                if (song == null) {
-                    return NotFound();
-                } else {
-                    Song? currentSong = await _context.Songs.Include(song => song.Difficulties).FirstOrDefaultAsync(i => i.Id == song.Id);
-                    if (currentSong != null)
-                    {
-                        return currentSong;
-                    }
-                    else
-                    {
-                        _context.Songs.Add(song);
-                    }
-                    
-                    try
-                    {
-                        await _context.SaveChangesAsync();
-                    }
-                    catch (Exception) {}
-                }
-            }
-
-            return song;
-        }
-
-        [NonAction]
-        public Task<Song?> SongById(string id)
-        {
-            return GetSongFromBeatSaver("https://api.beatsaver.com/maps/id/" + id);
-        }
-
         [HttpGet("~/map/hash/{hash}")]
         public async Task<ActionResult<Song>> GetHash(string hash)
         {
@@ -68,19 +31,12 @@ namespace BeatLeader_Server.Controllers
                 if (song == null) {
                     return NotFound();
                 } else {
-                    Song? currentSong = await _context.Songs.Include(song => song.Difficulties).FirstOrDefaultAsync(i => i.Id == song.Id);
-                    if (currentSong != null)
+                    if (await _context.Songs.FirstOrDefaultAsync(i => i.Id == song.Id) != null)
                     {
-                        return currentSong;
+                        song.Id += "x";
                     }
-                    else
-                    {
-                        _context.Songs.Add(song);
-                    }
-                    try
-                    {
-                        await _context.SaveChangesAsync();
-                    } catch (Exception) {}
+                    _context.Songs.Add(song);
+                    await _context.SaveChangesAsync();
                 }
             }
 

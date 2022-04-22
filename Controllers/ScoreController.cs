@@ -44,19 +44,101 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> DeleteScore(int id)
         {
             string currentId = HttpContext.CurrentUserID();
-            Player? currentPlayer = _context.Players.Find(currentId);
+            Player? currentPlayer = currentId != null ? _context.Players.Find(currentId) : null;
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
             }
-            var score = _context.Scores.Where(s => s.Id == id).Include(s => s.Leaderboard).FirstOrDefault();
+            var score = _context.Scores
+                .Where(s => s.Id == id)
+                .Include(s => s.Leaderboard)
+                .ThenInclude(l => l.Difficulty)
+                .Include(s => s.Leaderboard)
+                .ThenInclude(l => l.Scores)
+                .Include(s => s.Player)
+                .ThenInclude(p => p.ScoreStats)
+                .FirstOrDefault();
             if (score == null)
             {
                 return NotFound();
             }
 
-            score.Leaderboard.Scores.Remove(score);
-            _context.Leaderboards.Update(score.Leaderboard);
+            var log = new ScoreRemovalLog {
+                Replay = score.Replay,
+                AdminId = currentId,
+                Timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds
+            };
+            _context.ScoreRemovalLogs.Add(log);
+
+            var leaderboard = score.Leaderboard;
+
+            Player player = score.Player;
+
+            player.ScoreStats.TotalScore -= score.ModifiedScore;
+            if (player.ScoreStats.TotalPlayCount == 1)
+            {
+                player.ScoreStats.AverageAccuracy = 0.0f;
+            }
+            else
+            {
+                player.ScoreStats.AverageAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, score.Accuracy);
+            }
+
+            if (leaderboard.Difficulty.Ranked)
+            {
+                if (player.ScoreStats.RankedPlayCount == 1)
+                {
+                    player.ScoreStats.AverageRankedAccuracy = 0.0f;
+                }
+                else
+                {
+                    player.ScoreStats.AverageRankedAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, score.Accuracy);
+                }
+            }
+            try
+            {
+                leaderboard.Scores.Remove(score);
+            }
+            catch (Exception)
+            {
+                leaderboard.Scores = new List<Score>(leaderboard.Scores);
+                leaderboard.Scores.Remove(score);
+            }
+
+            if (leaderboard.Difficulty.Ranked)
+            {
+                player.ScoreStats.RankedPlayCount--;
+            }
+            player.ScoreStats.TotalPlayCount--;
+
+            var rankedScores = leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();
+            foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
+            {
+                if (s.Rank != i + 1)
+                {
+                    s.Rank = i + 1;
+                }
+            }
+
+            _context.Leaderboards.Update(leaderboard);
+            _context.Players.Update(player);
+
+            leaderboard.Plays = rankedScores.Count;
+
+            _context.SaveChanges();
+            _context.RecalculatePP(player);
+
+            var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
+            var country = player.Country; var countryRank = 1;
+            foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
+            {
+                p.Rank = i + 1;
+                if (p.Country == country)
+                {
+                    p.CountryRank = countryRank;
+                    countryRank++;
+                }
+            }
 
             await _context.SaveChangesAsync();
 
@@ -287,7 +369,10 @@ namespace BeatLeader_Server.Controllers
                 });
                 if (scope.ToLower() == "friends")
                 {
-
+                    PlayerFriends? friends = _context.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == currentPlayer.Id);
+                    if (friends != null) {
+                        query = query.Where(s => friends.Friends.FirstOrDefault(f => f.Id == s.Player.Id) != null);
+                    }
                 } else if (scope.ToLower() == "country")
                 {
                     query = query.Where(s => s.Player.Country == currentPlayer.Country);

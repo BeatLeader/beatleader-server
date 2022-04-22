@@ -49,8 +49,8 @@ namespace BeatLeader_Server.Controllers
             if (env.IsDevelopment())
 			{
 				_containerClient = new BlobContainerClient(config.Value.AccountName, config.Value.ReplaysContainerName);
-                SetPublicContainerPermissions(_containerClient);
-			}
+                _containerClient.SetPublicContainerPermissions();
+            }
 			else
 			{
 				string containerEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
@@ -144,15 +144,8 @@ namespace BeatLeader_Server.Controllers
 
             var transaction = _context.Database.BeginTransaction();
 
-            Song? song = (await _songController.GetHash(replay.info.hash)).Value;
-            if (song == null) return NotFound("Such song id not exists");
-
-            Leaderboard? leaderboard = (await _leaderboardController.Get(song.Id + SongUtils.DiffForDiffName(replay.info.difficulty) + SongUtils.ModeForModeName(replay.info.mode))).Value;
-            if (leaderboard == null) return NotFound("Such leaderboard not exists");
-
-            leaderboard = await _context.Leaderboards.Where(i => i.Id == leaderboard.Id).Include(lb => lb.Scores).ThenInclude(score => score.Identification).Include(lb => lb.Scores).ThenInclude(score => score.Player).FirstOrDefaultAsync();
-            if (leaderboard == null)
-            {
+            Leaderboard? leaderboard = (await _leaderboardController.GetByHash(replay.info.hash, replay.info.difficulty, replay.info.mode)).Value;
+            if (leaderboard == null) {
                 return NotFound("Such leaderboard not exists");
             }
 
@@ -228,6 +221,11 @@ namespace BeatLeader_Server.Controllers
                 {
                     leaderboard.Scores = new List<Score>(leaderboard.Scores);
                     leaderboard.Scores.Remove(currentScore);
+                }
+
+                int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+                if ((timestamp - UInt32.Parse(currentScore.Timeset)) > 60 * 60 * 24) {
+                    player.ScoreStats.DailyImprovements++;
                 }
             }
             else
@@ -592,12 +590,6 @@ namespace BeatLeader_Server.Controllers
                 arrayLength = 10;
             }
             return Ok();
-        }
-
-        [NonAction]
-        private static void SetPublicContainerPermissions(BlobContainerClient container)
-        {
-            container.SetAccessPolicy(accessType: Azure.Storage.Blobs.Models.PublicAccessType.BlobContainer);
         }
 
         [NonAction]

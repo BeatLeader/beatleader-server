@@ -24,6 +24,7 @@
 
         public PlayerScoreStats ScoreStats { get; set; } = new PlayerScoreStats();
         public PlayerStatsHistory? StatsHistory { get; set; }
+        public ICollection<Clan> Clans { get; set; } = new List<Clan>();
 
         public ICollection<Badge>? Badges { get; set; }
 

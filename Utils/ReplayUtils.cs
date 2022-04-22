@@ -87,6 +87,7 @@ namespace BeatLeader_Server.Utils
             score.ModifiedScore = (int)(score.BaseScore * GetTotalMultiplier(replay.info.modifiers));
             score.Accuracy = (float)score.ModifiedScore / (float)MaxScoreForNote(leaderboard.Difficulty.Notes);
             score.Modifiers = replay.info.modifiers;
+            score.Platform = replay.info.platform;
             
             return (replay, score);
         }

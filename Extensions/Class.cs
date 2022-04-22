@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authentication;
+﻿using Azure.Storage.Blobs;
+using Microsoft.AspNetCore.Authentication;
 using System.Linq;
 using System.Linq.Expressions;
 
@@ -57,6 +58,10 @@ namespace BeatLeader_Server.Extensions
             {
                 return source.OrderBy(keySelector);
             }
+        }
+        public static void SetPublicContainerPermissions(this BlobContainerClient container)
+        {
+            container.SetAccessPolicy(accessType: Azure.Storage.Blobs.Models.PublicAccessType.BlobContainer);
         }
     }
 }

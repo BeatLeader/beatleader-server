@@ -75,48 +75,6 @@ namespace BeatLeader_Server.Controllers
             return player;
         }
 
-        [HttpPatch("~/player/{id}")]
-        [Authorize]
-        public async Task<ActionResult> PatchPlayer(string id, [FromQuery] string? role, [FromQuery] string? country, [FromQuery] string? avatar, [FromQuery] bool? banned)
-        {
-            string currentId = HttpContext.CurrentUserID();
-            Player? currentPlayer = _context.Players.Find(currentId);
-            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && currentId != GolovaID))
-            {
-                return Unauthorized();
-            }
-            if (currentId != GolovaID && (role != null))
-            {
-                return Unauthorized();
-            }
-            Player? playerToUpdate = _context.Players.Find(id);
-            if (playerToUpdate == null)
-            {
-                return NotFound();
-            }
-            if (role != null)
-            {
-                playerToUpdate.Role = role;
-            }
-            if (country != null)
-            {
-                playerToUpdate.Country = country;
-            }
-            if (avatar != null)
-            {
-                playerToUpdate.Avatar = avatar;
-            }
-            if (banned != null)
-            {
-                playerToUpdate.Banned = (bool)banned;
-            }
-            _context.Players.Update(playerToUpdate);
-            await _context.SaveChangesAsync();
-
-            return Ok();
-        }
-
-
         [HttpDelete("~/player/{id}")]
         [Authorize]
         public async Task<ActionResult> DeletePlayer(string id)
@@ -305,7 +263,7 @@ namespace BeatLeader_Server.Controllers
                     ItemsPerPage = count,
                     Total = sequence.Count()
                 },
-                Data = sequence.Skip((page - 1) * count).Take(count).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).ToList()
+                Data = sequence.Skip((page - 1) * count).Take(count).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).ToList()
             };
         }
 
@@ -357,9 +315,14 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/players")]
-        public async Task<ActionResult<ResponseWithMetadata<Player>>> GetPlayers([FromQuery] string sortBy = "recent", [FromQuery] int page = 1, [FromQuery] int count = 50, [FromQuery] string search = "", [FromQuery] string countries = "")
+        public async Task<ActionResult<ResponseWithMetadata<Player>>> GetPlayers(
+            [FromQuery] string sortBy = "pp", 
+            [FromQuery] int page = 1, 
+            [FromQuery] int count = 50, 
+            [FromQuery] string search = "", 
+            [FromQuery] string countries = "")
         {
-            IQueryable<Player> request = _context.Players;
+            IQueryable<Player> request = _context.Players.Include(p => p.ScoreStats);
             if (countries.Length != 0)
             {
                 request = request.Where(p => countries.Contains(p.Country));
@@ -367,6 +330,17 @@ namespace BeatLeader_Server.Controllers
             if (search.Length != 0)
             {
                 request = request.Where(p => p.Name.Contains(search));
+            }
+            switch (sortBy)
+            {
+                case "pp":
+                    request = request.OrderByDescending(p => p.Pp);
+                    break;
+                case "dailyImprovements":
+                    request = request.OrderByDescending(p => p.ScoreStats.DailyImprovements);
+                    break;
+                default:
+                    break;
             }
             return new ResponseWithMetadata<Player>()
             {
@@ -376,7 +350,7 @@ namespace BeatLeader_Server.Controllers
                     ItemsPerPage = count,
                     Total = request.Count()
                 },
-                Data = await request.OrderByDescending(p => p.Pp).Skip((page - 1) * count).Take(count).Include(p => p.ScoreStats).ToListAsync()
+                Data = await request.Skip((page - 1) * count).Take(count).ToListAsync()
             };
         }
 

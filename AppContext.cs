@@ -26,6 +26,10 @@ namespace BeatLeader_Server
         public DbSet<CronTimestamps> cronTimestamps { get; set; }
         public DbSet<Badge> Badges { get; set; }
         public DbSet<CountryChange> CountryChanges { get; set; }
+        public DbSet<ScoreRemovalLog> ScoreRemovalLogs { get; set; }
+        public DbSet<Clan> Clans { get; set; }
+        public DbSet<PlayerFriends> Friends { get; set; }
+        public DbSet<CustomMode> CustomModes { get; set; }
 
         public void RejectChanges()
         {

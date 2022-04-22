@@ -1,5 +1,7 @@
 ﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,17 +21,27 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/leaderboard/id/{id}")]
         public async Task<ActionResult<Leaderboard>> Get(string id, [FromQuery] int page = 1, [FromQuery] int count = 10, [FromQuery] string? countries = null)
         {
-
             Leaderboard? leaderboard;
 
             if (countries == null)
             {
-                leaderboard = await _context.Leaderboards.Include(lb => lb.Scores.OrderByDescending(s => s.ModifiedScore).Skip((page - 1) * count).Take(count)).ThenInclude(s => s.Player).Include(lb => lb.Difficulty).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).FirstOrDefaultAsync(i => i.Id == id);
-
+                leaderboard = await _context
+                    .Leaderboards
+                    .Where(lb => lb.Id == id)
+                    .Include(lb => lb.Scores
+                        .OrderByDescending(s => s.ModifiedScore)
+                        .Skip((page - 1) * count)
+                        .Take(count))
+                    .ThenInclude(s => s.Player)
+                    .Include(lb => lb.Difficulty)
+                    .Include(lb => lb.Song)
+                    .ThenInclude(s => s.Difficulties)
+                    .FirstOrDefaultAsync();
             } else
             {
                 leaderboard = await _context
                     .Leaderboards
+                    .Where(lb => lb.Id == id)
                     .Include(lb => lb.Scores)
                     .ThenInclude(s => s.Player)
                     .Include(lb => lb.Scores
@@ -40,28 +52,83 @@ namespace BeatLeader_Server.Controllers
                     .Include(lb => lb.Difficulty)
                     .Include(lb => lb.Song)
                     .ThenInclude(s => s.Difficulties)
-                    .FirstOrDefaultAsync(i => i.Id == id);
+                    .FirstOrDefaultAsync();
             }
 
             if (leaderboard == null) {
-                Song? song = (await _songController.Get(id.Substring(0, id.Length - 2))).Value;
-                if (song == null) {
+                return NotFound();
+            }
+
+            return leaderboard;
+        }
+
+        public async Task<ActionResult<Leaderboard>> GetByHash(string hash, string diff, string mode) {
+            Leaderboard? leaderboard;
+
+            leaderboard = await _context
+                    .Leaderboards
+                    .Include(lb => lb.Scores)
+                    .ThenInclude(score => score.Identification)
+                    .Include(lb => lb.Scores)
+                    .ThenInclude(score => score.Player)
+                    .Include(lb => lb.Difficulty)
+                    .Include(lb => lb.Song)
+                    .Where(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff)
+                    .FirstOrDefaultAsync();
+
+            if (leaderboard == null) {
+                Song? song = (await _songController.GetHash(hash)).Value;
+                if (song == null)
+                {
                     return NotFound();
                 }
 
                 leaderboard = new Leaderboard();
                 leaderboard.Song = song;
-                Int32 iddd = Int32.Parse(id.Substring(id.Length - 2, 1));
-                IEnumerable<DifficultyDescription> difficulties = song.Difficulties.Where(x => x.Mode == Int32.Parse(id.Substring(id.Length - 1, 1)));
-                leaderboard.Difficulty = difficulties.FirstOrDefault(el => el.Value == Int32.Parse(id.Substring(id.Length - 2, 1)));
-                if (leaderboard.Difficulty == null) {
-                    return NotFound();
+                IEnumerable<DifficultyDescription> difficulties = song.Difficulties.Where(el => el.DifficultyName == diff);
+                DifficultyDescription? difficulty = difficulties.FirstOrDefault(x => x.ModeName == mode);
+                if (difficulty == null) {
+                    difficulty = difficulties.FirstOrDefault(x => x.ModeName == "Standard");
+                    if (difficulty == null) {
+                        return NotFound();
+                    } else {
+                        CustomMode? customMode = _context.CustomModes.FirstOrDefault(m => m.Name == mode);
+                        if (customMode == null) {
+                            customMode = new CustomMode {
+                                Name = mode
+                            };
+                            _context.CustomModes.Add(customMode);
+                            _context.SaveChanges();
+                        }
+
+                        difficulty = new DifficultyDescription {
+                            Value = difficulty.Value,
+                            Mode = customMode.Id + 10,
+                            DifficultyName = difficulty.DifficultyName,
+                            ModeName = mode,
+
+                            Njs = difficulty.Njs,
+                            Nps = difficulty.Nps,
+                            Notes = difficulty.Notes,
+                            Bombs = difficulty.Bombs,
+                            Walls = difficulty.Walls,
+                        };
+                        song.Difficulties.Add(difficulty);
+                        _context.SaveChanges();
+                    }
                 }
+
+                leaderboard.Difficulty = difficulty;
                 leaderboard.Scores = new List<Score>();
-                leaderboard.Id = id;
+                leaderboard.Id = song.Id + difficulty.Value.ToString() + difficulty.Mode.ToString();
 
                 _context.Leaderboards.Add(leaderboard);
                 await _context.SaveChangesAsync();
+            }
+
+            if (leaderboard == null)
+            {
+                return NotFound();
             }
 
             return leaderboard;
@@ -157,6 +224,94 @@ namespace BeatLeader_Server.Controllers
             }
             _context.SaveChanges();
             
+
+            return Ok();
+        }
+
+        [Authorize]
+        [HttpGet("~/map/star/{hash}/{difficulty}")]
+        public async Task<ActionResult> SetStarValue(string hash, string difficulty, [FromQuery] float star)
+        {
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
+            var currentPlayer = await _context.Players.FindAsync(userId);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            Song? song = (await _songController.GetHash(hash)).Value;
+
+            if (song != null)
+            {
+                DifficultyDescription? diff = song.Difficulties.FirstOrDefault(d => d.DifficultyName.ToLower() == difficulty.ToLower());
+                diff.Ranked = true;
+                diff.Stars = star;
+
+                _context.Update(song);
+
+                Leaderboard? leaderboard = (await Get(song.Id + SongUtils.DiffForDiffName(difficulty) + SongUtils.ModeForModeName("Standard"))).Value;
+                if (leaderboard != null)
+                {
+                    leaderboard = await _context.Leaderboards.Include(l => l.Difficulty).FirstOrDefaultAsync(i => i.Id == leaderboard.Id);
+                    leaderboard.Difficulty.Stars = star;
+                    leaderboard.Difficulty.Ranked = true;
+
+                    _context.Update(leaderboard);
+                }
+            }
+
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
+        [Authorize]
+        [HttpGet("~/map/rdate/{hash}")]
+        public async Task<ActionResult> SetStarValue(string hash, [FromQuery] int diff, [FromQuery] string date)
+        {
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
+            var currentPlayer = await _context.Players.FindAsync(userId);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            Song? song = (await _songController.GetHash(hash)).Value;
+            DateTime dateTime = DateTime.Parse(date);
+
+            string timestamp = Convert.ToString((int)dateTime.Subtract(new DateTime(1970, 1, 1)).TotalSeconds);
+
+            if (song != null)
+            {
+                DifficultyDescription? diffy = song.Difficulties.FirstOrDefault(d => d.DifficultyName == SongUtils.DiffNameForDiff(diff));
+                diffy.Ranked = true;
+                diffy.RankedTime = timestamp;
+
+                _context.Update(song);
+
+                Leaderboard? leaderboard = (await Get(song.Id + diff + SongUtils.ModeForModeName("Standard"))).Value;
+                if (leaderboard != null)
+                {
+                    leaderboard = await _context.Leaderboards.Include(l => l.Difficulty).FirstOrDefaultAsync(i => i.Id == leaderboard.Id);
+
+                    leaderboard.Difficulty.Ranked = true;
+                    leaderboard.Difficulty.RankedTime = timestamp;
+
+                    _context.Update(leaderboard);
+                }
+            }
+
+            _context.SaveChanges();
 
             return Ok();
         }

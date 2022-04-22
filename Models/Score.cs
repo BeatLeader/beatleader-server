@@ -21,6 +21,7 @@
         public bool FullCombo { get; set; }
         public int Hmd { get; set; }
         public string Timeset { get; set; }
+        public string Platform { get; set; } = "";
         public Player Player { get; set; }
         public Leaderboard Leaderboard { get; set; }
 

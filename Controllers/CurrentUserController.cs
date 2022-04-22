@@ -56,61 +56,131 @@ namespace BeatLeader_Server.Controllers
             return accountLink != null ? accountLink.SteamID : currentID;
         }
 
-        [HttpGet("~/user/playlists")]
-        public async Task<ActionResult<IEnumerable<Playlist>>> GetAllPlaylists()
+        [HttpGet("~/user")]
+        public ActionResult<UserReturn> GetCurrentUser()
         {
-            string currentId = HttpContext.CurrentUserID();
-            return await _context.Playlists.Where(t => t.OwnerId == currentId).ToListAsync();
+            string? id = GetId().Value;
+            if (id == null) {
+                return NotFound();
+            }
+            User? user = GetUserLazy(id);
+            if (user == null) {
+               return NotFound();
+            }
+
+            PlayerFriends? friends = _context.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == id);
+
+            return new UserReturn {
+                Player = user.Player,
+                ClanRequest = user.ClanRequest,
+                BannedClans = user.BannedClans,
+                Friends = friends != null ? friends.Friends.Select(f => f.Id).ToList() : new List<string>(),
+                Migrated = _context.AccountLinks.FirstOrDefault(a => a.SteamID == id) != null
+            };
         }
 
-        [HttpGet("~/user/playlist")]
-        public async Task<ActionResult<Playlist>> Get([FromQuery]int id)
+        public User? GetUserLazy(string id)
         {
-            var playlist = await _context.Playlists.FindAsync(id);
+            User? user = _context.Users.Where(u => u.Id == id).Include(u => u.Player).Include(u => u.ClanRequest).Include(u => u.BannedClans).FirstOrDefault();
+            if (user == null)
+            {
+                Player? player = _context.Players.Where(u => u.Id == id).FirstOrDefault();
+                if (player == null)
+                {
+                    return null;
+                }
 
-            if (playlist == null)
+                user = new User
+                {
+                    Id = id,
+                    Player = player
+                };
+                _context.Users.Add(user);
+                _context.SaveChanges();
+            }
+
+            return user;
+        }
+
+        [HttpPost("~/user/friend")]
+        public async Task<ActionResult> AddFriend([FromQuery] string playerId)
+        {
+            string? id = GetId().Value;
+            if (playerId == id) {
+                return BadRequest("Couldnt add user as a friend to himself");
+            }
+            Player? player = _context.Players.Where(u => u.Id == id).FirstOrDefault();
+            if (player == null)
+            {
+                return NotFound();
+            }
+            PlayerFriends? playerFriends = _context.Friends.Where(u => u.Id == id).Include(f => f.Friends).FirstOrDefault();
+            if (playerFriends == null) {
+                playerFriends = new PlayerFriends();
+                playerFriends.Id = id;
+                _context.Friends.Add(playerFriends);
+                _context.SaveChanges();
+            }
+
+            if (playerFriends.Friends.FirstOrDefault(p => p.Id == playerId) != null)
+            {
+                return BadRequest("Already a friend");
+            }
+
+            Player? friend = _context.Players.FirstOrDefault(p => p.Id == playerId);
+            if (friend == null)
             {
                 return NotFound();
             }
 
-            if (!playlist.IsShared && playlist.OwnerId != HttpContext.CurrentUserID())
-            {
-                return Unauthorized();
-            }
+            playerFriends.Friends.Add(friend);
+            _context.Friends.Update(playerFriends);
+            _context.SaveChanges();
 
-            return playlist;
+            return Ok();
         }
 
-        [HttpPatch("~/user/playlist")]
-        public async Task<ActionResult<Playlist>> SharePlaylist([FromBody] dynamic content, [FromQuery] bool shared, [FromQuery] int id)
+        [HttpDelete("~/user/friend")]
+        public async Task<ActionResult> RemoveFriend([FromQuery] string playerId)
         {
-            var playlist = await _context.Playlists.FindAsync(id);
-
-            if (playlist == null)
+            string? id = GetId().Value;
+            if (playerId == id)
+            {
+                return BadRequest("Couldnt remove user as a friend from himself");
+            }
+            Player? player = _context.Players.Where(u => u.Id == id).FirstOrDefault();
+            if (player == null)
+            {
+                return NotFound();
+            }
+            PlayerFriends? playerFriends = _context.Friends.Where(u => u.Id == id).Include(f => f.Friends).FirstOrDefault();
+            if (playerFriends == null)
+            {
+                return NotFound();
+            }
+            Player? friend = playerFriends.Friends.FirstOrDefault(p => p.Id == playerId);
+            if (friend == null)
             {
                 return NotFound();
             }
 
-            if (playlist.OwnerId != HttpContext.CurrentUserID())
-            {
-                return Unauthorized();
-            }
+            playerFriends.Friends.Remove(friend);
+            _context.Friends.Update(playerFriends);
+            _context.SaveChanges();
 
-            //playlist.Value = content.GetRawText();
-            playlist.IsShared = shared;
-
-            _context.Playlists.Update(playlist);
-
-            await _context.SaveChangesAsync();
-
-            return playlist;
+            return Ok();
         }
 
         [HttpPatch("~/user/avatar")]
-        public async Task<ActionResult> ChangeAvatar()
+        public async Task<ActionResult> ChangeAvatar([FromQuery] string? id = null)
         {
             string userId = GetId().Value;
             var player = await _context.Players.FindAsync(userId);
+
+            if (id != null && player != null && player.Role.Contains("admin"))
+            {
+                player = await _context.Players.FindAsync(id);
+            }
 
             if (player == null)
             {
@@ -145,54 +215,16 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
-        [HttpGet("~/players/avatarsrefresh")]
-        public async Task<ActionResult> ResizeAvatars([FromQuery] int hundred)
-        {
-            string userId = GetId().Value;
-            var player = await _context.Players.FindAsync(userId);
-
-            if (player == null || !player.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
-
-            var players = _context.Players.Where(p => p.Avatar.Contains("cdn.beatleader.xyz") && !p.Avatar.Contains("avatar.png")).Skip(hundred * 100).Take(100).ToList();
-
-            foreach (var p in players)
-            {
-                string fileName = p.Id;
-                try
-                {
-                    var ms = new MemoryStream(5);
-                    _assetsContainerClient.GetBlobClient(p.Avatar.Split("/").Last()).DownloadTo(ms);
-
-                    ms.Position = 0;
-
-                    (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(ms);
-                    fileName += extension;
-
-                    await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
-                    await _assetsContainerClient.UploadBlobAsync(fileName, stream);
-                }
-                catch (Exception)
-                {
-                    return BadRequest("Error saving avatar");
-                }
-
-                p.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://cdn.beatleader.xyz/assets/") + fileName;
-                _context.Players.Update(p);
-            }
-
-            await _context.SaveChangesAsync();
-
-            return Ok();
-        }
-
         [HttpPatch("~/user/name")]
-        public async Task<ActionResult> ChangeName([FromQuery] string newName)
+        public async Task<ActionResult> ChangeName([FromQuery] string newName, [FromQuery] string? id = null)
         {
             string userId = GetId().Value;
             var player = await _context.Players.FindAsync(userId);
+
+            if (id != null && player != null && player.Role.Contains("admin"))
+            {
+                player = await _context.Players.FindAsync(id);
+            }
 
             if (player == null)
             {
@@ -208,6 +240,109 @@ namespace BeatLeader_Server.Controllers
             _context.Players.Update(player);
 
             await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpPatch("~/user/country")]
+        public async Task<ActionResult> ChangeCountry([FromQuery] string newCountry, [FromQuery] string? id = null)
+        {
+            string userId = GetId().Value;
+            var player = await _context.Players.FindAsync(userId);
+            bool adminChange = false;
+
+            if (id != null && player != null && player.Role.Contains("admin"))
+            {
+                player = await _context.Players.FindAsync(id);
+                adminChange = true;
+            }
+
+            if (player == null)
+            {
+                return NotFound();
+            }
+            if (!PlayerUtils.AllowedCountries().Contains(newCountry))
+            {
+                return BadRequest("This country code is not allowed.");
+            }
+            
+            int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+            var lastCountryChange = _context.CountryChanges.FirstOrDefault(el => el.Id == player.Id);
+            if (lastCountryChange != null && !adminChange && (timestamp - lastCountryChange.Timestamp) < 60 * 60 * 24 * 30)
+            {
+                return BadRequest("Error. You can change country after " + (int)(30 - (timestamp - lastCountryChange.Timestamp) / 60 * 60 * 24) + " day(s)");
+            }
+            if (lastCountryChange == null) {
+                lastCountryChange = new CountryChange { Id = player.Id };
+                _context.CountryChanges.Add(lastCountryChange);
+            }
+            lastCountryChange.OldCountry = player.Country;
+            lastCountryChange.NewCountry = newCountry;
+            lastCountryChange.Timestamp = timestamp;
+
+            var oldCountryList = _context.Players.Where(p => p.Country == player.Country && p.Id != player.Id).OrderByDescending(p => p.Pp).ToList();
+            foreach ((int i, Player p) in oldCountryList.Select((value, i) => (i, value)))
+            {
+                p.CountryRank = i + 1;
+            }
+
+            player.Country = newCountry;
+            _context.Players.Update(player);
+
+            var newCountryList = _context.Players.Where(p => p.Country == newCountry || p.Id == player.Id).OrderByDescending(p => p.Pp).ToList();
+            foreach ((int i, Player p) in newCountryList.Select((value, i) => (i, value)))
+            {
+                p.CountryRank = i + 1;
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpPatch("~/user/changePassword")]
+        public ActionResult ChangePassword([FromForm] string login, [FromForm] string oldPassword, [FromForm] string newPassword)
+        {
+            string userId = GetId().Value;
+            AuthInfo? authInfo = _context.Auths.FirstOrDefault(a => a.Login == login && a.Password == oldPassword && Int64.Parse(userId) == a.Id);
+
+            if (authInfo == null) {
+                return Unauthorized("Login or password is incorrect");
+            }
+            if (newPassword.Trim().Length < 8)
+            {
+                return Unauthorized("Come on, type at least 8 symbols password");
+            }
+
+            authInfo.Password = newPassword;
+            _context.Auths.Update(authInfo);
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
+        [HttpPatch("~/user/resetPassword")]
+        public ActionResult ChangePassword([FromForm] string login, [FromForm] string newPassword)
+        {
+            string userId = GetId().Value;
+            AccountLink? link = _context.AccountLinks.FirstOrDefault(a => a.SteamID == userId);
+            if (link == null) {
+                return Unauthorized("Login is incorrect. Or there is no link");
+            }
+            AuthInfo? authInfo = _context.Auths.FirstOrDefault(a => a.Login == login);
+            if (authInfo == null || authInfo.Id != link.OculusID)
+            {
+                return Unauthorized("Login is incorrect. Or there is no link");
+            }
+
+            if (newPassword.Trim().Length < 8)
+            {
+                return Unauthorized("Come on, type at least 8 symbols password");
+            }
+
+            authInfo.Password = newPassword;
+            _context.Auths.Update(authInfo);
+            _context.SaveChanges();
 
             return Ok();
         }
@@ -235,7 +370,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<int>> MigratePrivate(int id)
         {
             string steamID = HttpContext.CurrentUserID();
-            
+
             if (Int64.Parse(steamID) < 70000000000000000)
             {
                 return Unauthorized("You need to be logged in with Steam");
@@ -271,7 +406,8 @@ namespace BeatLeader_Server.Controllers
                     if (migScore.ModifiedScore >= score.ModifiedScore)
                     {
                         score.Leaderboard.Scores.Remove(score);
-                    } else
+                    }
+                    else
                     {
                         score.Leaderboard.Scores.Remove(migScore);
                     }
@@ -294,89 +430,6 @@ namespace BeatLeader_Server.Controllers
             }
 
             _context.Players.Remove(currentPlayer);
-            await _context.SaveChangesAsync();
-
-            return Ok();
-        }
-
-        [HttpPatch("~/user/country")]
-        public async Task<ActionResult> ChangeCountry([FromQuery] string newCountry)
-        {
-            string userId = GetId().Value;
-            var player = await _context.Players.FindAsync(userId);
-
-            if (player == null)
-            {
-                return NotFound();
-            }
-            if (!PlayerUtils.AllowedCountries().Contains(newCountry))
-            {
-                return BadRequest("This country code is not allowed.");
-            }
-
-            int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-            var lastCountryChange = _context.CountryChanges.FirstOrDefault(el => el.Id == player.Id);
-            if (lastCountryChange != null && (timestamp - lastCountryChange.Timestamp) < 60 * 60 * 24 * 30)
-            {
-                return BadRequest("Error. You can change country after " + (int)(30 - (timestamp - lastCountryChange.Timestamp) / 60 * 60 * 24) + " day(s)");
-            }
-            if (lastCountryChange == null) {
-                lastCountryChange = new CountryChange { Id = player.Id };
-                _context.CountryChanges.Add(lastCountryChange);
-            }
-            lastCountryChange.OldCountry = player.Country;
-            lastCountryChange.NewCountry = newCountry;
-            lastCountryChange.Timestamp = timestamp;
-
-            var oldCountryList = _context.Players.Where(p => p.Country == player.Country && p.Id != player.Id).OrderByDescending(p => p.Pp).ToList();
-            foreach ((int i, Player p) in oldCountryList.Select((value, i) => (i, value)))
-            {
-                p.CountryRank = i + 1;
-            }
-
-            player.Country = newCountry;
-            _context.Players.Update(player);
-
-            var newCountryList = _context.Players.Where(p => p.Country == newCountry || p.Id == player.Id).OrderByDescending(p => p.Pp).ToList();
-            foreach ((int i, Player p) in newCountryList.Select((value, i) => (i, value)))
-            {
-                p.CountryRank = i + 1;
-            }
-
-            await _context.SaveChangesAsync();
-
-            return Ok();
-        }
-
-        [HttpPost("~/user/playlist")]
-        public async Task<ActionResult<int>> PostPlaylist([FromBody] dynamic content, [FromQuery] bool shared)
-        {
-            Playlist newPlaylist = new Playlist();
-            //newPlaylist.Value = content.GetRawText();
-            newPlaylist.OwnerId = HttpContext.CurrentUserID();
-            newPlaylist.IsShared = shared;
-            _context.Playlists.Add(newPlaylist);
-            
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("PostPlaylist", new { id = newPlaylist.Id }, newPlaylist);
-        }
-
-        [HttpDelete("~/user/playlist")]
-        public async Task<ActionResult<int>> DeletePlaylist([FromQuery] int id)
-        {
-            var playlist = await _context.Playlists.FindAsync(id);
-            if (playlist == null)
-            {
-                return NotFound();
-            }
-
-            if (playlist.OwnerId != HttpContext.CurrentUserID())
-            {
-                return Unauthorized();
-            }
-            _context.Playlists.Remove(playlist);
-
             await _context.SaveChangesAsync();
 
             return Ok();
@@ -455,6 +508,61 @@ namespace BeatLeader_Server.Controllers
             await _replayController.PostReplayFromCDN(score.PlayerId, name, HttpContext);
 
             return Ok();
+        }
+
+        [HttpGet("~/players/avatarsrefresh")]
+        public async Task<ActionResult> ResizeAvatars([FromQuery] int hundred)
+        {
+            string userId = GetId().Value;
+            var player = await _context.Players.FindAsync(userId);
+
+            if (player == null || !player.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var players = _context.Players.Where(p => p.Avatar.Contains("cdn.beatleader.xyz") && !p.Avatar.Contains("avatar.png")).Skip(hundred * 100).Take(100).ToList();
+
+            foreach (var p in players)
+            {
+                string fileName = p.Id;
+                try
+                {
+                    var ms = new MemoryStream(5);
+                    _assetsContainerClient.GetBlobClient(p.Avatar.Split("/").Last()).DownloadTo(ms);
+
+                    ms.Position = 0;
+
+                    (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(ms);
+                    fileName += extension;
+
+                    await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
+                    await _assetsContainerClient.UploadBlobAsync(fileName, stream);
+                }
+                catch (Exception)
+                {
+                    return BadRequest("Error saving avatar");
+                }
+
+                p.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://cdn.beatleader.xyz/assets/") + fileName;
+                _context.Players.Update(p);
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpGet("~/clan/my")]
+        public ActionResult<Clan> MyClan()
+        {
+            string userId = GetId().Value;
+            var clan = _context.Clans.FirstOrDefault(c => c.LeaderID == userId);
+            if (clan == null)
+            {
+                return NotFound();
+            }
+            return clan;
         }
     }
 }

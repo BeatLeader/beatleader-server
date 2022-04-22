@@ -44,7 +44,7 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            Song? song = await _songController.SongById(songID);
+            Song? song = null; //await _songController(songID);
             if (song == null) {
                 return NotFound();
             }

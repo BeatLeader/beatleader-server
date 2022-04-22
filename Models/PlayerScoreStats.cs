@@ -23,6 +23,11 @@ namespace BeatLeader_Server.Models
         public int SPPlays { get; set; }
         public int SPlays { get; set; }
         public int APlays { get; set; }
+
+        public string TopPlatform { get; set; } = "";
+        public int TopHMD { get ; set; }
+
+        public int DailyImprovements { get; set; }
     }
 }
 
