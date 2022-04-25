@@ -100,6 +100,8 @@ namespace BeatLeader_Server {
                 options.FileSizeLimit = 50 * 1024;
                 options.RetainedFileCountLimit = 5;
             });
+
+            services.AddSwaggerGen();
         }
 
         public void Configure (IApplicationBuilder app)
@@ -116,6 +118,9 @@ namespace BeatLeader_Server {
             app.UseEndpoints (endpoints => {
                 endpoints.MapDefaultControllerRoute ();
             });
+
+            app.UseSwagger();
+            app.UseSwaggerUI();
         }
     }
     internal static class StartupExtensions {

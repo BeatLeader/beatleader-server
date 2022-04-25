@@ -79,6 +79,7 @@ namespace BeatLeader_Server.Controllers
             };
         }
 
+        [NonAction]
         public User? GetUserLazy(string id)
         {
             User? user = _context.Users.Where(u => u.Id == id).Include(u => u.Player).Include(u => u.ClanRequest).Include(u => u.BannedClans).FirstOrDefault();

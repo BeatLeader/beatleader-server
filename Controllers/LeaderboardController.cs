@@ -62,6 +62,7 @@ namespace BeatLeader_Server.Controllers
             return leaderboard;
         }
 
+        [NonAction]
         public async Task<ActionResult<Leaderboard>> GetByHash(string hash, string diff, string mode) {
             Leaderboard? leaderboard;
 

@@ -252,6 +252,7 @@ namespace BeatLeader_Server.Controllers
             public Player Player { get; set; }
         }
 
+        [NonAction]
         public ScoreResponse RemoveLeaderboard(Score s, int i)
         {
             return new ScoreResponse
