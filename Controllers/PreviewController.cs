@@ -93,7 +93,7 @@ namespace BeatLeader_Server.Controllers
             }
         }
 
-        public Task<Player?> GetPlayerFromSS(string url)
+        private Task<Player?> GetPlayerFromSS(string url)
         {
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
             request.Method = "GET";
