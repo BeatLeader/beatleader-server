@@ -56,9 +56,8 @@ namespace BeatLeader_Server.Utils
         public static (Replay, Score) ProcessReplay(Replay replay, Leaderboard leaderboard) {
             Score score = new Score();
             
-            score.BaseScore = replay.info.score; // TODO: recalculate score based on note info
+            score.BaseScore = replay.info.score;
             score.Modifiers = replay.info.modifiers;
-            score.Timeset = replay.info.timestamp;
             score.WallsHit = replay.walls.Count;
             score.Pauses = replay.pauses.Count;
             score.Identification = new ReplayIdentification {

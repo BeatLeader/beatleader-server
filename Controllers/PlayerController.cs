@@ -421,6 +421,7 @@ namespace BeatLeader_Server.Controllers
                 statsHistory.ReplaysWatched = GenerateListString(statsHistory.ReplaysWatched, stats.ReplaysWatched);
 
                 p.StatsHistory = statsHistory;
+                stats.DailyImprovements = 0;
 
                 _context.Players.Update(p);
             }

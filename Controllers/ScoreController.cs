@@ -372,7 +372,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     PlayerFriends? friends = _context.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == currentPlayer.Id);
                     if (friends != null) {
-                        query = query.Where(s => friends.Friends.FirstOrDefault(f => f.Id == s.Player.Id) != null);
+                        query = query.Where(s => s.PlayerId == currentPlayer.Id || friends.Friends.FirstOrDefault(f => f.Id == s.Player.Id) != null);
                     }
                 } else if (scope.ToLower() == "country")
                 {
