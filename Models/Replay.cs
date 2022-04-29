@@ -379,7 +379,7 @@ namespace BeatLeader_Server.Models
                 result.timestamp = DecodeString(buffer, ref pointer);
 
                 result.playerID = DecodeString(buffer, ref pointer);
-                result.playerName = DecodeString(buffer, ref pointer);
+                result.playerName = DecodeName(buffer, ref pointer);
                 result.platform = DecodeString(buffer, ref pointer);
 
                 result.trackingSytem = DecodeString(buffer, ref pointer);
@@ -563,9 +563,30 @@ namespace BeatLeader_Server.Models
             return result;
         }
 
+        private static string DecodeName(byte[] buffer, ref int pointer)
+        {
+            int length = BitConverter.ToInt32(buffer, pointer);
+            int lengthOffset = 0;
+            if (length > 0)
+            {
+                while (BitConverter.ToInt32(buffer, length + pointer + 4 + lengthOffset) != 6 && BitConverter.ToInt32(buffer, length + pointer + 4 + lengthOffset) != 5)
+                {
+                    lengthOffset++;
+                }
+            }
+            string @string = Encoding.UTF8.GetString(buffer, pointer + 4, length + lengthOffset);
+            pointer += length + 4 + lengthOffset;
+            return @string;
+        }
+
         private static string DecodeString(byte[] buffer, ref int pointer)
         {
             int length = BitConverter.ToInt32(buffer, pointer);
+            if (length > 1000 || length < 0)
+            {
+                pointer += 1;
+                return DecodeString(buffer, ref pointer);
+            }
             string @string = Encoding.UTF8.GetString(buffer, pointer + 4, length);
             pointer += length + 4;
             return @string;

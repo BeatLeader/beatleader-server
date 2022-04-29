@@ -20,5 +20,6 @@
         public int Notes { get; set; }
         public int Bombs { get; set; }
         public int Walls { get; set; }
+        public int MaxScore { get; set; }
     }
 }

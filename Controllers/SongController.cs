@@ -43,6 +43,29 @@ namespace BeatLeader_Server.Controllers
             return song;
         }
 
+        [HttpGet("~/map/refresh/{hash}")]
+        public async Task<ActionResult<Song>> RefreshHash(string hash)
+        {
+            Song? song = _context.Songs.Where(el => el.Hash == hash).Include(song => song.Difficulties).FirstOrDefault();
+
+            if (song != null)
+            {
+                Song? updatedSong = await GetSongFromBeatSaver("https://api.beatsaver.com/maps/hash/" + hash);
+
+                if (updatedSong != null)
+                {
+                    for (int i = 0; i < song.Difficulties.Count; i++)
+                    {
+                        song.Difficulties.ElementAt(i).MaxScore = updatedSong.Difficulties.ElementAt(i).MaxScore;
+                    }
+                    _context.Songs.Update(song);
+                    _context.SaveChanges();
+                }
+            }
+
+            return song;
+        }
+
         [HttpGet("~/maps")]
         public async Task<ActionResult<ICollection<Song>>> GetAll([FromQuery] bool ranked = false, [FromQuery] int page = 0, [FromQuery] int count = 100)
         {
@@ -132,6 +155,7 @@ namespace BeatLeader_Server.Controllers
                         difficulty.Bombs = (int)diff.bombs;
                         difficulty.Nps = (float)diff.nps;
                         difficulty.Walls = (int)diff.obstacles;
+                        difficulty.MaxScore = (int)diff.maxScore;
 
                         difficulties.Add(difficulty);
                     }

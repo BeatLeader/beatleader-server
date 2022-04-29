@@ -84,7 +84,12 @@ namespace BeatLeader_Server.Utils
             score.FullCombo = score.BombCuts == 0 && score.MissedNotes == 0 && score.WallsHit == 0 && score.BadCuts == 0;
             score.Hmd = HMD(replay.info.hmd);
             score.ModifiedScore = (int)(score.BaseScore * GetTotalMultiplier(replay.info.modifiers));
-            score.Accuracy = (float)score.ModifiedScore / (float)MaxScoreForNote(leaderboard.Difficulty.Notes);
+            if (leaderboard.Difficulty.MaxScore > 0) {
+                score.Accuracy = (float)score.ModifiedScore / (float)leaderboard.Difficulty.MaxScore;
+            } else {
+                score.Accuracy = (float)score.ModifiedScore / (float)MaxScoreForNote(leaderboard.Difficulty.Notes);
+            }
+            
             score.Modifiers = replay.info.modifiers;
             score.Platform = replay.info.platform;
             
