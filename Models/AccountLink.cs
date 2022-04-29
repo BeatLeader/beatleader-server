@@ -7,5 +7,12 @@ namespace BeatLeader_Server.Models
         public string SteamID { get; set; }
         public int OculusID { get; set; }
     }
+
+    public class AccountLinkRequest
+    {
+        public int Id { get; set; }
+        public int OculusID { get; set; }
+        public string IP { get; set; }
+    }
 }
 

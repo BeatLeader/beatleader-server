@@ -1,5 +1,7 @@
-﻿using System.Security.Claims;
+﻿using System.Net;
+using System.Security.Claims;
 using BeatLeader_Server.Extensions;
+using BeatLeader_Server.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -12,9 +14,14 @@ namespace BeatLeader_Server.Controllers
     {
         PlayerController _playerController;
         CurrentUserController _currentUserController;
+        AppContext _context;
 
-        public AuthenticationController(PlayerController playerController, CurrentUserController currentUserController)
+        public AuthenticationController(
+            AppContext context, 
+            PlayerController playerController, 
+            CurrentUserController currentUserController)
         {
+            _context = context;
             _playerController = playerController;
             _currentUserController = currentUserController;
         }
@@ -60,8 +67,18 @@ namespace BeatLeader_Server.Controllers
             {
                 return BadRequest();
             }
+            IPAddress? iPAddress = Request.HttpContext.Connection.RemoteIpAddress;
+            if (iPAddress == null) {
+                return BadRequest("IP address should not be null");
+            }
+            var linkRequest = new AccountLinkRequest {
+                IP = iPAddress.ToString(),
+                OculusID = Int32.Parse(HttpContext.CurrentUserID()),
+            };
+            _context.AccountLinkRequests.Add(linkRequest);
+            await _context.SaveChangesAsync();
 
-            var redirectUrl = Url.Action("SteamLoginCallback", new { ReturnUrl = returnUrl, MigrateProfile = Int64.Parse(HttpContext.CurrentUserID()) });
+            var redirectUrl = Url.Action("SteamLoginCallback", new { ReturnUrl = returnUrl });
 
             // Instruct the middleware corresponding to the requested external identity
             // provider to redirect the user agent to its own authorization endpoint.
@@ -69,20 +86,28 @@ namespace BeatLeader_Server.Controllers
             return Challenge(new AuthenticationProperties { RedirectUri = redirectUrl }, provider);
         }
 
-        async Task<IActionResult> SteamLoginCallback(string returnUrl, int? migrateProfile = null)
+        [HttpGet("~/steamcallback")]
+        public async Task<IActionResult> SteamLoginCallback([FromQuery] string ReturnUrl)
         {
             string userId = HttpContext.CurrentUserID();
             if (userId != null)
             {
                 await _playerController.GetLazy(userId);
 
-                if (migrateProfile != null)
-                {
-                    await _currentUserController.MigratePrivate((int)migrateProfile);
+                IPAddress? iPAddress = Request.HttpContext.Connection.RemoteIpAddress;
+                if (iPAddress != null) {
+                    AccountLinkRequest? request = _context.AccountLinkRequests.Where(l => l.IP == iPAddress.ToString()).FirstOrDefault();
+
+                    if (request != null)
+                    {
+                        await _currentUserController.MigratePrivate(request.OculusID);
+                        _context.AccountLinkRequests.Remove(request);
+                        await _context.SaveChangesAsync();
+                    }
                 }
             }
 
-            return Redirect(returnUrl);
+            return Redirect(ReturnUrl);
         }
 
         [HttpPost("~/signinoculus")]

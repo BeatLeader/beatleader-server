@@ -398,35 +398,42 @@ namespace BeatLeader_Server.Controllers
                 migratedToPlayer.Country = currentPlayer.Country;
             }
 
-            dynamic scores = _context.Scores.Include(el => el.Player).Where(el => el.Player.Id == currentPlayer.Id).Include(el => el.Leaderboard).ThenInclude(el => el.Scores);
-            foreach (Score score in scores)
-            {
-                Score? migScore = score.Leaderboard.Scores.FirstOrDefault(el => el.PlayerId == steamID);
-                if (migScore != null)
+            dynamic scores = _context.Scores
+                .Include(el => el.Player)
+                .Where(el => el.Player.Id == currentPlayer.Id)
+                .Include(el => el.Leaderboard)
+                .ThenInclude(el => el.Scores);
+            if (scores.Count() > 0) {
+                foreach (Score score in scores)
                 {
-                    if (migScore.ModifiedScore >= score.ModifiedScore)
+                    Score? migScore = score.Leaderboard.Scores.FirstOrDefault(el => el.PlayerId == steamID);
+                    if (migScore != null)
                     {
-                        score.Leaderboard.Scores.Remove(score);
+                        if (migScore.ModifiedScore >= score.ModifiedScore)
+                        {
+                            score.Leaderboard.Scores.Remove(score);
+                        }
+                        else
+                        {
+                            score.Leaderboard.Scores.Remove(migScore);
+                        }
+
+                        var rankedScores = score.Leaderboard.Scores.Where(sc => sc != null).OrderByDescending(el => el.ModifiedScore).ToList();
+                        foreach ((int i, Score? s) in rankedScores.Select((value, i) => (i, value)))
+                        {
+                            if (s != null)
+                            {
+                                s.Rank = i + 1;
+                                _context.Scores.Update(s);
+                            }
+                        }
                     }
                     else
                     {
-                        score.Leaderboard.Scores.Remove(migScore);
+                        score.Player = migratedToPlayer;
+                        score.PlayerId = steamID;
+                        _context.Scores.Update(score);
                     }
-
-                    var rankedScores = score.Leaderboard.Scores.Where(sc => sc != null).OrderByDescending(el => el.ModifiedScore).ToList();
-                    foreach ((int i, Score? s) in rankedScores.Select((value, i) => (i, value)))
-                    {
-                        if (s != null)
-                        {
-                            s.Rank = i + 1;
-                            _context.Scores.Update(s);
-                        }
-                    }
-                }
-                else
-                {
-                    score.Player = migratedToPlayer;
-                    score.PlayerId = steamID;
                 }
             }
 

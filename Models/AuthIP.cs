@@ -22,5 +22,13 @@ namespace BeatLeader_Server.Models
         public string OldCountry { get; set; }
         public string NewCountry { get; set; }
     }
+
+    public class LoginAttempt
+    {
+        public int Id { get; set; }
+        public int Count { get; set; }
+        public string IP { get; set; }
+        public int Timestamp { get; set; }
+    }
 }
 

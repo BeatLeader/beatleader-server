@@ -65,18 +65,48 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
 
         string id = "";
 
+        IPAddress? iPAddress = Request.HttpContext.Connection.RemoteIpAddress;
+        if (iPAddress == null)
+        {
+            Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await Context.Response.WriteAsync("You don't have an IP adress? Tell #NSGolova how you get this error.");
+            return AuthenticateResult.Fail("You don't have an IP adress? Tell #NSGolova how you get this error.");
+        }
+
         if (action == "login")
         {
+            LoginAttempt? loginAttempt = dbContext.LoginAttempts.FirstOrDefault(el => el.IP == iPAddress.ToString());
+            int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+
+            if (loginAttempt != null && loginAttempt.Count == 10 && (timestamp - loginAttempt.Timestamp) < 60 * 60 * 24) {
+                Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await Context.Response.WriteAsync("To much login attempts in one day");
+                return AuthenticateResult.Fail("To much login attempts in one day");
+            }
             AuthInfo? authInfo = dbContext.Auths.FirstOrDefault(el => el.Login == login);
             if (authInfo == null || authInfo.Password != password)
             {
+                if (loginAttempt == null) {
+                    loginAttempt = new LoginAttempt {
+                        IP = iPAddress.ToString(),
+                        Timestamp = timestamp,
+                     };
+                    dbContext.LoginAttempts.Add(loginAttempt);
+                    await dbContext.SaveChangesAsync();
+                } else if ((timestamp - loginAttempt.Timestamp) >= 60 * 60 * 24) {
+                    loginAttempt.Timestamp = timestamp;
+                    loginAttempt.Count = 0;
+                }
+                loginAttempt.Count++;
+                dbContext.LoginAttempts.Update(loginAttempt);
+                await dbContext.SaveChangesAsync();
+
                 Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await Context.Response.WriteAsync("Login or password is not valid");
-                return AuthenticateResult.Fail("Login or password is not valid");
+                await Context.Response.WriteAsync("Login or password is not valid. " + (10 - loginAttempt.Count) + " tries left");
+                return AuthenticateResult.Fail("Login or password is not valid. " + (10 - loginAttempt.Count) + " tries left");
             }
             id = authInfo.Id.ToString();
 
-            int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             AuthID? authID = dbContext.AuthIDs.FirstOrDefault(a => a.Id == id);
             if (authID == null) {
                 authID = new AuthID {
@@ -118,14 +148,6 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
                 Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 await Context.Response.WriteAsync("Come on, type at least 8 symbols password");
                 return AuthenticateResult.Fail("Come on, type at least 8 symbols password");
-            }
-
-            IPAddress? iPAddress = Request.HttpContext.Connection.RemoteIpAddress;
-            if (iPAddress == null)
-            {
-                Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await Context.Response.WriteAsync("You don't have an IP adress? Tell #NSGolova how you get this error.");
-                return AuthenticateResult.Fail("You don't have an IP adress? Tell #NSGolova how you get this error.");
             }
             string ip = iPAddress.ToString();
             int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;

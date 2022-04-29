@@ -332,7 +332,11 @@ namespace BeatLeader_Server.Controllers
                return NotFound();
             }
 
-            var leaderboard = _context.Leaderboards.Include(el => el.Song).Include(el => el.Difficulty).Where(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+            var leaderboard = _context
+                .Leaderboards
+                .Include(el => el.Song)
+                .Include(el => el.Difficulty)
+                .Where(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             if (leaderboard != null)
             {
@@ -347,11 +351,11 @@ namespace BeatLeader_Server.Controllers
                     }
                 };
 
-                Leaderboard? selectedLeaderboard = leaderboard
+                Leaderboard? selectedLeaderboard = await leaderboard
                     .Include(el => el.Scores)
                     .ThenInclude(s => s.Player)
                     .ThenInclude(p => p.ScoreStats)
-                    .FirstOrDefault();
+                    .FirstOrDefaultAsync();
 
                 if (selectedLeaderboard == null) {
                     return result;
@@ -383,7 +387,7 @@ namespace BeatLeader_Server.Controllers
                 });
                 if (scope.ToLower() == "friends")
                 {
-                    PlayerFriends? friends = _context.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == currentPlayer.Id);
+                    PlayerFriends? friends = await _context.Friends.Include(f => f.Friends).FirstOrDefaultAsync(f => f.Id == currentPlayer.Id);
                     if (friends != null) {
                         query = query.Where(s => s.PlayerId == currentPlayer.Id || friends.Friends.FirstOrDefault(f => f.Id == s.Player.Id) != null);
                     } else {

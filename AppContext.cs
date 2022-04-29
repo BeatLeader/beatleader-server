@@ -30,6 +30,8 @@ namespace BeatLeader_Server
         public DbSet<Clan> Clans { get; set; }
         public DbSet<PlayerFriends> Friends { get; set; }
         public DbSet<CustomMode> CustomModes { get; set; }
+        public DbSet<AccountLinkRequest> AccountLinkRequests { get; set; }
+        public DbSet<LoginAttempt> LoginAttempts { get; set; }
 
         public void RejectChanges()
         {
