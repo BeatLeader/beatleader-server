@@ -95,12 +95,13 @@ namespace BeatLeader_Server.Controllers
                 await _playerController.GetLazy(userId);
 
                 IPAddress? iPAddress = Request.HttpContext.Connection.RemoteIpAddress;
-                if (iPAddress != null) {
-                    AccountLinkRequest? request = _context.AccountLinkRequests.Where(l => l.IP == iPAddress.ToString()).FirstOrDefault();
+                if (iPAddress != null)
+                {
+                    AccountLinkRequest? request = _context.AccountLinkRequests.FirstOrDefault();
 
                     if (request != null)
                     {
-                        await _currentUserController.MigratePrivate(request.OculusID);
+                        await _currentUserController.MigratePrivate(userId, request.OculusID);
                         _context.AccountLinkRequests.Remove(request);
                         await _context.SaveChangesAsync();
                     }

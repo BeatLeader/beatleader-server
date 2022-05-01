@@ -1,6 +1,7 @@
 ﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
+using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -16,10 +17,13 @@ namespace BeatLeader_Server.Controllers
         private readonly AppContext _context;
         private readonly IConfiguration _configuration;
 
-        public PlayerController(AppContext context, IConfiguration configuration)
+        private readonly IServerTiming _serverTiming;
+
+        public PlayerController(AppContext context, IConfiguration configuration, IServerTiming serverTiming)
         {
             _context = context;
             _configuration = configuration;
+            _serverTiming = serverTiming;
         }
 
         [HttpGet("~/player/{id}")]
@@ -30,12 +34,25 @@ namespace BeatLeader_Server.Controllers
             {
                 oculusId = Int64.Parse(id);
             } catch {}
-            AccountLink? link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
+            AccountLink? link;
+            using (_serverTiming.TimeAction("link"))
+            {
+                link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
+            }
             string userId = (link != null ? link.SteamID : id);
-            Player? player = await _context.Players.Include(p => p.ScoreStats).Include(p => p.Badges).Include(p => p.StatsHistory).FirstOrDefaultAsync(p => p.Id == userId);
+            Player? player;
+            using (_serverTiming.TimeAction("player"))
+            {
+                player = await _context.Players.Include(p => p.ScoreStats).Include(p => p.Badges).Include(p => p.StatsHistory).FirstOrDefaultAsync(p => p.Id == userId);
+            }
             if (player == null)
             {
-                return await GetLazy(id, false);
+                using (_serverTiming.TimeAction("lazy"))
+                {
+                    player = (await GetLazy(id, false)).Value;
+                }
+
+                return player;
             }
             return player;
         }
@@ -185,7 +202,6 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
             _context.AccountLinks.Remove(link);
-            _context.Auths.Remove(info);
 
             await _context.SaveChangesAsync();
 
@@ -464,15 +480,8 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/player/{id}/refresh")]
-        [Authorize]
         public async Task<ActionResult> RefreshPlayer(string id)
         {
-            string currentId = HttpContext.CurrentUserID();
-            Player? currentPlayer = _context.Players.Find(currentId);
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
             Player? p = _context.Players.Find(id);
             if (p == null)
             {
@@ -491,15 +500,17 @@ namespace BeatLeader_Server.Controllers
             p.ScoreStats.RankedPlayCount = rankedScores.Count();
             if (p.ScoreStats.TotalPlayCount > 0)
             {
+                int count = allScores.Count() / 2;
                 p.ScoreStats.TotalScore = allScores.Sum(s => s.ModifiedScore);
                 p.ScoreStats.AverageAccuracy = allScores.Average(s => s.Accuracy);
-                p.ScoreStats.MedianAccuracy = allScores.OrderByDescending(s => s.Accuracy).ElementAt(allScores.Count() / 2).Accuracy;
+                //p.ScoreStats.MedianAccuracy = allScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
             }
 
             if (p.ScoreStats.RankedPlayCount > 0)
             {
+                int count = rankedScores.Count() / 2;
                 p.ScoreStats.AverageRankedAccuracy = rankedScores.Average(s => s.Accuracy);
-                p.ScoreStats.MedianRankedAccuracy = rankedScores.OrderByDescending(s => s.Accuracy).ElementAt(rankedScores.Count() / 2).Accuracy;
+                //p.ScoreStats.MedianRankedAccuracy = rankedScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
                 p.ScoreStats.TopAccuracy = rankedScores.Max(s => s.Accuracy);
                 p.ScoreStats.TopPp = rankedScores.Max(s => s.Pp);
             }

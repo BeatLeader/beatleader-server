@@ -364,15 +364,13 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized("Accounts are already linked");
             }
 
-            return await MigratePrivate(authInfo.Id);
+            return await MigratePrivate(steamID, authInfo.Id);
         }
 
         [NonAction]
-        public async Task<ActionResult<int>> MigratePrivate(int id)
+        public async Task<ActionResult<int>> MigratePrivate(string fromId, int id)
         {
-            string steamID = HttpContext.CurrentUserID();
-
-            if (Int64.Parse(steamID) < 70000000000000000)
+            if (Int64.Parse(fromId) < 70000000000000000)
             {
                 return Unauthorized("You need to be logged in with Steam");
             }
@@ -380,13 +378,13 @@ namespace BeatLeader_Server.Controllers
             AccountLink? accountLink = new AccountLink
             {
                 OculusID = id,
-                SteamID = steamID
+                SteamID = fromId
             };
 
             _context.AccountLinks.Add(accountLink);
 
             Player? currentPlayer = _context.Players.Find(id.ToString());
-            Player? migratedToPlayer = _context.Players.Find(steamID);
+            Player? migratedToPlayer = _context.Players.Find(fromId);
 
             if (currentPlayer == null || migratedToPlayer == null)
             {
@@ -398,15 +396,15 @@ namespace BeatLeader_Server.Controllers
                 migratedToPlayer.Country = currentPlayer.Country;
             }
 
-            dynamic scores = _context.Scores
+            List<Score> scores = await _context.Scores
                 .Include(el => el.Player)
                 .Where(el => el.Player.Id == currentPlayer.Id)
                 .Include(el => el.Leaderboard)
-                .ThenInclude(el => el.Scores);
+                .ThenInclude(el => el.Scores).ToListAsync();
             if (scores.Count() > 0) {
                 foreach (Score score in scores)
                 {
-                    Score? migScore = score.Leaderboard.Scores.FirstOrDefault(el => el.PlayerId == steamID);
+                    Score? migScore = score.Leaderboard.Scores.FirstOrDefault(el => el.PlayerId == fromId);
                     if (migScore != null)
                     {
                         if (migScore.ModifiedScore >= score.ModifiedScore)
@@ -431,7 +429,7 @@ namespace BeatLeader_Server.Controllers
                     else
                     {
                         score.Player = migratedToPlayer;
-                        score.PlayerId = steamID;
+                        score.PlayerId = fromId;
                         _context.Scores.Update(score);
                     }
                 }

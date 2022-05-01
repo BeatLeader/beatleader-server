@@ -81,8 +81,6 @@ namespace BeatLeader_Server.Utils
             HitTracker hitTracker = new HitTracker();
             result.HitTracker = hitTracker;
 
-            List<NoteParams> noteParams = new List<NoteParams>();
-
             foreach (var item in replay.notes)
             {
                 NoteParams param = new NoteParams(item.noteID);

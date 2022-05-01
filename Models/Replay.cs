@@ -495,6 +495,11 @@ namespace BeatLeader_Server.Models
                 result.noteCutInfo = DecodeCutInfo(buffer, ref pointer);
             }
 
+            if (result.noteID == -1 || ("" + result.noteID).Last() == '9') {
+                result.noteID += 4;
+                result.eventType = NoteEventType.bomb;
+            }
+
             return result;
         }
 

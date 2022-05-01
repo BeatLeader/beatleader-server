@@ -73,6 +73,8 @@ namespace BeatLeader_Server {
                 connection = Configuration.GetConnectionString("DefaultConnection");
             }
             
+            services.AddServerTiming();
+
             services.AddDbContext<AppContext> (options => options.UseSqlServer (connection));
 
             services.Configure<AzureStorageConfig> (Configuration.GetSection ("AzureStorageConfig"));
@@ -102,11 +104,20 @@ namespace BeatLeader_Server {
             });
 
             services.AddSwaggerGen();
+
+            services.AddResponseCompression(options =>
+            {
+                options.EnableForHttps = true;
+            });
+
+            services.AddRequestDecompression();
+            
         }
 
         public void Configure (IApplicationBuilder app)
         {
             app.UseStaticFiles ();
+            app.UseServerTiming();
 
             app.UseRouting ();
 
@@ -114,6 +125,9 @@ namespace BeatLeader_Server {
             app.UseAuthorization ();
 
             app.UseCors (MyAllowSpecificOrigins);
+
+            app.UseResponseCompression();
+            app.UseRequestDecompression();
 
             app.UseEndpoints (endpoints => {
                 endpoints.MapDefaultControllerRoute ();

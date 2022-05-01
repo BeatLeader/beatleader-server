@@ -5,6 +5,7 @@ using Azure.Storage.Blobs;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
+using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +26,7 @@ namespace BeatLeader_Server.Controllers
         ScoreController _scoreController;
         IWebHostEnvironment _environment;
         IConfiguration _configuration;
+        private readonly IServerTiming _serverTiming;
 
 
         public ReplayController(
@@ -35,7 +37,8 @@ namespace BeatLeader_Server.Controllers
             SongController songController, 
             LeaderboardController leaderboardController, 
             PlayerController playerController,
-            ScoreController scoreController
+            ScoreController scoreController,
+            IServerTiming serverTiming
             )
 		{
             _leaderboardController = leaderboardController;
@@ -45,6 +48,7 @@ namespace BeatLeader_Server.Controllers
             _context = context;
             _environment = env;
             _configuration = configuration;
+            _serverTiming = serverTiming;
 
             if (env.IsDevelopment())
 			{
@@ -144,151 +148,180 @@ namespace BeatLeader_Server.Controllers
 
             var transaction = _context.Database.BeginTransaction();
 
-            Leaderboard? leaderboard = (await _leaderboardController.GetByHash(replay.info.hash, replay.info.difficulty, replay.info.mode)).Value;
-            if (leaderboard == null) {
-                return NotFound("Such leaderboard not exists");
-            }
-
-            FailedScore? failedScore = _context.FailedScores.Include(s => s.Leaderboard).ThenInclude(s => s.Difficulty).FirstOrDefault(s => s.PlayerId == authenticatedPlayerID && s.Leaderboard.Id == leaderboard.Id);
-            if (failedScore != null) {
-                _context.FailedScores.Remove(failedScore);
-                _context.SaveChanges();
-            }
-
-            Score? currentScore = leaderboard.Scores.FirstOrDefault(el => el.PlayerId == replay.info.playerID);
-            if (currentScore != null && currentScore.ModifiedScore >= (int)(((float)replay.info.score) * ReplayUtils.GetTotalMultiplier(replay.info.modifiers)))
+            Leaderboard? leaderboard;
+            using (_serverTiming.TimeAction("ldbrd"))
             {
-                transaction.Commit();
-                return BadRequest("Score is lower than existing one");
+                leaderboard = (await _leaderboardController.GetByHash(replay.info.hash, replay.info.difficulty, replay.info.mode)).Value;
+                if (leaderboard == null) {
+                    return NotFound("Such leaderboard not exists");
+                }
             }
 
-            Player? player = (await _playerController.GetLazy(replay.info.playerID)).Value;
-            if (player == null) {
-                player = new Player();
-                player.Id = replay.info.playerID;
-                player.Name = replay.info.playerName;
-                player.Platform = replay.info.platform;
-                player.SetDefaultAvatar();
-
-                _context.Players.Add(player);
-            }
-
-            if (player.Country == "not set")
+            FailedScore? failedScore;
+            using (_serverTiming.TimeAction("failS"))
             {
-                var ip = context.Request.HttpContext.Connection.RemoteIpAddress;
-                if (ip != null)
+                failedScore = _context.FailedScores.Include(s => s.Leaderboard).FirstOrDefault(s => s.PlayerId == authenticatedPlayerID && s.Leaderboard.Id == leaderboard.Id);
+                if (failedScore != null) {
+                    _context.FailedScores.Remove(failedScore);
+                    _context.SaveChanges();
+                }
+            }
+
+            Score? currentScore;
+            using (_serverTiming.TimeAction("currS"))
+            {
+                currentScore = leaderboard.Scores.FirstOrDefault(el => el.PlayerId == replay.info.playerID);
+                if (currentScore != null && currentScore.ModifiedScore >= (int)(((float)replay.info.score) * ReplayUtils.GetTotalMultiplier(replay.info.modifiers)))
                 {
-                    player.Country = GetCountryByIp(ip.ToString());
+                    transaction.Commit();
+                    return BadRequest("Score is lower than existing one");
+                }
+            }
+
+            Player? player;
+
+            using (_serverTiming.TimeAction("player"))
+            {
+                player = currentScore?.Player ?? (await _playerController.GetLazy(replay.info.playerID)).Value;
+                if (player == null) {
+                    player = new Player();
+                    player.Id = replay.info.playerID;
+                    player.Name = replay.info.playerName;
+                    player.Platform = replay.info.platform;
+                    player.SetDefaultAvatar();
+
+                    _context.Players.Add(player);
+                }
+
+                if (player.Country == "not set")
+                {
+                    var ip = context.Request.HttpContext.Connection.RemoteIpAddress;
+                    if (ip != null)
+                    {
+                        player.Country = GetCountryByIp(ip.ToString());
+                    }
                 }
             }
 
             (replay, Score resultScore) = ReplayUtils.ProcessReplay(replay, leaderboard);
-            if (leaderboard.Difficulty.Ranked && leaderboard.Difficulty.Stars != null) {
-                resultScore.Pp = (float)resultScore.Accuracy * (float)leaderboard.Difficulty.Stars * 44;
-            }
 
-            resultScore.PlayerId = replay.info.playerID;
-            resultScore.Player = player;
-            resultScore.Leaderboard = leaderboard;
-            resultScore.Replay = "";
-            resultScore.Timeset = ((int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds).ToString();
-
-            if (currentScore != null)
-            {   
-                player.ScoreStats.TotalScore -= currentScore.ModifiedScore;
-                if (player.ScoreStats.TotalPlayCount == 1)
-                {
-                    player.ScoreStats.AverageAccuracy = 0.0f;
-                } else
-                {
-                    player.ScoreStats.AverageAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, currentScore.Accuracy);
+            using (_serverTiming.TimeAction("score"))
+            {
+                if (leaderboard.Difficulty.Ranked && leaderboard.Difficulty.Stars != null) {
+                    resultScore.Pp = (float)resultScore.Accuracy * (float)leaderboard.Difficulty.Stars * 44;
                 }
-                    
-                if (leaderboard.Difficulty.Ranked)
-                {
-                    if (player.ScoreStats.RankedPlayCount == 1)
+
+                resultScore.PlayerId = replay.info.playerID;
+                resultScore.Player = player;
+                resultScore.Leaderboard = leaderboard;
+                resultScore.Replay = "";
+                resultScore.Timeset = ((int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds).ToString();
+
+                if (currentScore != null)
+                {   
+                    player.ScoreStats.TotalScore -= currentScore.ModifiedScore;
+                    if (player.ScoreStats.TotalPlayCount == 1)
                     {
-                        player.ScoreStats.AverageRankedAccuracy = 0.0f;
+                        player.ScoreStats.AverageAccuracy = 0.0f;
                     } else
                     {
-                        player.ScoreStats.AverageRankedAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, currentScore.Accuracy);
+                        player.ScoreStats.AverageAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, currentScore.Accuracy);
                     }
+                    
+                    if (leaderboard.Difficulty.Ranked)
+                    {
+                        if (player.ScoreStats.RankedPlayCount == 1)
+                        {
+                            player.ScoreStats.AverageRankedAccuracy = 0.0f;
+                        } else
+                        {
+                            player.ScoreStats.AverageRankedAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, currentScore.Accuracy);
+                        }
+                    }
+                    try
+                    {
+                        leaderboard.Scores.Remove(currentScore);
+                    }
+                    catch (Exception)
+                    {
+                        leaderboard.Scores = new List<Score>(leaderboard.Scores);
+                        leaderboard.Scores.Remove(currentScore);
+                    }
+
+                    int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+                    if ((timestamp - UInt32.Parse(currentScore.Timeset)) > 60 * 60 * 24) {
+                        player.ScoreStats.DailyImprovements++;
+                    }
+                }
+                else
+                {
+                    if (leaderboard.Difficulty.Ranked)
+                    {
+                        player.ScoreStats.RankedPlayCount++;
+                    }
+                    player.ScoreStats.TotalPlayCount++;
                 }
                 try
                 {
-                    leaderboard.Scores.Remove(currentScore);
-                }
-                catch (Exception)
+                    leaderboard.Scores.Add(resultScore);
+                } catch (Exception)
                 {
                     leaderboard.Scores = new List<Score>(leaderboard.Scores);
-                    leaderboard.Scores.Remove(currentScore);
+                    leaderboard.Scores.Add(resultScore);
                 }
 
-                int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-                if ((timestamp - UInt32.Parse(currentScore.Timeset)) > 60 * 60 * 24) {
-                    player.ScoreStats.DailyImprovements++;
-                }
-            }
-            else
-            {
-                if (leaderboard.Difficulty.Ranked)
+                var rankedScores = leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();
+                foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
                 {
-                    player.ScoreStats.RankedPlayCount++;
+                    if (s.Rank != i + 1) {
+                        s.Rank = i + 1;
+                    }
                 }
-                player.ScoreStats.TotalPlayCount++;
-            }
-            try
-            {
-                leaderboard.Scores.Add(resultScore);
-            } catch (Exception)
-            {
-                leaderboard.Scores = new List<Score>(leaderboard.Scores);
-                leaderboard.Scores.Add(resultScore);
-            }
-
-            var rankedScores = leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();
-            foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
-            {
-                if (s.Rank != i + 1) {
-                    s.Rank = i + 1;
-                }
-            }
                 
-            leaderboard.Plays = rankedScores.Count;
-            _context.Leaderboards.Update(leaderboard);
+                leaderboard.Plays = rankedScores.Count;
+                _context.Leaderboards.Update(leaderboard);
+                }
 
-            try
+
+            using (_serverTiming.TimeAction("db"))
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException ex)
-            {
-                ex.Entries.Single().Reload();
-                await _context.SaveChangesAsync();
+                try
+                {
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException ex)
+                {
+                    ex.Entries.Single().Reload();
+                    await _context.SaveChangesAsync();
+                }
+
+                transaction.Commit();
             }
 
-            transaction.Commit();
             var transaction2 = _context.Database.BeginTransaction();
 
-            player.ScoreStats.TotalScore += resultScore.ModifiedScore;
-            player.ScoreStats.AverageAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, resultScore.Accuracy);
-            if (leaderboard.Difficulty.Ranked)
+            using (_serverTiming.TimeAction("pp"))
             {
-                player.ScoreStats.AverageRankedAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, resultScore.Accuracy);
-            }
-            _context.Players.Update(player);
-
-            _context.RecalculatePP(player);
-
-            var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
-            var country = player.Country; var countryRank = 1;
-            foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
-            {
-                p.Rank = i + 1;
-                if (p.Country == country)
+                player.ScoreStats.TotalScore += resultScore.ModifiedScore;
+                player.ScoreStats.AverageAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, resultScore.Accuracy);
+                if (leaderboard.Difficulty.Ranked)
                 {
-                    p.CountryRank = countryRank;
-                    countryRank++;
+                    player.ScoreStats.AverageRankedAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, resultScore.Accuracy);
+                }
+                _context.Players.Update(player);
+
+                _context.RecalculatePP(player);
+
+                var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
+                var country = player.Country; var countryRank = 1;
+                foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
+                {
+                    p.Rank = i + 1;
+                    if (p.Country == country)
+                    {
+                        p.CountryRank = countryRank;
+                        countryRank++;
+                    }
                 }
             }
 
