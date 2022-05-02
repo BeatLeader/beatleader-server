@@ -4,6 +4,7 @@ using Azure.Storage.Blobs;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
+using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,17 +15,20 @@ namespace BeatLeader_Server.Controllers
     public class ScoreController : Controller
     {
         private readonly AppContext _context;
-        BlobContainerClient _containerClient;
-        PlayerController _playerController;
+        private readonly BlobContainerClient _containerClient;
+        private readonly PlayerController _playerController;
+        private readonly IServerTiming _serverTiming;
 
         public ScoreController(
             AppContext context,
             IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env,
-            PlayerController playerController)
+            PlayerController playerController,
+            IServerTiming serverTiming)
         {
             _context = context;
             _playerController = playerController;
+            _serverTiming = serverTiming;
             if (env.IsDevelopment())
             {
                 _containerClient = new BlobContainerClient(config.Value.AccountName, config.Value.ReplaysContainerName);
@@ -241,6 +245,18 @@ namespace BeatLeader_Server.Controllers
             return _context.FailedScores.OrderByDescending(s => s.Id).Include(el => el.Leaderboard).Include(el => el.Player).ToList();
         }
 
+        public class PlayerResponse {
+            public string Id { get; set; }
+            public string Name { get; set; } = "";
+            public string Platform { get; set; } = "";
+            public string Avatar { get; set; } = "";
+            public string Country { get; set; } = "not set";
+
+            public float Pp { get; set; }
+            public int Rank { get; set; }
+            public int CountryRank { get; set; }
+        }
+
         public class ScoreResponse
         {
             public int Id { get; set; }
@@ -262,7 +278,7 @@ namespace BeatLeader_Server.Controllers
             public bool FullCombo { get; set; }
             public int Hmd { get; set; }
             public string Timeset { get; set; }
-            public Player Player { get; set; }
+            public PlayerResponse Player { get; set; }
         }
 
         [NonAction]
@@ -273,12 +289,10 @@ namespace BeatLeader_Server.Controllers
                 Id = s.Id,
                 BaseScore = s.BaseScore,
                 ModifiedScore = s.ModifiedScore,
-                Accuracy = s.Accuracy,
                 PlayerId = s.PlayerId,
+                Accuracy = s.Accuracy,
                 Pp = s.Pp,
-                Weight = s.Weight,
-                Rank = i >= 0 ? i + 1 : s.Rank,
-                CountryRank = s.CountryRank,
+                Rank = s.Rank,
                 Replay = s.Replay,
                 Modifiers = s.Modifiers,
                 BadCuts = s.BadCuts,
@@ -289,13 +303,37 @@ namespace BeatLeader_Server.Controllers
                 FullCombo = s.FullCombo,
                 Hmd = s.Hmd,
                 Timeset = s.Timeset,
-                Player = s.Player,
+                Player = ResponseFromPlayer(s.Player),
             };
         }
 
-        private void RemovePositiveModifiers(Score s)
+        [NonAction]
+        public PlayerResponse? ResponseFromPlayer(Player? p) {
+            if (p == null) return null;
+
+            return new PlayerResponse
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Platform = p.Platform,
+                Avatar = p.Avatar,
+                Country = p.Country,
+
+                Pp = p.Pp,
+                Rank = p.Rank,
+                CountryRank = p.CountryRank,
+            };
+        }
+
+        public ScoreResponse SetRank(ScoreResponse s, int i)
         {
-            Score result = s;
+            s.Rank = i >= 0 ? i + 1 : s.Rank;
+            return s;
+        }
+
+        private ScoreResponse RemovePositiveModifiers(ScoreResponse s)
+        {
+            ScoreResponse result = s;
 
             int maxScore = (int)(result.ModifiedScore / result.Accuracy);
             if (result.Pp > 0)
@@ -313,6 +351,8 @@ namespace BeatLeader_Server.Controllers
             {
                 result.Pp *= result.Accuracy;
             }
+
+            return result;
         }
 
         [HttpGet("~/v3/scores/{hash}/{diff}/{mode}/{context}/{scope}/{method}")]
@@ -327,114 +367,112 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int count = 10)
         {
-            Player? currentPlayer = (await _playerController.Get(player)).Value;
-            if (currentPlayer == null) {
-               return NotFound();
-            }
-
-            var leaderboard = _context
-                .Leaderboards
-                .Include(el => el.Song)
-                .Include(el => el.Difficulty)
-                .Where(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
-
-            if (leaderboard != null)
+            ResponseWithMetadataAndSelection<ScoreResponse> result = new ResponseWithMetadataAndSelection<ScoreResponse>
             {
-                ResponseWithMetadataAndSelection<ScoreResponse> result = new ResponseWithMetadataAndSelection<ScoreResponse>
-                {
-                    Data = new List<ScoreResponse>(),
-                    Metadata =
+                Data = new List<ScoreResponse>(),
+                Metadata =
                     {
                         ItemsPerPage = count,
                         Page = page,
                         Total = 0
                     }
-                };
+            };
 
-                Leaderboard? selectedLeaderboard = await leaderboard
-                    .Include(el => el.Scores)
-                    .ThenInclude(s => s.Player)
-                    .ThenInclude(p => p.ScoreStats)
-                    .FirstOrDefaultAsync();
-
-                if (selectedLeaderboard == null) {
-                    return result;
-                }
-
-                IEnumerable<Score> query = selectedLeaderboard.Scores.ToList();
-                if (context.ToLower() == "standard") {
-                    query.ToList().ForEach(RemovePositiveModifiers);
-                }
-
-                query = query.OrderByDescending(p => p.ModifiedScore);
-
-                if (query.Count() == 0)
-                {
-                    return result;
-                }
-                Dictionary<string, int> countries = new Dictionary<string, int>();
-                query = query.Select((s, i) => {
-                    if (s.CountryRank == 0) {
-                        if (!countries.ContainsKey(s.Player.Country))
-                        {
-                            countries[s.Player.Country] = 1;
-                        }
-
-                        s.CountryRank = countries[s.Player.Country];
-                        countries[s.Player.Country]++;
-                    }
-                    return s;
-                });
-                if (scope.ToLower() == "friends")
-                {
-                    PlayerFriends? friends = await _context.Friends.Include(f => f.Friends).FirstOrDefaultAsync(f => f.Id == currentPlayer.Id);
-                    if (friends != null) {
-                        query = query.Where(s => s.PlayerId == currentPlayer.Id || friends.Friends.FirstOrDefault(f => f.Id == s.Player.Id) != null);
-                    } else {
-                        query = query.Where(s => s.PlayerId == currentPlayer.Id);
-                    }
-                } else if (scope.ToLower() == "country")
-                {
-                    query = query.Where(s => s.Player.Country == currentPlayer.Country);
-                }
-
-                if (method.ToLower() == "around")
-                {
-                    Score? playerScore = query.FirstOrDefault(el => el.Player.Id == player);
-                    if (playerScore != null)
-                    {
-                        int rank = query.TakeWhile(s => s.PlayerId != player).Count();
-                        page += (int)Math.Floor((double)(rank) / (double)count);
-                        result.Metadata.Page = page;
-                    }
-                    else
-                    {
-                        return result;
-                    }
-                } else
-                {
-                    Score? highlightedScore = query.FirstOrDefault(el => el.Player.Id == player);
-                    if (highlightedScore != null)
-                    {
-                        int rank = query.TakeWhile(s => s.PlayerId != player).Count();
-                        result.Selection = RemoveLeaderboard(highlightedScore, rank);
-                    }
-                }
-
-                List<ScoreResponse> resultList = query
-                    .Select(RemoveLeaderboard)
-                    .Skip((page - 1) * count)
-                    .Take(count)
-                    .ToList();
-                result.Metadata.Total = query.Count();
-                result.Data = resultList;
-
+            PlayerResponse? currentPlayer = null;
+            var song = await _context.Songs.Select(s => new { Id = s.Id, Hash = s.Hash }).FirstOrDefaultAsync(s => s.Hash == hash);
+            if (song == null) {
                 return result;
             }
-            else
-            {
-                return NotFound();
+
+            int modeValue = SongUtils.ModeForModeName(mode);
+            if (modeValue == 0) {
+                var customMode = _context.CustomModes.FirstOrDefaultAsync(m => m.Name == mode);
+                if (customMode != null) {
+                    modeValue = customMode.Id + 10;
+                } else {
+                    return result;
+                }
             }
+
+            var leaderboardId = song.Id + SongUtils.DiffForDiffName(diff).ToString() + modeValue.ToString();
+
+            IEnumerable<ScoreResponse> query = _context.Scores.Where(s => s.LeaderboardId == leaderboardId).Include(s => s.Player).Select(RemoveLeaderboard).ToList();
+
+            if (query.Count() == 0)
+            {
+                return result;
+            }
+
+            if (context.ToLower() == "standard")
+            {
+                query = query.Select(RemovePositiveModifiers);
+            }
+
+            query = query.OrderByDescending(p => p.ModifiedScore);
+            //Dictionary<string, int> countries = new Dictionary<string, int>();
+            //query = query.Select((s, i) => {
+            //    if (s.CountryRank == 0) {
+            //        if (!countries.ContainsKey(s.Player.Country))
+            //        {
+            //            countries[s.Player.Country] = 1;
+            //        }
+
+            //        s.CountryRank = countries[s.Player.Country];
+            //        countries[s.Player.Country]++;
+            //    }
+            //    return s;
+            //});
+            if (scope.ToLower() == "friends")
+            {
+                PlayerFriends? friends = await _context.Friends.Include(f => f.Friends).FirstOrDefaultAsync(f => f.Id == player);
+                if (friends != null) {
+                    query = query.Where(s => s.PlayerId == player || friends.Friends.FirstOrDefault(f => f.Id == s.PlayerId) != null);
+                } else {
+                    query = query.Where(s => s.PlayerId == player);
+                }
+            } else if (scope.ToLower() == "country")
+            {
+                currentPlayer = currentPlayer ?? ResponseFromPlayer(_context.Players.Find(player));
+                if (currentPlayer == null)
+                {
+                    return result;
+                }
+                query = query.Where(s => s.Player.Country == currentPlayer.Country);
+            }
+
+            if (method.ToLower() == "around")
+            {
+                ScoreResponse? playerScore = query.FirstOrDefault(el => el.PlayerId == player);
+                if (playerScore != null)
+                {
+                    int rank = query.TakeWhile(s => s.PlayerId != player).Count();
+                    page += (int)Math.Floor((double)(rank) / (double)count);
+                    result.Metadata.Page = page;
+                }
+                else
+                {
+                    return result;
+                }
+            } else
+            {
+                ScoreResponse? highlightedScore = query.FirstOrDefault(el => el.PlayerId == player);
+                if (highlightedScore != null)
+                {
+                    int rank = query.TakeWhile(s => s.PlayerId != player).Count();
+                    result.Selection = SetRank(highlightedScore, rank);
+                    result.Selection.Player = currentPlayer ?? ResponseFromPlayer(_context.Players.Find(player));
+                }
+            }
+
+            List<ScoreResponse> resultList = query
+                .Select(SetRank)
+                .Skip((page - 1) * count)
+                .Take(count)
+                .ToList();
+            result.Metadata.Total = query.Count();
+            result.Data = resultList;
+
+            return result;
         }
 
 

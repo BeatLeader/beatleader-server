@@ -71,14 +71,16 @@ namespace BeatLeader_Server.Controllers
             if (iPAddress == null) {
                 return BadRequest("IP address should not be null");
             }
+            int random = new Random().Next(200);
             var linkRequest = new AccountLinkRequest {
                 IP = iPAddress.ToString(),
                 OculusID = Int32.Parse(HttpContext.CurrentUserID()),
+                Random = random,
             };
             _context.AccountLinkRequests.Add(linkRequest);
             await _context.SaveChangesAsync();
 
-            var redirectUrl = Url.Action("SteamLoginCallback", new { ReturnUrl = returnUrl });
+            var redirectUrl = Url.Action("SteamLoginCallback", new { ReturnUrl = returnUrl, Random = random });
 
             // Instruct the middleware corresponding to the requested external identity
             // provider to redirect the user agent to its own authorization endpoint.
@@ -87,7 +89,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/steamcallback")]
-        public async Task<IActionResult> SteamLoginCallback([FromQuery] string ReturnUrl)
+        public async Task<IActionResult> SteamLoginCallback([FromQuery] string ReturnUrl, [FromQuery] int Random = 0)
         {
             string userId = HttpContext.CurrentUserID();
             if (userId != null)
@@ -97,13 +99,14 @@ namespace BeatLeader_Server.Controllers
                 IPAddress? iPAddress = Request.HttpContext.Connection.RemoteIpAddress;
                 if (iPAddress != null)
                 {
-                    AccountLinkRequest? request = _context.AccountLinkRequests.FirstOrDefault();
+                    string ip = iPAddress.ToString();
+                    AccountLinkRequest? request = _context.AccountLinkRequests.FirstOrDefault(a => a.IP == ip && a.Random == Random);
 
                     if (request != null)
                     {
-                        await _currentUserController.MigratePrivate(userId, request.OculusID);
                         _context.AccountLinkRequests.Remove(request);
                         await _context.SaveChangesAsync();
+                        await _currentUserController.MigratePrivate(userId, request.OculusID);
                     }
                 }
             }

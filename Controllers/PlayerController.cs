@@ -27,23 +27,30 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/player/{id}")]
-        public async Task<ActionResult<Player>> Get(string id)
+        public async Task<ActionResult<Player>> Get(string id, bool stats = true)
         {
             Int64 oculusId = 0;
             try
             {
                 oculusId = Int64.Parse(id);
             } catch {}
-            AccountLink? link;
-            using (_serverTiming.TimeAction("link"))
-            {
-                link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
+            AccountLink? link = null;
+            if (oculusId < 70000000000000000) {
+                using (_serverTiming.TimeAction("link"))
+                {
+                    link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
+                }
             }
             string userId = (link != null ? link.SteamID : id);
             Player? player;
             using (_serverTiming.TimeAction("player"))
             {
-                player = await _context.Players.Include(p => p.ScoreStats).Include(p => p.Badges).Include(p => p.StatsHistory).FirstOrDefaultAsync(p => p.Id == userId);
+                if (stats) {
+                    player = await _context.Players.Where(p => p.Id == userId).Include(p => p.ScoreStats).Include(p => p.Badges).Include(p => p.StatsHistory).FirstOrDefaultAsync();
+                } else {
+                    player = await _context.Players.FindAsync(userId);
+                }
+                
             }
             if (player == null)
             {
@@ -221,66 +228,77 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null)
         {
-            var sequence = _context.Scores.Where(t => t.PlayerId == id);
-            switch (sortBy)
+            IQueryable<Score> sequence;
+
+            using (_serverTiming.TimeAction("sequence"))
             {
-                case "date":
-                    sequence = sequence.Order(order, t => t.Timeset);
-                    break;
-                case "pp":
-                    sequence = sequence.Order(order, t => t.Pp);
-                    break;
-                case "acc":
-                    sequence = sequence.Order(order, t => t.Accuracy);
-                    break;
-                case "pauses":
-                    sequence = sequence.Order(order, t => t.Pauses);
-                    break;
-                case "rank":
-                    sequence = sequence.Order(order, t => t.Rank);
-                    break;
-                case "stars":
-                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Order(order, t => t.Leaderboard.Difficulty.Stars);
-                    break;
-                default:
-                    break;
-            }
-            if (search != null)
-            {
-                string lowSearch = search.ToLower();
-                sequence = sequence
-                    .Include(lb => lb.Leaderboard)
-                    .ThenInclude(lb => lb.Song)
-                    .Where(p => p.Leaderboard.Song.Author.ToLower().Contains(lowSearch) ||
-                                p.Leaderboard.Song.Mapper.ToLower().Contains(lowSearch) ||
-                                p.Leaderboard.Song.Name.ToLower().Contains(lowSearch));
-            }
-            if (diff != null)
-            {
-                sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.DifficultyName.ToLower().Contains(diff.ToLower()));
-            }
-            if (type != null)
-            {
-                sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Ranked : !p.Leaderboard.Difficulty.Ranked);
-            }
-            if (stars_from != null)
-            {
-                sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.Stars >= stars_from);
-            }
-            if (stars_to != null)
-            {
-                sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.Stars <= stars_to);
-            }
-            return new Models.ResponseWithMetadata<Score>()
-            {
-                Metadata = new Metadata()
+                sequence = _context.Scores.Where(t => t.PlayerId == id);
+                switch (sortBy)
                 {
-                    Page = page,
-                    ItemsPerPage = count,
-                    Total = sequence.Count()
-                },
-                Data = sequence.Skip((page - 1) * count).Take(count).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).ToList()
-            };
+                    case "date":
+                        sequence = sequence.Order(order, t => t.Timeset);
+                        break;
+                    case "pp":
+                        sequence = sequence.Order(order, t => t.Pp);
+                        break;
+                    case "acc":
+                        sequence = sequence.Order(order, t => t.Accuracy);
+                        break;
+                    case "pauses":
+                        sequence = sequence.Order(order, t => t.Pauses);
+                        break;
+                    case "rank":
+                        sequence = sequence.Order(order, t => t.Rank);
+                        break;
+                    case "stars":
+                        sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Order(order, t => t.Leaderboard.Difficulty.Stars);
+                        break;
+                    default:
+                        break;
+                }
+                if (search != null)
+                {
+                    string lowSearch = search.ToLower();
+                    sequence = sequence
+                        .Include(lb => lb.Leaderboard)
+                        .ThenInclude(lb => lb.Song)
+                        .Where(p => p.Leaderboard.Song.Author.ToLower().Contains(lowSearch) ||
+                                    p.Leaderboard.Song.Mapper.ToLower().Contains(lowSearch) ||
+                                    p.Leaderboard.Song.Name.ToLower().Contains(lowSearch));
+                }
+                if (diff != null)
+                {
+                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.DifficultyName.ToLower().Contains(diff.ToLower()));
+                }
+                if (type != null)
+                {
+                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Ranked : !p.Leaderboard.Difficulty.Ranked);
+                }
+                if (stars_from != null)
+                {
+                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.Stars >= stars_from);
+                }
+                if (stars_to != null)
+                {
+                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.Stars <= stars_to);
+                }
+            }
+
+            ResponseWithMetadata<Score> result; 
+            using (_serverTiming.TimeAction("db"))
+            {
+                result = new ResponseWithMetadata<Score>()
+                {
+                    Metadata = new Metadata()
+                    {
+                        Page = page,
+                        ItemsPerPage = count,
+                        Total = sequence.Count()
+                    },
+                    Data = await sequence.Skip((page - 1) * count).Take(count).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).ToListAsync()
+                };
+            }
+            return result;
         }
 
         [HttpDelete("~/player/{id}/score/{leaderboardID}")]
@@ -482,41 +500,54 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/player/{id}/refresh")]
         public async Task<ActionResult> RefreshPlayer(string id)
         {
-            Player? p = _context.Players.Find(id);
-            if (p == null)
+            Player? player = _context.Players.Find(id);
+            if (player == null)
             {
                 return NotFound();
             }
 
-            if (p.ScoreStats == null)
+            if (player.ScoreStats == null)
             {
-                p.ScoreStats = new PlayerScoreStats();
-                _context.Stats.Add(p.ScoreStats);
+                player.ScoreStats = new PlayerScoreStats();
+                _context.Stats.Add(player.ScoreStats);
             }
-            var allScores = _context.Scores.Where(s => s.PlayerId == p.Id);
+            var allScores = _context.Scores.Where(s => s.PlayerId == player.Id);
             var rankedScores = allScores.Where(s => s.Pp != 0);
-            p.ScoreStats.TotalPlayCount = allScores.Count();
+            player.ScoreStats.TotalPlayCount = allScores.Count();
 
-            p.ScoreStats.RankedPlayCount = rankedScores.Count();
-            if (p.ScoreStats.TotalPlayCount > 0)
+            player.ScoreStats.RankedPlayCount = rankedScores.Count();
+            if (player.ScoreStats.TotalPlayCount > 0)
             {
                 int count = allScores.Count() / 2;
-                p.ScoreStats.TotalScore = allScores.Sum(s => s.ModifiedScore);
-                p.ScoreStats.AverageAccuracy = allScores.Average(s => s.Accuracy);
+                player.ScoreStats.TotalScore = allScores.Sum(s => s.ModifiedScore);
+                player.ScoreStats.AverageAccuracy = allScores.Average(s => s.Accuracy);
                 //p.ScoreStats.MedianAccuracy = allScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
             }
 
-            if (p.ScoreStats.RankedPlayCount > 0)
+            if (player.ScoreStats.RankedPlayCount > 0)
             {
                 int count = rankedScores.Count() / 2;
-                p.ScoreStats.AverageRankedAccuracy = rankedScores.Average(s => s.Accuracy);
+                player.ScoreStats.AverageRankedAccuracy = rankedScores.Average(s => s.Accuracy);
                 //p.ScoreStats.MedianRankedAccuracy = rankedScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
-                p.ScoreStats.TopAccuracy = rankedScores.Max(s => s.Accuracy);
-                p.ScoreStats.TopPp = rankedScores.Max(s => s.Pp);
+                player.ScoreStats.TopAccuracy = rankedScores.Max(s => s.Accuracy);
+                player.ScoreStats.TopPp = rankedScores.Max(s => s.Pp);
             }
 
-            _context.Stats.Update(p.ScoreStats);
-            _context.RecalculatePP(p);
+            _context.Stats.Update(player.ScoreStats);
+            _context.RecalculatePP(player);
+
+            var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
+            var country = player.Country; var countryRank = 1;
+            foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
+            {
+                p.Rank = i + 1;
+                if (p.Country == country)
+                {
+                    p.CountryRank = countryRank;
+                    countryRank++;
+                }
+            }
+
             _context.SaveChanges();
 
             return Ok();
