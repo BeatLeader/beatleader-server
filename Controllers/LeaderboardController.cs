@@ -64,70 +64,135 @@ namespace BeatLeader_Server.Controllers
             return leaderboard;
         }
 
+        public class DifficultyResponse
+        {
+            public int Value { get; set; }
+            public int Mode { get; set; }
+            public bool Ranked { get; set; }
+            public float? Stars { get; set; }
+            public int Notes { get; set; }
+            public int MaxScore { get; set; }
+            public string SongId { get; set; }
+        }
+
+        public DifficultyResponse DifficultyToResponse(DifficultyDescription difficulty) {
+            return new DifficultyResponse {
+                Value = difficulty.Value,
+                Mode = difficulty.Mode,
+                Ranked = difficulty.Ranked,
+                Stars = difficulty.Stars,
+                Notes = difficulty.Notes,
+                MaxScore = difficulty.MaxScore,
+                SongId = difficulty.SongId,
+            };
+        }
+
         [NonAction]
-        public async Task<ActionResult<Leaderboard>> GetByHash(string hash, string diff, string mode) {
+        public async Task<ActionResult<DifficultyResponse>> GetDifficulty(string hash, string diff, string mode)
+        {
+            var songId = await _context.Songs.Select(s => new { Id = s.Id, Hash = s.Hash }).FirstOrDefaultAsync(s => s.Hash == hash);
+            if (songId != null)
+            {
+                int modeValue = SongUtils.ModeForModeName(mode);
+                if (modeValue == 0)
+                {
+                    var customMode = _context.CustomModes.FirstOrDefaultAsync(m => m.Name == mode);
+                    if (customMode != null)
+                    {
+                        modeValue = customMode.Id + 10;
+                    }
+                }
+                if (modeValue != 0)
+                {
+                    string id = songId.Id;
+                    int diffValue = SongUtils.DiffForDiffName(diff);
+                    string leaderboardId = id + diffValue + modeValue;
+                    Leaderboard? leaderboard1 = await _context.Leaderboards.Where(l => l.Id == leaderboardId).Include(l => l.Difficulty).FirstOrDefaultAsync();
+                    if (leaderboard1 != null) {
+                        return DifficultyToResponse(leaderboard1.Difficulty);
+                    }
+                }
+            }
+
+            Leaderboard? leaderboard = null;
+
+            Song? song = null;
+            if (songId != null) {
+                song = await _context.Songs.Include(s => s.Difficulties).FirstOrDefaultAsync(s => s.Id == songId.Id);
+            } else {
+                song = (await _songController.GetHash(hash)).Value;
+            }
+            if (song == null)
+            {
+                return NotFound();
+            }
+
+            leaderboard = new Leaderboard();
+            leaderboard.Song = song;
+            IEnumerable<DifficultyDescription> difficulties = song.Difficulties.Where(el => el.DifficultyName == diff);
+            DifficultyDescription? difficulty = difficulties.FirstOrDefault(x => x.ModeName == mode);
+            if (difficulty == null)
+            {
+                difficulty = difficulties.FirstOrDefault(x => x.ModeName == "Standard");
+                if (difficulty == null)
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    CustomMode? customMode = _context.CustomModes.FirstOrDefault(m => m.Name == mode);
+                    if (customMode == null)
+                    {
+                        customMode = new CustomMode
+                        {
+                            Name = mode
+                        };
+                        _context.CustomModes.Add(customMode);
+                        _context.SaveChanges();
+                    }
+
+                    difficulty = new DifficultyDescription
+                    {
+                        Value = difficulty.Value,
+                        Mode = customMode.Id + 10,
+                        DifficultyName = difficulty.DifficultyName,
+                        ModeName = mode,
+
+                        Njs = difficulty.Njs,
+                        Nps = difficulty.Nps,
+                        Notes = difficulty.Notes,
+                        Bombs = difficulty.Bombs,
+                        Walls = difficulty.Walls,
+                    };
+                    song.Difficulties.Add(difficulty);
+                    _context.SaveChanges();
+                }
+            }
+
+            leaderboard.Difficulty = difficulty;
+            leaderboard.Scores = new List<Score>();
+            leaderboard.Id = song.Id + difficulty.Value.ToString() + difficulty.Mode.ToString();
+
+            _context.Leaderboards.Add(leaderboard);
+            await _context.SaveChangesAsync();
+
+            return DifficultyToResponse(leaderboard.Difficulty);
+        }
+
+        [NonAction]
+        public async Task<ActionResult<Leaderboard>> GetByIdFull(string id, AppContext context) {
             Leaderboard? leaderboard;
 
-            leaderboard = await _context
+            leaderboard = await context
                     .Leaderboards
+                    .Where(lb => lb.Id == id)
                     .Include(lb => lb.Difficulty)
                     .Include(lb => lb.Song)
-                    .Where(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff)
                     .Include(lb => lb.Scores)
                     .ThenInclude(score => score.Identification)
                     .Include(lb => lb.Scores)
                     .ThenInclude(score => score.Player)
                     .FirstOrDefaultAsync();
-
-            if (leaderboard == null) {
-                Song? song = (await _songController.GetHash(hash)).Value;
-                if (song == null)
-                {
-                    return NotFound();
-                }
-
-                leaderboard = new Leaderboard();
-                leaderboard.Song = song;
-                IEnumerable<DifficultyDescription> difficulties = song.Difficulties.Where(el => el.DifficultyName == diff);
-                DifficultyDescription? difficulty = difficulties.FirstOrDefault(x => x.ModeName == mode);
-                if (difficulty == null) {
-                    difficulty = difficulties.FirstOrDefault(x => x.ModeName == "Standard");
-                    if (difficulty == null) {
-                        return NotFound();
-                    } else {
-                        CustomMode? customMode = _context.CustomModes.FirstOrDefault(m => m.Name == mode);
-                        if (customMode == null) {
-                            customMode = new CustomMode {
-                                Name = mode
-                            };
-                            _context.CustomModes.Add(customMode);
-                            _context.SaveChanges();
-                        }
-
-                        difficulty = new DifficultyDescription {
-                            Value = difficulty.Value,
-                            Mode = customMode.Id + 10,
-                            DifficultyName = difficulty.DifficultyName,
-                            ModeName = mode,
-
-                            Njs = difficulty.Njs,
-                            Nps = difficulty.Nps,
-                            Notes = difficulty.Notes,
-                            Bombs = difficulty.Bombs,
-                            Walls = difficulty.Walls,
-                        };
-                        song.Difficulties.Add(difficulty);
-                        _context.SaveChanges();
-                    }
-                }
-
-                leaderboard.Difficulty = difficulty;
-                leaderboard.Scores = new List<Score>();
-                leaderboard.Id = song.Id + difficulty.Value.ToString() + difficulty.Mode.ToString();
-
-                _context.Leaderboards.Add(leaderboard);
-                await _context.SaveChangesAsync();
-            }
 
             if (leaderboard == null)
             {

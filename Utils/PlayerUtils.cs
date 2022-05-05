@@ -5,6 +5,19 @@ namespace BeatLeader_Server.Utils
 {
     public static class PlayerUtils
     {
+        public static void RecalculatePPQuick(this AppContext context, Player player)
+        {
+            string playerId = player.Id;
+            var ranked = context.Scores.Select(s => new { PlayerId = s.PlayerId, Pp = s.Pp }).Where(s => s.PlayerId == playerId && s.Pp != 0).OrderByDescending(s => s.Pp).ToList();
+            float resultPP = 0f;
+            foreach ((int i, var s) in ranked.Select((value, i) => (i, value)))
+            {
+                float weight = MathF.Pow(0.965f, i);
+                resultPP += s.Pp * weight;
+            }
+            player.Pp = resultPP;
+            context.Players.Update(player);
+        }
         public static void RecalculatePP(this AppContext context, Player player)
         {
             var ranked = context.Scores.Where(s => s.PlayerId == player.Id && s.Pp != 0).OrderByDescending(s => s.Pp).ToList();

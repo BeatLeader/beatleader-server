@@ -21,5 +21,6 @@
         public int Bombs { get; set; }
         public int Walls { get; set; }
         public int MaxScore { get; set; }
+        public string? SongId { get; set; }
     }
 }

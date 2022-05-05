@@ -588,13 +588,13 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public (ScoreStatistic?, string?) CalculateStatisticReplay(Replay replay, Score score)
+        public (ScoreStatistic?, string?) CalculateStatisticReplay(Replay replay, Score score, Leaderboard? leaderboard = null, AppContext? context = null)
         {
             ScoreStatistic? statistic = null;
 
             try
             {
-                statistic = ReplayStatisticUtils.ProcessReplay(replay, score.Leaderboard);
+                statistic = ReplayStatisticUtils.ProcessReplay(replay, leaderboard ?? score.Leaderboard);
                 statistic.ScoreId = score.Id;
                 ReplayStatisticUtils.EncodeArrays(statistic);
             } catch (Exception e) {
@@ -606,13 +606,13 @@ namespace BeatLeader_Server.Controllers
                 return (null, "Could not calculate statistics");
             }
 
-            ScoreStatistic? currentStatistic = _context.ScoreStatistics.FirstOrDefault(s => s.ScoreId == score.Id);
-            _context.ScoreStatistics.Add(statistic);
+            ScoreStatistic? currentStatistic = (context ?? _context).ScoreStatistics.FirstOrDefault(s => s.ScoreId == score.Id);
+            (context ?? _context).ScoreStatistics.Add(statistic);
             if (currentStatistic != null)
             {
-                _context.ScoreStatistics.Remove(currentStatistic);
+                (context ?? _context).ScoreStatistics.Remove(currentStatistic);
             }
-            _context.SaveChanges();
+            (context ?? _context).SaveChanges();
 
             return (statistic, null);
         }

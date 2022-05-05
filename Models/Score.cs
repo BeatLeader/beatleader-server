@@ -27,6 +27,34 @@
         public Leaderboard Leaderboard { get; set; }
 
         public ReplayIdentification Identification { get; set; }
+
+        public Score copy() {
+            return new Score {
+               Id = this.Id,
+        BaseScore = this.BaseScore,
+        ModifiedScore = this.ModifiedScore,
+        Accuracy = this.Accuracy,
+        PlayerId = this.PlayerId,
+         Pp = this.Pp,
+         Weight = this.Weight,
+        Rank = this.Rank,
+        CountryRank = this.CountryRank,
+         Replay = this.Replay,
+        Modifiers = this.Modifiers,
+        BadCuts = this.BadCuts,
+         MissedNotes = this.MissedNotes,
+        BombCuts = this.BombCuts,
+         WallsHit = this.WallsHit,
+        Pauses = this.Pauses,
+        FullCombo = this.FullCombo,
+        Hmd = this.Hmd,
+        Timeset = this.Timeset,
+         Platform = this.Platform,
+         Player = this.Player,
+
+        Identification = this.Identification,
+    };
+        }
     }
 
     public class FailedScore
@@ -51,6 +79,7 @@
         public int Hmd { get; set; }
         public string Timeset { get; set; }
         public Player Player { get; set; }
+        public string? LeaderboardId { get; set; }
         public Leaderboard Leaderboard { get; set; }
         public string Error { get; set; }
     }

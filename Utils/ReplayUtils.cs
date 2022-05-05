@@ -1,4 +1,5 @@
-﻿using BeatLeader_Server.Models;
+﻿using BeatLeader_Server.Controllers;
+using BeatLeader_Server.Models;
 
 namespace BeatLeader_Server.Utils
 {
@@ -53,7 +54,7 @@ namespace BeatLeader_Server.Utils
             return (true, null);
         }
 
-        public static (Replay, Score) ProcessReplay(Replay replay, Leaderboard leaderboard) {
+        public static (Replay, Score) ProcessReplay(Replay replay, LeaderboardController.DifficultyResponse difficulty) {
             Score score = new Score();
             
             score.BaseScore = replay.info.score;
@@ -84,10 +85,10 @@ namespace BeatLeader_Server.Utils
             score.FullCombo = score.BombCuts == 0 && score.MissedNotes == 0 && score.WallsHit == 0 && score.BadCuts == 0;
             score.Hmd = HMD(replay.info.hmd);
             score.ModifiedScore = (int)(score.BaseScore * GetTotalMultiplier(replay.info.modifiers));
-            if (leaderboard.Difficulty.MaxScore > 0) {
-                score.Accuracy = (float)score.ModifiedScore / (float)leaderboard.Difficulty.MaxScore;
+            if (difficulty.MaxScore > 0) {
+                score.Accuracy = (float)score.ModifiedScore / (float)difficulty.MaxScore;
             } else {
-                score.Accuracy = (float)score.ModifiedScore / (float)MaxScoreForNote(leaderboard.Difficulty.Notes);
+                score.Accuracy = (float)score.ModifiedScore / (float)MaxScoreForNote(difficulty.Notes);
             }
             
             score.Modifiers = replay.info.modifiers;
