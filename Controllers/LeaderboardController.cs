@@ -187,11 +187,8 @@ namespace BeatLeader_Server.Controllers
                     .Leaderboards
                     .Where(lb => lb.Id == id)
                     .Include(lb => lb.Difficulty)
-                    .Include(lb => lb.Song)
                     .Include(lb => lb.Scores)
                     .ThenInclude(score => score.Identification)
-                    .Include(lb => lb.Scores)
-                    .ThenInclude(score => score.Player)
                     .FirstOrDefaultAsync();
 
             if (leaderboard == null)

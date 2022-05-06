@@ -612,7 +612,12 @@ namespace BeatLeader_Server.Controllers
             {
                 (context ?? _context).ScoreStatistics.Remove(currentStatistic);
             }
+            try {
+
             (context ?? _context).SaveChanges();
+            } catch {
+                (context ?? _context).SaveChanges();
+            }
 
             return (statistic, null);
         }

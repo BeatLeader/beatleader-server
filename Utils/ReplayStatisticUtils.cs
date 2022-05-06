@@ -124,7 +124,7 @@ namespace BeatLeader_Server.Utils
             result.HitTracker.MaxCombo = maxCombo;
             result.WinTracker.TotalScore = structs.Last().totalScore;
             result.AccuracyTracker = accuracy;
-            result.ScoreGraphTracker = ScoreGraph(structs, leaderboard);
+            result.ScoreGraphTracker = ScoreGraph(structs, replay);
 
             return result;
         }
@@ -328,14 +328,14 @@ namespace BeatLeader_Server.Utils
             return (result, allStructs, maxCombo);
         }
 
-        public static ScoreGraphTracker ScoreGraph(List<NoteStruct> structs, Leaderboard leaderboard)
+        public static ScoreGraphTracker ScoreGraph(List<NoteStruct> structs, Replay replay)
         {
             ScoreGraphTracker scoreGraph = new ScoreGraphTracker();
-            scoreGraph.Graph = new List<float>(new float[(int)leaderboard.Song.Duration]);
+            scoreGraph.Graph = new List<float>(new float[(int)replay.frames.Last().time]);
 
             int structIndex = 0;
 
-            for (int i = 0; i < (int)leaderboard.Song.Duration; i++)
+            for (int i = 0; i < (int)replay.frames.Last().time; i++)
             {
                 float cumulative = 0.0f;
                 int delimiter = 0;

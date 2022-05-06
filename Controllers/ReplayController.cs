@@ -413,21 +413,12 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
-                try
-                {
-                    await dbContext.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException ex)
-                {
-                    ex.Entries.Single().Reload();
-                    await dbContext.SaveChangesAsync();
-                }
+                
 
-                transaction2.Commit();
-
-                    var transaction3 = dbContext.Database.BeginTransaction();
+                    
 
                     Leaderboard fullLeaderboard = (await _leaderboardController.GetByIdFull(leaderboardId, dbContext)).Value;
+                    resultScore = fullLeaderboard.Scores.FirstOrDefault(s => s.Id == resultScore.Id);
                     fullLeaderboard.Plays = fullLeaderboard.Scores.Count();
                     dbContext.Leaderboards.Update(fullLeaderboard);
 
@@ -441,8 +432,22 @@ namespace BeatLeader_Server.Controllers
                         dbContext.Scores.Update(s);
                     }
 
-                    
-                try
+                    try
+                    {
+                        await dbContext.SaveChangesAsync();
+                    }
+                    catch (DbUpdateConcurrencyException ex)
+                    {
+                        ex.Entries.Single().Reload();
+                        await dbContext.SaveChangesAsync();
+                    }
+
+                    transaction2.Commit();
+
+                    var transaction3 = dbContext.Database.BeginTransaction();
+
+
+                    try
                 {
                     await _containerClient.CreateIfNotExistsAsync();
 
@@ -456,7 +461,7 @@ namespace BeatLeader_Server.Controllers
                     string tempName = fileName + "temp";
                     string replayLink = resultScore.Replay;
                     resultScore.Replay += "temp";
-                        _context.Scores.Update(resultScore);
+                        dbContext.Scores.Update(resultScore);
 
                         await _containerClient.DeleteBlobIfExistsAsync(tempName);
                     await _containerClient.UploadBlobAsync(tempName, stream);
@@ -483,7 +488,7 @@ namespace BeatLeader_Server.Controllers
 
                     double rate = (double)resultScore.BaseScore / (double)statistic.WinTracker.TotalScore;
 
-                    if (rate > 1.1 || rate < 0.9) {
+                    if (rate > 1.1) {
                         SaveFailedScore(transaction3, currentScoreBackup, resultScore, fullLeaderboard, "Calculated on server score is too different: " + statistic.WinTracker.TotalScore, dbContext);
 
                         return;
@@ -493,7 +498,7 @@ namespace BeatLeader_Server.Controllers
                     await _containerClient.DeleteBlobIfExistsAsync(tempName);
 
                     resultScore.Replay = replayLink;
-                        _context.Scores.Update(resultScore);
+                        dbContext.Scores.Update(resultScore);
 
                         dbContext.SaveChanges();
                     transaction3.Commit();

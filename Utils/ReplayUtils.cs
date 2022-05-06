@@ -11,7 +11,7 @@ namespace BeatLeader_Server.Utils
             foreach (Score? item in scores)
             {
                 if (item == null) { continue; }
-                if (currentScore != null && currentScore.Player.Id == item.Player.Id)
+                if (currentScore != null && currentScore.PlayerId == item.PlayerId)
                 {
                     continue;
                 }
