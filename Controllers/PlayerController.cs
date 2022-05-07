@@ -809,7 +809,5 @@ namespace BeatLeader_Server.Controllers
             }
             
         }
-
-        public static string GolovaID = "76561198059961776";
     }
 }

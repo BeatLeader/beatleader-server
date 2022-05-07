@@ -80,7 +80,7 @@ namespace BeatLeader_Server.Controllers
             _context.AccountLinkRequests.Add(linkRequest);
             await _context.SaveChangesAsync();
 
-            var redirectUrl = Url.Action("SteamLoginCallback", new { ReturnUrl = returnUrl, Random = random });
+            var redirectUrl = Url.Action("SteamLoginCallback", new { ReturnUrl = returnUrl, Random = random, migrateTo = HttpContext.CurrentUserID() });
 
             // Instruct the middleware corresponding to the requested external identity
             // provider to redirect the user agent to its own authorization endpoint.
@@ -89,7 +89,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/steamcallback")]
-        public async Task<IActionResult> SteamLoginCallback([FromQuery] string ReturnUrl, [FromQuery] int Random = 0)
+        public async Task<IActionResult> SteamLoginCallback([FromQuery] string ReturnUrl, [FromQuery] int Random = 0, [FromQuery] string? migrateTo = null)
         {
             string userId = HttpContext.CurrentUserID();
             if (userId != null)
@@ -97,10 +97,11 @@ namespace BeatLeader_Server.Controllers
                 await _playerController.GetLazy(userId);
 
                 IPAddress? iPAddress = Request.HttpContext.Connection.RemoteIpAddress;
-                if (iPAddress != null)
+                if (iPAddress != null && migrateTo != null)
                 {
                     string ip = iPAddress.ToString();
-                    AccountLinkRequest? request = _context.AccountLinkRequests.FirstOrDefault(a => a.IP == ip && a.Random == Random);
+                    int oculusID = Int32.Parse(HttpContext.CurrentUserID());
+                    AccountLinkRequest? request = _context.AccountLinkRequests.FirstOrDefault(a => a.IP == ip && a.Random == Random && a.OculusID == oculusID);
 
                     if (request != null)
                     {

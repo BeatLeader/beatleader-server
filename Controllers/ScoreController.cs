@@ -255,6 +255,7 @@ namespace BeatLeader_Server.Controllers
             public float Pp { get; set; }
             public int Rank { get; set; }
             public int CountryRank { get; set; }
+            public string Role { get; set; }
         }
 
         public class ScoreResponse
@@ -322,6 +323,7 @@ namespace BeatLeader_Server.Controllers
                 Pp = p.Pp,
                 Rank = p.Rank,
                 CountryRank = p.CountryRank,
+                Role = p.Role
             };
         }
 
@@ -378,6 +380,12 @@ namespace BeatLeader_Server.Controllers
                     }
             };
 
+            if (hash.Length < 40) {
+                return BadRequest("Hash is to short");
+            } else {
+                hash = hash.Substring(0, 40);
+            }
+
             PlayerResponse? currentPlayer = null;
             var song = await _context.Songs.Select(s => new { Id = s.Id, Hash = s.Hash }).FirstOrDefaultAsync(s => s.Hash == hash);
             if (song == null) {
@@ -386,7 +394,7 @@ namespace BeatLeader_Server.Controllers
 
             int modeValue = SongUtils.ModeForModeName(mode);
             if (modeValue == 0) {
-                var customMode = _context.CustomModes.FirstOrDefaultAsync(m => m.Name == mode);
+                var customMode = await _context.CustomModes.FirstOrDefaultAsync(m => m.Name == mode);
                 if (customMode != null) {
                     modeValue = customMode.Id + 10;
                 } else {

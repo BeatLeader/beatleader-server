@@ -146,6 +146,15 @@ namespace BeatLeader_Server.Controllers
 
             replay.info.playerID = authenticatedPlayerID;
 
+            if (replay.info.hash.Length < 40)
+            {
+                return BadRequest("Hash is to short");
+            }
+            else
+            {
+                replay.info.hash = replay.info.hash.Substring(0, 40);
+            }
+
             var transaction = _context.Database.BeginTransaction();
 
             Leaderboard? leaderboard;

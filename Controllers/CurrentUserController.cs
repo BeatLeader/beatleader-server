@@ -271,7 +271,7 @@ namespace BeatLeader_Server.Controllers
             var lastCountryChange = _context.CountryChanges.FirstOrDefault(el => el.Id == player.Id);
             if (lastCountryChange != null && !adminChange && (timestamp - lastCountryChange.Timestamp) < 60 * 60 * 24 * 30)
             {
-                return BadRequest("Error. You can change country after " + (int)(30 - (timestamp - lastCountryChange.Timestamp) / 60 * 60 * 24) + " day(s)");
+                return BadRequest("Error. You can change country after " + (int)(30 - (timestamp - lastCountryChange.Timestamp) / (60 * 60 * 24)) + " day(s)");
             }
             if (lastCountryChange == null) {
                 lastCountryChange = new CountryChange { Id = player.Id };

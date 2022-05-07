@@ -1,5 +1,7 @@
 ﻿using Azure.Identity;
 using Azure.Storage.Blobs;
+using BeatLeader_Server.Extensions;
+using BeatLeader_Server.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -40,18 +42,31 @@ namespace BeatLeader_Server.Controllers
             }
         }
 
-        //[HttpPost("~/admin/ban")]
-        //public async Task<ActionResult> Ban([FromQuery] string playerId)
-        //{
-        //    string? userId = _currentUserController.GetId().Value;
-        //    var currentPlayer = await _context.Players.FindAsync(userId);
+        [HttpPost("~/admin/role")]
+        public async Task<ActionResult> AddRole([FromQuery] string playerId, [FromQuery] string role)
+        {
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
 
-        //    if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-        //    {
-        //        return Unauthorized();
-        //    }
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
+            var currentPlayer = await _context.Players.FindAsync(userId);
 
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin") || role == "admin")
+            {
+                return Unauthorized();
+            }
 
-        //}
+            Player? player = _context.Players.Find(playerId);
+            if (player != null) {
+                player.Role = string.Join(",", player.Role.Split(",").Append(role));
+                _context.Players.Update(player);
+            }
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
+        public static string GolovaID = "76561198059961776";
     }
 }

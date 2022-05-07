@@ -31,10 +31,12 @@ namespace BeatLeader_Server.Controllers
                 if (song == null) {
                     return NotFound();
                 } else {
-                    if (await _context.Songs.FirstOrDefaultAsync(i => i.Id == song.Id) != null)
+                    string songId = song.Id;
+                    while (await _context.Songs.FirstOrDefaultAsync(i => i.Id == songId) != null)
                     {
-                        song.Id += "x";
+                        songId += "x";
                     }
+                    song.Id = songId;
                     _context.Songs.Add(song);
                     await _context.SaveChangesAsync();
                 }
