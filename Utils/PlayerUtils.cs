@@ -11,12 +11,14 @@ namespace BeatLeader_Server.Utils
             float resultPP = 0f;
             foreach ((int i, Score s) in ranked.Select((value, i) => (i, value)))
             {
-                s.Weight = MathF.Pow(0.965f, i);
-                context.Scores.Update(s);
+                float weight = MathF.Pow(0.965f, i);
+                if (s.Weight != weight) {
+                    s.Weight = weight;
+                }
+                
                 resultPP += s.Pp * s.Weight;
             }
             player.Pp = resultPP;
-            context.Players.Update(player);
         }
 
         public static string[] AllowedCountries() {

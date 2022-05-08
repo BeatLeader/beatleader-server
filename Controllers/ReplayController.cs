@@ -247,6 +247,25 @@ namespace BeatLeader_Server.Controllers
                             player.ScoreStats.AverageRankedAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, currentScore.Accuracy);
                         }
                     }
+
+                    switch (currentScore.Accuracy)
+                    {
+                        case > 0.95f:
+                            player.ScoreStats.SSPPlays--;
+                            break;
+                        case > 0.9f:
+                            player.ScoreStats.SSPlays--;
+                            break;
+                        case > 0.85f:
+                            player.ScoreStats.SPPlays--;
+                            break;
+                        case > 0.8f:
+                            player.ScoreStats.SPlays--;
+                            break;
+                        default:
+                            player.ScoreStats.APlays--;
+                            break;
+                    }
                     try
                     {
                         leaderboard.Scores.Remove(currentScore);
@@ -288,7 +307,6 @@ namespace BeatLeader_Server.Controllers
                 }
                 
                 leaderboard.Plays = rankedScores.Count;
-                _context.Leaderboards.Update(leaderboard);
                 }
 
 
@@ -316,8 +334,33 @@ namespace BeatLeader_Server.Controllers
                 if (leaderboard.Difficulty.Ranked)
                 {
                     player.ScoreStats.AverageRankedAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, resultScore.Accuracy);
+                    if (resultScore.Accuracy > player.ScoreStats.TopAccuracy) {
+                        player.ScoreStats.TopAccuracy = resultScore.Accuracy;
+                    }
+                    if (resultScore.Pp > player.ScoreStats.TopPp)
+                    {
+                        player.ScoreStats.TopPp = resultScore.Pp;
+                    }
                 }
-                _context.Players.Update(player);
+
+                switch (resultScore.Accuracy)
+                {
+                    case > 0.95f:
+                        player.ScoreStats.SSPPlays++;
+                        break;
+                    case > 0.9f:
+                        player.ScoreStats.SSPlays++;
+                        break;
+                    case > 0.85f:
+                        player.ScoreStats.SPPlays++;
+                        break;
+                    case > 0.8f:
+                        player.ScoreStats.SPlays++;
+                        break;
+                    default:
+                        player.ScoreStats.APlays++;
+                        break;
+                }
 
                 _context.RecalculatePP(player);
 
