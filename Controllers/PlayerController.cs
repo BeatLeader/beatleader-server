@@ -46,7 +46,7 @@ namespace BeatLeader_Server.Controllers
             using (_serverTiming.TimeAction("player"))
             {
                 if (stats) {
-                    player = await _context.Players.Where(p => p.Id == userId).Include(p => p.ScoreStats).Include(p => p.Badges).Include(p => p.StatsHistory).FirstOrDefaultAsync();
+                    player = await _context.Players.Where(p => p.Id == userId).Include(p => p.ScoreStats).Include(p => p.Badges).Include(p => p.StatsHistory).Include(p => p.Clans).FirstOrDefaultAsync();
                 } else {
                     player = await _context.Players.FindAsync(userId);
                 }
@@ -356,7 +356,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string search = "", 
             [FromQuery] string countries = "")
         {
-            IQueryable<Player> request = _context.Players.Include(p => p.ScoreStats);
+            IQueryable<Player> request = _context.Players.Include(p => p.ScoreStats).Include(p => p.Clans);
             if (countries.Length != 0)
             {
                 request = request.Where(p => countries.Contains(p.Country));

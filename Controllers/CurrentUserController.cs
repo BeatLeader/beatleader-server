@@ -69,20 +69,40 @@ namespace BeatLeader_Server.Controllers
             }
 
             PlayerFriends? friends = _context.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == id);
+            Clan? clan = _context.Clans.Include(c => c.Players).Where(f => f.LeaderID == id).FirstOrDefault();
+
+            ClanReturn? clanReturn = 
+            clan != null ? new ClanReturn {
+               Id = clan.Id,
+                Name = clan.Name,
+                Color = clan.Color,
+                Icon = clan.Icon,
+                Tag = clan.Tag,
+                LeaderID = clan.LeaderID,
+
+                PlayersCount = clan.PlayersCount,
+                Pp = clan.Pp,
+                AverageRank = clan.AverageRank,
+                AverageAccuracy = clan.AverageAccuracy,
+                Players = clan.Players.Select(p => p.Id).ToList(),
+                PendingInvites = _context.Users.Where(u => u.ClanRequest.Contains(clan)).Select(f => f.Id).ToList(),
+            } : null;
 
             return new UserReturn {
                 Player = user.Player,
                 ClanRequest = user.ClanRequest,
                 BannedClans = user.BannedClans,
                 Friends = friends != null ? friends.Friends.Select(f => f.Id).ToList() : new List<string>(),
-                Migrated = _context.AccountLinks.FirstOrDefault(a => a.SteamID == id) != null
+                
+                Migrated = _context.AccountLinks.FirstOrDefault(a => a.SteamID == id) != null,
+                Clan = clanReturn
             };
         }
 
         [NonAction]
         public User? GetUserLazy(string id)
         {
-            User? user = _context.Users.Where(u => u.Id == id).Include(u => u.Player).Include(u => u.ClanRequest).Include(u => u.BannedClans).FirstOrDefault();
+            User? user = _context.Users.Where(u => u.Id == id).Include(u => u.Player).ThenInclude(p => p.Clans).Include(u => u.Player).ThenInclude(p => p.ScoreStats).Include(u => u.ClanRequest).Include(u => u.BannedClans).FirstOrDefault();
             if (user == null)
             {
                 Player? player = _context.Players.Where(u => u.Id == id).FirstOrDefault();
@@ -557,18 +577,6 @@ namespace BeatLeader_Server.Controllers
             await _context.SaveChangesAsync();
 
             return Ok();
-        }
-
-        [HttpGet("~/clan/my")]
-        public ActionResult<Clan> MyClan()
-        {
-            string userId = GetId().Value;
-            var clan = _context.Clans.FirstOrDefault(c => c.LeaderID == userId);
-            if (clan == null)
-            {
-                return NotFound();
-            }
-            return clan;
         }
     }
 }

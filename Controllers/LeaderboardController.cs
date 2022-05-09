@@ -33,6 +33,7 @@ namespace BeatLeader_Server.Controllers
                         .Skip((page - 1) * count)
                         .Take(count))
                     .ThenInclude(s => s.Player)
+                    .ThenInclude(s => s.Clans)
                     .Include(lb => lb.Difficulty)
                     .Include(lb => lb.Song)
                     .ThenInclude(s => s.Difficulties)
@@ -44,6 +45,7 @@ namespace BeatLeader_Server.Controllers
                     .Where(lb => lb.Id == id)
                     .Include(lb => lb.Scores)
                     .ThenInclude(s => s.Player)
+                    .ThenInclude(s => s.Clans)
                     .Include(lb => lb.Scores
                         .Where(s => countries.ToLower().Contains(s.Player.Country.ToLower()))
                         .OrderByDescending(s => s.ModifiedScore)

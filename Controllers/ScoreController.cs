@@ -245,6 +245,11 @@ namespace BeatLeader_Server.Controllers
             return _context.FailedScores.OrderByDescending(s => s.Id).Include(el => el.Leaderboard).Include(el => el.Player).ToList();
         }
 
+        public class ClanResponse {
+            public string Tag { get; set; }
+            public string Color { get; set; }
+        }
+
         public class PlayerResponse {
             public string Id { get; set; }
             public string Name { get; set; } = "";
@@ -256,6 +261,7 @@ namespace BeatLeader_Server.Controllers
             public int Rank { get; set; }
             public int CountryRank { get; set; }
             public string Role { get; set; }
+            public IEnumerable<ClanResponse> Clans { get; set; }
         }
 
         public class ScoreResponse
@@ -323,7 +329,8 @@ namespace BeatLeader_Server.Controllers
                 Pp = p.Pp,
                 Rank = p.Rank,
                 CountryRank = p.CountryRank,
-                Role = p.Role
+                Role = p.Role,
+                Clans = p.Clans.Select(c => new ClanResponse { Tag = c.Tag, Color = c.Color })
             };
         }
 
@@ -404,7 +411,7 @@ namespace BeatLeader_Server.Controllers
 
             var leaderboardId = song.Id + SongUtils.DiffForDiffName(diff).ToString() + modeValue.ToString();
 
-            IEnumerable<ScoreResponse> query = _context.Scores.Where(s => s.LeaderboardId == leaderboardId).Include(s => s.Player).Select(RemoveLeaderboard).ToList();
+            IEnumerable<ScoreResponse> query = _context.Scores.Where(s => s.LeaderboardId == leaderboardId).Include(s => s.Player).ThenInclude(p => p.Clans).Select(RemoveLeaderboard).ToList();
 
             if (query.Count() == 0)
             {

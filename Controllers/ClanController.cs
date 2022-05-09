@@ -42,9 +42,26 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/clan/{id}")]
-        public async Task<ActionResult<ResponseWithMetadataAndContainer<Player, Clan>>> GetClan(int id)
+        public async Task<ActionResult<ResponseWithMetadataAndContainer<Player, Clan>>> GetClan(string id)
         {
-            var clan = await _context.Clans.FindAsync(id);
+            Clan? clan = null;
+            if (id == "my") {
+                string currentID = HttpContext.CurrentUserID();
+                long intId = Int64.Parse(currentID);
+                AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+                string userId = accountLink != null ? accountLink.SteamID : currentID;
+                var player = await _context.Players.FindAsync(userId);
+
+                if (player == null)
+                {
+                    return NotFound();
+                }
+                clan = await _context.Clans.FirstOrDefaultAsync(c => c.LeaderID == userId);
+            } else {
+                int intId = Int32.Parse(id);
+                clan = await _context.Clans.FindAsync(intId);
+            }
             if (clan == null)
             {
                 return NotFound();
@@ -67,25 +84,42 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<Clan>> CreateClan(
             [FromQuery] string name,
             [FromQuery] string tag,
-            [FromQuery] string color)
+            [FromQuery] string color,
+            [FromQuery] string userInfo = "")
         {
             string currentID = HttpContext.CurrentUserID();
             long intId = Int64.Parse(currentID);
             AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
 
             string userId = accountLink != null ? accountLink.SteamID : currentID;
+            string upperTag = tag.ToUpper();
 
-            if (_context.Clans.FirstOrDefault(c => c.Name == name || c.Tag == tag) != null)
+            if (_context.Clans.FirstOrDefault(c => c.Name == name || c.Tag == upperTag) != null)
             {
                 return BadRequest("Clan with such name or tag is already exists");
             }
 
             if (_context.Clans.FirstOrDefault(c => c.LeaderID == userId) != null)
             {
-                return BadRequest("You already have clan");
+                return BadRequest("You already have a clan");
+            }
+            if (upperTag.Length > 5 || upperTag.Length < 2) {
+                return BadRequest("Clan tag should be from 2 to 5 letters");
+            }
+            if (name.Length > 25 || name.Length < 2)
+            {
+                return BadRequest("Clan name should be from 2 to 25 letters");
+            }
+            int colorLength = color.Length;
+            try {
+                if (!((colorLength == 7 || colorLength == 9) && Int64.Parse(color.Substring(1), System.Globalization.NumberStyles.HexNumber) != 0)) {
+                    return BadRequest("Color is not valid");
+                }
+            } catch {
+                return BadRequest("Color is not valid");
             }
 
-            var player = await _context.Players.FindAsync(userId);
+            var player = await _context.Players.Where(p => p.Id == userId).Include(p => p.ScoreStats).FirstOrDefaultAsync();
 
             if (player == null)
             {
@@ -112,16 +146,21 @@ namespace BeatLeader_Server.Controllers
             }
             catch (Exception e)
             {
-                return BadRequest("Error saving avatar");
+                return BadRequest("Error saving clan icon");
             }
 
             Clan newClan = new Clan
             {
                 Name = name,
-                Tag = tag,
+                Tag = upperTag,
                 Color = color,
                 LeaderID = userId,
-                Icon = icon ?? "https://cdn.beatleader.xyz/assets/clan.png"
+                Icon = icon ?? "https://cdn.beatleader.xyz/assets/clan.png",
+                UserInfo = userInfo,
+                PlayersCount = 1,
+                Pp = player.Pp,
+                AverageAccuracy = player.ScoreStats.AverageAccuracy,
+                AverageRank = player.Rank
             };
             _context.Clans.Add(newClan);
             _context.SaveChanges();
@@ -131,6 +170,141 @@ namespace BeatLeader_Server.Controllers
             _context.SaveChanges();
 
             return newClan;
+        }
+
+        [HttpDelete("~/clan")]
+        [Authorize]
+        public async Task<ActionResult> DeleteClan([FromQuery] string? id = null)
+        {
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
+            var player = await _context.Players.FindAsync(userId);
+
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            Clan? clan = null;
+            if (id != null && player != null && player.Role.Contains("admin"))
+            {
+                clan = await _context.Clans.FindAsync(id);
+            }
+            else
+            {
+                clan = await _context.Clans.FirstOrDefaultAsync(c => c.LeaderID == userId);
+            }
+            if (clan == null)
+            {
+                return NotFound();
+            }
+
+            _context.Clans.Remove(clan);
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpPut("~/clan")]
+        [Authorize]
+        public async Task<ActionResult> UpdateClan(
+            [FromQuery] string? id = null,
+            [FromQuery] string? name = null,
+            [FromQuery] string? color = null,
+            [FromQuery] string? userInfo = null)
+        {
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
+            var player = await _context.Players.FindAsync(userId);
+
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            Clan? clan = null;
+            if (id != null && player != null && player.Role.Contains("admin"))
+            {
+                clan = await _context.Clans.FindAsync(id);
+            }
+            else
+            {
+                clan = await _context.Clans.FirstOrDefaultAsync(c => c.LeaderID == userId);
+            }
+            if (clan == null)
+            {
+                return NotFound();
+            }
+
+            if (name != null) {
+                if (name.Length < 3 || name.Length > 30)
+                {
+                    return BadRequest("Use name between the 3 and 30 symbols");
+                }
+                if (_context.Clans.FirstOrDefault(c => c.Name == name && c.Id != clan.Id) != null)
+                {
+                    return BadRequest("Clan with such name is already exists");
+                }
+
+                clan.Name = name;
+            }
+
+            if (color != null) {
+                int colorLength = color.Length;
+                try
+                {
+                    if (!((colorLength == 7 || colorLength == 9) && Int64.Parse(color.Substring(1), System.Globalization.NumberStyles.HexNumber) != 0))
+                    {
+                        return BadRequest("Color is not valid");
+                    }
+                }
+                catch
+                {
+                    return BadRequest("Color is not valid");
+                }
+
+                clan.Color = color;
+            }
+
+            string fileName = clan.Id.ToString();
+            try
+            {
+                await _assetsContainerClient.CreateIfNotExistsAsync();
+
+                var ms = new MemoryStream(5);
+                await Request.Body.CopyToAsync(ms);
+                if (ms.Length > 0) {
+                    ms.Position = 0;
+
+                    (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(ms);
+                    fileName += extension;
+
+                    await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
+                    await _assetsContainerClient.UploadBlobAsync(fileName, stream);
+
+                    clan.Icon = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://cdn.beatleader.xyz/assets/") + fileName;
+                }
+            }
+            catch (Exception)
+            {
+                return BadRequest("Error saving avatar");
+            }
+
+            if (userInfo != null) {
+                clan.UserInfo = userInfo;
+            } 
+
+            _context.Clans.Update(clan);
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
         }
 
         [HttpGet("~/clans/")]
@@ -175,7 +349,17 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> InviteToClan([FromQuery] string player)
         {
-            string userId = _userController.GetId().Value;
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
+            var currentPlayer = await _context.Players.FindAsync(userId);
+
+            if (currentPlayer == null)
+            {
+                return NotFound();
+            }
 
             Clan? clan = _context.Clans.FirstOrDefault(c => c.LeaderID == userId);
             if (clan == null) {
@@ -206,7 +390,11 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> CancelinviteToClan([FromQuery] string player)
         {
-            string userId = _userController.GetId().Value;
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
 
             Clan? clan = _context.Clans.FirstOrDefault(c => c.LeaderID == userId);
             if (clan == null)
@@ -247,12 +435,20 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> KickPlayer([FromQuery] string player)
         {
-            string userId = _userController.GetId().Value;
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
 
             Clan? clan = _context.Clans.FirstOrDefault(c => c.LeaderID == userId);
             if (clan == null)
             {
                 return NotFound("Current user is not leader of any clan");
+            }
+            if (clan.LeaderID == player)
+            {
+                return BadRequest("You cannot leave your own clan");
             }
 
             User? user = _userController.GetUserLazy(player);
@@ -267,7 +463,14 @@ namespace BeatLeader_Server.Controllers
             }
 
             user.Player.Clans.Remove(clan);
+            
+            clan.AverageAccuracy = MathUtils.RemoveFromAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageAccuracy);
+            clan.AverageRank = MathUtils.RemoveFromAverage(clan.AverageRank, clan.PlayersCount, user.Player.Rank);
+            clan.PlayersCount--;
             _context.Users.Update(user);
+            _context.SaveChanges();
+
+            clan.Pp = _context.RecalculateClanPP(clan.Id);
             _context.SaveChanges();
 
             return Ok();
@@ -277,7 +480,11 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> AcceptRequest([FromQuery] int id)
         {
-            string userId = _userController.GetId().Value;
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
 
             User? user = _userController.GetUserLazy(userId);
             if (user == null)
@@ -301,7 +508,13 @@ namespace BeatLeader_Server.Controllers
             }
 
             user.Player.Clans.Add(clan);
+            clan.PlayersCount++;
+            clan.AverageAccuracy = MathUtils.AddToAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageAccuracy);
+            clan.AverageRank = MathUtils.AddToAverage(clan.AverageRank, clan.PlayersCount, user.Player.Rank);
             _context.Users.Update(user);
+            _context.SaveChanges();
+
+            clan.Pp = _context.RecalculateClanPP(clan.Id);
             _context.SaveChanges();
 
             return Ok();
@@ -311,7 +524,11 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> RejectRequest([FromQuery] int id, bool ban = false)
         {
-            string userId = _userController.GetId().Value;
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
 
             User? user = _userController.GetUserLazy(userId);
             if (user == null)
@@ -339,7 +556,11 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> UnbanClan([FromQuery] int id)
         {
-            string userId = _userController.GetId().Value;
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
 
             User? user = _userController.GetUserLazy(userId);
             if (user == null)
@@ -354,6 +575,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             user.BannedClans.Remove(clan);
+            
             _context.Users.Update(user);
             _context.SaveChanges();
 
@@ -364,7 +586,11 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> leaveClan([FromQuery] int id)
         {
-            string userId = _userController.GetId().Value;
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
 
             User? user = _userController.GetUserLazy(userId);
             if (user == null)
@@ -378,8 +604,18 @@ namespace BeatLeader_Server.Controllers
                 return NotFound("User is not member of this clan");
             }
 
+            if (clan.LeaderID == userId) {
+                return BadRequest("You cannot leave your own clan");
+            }
+
             user.Player.Clans.Remove(clan);
+            clan.AverageAccuracy = MathUtils.RemoveFromAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageAccuracy);
+            clan.AverageRank = MathUtils.RemoveFromAverage(clan.AverageRank, clan.PlayersCount, user.Player.Rank);
+            clan.PlayersCount--;
             _context.Users.Update(user);
+            _context.SaveChanges();
+
+            clan.Pp = _context.RecalculateClanPP(clan.Id);
             _context.SaveChanges();
 
             return Ok();
