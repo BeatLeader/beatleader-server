@@ -42,5 +42,6 @@ namespace BeatLeader_Server.Models
         public ICollection<string>? Friends { get; set; }
 
         public bool Migrated { get; set; }
+        public bool Patreoned { get; set; }
     }
 }

@@ -32,6 +32,7 @@ namespace BeatLeader_Server
         public DbSet<CustomMode> CustomModes { get; set; }
         public DbSet<AccountLinkRequest> AccountLinkRequests { get; set; }
         public DbSet<LoginAttempt> LoginAttempts { get; set; }
+        public DbSet<PatreonLink> PatreonLinks { get; set; }
 
         public void RejectChanges()
         {

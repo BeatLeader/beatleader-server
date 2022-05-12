@@ -44,12 +44,19 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest();
             }
 
-            var redirectUrl = Url.Action("SteamLoginCallback", new { ReturnUrl = returnUrl });
+            string redirectUrl = returnUrl;
+            
+            if (provider == "Steam") {
+
+                redirectUrl = Url.Action("SteamLoginCallback", new { ReturnUrl = returnUrl });
+            } else if (provider == "Patreon") {
+                redirectUrl = Url.Action("LinkPatreon", "CurrentUser", new { returnUrl = returnUrl });
+            }
 
             // Instruct the middleware corresponding to the requested external identity
             // provider to redirect the user agent to its own authorization endpoint.
             // Note: the authenticationScheme parameter must match the value configured in Startup.cs
-            return Challenge(new AuthenticationProperties { RedirectUri = redirectUrl }, provider);
+            return Challenge(new AuthenticationProperties { RedirectUri =  redirectUrl }, provider);
         }
 
         [Authorize]
