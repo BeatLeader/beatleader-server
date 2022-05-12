@@ -41,8 +41,61 @@ namespace BeatLeader_Server.Controllers
             }
         }
 
+        [HttpGet("~/clans/")]
+        public async Task<ActionResult<ResponseWithMetadata<Clan>>> GetAll(
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10,
+            [FromQuery] string sortBy = "pp",
+            [FromQuery] string order = "desc",
+            [FromQuery] string? search = null,
+            [FromQuery] string? type = null)
+        {
+            var sequence = _context.Clans.AsQueryable();
+            switch (sortBy)
+            {
+                case "pp":
+                    sequence = sequence.Order(order, t => t.Pp);
+                    break;
+                case "acc":
+                    sequence = sequence.Order(order, t => t.AverageAccuracy);
+                    break;
+                case "rank":
+                    sequence = sequence.Order(order, t => t.AverageRank);
+                    break;
+                case "count":
+                    sequence = sequence.Order(order, t => t.PlayersCount);
+                    break;
+                default:
+                    break;
+            }
+            if (search != null)
+            {
+                string lowSearch = search.ToLower();
+                sequence = sequence
+                    .Where(p => p.Name.ToLower().Contains(lowSearch) ||
+                                p.Tag.ToLower().Contains(lowSearch));
+            }
+
+            return new ResponseWithMetadata<Clan>()
+            {
+                Metadata = new Metadata()
+                {
+                    Page = page,
+                    ItemsPerPage = count,
+                    Total = sequence.Count()
+                },
+                Data = await sequence.Skip((page - 1) * count).Take(count).ToListAsync()
+            };
+        }
+
         [HttpGet("~/clan/{id}")]
-        public async Task<ActionResult<ResponseWithMetadataAndContainer<Player, Clan>>> GetClan(string id)
+        public async Task<ActionResult<ResponseWithMetadataAndContainer<Player, Clan>>> GetClan(string id, 
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10,
+            [FromQuery] string sortBy = "pp",
+            [FromQuery] string order = "desc",
+            [FromQuery] string? search = null,
+            [FromQuery] string? type = null)
         {
             Clan? clan = null;
             if (id == "my") {
@@ -57,24 +110,39 @@ namespace BeatLeader_Server.Controllers
                 {
                     return NotFound();
                 }
-                clan = await _context.Clans.FirstOrDefaultAsync(c => c.LeaderID == userId);
+                clan = await _context.Clans.Where(c => c.LeaderID == userId).Include(c => c.Players).FirstOrDefaultAsync();
             } else {
                 int intId = Int32.Parse(id);
-                clan = await _context.Clans.FindAsync(intId);
+                clan = await _context.Clans.Where(c => c.Id == intId).Include(c => c.Players).FirstOrDefaultAsync();
             }
             if (clan == null)
             {
                 return NotFound();
             }
 
-            var players = _context.Players.Where(p => p.Clans.Contains(clan)).ToList();
+            IQueryable<Player> players = clan.Players.AsQueryable();
+            switch (sortBy)
+            {
+                case "pp":
+                    players = players.Order(order, t => t.Pp);
+                    break;
+                case "acc":
+                    players = players.Order(order, t => t.ScoreStats.AverageRankedAccuracy);
+                    break;
+                case "rank":
+                    players = players.Order(order, t => t.Rank);
+                    break;
+                    break;
+                default:
+                    break;
+            }
             return new ResponseWithMetadataAndContainer<Player, Clan> {
                 Container = clan,
-                Data = players,
+                Data = players.Skip((page - 1) * count).Take(count),
                 Metadata = new Metadata {
                     Page = 1,
                     ItemsPerPage = 10,
-                    Total = players.Count
+                    Total = players.Count()
                 }
             };
         }
@@ -159,7 +227,7 @@ namespace BeatLeader_Server.Controllers
                 UserInfo = userInfo,
                 PlayersCount = 1,
                 Pp = player.Pp,
-                AverageAccuracy = player.ScoreStats.AverageAccuracy,
+                AverageAccuracy = player.ScoreStats.AverageRankedAccuracy,
                 AverageRank = player.Rank
             };
             _context.Clans.Add(newClan);
@@ -307,43 +375,6 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
-        [HttpGet("~/clans/")]
-        public async Task<ActionResult<ResponseWithMetadata<Clan>>> GetAll(
-            [FromQuery] int page = 1,
-            [FromQuery] int count = 10,
-            [FromQuery] string sortBy = "stars",
-            [FromQuery] string order = "desc",
-            [FromQuery] string? search = null,
-            [FromQuery] string? type = null)
-        {
-            var sequence = _context.Clans.AsQueryable();
-            switch (sortBy)
-            {
-                case "pp":
-                    sequence = sequence.Order(order, t => t.Pp);
-                    break;
-                default:
-                    break;
-            }
-            if (search != null)
-            {
-                string lowSearch = search.ToLower();
-                sequence = sequence
-                    .Where(p => p.Name.ToLower().Contains(lowSearch) ||
-                                p.Tag.ToLower().Contains(lowSearch));
-            }
-
-            return new ResponseWithMetadata<Clan>()
-            {
-                Metadata = new Metadata()
-                {
-                    Page = page,
-                    ItemsPerPage = count,
-                    Total = sequence.Count()
-                },
-                Data = await sequence.Skip((page - 1) * count).Take(count).ToListAsync()
-            };
-        }
 
         [HttpPost("~/clan/invite")]
         [Authorize]
@@ -464,7 +495,7 @@ namespace BeatLeader_Server.Controllers
 
             user.Player.Clans.Remove(clan);
             
-            clan.AverageAccuracy = MathUtils.RemoveFromAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageAccuracy);
+            clan.AverageAccuracy = MathUtils.RemoveFromAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageRankedAccuracy);
             clan.AverageRank = MathUtils.RemoveFromAverage(clan.AverageRank, clan.PlayersCount, user.Player.Rank);
             clan.PlayersCount--;
             _context.Users.Update(user);
@@ -509,7 +540,7 @@ namespace BeatLeader_Server.Controllers
 
             user.Player.Clans.Add(clan);
             clan.PlayersCount++;
-            clan.AverageAccuracy = MathUtils.AddToAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageAccuracy);
+            clan.AverageAccuracy = MathUtils.AddToAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageRankedAccuracy);
             clan.AverageRank = MathUtils.AddToAverage(clan.AverageRank, clan.PlayersCount, user.Player.Rank);
             _context.Users.Update(user);
             _context.SaveChanges();
@@ -609,7 +640,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             user.Player.Clans.Remove(clan);
-            clan.AverageAccuracy = MathUtils.RemoveFromAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageAccuracy);
+            clan.AverageAccuracy = MathUtils.RemoveFromAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageRankedAccuracy);
             clan.AverageRank = MathUtils.RemoveFromAverage(clan.AverageRank, clan.PlayersCount, user.Player.Rank);
             clan.PlayersCount--;
             _context.Users.Update(user);

@@ -141,19 +141,21 @@ namespace BeatLeader_Server.Utils
         }
 
         private static int HMD(string hmdName) {
-            if (hmdName.Contains("Quest 2")) return 256;
-            if (hmdName.Contains("Quest_2")) return 256;
-            if (hmdName.Contains("Vive Cosmos")) return 128;
-            if (hmdName.Contains("Vive_Cosmos")) return 128;
-            if (hmdName.Contains("Index")) return 64;
-            if (hmdName.Contains("Quest")) return 32;
-            if (hmdName.Contains("Rift S")) return 16;
-            if (hmdName.Contains("Rift_S")) return 16;
-            if (hmdName.Contains("Windows")) return 8;
-            if (hmdName.Contains("Vive Pro")) return 4;
-            if (hmdName.Contains("Vive_Pro")) return 4;
-            if (hmdName.Contains("Vive")) return 2;
-            if (hmdName.Contains("Rift")) return 1;
+            string lowerHmd = hmdName.ToLower();
+
+            if (lowerHmd.Contains("quest 2")) return 256;
+            if (lowerHmd.Contains("quest_2")) return 256;
+            if (lowerHmd.Contains("vive cosmos")) return 128;
+            if (lowerHmd.Contains("vive_cosmos")) return 128;
+            if (lowerHmd.Contains("index")) return 64;
+            if (lowerHmd.Contains("quest")) return 32;
+            if (lowerHmd.Contains("rift s")) return 16;
+            if (lowerHmd.Contains("rift_s")) return 16;
+            if (lowerHmd.Contains("windows")) return 8;
+            if (lowerHmd.Contains("vive pro")) return 4;
+            if (lowerHmd.Contains("vive_pro")) return 4;
+            if (lowerHmd.Contains("vive")) return 2;
+            if (lowerHmd.Contains("rift")) return 1;
 
             return 0;
         }

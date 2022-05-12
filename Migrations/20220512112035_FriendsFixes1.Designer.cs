@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20220512112035_FriendsFixes1")]
+    partial class FriendsFixes1
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1096,21 +1098,6 @@ namespace BeatLeader_Server.Migrations
                     b.ToTable("ClanUser1");
                 });
 
-            modelBuilder.Entity("PlayerPlayerFriends", b =>
-                {
-                    b.Property<string>("FriendsId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("PlayerFriendsId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("FriendsId", "PlayerFriendsId");
-
-                    b.HasIndex("PlayerFriendsId");
-
-                    b.ToTable("PlayerPlayerFriends");
-                });
-
             modelBuilder.Entity("BeatLeader_Server.Models.Badge", b =>
                 {
                     b.HasOne("BeatLeader_Server.Models.Player", null)
@@ -1297,21 +1284,6 @@ namespace BeatLeader_Server.Migrations
                     b.HasOne("BeatLeader_Server.Models.User", null)
                         .WithMany()
                         .HasForeignKey("RequestsId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("PlayerPlayerFriends", b =>
-                {
-                    b.HasOne("BeatLeader_Server.Models.Player", null)
-                        .WithMany()
-                        .HasForeignKey("FriendsId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("BeatLeader_Server.Models.PlayerFriends", null)
-                        .WithMany()
-                        .HasForeignKey("PlayerFriendsId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
