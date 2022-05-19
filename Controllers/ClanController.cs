@@ -45,13 +45,13 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<ResponseWithMetadata<Clan>>> GetAll(
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
-            [FromQuery] string sortBy = "pp",
+            [FromQuery] string sort = "pp",
             [FromQuery] string order = "desc",
             [FromQuery] string? search = null,
             [FromQuery] string? type = null)
         {
             var sequence = _context.Clans.AsQueryable();
-            switch (sortBy)
+            switch (sort)
             {
                 case "pp":
                     sequence = sequence.Order(order, t => t.Pp);
@@ -92,7 +92,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<ResponseWithMetadataAndContainer<Player, Clan>>> GetClan(string id, 
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
-            [FromQuery] string sortBy = "pp",
+            [FromQuery] string sort = "pp",
             [FromQuery] string order = "desc",
             [FromQuery] string? search = null,
             [FromQuery] string? type = null)
@@ -121,7 +121,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             IQueryable<Player> players = clan.Players.AsQueryable();
-            switch (sortBy)
+            switch (sort)
             {
                 case "pp":
                     players = players.Order(order, t => t.Pp);
@@ -153,7 +153,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string name,
             [FromQuery] string tag,
             [FromQuery] string color,
-            [FromQuery] string userInfo = "")
+            [FromQuery] string description = "",
+            [FromQuery] string bio = "")
         {
             string currentID = HttpContext.CurrentUserID();
             long intId = Int64.Parse(currentID);
@@ -185,6 +186,16 @@ namespace BeatLeader_Server.Controllers
                 }
             } catch {
                 return BadRequest("Color is not valid");
+            }
+
+            if (description.Length > 100)
+            {
+                return BadRequest("Description is too long");
+            }
+
+            if (bio.Length > 1000)
+            {
+                return BadRequest("Bio is too long");
             }
 
             var player = await _context.Players.Where(p => p.Id == userId).Include(p => p.ScoreStats).FirstOrDefaultAsync();
@@ -224,7 +235,8 @@ namespace BeatLeader_Server.Controllers
                 Color = color,
                 LeaderID = userId,
                 Icon = icon ?? "https://cdn.beatleader.xyz/assets/clan.png",
-                UserInfo = userInfo,
+                Description = description,
+                Bio = bio,
                 PlayersCount = 1,
                 Pp = player.Pp,
                 AverageAccuracy = player.ScoreStats.AverageRankedAccuracy,
@@ -282,7 +294,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? id = null,
             [FromQuery] string? name = null,
             [FromQuery] string? color = null,
-            [FromQuery] string? userInfo = null)
+            [FromQuery] string description = "",
+            [FromQuery] string bio = "")
         {
             string currentID = HttpContext.CurrentUserID();
             long intId = Int64.Parse(currentID);
@@ -364,11 +377,20 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Error saving avatar");
             }
 
-            if (userInfo != null) {
-                clan.UserInfo = userInfo;
-            } 
+            if (description.Length > 100) {
+                return BadRequest("Description is too long");
+            } else {
+                clan.Description = description;
+            }
 
-            _context.Clans.Update(clan);
+            if (bio.Length > 1000)
+            {
+                return BadRequest("Bio is too long");
+            }
+            else
+            {
+                clan.Bio = bio;
+            }
 
             await _context.SaveChangesAsync();
 

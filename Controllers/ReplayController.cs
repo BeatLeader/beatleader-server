@@ -224,7 +224,7 @@ namespace BeatLeader_Server.Controllers
                 resultScore.Player = player;
                 resultScore.Leaderboard = leaderboard;
                 resultScore.Replay = "";
-                resultScore.Timeset = ((int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds).ToString();
+                resultScore.Timepost = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
                 if (currentScore != null)
                 {   

@@ -10,7 +10,8 @@ namespace BeatLeader_Server.Models
         public string Icon { get; set; }
         public string Tag { get; set; }
         public string LeaderID { get; set; }
-        public string UserInfo { get; set; }
+        public string Description { get; set; }
+        public string Bio { get; set; }
 
         public int PlayersCount { get; set; }
         public float Pp { get; set; }

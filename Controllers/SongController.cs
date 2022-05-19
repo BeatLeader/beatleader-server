@@ -37,6 +37,13 @@ namespace BeatLeader_Server.Controllers
                         songId += "x";
                     }
                     song.Id = songId;
+                    if (song.Hash != hash) {
+                        foreach (var diff in song.Difficulties)
+                        {
+                            diff.Ranked = false;
+                        }
+                    }
+                    song.Hash = hash;
                     _context.Songs.Add(song);
                     await _context.SaveChangesAsync();
                 }
