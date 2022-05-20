@@ -29,6 +29,8 @@
 
         public ICollection<Badge>? Badges { get; set; }
 
+        public PatreonFeatures? PatreonFeatures { get; set; }
+
         public void SetDefaultAvatar()
         {
             this.Avatar = "https://cdn.beatleader.xyz/assets/" + this.Platform + "avatar.png";

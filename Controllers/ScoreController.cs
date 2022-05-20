@@ -411,7 +411,7 @@ namespace BeatLeader_Server.Controllers
 
             var leaderboardId = song.Id + SongUtils.DiffForDiffName(diff).ToString() + modeValue.ToString();
 
-            IEnumerable<ScoreResponse> query = _context.Scores.Where(s => s.LeaderboardId == leaderboardId).Include(s => s.Player).ThenInclude(p => p.Clans).Select(RemoveLeaderboard).ToList();
+            IEnumerable<ScoreResponse> query = _context.Scores.Where(s => s.LeaderboardId == leaderboardId).Include(s => s.Player).ThenInclude(p => p.Clans).Include(s => s.Player).ThenInclude(p => p.PatreonFeatures).Select(RemoveLeaderboard).ToList();
 
             if (query.Count() == 0)
             {

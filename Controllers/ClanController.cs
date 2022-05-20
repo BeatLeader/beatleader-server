@@ -89,7 +89,8 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/clan/{id}")]
-        public async Task<ActionResult<ResponseWithMetadataAndContainer<Player, Clan>>> GetClan(string id, 
+        public async Task<ActionResult<ResponseWithMetadataAndContainer<Player, Clan>>> GetClan(
+            string id, 
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
             [FromQuery] string sort = "pp",
@@ -112,8 +113,16 @@ namespace BeatLeader_Server.Controllers
                 }
                 clan = await _context.Clans.Where(c => c.LeaderID == userId).Include(c => c.Players).FirstOrDefaultAsync();
             } else {
-                int intId = Int32.Parse(id);
-                clan = await _context.Clans.Where(c => c.Id == intId).Include(c => c.Players).FirstOrDefaultAsync();
+                int intId = 0;
+                
+                try {
+                 intId = Int32.Parse(id);
+                } catch { }
+                if (intId != 0) {
+                    clan = await _context.Clans.Where(c => c.Id == intId).Include(c => c.Players).FirstOrDefaultAsync();
+                } else {
+                    clan = await _context.Clans.Where(c => c.Tag == id).Include(c => c.Players).FirstOrDefaultAsync();
+                }
             }
             if (clan == null)
             {
@@ -172,8 +181,8 @@ namespace BeatLeader_Server.Controllers
             {
                 return BadRequest("You already have a clan");
             }
-            if (upperTag.Length > 5 || upperTag.Length < 2) {
-                return BadRequest("Clan tag should be from 2 to 5 letters");
+            if (upperTag.Length > 5 || upperTag.Length < 2 || !upperTag.All(char.IsLetterOrDigit)) {
+                return BadRequest("Clan tag should be from 2 to 5 capital latin letters or numbers");
             }
             if (name.Length > 25 || name.Length < 2)
             {
