@@ -67,6 +67,32 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpDelete("~/admin/role")]
+        public async Task<ActionResult> RemoveRole([FromQuery] string playerId, [FromQuery] string role)
+        {
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
+            var currentPlayer = await _context.Players.FindAsync(userId);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin") || role == "admin")
+            {
+                return Unauthorized();
+            }
+
+            Player? player = _context.Players.Find(playerId);
+            if (player != null)
+            {
+                player.Role = string.Join(",", player.Role.Split(",").Where(r => r != role));
+                _context.Players.Update(player);
+            }
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
         public static string GolovaID = "76561198059961776";
     }
 }

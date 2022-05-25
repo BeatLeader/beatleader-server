@@ -38,7 +38,7 @@ namespace BeatLeader_Server {
 
             string? cookieDomain = Configuration.GetValue<string>("CookieDomain");
 
-            services.AddAuthentication (options => {
+            var authBuilder = services.AddAuthentication (options => {
                 options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
             })
 
@@ -68,14 +68,17 @@ namespace BeatLeader_Server {
                     /* ... */
                     return Task.CompletedTask;
                 };
-            })
-            .AddPatreon(options => {
-                options.SignInScheme = "BLPatreon";
-                options.SaveTokens = true;
-                options.ClientId = patreonId;
-                options.ClientSecret = patreonSecret;
             });
-            
+
+            if (!Environment.IsDevelopment()) {
+                authBuilder.AddPatreon(options => {
+                    options.SignInScheme = "BLPatreon";
+                    options.SaveTokens = true;
+                    options.ClientId = patreonId;
+                    options.ClientSecret = patreonSecret;
+                });
+            }
+
             string connection;
             if (Environment.IsDevelopment()) {
                 connection = "Data Source = tcp:localhost,1433; Initial Catalog = BeatLeader; User Id = sa; Password = SuperStrong!";

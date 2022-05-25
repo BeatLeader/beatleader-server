@@ -11,6 +11,7 @@ public enum ScoringType
     BurstSliderHead,
     BurstSliderElement
 }
+
 public class NoteParams
 {
     public ScoringType scoringType;
@@ -63,6 +64,52 @@ namespace BeatLeader_Server.Utils
         public int totalScore;
         public float accuracy;
         public int combo;
+    }
+
+    class MultiplierCounter
+    {
+        public int Multiplier { get; private set; } = 1;
+
+        private int _multiplierIncreaseProgress;
+        private int _multiplierIncreaseMaxProgress = 2;
+
+        public void Reset()
+        {
+            Multiplier = 1;
+            _multiplierIncreaseProgress = 0;
+            _multiplierIncreaseMaxProgress = 2;
+        }
+
+        public void Increase()
+        {
+            if (Multiplier >= 8) return;
+
+            if (_multiplierIncreaseProgress < _multiplierIncreaseMaxProgress)
+            {
+                ++_multiplierIncreaseProgress;
+            }
+
+            if (_multiplierIncreaseProgress >= _multiplierIncreaseMaxProgress)
+            {
+                Multiplier *= 2;
+                _multiplierIncreaseProgress = 0;
+                _multiplierIncreaseMaxProgress = Multiplier * 2;
+            }
+        }
+
+        public void Decrease()
+        {
+            if (_multiplierIncreaseProgress > 0)
+            {
+                _multiplierIncreaseProgress = 0;
+            }
+
+            if (Multiplier > 1)
+            {
+                Multiplier /= 2;
+                _multiplierIncreaseMaxProgress = Multiplier * 2;
+            }
+        }
     }
 
     class ReplayStatisticUtils
@@ -280,29 +327,32 @@ namespace BeatLeader_Server.Utils
 
             allStructs = allStructs.OrderBy(s => s.time).ToList();
 
-            int multiplier = 1, lastmultiplier = 1;
+            int multiplier = 1;
             int score = 0, noteIndex = 0;
             int combo = 0, maxCombo = 0;
-            int maxScore = 0, comboForMaxScore = 0;
+            int maxScore = 0;
+            MultiplierCounter maxCounter = new MultiplierCounter();
+            MultiplierCounter normalCounter = new MultiplierCounter();
 
             for (var i = 0; i < allStructs.Count(); i++)
             {
                 var note = allStructs[i];
                 int scoreForMaxScore = note.scoringType == ScoringType.BurstSliderElement ? 20 : 115;
-                maxScore += multiplierForCombo(comboForMaxScore) * scoreForMaxScore;
-                comboForMaxScore++;
+                maxCounter.Increase();
+                maxScore += maxCounter.Multiplier * scoreForMaxScore;
 
                 if (note.score < 0)
                 {
-                    multiplier = multiplier > 1 ? multiplier / 2 : 1;
-                    lastmultiplier = multiplier;
+                    normalCounter.Decrease();
+                    multiplier = normalCounter.Multiplier;
                     combo = 0;
                 }
                 else
                 {
-                    score += multiplier * note.score;
+                    normalCounter.Increase();
                     combo++;
-                    multiplier = multiplierForCombo(comboForMultiplier(lastmultiplier) + combo);
+                    multiplier = normalCounter.Multiplier;
+                    score += multiplier * note.score;
                 }
 
                 if (combo > maxCombo)
@@ -356,46 +406,6 @@ namespace BeatLeader_Server.Utils
             }
 
             return scoreGraph;
-        }
-
-        public static int multiplierForCombo(int combo)
-        {
-            if (combo < 1)
-            {
-                return 1;
-            }
-            if (combo < 5)
-            {
-                return 2;
-            }
-            if (combo < 13)
-            {
-                return 4;
-            }
-            else
-            {
-                return 8;
-            }
-        }
-
-        public static int comboForMultiplier(int multiplier)
-        {
-            if (multiplier == 1)
-            {
-                return 0;
-            }
-            if (multiplier == 2)
-            {
-                return 1;
-            }
-            if (multiplier == 4)
-            {
-                return 6;
-            }
-            else
-            {
-                return 13;
-            }
         }
 
         public static float Clamp(float value)

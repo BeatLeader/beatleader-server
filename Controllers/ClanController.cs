@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using System.Text.RegularExpressions;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -181,7 +182,7 @@ namespace BeatLeader_Server.Controllers
             {
                 return BadRequest("You already have a clan");
             }
-            if (upperTag.Length > 5 || upperTag.Length < 2 || !upperTag.All(char.IsLetterOrDigit)) {
+            if (upperTag.Length > 5 || upperTag.Length < 2 || !Regex.IsMatch(upperTag, @"^[A-Z0-9]+$")) {
                 return BadRequest("Clan tag should be from 2 to 5 capital latin letters or numbers");
             }
             if (name.Length > 25 || name.Length < 2)

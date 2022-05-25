@@ -181,11 +181,11 @@ namespace BeatLeader_Server.Controllers
                 player.PatreonFeatures = features;
             }
 
-            if (message != null)
+            if (message != null && player.Role.Contains("sponsor"))
             {
-                if (message.Length < 3 || message.Length > 50)
+                if (message.Length < 3 || message.Length > 150)
                 {
-                    return BadRequest("Use message between the 3 and 30 symbols");
+                    return BadRequest("Use message between the 3 and 150 symbols");
                 }
 
                 features.Message = message;

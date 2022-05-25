@@ -250,6 +250,12 @@ namespace BeatLeader_Server.Controllers
             public string Color { get; set; }
         }
 
+        public class PatreonResponse {
+            public string Message { get; set; } = "";
+            public string LeftSaberColor { get; set; } = "";
+            public string RightSaberColor { get; set; } = "";
+        }
+
         public class PlayerResponse {
             public string Id { get; set; }
             public string Name { get; set; } = "";
@@ -261,6 +267,8 @@ namespace BeatLeader_Server.Controllers
             public int Rank { get; set; }
             public int CountryRank { get; set; }
             public string Role { get; set; }
+
+            public PatreonResponse? PatreonFeatures { get; set; }
             public IEnumerable<ClanResponse> Clans { get; set; }
         }
 
@@ -330,6 +338,12 @@ namespace BeatLeader_Server.Controllers
                 Rank = p.Rank,
                 CountryRank = p.CountryRank,
                 Role = p.Role,
+                PatreonFeatures = p.PatreonFeatures == null ? null : 
+                    new PatreonResponse {
+                        Message = p.PatreonFeatures.Message,
+                        LeftSaberColor = p.PatreonFeatures.LeftSaberColor,
+                        RightSaberColor = p.PatreonFeatures.RightSaberColor,
+                    },
                 Clans = p.Clans.Select(c => new ClanResponse { Tag = c.Tag, Color = c.Color })
             };
         }
