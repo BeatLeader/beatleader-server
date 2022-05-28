@@ -173,6 +173,10 @@ namespace BeatLeader_Server.Controllers
             string userId = accountLink != null ? accountLink.SteamID : currentID;
             string upperTag = tag.ToUpper();
 
+            if (_context.ReservedTags.FirstOrDefault(t => t.Tag == upperTag) != null) {
+                return BadRequest("This tag is reserved. Ask someone with #BeatFounder role in discord to allow this tag for you.");
+            }
+
             if (_context.Clans.FirstOrDefault(c => c.Name == name || c.Tag == upperTag) != null)
             {
                 return BadRequest("Clan with such name or tag is already exists");
@@ -679,6 +683,74 @@ namespace BeatLeader_Server.Controllers
             _context.SaveChanges();
 
             clan.Pp = _context.RecalculateClanPP(clan.Id);
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
+        [HttpPost("~/clan/reserve")]
+        public async Task<ActionResult> ReserveTag([FromQuery] string tag)
+        {
+            tag = tag.ToUpper();
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
+            var currentPlayer = await _context.Players.FindAsync(userId);
+
+            if (!currentPlayer.Role.Contains("admin")) {
+                return Unauthorized();
+            }
+
+            _context.ReservedTags.Add(new ReservedClanTag {
+                Tag = tag
+            });
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
+        [HttpDelete("~/clan/reserve")]
+        public async Task<ActionResult> AllowTag([FromQuery] string tag)
+        {
+            tag = tag.ToUpper();
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
+            var currentPlayer = await _context.Players.FindAsync(userId);
+
+            if (!currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var rt = _context.ReservedTags.FirstOrDefault(rt => rt.Tag == tag);
+            if (rt == null) {
+                return NotFound();
+            }
+
+            _context.ReservedTags.Remove(rt);
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
+        [HttpGet("~/clans/refresh")]
+        public async Task<ActionResult> RefreshClans()
+        {
+
+            var clans = _context.Clans.Include(c => c.Players).ThenInclude(p => p.ScoreStats).ToList();
+            foreach (var clan in clans)
+            {
+                clan.AverageAccuracy = clan.Players.Average(p => p.ScoreStats.AverageRankedAccuracy);
+                clan.AverageRank = (float)clan.Players.Average(p => p.Rank);
+                clan.PlayersCount = clan.Players.Count;
+                clan.Pp = _context.RecalculateClanPP(clan.Id);
+            }
+            
             _context.SaveChanges();
 
             return Ok();

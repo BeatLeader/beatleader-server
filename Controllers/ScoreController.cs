@@ -506,16 +506,21 @@ namespace BeatLeader_Server.Controllers
 
 
         [HttpGet("~/score/{playerID}/{hash}/{diff}/{mode}")]
-        public ActionResult<Score> GetPlayer(string playerID, string hash, string diff, string mode)
+        public async Task<ActionResult<Score>> GetPlayer(string playerID, string hash, string diff, string mode)
         {
-            var leaderboard = _context.Leaderboards.Include(el => el.Song).Include(el => el.Difficulty).Where(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+            Int64 oculusId = Int64.Parse(playerID);
+            AccountLink? link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
+            string userId = (link != null ? link.SteamID : playerID);
 
-            if (leaderboard != null && leaderboard.Count() != 0)
+            var score = await _context
+                .Scores
+                .Where(l => l.Leaderboard.Song.Hash == hash && l.Leaderboard.Difficulty.DifficultyName == diff && l.Leaderboard.Difficulty.ModeName == mode && l.PlayerId == userId)
+                .Include(el => el.Player).ThenInclude(el => el.PatreonFeatures)
+                .FirstOrDefaultAsync();
+
+            if (score != null)
             {
-                Int64 oculusId = Int64.Parse(playerID);
-                AccountLink? link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
-                string userId = (link != null ? link.SteamID : playerID);
-                return leaderboard.Include(el => el.Scores).ThenInclude(el => el.Player).First().Scores.FirstOrDefault(el => el.Player.Id == userId);
+                return score;
             }
             else
             {

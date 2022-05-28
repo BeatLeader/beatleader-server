@@ -337,7 +337,12 @@ namespace BeatLeader_Server.Utils
             for (var i = 0; i < allStructs.Count(); i++)
             {
                 var note = allStructs[i];
-                int scoreForMaxScore = note.scoringType == ScoringType.BurstSliderElement ? 20 : 115;
+                int scoreForMaxScore = 115;
+                if (note.scoringType == ScoringType.BurstSliderHead) {
+                    scoreForMaxScore = 85;
+                } else if (note.scoringType == ScoringType.BurstSliderElement) {
+                    scoreForMaxScore = 20;
+                }
                 maxCounter.Increase();
                 maxScore += maxCounter.Multiplier * scoreForMaxScore;
 
@@ -440,10 +445,46 @@ namespace BeatLeader_Server.Utils
         public static (int, int, int) CutScoresForNote(NoteEvent note, ScoringType scoringType)
         {
             var cut = note.noteCutInfo;
-            double beforeCutRawScore = Math.Clamp(Math.Round(70 * cut.beforeCutRating), 0, 70);
-            double afterCutRawScore = Math.Clamp(Math.Round(30 * cut.afterCutRating), 0, 30);
-            double num = 1 - Clamp(cut.cutDistanceToCenter / 0.3f);
-            double cutDistanceRawScore = Math.Round((scoringType == ScoringType.BurstSliderElement ? 20 : 15) * num);
+            double beforeCutRawScore = 0;
+            if (scoringType != ScoringType.BurstSliderElement)
+            {
+                if (scoringType == ScoringType.SliderTail)
+                {
+                    beforeCutRawScore = 70;
+                }
+                else
+                {
+                    beforeCutRawScore = Math.Clamp(Math.Round(70 * cut.beforeCutRating), 0, 70);
+                }
+            }
+            double afterCutRawScore = 0;
+            if (scoringType != ScoringType.BurstSliderElement)
+            {
+                if (scoringType == ScoringType.BurstSliderHead)
+                {
+                    afterCutRawScore = 0;
+                }
+                else if (scoringType == ScoringType.SliderHead)
+                {
+                    afterCutRawScore = 30;
+                }
+                else
+                {
+                    afterCutRawScore = Math.Clamp(Math.Round(30 * cut.afterCutRating), 0, 30);
+                }
+            }
+            double cutDistanceRawScore = 0;
+            if (scoringType == ScoringType.BurstSliderElement)
+            {
+                cutDistanceRawScore = 20;
+            }
+            else
+            {
+
+                double num = 1 - Clamp(cut.cutDistanceToCenter / 0.3f);
+                cutDistanceRawScore = Math.Round(15 * num);
+
+            }
 
             return ((int)beforeCutRawScore, (int)afterCutRawScore, (int)cutDistanceRawScore);
         }

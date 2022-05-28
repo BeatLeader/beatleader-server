@@ -26,4 +26,10 @@ namespace BeatLeader_Server.Models
         [InverseProperty("BannedClans")]
         public ICollection<User> Banned { get; set; } = new List<User>();
     }
+
+    public class ReservedClanTag
+    {
+        public int Id { get; set; }
+        public string Tag { get; set; }
+    }
 }

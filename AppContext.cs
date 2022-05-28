@@ -34,6 +34,8 @@ namespace BeatLeader_Server
         public DbSet<LoginAttempt> LoginAttempts { get; set; }
         public DbSet<PatreonLink> PatreonLinks { get; set; }
 
+        public DbSet<ReservedClanTag> ReservedTags { get; set; }
+
         public void RejectChanges()
         {
             foreach (var entry in ChangeTracker.Entries())
