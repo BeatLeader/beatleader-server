@@ -53,6 +53,9 @@ namespace BeatLeader_Server {
                     options.Cookie.Domain = cookieDomain;
                 }
                 options.Cookie.HttpOnly = false;
+                options.ExpireTimeSpan = TimeSpan.FromDays(30);
+                options.Cookie.MaxAge = options.ExpireTimeSpan;
+                options.SlidingExpiration = true;
             })
             .AddCookie("BLPatreon")
             .AddSteamTicket(options =>

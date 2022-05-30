@@ -224,7 +224,7 @@ namespace BeatLeader_Server.Controllers
                     return BadRequest("rightSaberColor is not valid");
                 }
 
-                features.LeftSaberColor = rightSaberColor;
+                features.RightSaberColor = rightSaberColor;
             }
 
             await _context.SaveChangesAsync();

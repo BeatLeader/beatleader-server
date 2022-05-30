@@ -50,7 +50,7 @@ namespace BeatLeader_Server.Controllers
 
                 redirectUrl = Url.Action("SteamLoginCallback", new { ReturnUrl = returnUrl });
             } else if (provider == "Patreon") {
-                redirectUrl = Url.Action("LinkPatreon", "CurrentUser", new { returnUrl = returnUrl });
+                redirectUrl = Url.Action("LinkPatreon", "Patreon", new { returnUrl = returnUrl });
             }
 
             // Instruct the middleware corresponding to the requested external identity
