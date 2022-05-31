@@ -400,9 +400,9 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         public async Task<ActionResult<int>> MigratePrivate(string fromId, int id)
         {
-            if (Int64.Parse(fromId) < 70000000000000000)
+            if (Int64.Parse(fromId) < 20000000000000000)
             {
-                return Unauthorized("You need to be logged in with Steam");
+                return Unauthorized("You need to be logged in with Steam or Oculus");
             }
 
             AccountLink? accountLink = new AccountLink

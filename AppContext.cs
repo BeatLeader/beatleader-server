@@ -35,6 +35,7 @@ namespace BeatLeader_Server
         public DbSet<PatreonLink> PatreonLinks { get; set; }
 
         public DbSet<ReservedClanTag> ReservedTags { get; set; }
+        public DbSet<OculusLoginLink> OculusLoginLinks { get; set; }
 
         public void RejectChanges()
         {

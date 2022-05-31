@@ -129,9 +129,19 @@ namespace BeatLeader_Server.Controllers
             // Instruct the middleware corresponding to the requested external identity
             // provider to redirect the user agent to its own authorization endpoint.
             // Note: the authenticationScheme parameter must match the value configured in Startup.cs
-            var result = Challenge(new AuthenticationProperties { RedirectUri = "/" }, "oculus");
+            var result = Challenge(new AuthenticationProperties { RedirectUri = "/" }, "password");
 
             return result;
+        }
+
+        [HttpPost("~/signinoculusPC")]
+        public async Task<IActionResult> SignInOculusPc()
+        {
+
+            // Instruct the middleware corresponding to the requested external identity
+            // provider to redirect the user agent to its own authorization endpoint.
+            // Note: the authenticationScheme parameter must match the value configured in Startup.cs
+            return Challenge(new AuthenticationProperties { RedirectUri = "/" }, "oculus");
         }
 
         [HttpGet("~/signout"), HttpPost("~/signout")]

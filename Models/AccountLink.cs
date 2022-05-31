@@ -6,6 +6,7 @@ namespace BeatLeader_Server.Models
         public int Id { get; set; }
         public string SteamID { get; set; }
         public int OculusID { get; set; }
+        public string PCOculusID { get; set; }
     }
 
     public class AccountLinkRequest
@@ -15,6 +16,13 @@ namespace BeatLeader_Server.Models
 
         public int Random { get; set; }
         public string IP { get; set; }
+    }
+
+    public class OculusLoginLink
+    {
+        public int Id { get; set; }
+        public string BLOculusID { get; set; }
+        public string BSOculusID { get; set; }
     }
 }
 

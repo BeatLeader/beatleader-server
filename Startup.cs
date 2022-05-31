@@ -38,6 +38,9 @@ namespace BeatLeader_Server {
 
             string? cookieDomain = Configuration.GetValue<string>("CookieDomain");
 
+            string oculusToken = Configuration.GetValue<string>("OculusToken");
+            string oculusKey = Configuration.GetValue<string>("OculusKey");
+
             var authBuilder = services.AddAuthentication (options => {
                 options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
             })
@@ -64,7 +67,7 @@ namespace BeatLeader_Server {
                 options.ApplicationID = "620980";
                 options.ApiUrl = steamApi;
             })
-            .AddOculus(options => {})
+            .AddPassword(options => {})
             .AddSteam (options => {
                 options.ApplicationKey = steamKey;
                 options.Events.OnAuthenticated = ctx => {
@@ -72,6 +75,7 @@ namespace BeatLeader_Server {
                     return Task.CompletedTask;
                 };
             });
+            
 
             if (!Environment.IsDevelopment()) {
                 authBuilder.AddPatreon(options => {
@@ -79,6 +83,11 @@ namespace BeatLeader_Server {
                     options.SaveTokens = true;
                     options.ClientId = patreonId;
                     options.ClientSecret = patreonSecret;
+                });
+
+                authBuilder.AddOculus(options => {
+                     options.Key = oculusKey;
+                     options.Token = oculusToken;
                 });
             }
 

@@ -35,7 +35,7 @@ namespace BeatLeader_Server.Controllers
                 oculusId = Int64.Parse(id);
             } catch {}
             AccountLink? link = null;
-            if (oculusId < 70000000000000000) {
+            if (oculusId < 20000000000000000) {
                 using (_serverTiming.TimeAction("link"))
                 {
                     link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
@@ -72,21 +72,21 @@ namespace BeatLeader_Server.Controllers
             if (player == null) {
                 Int64 userId = Int64.Parse(id);
                 if (userId > 70000000000000000) {
-                    player = await GetPlayerFromSteam(id);
+                    player = await PlayerUtils.GetPlayerFromSteam(id, _configuration.GetValue<string>("SteamKey"));
                     if (player == null) {
                         return NotFound();
-                    } else {
-                        player.Platform = "steam";
                     }
-                } else {
-                    player = await GetPlayerFromOculus(id);
+                } else if (userId > 2000000000000000) {
+                    player = await PlayerUtils.GetPlayerFromOculus(id, _configuration.GetValue<string>("OculusToken"));
                     if (player == null)
                     {
                         return NotFound();
                     }
-                    else
+                } else {
+                    player = await GetPlayerFromBL(id);
+                    if (player == null)
                     {
-                        player.Platform = "oculus";
+                        return NotFound();
                     }
                 }
                 player.Id = id;
@@ -472,7 +472,7 @@ namespace BeatLeader_Server.Controllers
             foreach (Player p in players)
             {
                 if (Int64.Parse(p.Id) <= 70000000000000000) { continue; }
-                Player? update = await GetPlayerFromSteam(p.Id);
+                Player? update = await PlayerUtils.GetPlayerFromSteam(p.Id, _configuration.GetValue<string>("SteamKey"));
 
                 if (update != null)
                 {
@@ -729,52 +729,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task<Player?> GetPlayerFromSteam(string playerID)
-        {
-            dynamic? info = await GetPlayer("http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=" + _configuration.GetValue<string>("SteamKey") + "&steamids=" + playerID);
-
-            if (info == null) return null;
-
-            dynamic playerInfo = info.response.players[0];
-            Player result = new Player();
-            result.Name = playerInfo.personaname;
-            result.Avatar = playerInfo.avatarfull;
-            if (ExpandantoObject.HasProperty(playerInfo, "loccountrycode"))
-            {
-                result.Country = playerInfo.loccountrycode;
-            }
-            else
-            {
-                result.Country = "not set";
-            }
-            result.ExternalProfileUrl = playerInfo.profileurl;
-
-            dynamic? gamesInfo = await GetPlayer("http://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v0001/?key=" + _configuration.GetValue<string>("SteamKey") + "&steamid=" + playerID);
-            if (gamesInfo != null && ExpandantoObject.HasProperty(gamesInfo, "response") && ExpandantoObject.HasProperty(gamesInfo.response, "total_count"))
-            {
-                dynamic response = gamesInfo.response;
-                dynamic? beatSaber = null;
-
-                for (int i = 0; i < response.total_count; i++)
-                {
-                    if (response.games[i].appid == 620980)
-                    {
-                        beatSaber = response.games[i];
-                    }
-                }
-
-                if (beatSaber != null)
-                {
-                    result.AllTime = beatSaber.playtime_forever / 60.0f;
-                    result.LastTwoWeeksTime = beatSaber.playtime_2weeks / 60.0f;
-                }
-            }
-
-            return result;
-        }
-
-        [NonAction]
-        public async Task<Player?> GetPlayerFromOculus(string playerID)
+        public async Task<Player?> GetPlayerFromBL(string playerID)
         {
             AuthInfo? authInfo = _context.Auths.FirstOrDefault(el => el.Id.ToString() == playerID);
 
@@ -787,54 +742,6 @@ namespace BeatLeader_Server.Controllers
             result.SetDefaultAvatar();
 
             return result;
-        }
-
-        [NonAction]
-        public Task<dynamic?> GetPlayer(string url)
-        {
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-            request.Method = "GET";
-            request.Proxy = null;
-
-            WebResponse? response = null;
-            dynamic? song = null;
-            var stream = 
-            Task<(WebResponse?, dynamic?)>.Factory.FromAsync(request.BeginGetResponse, result =>
-            {
-                try
-                {
-                    response = request.EndGetResponse(result);
-                }
-                catch (Exception e)
-                {
-                    song = null;
-                }
-            
-                return (response, song);
-            }, request);
-
-            return stream.ContinueWith(t => ReadPlayerFromResponse(t.Result));
-        }
-
-        [NonAction]
-        private dynamic? ReadPlayerFromResponse((WebResponse?, dynamic?) response)
-        {
-            if (response.Item1 != null) {
-                using (Stream responseStream = response.Item1.GetResponseStream())
-                using (StreamReader reader = new StreamReader(responseStream))
-                {
-                    string results = reader.ReadToEnd();
-                    if (string.IsNullOrEmpty(results))
-                    {
-                        return null;
-                    }
-
-                    return JsonConvert.DeserializeObject<ExpandoObject>(results, new ExpandoObjectConverter());
-                }
-            } else {
-                return response.Item2;
-            }
-            
         }
     }
 }

@@ -8,11 +8,11 @@ using AngleSharp.Html.Parser;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.IdentityModel.Protocols;
 
-public class OculusAuthenticationOptions : RemoteAuthenticationOptions
+public class PasswordAuthenticationOptions : RemoteAuthenticationOptions
 {
-    public OculusAuthenticationOptions()
+    public PasswordAuthenticationOptions()
     {
-        Token = "";
+        ApplicationID = "";
         Key = "";
         CallbackPath = "/id";
         ForwardAuthenticate = null;
@@ -23,7 +23,7 @@ public class OculusAuthenticationOptions : RemoteAuthenticationOptions
     /// Note: this property is ignored when <see cref="Configuration"/>
     /// or <see cref="ConfigurationManager"/> are set.
     /// </summary>
-    public String Token { get; set; }
+    public String ApplicationID { get; set; }
 
     /// <summary>
     /// Gets or sets the URL of the OpenID 2.0 authentication XRDS discovery document.

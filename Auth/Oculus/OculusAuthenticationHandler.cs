@@ -9,12 +9,10 @@ using System.Net;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
-using AspNet.Security.OpenId.Events;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -39,161 +37,102 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        string? action = Request.Form["action"].FirstOrDefault();
-        if (action == null || (action != "login" && action != "signup"))
-        {
+        string? token = Request.Form["token"].FirstOrDefault();
+        if (token == null) {
             Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await Context.Response.WriteAsync("Specify action");
-            return AuthenticateResult.Fail("Specify action");
-        }
-        string? login = Request.Form["login"].FirstOrDefault();
-        if (login == null)
-        {
-            Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await Context.Response.WriteAsync("Specify login");
-            return AuthenticateResult.Fail("Specify login");
-        }
-        string? password = Request.Form["password"].FirstOrDefault();
-        if (password == null)
-        {
-            Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await Context.Response.WriteAsync("Specify password");
-            return AuthenticateResult.Fail("Specify password");
-        }
-        var scope = _serviceProvider.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<BeatLeader_Server.AppContext>();
-
-        string id = "";
-
-        IPAddress? iPAddress = Request.HttpContext.Connection.RemoteIpAddress;
-        if (iPAddress == null)
-        {
-            Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await Context.Response.WriteAsync("You don't have an IP adress? Tell #NSGolova how you get this error.");
-            return AuthenticateResult.Fail("You don't have an IP adress? Tell #NSGolova how you get this error.");
-        }
-
-        if (action == "login")
-        {
-            LoginAttempt? loginAttempt = dbContext.LoginAttempts.FirstOrDefault(el => el.IP == iPAddress.ToString());
-            int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-
-            if (loginAttempt != null && loginAttempt.Count == 10 && (timestamp - loginAttempt.Timestamp) < 60 * 60 * 24) {
+            await Context.Response.WriteAsync("No token found");
+            return AuthenticateResult.Fail("No token found");
+        } else {
+            string? tokenJSON = Encoding.UTF8.GetString(Convert.FromBase64String(token));
+            if (tokenJSON == null) {
                 Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await Context.Response.WriteAsync("To much login attempts in one day");
-                return AuthenticateResult.Fail("To much login attempts in one day");
+                await Context.Response.WriteAsync("Token is not valid");
+                return AuthenticateResult.Fail("Token is not valid");
             }
-            AuthInfo? authInfo = dbContext.Auths.FirstOrDefault(el => el.Login == login);
-            if (authInfo == null || authInfo.Password != password)
+            dynamic? decodedToken = JsonConvert.DeserializeObject<ExpandoObject>(tokenJSON, new ExpandoObjectConverter());
+            if (decodedToken == null) {
+                Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await Context.Response.WriteAsync("Token is not valid");
+                return AuthenticateResult.Fail("Token is not valid");
+            }
+
+            string scoredID = decodedToken.org_scoped_id.ToString();
+            string code = decodedToken.code.ToString();
+
+            dynamic? auth_token_info = await MakeAsyncRequest("https://graph.oculus.com/sso_authorize_code?code=" + code + "&access_token=" + Options.Key + "&org_scoped_id=" + scoredID, "POST");
+            if (auth_token_info == null) {
+                Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await Context.Response.WriteAsync("Something went wrong");
+                return AuthenticateResult.Fail("Something went wrong");
+            }
+            dynamic? request = await MakeAsyncRequest("https://graph.oculus.com/me?fields=id,alias", "GET", auth_token_info.oauth_token);
+
+            string userID = request.id;
+            string alias = request.alias;
+
+            using (var scope = _serviceProvider.CreateScope())
             {
-                if (loginAttempt == null) {
-                    loginAttempt = new LoginAttempt {
-                        IP = iPAddress.ToString(),
-                        Timestamp = timestamp,
-                     };
-                    dbContext.LoginAttempts.Add(loginAttempt);
-                    await dbContext.SaveChangesAsync();
-                } else if ((timestamp - loginAttempt.Timestamp) >= 60 * 60 * 24) {
-                    loginAttempt.Timestamp = timestamp;
-                    loginAttempt.Count = 0;
+                var dbContext = scope.ServiceProvider.GetRequiredService<BeatLeader_Server.AppContext>();
+
+                var loginLink = dbContext.OculusLoginLinks.FirstOrDefault(l => l.BLOculusID == userID);
+                if (loginLink == null) {
+                    var allOculusPlayers = dbContext.Players.Where(p => p.Platform == "oculuspc").ToList();
+
+                    var player = allOculusPlayers.FirstOrDefault(p => p.Name == alias);
+                    if (player == null) {
+                        foreach (var item in allOculusPlayers) {
+                           var updatedPlayer = await PlayerUtils.GetPlayerFromOculus(item.Id, Options.Token);
+                            if (updatedPlayer != null) {
+                                if (updatedPlayer.Name == alias) {
+                                    player = updatedPlayer;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (player != null) {
+                        loginLink = new OculusLoginLink {
+                            BLOculusID = userID,
+                            BSOculusID = player.Id
+                        };
+                        dbContext.OculusLoginLinks.Add(loginLink);
+                        dbContext.SaveChanges();
+                    }
                 }
-                loginAttempt.Count++;
-                dbContext.LoginAttempts.Update(loginAttempt);
-                await dbContext.SaveChangesAsync();
 
-                Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await Context.Response.WriteAsync("Login or password is not valid. " + (10 - loginAttempt.Count) + " tries left");
-                return AuthenticateResult.Fail("Login or password is not valid. " + (10 - loginAttempt.Count) + " tries left");
-            }
-            id = authInfo.Id.ToString();
-
-            AuthID? authID = dbContext.AuthIDs.FirstOrDefault(a => a.Id == id);
-            if (authID == null) {
-                authID = new AuthID {
-                    Id = id,
-                    Timestamp = timestamp
-                };
-                dbContext.AuthIDs.Add(authID);
-            } else {
-                authID.Timestamp = timestamp;
-                dbContext.AuthIDs.Update(authID);
+                if (loginLink != null) {
+                    userID = loginLink.BSOculusID;
+                } else {
+                    Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    await Context.Response.WriteAsync("Cannot find the player. Please post at least one score from the mod.");
+                    return AuthenticateResult.Fail("Cannot find the player. Please post at least one score from the mod.");
+                }
             }
 
-            dbContext.SaveChanges();
+            var claims = new[] { new Claim(ClaimTypes.NameIdentifier, userID) };
+            var identity = new ClaimsIdentity(claims, "Test");
+            var principal = new ClaimsPrincipal(identity);
+            var ticket = new AuthenticationTicket(principal, "Cookies");
+
+            await AuthenticationHttpContextExtensions.SignInAsync(Context, CookieAuthenticationDefaults.AuthenticationScheme, principal);
+
+            var result = AuthenticateResult.Success(ticket);
+
+            return result;
         }
-        else
-        {
-            AuthInfo? authInfo = dbContext.Auths.FirstOrDefault(el => el.Login == login);
-            if (authInfo != null)
-            {
-                Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await Context.Response.WriteAsync("User with such login already exists");
-                return AuthenticateResult.Fail("User with such login already exists");
-            }
-            Player? player = dbContext.Players.FirstOrDefault(el => el.Name == login);
-            if (player != null)
-            {
-                Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await Context.Response.WriteAsync("User with such login already exists");
-                return AuthenticateResult.Fail("User with such login already exists");
-            }
-            if (login.Trim().Length < 2)
-            {
-                Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await Context.Response.WriteAsync("Use two or more symbols for the login");
-                return AuthenticateResult.Fail("Use two or more symbols for the login");
-            }
-            if (password.Trim().Length < 8)
-            {
-                Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await Context.Response.WriteAsync("Come on, type at least 8 symbols password");
-                return AuthenticateResult.Fail("Come on, type at least 8 symbols password");
-            }
-            string ip = iPAddress.ToString();
-            int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-            if (dbContext.AuthIPs.FirstOrDefault(el => el.IP == ip && (timestamp - el.Timestamp) < 60 * 60 * 24) != null)
-            {
-                Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await Context.Response.WriteAsync("You can create only one account a day, sorry");
-                return AuthenticateResult.Fail("You can create only one account a day, sorry");
-            }
-            
-            authInfo = new AuthInfo
-            {
-                Password = password,
-                Login = login
-            };
-            dbContext.Auths.Add(authInfo);
-            dbContext.AuthIPs.Add(new AuthIP
-            {
-                IP = ip,
-                Timestamp = timestamp
-            });
-
-            dbContext.SaveChanges();
-
-            id = authInfo.Id.ToString();
-        }
-
-        var claims = new[] { new Claim(ClaimTypes.NameIdentifier, id) };
-        var identity = new ClaimsIdentity(claims, "Test");
-        var principal = new ClaimsPrincipal(identity);
-        var ticket = new AuthenticationTicket(principal, "Cookies");
-
-        await AuthenticationHttpContextExtensions.SignInAsync(Context, CookieAuthenticationDefaults.AuthenticationScheme, principal);
-
-        var result = AuthenticateResult.Success(ticket);
-
-        return result;
     }
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties) {
         return HandleAuthenticateOnceAsync();
     }
 
-    public Task<dynamic?> MakeAsyncRequest(string url, string method)
+    public Task<dynamic?> MakeAsyncRequest(string url, string method, string? token = null)
     {
         HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+        if (token != null) {
+            request.Headers.Add("Authorization", "Bearer " + token);
+        }
         request.Method = method;
 
         WebResponse response = null;
@@ -223,10 +162,6 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
                 using (StreamReader reader = new StreamReader(responseStream))
                 {
                     string results = reader.ReadToEnd();
-                    if (!string.IsNullOrEmpty(results))
-                    {
-                    
-                    }
                     dynamic? info = JsonConvert.DeserializeObject<ExpandoObject>(results, new ExpandoObjectConverter());
                     return info;
                 }
