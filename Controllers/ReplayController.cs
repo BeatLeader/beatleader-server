@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -66,7 +67,7 @@ namespace BeatLeader_Server.Controllers
 		}
 
         [HttpPost("~/replay"), DisableRequestSizeLimit]
-        public async Task<ActionResult<ScoreController.ScoreResponse>> PostSteamReplay([FromQuery] string ticket)
+        public async Task<ActionResult<ScoreResponse>> PostSteamReplay([FromQuery] string ticket)
         {
             (string? id, string? error) = await SteamHelper.GetPlayerIDFromTicket(ticket, _configuration);
             if (id == null && error != null) {
@@ -77,7 +78,7 @@ namespace BeatLeader_Server.Controllers
 
         [HttpPut("~/replayoculus"), DisableRequestSizeLimit]
         [Authorize]
-        public async Task<ActionResult<ScoreController.ScoreResponse>> PostOculusReplay()
+        public async Task<ActionResult<ScoreResponse>> PostOculusReplay()
         {
             string currentID = HttpContext.CurrentUserID();
             AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == Int64.Parse(currentID));
@@ -85,7 +86,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task<ActionResult<ScoreController.ScoreResponse>> PostReplayFromBody(string? authenticatedPlayerID)
+        public async Task<ActionResult<ScoreResponse>> PostReplayFromBody(string? authenticatedPlayerID)
         {
             Replay replay;
             byte[] replayData;
@@ -113,7 +114,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task<ActionResult<ScoreController.ScoreResponse>> PostReplayFromCDN(string? authenticatedPlayerID, string name, HttpContext context)
+        public async Task<ActionResult<ScoreResponse>> PostReplayFromCDN(string? authenticatedPlayerID, string name, HttpContext context)
         {
             BlobClient blobClient = _containerClient.GetBlobClient(name);
             MemoryStream ms = new MemoryStream(5);
@@ -134,7 +135,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task<ActionResult<ScoreController.ScoreResponse>> PostReplay(string? authenticatedPlayerID, Replay? replay, byte[] replayData, HttpContext context)
+        public async Task<ActionResult<ScoreResponse>> PostReplay(string? authenticatedPlayerID, Replay? replay, byte[] replayData, HttpContext context)
         {
             if (replay == null) {
                 return BadRequest("It's not a replay or it has old version.");
@@ -450,7 +451,7 @@ namespace BeatLeader_Server.Controllers
                 }
             });
 
-            return _scoreController.RemoveLeaderboard(resultScore, resultScore.Rank);
+            return RemoveLeaderboard(resultScore, resultScore.Rank);
         }
 
         [NonAction]

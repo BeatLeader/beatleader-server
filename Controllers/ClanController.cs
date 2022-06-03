@@ -58,10 +58,10 @@ namespace BeatLeader_Server.Controllers
                     sequence = sequence.Order(order, t => t.Pp);
                     break;
                 case "acc":
-                    sequence = sequence.Order(order, t => t.AverageAccuracy);
+                    sequence = sequence.Where(c => c.PlayersCount > 2).Order(order, t => t.AverageAccuracy);
                     break;
                 case "rank":
-                    sequence = sequence.Order(order, t => t.AverageRank);
+                    sequence = sequence.Order(order == "desc" ? "asc" : "desc", t => t.AverageRank);
                     break;
                 case "count":
                     sequence = sequence.Order(order, t => t.PlayersCount);
@@ -268,7 +268,7 @@ namespace BeatLeader_Server.Controllers
 
         [HttpDelete("~/clan")]
         [Authorize]
-        public async Task<ActionResult> DeleteClan([FromQuery] string? id = null)
+        public async Task<ActionResult> DeleteClan([FromQuery] int? id = null)
         {
             string currentID = HttpContext.CurrentUserID();
             long intId = Int64.Parse(currentID);

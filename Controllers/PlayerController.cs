@@ -9,6 +9,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System.Dynamic;
 using System.Net;
+using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -56,7 +57,7 @@ namespace BeatLeader_Server.Controllers
             {
                 using (_serverTiming.TimeAction("lazy"))
                 {
-                    player = (await GetLazy(id, false)).Value;
+                    player = (await GetLazy(id, true)).Value;
                 }
 
                 return player;
@@ -349,7 +350,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/players")]
-        public async Task<ActionResult<ResponseWithMetadata<Player>>> GetPlayers(
+        public async Task<ActionResult<ResponseWithMetadata<PlayerResponseWithStats>>> GetPlayers(
             [FromQuery] string sortBy = "pp", 
             [FromQuery] int page = 1, 
             [FromQuery] int count = 50, 
@@ -376,7 +377,7 @@ namespace BeatLeader_Server.Controllers
                 default:
                     break;
             }
-            return new ResponseWithMetadata<Player>()
+            return new ResponseWithMetadata<PlayerResponseWithStats>()
             {
                 Metadata = new Metadata()
                 {
@@ -384,7 +385,7 @@ namespace BeatLeader_Server.Controllers
                     ItemsPerPage = count,
                     Total = request.Count()
                 },
-                Data = await request.Skip((page - 1) * count).Take(count).ToListAsync()
+                Data = request.Skip((page - 1) * count).Take(count).Select(ResponseWithStatsFromPlayer).ToList()
             };
         }
 
@@ -456,8 +457,6 @@ namespace BeatLeader_Server.Controllers
 
                 p.StatsHistory = statsHistory;
                 stats.DailyImprovements = 0;
-
-               
             }
 
             await _context.SaveChangesAsync();
@@ -489,26 +488,94 @@ namespace BeatLeader_Server.Controllers
                     {
                         p.Country = update.Country;
                     }
-
-                    _context.Players.Update(p);
-                    await _context.SaveChangesAsync();
                 }
             }
+
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
 
-        [HttpGet("~/player/{id}/refresh")]
-        public async Task<ActionResult> RefreshPlayer(string id, [FromQuery] bool refreshRank = true)
+        [NonAction]
+        public async Task RefreshStats(Player player)
         {
-            Player? player = _context.Players.Find(id);
-            if (player == null)
+            if (player.ScoreStats == null)
             {
-                return NotFound();
+                player.ScoreStats = new PlayerScoreStats();
+                _context.Stats.Add(player.ScoreStats);
             }
+            var allScores = await _context.Scores.Where(s => s.PlayerId == player.Id).Select(s => new {
+                Platform = s.Platform,
+                Hmd = s.Hmd,
+                ModifiedScore = s.ModifiedScore,
+                Accuracy = s.Accuracy,
+                Pp = s.Pp,
+            }).ToListAsync();
+
+            if (allScores.Count() == 0) return;
+            var rankedScores = allScores.Where(s => s.Pp != 0);
+            player.ScoreStats.TotalPlayCount = allScores.Count();
+
+            var lastScores = allScores.TakeLast(50);
+            Dictionary<string, int> platforms = new Dictionary<string, int>();
+            Dictionary<int, int> hmds = new Dictionary<int, int>();
+            foreach (var s in lastScores)
+            {
+                if (!platforms.ContainsKey(s.Platform))
+                {
+                    platforms[s.Platform] = 1;
+                }
+                else
+                {
+
+                    platforms[s.Platform]++;
+                }
+
+                if (!hmds.ContainsKey(s.Hmd))
+                {
+                    hmds[s.Hmd] = 1;
+                }
+                else
+                {
+
+                    hmds[s.Hmd]++;
+                }
+            }
+
+            player.ScoreStats.TopPlatform = platforms.OrderBy(s => s.Value).First().Key;
+            player.ScoreStats.TopHMD = hmds.OrderBy(s => s.Value).First().Key;
+
+            player.ScoreStats.RankedPlayCount = rankedScores.Count();
+            if (player.ScoreStats.TotalPlayCount > 0)
+            {
+                int count = allScores.Count() / 2;
+                player.ScoreStats.TotalScore = allScores.Sum(s => s.ModifiedScore);
+                player.ScoreStats.AverageAccuracy = allScores.Average(s => s.Accuracy);
+                player.ScoreStats.MedianAccuracy = allScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
+            }
+
+            if (player.ScoreStats.RankedPlayCount > 0)
+            {
+                int count = rankedScores.Count() / 2;
+                player.ScoreStats.AverageRankedAccuracy = rankedScores.Average(s => s.Accuracy);
+                player.ScoreStats.MedianRankedAccuracy = rankedScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
+                player.ScoreStats.TopAccuracy = rankedScores.Max(s => s.Accuracy);
+                player.ScoreStats.TopPp = rankedScores.Max(s => s.Pp);
+
+                player.ScoreStats.SSPPlays = rankedScores.Where(s => s.Accuracy > 0.95).Count();
+                player.ScoreStats.SSPlays = rankedScores.Where(s => 0.9 < s.Accuracy && s.Accuracy < 0.95).Count();
+                player.ScoreStats.SPPlays = rankedScores.Where(s => 0.85 < s.Accuracy && s.Accuracy < 0.9).Count();
+                player.ScoreStats.SPlays = rankedScores.Where(s => 0.8 < s.Accuracy && s.Accuracy < 0.85).Count();
+                player.ScoreStats.APlays = rankedScores.Where(s => s.Accuracy < 0.8).Count();
+            }
+        }
+
+        [NonAction]
+        public async Task RefreshPlayer(Player player, bool refreshRank = true) {
             _context.RecalculatePP(player);
 
-            if (refreshRank) {
+            if (refreshRank)
+            {
                 var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
                 var country = player.Country; var countryRank = 1;
                 foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
@@ -521,8 +588,20 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
             }
+            await RefreshStats(player);
 
             _context.SaveChanges();
+        }
+
+        [HttpGet("~/player/{id}/refresh")]
+        public async Task<ActionResult> RefreshPlayerAction(string id, [FromQuery] bool refreshRank = true)
+        {
+            Player? player = _context.Players.Find(id);
+            if (player == null)
+            {
+                return NotFound();
+            }
+            await RefreshPlayer(player, refreshRank);
 
             return Ok();
         }
@@ -541,7 +620,7 @@ namespace BeatLeader_Server.Controllers
             Dictionary<string, int> countries = new Dictionary<string, int>();
             foreach (Player p in players)
             {
-                await RefreshPlayer(p.Id);
+                await RefreshPlayer(p);
             }
             var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
             foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
@@ -554,8 +633,6 @@ namespace BeatLeader_Server.Controllers
 
                 p.CountryRank = countries[p.Country];
                 countries[p.Country]++;
-
-                _context.Players.Update(p);
             }
             await _context.SaveChangesAsync();
 
@@ -564,80 +641,12 @@ namespace BeatLeader_Server.Controllers
 
 
         [HttpGet("~/players/stats/refresh")]
-        public async Task<ActionResult> RefreshPlayer()
+        public async Task<ActionResult> RefreshPlayersStats()
         {
             var players = await _context.Players.Include(p => p.ScoreStats).ToListAsync();
             foreach (var player in players)
             {
-                if (player.ScoreStats == null)
-                {
-                    player.ScoreStats = new PlayerScoreStats();
-                    _context.Stats.Add(player.ScoreStats);
-                }
-                var allScores = await _context.Scores.Where(s => s.PlayerId == player.Id).Select(s => new {
-                    Platform = s.Platform,
-                    Hmd = s.Hmd,
-                    ModifiedScore = s.ModifiedScore,
-                    Accuracy = s.Accuracy,
-                    Pp = s.Pp,
-                }).ToListAsync();
-
-                if (allScores.Count() == 0) continue;
-                var rankedScores = allScores.Where(s => s.Pp != 0);
-                player.ScoreStats.TotalPlayCount = allScores.Count();
-
-                var lastScores = allScores.TakeLast(50);
-                Dictionary<string, int> platforms = new Dictionary<string, int>();
-                Dictionary<int, int> hmds = new Dictionary<int, int>();
-                foreach (var s in lastScores)
-                {
-                    if (!platforms.ContainsKey(s.Platform))
-                    {
-                        platforms[s.Platform] = 1;
-                    }
-                    else
-                    {
-
-                        platforms[s.Platform]++;
-                    }
-
-                    if (!hmds.ContainsKey(s.Hmd))
-                    {
-                        hmds[s.Hmd] = 1;
-                    }
-                    else
-                    {
-
-                        hmds[s.Hmd]++;
-                    }
-                }
-
-                player.ScoreStats.TopPlatform = platforms.OrderBy(s => s.Value).First().Key;
-                player.ScoreStats.TopHMD = hmds.OrderBy(s => s.Value).First().Key;
-
-                player.ScoreStats.RankedPlayCount = rankedScores.Count();
-                if (player.ScoreStats.TotalPlayCount > 0)
-                {
-                    int count = allScores.Count() / 2;
-                    player.ScoreStats.TotalScore = allScores.Sum(s => s.ModifiedScore);
-                    player.ScoreStats.AverageAccuracy = allScores.Average(s => s.Accuracy);
-                    player.ScoreStats.MedianAccuracy = allScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
-                }
-
-                if (player.ScoreStats.RankedPlayCount > 0)
-                {
-                    int count = rankedScores.Count() / 2;
-                    player.ScoreStats.AverageRankedAccuracy = rankedScores.Average(s => s.Accuracy);
-                    player.ScoreStats.MedianRankedAccuracy = rankedScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
-                    player.ScoreStats.TopAccuracy = rankedScores.Max(s => s.Accuracy);
-                    player.ScoreStats.TopPp = rankedScores.Max(s => s.Pp);
-
-                    player.ScoreStats.SSPPlays = rankedScores.Where(s => s.Accuracy > 0.95).Count();
-                    player.ScoreStats.SSPlays = rankedScores.Where(s => 0.9 < s.Accuracy && s.Accuracy < 0.95).Count();
-                    player.ScoreStats.SPPlays = rankedScores.Where(s => 0.85 < s.Accuracy && s.Accuracy < 0.9).Count();
-                    player.ScoreStats.SPlays = rankedScores.Where(s => 0.8 < s.Accuracy && s.Accuracy < 0.85).Count();
-                    player.ScoreStats.APlays = rankedScores.Where(s => s.Accuracy < 0.8).Count();
-                }
+                await RefreshStats(player);
             }
             _context.SaveChanges();
             return Ok();
