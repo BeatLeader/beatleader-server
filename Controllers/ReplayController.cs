@@ -415,7 +415,7 @@ namespace BeatLeader_Server.Controllers
 
                     if (unique)
                     {
-                        resultScore.Identification = ReplayUtils.ReplayIdentificationForReplay(replayData);
+                        // resultScore.Identification = ReplayUtils.ReplayIdentificationForReplay(replayData);
                     }
                     else
                     {
@@ -431,8 +431,10 @@ namespace BeatLeader_Server.Controllers
                         return;
                     }
 
-                    if (resultScore.BaseScore / statistic.WinTracker.TotalScore > 1.1) {
-                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Calculated on server score is too low: " + statistic.WinTracker.TotalScore);
+                    double scoreRatio = (double)resultScore.BaseScore / (double)statistic.WinTracker.TotalScore;
+
+                    if (scoreRatio > 1.4 || scoreRatio < 0.6) {
+                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Calculated on server score is too low: " + statistic.WinTracker.TotalScore + ". You probably need to update the mod.");
 
                         return;
                     }
