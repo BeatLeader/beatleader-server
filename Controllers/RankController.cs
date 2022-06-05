@@ -37,22 +37,31 @@ namespace BeatLeader_Server.Controllers
             string hash,
             string diff,
             string mode,
-            [FromQuery] string player)
+            [FromQuery] string? player = null)
         {
+            if (player == null && HttpContext.CurrentUserID() == null) {
+                return BadRequest("Provide player or authenticate");
+            }
+            player = player ?? HttpContext.CurrentUserID();
             Int64 oculusId = Int64.Parse(player);
             AccountLink? link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
             string userId = (link != null ? link.SteamID : player);
-
-            var voting = await _context.RankVotings.FirstOrDefaultAsync(l => l.Hash == hash && l.Diff == diff && l.Mode == mode && l.PlayerId == userId);
-            if (voting != null) {
-                return VoteStatus.Voted;
-            }
 
             var score = await _context
                 .Scores
                 .FirstOrDefaultAsync(l => l.Leaderboard.Song.Hash == hash && l.Leaderboard.Difficulty.DifficultyName == diff && l.Leaderboard.Difficulty.ModeName == mode && l.PlayerId == userId);
 
-            if (score != null && !score.Modifiers.Contains("NF"))
+            if (score == null) {
+                return VoteStatus.CantVote;
+            }
+
+            var voting = _context.RankVotings.Find(score.Id);
+            if (voting != null)
+            {
+                return VoteStatus.Voted;
+            }
+
+            if (!score.Modifiers.Contains("NF"))
             {
                 return VoteStatus.CanVote;
             }
@@ -111,12 +120,25 @@ namespace BeatLeader_Server.Controllers
             AccountLink? link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
             string userId = (link != null ? link.SteamID : player);
 
-            var status = (await GetVoteStatus(hash, diff, mode, userId)).Value;
+            var score = await _context
+                .Scores
+                .Include(s => s.RankVoting)
+                .FirstOrDefaultAsync(l => l.Leaderboard.Song.Hash == hash && l.Leaderboard.Difficulty.DifficultyName == diff && l.Leaderboard.Difficulty.ModeName == mode && l.PlayerId == userId);
 
-            if (status == VoteStatus.CanVote)
+            if (score == null)
             {
-                RankVoting voting = new RankVoting {
-                    PlayerId = player,
+                return VoteStatus.CantVote;
+            }
+            if (score.RankVoting != null)
+            {
+                return VoteStatus.Voted;
+            }
+
+            if (!score.Modifiers.Contains("NF"))
+            {
+                RankVoting voting = new RankVoting
+                {
+                    PlayerId = userId,
                     Hash = hash,
                     Diff = diff,
                     Mode = mode,
@@ -124,14 +146,14 @@ namespace BeatLeader_Server.Controllers
                     Stars = stars,
                     Type = type
                 };
-                _context.RankVotings.Add(voting);
+                score.RankVoting = voting;
                 _context.SaveChanges();
 
                 return VoteStatus.Voted;
             }
             else
             {
-                return status;
+                return VoteStatus.CantVote;
             }
         }
     }

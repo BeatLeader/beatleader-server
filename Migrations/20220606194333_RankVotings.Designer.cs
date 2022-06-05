@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    [Migration("20220601201414_RankVotings")]
+    [Migration("20220606194333_RankVotings")]
     partial class RankVotings
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -867,11 +867,8 @@ namespace BeatLeader_Server.Migrations
 
             modelBuilder.Entity("BeatLeader_Server.Models.RankVoting", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<int>("ScoreId")
                         .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
 
                     b.Property<string>("Diff")
                         .IsRequired()
@@ -898,7 +895,7 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int>("Type")
                         .HasColumnType("int");
 
-                    b.HasKey("Id");
+                    b.HasKey("ScoreId");
 
                     b.ToTable("RankVotings");
                 });
@@ -1342,6 +1339,15 @@ namespace BeatLeader_Server.Migrations
                         .HasForeignKey("UserId");
                 });
 
+            modelBuilder.Entity("BeatLeader_Server.Models.RankVoting", b =>
+                {
+                    b.HasOne("BeatLeader_Server.Models.Score", null)
+                        .WithOne("RankVoting")
+                        .HasForeignKey("BeatLeader_Server.Models.RankVoting", "ScoreId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("BeatLeader_Server.Models.Score", b =>
                 {
                     b.HasOne("BeatLeader_Server.Models.ReplayIdentification", "Identification")
@@ -1483,6 +1489,11 @@ namespace BeatLeader_Server.Migrations
             modelBuilder.Entity("BeatLeader_Server.Models.Player", b =>
                 {
                     b.Navigation("Badges");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.Score", b =>
+                {
+                    b.Navigation("RankVoting");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Song", b =>

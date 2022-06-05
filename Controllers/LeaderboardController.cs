@@ -18,8 +18,12 @@ namespace BeatLeader_Server.Controllers
             _songController = songController;
         }
 
-        [HttpGet("~/leaderboard/id/{id}")]
-        public async Task<ActionResult<Leaderboard>> Get(string id, [FromQuery] int page = 1, [FromQuery] int count = 10, [FromQuery] string? countries = null)
+        [HttpGet("~/leaderboard/{id}")]
+        public async Task<ActionResult<Leaderboard>> Get(
+            string id, 
+            [FromQuery] int page = 1, 
+            [FromQuery] int count = 10, 
+            [FromQuery] string? countries = null)
         {
             Leaderboard? leaderboard;
 
@@ -28,6 +32,8 @@ namespace BeatLeader_Server.Controllers
                 leaderboard = await _context
                     .Leaderboards
                     .Where(lb => lb.Id == id)
+                    .Include(lb => lb.Scores)
+                    .ThenInclude(s => s.RankVoting)
                     .Include(lb => lb.Scores
                         .OrderByDescending(s => s.ModifiedScore)
                         .Skip((page - 1) * count)
@@ -44,13 +50,14 @@ namespace BeatLeader_Server.Controllers
                     .Leaderboards
                     .Where(lb => lb.Id == id)
                     .Include(lb => lb.Scores)
-                    .ThenInclude(s => s.Player)
-                    .ThenInclude(s => s.Clans)
+                    .ThenInclude(s => s.RankVoting)
                     .Include(lb => lb.Scores
                         .Where(s => countries.ToLower().Contains(s.Player.Country.ToLower()))
                         .OrderByDescending(s => s.ModifiedScore)
                         .Skip((page - 1) * count)
                         .Take(count))
+                    .ThenInclude(s => s.Player)
+                    .ThenInclude(s => s.Clans)
                     .Include(lb => lb.Difficulty)
                     .Include(lb => lb.Song)
                     .ThenInclude(s => s.Difficulties)
@@ -229,6 +236,75 @@ namespace BeatLeader_Server.Controllers
             
 
             return Ok();
+        }
+
+        public class LeaderboardVoting
+        {
+            public float Rankability { get; set; }
+            public float Stars { get; set; }
+            public float[] Type { get; set; } = new float[4];
+        }
+
+        public class LeaderboardVotingCounts
+        {
+            public int Rankability { get; set; }
+            public int Stars { get; set; }
+            public int Type { get; set; }
+        }
+
+        [HttpGet("~/leaderboard/ranking/{id}")]
+        public async Task<ActionResult<LeaderboardVoting>> GetVoting(string id)
+        {
+            var rankVotings = _context
+                    .Leaderboards
+                    .Where(lb => lb.Id == id)
+                    .Include(lb => lb.Scores)
+                    .ThenInclude(s => s.RankVoting)
+                    .FirstOrDefault()?
+                    .Scores
+                    .Where(s => s.RankVoting != null)
+                    .Select(s => s.RankVoting)
+                    .ToList();
+                    
+
+            if (rankVotings == null || rankVotings.Count == 0)
+            {
+                return NotFound();
+            }
+
+            var result = new LeaderboardVoting();
+            var counters = new LeaderboardVotingCounts();
+
+            foreach (var voting in rankVotings)
+            {
+                counters.Rankability++;
+                result.Rankability += voting.Rankability;
+
+                if (voting.Stars != 0) {
+                    counters.Stars++;
+                    result.Stars += voting.Stars;
+                }
+
+                if (voting.Type != 0) {
+                    counters.Type++;
+
+                    for (int i = 0; i < 4; i++)
+                    {
+                        if ((voting.Type & (1 << i)) != 0) {
+                            result.Type[i]++;
+                        }
+                    }
+                }
+            }
+            result.Rankability /= (counters.Rankability != 0 ? (float)counters.Rankability : 1.0f);
+            result.Stars /= (counters.Stars != 0 ? (float)counters.Stars : 1.0f);
+
+            for (int i = 0; i < result.Type.Length; i++)
+            {
+                result.Type[i] /= (counters.Type != 0 ? (float)counters.Type : 1.0f);
+            }
+
+            return result;
         }
 
         [Authorize]

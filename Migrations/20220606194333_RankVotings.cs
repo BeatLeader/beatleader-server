@@ -12,8 +12,7 @@ namespace BeatLeader_Server.Migrations
                 name: "RankVotings",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ScoreId = table.Column<int>(type: "int", nullable: false),
                     PlayerId = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Hash = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Diff = table.Column<string>(type: "nvarchar(max)", nullable: false),
@@ -24,7 +23,13 @@ namespace BeatLeader_Server.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RankVotings", x => x.Id);
+                    table.PrimaryKey("PK_RankVotings", x => x.ScoreId);
+                    table.ForeignKey(
+                        name: "FK_RankVotings_Scores_ScoreId",
+                        column: x => x.ScoreId,
+                        principalTable: "Scores",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
         }
 

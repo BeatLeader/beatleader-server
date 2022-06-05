@@ -26,6 +26,7 @@
         public Player Player { get; set; }
         public string LeaderboardId { get; set; }
         public Leaderboard Leaderboard { get; set; }
+        public RankVoting? RankVoting { get; set; }
 
         public ReplayIdentification Identification { get; set; }
     }
