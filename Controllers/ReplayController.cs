@@ -369,10 +369,12 @@ namespace BeatLeader_Server.Controllers
                 var country = player.Country; var countryRank = 1;
                 foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
                 {
-                    p.Rank = i + 1;
-                    if (p.Country == country)
+                    Player player1 = p.Id == player.Id ? player : p;
+
+                    player1.Rank = i + 1;
+                    if (player1.Country == country)
                     {
-                        p.CountryRank = countryRank;
+                        player1.CountryRank = countryRank;
                         countryRank++;
                     }
                 }
@@ -433,7 +435,7 @@ namespace BeatLeader_Server.Controllers
 
                     double scoreRatio = (double)resultScore.BaseScore / (double)statistic.WinTracker.TotalScore;
 
-                    if (scoreRatio > 1.4 || scoreRatio < 0.6) {
+                    if (scoreRatio > 1.2 || scoreRatio < 0.9) {
                         SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Calculated on server score is too low: " + statistic.WinTracker.TotalScore + ". You probably need to update the mod.");
 
                         return;
@@ -449,7 +451,9 @@ namespace BeatLeader_Server.Controllers
                 }
                 catch (Exception e)
                 {
-                    SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, e.ToString());
+                    try {
+                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, e.ToString());
+                    } catch { }
                 }
             });
 
