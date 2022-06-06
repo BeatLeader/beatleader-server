@@ -410,19 +410,6 @@ namespace BeatLeader_Server.Controllers
                     await _containerClient.DeleteBlobIfExistsAsync(tempName);
                     await _containerClient.UploadBlobAsync(tempName, stream);
 
-                    (bool unique, string? anothers) = ReplayUtils.CheckReplay(replayData, leaderboard.Scores, currentScore);
-
-                    if (unique)
-                    {
-                        resultScore.Identification = ReplayUtils.ReplayIdentificationForReplay(replayData);
-                    }
-                    else
-                    {
-                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Another's replays posting is forbidden. Potential owner: " + anothers);
-
-                        return;
-                    }
-
                     (ScoreStatistic? statistic, string? error) = _scoreController.CalculateStatisticReplay(replay, resultScore);
                     if (statistic == null) {
                         SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Could not recalculate score from replay. Error: " + error);
