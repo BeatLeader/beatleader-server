@@ -58,10 +58,10 @@ namespace BeatLeader_Server.Controllers
                     sequence = sequence.Order(order, t => t.Pp);
                     break;
                 case "acc":
-                    sequence = sequence.Order(order, t => t.AverageAccuracy);
+                    sequence = sequence.Where(c => c.PlayersCount > 2).Order(order, t => t.AverageAccuracy);
                     break;
                 case "rank":
-                    sequence = sequence.Order(order, t => t.AverageRank);
+                    sequence = sequence.Where(c => c.PlayersCount > 2 && c.AverageRank > 0).Order(order == "desc" ? "asc" : "desc", t => t.AverageRank);
                     break;
                 case "count":
                     sequence = sequence.Order(order, t => t.PlayersCount);
@@ -171,6 +171,12 @@ namespace BeatLeader_Server.Controllers
             AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
 
             string userId = accountLink != null ? accountLink.SteamID : currentID;
+
+            var player = await _context.Players.Where(p => p.Id == userId).Include(p => p.Clans).Include(p => p.ScoreStats).FirstOrDefaultAsync();
+            if (player.Clans.Count == 3) {
+                return BadRequest("You can join only up to 3 clans.");
+            }
+
             string upperTag = tag.ToUpper();
 
             if (_context.ReservedTags.FirstOrDefault(t => t.Tag == upperTag) != null) {
@@ -211,8 +217,6 @@ namespace BeatLeader_Server.Controllers
             {
                 return BadRequest("Bio is too long");
             }
-
-            var player = await _context.Players.Where(p => p.Id == userId).Include(p => p.ScoreStats).FirstOrDefaultAsync();
 
             if (player == null)
             {
@@ -268,7 +272,7 @@ namespace BeatLeader_Server.Controllers
 
         [HttpDelete("~/clan")]
         [Authorize]
-        public async Task<ActionResult> DeleteClan([FromQuery] string? id = null)
+        public async Task<ActionResult> DeleteClan([FromQuery] int? id = null)
         {
             string currentID = HttpContext.CurrentUserID();
             long intId = Int64.Parse(currentID);
@@ -422,7 +426,7 @@ namespace BeatLeader_Server.Controllers
 
             string userId = accountLink != null ? accountLink.SteamID : currentID;
             var currentPlayer = await _context.Players.FindAsync(userId);
-
+            
             if (currentPlayer == null)
             {
                 return NotFound();
@@ -436,6 +440,11 @@ namespace BeatLeader_Server.Controllers
             User? user = _userController.GetUserLazy(player);
             if (user == null) {
                 return NotFound("No such player");
+            }
+
+            if (user.Player.Clans.Count == 3)
+            {
+                return BadRequest("User already joined maximum amount of clans.");
             }
 
             if (user.BannedClans.FirstOrDefault(c => c.Id == clan.Id) != null) {
@@ -500,7 +509,9 @@ namespace BeatLeader_Server.Controllers
 
         [HttpPost("~/clan/kickplayer")]
         [Authorize]
-        public async Task<ActionResult> KickPlayer([FromQuery] string player)
+        public async Task<ActionResult> KickPlayer(
+            [FromQuery] string player,
+            [FromQuery] int? id = null)
         {
             string currentID = HttpContext.CurrentUserID();
             long intId = Int64.Parse(currentID);
@@ -508,7 +519,18 @@ namespace BeatLeader_Server.Controllers
 
             string userId = accountLink != null ? accountLink.SteamID : currentID;
 
-            Clan? clan = _context.Clans.FirstOrDefault(c => c.LeaderID == userId);
+            Clan? clan;
+            var currentPlayer = await _context.Players.FindAsync(userId);
+            
+            if (id != null && currentPlayer != null && currentPlayer.Role.Contains("admin"))
+            {
+                clan = await _context.Clans.FindAsync(id);
+            }
+            else
+            {
+                clan = _context.Clans.FirstOrDefault(c => c.LeaderID == userId);
+            }
+
             if (clan == null)
             {
                 return NotFound("Current user is not leader of any clan");
@@ -566,7 +588,12 @@ namespace BeatLeader_Server.Controllers
             }
 
             user.ClanRequest.Remove(clan);
-            _context.Users.Update(user);
+
+            if (user.Player.Clans.Count == 3)
+            {
+                _context.SaveChanges();
+                return BadRequest("You already joined maximum amount of clans.");
+            }
 
             if (user.Player.Clans.FirstOrDefault(c => c.Id == clan.Id) != null)
             {

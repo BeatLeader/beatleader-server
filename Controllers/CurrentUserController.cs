@@ -165,7 +165,6 @@ namespace BeatLeader_Server.Controllers
             }
 
             playerFriends.Friends.Add(friend);
-            _context.Friends.Update(playerFriends);
             _context.SaveChanges();
 
             return Ok();
@@ -404,26 +403,90 @@ namespace BeatLeader_Server.Controllers
             {
                 return Unauthorized("You need to be logged in with Steam or Oculus");
             }
-
-            AccountLink? accountLink = new AccountLink
-            {
-                OculusID = id,
-                SteamID = fromId
-            };
-
-            _context.AccountLinks.Add(accountLink);
-
-            Player? currentPlayer = _context.Players.Find(id.ToString());
-            Player? migratedToPlayer = _context.Players.Find(fromId);
+            Player? currentPlayer = await _context.Players.Where(p => p.Id == id.ToString())
+                .Include(p => p.Clans)
+                .Include(p => p.PatreonFeatures)
+                .Include(p => p.StatsHistory)
+                .Include(p => p.Badges)
+                .FirstOrDefaultAsync();
+            Player? migratedToPlayer = await _context.Players.Where(p => p.Id == fromId)
+                .Include(p => p.Clans)
+                .Include(p => p.PatreonFeatures)
+                .Include(p => p.StatsHistory)
+                .Include(p => p.Badges)
+                .FirstOrDefaultAsync();
 
             if (currentPlayer == null || migratedToPlayer == null)
             {
                 return BadRequest("Could not find one of the players =( Make sure you posted at least one score from the mod.");
             }
 
+            if (migratedToPlayer.Clans.Select(c => c.Tag).Union(currentPlayer.Clans.Select(c => c.Tag)).Count() > 3) {
+                return BadRequest("Leave some clans as there is too many of them for one account.");
+            }
+
+            Clan? currentPlayerClan = currentPlayer.Clans.FirstOrDefault(c => c.LeaderID == currentPlayer.Id);
+
+            if (migratedToPlayer.Clans.FirstOrDefault(c => c.LeaderID == migratedToPlayer.Id) != null &&
+                currentPlayerClan != null)
+            {
+                return BadRequest("Both players are clan leaders, delete one of the clans");
+            }
+
+            AccountLink? accountLink = new AccountLink
+            {
+                OculusID = id,
+                SteamID = fromId,
+            };
+
+            _context.AccountLinks.Add(accountLink);
+
             if (migratedToPlayer.Country == "Not set" && currentPlayer.Country != "Not set")
             {
                 migratedToPlayer.Country = currentPlayer.Country;
+            }
+
+            if (currentPlayer.Histories.Length >= migratedToPlayer.Histories.Length) {
+                migratedToPlayer.Histories = currentPlayer.Histories;
+                migratedToPlayer.StatsHistory = currentPlayer.StatsHistory;
+            }
+
+            PlayerFriends? currentPlayerFriends = _context.Friends.Where(u => u.Id == currentPlayer.Id).Include(f => f.Friends).FirstOrDefault();
+            PlayerFriends? playerFriends = _context.Friends.Where(u => u.Id == migratedToPlayer.Id).Include(f => f.Friends).FirstOrDefault();
+            if (playerFriends == null && currentPlayerFriends != null)
+            {
+                playerFriends = new PlayerFriends();
+                playerFriends.Id = migratedToPlayer.Id;
+                _context.Friends.Add(playerFriends);
+            }
+            if (currentPlayerFriends != null && playerFriends != null) {
+                foreach (var friend in currentPlayerFriends.Friends)
+                {
+                    if (playerFriends.Friends.FirstOrDefault(p => p.Id == friend.Id) == null) {
+                        playerFriends.Friends.Add(friend);
+                    }
+                }
+            }
+
+            if (currentPlayer.Badges != null) {
+                if (migratedToPlayer.Badges == null)
+                {
+                    migratedToPlayer.Badges = new List<Badge>();
+                }
+                foreach (var badge in currentPlayer.Badges)
+                {
+                    migratedToPlayer.Badges.Add(badge);
+                }
+            }
+
+            PatreonLink? link = _context.PatreonLinks.Find(currentPlayer.Id);
+            if (link != null) {
+                link.Id = migratedToPlayer.Id;
+                PatreonFeatures? features = migratedToPlayer.PatreonFeatures;
+                if (features == null)
+                {
+                    migratedToPlayer.PatreonFeatures = currentPlayer.PatreonFeatures;
+                }
             }
 
             List<Score> scores = await _context.Scores
@@ -452,7 +515,6 @@ namespace BeatLeader_Server.Controllers
                             if (s != null)
                             {
                                 s.Rank = i + 1;
-                                _context.Scores.Update(s);
                             }
                         }
                     }
@@ -460,12 +522,24 @@ namespace BeatLeader_Server.Controllers
                     {
                         score.Player = migratedToPlayer;
                         score.PlayerId = fromId;
-                        _context.Scores.Update(score);
                     }
                 }
             }
 
+            foreach (var clan in currentPlayer.Clans)
+            {
+                if (migratedToPlayer.Clans.FirstOrDefault(c => c.Id == clan.Id) == null) {
+                    if (currentPlayerClan == clan)
+                    {
+                        clan.LeaderID = migratedToPlayer.Id;
+                    }
+                    migratedToPlayer.Clans.Add(clan);
+                }
+            }
+
             _context.Players.Remove(currentPlayer);
+            
+            await _playerController.RefreshPlayer(migratedToPlayer);
             await _context.SaveChangesAsync();
 
             return Ok();

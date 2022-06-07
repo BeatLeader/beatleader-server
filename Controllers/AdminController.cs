@@ -2,6 +2,7 @@
 using Azure.Storage.Blobs;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -89,6 +90,74 @@ namespace BeatLeader_Server.Controllers
                 _context.Players.Update(player);
             }
             _context.SaveChanges();
+
+            return Ok();
+        }
+
+        [HttpPost("~/admin/clan/{id}/setLeader")]
+        public async Task<ActionResult> SetLeader(int id, [FromQuery] string newLeader)
+        {
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
+            var currentPlayer = await _context.Players.FindAsync(userId);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            Player? player = _context.Players.Find(newLeader);
+            var clan = _context.Clans.FirstOrDefault(c => c.Id == id);
+            if (player != null)
+            {
+                clan.LeaderID = newLeader;
+
+                player.Clans.Add(clan);
+
+                _context.SaveChanges();
+            } else {
+                return NotFound();
+            }
+
+            return Ok();
+        }
+
+        [HttpPost("~/admin/clan/{id}/addMember")]
+        public async Task<ActionResult> AddMember(int id, [FromQuery] string newLeader)
+        {
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
+            var currentPlayer = await _context.Players.FindAsync(userId);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            Player? player = _context.Players.Find(newLeader);
+            var clan = _context.Clans.FirstOrDefault(c => c.Id == id);
+            if (player != null)
+            {
+                player.Clans.Add(clan);
+                clan.PlayersCount++;
+                clan.AverageAccuracy = MathUtils.AddToAverage(clan.AverageAccuracy, clan.PlayersCount, player.ScoreStats.AverageRankedAccuracy);
+                clan.AverageRank = MathUtils.AddToAverage(clan.AverageRank, clan.PlayersCount, player.Rank);
+                _context.SaveChanges();
+
+                clan.Pp = _context.RecalculateClanPP(clan.Id);
+
+                _context.SaveChanges();
+            }
+            else
+            {
+                return NotFound();
+            }
 
             return Ok();
         }

@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -66,7 +67,7 @@ namespace BeatLeader_Server.Controllers
 		}
 
         [HttpPost("~/replay"), DisableRequestSizeLimit]
-        public async Task<ActionResult<ScoreController.ScoreResponse>> PostSteamReplay([FromQuery] string ticket)
+        public async Task<ActionResult<ScoreResponse>> PostSteamReplay([FromQuery] string ticket)
         {
             (string? id, string? error) = await SteamHelper.GetPlayerIDFromTicket(ticket, _configuration);
             if (id == null && error != null) {
@@ -77,7 +78,7 @@ namespace BeatLeader_Server.Controllers
 
         [HttpPut("~/replayoculus"), DisableRequestSizeLimit]
         [Authorize]
-        public async Task<ActionResult<ScoreController.ScoreResponse>> PostOculusReplay()
+        public async Task<ActionResult<ScoreResponse>> PostOculusReplay()
         {
             string currentID = HttpContext.CurrentUserID();
             AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == Int64.Parse(currentID));
@@ -85,7 +86,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task<ActionResult<ScoreController.ScoreResponse>> PostReplayFromBody(string? authenticatedPlayerID)
+        public async Task<ActionResult<ScoreResponse>> PostReplayFromBody(string? authenticatedPlayerID)
         {
             Replay replay;
             byte[] replayData;
@@ -113,7 +114,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task<ActionResult<ScoreController.ScoreResponse>> PostReplayFromCDN(string? authenticatedPlayerID, string name, HttpContext context)
+        public async Task<ActionResult<ScoreResponse>> PostReplayFromCDN(string? authenticatedPlayerID, string name, HttpContext context)
         {
             BlobClient blobClient = _containerClient.GetBlobClient(name);
             MemoryStream ms = new MemoryStream(5);
@@ -134,7 +135,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task<ActionResult<ScoreController.ScoreResponse>> PostReplay(string? authenticatedPlayerID, Replay? replay, byte[] replayData, HttpContext context)
+        public async Task<ActionResult<ScoreResponse>> PostReplay(string? authenticatedPlayerID, Replay? replay, byte[] replayData, HttpContext context)
         {
             if (replay == null) {
                 return BadRequest("It's not a replay or it has old version.");
@@ -368,10 +369,12 @@ namespace BeatLeader_Server.Controllers
                 var country = player.Country; var countryRank = 1;
                 foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
                 {
-                    p.Rank = i + 1;
-                    if (p.Country == country)
+                    Player player1 = p.Id == player.Id ? player : p;
+
+                    player1.Rank = i + 1;
+                    if (player1.Country == country)
                     {
-                        p.CountryRank = countryRank;
+                        player1.CountryRank = countryRank;
                         countryRank++;
                     }
                 }
@@ -417,8 +420,10 @@ namespace BeatLeader_Server.Controllers
                         return;
                     }
 
-                    if (resultScore.BaseScore / statistic.WinTracker.TotalScore > 1.1) {
-                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Calculated on server score is too low: " + statistic.WinTracker.TotalScore);
+                    double scoreRatio = (double)resultScore.BaseScore / (double)statistic.WinTracker.TotalScore;
+
+                    if (scoreRatio > 1.2 || scoreRatio < 0.9) {
+                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Calculated on server score is too low: " + statistic.WinTracker.TotalScore + ". You probably need to update the mod.");
 
                         return;
                     }
@@ -433,11 +438,13 @@ namespace BeatLeader_Server.Controllers
                 }
                 catch (Exception e)
                 {
-                    SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, e.ToString());
+                    try {
+                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, e.ToString());
+                    } catch { }
                 }
             });
 
-            return _scoreController.RemoveLeaderboard(resultScore, resultScore.Rank);
+            return RemoveLeaderboard(resultScore, resultScore.Rank);
         }
 
         [NonAction]

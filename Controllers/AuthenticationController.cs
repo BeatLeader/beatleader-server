@@ -107,7 +107,7 @@ namespace BeatLeader_Server.Controllers
                 if (iPAddress != null && migrateTo != null)
                 {
                     string ip = iPAddress.ToString();
-                    int oculusID = Int32.Parse(HttpContext.CurrentUserID());
+                    long oculusID = Int64.Parse(migrateTo);
                     AccountLinkRequest? request = _context.AccountLinkRequests.FirstOrDefault(a => a.IP == ip && a.Random == Random && a.OculusID == oculusID);
 
                     if (request != null)
