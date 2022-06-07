@@ -8,9 +8,9 @@ namespace BeatLeader_Server.Utils
 {
     public static class PlayerUtils
     {
-        public static void RecalculatePP(this AppContext context, Player player)
+        public static void RecalculatePP(this AppContext context, Player player, List<Score>? scores = null)
         {
-            var ranked = context.Scores.Where(s => s.PlayerId == player.Id && s.Pp != 0).OrderByDescending(s => s.Pp).ToList();
+            var ranked = scores ?? context.Scores.Where(s => s.PlayerId == player.Id && s.Pp != 0).OrderByDescending(s => s.Pp).ToList();
             float resultPP = 0f;
             foreach ((int i, Score s) in ranked.Select((value, i) => (i, value)))
             {

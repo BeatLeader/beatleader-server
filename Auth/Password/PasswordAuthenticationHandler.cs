@@ -98,7 +98,6 @@ public partial class PasswordAuthenticationHandler<TOptions> : AuthenticationHan
                     loginAttempt.Count = 0;
                 }
                 loginAttempt.Count++;
-                dbContext.LoginAttempts.Update(loginAttempt);
                 await dbContext.SaveChangesAsync();
 
                 Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -116,7 +115,6 @@ public partial class PasswordAuthenticationHandler<TOptions> : AuthenticationHan
                 dbContext.AuthIDs.Add(authID);
             } else {
                 authID.Timestamp = timestamp;
-                dbContext.AuthIDs.Update(authID);
             }
 
             dbContext.SaveChanges();

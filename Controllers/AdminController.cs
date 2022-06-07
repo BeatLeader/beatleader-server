@@ -61,7 +61,6 @@ namespace BeatLeader_Server.Controllers
             Player? player = _context.Players.Find(playerId);
             if (player != null) {
                 player.Role = string.Join(",", player.Role.Split(",").Append(role));
-                _context.Players.Update(player);
             }
             _context.SaveChanges();
 
@@ -87,7 +86,6 @@ namespace BeatLeader_Server.Controllers
             if (player != null)
             {
                 player.Role = string.Join(",", player.Role.Split(",").Where(r => r != role));
-                _context.Players.Update(player);
             }
             _context.SaveChanges();
 

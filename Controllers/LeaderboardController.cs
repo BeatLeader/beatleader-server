@@ -36,6 +36,7 @@ namespace BeatLeader_Server.Controllers
                     .ThenInclude(s => s.RankVoting)
                     .Include(lb => lb.Scores
                         .OrderByDescending(s => s.ModifiedScore)
+                        .OrderByDescending(s => s.Pp)
                         .Skip((page - 1) * count)
                         .Take(count))
                     .ThenInclude(s => s.Player)
@@ -54,6 +55,7 @@ namespace BeatLeader_Server.Controllers
                     .Include(lb => lb.Scores
                         .Where(s => countries.ToLower().Contains(s.Player.Country.ToLower()))
                         .OrderByDescending(s => s.ModifiedScore)
+                        .OrderByDescending(s => s.Pp)
                         .Skip((page - 1) * count)
                         .Take(count))
                     .ThenInclude(s => s.Player)
@@ -221,14 +223,12 @@ namespace BeatLeader_Server.Controllers
             var leaderboards = _context.Leaderboards.Include(lb => lb.Scores).ToArray();
             foreach (var leaderboard in leaderboards)
             {
-                var rankedScores = leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();
+                var rankedScores = leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).OrderByDescending(s => s.Pp).ToList();
                 foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
                 {
                     s.Rank = i + 1;
-                    _context.Scores.Update(s);
                 }
                 leaderboard.Scores = rankedScores;
-                _context.Leaderboards.Update(leaderboard);
             }
             _context.SaveChanges();
             
@@ -329,16 +329,12 @@ namespace BeatLeader_Server.Controllers
                 diff.Ranked = true;
                 diff.Stars = star;
 
-                _context.Update(song);
-
                 Leaderboard? leaderboard = (await Get(song.Id + SongUtils.DiffForDiffName(difficulty) + SongUtils.ModeForModeName("Standard"))).Value;
                 if (leaderboard != null)
                 {
                     leaderboard = await _context.Leaderboards.Include(l => l.Difficulty).FirstOrDefaultAsync(i => i.Id == leaderboard.Id);
                     leaderboard.Difficulty.Stars = star;
                     leaderboard.Difficulty.Ranked = true;
-
-                    _context.Update(leaderboard);
                 }
             }
 
@@ -374,8 +370,6 @@ namespace BeatLeader_Server.Controllers
                 diffy.Ranked = true;
                 diffy.RankedTime = timestamp;
 
-                _context.Update(song);
-
                 Leaderboard? leaderboard = (await Get(song.Id + diff + SongUtils.ModeForModeName("Standard"))).Value;
                 if (leaderboard != null)
                 {
@@ -383,8 +377,6 @@ namespace BeatLeader_Server.Controllers
 
                     leaderboard.Difficulty.Ranked = true;
                     leaderboard.Difficulty.RankedTime = timestamp;
-
-                    _context.Update(leaderboard);
                 }
             }
 

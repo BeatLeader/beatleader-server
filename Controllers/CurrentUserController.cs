@@ -195,7 +195,6 @@ namespace BeatLeader_Server.Controllers
             }
 
             playerFriends.Friends.Remove(friend);
-            _context.Friends.Update(playerFriends);
             _context.SaveChanges();
 
             return Ok();
@@ -238,7 +237,6 @@ namespace BeatLeader_Server.Controllers
             }
 
             player.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://cdn.beatleader.xyz/assets/") + fileName;
-            _context.Players.Update(player);
 
             await _context.SaveChangesAsync();
 
@@ -266,8 +264,6 @@ namespace BeatLeader_Server.Controllers
             }
 
             player.Name = newName;
-
-            _context.Players.Update(player);
 
             await _context.SaveChangesAsync();
 
@@ -317,7 +313,6 @@ namespace BeatLeader_Server.Controllers
             }
 
             player.Country = newCountry;
-            _context.Players.Update(player);
 
             var newCountryList = _context.Players.Where(p => p.Country == newCountry || p.Id == player.Id).OrderByDescending(p => p.Pp).ToList();
             foreach ((int i, Player p) in newCountryList.Select((value, i) => (i, value)))

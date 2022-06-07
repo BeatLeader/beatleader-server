@@ -157,18 +157,16 @@ namespace BeatLeader_Server.Controllers
             {
                 return Unauthorized();
             }
-            List<Leaderboard> allLeaderboards;
-            if (leaderboardId != null) {
-                allLeaderboards = _context.Leaderboards.Where(l => l.Id == leaderboardId).Include(s => s.Scores).Include(l => l.Difficulty).ToList();
-            } else {
-                allLeaderboards = _context.Leaderboards.Include(s => s.Scores).Include(l => l.Difficulty).ToList();
-            }
-            
-            foreach (Leaderboard leaderboard in allLeaderboards) {
+            var allLeaderboards = _context.Leaderboards.Where(l => l.Difficulty.Ranked).Include(s => s.Scores).Include(l => l.Difficulty).Select(l => new { Scores = l.Scores, Difficulty = l.Difficulty }).ToList();
+
+            int counter = 0;
+            var transaction = _context.Database.BeginTransaction();
+
+            foreach (var leaderboard in allLeaderboards) {
                 var allScores = leaderboard.Scores;
                 foreach (Score s in allScores)
                 {
-                    s.ModifiedScore = (int)((float)s.BaseScore * ReplayUtils.GetTotalMultiplier(s.Modifiers));
+                    s.ModifiedScore = (int)(s.BaseScore * ReplayUtils.GetNegativeMultiplier(s.Modifiers));
                     if (leaderboard.Difficulty.MaxScore > 0)
                     {
                         s.Accuracy = (float)s.ModifiedScore / (float)leaderboard.Difficulty.MaxScore;
@@ -177,26 +175,52 @@ namespace BeatLeader_Server.Controllers
                     {
                         s.Accuracy = (float)s.ModifiedScore / (float)ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
                     }
-                    if (leaderboard.Difficulty.Ranked) {
-                        s.Pp = (float)s.Accuracy * (float)leaderboard.Difficulty.Stars * 44;
+                    if (s.Accuracy > 0.999f) {
+                        s.Accuracy = 1.0f;
                     }
-                    _context.Scores.Update(s);
+                    if (leaderboard.Difficulty.Ranked) {
+                        s.Pp = ReplayUtils.PpFromScore(s, leaderboard.Difficulty);
+                    }
+                    if (float.IsNaN(s.Pp)) {
+                        s.Pp = 0.0f;
+                    }
+                    counter++;
                 }
 
-                var rankedScores = leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();
+                var rankedScores = allScores.OrderByDescending(el => el.Pp).ToList();
                 foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
                 {
                     s.Rank = i + 1;
-                    _context.Scores.Update(s);
                 }
-                leaderboard.Scores = rankedScores;
-                _context.Leaderboards.Update(leaderboard);
-                try {
-                    await _context.SaveChangesAsync();
-                } catch (Exception e) {
-                    _context.RejectChanges();
+                
+                if (counter >= 500) {
+                    counter = 0;
+                    try
+                    {
+                        await _context.SaveChangesAsync();
+                    }
+                    catch (Exception e)
+                    {
+                        
+                        _context.RejectChanges();
+                        transaction.Rollback();
+                        transaction = _context.Database.BeginTransaction();
+                        continue;
+                    }
+                    transaction.Commit();
+                    transaction = _context.Database.BeginTransaction();
                 }
             }
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception e)
+            {
+                _context.RejectChanges();
+            }
+            transaction.Commit();
 
             return Ok();
         }
@@ -332,7 +356,7 @@ namespace BeatLeader_Server.Controllers
                 query = query.Select(RemovePositiveModifiers);
             }
 
-            query = query.OrderByDescending(p => p.ModifiedScore);
+            query = query.OrderByDescending(p => p.ModifiedScore).OrderByDescending(p => p.Pp);
             //Dictionary<string, int> countries = new Dictionary<string, int>();
             //query = query.Select((s, i) => {
             //    if (s.CountryRank == 0) {

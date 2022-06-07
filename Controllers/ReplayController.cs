@@ -81,7 +81,9 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<ScoreResponse>> PostOculusReplay()
         {
             string currentID = HttpContext.CurrentUserID();
+
             AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == Int64.Parse(currentID));
+
             return await PostReplayFromBody(accountLink != null ? accountLink.SteamID : currentID);
         }
 
@@ -108,6 +110,11 @@ namespace BeatLeader_Server.Controllers
                 {
                     return BadRequest("Error decoding replay");
                 }
+            }
+
+            if (replay.info.playerID != authenticatedPlayerID)
+            {
+                return Unauthorized("User ID is not valid");
             }
 
             return await PostReplay(authenticatedPlayerID, replay, replayData, HttpContext);
@@ -145,8 +152,6 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized("Session ticket is not valid");
             }
 
-            replay.info.playerID = authenticatedPlayerID;
-
             if (replay.info.hash.Length < 40)
             {
                 return BadRequest("Hash is to short");
@@ -170,18 +175,20 @@ namespace BeatLeader_Server.Controllers
             FailedScore? failedScore;
             using (_serverTiming.TimeAction("failS"))
             {
-                failedScore = _context.FailedScores.Include(s => s.Leaderboard).FirstOrDefault(s => s.PlayerId == authenticatedPlayerID && s.Leaderboard.Id == leaderboard.Id);
+                failedScore = _context.FailedScores.FirstOrDefault(s => s.PlayerId == authenticatedPlayerID && s.Leaderboard.Id == leaderboard.Id);
                 if (failedScore != null) {
                     _context.FailedScores.Remove(failedScore);
                     _context.SaveChanges();
                 }
             }
 
+            (replay, Score resultScore) = ReplayUtils.ProcessReplay(replay, leaderboard);
+
             Score? currentScore;
             using (_serverTiming.TimeAction("currS"))
             {
-                currentScore = leaderboard.Scores.FirstOrDefault(el => el.PlayerId == replay.info.playerID);
-                if (currentScore != null && currentScore.ModifiedScore >= (int)(((float)replay.info.score) * ReplayUtils.GetTotalMultiplier(replay.info.modifiers)))
+                currentScore = leaderboard.Scores.FirstOrDefault(el => el.PlayerId == authenticatedPlayerID);
+                if (currentScore != null && (currentScore.Pp > resultScore.Pp || currentScore.ModifiedScore > resultScore.ModifiedScore))
                 {
                     transaction.Commit();
                     return BadRequest("Score is lower than existing one");
@@ -192,10 +199,10 @@ namespace BeatLeader_Server.Controllers
 
             using (_serverTiming.TimeAction("player"))
             {
-                player = currentScore?.Player ?? (await _playerController.GetLazy(replay.info.playerID)).Value;
+                player = currentScore?.Player ?? (await _playerController.GetLazy(authenticatedPlayerID)).Value;
                 if (player == null) {
                     player = new Player();
-                    player.Id = replay.info.playerID;
+                    player.Id = authenticatedPlayerID;
                     player.Name = replay.info.playerName;
                     player.Platform = replay.info.platform;
                     player.SetDefaultAvatar();
@@ -213,15 +220,9 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            (replay, Score resultScore) = ReplayUtils.ProcessReplay(replay, leaderboard);
-
             using (_serverTiming.TimeAction("score"))
             {
-                if (leaderboard.Difficulty.Ranked && leaderboard.Difficulty.Stars != null) {
-                    resultScore.Pp = (float)resultScore.Accuracy * (float)leaderboard.Difficulty.Stars * 44;
-                }
-
-                resultScore.PlayerId = replay.info.playerID;
+                resultScore.PlayerId = authenticatedPlayerID;
                 resultScore.Player = player;
                 resultScore.Leaderboard = leaderboard;
                 resultScore.Replay = "";
@@ -363,19 +364,25 @@ namespace BeatLeader_Server.Controllers
                         break;
                 }
 
+                float oldPp = player.Pp;
+
                 _context.RecalculatePP(player);
 
-                var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
-                var country = player.Country; var countryRank = 1;
+                float newPp = player.Pp;
+
+                var ranked = _context.Players.Where(t => t.Pp >= oldPp && t.Pp <= newPp).OrderByDescending(t => t.Pp).ToList();
+
+                var country = player.Country;
+                int topRank = ranked.First().Rank; int topCountryRank = ranked.Where(p => p.Country == country).First().Rank;
                 foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
                 {
                     Player player1 = p.Id == player.Id ? player : p;
 
-                    player1.Rank = i + 1;
+                    player1.Rank = i + topRank;
                     if (player1.Country == country)
                     {
-                        player1.CountryRank = countryRank;
-                        countryRank++;
+                        player1.CountryRank = topCountryRank;
+                        topCountryRank++;
                     }
                 }
             }
@@ -399,10 +406,6 @@ namespace BeatLeader_Server.Controllers
                 {
                     await _containerClient.CreateIfNotExistsAsync();
 
-                    Stream stream = new MemoryStream();
-                    ReplayEncoder.Encode(replay, new BinaryWriter(stream));
-                    stream.Position = 0;
-
                     string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
                     resultScore.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/replays/" : "https://cdn.beatleader.xyz/replays/") + fileName;
 
@@ -411,7 +414,7 @@ namespace BeatLeader_Server.Controllers
                     resultScore.Replay += "temp";
 
                     await _containerClient.DeleteBlobIfExistsAsync(tempName);
-                    await _containerClient.UploadBlobAsync(tempName, stream);
+                    await _containerClient.UploadBlobAsync(tempName, new BinaryData(replayData));
 
                     (ScoreStatistic? statistic, string? error) = _scoreController.CalculateStatisticReplay(replay, resultScore);
                     if (statistic == null) {
@@ -548,12 +551,8 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            _context.Leaderboards.Update(leaderboard);
-            _context.Players.Update(player);
-
             leaderboard.Plays = rankedScores.Count;
 
-            _context.SaveChanges();
             _context.RecalculatePP(player);
 
             var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
