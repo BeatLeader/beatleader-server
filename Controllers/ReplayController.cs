@@ -187,7 +187,7 @@ namespace BeatLeader_Server.Controllers
             Score? currentScore;
             using (_serverTiming.TimeAction("currS"))
             {
-                currentScore = leaderboard.Scores.FirstOrDefault(el => el.PlayerId == authenticatedPlayerID);
+                currentScore = await _context.Scores.Where(s => s.LeaderboardId == leaderboard.Id && s.PlayerId == authenticatedPlayerID).Include(s => s.Player).ThenInclude(p => p.ScoreStats).Include(s => s.RankVoting).FirstOrDefaultAsync();
                 if (currentScore != null && (currentScore.Pp > resultScore.Pp || currentScore.ModifiedScore > resultScore.ModifiedScore))
                 {
                     transaction.Commit();
@@ -268,6 +268,10 @@ namespace BeatLeader_Server.Controllers
                             player.ScoreStats.APlays--;
                             break;
                     }
+                    if (currentScore.RankVoting != null) {
+                        resultScore.RankVoting = currentScore.RankVoting;
+                    }
+
                     try
                     {
                         leaderboard.Scores.Remove(currentScore);
@@ -309,7 +313,7 @@ namespace BeatLeader_Server.Controllers
                 }
                 
                 leaderboard.Plays = rankedScores.Count;
-                }
+            }
 
 
             using (_serverTiming.TimeAction("db"))

@@ -80,10 +80,8 @@ namespace BeatLeader_Server.Controllers
             leaderboard = await _context
                     .Leaderboards
                     .Include(lb => lb.Difficulty)
-                    .Include(lb => lb.Song)
                     .Where(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff)
                     .Include(lb => lb.Scores)
-                    .ThenInclude(score => score.Player)
                     .FirstOrDefaultAsync();
 
             if (leaderboard == null) {
