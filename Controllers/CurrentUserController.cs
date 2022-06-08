@@ -507,6 +507,8 @@ namespace BeatLeader_Server.Controllers
                         else
                         {
                             score.Leaderboard.Scores.Remove(migScore);
+                            score.Player = migratedToPlayer;
+                            score.PlayerId = fromId;
                         }
 
                         var rankedScores = score.Leaderboard.Scores.Where(sc => sc != null).OrderByDescending(el => el.ModifiedScore).ToList();

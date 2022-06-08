@@ -74,8 +74,6 @@ namespace BeatLeader_Server.Controllers
                     .Include(lb => lb.Song)
                     .Where(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff)
                     .Include(lb => lb.Scores)
-                    .ThenInclude(score => score.Identification)
-                    .Include(lb => lb.Scores)
                     .ThenInclude(score => score.Player)
                     .FirstOrDefaultAsync();
 

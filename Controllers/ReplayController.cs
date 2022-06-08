@@ -327,7 +327,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             var transaction2 = _context.Database.BeginTransaction();
-
+            float oldPp = player.Pp;
             using (_serverTiming.TimeAction("pp"))
             {
                 player.ScoreStats.TotalScore += resultScore.ModifiedScore;
@@ -363,25 +363,38 @@ namespace BeatLeader_Server.Controllers
                         break;
                 }
 
-                _context.RecalculatePP(player);
-
-                var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
-                var country = player.Country; var countryRank = 1;
-                foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
-                {
-                    Player player1 = p.Id == player.Id ? player : p;
-
-                    player1.Rank = i + 1;
-                    if (player1.Country == country)
-                    {
-                        player1.CountryRank = countryRank;
-                        countryRank++;
-                    }
-                }
+                _context.RecalculatePPAndRankFast(player);
             }
 
             context.Response.OnCompleted(async () => {
-                    
+
+                _context.RecalculatePP(player);
+                float resultPP = player.Pp;
+                var rankedPlayers = _context.Players.Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id).OrderByDescending(t => t.Pp).ToList();
+
+                if (rankedPlayers.Count() > 0) {
+
+                    var country = player.Country;
+                    int topRank = rankedPlayers.First().Rank; int? topCountryRank = rankedPlayers.Where(p => p.Country == country).FirstOrDefault()?.CountryRank;
+                    player.Rank = topRank;
+                    if (topCountryRank != null) {
+                        player.CountryRank = (int)topCountryRank;
+                        topCountryRank++;
+                    }
+
+                    topRank++;
+                
+                    foreach ((int i, Player p) in rankedPlayers.Select((value, i) => (i, value)))
+                    {
+                        p.Rank = i + topRank;
+                        if (p.Country == country && topCountryRank != null)
+                        {
+                            p.CountryRank = (int)topCountryRank;
+                            topCountryRank++;
+                        }
+                    }
+                }
+
                 try
                 {
                     await _context.SaveChangesAsync();
@@ -413,18 +426,18 @@ namespace BeatLeader_Server.Controllers
                     await _containerClient.DeleteBlobIfExistsAsync(tempName);
                     await _containerClient.UploadBlobAsync(tempName, stream);
 
-                    (bool unique, string? anothers) = ReplayUtils.CheckReplay(replayData, leaderboard.Scores, currentScore);
+                    //(bool unique, string? anothers) = ReplayUtils.CheckReplay(replayData, leaderboard.Scores, currentScore);
 
-                    if (unique)
-                    {
-                        // resultScore.Identification = ReplayUtils.ReplayIdentificationForReplay(replayData);
-                    }
-                    else
-                    {
-                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Another's replays posting is forbidden. Potential owner: " + anothers);
+                    //if (unique)
+                    //{
+                    //    // resultScore.Identification = ReplayUtils.ReplayIdentificationForReplay(replayData);
+                    //}
+                    //else
+                    //{
+                    //    SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Another's replays posting is forbidden. Potential owner: " + anothers);
 
-                        return;
-                    }
+                    //    return;
+                    //}
 
                     (ScoreStatistic? statistic, string? error) = _scoreController.CalculateStatisticReplay(replay, resultScore);
                     if (statistic == null) {
@@ -435,8 +448,8 @@ namespace BeatLeader_Server.Controllers
 
                     double scoreRatio = (double)resultScore.BaseScore / (double)statistic.WinTracker.TotalScore;
 
-                    if (scoreRatio > 1.2 || scoreRatio < 0.9) {
-                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Calculated on server score is too low: " + statistic.WinTracker.TotalScore + ". You probably need to update the mod.");
+                    if (scoreRatio > 1.03 || scoreRatio < 0.97) {
+                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Calculated on server score is too different: " + statistic.WinTracker.TotalScore + ". You probably need to update the mod.");
 
                         return;
                     }

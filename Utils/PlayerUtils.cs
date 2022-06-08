@@ -5,20 +5,53 @@ namespace BeatLeader_Server.Utils
 {
     public static class PlayerUtils
     {
-        public static void RecalculatePP(this AppContext context, Player player)
+        public static void RecalculatePP(this AppContext context, Player player, List<Score>? scores = null)
         {
-            var ranked = context.Scores.Where(s => s.PlayerId == player.Id && s.Pp != 0).OrderByDescending(s => s.Pp).ToList();
+            var ranked = scores ?? context.Scores.Where(s => s.PlayerId == player.Id && s.Pp != 0).OrderByDescending(s => s.Pp).ToList();
             float resultPP = 0f;
             foreach ((int i, Score s) in ranked.Select((value, i) => (i, value)))
             {
                 float weight = MathF.Pow(0.965f, i);
-                if (s.Weight != weight) {
+                if (s.Weight != weight)
+                {
                     s.Weight = weight;
                 }
-                
+
                 resultPP += s.Pp * s.Weight;
             }
             player.Pp = resultPP;
+        }
+
+        public static void RecalculatePPAndRankFast(this AppContext context, Player player)
+        {
+            float oldPp = player.Pp;
+
+            var rankedScores = context.Scores.Where(s => s.PlayerId == player.Id && s.Pp != 0).OrderByDescending(s => s.Pp).Select(s => new { Pp = s.Pp }).ToList();
+            float resultPP = 0f;
+            foreach ((int i, float pp) in rankedScores.Select((value, i) => (i, value.Pp)))
+            {
+                float weight = MathF.Pow(0.965f, i);
+                resultPP += pp * weight;
+            }
+            player.Pp = resultPP;
+
+            var rankedPlayers = context
+                .Players
+                .Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id)
+                .OrderByDescending(t => t.Pp)
+                .Select(p => new { Pp = p.Pp, Country = p.Country, Rank = p.Rank, CountryRank = p.CountryRank })
+                .ToList();
+
+            if (rankedPlayers.Count() > 0)
+            {
+                player.Rank = rankedPlayers[0].Rank;
+
+                var topCountryPlayer = rankedPlayers.FirstOrDefault(p => p.Country == player.Country);
+                if (topCountryPlayer != null)
+                {
+                    player.CountryRank = topCountryPlayer.CountryRank;
+                }
+            }
         }
 
         public static string[] AllowedCountries() {
