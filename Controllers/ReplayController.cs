@@ -332,7 +332,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             var transaction2 = _context.Database.BeginTransaction();
-
+            float oldPp = player.Pp;
             using (_serverTiming.TimeAction("pp"))
             {
                 player.ScoreStats.TotalScore += resultScore.ModifiedScore;
@@ -367,32 +367,40 @@ namespace BeatLeader_Server.Controllers
                         player.ScoreStats.APlays++;
                         break;
                 }
-
-                float oldPp = player.Pp;
-
-                _context.RecalculatePP(player);
-
-                float newPp = player.Pp;
-
-                var ranked = _context.Players.Where(t => t.Pp >= oldPp && t.Pp <= newPp).OrderByDescending(t => t.Pp).ToList();
-
-                var country = player.Country;
-                int topRank = ranked.First().Rank; int topCountryRank = ranked.Where(p => p.Country == country).First().Rank;
-                foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
-                {
-                    Player player1 = p.Id == player.Id ? player : p;
-
-                    player1.Rank = i + topRank;
-                    if (player1.Country == country)
-                    {
-                        player1.CountryRank = topCountryRank;
-                        topCountryRank++;
-                    }
-                }
+                
+                _context.RecalculatePPAndRankFast(player);
             }
 
             context.Response.OnCompleted(async () => {
-                    
+
+                _context.RecalculatePP(player);
+                float resultPP = player.Pp;
+                var rankedPlayers = _context.Players.Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id).OrderByDescending(t => t.Pp).ToList();
+
+                if (rankedPlayers.Count() > 0)
+                {
+                    var country = player.Country;
+                    int topRank = rankedPlayers.First().Rank; int? topCountryRank = rankedPlayers.Where(p => p.Country == country).FirstOrDefault()?.CountryRank;
+                    player.Rank = topRank;
+                    if (topCountryRank != null)
+                    {
+                        player.CountryRank = (int)topCountryRank;
+                        topCountryRank++;
+                    }
+
+                    topRank++;
+
+                    foreach ((int i, Player p) in rankedPlayers.Select((value, i) => (i, value)))
+                    {
+                        p.Rank = i + topRank;
+                        if (p.Country == country && topCountryRank != null)
+                        {
+                            p.CountryRank = (int)topCountryRank;
+                            topCountryRank++;
+                        }
+                    }
+                }
+
                 try
                 {
                     await _context.SaveChangesAsync();

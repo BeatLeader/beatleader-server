@@ -24,23 +24,36 @@ namespace BeatLeader_Server.Utils
             player.Pp = resultPP;
         }
 
-        public static void RecalculatePPFast(this AppContext context, Score? oldScore, Score newScore, Player player)
+        public static void RecalculatePPAndRankFast(this AppContext context, Player player)
         {
-            float scorePP = newScore.Pp;
-            var ranked = context.Scores.Where(s => s.PlayerId == player.Id && s.Pp != 0).OrderByDescending(s => s.Pp).Select((value, i) => new { i, Pp = value.Pp, Id = value.Id }).Where(s => s.Pp <= scorePP).ToList();
-            float ppToAdd = 0f;
-            foreach (var score in ranked)
+            float oldPp = player.Pp;
+
+            var rankedScores = context.Scores.Where(s => s.PlayerId == player.Id && s.Pp != 0).OrderByDescending(s => s.Pp).Select(s => new { Pp = s.Pp }).ToList();
+            float resultPP = 0f;
+            foreach ((int i, float pp) in rankedScores.Select((value, i) => (i, value.Pp)))
             {
-                float weight = MathF.Pow(0.965f, score.i);
-                ppToAdd += score.Pp * weight;
+                float weight = MathF.Pow(0.965f, i);
+                resultPP += pp * weight;
             }
+            player.Pp = resultPP;
 
-            ranked = ranked.Where(s => s.Id != newScore.Id).ToList();
-            if (oldScore != null) {
+            var rankedPlayers = context
+                .Players
+                .Where(t => t.Pp >= oldPp && t.Pp <= resultPP)
+                .OrderByDescending(t => t.Pp)
+                .Select(p => new { Pp = p.Pp, Country = p.Country, Rank = p.Rank, CountryRank = p.CountryRank })
+                .ToList();
 
-                ranked.Add(new { i = -1, Pp = oldScore.Pp, Id = oldScore.Id });
+            if (rankedPlayers.Count() > 0)
+            {
+                player.Rank = rankedPlayers[0].Rank;
+
+                var topCountryPlayer = rankedPlayers.FirstOrDefault(p => p.Country == player.Country);
+                if (topCountryPlayer != null)
+                {
+                    player.CountryRank = topCountryPlayer.CountryRank;
+                }
             }
-            player.Pp += ppToAdd;
         }
 
         public static string[] AllowedCountries() {

@@ -349,6 +349,43 @@ namespace BeatLeader_Server.Controllers
 
         }
 
+        public class GraphResponse {
+            public string LeaderboardId { get; set; }
+            public string Diff { get; set; }
+            public string Mode { get; set; }
+            public string Modifiers { get; set; }
+            public string SongName { get; set; }
+            public string Mapper { get; set; }
+            public float Acc { get; set; }
+            public string Timeset { get; set; }
+            public float Stars { get; set; }
+        }
+
+        [HttpGet("~/player/{id}/accgraph")]
+        public ActionResult<ICollection<GraphResponse>> GetScoreValue(string id)
+        {
+            return _context
+                .Scores
+                .Include(s => s.Leaderboard)
+                .ThenInclude(l => l.Difficulty)
+                .Include(s => s.Leaderboard)
+                .ThenInclude(l => l.Song)
+                .Where(s => s.PlayerId == id && s.Leaderboard.Difficulty.Ranked)
+                .Select(s => new GraphResponse { 
+                    LeaderboardId = s.Leaderboard.Id,
+                    Diff = s.Leaderboard.Difficulty.DifficultyName,
+                    SongName = s.Leaderboard.Song.Name,
+                    Mapper = s.Leaderboard.Song.Author,
+                    Mode = s.Leaderboard.Difficulty.ModeName,
+                    Stars = (float)s.Leaderboard.Difficulty.Stars,
+                    Acc = s.Accuracy,
+                    Timeset = s.Timeset,
+                    Modifiers = s.Modifiers
+                    })
+                .ToList();
+
+        }
+
         [HttpGet("~/players")]
         public async Task<ActionResult<ResponseWithMetadata<PlayerResponseWithStats>>> GetPlayers(
             [FromQuery] string sortBy = "pp", 

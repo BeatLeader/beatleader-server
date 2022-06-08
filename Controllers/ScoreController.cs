@@ -193,7 +193,7 @@ namespace BeatLeader_Server.Controllers
                     s.Rank = i + 1;
                 }
                 
-                if (counter >= 500) {
+                if (counter >= 5000) {
                     counter = 0;
                     try
                     {

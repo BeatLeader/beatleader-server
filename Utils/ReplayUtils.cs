@@ -14,7 +14,7 @@ namespace BeatLeader_Server.Utils
         }
 
         public static float PpFromScore(Score s, DifficultyDescription difficulty) {
-          return (float)(Curve(s.Accuracy, (float)difficulty.Stars) * GetPositiveMultiplier(s.Modifiers) * (float)difficulty.Stars * 42);
+          return (float)(Curve(s.Accuracy, (float)difficulty.Stars - 1) * GetPositiveMultiplier(s.Modifiers) * ((float)difficulty.Stars + 1) * 42);
         }
 
         public static (Replay, Score) ProcessReplay(Replay replay, Leaderboard leaderboard) {
