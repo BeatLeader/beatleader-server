@@ -1,8 +1,15 @@
-﻿using BeatLeader_Server.Extensions;
+﻿using Azure.Identity;
+using Azure.Storage.Blobs;
+using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using System.Dynamic;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -11,10 +18,151 @@ namespace BeatLeader_Server.Controllers
     public class PlaylistController : Controller
     {
         private readonly AppContext _context;
+        BlobContainerClient _playlistContainerClient;
 
-        public PlaylistController(AppContext context)
+        public PlaylistController(
+            AppContext context,
+            IOptions<AzureStorageConfig> config,
+            IWebHostEnvironment env)
         {
             _context = context;
+            if (env.IsDevelopment())
+            {
+                _playlistContainerClient = new BlobContainerClient(config.Value.AccountName, config.Value.PlaylistContainerName);
+            }
+            else
+            {
+                string containerEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
+                                                        config.Value.AccountName,
+                                                       config.Value.PlaylistContainerName);
+
+                _playlistContainerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
+            }
+        }
+
+        [Authorize]
+        [HttpGet("~/user/oneclickplaylist")]
+        public async Task<ActionResult> GetOneClickPlaylist()
+        {
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
+
+            BlobClient blobClient = _playlistContainerClient.GetBlobClient(userId + "oneclick.bplist");
+            MemoryStream stream = new MemoryStream(5);
+            if (!(await blobClient.ExistsAsync())) {
+                blobClient = _playlistContainerClient.GetBlobClient("oneclick.bplist");
+            }
+
+            await blobClient.DownloadToAsync(stream);
+            stream.Position = 0;
+
+            return File(stream, "application/json"); ;
+        }
+
+        ExpandoObject? ObjectFromStream(MemoryStream ms) {
+            using (StreamReader reader = new StreamReader(ms))
+            {
+                string results = reader.ReadToEnd();
+                if (string.IsNullOrEmpty(results))
+                {
+                    return null;
+                }
+
+                return JsonConvert.DeserializeObject<ExpandoObject>(results, new ExpandoObjectConverter());
+            }
+        }
+
+        [Authorize]
+        [HttpPost("~/user/oneclickplaylist")]
+        public async Task<ActionResult> UpdateOneClickPlaylist()
+        {
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
+
+            var ms = new MemoryStream(5);
+            await Request.Body.CopyToAsync(ms);
+            ms.Position = 0;
+
+            dynamic? mapscontainer = ObjectFromStream(ms);
+            if (mapscontainer == null || !ExpandantoObject.HasProperty(mapscontainer, "songs")) {
+                return BadRequest("Can't decode songs");
+            }
+
+            BlobClient blobClient = _playlistContainerClient.GetBlobClient(userId + "oneclick.bplist");
+            MemoryStream stream = new MemoryStream(5);
+            if (!(await blobClient.ExistsAsync()))
+            {
+                blobClient = _playlistContainerClient.GetBlobClient("oneclick.bplist");
+            }
+            await blobClient.DownloadToAsync(stream);
+            stream.Position = 0;
+
+            dynamic? playlist = ObjectFromStream(stream);
+            if (playlist == null)
+            {
+                stream.Position = 0;
+                blobClient = _playlistContainerClient.GetBlobClient("oneclick.bplist");
+                await blobClient.DownloadToAsync(stream);
+                playlist = ObjectFromStream(stream);
+            }
+
+            if (playlist == null) {
+                return BadRequest("Original plist dead. Wake up NSGolova");
+            }
+
+            playlist.songs = mapscontainer.songs;
+
+            await _playlistContainerClient.DeleteBlobIfExistsAsync(userId + "oneclick.bplist");
+            await _playlistContainerClient.UploadBlobAsync(userId + "oneclick.bplist", new BinaryData(JsonConvert.SerializeObject(playlist)));
+
+            return Ok();
+        }
+
+        [Authorize]
+        [HttpGet("~/user/oneclickdone")]
+        public async Task<ActionResult> CleanOneClickPlaylist()
+        {
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
+
+            BlobClient blobClient = _playlistContainerClient.GetBlobClient(userId + "oneclick.bplist");
+            MemoryStream stream = new MemoryStream(5);
+            if (!(await blobClient.ExistsAsync()))
+            {
+                blobClient = _playlistContainerClient.GetBlobClient("oneclick.bplist");
+            }
+            await blobClient.DownloadToAsync(stream);
+            stream.Position = 0;
+
+            dynamic? playlist = ObjectFromStream(stream);
+            if (playlist == null)
+            {
+                stream.Position = 0;
+                blobClient = _playlistContainerClient.GetBlobClient("oneclick.bplist");
+                await blobClient.DownloadToAsync(stream);
+                playlist = ObjectFromStream(stream);
+            }
+
+            if (playlist == null)
+            {
+                return BadRequest("Original plist dead. Wake up NSGolova");
+            }
+
+            playlist.songs = new List<string>();
+
+            await _playlistContainerClient.DeleteBlobIfExistsAsync(userId + "oneclick.bplist");
+            await _playlistContainerClient.UploadBlobAsync(userId + "oneclick.bplist", new BinaryData(JsonConvert.SerializeObject(playlist)));
+
+            return Ok();
         }
 
         [HttpGet("~/playlists")]
