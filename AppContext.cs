@@ -37,6 +37,7 @@ namespace BeatLeader_Server
         public DbSet<ReservedClanTag> ReservedTags { get; set; }
         public DbSet<OculusLoginLink> OculusLoginLinks { get; set; }
         public DbSet<RankVoting> RankVotings { get; set; }
+        public DbSet<RankChange> RankChanges { get; set; }
 
         public void RejectChanges()
         {

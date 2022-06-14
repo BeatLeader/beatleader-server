@@ -13,5 +13,6 @@ namespace BeatLeader_Server.Models
         public float Rankability { get; set; } = 0;
         public float Stars { get; set; } = 0;
         public int Type { get; set; } = 0;
+        public int Timeset { get; set; } = 0;
     }
 }

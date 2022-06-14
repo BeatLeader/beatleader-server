@@ -646,12 +646,30 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/player/{id}/refresh")]
         public async Task<ActionResult> RefreshPlayerAction(string id, [FromQuery] bool refreshRank = true)
         {
-            Player? player = _context.Players.Find(id);
+            Player? player = _context.Players.Where(p => p.Id == id).Include(p => p.ScoreStats).FirstOrDefault();
             if (player == null)
             {
                 return NotFound();
             }
             await RefreshPlayer(player, refreshRank);
+
+            return Ok();
+        }
+
+        [HttpGet("~/players/leaderboard/{id}/refresh")]
+        public async Task<ActionResult> RefreshLeaderboardPlayers(string id)
+        {
+            Leaderboard? leaderboard = _context.Leaderboards.Where(p => p.Id == id).Include(l => l.Scores).ThenInclude(s => s.Player).ThenInclude(s => s.ScoreStats).FirstOrDefault();
+
+            if (leaderboard == null)
+            {
+                return NotFound();
+            }
+
+            foreach (var score in leaderboard.Scores)
+            {
+                await RefreshPlayer(score.Player, true);
+            }
 
             return Ok();
         }

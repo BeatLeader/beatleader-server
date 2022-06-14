@@ -13,16 +13,22 @@ namespace BeatLeader_Server.Controllers
         private readonly AppContext _context;
         private readonly IServerTiming _serverTiming;
         private readonly IConfiguration _configuration;
+        private readonly ScoreController _scoreController;
+        private readonly PlayerController _playerController;
 
         public RankController(
             AppContext context,
             IWebHostEnvironment env,
             IServerTiming serverTiming,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            ScoreController scoreController,
+            PlayerController playerController)
         {
             _context = context;
             _serverTiming = serverTiming;
             _configuration = configuration;
+            _scoreController = scoreController;
+            _playerController = playerController;
         }
 
         public enum VoteStatus
@@ -156,5 +162,101 @@ namespace BeatLeader_Server.Controllers
                 return VoteStatus.CantVote;
             }
         }
+
+        [Authorize]
+        [HttpPost("~/rank/{hash}/{diff}/{mode}/")]
+        public async Task<ActionResult> SetStarValue(
+            string hash,
+            string diff,
+            string mode,
+            [FromQuery] float rankability,
+            [FromQuery] float stars = 0,
+            [FromQuery] int type = 0)
+        {
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
+            var currentPlayer = await _context.Players.FindAsync(userId);
+
+            //if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            //{
+            //    return Unauthorized();
+            //}
+
+            Leaderboard? leaderboard = _context.Leaderboards.Include(l => l.Difficulty).Include(l => l.Song).FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+
+            if (leaderboard != null)
+            {
+                DifficultyDescription? difficulty = leaderboard.Difficulty;
+                RankChange rankChange = new RankChange
+                {
+                    PlayerId = userId,
+                    Hash = hash,
+                    Diff = diff,
+                    Mode = mode,
+                    OldRankability = difficulty.Ranked ? 1 : 0,
+                    OldStars = difficulty.Stars ?? 0,
+                    OldType = difficulty.Type,
+                    NewRankability = rankability,
+                    NewStars = stars,
+                    NewType = type
+                };
+                _context.RankChanges.Add(rankChange);
+
+                difficulty.Ranked = rankability > 0;
+                difficulty.Stars = stars;
+                difficulty.RankedTime = "" + DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+                difficulty.Type = type;
+                _context.SaveChanges();
+                await _scoreController.RefreshScores(leaderboard.Id);
+                await _playerController.RefreshLeaderboardPlayers(leaderboard.Id);
+            }
+
+            return Ok();
+        }
+
+        //[Authorize]
+        //[HttpGet("~/map/rdate/{hash}")]
+        //public async Task<ActionResult> SetStarValue(string hash, [FromQuery] int diff, [FromQuery] string date)
+        //{
+        //    string currentID = HttpContext.CurrentUserID();
+        //    long intId = Int64.Parse(currentID);
+        //    AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+        //    string userId = accountLink != null ? accountLink.SteamID : currentID;
+        //    var currentPlayer = await _context.Players.FindAsync(userId);
+
+        //    if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+        //    {
+        //        return Unauthorized();
+        //    }
+
+        //    Song? song = (await _songController.GetHash(hash)).Value;
+        //    DateTime dateTime = DateTime.Parse(date);
+
+        //    string timestamp = Convert.ToString((int)dateTime.Subtract(new DateTime(1970, 1, 1)).TotalSeconds);
+
+        //    if (song != null)
+        //    {
+        //        DifficultyDescription? diffy = song.Difficulties.FirstOrDefault(d => d.DifficultyName == SongUtils.DiffNameForDiff(diff));
+        //        diffy.Ranked = true;
+        //        diffy.RankedTime = timestamp;
+
+        //        Leaderboard? leaderboard = (await Get(song.Id + diff + SongUtils.ModeForModeName("Standard"))).Value;
+        //        if (leaderboard != null)
+        //        {
+        //            leaderboard = await _context.Leaderboards.Include(l => l.Difficulty).FirstOrDefaultAsync(i => i.Id == leaderboard.Id);
+
+        //            leaderboard.Difficulty.Ranked = true;
+        //            leaderboard.Difficulty.RankedTime = timestamp;
+        //        }
+        //    }
+
+        //    _context.SaveChanges();
+
+        //    return Ok();
+        //}
     }
 }

@@ -453,9 +453,9 @@ namespace BeatLeader_Server.Controllers
                 }
                 catch (Exception e)
                 {
-                    try {
+                    
                         SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, e.ToString());
-                    } catch { }
+                    
                 }
             });
 
@@ -464,6 +464,8 @@ namespace BeatLeader_Server.Controllers
 
         [NonAction]
         private void SaveFailedScore(IDbContextTransaction transaction, Score? previousScore, Score score, Leaderboard leaderboard, string failReason) {
+        try
+        {
             RollbackScore(score, previousScore, leaderboard);
 
             FailedScore failedScore = new FailedScore {
@@ -492,6 +494,8 @@ namespace BeatLeader_Server.Controllers
             _context.SaveChanges();
 
             transaction.Commit();
+            }
+            catch { }
         }
 
         [NonAction]

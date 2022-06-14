@@ -153,11 +153,12 @@ namespace BeatLeader_Server.Controllers
         {
             string currentId = HttpContext.CurrentUserID();
             Player? currentPlayer = _context.Players.Find(currentId);
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
-            var allLeaderboards = _context.Leaderboards.Where(l => l.Difficulty.Ranked).Include(s => s.Scores).Include(l => l.Difficulty).Select(l => new { Scores = l.Scores, Difficulty = l.Difficulty }).ToList();
+            //if (currentPlayer == null || !currentPlayer.Role.Contains("rankedteam"))
+            //{
+            //    return Unauthorized();
+            //}
+            var query = _context.Leaderboards.Where(l => l.Difficulty.Ranked).Include(s => s.Scores).Include(l => l.Difficulty);
+            var allLeaderboards = (leaderboardId != null ? query.Where(s => s.Id == leaderboardId) : query).Select(l => new { Scores = l.Scores, Difficulty = l.Difficulty }).ToList();
 
             int counter = 0;
             var transaction = _context.Database.BeginTransaction();
