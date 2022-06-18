@@ -220,6 +220,10 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
+            if (player.Banned) {
+                return BadRequest("You are banned!");
+            }
+
             using (_serverTiming.TimeAction("score"))
             {
                 resultScore.PlayerId = authenticatedPlayerID;
@@ -375,7 +379,7 @@ namespace BeatLeader_Server.Controllers
 
                 _context.RecalculatePP(player);
                 float resultPP = player.Pp;
-                var rankedPlayers = _context.Players.Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id).OrderByDescending(t => t.Pp).ToList();
+                var rankedPlayers = _context.Players.Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned).OrderByDescending(t => t.Pp).ToList();
 
                 if (rankedPlayers.Count() > 0)
                 {
@@ -453,9 +457,7 @@ namespace BeatLeader_Server.Controllers
                 }
                 catch (Exception e)
                 {
-                    
-                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, e.ToString());
-                    
+                    SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, e.ToString());
                 }
             });
 

@@ -130,7 +130,7 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            IQueryable<Player> players = clan.Players.AsQueryable();
+            IQueryable<Player> players = clan.Players.Where(p => !p.Banned).AsQueryable();
             switch (sort)
             {
                 case "pp":
@@ -175,6 +175,11 @@ namespace BeatLeader_Server.Controllers
             var player = await _context.Players.Where(p => p.Id == userId).Include(p => p.Clans).Include(p => p.ScoreStats).FirstOrDefaultAsync();
             if (player.Clans.Count == 3) {
                 return BadRequest("You can join only up to 3 clans.");
+            }
+
+            if (player.Banned)
+            {
+                return BadRequest("You are banned!");
             }
 
             string upperTag = tag.ToUpper();
@@ -327,6 +332,11 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
+            if (player.Banned)
+            {
+                return BadRequest("You are banned!");
+            }
+
             Clan? clan = null;
             if (id != null && player != null && player.Role.Contains("admin"))
             {
@@ -432,6 +442,10 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
+            if (currentPlayer.Banned) {
+                return BadRequest("You are banned!");
+            }
+
             Clan? clan = _context.Clans.FirstOrDefault(c => c.LeaderID == userId);
             if (clan == null) {
                 return NotFound("Current user is not leader of any clan");
@@ -440,6 +454,11 @@ namespace BeatLeader_Server.Controllers
             User? user = _userController.GetUserLazy(player);
             if (user == null) {
                 return NotFound("No such player");
+            }
+
+            if (user.Player.Banned)
+            {
+                return BadRequest("This player are banned!");
             }
 
             if (user.Player.Clans.Count == 3)
@@ -769,12 +788,12 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> RefreshClans()
         {
 
-            var clans = _context.Clans.Include(c => c.Players).ThenInclude(p => p.ScoreStats).ToList();
+            var clans = _context.Clans.Include(c => c.Players.Where(p => !p.Banned)).ThenInclude(p => p.ScoreStats).ToList();
             foreach (var clan in clans)
             {
                 clan.AverageAccuracy = clan.Players.Average(p => p.ScoreStats.AverageRankedAccuracy);
                 clan.AverageRank = (float)clan.Players.Average(p => p.Rank);
-                clan.PlayersCount = clan.Players.Count;
+                clan.PlayersCount = clan.Players.Count();
                 clan.Pp = _context.RecalculateClanPP(clan.Id);
             }
             

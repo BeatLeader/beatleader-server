@@ -27,6 +27,8 @@
         public string LeaderboardId { get; set; }
         public Leaderboard Leaderboard { get; set; }
         public RankVoting? RankVoting { get; set; }
+
+        public bool Banned { get; set; } = false; 
     }
 
     public class FailedScore

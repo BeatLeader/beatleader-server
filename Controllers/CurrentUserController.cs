@@ -25,17 +25,20 @@ namespace BeatLeader_Server.Controllers
         PlayerController _playerController;
         ReplayController _replayController;
         IWebHostEnvironment _environment;
+        ScoreController _scoreController;
 
         public CurrentUserController(
             AppContext context,
             IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env,
             PlayerController playerController,
-            ReplayController replayController)
+            ReplayController replayController,
+            ScoreController scoreController)
         {
             _context = context;
             _playerController = playerController;
             _replayController = replayController;
+            _scoreController = scoreController;
             _environment = env;
             if (env.IsDevelopment())
             {
@@ -96,9 +99,15 @@ namespace BeatLeader_Server.Controllers
                 Players = clan.Players.Select(p => p.Id).ToList(),
                 PendingInvites = _context.Users.Where(u => u.ClanRequest.Contains(clan)).Select(f => f.Id).ToList(),
             } : null;
+            var player = user.Player;
 
             return new UserReturn {
-                Player = user.Player,
+                Player = player,
+                Ban = player.Banned ? _context
+                    .Bans
+                    .Where(b => b.PlayerId == player.Id)
+                    .Select(b => new BanReturn { Reason = b.BanReason, Duration = b.Duration, Timeset = b.Timeset })
+                    .FirstOrDefault() : null,
                 ClanRequest = user.ClanRequest,
                 BannedClans = user.BannedClans,
                 Friends = friends != null ? friends.Friends.Select(f => f.Id).ToList() : new List<string>(),
@@ -216,6 +225,11 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
+            if (player.Banned)
+            {
+                return BadRequest("You are banned!");
+            }
+
             string fileName = userId;
             try
             {
@@ -257,6 +271,10 @@ namespace BeatLeader_Server.Controllers
             if (player == null)
             {
                 return NotFound();
+            }
+            if (player.Banned)
+            {
+                return BadRequest("You are banned!");
             }
             if (newName.Length < 3 || newName.Length > 30)
             {
@@ -414,6 +432,10 @@ namespace BeatLeader_Server.Controllers
             if (currentPlayer == null || migratedToPlayer == null)
             {
                 return BadRequest("Could not find one of the players =( Make sure you posted at least one score from the mod.");
+            }
+
+            if (currentPlayer.Banned || migratedToPlayer.Banned) {
+                return BadRequest("Some of the players are banned");
             }
 
             if (migratedToPlayer.Clans.Select(c => c.Tag).Union(currentPlayer.Clans.Select(c => c.Tag)).Count() > 3) {
@@ -654,6 +676,121 @@ namespace BeatLeader_Server.Controllers
             }
 
             await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpPost("~/user/ban")]
+        public async Task<ActionResult> Ban([FromQuery] string? id = null, [FromQuery] string? reason = null, [FromQuery] int? duration = null)
+        {
+            string userId = GetId().Value;
+
+            var transaction = _context.Database.BeginTransaction();
+            var player = await _context.Players.FindAsync(userId);
+
+            if (id != null && player != null && player.Role.Contains("admin"))
+            {
+                if (reason == null || duration == null) {
+                    return BadRequest("Provide ban reason and duration");
+                }
+                player = await _context.Players.FindAsync(id);
+            }
+
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            if (player.Banned) {
+                return BadRequest("Player already banned");
+            }
+
+            var leaderboardsToUpdate = new List<string>();
+            var scores = _context.Scores.Where(s => s.PlayerId == player.Id).ToList();
+            foreach (var score in scores)
+            {
+                leaderboardsToUpdate.Add(score.LeaderboardId);
+                score.Banned = true;
+            }
+
+            player.Banned = true;
+
+            Ban ban = new Ban {
+                PlayerId = player.Id,
+                BannedBy = userId,
+                BanReason = reason ?? "Self ban",
+                Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
+                Duration = duration ?? 0,
+            };
+            _context.Bans.Add(ban);
+
+            await _context.SaveChangesAsync();
+            transaction.Commit();
+
+            HttpContext.Response.OnCompleted(async () => {
+                foreach (var item in leaderboardsToUpdate)
+                {
+                    await _scoreController.RefreshScores(item);
+                }
+
+                await _playerController.RefreshRanks();
+            });
+
+            return Ok();
+        }
+
+        [HttpPost("~/user/unban")]
+        public async Task<ActionResult> Unban([FromQuery] string? id = null)
+        {
+            string userId = GetId().Value;
+            var transaction = _context.Database.BeginTransaction();
+            var player = await _context.Players.FindAsync(userId);
+            bool adminUnban = false;
+
+            if (id != null && player != null && player.Role.Contains("admin"))
+            {
+                adminUnban = true;
+                player = await _context.Players.FindAsync(id);
+            }
+
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            if (!player.Banned) { return BadRequest("Player is not banned"); }
+            var ban = _context.Bans.OrderByDescending(x => x.Id).Where(x => x.PlayerId == player.Id).FirstOrDefault();
+            if (ban != null && ban.BannedBy != userId && !adminUnban) {
+                return BadRequest("Good try, but not");
+            }
+
+            var timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+            if (ban != null && ban.BannedBy == userId && !adminUnban && (timeset - ban.Timeset) < 60 * 60 * 24 * 7)
+            {
+                return BadRequest("You will can unban yourself after: " + (24 * 7 - (timeset - ban.Timeset) / (60 * 60)) + "hours");
+            }
+
+            var scores = _context.Scores.Where(s => s.PlayerId == player.Id).ToList();
+            var leaderboardsToUpdate = new List<string>();
+            foreach (var score in scores)
+            {
+                leaderboardsToUpdate.Add(score.LeaderboardId);
+                score.Banned = false;
+                
+            }
+            player.Banned = false;
+
+            await _context.SaveChangesAsync();
+            transaction.Commit();
+
+            HttpContext.Response.OnCompleted(async () => {
+                foreach (var item in leaderboardsToUpdate)
+                {
+                    await _scoreController.RefreshScores(item);
+                }
+                await _playerController.RefreshPlayer(player);
+                await _playerController.RefreshRanks();
+            });
 
             return Ok();
         }

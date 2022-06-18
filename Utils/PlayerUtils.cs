@@ -10,7 +10,7 @@ namespace BeatLeader_Server.Utils
     {
         public static void RecalculatePP(this AppContext context, Player player, List<Score>? scores = null)
         {
-            var ranked = scores ?? context.Scores.Where(s => s.PlayerId == player.Id && s.Pp != 0).OrderByDescending(s => s.Pp).ToList();
+            var ranked = scores ?? context.Scores.Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned).OrderByDescending(s => s.Pp).ToList();
             float resultPP = 0f;
             foreach ((int i, Score s) in ranked.Select((value, i) => (i, value)))
             {
@@ -28,7 +28,7 @@ namespace BeatLeader_Server.Utils
         {
             float oldPp = player.Pp;
 
-            var rankedScores = context.Scores.Where(s => s.PlayerId == player.Id && s.Pp != 0).OrderByDescending(s => s.Pp).Select(s => new { Pp = s.Pp }).ToList();
+            var rankedScores = context.Scores.Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned).OrderByDescending(s => s.Pp).Select(s => new { Pp = s.Pp }).ToList();
             float resultPP = 0f;
             foreach ((int i, float pp) in rankedScores.Select((value, i) => (i, value.Pp)))
             {

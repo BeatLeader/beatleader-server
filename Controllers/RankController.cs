@@ -129,7 +129,12 @@ namespace BeatLeader_Server.Controllers
             var score = await _context
                 .Scores
                 .Include(s => s.RankVoting)
-                .FirstOrDefaultAsync(l => l.Leaderboard.Song.Hash == hash && l.Leaderboard.Difficulty.DifficultyName == diff && l.Leaderboard.Difficulty.ModeName == mode && l.PlayerId == userId);
+                .FirstOrDefaultAsync(s => 
+                    s.Leaderboard.Song.Hash == hash 
+                 && !s.Banned
+                 && s.Leaderboard.Difficulty.DifficultyName == diff 
+                 && s.Leaderboard.Difficulty.ModeName == mode 
+                 && s.PlayerId == userId);
 
             if (score == null)
             {
