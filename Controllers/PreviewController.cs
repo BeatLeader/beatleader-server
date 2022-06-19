@@ -16,35 +16,23 @@ namespace BeatLeader_Server.Controllers
     public class PreviewController : Controller
     {
         private readonly HttpClient _client;
-        private readonly SongController _songController;
+        private readonly AppContext _context;
         private readonly IWebHostEnvironment _webHostEnvironment;
 
-        public PreviewController(SongController songController, IWebHostEnvironment webHostEnvironment) {
+        public PreviewController(AppContext context, IWebHostEnvironment webHostEnvironment) {
             _client = new HttpClient();
-            _songController = songController;
+            _context = context;
             _webHostEnvironment = webHostEnvironment;
         }
+
         [HttpGet("~/preview/replay")]
-        public async Task<ActionResult> Get([FromQuery] string link)
-        {
-            Uri myUri = new Uri(link);
-            var parameters = HttpUtility.ParseQueryString(myUri.Query);
-            string? playerID = parameters.Get("playerID");
-            if (playerID == null) {
-                return BadRequest("Link should contain playerID");
-            }
-
-            string? songID = parameters.Get("id");
-            if (songID == null) {
-                return BadRequest("Link should contain song id");
-            }
-
-            Player? player = await GetPlayerFromSS("https://scoresaber.com/api/player/" + playerID + "/full");
+        public async Task<ActionResult> Get([FromQuery] string playerID, [FromQuery] string id, [FromQuery] string difficulty, [FromQuery] string mode) {
+            Player? player = _context.Players.Where(p => p.Id == playerID).FirstOrDefault() ?? await GetPlayerFromSS("https://scoresaber.com/api/player/" + playerID + "/full");
             if (player == null) {
                 return NotFound();
             }
 
-            Song? song = null; //await _songController(songID);
+            var song = _context.Songs.Select(s => new { Id = s.Id, CoverImage = s.CoverImage, Name = s.Name }).Where(s => s.Id == id).FirstOrDefault();
             if (song == null) {
                 return NotFound();
             }
@@ -53,7 +41,7 @@ namespace BeatLeader_Server.Controllers
             Bitmap bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 
             Graphics graphics = Graphics.FromImage(bitmap);
-            graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+            graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
             graphics.DrawImage(new Bitmap(_webHostEnvironment.WebRootPath + "/images/background.png"), new Rectangle(0, 0, width, height));
             graphics.DrawImage(new Bitmap(_webHostEnvironment.WebRootPath + "/images/replays.png"), new Rectangle(width / 2 - 50, height / 2 - 50 - 25, 100, 100));
 
