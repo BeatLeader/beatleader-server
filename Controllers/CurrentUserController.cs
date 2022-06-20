@@ -83,6 +83,14 @@ namespace BeatLeader_Server.Controllers
             PlayerFriends? friends = _context.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == id);
             Clan? clan = _context.Clans.Include(c => c.Players).Where(f => f.LeaderID == id).FirstOrDefault();
 
+            long intId = Int64.Parse(id);
+            if (intId > 70000000000000000) {
+                var link = _context.AccountLinks.FirstOrDefault(el => el.SteamID == id);
+                if (link != null) {
+                    intId = link.OculusID;
+                }
+            }
+
             ClanReturn? clanReturn = 
             clan != null ? new ClanReturn {
                Id = clan.Id,
@@ -111,6 +119,7 @@ namespace BeatLeader_Server.Controllers
                 ClanRequest = user.ClanRequest,
                 BannedClans = user.BannedClans,
                 Friends = friends != null ? friends.Friends.Select(f => f.Id).ToList() : new List<string>(),
+                Login = _context.Auths.FirstOrDefault(a => a.Id == intId)?.Login,
                 
                 Migrated = _context.AccountLinks.FirstOrDefault(a => a.SteamID == id) != null,
                 Patreoned = _context.PatreonLinks.Find(id) != null,
@@ -346,10 +355,42 @@ namespace BeatLeader_Server.Controllers
         [HttpPatch("~/user/changePassword")]
         public ActionResult ChangePassword([FromForm] string login, [FromForm] string oldPassword, [FromForm] string newPassword)
         {
+            IPAddress? iPAddress = Request.HttpContext.Connection.RemoteIpAddress;
+            if (iPAddress == null)
+            {
+                return Unauthorized("You don't have an IP adress? Tell #NSGolova how you get this error.");
+            }
+
+            LoginAttempt? loginAttempt = _context.LoginAttempts.FirstOrDefault(el => el.IP == iPAddress.ToString());
+            int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+
+            if (loginAttempt != null && loginAttempt.Count == 10 && (timestamp - loginAttempt.Timestamp) < 60 * 60 * 24)
+            {
+                return Unauthorized("To much login attempts in one day");
+            }
+
             string userId = GetId().Value;
             AuthInfo? authInfo = _context.Auths.FirstOrDefault(a => a.Login == login && a.Password == oldPassword && Int64.Parse(userId) == a.Id);
 
             if (authInfo == null) {
+                if (loginAttempt == null)
+                {
+                    loginAttempt = new LoginAttempt
+                    {
+                        IP = iPAddress.ToString(),
+                        Timestamp = timestamp,
+                    };
+                    _context.LoginAttempts.Add(loginAttempt);
+                    _context.SaveChanges();
+                }
+                else if ((timestamp - loginAttempt.Timestamp) >= 60 * 60 * 24)
+                {
+                    loginAttempt.Timestamp = timestamp;
+                    loginAttempt.Count = 0;
+                }
+                loginAttempt.Count++;
+                _context.SaveChanges();
+
                 return Unauthorized("Login or password is incorrect");
             }
             if (newPassword.Trim().Length < 8)
@@ -385,6 +426,89 @@ namespace BeatLeader_Server.Controllers
 
             authInfo.Password = newPassword;
             _context.Auths.Update(authInfo);
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
+        [HttpPatch("~/user/changeLogin")]
+        public ActionResult ChangeLogin([FromForm] string newLogin)
+        {
+            IPAddress? iPAddress = Request.HttpContext.Connection.RemoteIpAddress;
+            if (iPAddress == null)
+            {
+                return Unauthorized("You don't have an IP adress? Tell #NSGolova how you get this error.");
+            }
+
+            LoginAttempt? loginAttempt = _context.LoginAttempts.FirstOrDefault(el => el.IP == iPAddress.ToString());
+            int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+
+            if (loginAttempt != null && loginAttempt.Count == 10 && (timestamp - loginAttempt.Timestamp) < 60 * 60 * 24)
+            {
+                return Unauthorized("To much login changes attempts in one day");
+            }
+
+            string userId = GetId().Value;
+
+            long intId = Int64.Parse(userId);
+            if (intId > 70000000000000000)
+            {
+                var link = _context.AccountLinks.FirstOrDefault(el => el.SteamID == userId);
+                if (link != null)
+                {
+                    intId = link.OculusID;
+                }
+            }
+
+            AuthInfo? authInfo = _context.Auths.FirstOrDefault(a => a.Id == intId);
+            if (authInfo == null)
+            {
+                return Unauthorized("Can't find auth info");
+            }
+
+            if (_context.Auths.FirstOrDefault(a => a.Login == newLogin) != null) {
+
+                if (loginAttempt == null)
+                {
+                    loginAttempt = new LoginAttempt
+                    {
+                        IP = iPAddress.ToString(),
+                        Timestamp = timestamp,
+                    };
+                    _context.LoginAttempts.Add(loginAttempt);
+                    _context.SaveChanges();
+                }
+                else if ((timestamp - loginAttempt.Timestamp) >= 60 * 60 * 24)
+                {
+                    loginAttempt.Timestamp = timestamp;
+                    loginAttempt.Count = 0;
+                }
+                loginAttempt.Count++;
+                _context.SaveChanges();
+
+                return Unauthorized("User with such login already exists");
+            }
+
+            if (newLogin.Trim().Length < 2)
+            {
+                return Unauthorized("Use at least 3 symbols for login.");
+            }
+
+            var lastLoginChange = _context.LoginChanges.OrderByDescending(el => el.Timestamp).FirstOrDefault(el => el.PlayerId == authInfo.Id);
+            if (lastLoginChange != null && (timestamp - lastLoginChange.Timestamp) < 60 * 60 * 24 * 7)
+            {
+                return BadRequest("Error. You can change login after " + (int)(7 - (timestamp - lastLoginChange.Timestamp) / (60 * 60 * 24)) + " day(s)");
+            }
+            if (lastLoginChange == null)
+            {
+                lastLoginChange = new LoginChange { PlayerId = authInfo.Id };
+                _context.LoginChanges.Add(lastLoginChange);
+            }
+            lastLoginChange.OldLogin = authInfo.Login;
+            lastLoginChange.NewLogin = newLogin;
+            lastLoginChange.Timestamp = timestamp;
+
+            authInfo.Login = newLogin;
             _context.SaveChanges();
 
             return Ok();
