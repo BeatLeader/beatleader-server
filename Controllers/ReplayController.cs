@@ -213,6 +213,10 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
+            if (player.Banned)
+            {
+                return BadRequest("You are banned!");
+            }
             (replay, Score resultScore) = ReplayUtils.ProcessReplay(replay, leaderboard);
 
             using (_serverTiming.TimeAction("score"))
@@ -370,7 +374,7 @@ namespace BeatLeader_Server.Controllers
 
                 _context.RecalculatePP(player);
                 float resultPP = player.Pp;
-                var rankedPlayers = _context.Players.Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id).OrderByDescending(t => t.Pp).ToList();
+                var rankedPlayers = _context.Players.Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned).OrderByDescending(t => t.Pp).ToList();
 
                 if (rankedPlayers.Count() > 0) {
 
@@ -464,9 +468,7 @@ namespace BeatLeader_Server.Controllers
                 }
                 catch (Exception e)
                 {
-                    try {
-                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, e.ToString());
-                    } catch { }
+                    SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, e.ToString());
                 }
             });
 
@@ -475,6 +477,7 @@ namespace BeatLeader_Server.Controllers
 
         [NonAction]
         private void SaveFailedScore(IDbContextTransaction transaction, Score? previousScore, Score score, Leaderboard leaderboard, string failReason) {
+            try {
             RollbackScore(score, previousScore, leaderboard);
 
             FailedScore failedScore = new FailedScore {
@@ -503,6 +506,7 @@ namespace BeatLeader_Server.Controllers
             _context.SaveChanges();
 
             transaction.Commit();
+            } catch { }
         }
 
         [NonAction]

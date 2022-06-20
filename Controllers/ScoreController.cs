@@ -154,21 +154,22 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> RefreshScores([FromQuery] string? leaderboardId = null)
         {
-            string currentId = HttpContext.CurrentUserID();
-            Player? currentPlayer = _context.Players.Find(currentId);
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
+            if (HttpContext != null) {
+                string currentId = HttpContext.CurrentUserID();
+                Player? currentPlayer = _context.Players.Find(currentId);
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
             }
-            List<Leaderboard> allLeaderboards;
-            if (leaderboardId != null) {
-                allLeaderboards = _context.Leaderboards.Where(l => l.Id == leaderboardId).Include(s => s.Scores).Include(l => l.Difficulty).ToList();
-            } else {
-                allLeaderboards = _context.Leaderboards.Include(s => s.Scores).Include(l => l.Difficulty).ToList();
-            }
-            
-            foreach (Leaderboard leaderboard in allLeaderboards) {
-                var allScores = leaderboard.Scores;
+
+            var query = _context.Leaderboards.Where(l => l.Difficulty.Ranked).Include(s => s.Scores).Include(l => l.Difficulty);
+            var allLeaderboards = (leaderboardId != null ? query.Where(s => s.Id == leaderboardId) : query).Select(l => new { Scores = l.Scores, Difficulty = l.Difficulty }).ToList();
+
+            var transaction = _context.Database.BeginTransaction();
+
+            foreach (var leaderboard in allLeaderboards) {
+                var allScores = leaderboard.Scores.Where(s => !s.Banned).ToList();
                 foreach (Score s in allScores)
                 {
                     s.ModifiedScore = (int)((float)s.BaseScore * ReplayUtils.GetTotalMultiplier(s.Modifiers));
@@ -190,10 +191,7 @@ namespace BeatLeader_Server.Controllers
                 foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
                 {
                     s.Rank = i + 1;
-                    _context.Scores.Update(s);
                 }
-                leaderboard.Scores = rankedScores;
-                _context.Leaderboards.Update(leaderboard);
                 try {
                     await _context.SaveChangesAsync();
                 } catch (Exception e) {
@@ -323,7 +321,7 @@ namespace BeatLeader_Server.Controllers
 
             var leaderboardId = song.Id + SongUtils.DiffForDiffName(diff).ToString() + modeValue.ToString();
 
-            IEnumerable<ScoreResponse> query = _context.Scores.Where(s => s.LeaderboardId == leaderboardId).Include(s => s.Player).ThenInclude(p => p.Clans).Include(s => s.Player).ThenInclude(p => p.PatreonFeatures).Select(RemoveLeaderboard).ToList();
+            IEnumerable<ScoreResponse> query = _context.Scores.Where(s => !s.Banned && s.LeaderboardId == leaderboardId).Include(s => s.Player).ThenInclude(p => p.Clans).Include(s => s.Player).ThenInclude(p => p.PatreonFeatures).Select(RemoveLeaderboard).ToList();
 
             if (query.Count() == 0)
             {

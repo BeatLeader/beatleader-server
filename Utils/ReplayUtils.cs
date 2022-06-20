@@ -219,7 +219,9 @@ namespace BeatLeader_Server.Utils
                 ["NA"] = -0.3f,
                 ["NB"] = -0.2f,
                 ["NF"] = -0.5f,
-                ["NO"] = -0.2f
+                ["NO"] = -0.2f,
+                ["PM"] = 0.0f,
+                ["SC"] = 0.0f
             };
         }
 

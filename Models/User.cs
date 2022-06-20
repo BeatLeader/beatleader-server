@@ -31,11 +31,19 @@ namespace BeatLeader_Server.Models
         public ICollection<string> PendingInvites { get; set; } = new List<string>();
     }
 
+    public class BanReturn {
+        public string Reason { get; set; }
+        public int Timeset { get; set; }
+        public int Duration { get; set; }
+    }
+
     public class UserReturn
     {
         public Player Player { get; set; }
         
         public ClanReturn? Clan { get; set; }
+
+        public BanReturn? Ban { get; set; }
         public ICollection<Clan> ClanRequest { get; set; } = new List<Clan>();
         public ICollection<Clan> BannedClans { get; set; } = new List<Clan>();
         public ICollection<Playlist>? Playlists { get; set; }

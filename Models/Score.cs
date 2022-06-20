@@ -28,6 +28,7 @@
         public Leaderboard Leaderboard { get; set; }
 
         public ReplayIdentification Identification { get; set; }
+        public bool Banned { get; set; } = false;
     }
 
     public class FailedScore

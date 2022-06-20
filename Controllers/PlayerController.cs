@@ -396,7 +396,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string search = "", 
             [FromQuery] string countries = "")
         {
-            IQueryable<Player> request = _context.Players.Include(p => p.ScoreStats).Include(p => p.Clans);
+            IQueryable<Player> request = _context.Players.Include(p => p.ScoreStats).Include(p => p.Clans).Where(p => !p.Banned);
             if (countries.Length != 0)
             {
                 request = request.Where(p => countries.Contains(p.Country));
@@ -469,7 +469,7 @@ namespace BeatLeader_Server.Controllers
                 cronTimestamps.HistoriesTimestamp = timestamp;
                 _context.Add(cronTimestamps);
             }
-            var ranked = _context.Players.Include(p => p.ScoreStats).Include(p => p.StatsHistory).ToList();
+            var ranked = _context.Players.Where(p => !p.Banned).Include(p => p.ScoreStats).Include(p => p.StatsHistory).ToList();
             foreach (Player p in ranked)
             {
                 p.Histories = GenerateListString(p.Histories, p.Rank);
@@ -684,7 +684,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/players/stats/refresh")]
         public async Task<ActionResult> RefreshPlayersStats()
         {
-            var players = await _context.Players.Include(p => p.ScoreStats).ToListAsync();
+            var players = await _context.Players.Where(p => !p.Banned).Include(p => p.ScoreStats).ToListAsync();
             foreach (var player in players)
             {
                 await RefreshStats(player);
@@ -697,16 +697,17 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> RefreshRanks()
         {
-            string currentId = HttpContext.CurrentUserID();
-            Player? currentPlayer = _context.Players.Find(currentId);
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
+            if (HttpContext != null) {
+                string currentId = HttpContext.CurrentUserID();
+                Player? currentPlayer = _context.Players.Find(currentId);
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
             }
-            var players = _context.Players.ToList();
             Dictionary<string, int> countries = new Dictionary<string, int>();
             
-            var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
+            var ranked = _context.Players.Where(p => !p.Banned).OrderByDescending(t => t.Pp).ToList();
             foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
             {
                 p.Rank = i + 1;

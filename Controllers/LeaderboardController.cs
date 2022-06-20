@@ -29,6 +29,7 @@ namespace BeatLeader_Server.Controllers
                     .Leaderboards
                     .Where(lb => lb.Id == id)
                     .Include(lb => lb.Scores
+                        .Where(s => !s.Banned)
                         .OrderByDescending(s => s.ModifiedScore)
                         .Skip((page - 1) * count)
                         .Take(count))
@@ -47,7 +48,7 @@ namespace BeatLeader_Server.Controllers
                     .ThenInclude(s => s.Player)
                     .ThenInclude(s => s.Clans)
                     .Include(lb => lb.Scores
-                        .Where(s => countries.ToLower().Contains(s.Player.Country.ToLower()))
+                        .Where(s => !s.Banned && countries.ToLower().Contains(s.Player.Country.ToLower()))
                         .OrderByDescending(s => s.ModifiedScore)
                         .Skip((page - 1) * count)
                         .Take(count))
@@ -73,8 +74,7 @@ namespace BeatLeader_Server.Controllers
                     .Include(lb => lb.Difficulty)
                     .Include(lb => lb.Song)
                     .Where(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff)
-                    .Include(lb => lb.Scores)
-                    .ThenInclude(score => score.Player)
+                    .Include(lb => lb.Scores.Where(s => !s.Banned))
                     .FirstOrDefaultAsync();
 
             if (leaderboard == null) {
