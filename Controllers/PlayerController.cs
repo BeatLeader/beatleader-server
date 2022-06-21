@@ -452,55 +452,61 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/players/sethistories")]
         public async Task<ActionResult> SetHistories()
         {
+            var transaction = _context.Database.BeginTransaction();
             int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             CronTimestamps? cronTimestamps = _context.cronTimestamps.Find(1);
-            if (cronTimestamps != null) {
+            if (cronTimestamps != null)
+            {
                 if ((timestamp - cronTimestamps.HistoriesTimestamp) < 60 * 60 * 24 - 5 * 60)
                 {
                     return BadRequest("Allowed only at midnight");
-                } else
+                }
+                else
                 {
                     cronTimestamps.HistoriesTimestamp = timestamp;
                     _context.Update(cronTimestamps);
                 }
-            } else
+            }
+            else
             {
                 cronTimestamps = new CronTimestamps();
                 cronTimestamps.HistoriesTimestamp = timestamp;
                 _context.Add(cronTimestamps);
             }
-            var ranked = _context.Players.Where(p => !p.Banned).Include(p => p.ScoreStats).Include(p => p.StatsHistory).ToList();
-            foreach (Player p in ranked)
-            {
-                p.Histories = GenerateListString(p.Histories, p.Rank);
+            transaction.Commit();
+            HttpContext.Response.OnCompleted(async () => {
+                await RefreshPlayersStats();
+                var ranked = _context.Players.Where(p => !p.Banned).Include(p => p.ScoreStats).Include(p => p.StatsHistory).ToList();
+                foreach (Player p in ranked)
+                {
+                    p.Histories = GenerateListString(p.Histories, p.Rank);
 
-                var stats = p.ScoreStats;
-                var statsHistory = p.StatsHistory;
-                if (statsHistory == null) {
-                    statsHistory = new PlayerStatsHistory();
+                    var stats = p.ScoreStats;
+                    var statsHistory = p.StatsHistory;
+                    if (statsHistory == null) {
+                        statsHistory = new PlayerStatsHistory();
+                    }
+
+                    statsHistory.Pp = GenerateListString(statsHistory.Pp, p.Pp);
+                    statsHistory.Rank = p.Histories;
+                    statsHistory.CountryRank = GenerateListString(statsHistory.CountryRank, p.CountryRank);
+                    statsHistory.TotalScore = GenerateListString(statsHistory.TotalScore, stats.TotalScore);
+                    statsHistory.AverageRankedAccuracy = GenerateListString(statsHistory.AverageRankedAccuracy, stats.AverageRankedAccuracy);
+                    statsHistory.TopAccuracy = GenerateListString(statsHistory.TopAccuracy, stats.TopAccuracy);
+                    statsHistory.TopPp = GenerateListString(statsHistory.TopPp, stats.TopPp);
+                    statsHistory.AverageAccuracy = GenerateListString(statsHistory.AverageAccuracy, stats.AverageAccuracy);
+                    statsHistory.MedianAccuracy = GenerateListString(statsHistory.MedianAccuracy, stats.MedianAccuracy);
+                    statsHistory.MedianRankedAccuracy = GenerateListString(statsHistory.MedianRankedAccuracy, stats.MedianRankedAccuracy);
+                    statsHistory.TotalPlayCount = GenerateListString(statsHistory.TotalPlayCount, stats.TotalPlayCount);
+                    statsHistory.RankedPlayCount = GenerateListString(statsHistory.RankedPlayCount, stats.RankedPlayCount);
+                    statsHistory.ReplaysWatched = GenerateListString(statsHistory.ReplaysWatched, stats.ReplaysWatched);
+
+                    p.StatsHistory = statsHistory;
+                    stats.DailyImprovements = 0;
                 }
 
-                statsHistory.Pp = GenerateListString(statsHistory.Pp, p.Pp);
-                statsHistory.Rank = p.Histories;
-                statsHistory.CountryRank = GenerateListString(statsHistory.CountryRank, p.CountryRank);
-                statsHistory.TotalScore = GenerateListString(statsHistory.TotalScore, stats.TotalScore);
-                statsHistory.AverageRankedAccuracy = GenerateListString(statsHistory.AverageRankedAccuracy, stats.AverageRankedAccuracy);
-                statsHistory.TopAccuracy = GenerateListString(statsHistory.TopAccuracy, stats.TopAccuracy);
-                statsHistory.TopPp = GenerateListString(statsHistory.TopPp, stats.TopPp);
-                statsHistory.AverageAccuracy = GenerateListString(statsHistory.AverageAccuracy, stats.AverageAccuracy);
-                statsHistory.MedianAccuracy = GenerateListString(statsHistory.MedianAccuracy, stats.MedianAccuracy);
-                statsHistory.MedianRankedAccuracy = GenerateListString(statsHistory.MedianRankedAccuracy, stats.MedianRankedAccuracy);
-                statsHistory.TotalPlayCount = GenerateListString(statsHistory.TotalPlayCount, stats.TotalPlayCount);
-                statsHistory.RankedPlayCount = GenerateListString(statsHistory.RankedPlayCount, stats.RankedPlayCount);
-                statsHistory.ReplaysWatched = GenerateListString(statsHistory.ReplaysWatched, stats.ReplaysWatched);
-
-                p.StatsHistory = statsHistory;
-                stats.DailyImprovements = 0;
-
-                Response.WriteAsync("\r\n");
-            }
-
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
+            });
 
             return Ok();
         }
