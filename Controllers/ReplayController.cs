@@ -224,6 +224,8 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("You are banned!");
             }
 
+            ScoreImprovement improvement = new ScoreImprovement();
+
             using (_serverTiming.TimeAction("score"))
             {
                 resultScore.PlayerId = authenticatedPlayerID;
@@ -233,7 +235,10 @@ namespace BeatLeader_Server.Controllers
                 resultScore.Timepost = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
                 if (currentScore != null)
-                {   
+                {
+                    improvement.Score = resultScore.ModifiedScore - currentScore.ModifiedScore;
+                    improvement.Accuracy = resultScore.Accuracy - currentScore.Accuracy;
+
                     player.ScoreStats.TotalScore -= currentScore.ModifiedScore;
                     if (player.ScoreStats.TotalPlayCount == 1)
                     {
@@ -245,6 +250,7 @@ namespace BeatLeader_Server.Controllers
                     
                     if (leaderboard.Difficulty.Ranked)
                     {
+                        float oldAverageAcc = player.ScoreStats.AverageRankedAccuracy;
                         if (player.ScoreStats.RankedPlayCount == 1)
                         {
                             player.ScoreStats.AverageRankedAccuracy = 0.0f;
@@ -252,6 +258,9 @@ namespace BeatLeader_Server.Controllers
                         {
                             player.ScoreStats.AverageRankedAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, currentScore.Accuracy);
                         }
+
+                        improvement.AverageRankedAccuracy = player.ScoreStats.AverageRankedAccuracy - oldAverageAcc;
+                        improvement.Pp = resultScore.Pp - currentScore.Pp;
                     }
 
                     switch (currentScore.Accuracy)
@@ -315,6 +324,10 @@ namespace BeatLeader_Server.Controllers
                         s.Rank = i + 1;
                     }
                 }
+
+                if (currentScore != null) {
+                    improvement.Rank = resultScore.Rank - currentScore.Rank;
+                }
                 
                 leaderboard.Plays = rankedScores.Count;
             }
@@ -337,6 +350,7 @@ namespace BeatLeader_Server.Controllers
 
             var transaction2 = _context.Database.BeginTransaction();
             float oldPp = player.Pp;
+            int oldRank = player.Rank;
             using (_serverTiming.TimeAction("pp"))
             {
                 player.ScoreStats.TotalScore += resultScore.ModifiedScore;
@@ -405,6 +419,9 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
+                improvement.TotalPp = player.Pp - oldPp;
+                improvement.TotalRank = player.Rank - oldRank;
+
                 try
                 {
                     await _context.SaveChangesAsync();
@@ -451,6 +468,15 @@ namespace BeatLeader_Server.Controllers
                     await _containerClient.DeleteBlobIfExistsAsync(tempName);
 
                     resultScore.Replay = replayLink;
+                    resultScore.AccLeft = statistic.AccuracyTracker.AccLeft;
+                    resultScore.AccRight = statistic.AccuracyTracker.AccRight;
+
+                    if (currentScore != null) {
+                        improvement.AccLeft = resultScore.AccLeft - currentScore.AccLeft;
+                        improvement.AccRight = resultScore.AccRight - currentScore.AccRight;
+                    }
+
+                    resultScore.ScoreImprovement = improvement;
 
                     _context.SaveChanges();
                     transaction3.Commit();

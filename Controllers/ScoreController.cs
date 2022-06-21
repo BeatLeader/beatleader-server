@@ -41,6 +41,25 @@ namespace BeatLeader_Server.Controllers
             }
         }
 
+        [HttpGet("~/score/{id}")]
+        public async Task<ActionResult<Score>> GetScore(int id)
+        {
+            var score = await _context
+                .Scores
+                .Where(l => l.Id == id)
+                .Include(el => el.Player).ThenInclude(el => el.PatreonFeatures)
+                .FirstOrDefaultAsync();
+
+            if (score != null)
+            {
+                return score;
+            }
+            else
+            {
+                return NotFound();
+            }
+        }
+
         [HttpDelete("~/score/{id}")]
         [Authorize]
         public async Task<ActionResult> DeleteScore(int id)
@@ -448,16 +467,143 @@ namespace BeatLeader_Server.Controllers
             }
         }
 
-        [HttpGet("~/score/statistic/{id}")]
-        public async Task<ActionResult<ScoreStatistic>> GetStatistic(string id)
+        [HttpGet("~/user/friendScores")]
+        [Authorize]
+        public async Task<ActionResult<ResponseWithMetadata<Score>>> FriendsScores(
+            string id,
+            [FromQuery] string sortBy = "date",
+            [FromQuery] string order = "desc",
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 8,
+            [FromQuery] string? search = null,
+            [FromQuery] string? diff = null,
+            [FromQuery] string? type = null,
+            [FromQuery] float? stars_from = null,
+            [FromQuery] float? stars_to = null)
         {
-            ScoreStatistic? scoreStatistic = _context.ScoreStatistics.Where(s => s.ScoreId == Int64.Parse(id)).Include(s => s.AccuracyTracker).Include(s => s.HitTracker).Include(s => s.ScoreGraphTracker).Include(s => s.WinTracker).FirstOrDefault();
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
+            var player = await _context.Players.FindAsync(userId);
+            if (player == null) {
+                return NotFound();
+            }
+
+            IQueryable<Score> sequence;
+
+            using (_serverTiming.TimeAction("sequence"))
+            {
+                var friends = await _context.Friends.Where(f => f.Id == player.Id).Include(f => f.Friends).FirstOrDefaultAsync();
+                if (friends != null)
+                {
+                    var friendsList = friends.Friends.Select(f => f.Id).ToList();
+                    sequence = _context.Scores.Where(s => s.PlayerId == player.Id || friendsList.Contains(s.PlayerId));
+                }
+                else
+                {
+                    sequence = _context.Scores.Where(s => s.PlayerId == player.Id);
+                }
+                switch (sortBy)
+                {
+                    case "date":
+                        sequence = sequence.Order(order, t => t.Timeset);
+                        break;
+                    case "pp":
+                        sequence = sequence.Order(order, t => t.Pp);
+                        break;
+                    case "acc":
+                        sequence = sequence.Order(order, t => t.Accuracy);
+                        break;
+                    case "pauses":
+                        sequence = sequence.Order(order, t => t.Pauses);
+                        break;
+                    case "rank":
+                        sequence = sequence.Order(order, t => t.Rank);
+                        break;
+                    case "stars":
+                        sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Order(order, t => t.Leaderboard.Difficulty.Stars);
+                        break;
+                    default:
+                        break;
+                }
+                if (search != null)
+                {
+                    string lowSearch = search.ToLower();
+                    sequence = sequence
+                        .Include(lb => lb.Leaderboard)
+                        .ThenInclude(lb => lb.Song)
+                        .Where(p => p.Leaderboard.Song.Author.ToLower().Contains(lowSearch) ||
+                                    p.Leaderboard.Song.Mapper.ToLower().Contains(lowSearch) ||
+                                    p.Leaderboard.Song.Name.ToLower().Contains(lowSearch));
+                }
+                if (diff != null)
+                {
+                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.DifficultyName.ToLower().Contains(diff.ToLower()));
+                }
+                if (type != null)
+                {
+                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Ranked : !p.Leaderboard.Difficulty.Ranked);
+                }
+                if (stars_from != null)
+                {
+                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.Stars >= stars_from);
+                }
+                if (stars_to != null)
+                {
+                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.Stars <= stars_to);
+                }
+            }
+
+            ResponseWithMetadata<Score> result;
+            using (_serverTiming.TimeAction("db"))
+            {
+                result = new ResponseWithMetadata<Score>()
+                {
+                    Metadata = new Metadata()
+                    {
+                        Page = page,
+                        ItemsPerPage = count,
+                        Total = sequence.Count()
+                    },
+                    Data = await sequence.Skip((page - 1) * count).Take(count).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).ToListAsync()
+                };
+            }
+            return result;
+        }
+
+        [HttpGet("~/score/statistic/{id}")]
+        public async Task<ActionResult<ScoreStatistic>> GetStatistic(int id)
+        {
+            ScoreStatistic? scoreStatistic = _context.ScoreStatistics.Where(s => s.ScoreId == id).Include(s => s.AccuracyTracker).Include(s => s.HitTracker).Include(s => s.ScoreGraphTracker).Include(s => s.WinTracker).FirstOrDefault();
             if (scoreStatistic == null)
             {
                 return NotFound();
             }
             ReplayStatisticUtils.DecodeArrays(scoreStatistic);
             return scoreStatistic;
+        }
+
+        [HttpGet("~/score/migration1")]
+        public async Task<ActionResult> migration1()
+        {
+            var allScores = _context.Scores.ToList();
+            var allAccs = _context.ScoreStatistics.Select(s => new { Id = s.ScoreId, AccLeft = s.AccuracyTracker.AccLeft, AccRight = s.AccuracyTracker.AccRight }).ToList();
+
+
+            foreach (var score in allScores)
+            {
+                var acc = allAccs.FirstOrDefault(a => a.Id == score.Id);
+                if (acc != null) {
+                    score.AccLeft = acc.AccLeft;
+                    score.AccRight = acc.AccRight;
+                }
+            }
+
+            _context.SaveChanges();
+
+            return Ok();
         }
 
         [HttpGet("~/score/calculatestatistic/players")]
