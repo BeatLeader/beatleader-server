@@ -29,8 +29,6 @@
         public string LeaderboardId { get; set; }
         public Leaderboard Leaderboard { get; set; }
         public ScoreImprovement? ScoreImprovement { get; set; }
-
-        public ReplayIdentification Identification { get; set; }
         public bool Banned { get; set; } = false;
     }
 

@@ -47,7 +47,7 @@ namespace BeatLeader_Server.Models
         public ICollection<Clan> ClanRequest { get; set; } = new List<Clan>();
         public ICollection<Clan> BannedClans { get; set; } = new List<Clan>();
         public ICollection<Playlist>? Playlists { get; set; }
-        public ICollection<string>? Friends { get; set; }
+        public ICollection<Player>? Friends { get; set; }
 
         public string? Login { get; set; }
 

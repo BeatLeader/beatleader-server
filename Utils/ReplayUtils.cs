@@ -4,55 +4,6 @@ namespace BeatLeader_Server.Utils
 {
     class ReplayUtils
     {
-        public static (bool, string?) CheckReplay(byte[] replay, ICollection<Score?> scores, Score? currentScore) {
-            float similarityRate = 0.6f;
-
-            foreach (Score? item in scores)
-            {
-                if (item == null) { continue; }
-                if (currentScore != null && currentScore.Player.Id == item.Player.Id)
-                {
-                    continue;
-                }
-
-                if (item.Identification.Value.Length == 0 || item.Identification.Order.Length == 0) {
-                    continue;
-                }
-
-                byte[] data = item.Identification.Value;
-                int[] order = BlobToOrder(item.Identification.Order);
-
-                int treshold = (int)((float)order.Length * similarityRate);
-                int sameBits = 0;
-
-                int byteIndex = 0;
-                int bitIndex = 3;
-                for (int i = 0; i < order.Length; i++)
-                {
-                    int index = order[i];
-                    if (index >= replay.Length || byteIndex >= data.Length) break;
-
-                    byte current = replay[index];
-
-                    if ((current & (1 << (index % 4))) == (data[byteIndex] & (1 << bitIndex))) {
-                        sameBits++;
-                    }
-
-                    if (sameBits > treshold) {
-                        return (false, item.PlayerId);
-                    }
-                
-                    if (bitIndex == 0) {
-                        byteIndex++;
-                        bitIndex = 3;
-                    } else {
-                        bitIndex--;
-                    }
-                }
-            }
-            return (true, null);
-        }
-
         public static (Replay, Score) ProcessReplay(Replay replay, Leaderboard leaderboard) {
             Score score = new Score();
             
@@ -60,10 +11,6 @@ namespace BeatLeader_Server.Utils
             score.Modifiers = replay.info.modifiers;
             score.WallsHit = replay.walls.Count;
             score.Pauses = replay.pauses.Count;
-            score.Identification = new ReplayIdentification {
-                Order = new byte[0],
-                Value = new byte[0]
-            };
             foreach (var item in replay.notes)
             {
                 switch (item.eventType)
@@ -95,50 +42,6 @@ namespace BeatLeader_Server.Utils
             score.Timeset = replay.info.timestamp;
             
             return (replay, score);
-        }
-
-        public static ReplayIdentification ReplayIdentificationForReplay(byte[] replayData) {
-            int dataLength = replayData.Length;
-            int length = dataLength / 200;
-            int[] randomList = new int[length];
-
-            Random rnd = new Random();
-            int counter = 0;
-            try {
-                while (counter < length) {
-                    int random = rnd.Next(1, dataLength);
-                    if (Array.IndexOf(randomList, random) <= 0) {
-                        randomList[counter] = random;
-                        counter++;
-                    }
-                }
-            } catch (Exception ex) {
-                Console.WriteLine("Error in generating an Array of Random Numbers", ex);
-            }
-
-            byte[] data = new byte[length / 4 + 4];
-            int byteIndex = 0;
-            int bitIndex = 3;
-            for (int i = 0; i < length; i++)
-            {
-                int index = randomList[i];
-                byte current = replayData[index];
-                if ((current & (1 << (index % 4))) != 0) {
-                    data[byteIndex] |= (byte)(1 << bitIndex);
-                }
-                
-                if (bitIndex == 0) {
-                    byteIndex++;
-                    bitIndex = 3;
-                } else {
-                    bitIndex--;
-                }
-            }
-
-            ReplayIdentification result = new ReplayIdentification();
-            result.Order = OrderToBlob(randomList);
-            result.Value = data;
-            return result;
         }
 
         private static int HMD(string hmdName) {

@@ -118,7 +118,7 @@ namespace BeatLeader_Server.Controllers
                     .FirstOrDefault() : null,
                 ClanRequest = user.ClanRequest,
                 BannedClans = user.BannedClans,
-                Friends = friends != null ? friends.Friends.Select(f => f.Id).ToList() : new List<string>(),
+                Friends = friends != null ? friends.Friends.ToList() : new List<Player>(),
                 Login = _context.Auths.FirstOrDefault(a => a.Id == intId)?.Login,
                 
                 Migrated = _context.AccountLinks.FirstOrDefault(a => a.SteamID == id) != null,
