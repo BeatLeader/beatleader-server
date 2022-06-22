@@ -91,7 +91,7 @@ namespace BeatLeader_Server.Utils
             }
             
             score.Modifiers = replay.info.modifiers;
-            score.Platform = replay.info.platform;
+            score.Platform = replay.info.platform + "," + replay.info.gameVersion + "," + replay.info.version;
             score.Timeset = replay.info.timestamp;
             
             return (replay, score);

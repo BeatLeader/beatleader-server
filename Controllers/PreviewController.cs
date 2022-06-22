@@ -1,6 +1,7 @@
 ﻿using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System.Collections.Specialized;
@@ -24,16 +25,37 @@ namespace BeatLeader_Server.Controllers
             _context = context;
             _webHostEnvironment = webHostEnvironment;
         }
+        class SongSelect {
+            public string Id { get; set; }
+            public string CoverImage { get; set; }
+            public string Name { get; set; }
+        }
 
         [HttpGet("~/preview/replay")]
-        public async Task<ActionResult> Get([FromQuery] string playerID, [FromQuery] string id, [FromQuery] string difficulty, [FromQuery] string mode) {
-            Player? player = _context.Players.Where(p => p.Id == playerID).FirstOrDefault() ?? await GetPlayerFromSS("https://scoresaber.com/api/player/" + playerID + "/full");
-            if (player == null) {
-                return NotFound();
+        public async Task<ActionResult> Get(
+            [FromQuery] string? playerID = null, 
+            [FromQuery] string? id = null, 
+            [FromQuery] string? difficulty = null, 
+            [FromQuery] string? mode = null,
+            [FromQuery] int? scoreId = null) {
+
+            Player? player = null;
+            SongSelect? song = null;
+            Score? score = null;
+
+            if (playerID != null && id != null) {
+                player = _context.Players.Where(p => p.Id == playerID).FirstOrDefault() ?? await GetPlayerFromSS("https://scoresaber.com/api/player/" + playerID + "/full");
+                song = _context.Songs.Select(s => new SongSelect { Id = s.Id, CoverImage = s.CoverImage, Name = s.Name }).Where(s => s.Id == id).FirstOrDefault();
+            } else if (scoreId != null) {
+                score = await _context.Scores.Where(s => s.Id == scoreId).Include(s => s.Player).Include(s => s.Leaderboard).ThenInclude(l => l.Song).FirstOrDefaultAsync();
+                if (score != null) {
+                    player = score.Player;
+                    song = new SongSelect { Id = score.Leaderboard.Song.Id, CoverImage = score.Leaderboard.Song.CoverImage, Name = score.Leaderboard.Song.Name };
+                }
             }
 
-            var song = _context.Songs.Select(s => new { Id = s.Id, CoverImage = s.CoverImage, Name = s.Name }).Where(s => s.Id == id).FirstOrDefault();
-            if (song == null) {
+            if (player == null || song == null)
+            {
                 return NotFound();
             }
 
@@ -63,13 +85,24 @@ namespace BeatLeader_Server.Controllers
 
             PrivateFontCollection fontCollection = new PrivateFontCollection();
             fontCollection.AddFontFile(_webHostEnvironment.WebRootPath + "/fonts/Audiowide-Regular.ttf");
+            StringFormat stringFormat = new StringFormat();
+            stringFormat.Alignment = StringAlignment.Center;
 
-            SizeF size1 = graphics.MeasureString(player.Name, new Font("Audiowide", 24), width);
             Color nameColor = ColorFromHSV((Math.Max(0, player.Pp - 1000) / 18000) * 360, 1.0, 1.0);
-            graphics.DrawString(player.Name, new Font("Audiowide", 24), new SolidBrush(nameColor), new Point((int)(width / 2f - size1.Width / 2), 190));
+            graphics.DrawString(player.Name, new Font("Audiowide", 24), new SolidBrush(nameColor), new RectangleF(0, 190, width, 30), stringFormat);
 
-            SizeF size2 = graphics.MeasureString(song.Name, new Font("Audiowide", 28), width);
-            graphics.DrawString(song.Name, new Font("Audiowide", 28), new SolidBrush(Color.White), new Point((int)(width / 2f - size2.Width / 2), 225));
+            var songNameFont = new Font("Audiowide", 30 - song.Name.Length / 5);
+            graphics.DrawString(song.Name, songNameFont, new SolidBrush(Color.White), 30, new RectangleF(0, 225, width, 80), stringFormat);
+
+            if (score != null) {
+                string accuracy = Math.Round(score.Accuracy * 100, 2) + "%";
+                SizeF size3 = graphics.MeasureString(accuracy, new Font("Audiowide", 17), width);
+                graphics.DrawString(accuracy, new Font("Audiowide", 17), new SolidBrush(Color.White), new Point((int)(120 - size3.Width / 2), 15));
+
+                string rankandpp = "#" + score.Rank + (score.Pp > 0 ? " (" + Math.Round(score.Pp, 2) + "pp)" : "");
+                SizeF size4 = graphics.MeasureString(rankandpp, new Font("Audiowide", 17), width);
+                graphics.DrawString(rankandpp, new Font("Audiowide", 17), new SolidBrush(Color.White), new Point((int)(width - 120 - size4.Width / 2), 15));
+            }
             
 
             graphics.DrawRectangle(new Pen(new LinearGradientBrush(new Point(1, 1), new Point(100, 100), Color.Red, Color.BlueViolet), 5), new Rectangle(0, 0, width, height));
@@ -159,6 +192,75 @@ namespace BeatLeader_Server.Controllers
                 return Color.FromArgb(255, t, p, v);
             else
                 return Color.FromArgb(255, v, p, q);
+        }
+
+
+    }
+
+    public static class GraphicsExtension
+    {
+        public static IEnumerable<string> GetWrappedLines(this Graphics that, string text, Font font, double maxWidth = double.PositiveInfinity)
+        {
+            if (String.IsNullOrEmpty(text)) return new string[0];
+            if (font == null) throw new ArgumentNullException("font", "The 'font' parameter must not be null");
+            if (maxWidth <= 0) throw new ArgumentOutOfRangeException("maxWidth", "Maximum width must be greater than zero");
+
+            // See https://stackoverflow.com/questions/6111298/best-way-to-specify-whitespace-in-a-string-split-operation
+            string[] words = text.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
+
+            if (words.Length == 0) return new string[0];
+
+            List<string> lines = new List<string>();
+
+            float spaceCharWidth = that.MeasureString(" ", font).Width;
+            float currentWidth = 0;
+            string currentLine = "";
+            for (int i = 0; i < words.Length; i++)
+            {
+                float currentWordWidth = that.MeasureString(words[i], font).Width;
+                if (currentWidth != 0)
+                {
+                    float potentialWordWidth = spaceCharWidth + currentWordWidth;
+                    if (currentWidth + potentialWordWidth < maxWidth)
+                    {
+                        currentWidth += potentialWordWidth;
+                        currentLine += " " + words[i];
+                    }
+                    else
+                    {
+                        lines.Add(currentLine);
+                        currentLine = words[i];
+                        currentWidth = currentWordWidth;
+                    }
+                }
+                else
+                {
+                    currentWidth += currentWordWidth;
+                    currentLine = words[i];
+                }
+
+                if (i == words.Length - 1)
+                {
+                    lines.Add(currentLine);
+                }
+            }
+
+            return lines;
+        }
+
+        public static void DrawString(this Graphics that, string text, Font font, Brush brush,
+                                            int lineHeight, RectangleF layoutRectangle, StringFormat format)
+        {
+            string[] lines = that.GetWrappedLines(text, font, layoutRectangle.Width).ToArray();
+            Rectangle lastDrawn = new Rectangle(Convert.ToInt32(layoutRectangle.X), Convert.ToInt32(layoutRectangle.Y), 0, 0);
+            foreach (string line in lines)
+            {
+                SizeF lineSize = that.MeasureString(line, font);
+                int increment = lastDrawn.Height == 0 ? 0 : lineHeight;
+                RectangleF lineOrigin = new RectangleF(lastDrawn.X, lastDrawn.Y + increment, layoutRectangle.Width, layoutRectangle.Height);
+                that.DrawString(line, font, brush, lineOrigin, format);
+                lastDrawn = new Rectangle(Point.Round(lineOrigin.Location), Size.Round(lineSize));
+            }
         }
     }
 }

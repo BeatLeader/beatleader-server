@@ -20,12 +20,15 @@
         public int Pauses { get; set; }
         public bool FullCombo { get; set; }
         public int Hmd { get; set; }
+        public float AccRight { get; set; }
+        public float AccLeft { get; set; }
         public string Timeset { get; set; }
         public int Timepost { get; set; }
         public string Platform { get; set; } = "";
         public Player Player { get; set; }
         public string LeaderboardId { get; set; }
         public Leaderboard Leaderboard { get; set; }
+        public ScoreImprovement? ScoreImprovement { get; set; }
 
         public ReplayIdentification Identification { get; set; }
         public bool Banned { get; set; } = false;
