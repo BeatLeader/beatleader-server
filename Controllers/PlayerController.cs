@@ -296,7 +296,16 @@ namespace BeatLeader_Server.Controllers
                         ItemsPerPage = count,
                         Total = sequence.Count()
                     },
-                    Data = await sequence.Skip((page - 1) * count).Take(count).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).ToListAsync()
+                    Data = await sequence
+                            .Skip((page - 1) * count)
+                            .Take(count)
+                            .Include(lb => lb.Leaderboard)
+                                .ThenInclude(lb => lb.Song)
+                                .ThenInclude(lb => lb.Difficulties)
+                            .Include(lb => lb.Leaderboard)
+                                .ThenInclude(lb => lb.Difficulty)
+                            .Include(sc => sc.ScoreImprovement)
+                            .ToListAsync()
                 };
             }
             return result;
@@ -568,14 +577,17 @@ namespace BeatLeader_Server.Controllers
             Dictionary<int, int> hmds = new Dictionary<int, int>();
             foreach (var s in lastScores)
             {
-                if (!platforms.ContainsKey(s.Platform))
-                {
-                    platforms[s.Platform] = 1;
-                }
-                else
-                {
+                string? platform = s.Platform.Split(",").FirstOrDefault();
+                if (platform != null) {
+                    if (!platforms.ContainsKey(platform))
+                    {
+                        platforms[platform] = 1;
+                    }
+                    else
+                    {
 
-                    platforms[s.Platform]++;
+                        platforms[platform]++;
+                    }
                 }
 
                 if (!hmds.ContainsKey(s.Hmd))
@@ -589,8 +601,8 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            player.ScoreStats.TopPlatform = platforms.OrderBy(s => s.Value).First().Key;
-            player.ScoreStats.TopHMD = hmds.OrderBy(s => s.Value).First().Key;
+            player.ScoreStats.TopPlatform = platforms.OrderByDescending(s => s.Value).First().Key;
+            player.ScoreStats.TopHMD = hmds.OrderByDescending(s => s.Value).First().Key;
 
             player.ScoreStats.RankedPlayCount = rankedScores.Count();
             if (player.ScoreStats.TotalPlayCount > 0)

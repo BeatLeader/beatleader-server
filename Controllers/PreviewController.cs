@@ -85,23 +85,26 @@ namespace BeatLeader_Server.Controllers
 
             PrivateFontCollection fontCollection = new PrivateFontCollection();
             fontCollection.AddFontFile(_webHostEnvironment.WebRootPath + "/fonts/Audiowide-Regular.ttf");
+            var fontFamily = fontCollection.Families[0];
+
             StringFormat stringFormat = new StringFormat();
             stringFormat.Alignment = StringAlignment.Center;
 
             Color nameColor = ColorFromHSV((Math.Max(0, player.Pp - 1000) / 18000) * 360, 1.0, 1.0);
-            graphics.DrawString(player.Name, new Font("Audiowide", 24), new SolidBrush(nameColor), new RectangleF(0, 190, width, 30), stringFormat);
+            var nameFont = new Font(fontFamily, 26 - (player.Name.Length / 5) - (player.Name.Length > 15 ? 3 : 0));
+            graphics.DrawString(player.Name, nameFont, new SolidBrush(nameColor), 30, new RectangleF(0, 176, width, 40), stringFormat);
 
-            var songNameFont = new Font("Audiowide", 30 - song.Name.Length / 5);
-            graphics.DrawString(song.Name, songNameFont, new SolidBrush(Color.White), 30, new RectangleF(0, 225, width, 80), stringFormat);
+            var songNameFont = new Font(fontFamily, 30 - song.Name.Length / 5);
+            graphics.DrawString(song.Name, songNameFont, new SolidBrush(Color.White), 30, new RectangleF(0, 215, width, 80), stringFormat);
 
             if (score != null) {
                 string accuracy = Math.Round(score.Accuracy * 100, 2) + "%";
-                SizeF size3 = graphics.MeasureString(accuracy, new Font("Audiowide", 17), width);
-                graphics.DrawString(accuracy, new Font("Audiowide", 17), new SolidBrush(Color.White), new Point((int)(120 - size3.Width / 2), 15));
+                SizeF size3 = graphics.MeasureString(accuracy, new Font(fontFamily, 17), width);
+                graphics.DrawString(accuracy, new Font(fontFamily, 17), new SolidBrush(Color.White), new Point((int)(120 - size3.Width / 2), 15));
 
                 string rankandpp = "#" + score.Rank + (score.Pp > 0 ? " (" + Math.Round(score.Pp, 2) + "pp)" : "");
-                SizeF size4 = graphics.MeasureString(rankandpp, new Font("Audiowide", 17), width);
-                graphics.DrawString(rankandpp, new Font("Audiowide", 17), new SolidBrush(Color.White), new Point((int)(width - 120 - size4.Width / 2), 15));
+                SizeF size4 = graphics.MeasureString(rankandpp, new Font(fontFamily, 17), width);
+                graphics.DrawString(rankandpp, new Font(fontFamily, 17), new SolidBrush(Color.White), new Point((int)(width - 120 - size4.Width / 2), 15));
             }
             
 
@@ -256,7 +259,7 @@ namespace BeatLeader_Server.Controllers
             foreach (string line in lines)
             {
                 SizeF lineSize = that.MeasureString(line, font);
-                int increment = lastDrawn.Height == 0 ? 0 : lineHeight;
+                float increment = lastDrawn.Height == 0 ? (lines.Count() == 1 ? lineHeight * 0.5f : 0) : lineHeight;
                 RectangleF lineOrigin = new RectangleF(lastDrawn.X, lastDrawn.Y + increment, layoutRectangle.Width, layoutRectangle.Height);
                 that.DrawString(line, font, brush, lineOrigin, format);
                 lastDrawn = new Rectangle(Point.Round(lineOrigin.Location), Size.Round(lineSize));

@@ -340,7 +340,16 @@ namespace BeatLeader_Server.Controllers
 
             var leaderboardId = song.Id + SongUtils.DiffForDiffName(diff).ToString() + modeValue.ToString();
 
-            IEnumerable<ScoreResponse> query = _context.Scores.Where(s => !s.Banned && s.LeaderboardId == leaderboardId).Include(s => s.Player).ThenInclude(p => p.Clans).Include(s => s.Player).ThenInclude(p => p.PatreonFeatures).Select(RemoveLeaderboard).ToList();
+            IEnumerable<ScoreResponse> query = _context
+                .Scores
+                .Where(s => !s.Banned && s.LeaderboardId == leaderboardId)
+                .Include(s => s.Player)
+                    .ThenInclude(p => p.Clans)
+                .Include(s => s.Player)
+                .ThenInclude(p => p.PatreonFeatures)
+                .Include(s => s.ScoreImprovement)
+                .Select(RemoveLeaderboard)
+                .ToList();
 
             if (query.Count() == 0)
             {
@@ -559,27 +568,6 @@ namespace BeatLeader_Server.Controllers
             }
             ReplayStatisticUtils.DecodeArrays(scoreStatistic);
             return scoreStatistic;
-        }
-
-        [HttpGet("~/score/migration1")]
-        public async Task<ActionResult> migration1()
-        {
-            var allScores = _context.Scores.ToList();
-            var allAccs = _context.ScoreStatistics.Select(s => new { Id = s.ScoreId, AccLeft = s.AccuracyTracker.AccLeft, AccRight = s.AccuracyTracker.AccRight }).ToList();
-
-
-            foreach (var score in allScores)
-            {
-                var acc = allAccs.FirstOrDefault(a => a.Id == score.Id);
-                if (acc != null) {
-                    score.AccLeft = acc.AccLeft;
-                    score.AccRight = acc.AccRight;
-                }
-            }
-
-            _context.SaveChanges();
-
-            return Ok();
         }
 
         [HttpGet("~/score/calculatestatistic/players")]
