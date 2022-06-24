@@ -189,6 +189,18 @@ namespace BeatLeader_Server.Controllers
             return playlist;
         }
 
+        [HttpGet("~/playlist/ranked")]
+        public async Task<ActionResult> GetRanked()
+        {
+            BlobClient blobClient = _playlistContainerClient.GetBlobClient("ranked.bplist");
+            MemoryStream stream = new MemoryStream(5);
+
+            await blobClient.DownloadToAsync(stream);
+            stream.Position = 0;
+
+            return File(stream, "application/json");
+        }
+
         [HttpGet("~/user/playlists")]
         public async Task<ActionResult<IEnumerable<Playlist>>> GetAllPlaylists()
         {

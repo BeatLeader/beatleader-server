@@ -65,6 +65,7 @@ namespace BeatLeader_Server.Utils
             public int Hmd { get; set; }
             public string Timeset { get; set; }
             public PlayerResponse Player { get; set; }
+            public ScoreImprovement? ScoreImprovement { get; set; }
         }
 
         public static ScoreResponse RemoveLeaderboard(Score s, int i)
@@ -89,6 +90,7 @@ namespace BeatLeader_Server.Utils
                 Hmd = s.Hmd,
                 Timeset = s.Timeset,
                 Player = ResponseFromPlayer(s.Player),
+                ScoreImprovement = s.ScoreImprovement
             };
         }
         public static PlayerResponse? ResponseFromPlayer(Player? p)
