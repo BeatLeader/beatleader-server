@@ -103,7 +103,9 @@ namespace BeatLeader_Server {
                 builder.AddBlobServiceClient (Configuration ["CDN:blob"], preferMsi: true);
                 builder.AddQueueServiceClient (Configuration ["CDN:queue"], preferMsi: true);
             });
-            services.AddCors (options => {
+            if (!Environment.IsDevelopment())
+            {
+                services.AddCors (options => {
                 options.AddPolicy (name: MyAllowSpecificOrigins,
                     builder => {
                         builder.WithOrigins("http://localhost:8888",
@@ -112,6 +114,7 @@ namespace BeatLeader_Server {
                         builder.AllowCredentials();
                     });
             });
+            }
 
             services.Configure<AzureFileLoggerOptions>(options =>
             {
