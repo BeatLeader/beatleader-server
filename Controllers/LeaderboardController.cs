@@ -4,6 +4,7 @@ using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -19,53 +20,95 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/leaderboard/{id}")]
-        public async Task<ActionResult<Leaderboard>> Get(
+        public async Task<ActionResult<LeaderboardResponse>> Get(
             string id, 
             [FromQuery] int page = 1, 
             [FromQuery] int count = 10, 
-            [FromQuery] string? countries = null)
+            [FromQuery] string? countries = null,
+            [FromQuery] bool friends = false)
         {
-            Leaderboard? leaderboard;
+            LeaderboardResponse? leaderboard;
+
+            var query = _context
+                    .Leaderboards
+                    .Where(lb => lb.Id == id);
+
+            List<string>? friendsList = null;
+
+            if (friends)
+            {
+                string currentID = HttpContext.CurrentUserID(_context);
+                if (currentID == null)
+                {
+                    return NotFound();
+                }
+                var player = await _context.Players.FindAsync(currentID);
+                if (player == null)
+                {
+                    return NotFound();
+                }
+                var friendsContainer = await _context.Friends.Where(f => f.Id == player.Id).Include(f => f.Friends).FirstOrDefaultAsync();
+                if (friendsContainer != null)
+                {
+                    friendsList = friendsContainer.Friends.Select(f => f.Id).ToList();
+                }
+                else
+                {
+                    friendsList = new List<string> { player.Id };
+                }
+            }
 
             if (countries == null)
             {
-                leaderboard = await _context
-                    .Leaderboards
-                    .Where(lb => lb.Id == id)
-                    .Include(lb => lb.Scores)
-                    .ThenInclude(s => s.RankVoting)
-                    .Include(lb => lb.Scores
-                        .Where(s => !s.Banned)
+                
+                if (friendsList != null) {
+                    query = query.Include(lb => lb.Scores
+                            .Where(s => !s.Banned && friendsList.Contains(s.PlayerId))
+                            .OrderByDescending(s => s.ModifiedScore)
+                            .OrderByDescending(s => s.Pp)
+                            .Skip((page - 1) * count)
+                            .Take(count))
+                        .ThenInclude(s => s.Player)
+                        .ThenInclude(s => s.Clans);
+                } else {
+                    query = query.Include(lb => lb.Scores
+                            .OrderByDescending(s => s.ModifiedScore)
+                            .OrderByDescending(s => s.Pp)
+                            .Skip((page - 1) * count)
+                            .Take(count))
+                        .ThenInclude(s => s.Player)
+                        .ThenInclude(s => s.Clans);
+                    }
+            } else {
+                if (friendsList != null)
+                {
+                    query = query.Include(lb => lb.Scores
+                        .Where(s => !s.Banned && friendsList.Contains(s.PlayerId) && countries.ToLower().Contains(s.Player.Country.ToLower()))
                         .OrderByDescending(s => s.ModifiedScore)
                         .OrderByDescending(s => s.Pp)
                         .Skip((page - 1) * count)
                         .Take(count))
                     .ThenInclude(s => s.Player)
-                    .ThenInclude(s => s.Clans)
-                    .Include(lb => lb.Difficulty)
-                    .Include(lb => lb.Song)
-                    .ThenInclude(s => s.Difficulties)
-                    .FirstOrDefaultAsync();
-            } else
-            {
-                leaderboard = await _context
-                    .Leaderboards
-                    .Where(lb => lb.Id == id)
-                    .Include(lb => lb.Scores)
-                    .ThenInclude(s => s.RankVoting)
-                    .Include(lb => lb.Scores
+                    .ThenInclude(s => s.Clans);
+                    } else {
+                    query = query.Include(lb => lb.Scores
                         .Where(s => !s.Banned && countries.ToLower().Contains(s.Player.Country.ToLower()))
                         .OrderByDescending(s => s.ModifiedScore)
                         .OrderByDescending(s => s.Pp)
                         .Skip((page - 1) * count)
                         .Take(count))
                     .ThenInclude(s => s.Player)
-                    .ThenInclude(s => s.Clans)
+                    .ThenInclude(s => s.Clans);
+                }
+            }
+
+            leaderboard = query.Include(lb => lb.Scores)
+                    .ThenInclude(s => s.RankVoting)
                     .Include(lb => lb.Difficulty)
                     .Include(lb => lb.Song)
                     .ThenInclude(s => s.Difficulties)
-                    .FirstOrDefaultAsync();
-            }
+                    .Select(ResponseFromLeaderboard)
+                    .FirstOrDefault();
 
             if (leaderboard == null) {
                 return NotFound();

@@ -1,6 +1,6 @@
 ﻿using Azure.Storage.Blobs;
+using BeatLeader_Server.Models;
 using Microsoft.AspNetCore.Authentication;
-using System.Linq;
 using System.Linq.Expressions;
 
 namespace BeatLeader_Server.Extensions
@@ -44,6 +44,25 @@ namespace BeatLeader_Server.Extensions
             }
             
         }
+
+        public static string? CurrentUserID(this HttpContext context, AppContext dbcontext)
+        {
+            try
+            {
+                string? currentID = context.User.Claims.FirstOrDefault()?.Value.Split("/").LastOrDefault();
+                if (currentID == null) return null;
+
+                long intId = Int64.Parse(currentID);
+                AccountLink? accountLink = dbcontext.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+                return accountLink != null ? accountLink.SteamID : currentID;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+
+        }
     }
 
     public static class LinqExtensions
@@ -61,7 +80,9 @@ namespace BeatLeader_Server.Extensions
         }
         public static void SetPublicContainerPermissions(this BlobContainerClient container)
         {
-            container.SetAccessPolicy(accessType: Azure.Storage.Blobs.Models.PublicAccessType.BlobContainer);
+            try {
+                container.SetAccessPolicy(accessType: Azure.Storage.Blobs.Models.PublicAccessType.BlobContainer);
+            } catch { }
         }
     }
 }

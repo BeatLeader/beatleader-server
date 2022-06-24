@@ -51,7 +51,6 @@ namespace BeatLeader_Server.Utils
             public float Accuracy { get; set; }
             public string PlayerId { get; set; }
             public float Pp { get; set; }
-            public float Weight { get; set; }
             public int Rank { get; set; }
             public int CountryRank { get; set; }
             public string Replay { get; set; }
@@ -63,14 +62,32 @@ namespace BeatLeader_Server.Utils
             public int Pauses { get; set; }
             public bool FullCombo { get; set; }
             public int Hmd { get; set; }
+            public string LeaderboardId { get; set; }
             public string Timeset { get; set; }
             public PlayerResponse Player { get; set; }
             public ScoreImprovement? ScoreImprovement { get; set; }
         }
 
-        public static ScoreResponse RemoveLeaderboard(Score s, int i)
+        public class LeaderboardResponse {
+            public string Id { get; set; }
+            public Song Song { get; set; }
+            public DifficultyDescription Difficulty { get; set; }
+            public IEnumerable<ScoreResponse> Scores { get; set; }
+            public int Plays { get; set; }
+        }
+
+        public class ScoreResponseWithMyScore : ScoreResponse
         {
-            return new ScoreResponse
+            public ScoreResponse? MyScore { get; set; }
+            public float Weight { get; set; }
+            public float AccLeft { get; set; }
+            public float AccRight { get; set; }
+            public LeaderboardResponse Leaderboard { get; set; }
+        }
+
+        public static T RemoveLeaderboard<T>  (Score s, int i) where T : ScoreResponse, new()
+        {
+            return new T
             {
                 Id = s.Id,
                 BaseScore = s.BaseScore,
@@ -89,10 +106,31 @@ namespace BeatLeader_Server.Utils
                 FullCombo = s.FullCombo,
                 Hmd = s.Hmd,
                 Timeset = s.Timeset,
+                LeaderboardId = s.LeaderboardId,
                 Player = ResponseFromPlayer(s.Player),
                 ScoreImprovement = s.ScoreImprovement
             };
         }
+
+        public static ScoreResponse RemoveLeaderboard(Score s, int i) {
+            return RemoveLeaderboard<ScoreResponse>(s, i);
+        }
+
+        public static ScoreResponseWithMyScore ScoreWithMyScore(Score s, int i) {
+            var result = RemoveLeaderboard<ScoreResponseWithMyScore>(s, i);
+            result.Leaderboard = new LeaderboardResponse
+            {
+                Id = s.Leaderboard.Id,
+                Song = s.Leaderboard.Song,
+                Difficulty = s.Leaderboard.Difficulty
+            };
+            result.Weight = s.Weight;
+            result.AccLeft = s.AccLeft;
+            result.AccRight = s.AccRight;
+            return result;
+        }
+
+
         public static PlayerResponse? ResponseFromPlayer(Player? p)
         {
             if (p == null) return null;
@@ -117,6 +155,16 @@ namespace BeatLeader_Server.Utils
                         RightSaberColor = p.PatreonFeatures.RightSaberColor,
                     },
                 Clans = p.Clans.Select(c => new ClanResponse { Tag = c.Tag, Color = c.Color })
+            };
+        }
+
+        public static LeaderboardResponse ResponseFromLeaderboard(Leaderboard l) {
+            return new LeaderboardResponse {
+                Id = l.Id,
+                Song = l.Song,
+                Difficulty = l.Difficulty,
+                Scores = l.Scores.Select(RemoveLeaderboard),
+                Plays = l.Plays
             };
         }
 

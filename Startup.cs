@@ -112,15 +112,18 @@ namespace BeatLeader_Server {
                 builder.AddBlobServiceClient (Configuration ["CDN:blob"], preferMsi: true);
                 builder.AddQueueServiceClient (Configuration ["CDN:queue"], preferMsi: true);
             });
-            services.AddCors (options => {
-                options.AddPolicy (name: MyAllowSpecificOrigins,
+
+            if (!Environment.IsDevelopment()) {
+                services.AddCors (options => {
+                    options.AddPolicy (name: MyAllowSpecificOrigins,
                     builder => {
                         builder.WithOrigins("http://localhost:8888",
                                             "https://www.beatleader.xyz",
                                             "https://agitated-ptolemy-7d772c.netlify.app");
                         builder.AllowCredentials();
                     });
-            });
+                });
+            }
 
             services.Configure<AzureFileLoggerOptions>(options =>
             {

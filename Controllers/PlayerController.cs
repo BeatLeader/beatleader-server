@@ -217,7 +217,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/player/{id}/scores")]
-        public async Task<ActionResult<ResponseWithMetadata<Score>>> GetScores(
+        public async Task<ActionResult<ResponseWithMetadata<ScoreResponseWithMyScore>>> GetScores(
             string id,
             [FromQuery] string sortBy = "date",
             [FromQuery] string order = "desc",
@@ -252,7 +252,11 @@ namespace BeatLeader_Server.Controllers
                         sequence = sequence.Order(order, t => t.Rank);
                         break;
                     case "stars":
-                        sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Order(order, t => t.Leaderboard.Difficulty.Stars);
+                        sequence = sequence
+                                    .Include(lb => lb.Leaderboard)
+                                    .ThenInclude(lb => lb.Difficulty)
+                                    .Order(order, s => s.Leaderboard.Difficulty.Stars)
+                                    .Where(s => s.Leaderboard.Difficulty.Ranked);
                         break;
                     default:
                         break;
@@ -285,10 +289,10 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            ResponseWithMetadata<Score> result; 
+            ResponseWithMetadata<ScoreResponseWithMyScore> result; 
             using (_serverTiming.TimeAction("db"))
             {
-                result = new ResponseWithMetadata<Score>()
+                result = new ResponseWithMetadata<ScoreResponseWithMyScore>()
                 {
                     Metadata = new Metadata()
                     {
@@ -296,7 +300,7 @@ namespace BeatLeader_Server.Controllers
                         ItemsPerPage = count,
                         Total = sequence.Count()
                     },
-                    Data = await sequence
+                    Data = sequence
                             .Skip((page - 1) * count)
                             .Take(count)
                             .Include(lb => lb.Leaderboard)
@@ -305,9 +309,22 @@ namespace BeatLeader_Server.Controllers
                             .Include(lb => lb.Leaderboard)
                                 .ThenInclude(lb => lb.Difficulty)
                             .Include(sc => sc.ScoreImprovement)
-                            .ToListAsync()
+                            .Select(ScoreWithMyScore)
+                            .ToList()
                 };
             }
+
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID != null && currentID != id) {
+                var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
+
+                var myScores = _context.Scores.Where(s => s.PlayerId == currentID && leaderboards.Contains(s.LeaderboardId)).Select(RemoveLeaderboard).ToList();
+                foreach (var score in result.Data)
+                {
+                    score.MyScore = myScores.FirstOrDefault(s => s.LeaderboardId == score.LeaderboardId);
+                }
+            }
+
             return result;
         }
 
@@ -355,10 +372,164 @@ namespace BeatLeader_Server.Controllers
             }
 
             return score.ModifiedScore;
-
         }
 
-        public class GraphResponse {
+        public class HistogrammValue {
+            public int Value { get; set; }
+            public int Page { get; set; }
+        }
+
+        [HttpGet("~/player/{id}/histogram")]
+        public async Task<ActionResult<string>> GetHistogram(
+            string id,
+            [FromQuery] string sortBy = "date",
+            [FromQuery] string order = "desc",
+            [FromQuery] int count = 8,
+            [FromQuery] string? search = null,
+            [FromQuery] string? diff = null,
+            [FromQuery] string? type = null,
+            [FromQuery] float? stars_from = null,
+            [FromQuery] float? stars_to = null,
+            [FromQuery] float? batch = null)
+        {
+            IQueryable<Score> sequence;
+
+            using (_serverTiming.TimeAction("sequence"))
+            {
+                sequence = _context.Scores.Where(t => t.PlayerId == id);
+                switch (sortBy)
+                {
+                    case "date":
+                        sequence = sequence.Order(order, t => t.Timeset);
+                        break;
+                    case "pp":
+                        sequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.Pp);
+                        break;
+                    case "acc":
+                        sequence = sequence.Order(order, t => t.Accuracy);
+                        break;
+                    case "pauses":
+                        sequence = sequence.Order(order, t => t.Pauses);
+                        break;
+                    case "rank":
+                        sequence = sequence.Order(order, t => t.Rank);
+                        break;
+                    case "stars":
+                        sequence = sequence
+                                    .Include(lb => lb.Leaderboard)
+                                    .ThenInclude(lb => lb.Difficulty)
+                                    .Order(order, s => s.Leaderboard.Difficulty.Stars)
+                                    .Where(s => s.Leaderboard.Difficulty.Ranked);
+                        break;
+                    default:
+                        break;
+                }
+                if (search != null)
+                {
+                    string lowSearch = search.ToLower();
+                    sequence = sequence
+                        .Include(lb => lb.Leaderboard)
+                        .ThenInclude(lb => lb.Song)
+                        .Where(p => p.Leaderboard.Song.Author.ToLower().Contains(lowSearch) ||
+                                    p.Leaderboard.Song.Mapper.ToLower().Contains(lowSearch) ||
+                                    p.Leaderboard.Song.Name.ToLower().Contains(lowSearch));
+                }
+                if (diff != null)
+                {
+                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.DifficultyName.ToLower().Contains(diff.ToLower()));
+                }
+                if (type != null)
+                {
+                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Ranked : !p.Leaderboard.Difficulty.Ranked);
+                }
+                if (stars_from != null)
+                {
+                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.Stars >= stars_from);
+                }
+                if (stars_to != null)
+                {
+                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.Stars <= stars_to);
+                }
+            }
+
+            switch (sortBy)
+            {
+                case "date":
+                    return HistogrammValuee(order, sequence.Select(s => int.Parse(s.Timeset)).ToList(), (int)(batch ?? 60 * 60 * 24), count);
+                case "pp":
+                    return HistogrammValuee(order, sequence.Select(s => s.Pp).ToList(), batch ?? 5, count);
+                case "acc":
+                    return HistogrammValuee(order, sequence.Select(s => s.Accuracy).ToList(), batch ?? 0.0025f, count);
+                case "pauses":
+                    return HistogrammValuee(order, sequence.Select(s => s.Pauses).ToList(), (int)(batch ?? 1), count);
+                case "rank":
+                    return HistogrammValuee(order, sequence.Select(s => s.Rank).ToList(), (int)(batch ?? 1), count);
+                case "stars":
+                    return HistogrammValuee(order, sequence.Select(s => s.Leaderboard.Difficulty.Stars ?? 0).ToList(), batch ?? 0.15f, count);
+                default:
+                    return BadRequest();
+            }
+        }
+
+        public string HistogrammValuee(string order, List<int> values, int batch, int count)
+        {
+            Dictionary<int, HistogrammValue> result = new Dictionary<int, HistogrammValue>();
+            int normalizedMin = (values.Min() / batch) * batch;
+            int normalizedMax = (values.Max() / batch + 1) * batch;
+            int totalCount = 0;
+            if (order == "desc")
+            {
+                for (int i = normalizedMax; i > normalizedMin; i -= batch)
+                {
+                    int value = values.Count(s => s <= i && s >= i - batch);
+                    result[i - batch] = new HistogrammValue { Value = value,  Page = totalCount / count };
+                    totalCount += value;
+                }
+            }
+            else
+            {
+                for (int i = normalizedMin; i < normalizedMax; i += batch)
+                {
+                    int value = values.Count(s => s >= i && s <= i + batch);
+                    result[i + batch] = new HistogrammValue { Value = value, Page = totalCount / count };
+                    totalCount += value;
+                }
+            }
+
+            return JsonConvert.SerializeObject(result);
+        }
+
+        public string HistogrammValuee(string order, List<float> values, float batch, int count)
+        {
+
+            Dictionary<float, HistogrammValue> result = new Dictionary<float, HistogrammValue>();
+            int totalCount = 0;
+            float normalizedMin = (int)(values.Min() / batch) * batch;
+            float normalizedMax = (int)(values.Max() / batch + 1) * batch;
+            if (order == "desc")
+            {
+                for (float i = normalizedMax; i > normalizedMin; i -= batch)
+                {
+                    int value = values.Count(s => s <= i && s >= i - batch);
+                    result[i - batch] = new HistogrammValue { Value = value, Page = totalCount / count };
+                    totalCount += value;
+                }
+            }
+            else
+            {
+                for (float i = normalizedMin; i < normalizedMax; i += batch)
+                {
+                    int value = values.Count(s => s >= i && s <= i + batch);
+                    result[i + batch] = new HistogrammValue { Value = value, Page = totalCount / count };
+                    totalCount += value;
+                }
+            }
+
+            return JsonConvert.SerializeObject(result);
+        }
+
+        public class GraphResponse
+        {
             public string LeaderboardId { get; set; }
             public string Diff { get; set; }
             public string Mode { get; set; }
@@ -401,7 +572,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int page = 1, 
             [FromQuery] int count = 50, 
             [FromQuery] string search = "", 
-            [FromQuery] string countries = "")
+            [FromQuery] string countries = "",
+            [FromQuery] bool friends = false)
         {
             IQueryable<Player> request = _context.Players.Include(p => p.ScoreStats).Include(p => p.Clans).Where(p => !p.Banned);
             if (countries.Length != 0)
@@ -411,6 +583,28 @@ namespace BeatLeader_Server.Controllers
             if (search.Length != 0)
             {
                 request = request.Where(p => p.Name.Contains(search));
+            }
+            if (friends) {
+                string currentID = HttpContext.CurrentUserID();
+                long intId = Int64.Parse(currentID);
+                AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+                string userId = accountLink != null ? accountLink.SteamID : currentID;
+                var player = await _context.Players.FindAsync(userId);
+                if (player == null)
+                {
+                    return NotFound();
+                }
+                var friendsContainer = await _context.Friends.Where(f => f.Id == player.Id).Include(f => f.Friends).FirstOrDefaultAsync();
+                if (friendsContainer != null)
+                {
+                    var friendsList = friendsContainer.Friends.Select(f => f.Id).ToList();
+                    request = request.Where(p => p.Id == player.Id || friendsList.Contains(p.Id));
+                }
+                else
+                {
+                    request = request.Where(p => p.Id == player.Id);
+                }
             }
             switch (sortBy)
             {
