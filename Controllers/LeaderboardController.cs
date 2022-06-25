@@ -42,38 +42,31 @@ namespace BeatLeader_Server.Controllers
                 {
                     return NotFound();
                 }
-                var player = await _context.Players.FindAsync(currentID);
-                if (player == null)
-                {
-                    return NotFound();
-                }
-                var friendsContainer = await _context.Friends.Where(f => f.Id == player.Id).Include(f => f.Friends).FirstOrDefaultAsync();
+                var friendsContainer = await _context.Friends.Where(f => f.Id == currentID).Include(f => f.Friends).FirstOrDefaultAsync();
                 if (friendsContainer != null)
                 {
                     friendsList = friendsContainer.Friends.Select(f => f.Id).ToList();
+                    friendsList.Add(currentID);
                 }
                 else
                 {
-                    friendsList = new List<string> { player.Id };
+                    friendsList = new List<string> { currentID };
                 }
             }
 
             if (countries == null)
             {
-                
                 if (friendsList != null) {
                     query = query.Include(lb => lb.Scores
                             .Where(s => !s.Banned && friendsList.Contains(s.PlayerId))
-                            .OrderByDescending(s => s.ModifiedScore)
-                            .OrderByDescending(s => s.Pp)
+                            .OrderBy(s => s.Rank)
                             .Skip((page - 1) * count)
                             .Take(count))
                         .ThenInclude(s => s.Player)
                         .ThenInclude(s => s.Clans);
                 } else {
                     query = query.Include(lb => lb.Scores
-                            .OrderByDescending(s => s.ModifiedScore)
-                            .OrderByDescending(s => s.Pp)
+                            .OrderBy(s => s.Rank)
                             .Skip((page - 1) * count)
                             .Take(count))
                         .ThenInclude(s => s.Player)
@@ -84,7 +77,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     query = query.Include(lb => lb.Scores
                         .Where(s => !s.Banned && friendsList.Contains(s.PlayerId) && countries.ToLower().Contains(s.Player.Country.ToLower()))
-                        .OrderByDescending(s => s.ModifiedScore)
+                        .OrderBy(s => s.Rank)
                         .Skip((page - 1) * count)
                         .Take(count))
                     .ThenInclude(s => s.Player)
@@ -92,7 +85,7 @@ namespace BeatLeader_Server.Controllers
                     } else {
                     query = query.Include(lb => lb.Scores
                         .Where(s => !s.Banned && countries.ToLower().Contains(s.Player.Country.ToLower()))
-                        .OrderByDescending(s => s.ModifiedScore)
+                        .OrderBy(s => s.Rank)
                         .Skip((page - 1) * count)
                         .Take(count))
                     .ThenInclude(s => s.Player)
