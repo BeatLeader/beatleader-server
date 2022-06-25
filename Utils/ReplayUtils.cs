@@ -4,7 +4,7 @@ namespace BeatLeader_Server.Utils
 {
     class ReplayUtils
     {
-        public static (Replay, Score) ProcessReplay(Replay replay, Leaderboard leaderboard) {
+        public static (Replay, Score, int) ProcessReplay(Replay replay, Leaderboard leaderboard) {
             Score score = new Score();
             
             score.BaseScore = replay.info.score;
@@ -31,17 +31,14 @@ namespace BeatLeader_Server.Utils
             score.FullCombo = score.BombCuts == 0 && score.MissedNotes == 0 && score.WallsHit == 0 && score.BadCuts == 0;
             score.Hmd = HMD(replay.info.hmd);
             score.ModifiedScore = (int)(score.BaseScore * GetTotalMultiplier(replay.info.modifiers));
-            if (leaderboard.Difficulty.MaxScore > 0) {
-                score.Accuracy = (float)score.ModifiedScore / (float)leaderboard.Difficulty.MaxScore;
-            } else {
-                score.Accuracy = (float)score.ModifiedScore / (float)MaxScoreForNote(leaderboard.Difficulty.Notes);
-            }
-            
+
+            int maxScore = leaderboard.Difficulty.MaxScore > 0 ? leaderboard.Difficulty.MaxScore : MaxScoreForNote(leaderboard.Difficulty.Notes);
+            score.Accuracy = (float)score.ModifiedScore / (float)maxScore;
             score.Modifiers = replay.info.modifiers;
             score.Platform = replay.info.platform + "," + replay.info.gameVersion + "," + replay.info.version;
             score.Timeset = replay.info.timestamp;
             
-            return (replay, score);
+            return (replay, score, maxScore);
         }
 
         private static int HMD(string hmdName) {

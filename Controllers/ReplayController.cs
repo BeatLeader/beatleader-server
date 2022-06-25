@@ -140,6 +140,10 @@ namespace BeatLeader_Server.Controllers
             if (replay == null) {
                 return BadRequest("It's not a replay or it has old version.");
             }
+            if (replay.notes.Count == 0 || replay.frames.Count == 0)
+            {
+                return BadRequest("Replay is broken, update your mode please.");
+            }
             if (authenticatedPlayerID == null)
             {
                 return Unauthorized("Session ticket is not valid");
@@ -217,7 +221,10 @@ namespace BeatLeader_Server.Controllers
             {
                 return BadRequest("You are banned!");
             }
-            (replay, Score resultScore) = ReplayUtils.ProcessReplay(replay, leaderboard);
+            (replay, Score resultScore, int maxScore) = ReplayUtils.ProcessReplay(replay, leaderboard);
+            if (resultScore.BaseScore > maxScore) {
+                return BadRequest("Score is bigger than max possible on this map!");
+            }
 
             ScoreImprovement improvement = new ScoreImprovement();
 
@@ -456,10 +463,22 @@ namespace BeatLeader_Server.Controllers
 
                     double scoreRatio = (double)resultScore.BaseScore / (double)statistic.WinTracker.TotalScore;
 
-                    if (scoreRatio > 1.03 || scoreRatio < 0.97) {
+                    if (scoreRatio > 1.02 || scoreRatio < 0.98) {
                         SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Calculated on server score is too different: " + statistic.WinTracker.TotalScore + ". You probably need to update the mod.");
 
                         return;
+                    }
+
+                    if (leaderboard.Difficulty.Notes > 30) {
+                        var sameAccScore = leaderboard.Scores.FirstOrDefault(s => s.PlayerId != resultScore.PlayerId && s.AccLeft != 0 && s.AccRight != 0
+                                                                && s.AccLeft == statistic.AccuracyTracker.AccLeft
+                                                                && s.AccRight == statistic.AccuracyTracker.AccRight);
+                        if (sameAccScore != null)
+                        {
+                            SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Acc is suspiciously exact same as: " + sameAccScore.PlayerId + "'s score");
+
+                            return;
+                        }
                     }
 
                     await _containerClient.GetBlobClient(fileName).StartCopyFromUri(_containerClient.GetBlobClient(tempName).Uri).WaitForCompletionAsync();
