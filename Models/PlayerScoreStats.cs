@@ -17,6 +17,8 @@ namespace BeatLeader_Server.Models
         public int TotalPlayCount { get; set; }
         public int RankedPlayCount { get; set; }
         public int ReplaysWatched { get; set; }
+        public float AverageRank { get; set; }
+        public float AverageRankedRank { get; set; }
 
         public int SSPPlays { get; set; }
         public int SSPlays { get; set; }

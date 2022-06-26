@@ -591,9 +591,16 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string sortBy = "pp", 
             [FromQuery] int page = 1, 
             [FromQuery] int count = 50, 
-            [FromQuery] string search = "", 
+            [FromQuery] string search = "",
+            [FromQuery] string order = "desc",
             [FromQuery] string countries = "",
-            [FromQuery] bool friends = false)
+            [FromQuery] bool friends = false,
+            [FromQuery] float? pp_from = null,
+            [FromQuery] float? pp_to = null,
+            [FromQuery] int? scores_from = null,
+            [FromQuery] int? scores_to = null,
+            [FromQuery] string? platform = null,
+            [FromQuery] string? role = null)
         {
             IQueryable<Player> request = _context.Players.Include(p => p.ScoreStats).Include(p => p.Clans).Where(p => !p.Banned);
             if (countries.Length != 0)
@@ -602,7 +609,35 @@ namespace BeatLeader_Server.Controllers
             }
             if (search.Length != 0)
             {
-                request = request.Where(p => p.Name.Contains(search));
+                foreach (var term in search.ToLower().Split(","))
+                {
+                    string lowterm = term.ToLower();
+                    request = request.Where(p => p.Name.Contains(lowterm) || p.Clans.FirstOrDefault(c => c.Name.Contains(lowterm)) != null || p.Clans.FirstOrDefault(c => c.Tag.Contains(lowterm)) != null);
+                } 
+                
+            }
+            if (platform != null) {
+                request = request.Where(p => p.ScoreStats.TopPlatform.Contains(platform));
+            }
+            if (role != null)
+            {
+                request = request.Where(p => p.Role.Contains(role));
+            }
+            if (pp_from != null)
+            {
+                request = request.Where(p => p.Pp >= pp_from);
+            }
+            if (pp_to != null)
+            {
+                request = request.Where(p => p.Pp <= pp_to);
+            }
+            if (scores_from != null)
+            {
+                request = request.Where(p => p.ScoreStats.RankedPlayCount >= scores_from);
+            }
+            if (scores_to != null)
+            {
+                request = request.Where(p => p.ScoreStats.RankedPlayCount <= scores_to);
             }
             if (friends) {
                 string currentID = HttpContext.CurrentUserID();
@@ -629,10 +664,32 @@ namespace BeatLeader_Server.Controllers
             switch (sortBy)
             {
                 case "pp":
-                    request = request.OrderByDescending(p => p.Pp);
+                    request = request.Order(order, p => p.Pp);
                     break;
+                case "rank":
+                    request = request.Order(order, p => p.ScoreStats.AverageRankedRank);
+                    break;
+                case "acc":
+                    request = request.Order(order, p => p.ScoreStats.AverageRankedAccuracy);
+                    break;
+                case "topAcc":
+                    request = request.Order(order, p => p.ScoreStats.TopAccuracy);
+                    break;
+                case "topPp":
+                    request = request.Order(order, p => p.ScoreStats.TopPp);
+                    break;
+                case "hmd":
+                    request = request.Order(order, p => p.ScoreStats.TopHMD);
+                    break;
+                case "playCount":
+                    request = request.Order(order, p => p.ScoreStats.RankedPlayCount);
+                    break;
+                case "score":
+                    request = request.Order(order, p => p.ScoreStats.TotalScore);
+                    break;
+
                 case "dailyImprovements":
-                    request = request.OrderByDescending(p => p.ScoreStats.DailyImprovements);
+                    request = request.Order(order, p => p.ScoreStats.DailyImprovements);
                     break;
                 default:
                     break;
@@ -778,6 +835,7 @@ namespace BeatLeader_Server.Controllers
                 ModifiedScore = s.ModifiedScore,
                 Accuracy = s.Accuracy,
                 Pp = s.Pp,
+                Rank = s.Rank
             }).ToListAsync();
 
             if (allScores.Count() == 0) return;
@@ -823,6 +881,7 @@ namespace BeatLeader_Server.Controllers
                 player.ScoreStats.TotalScore = allScores.Sum(s => s.ModifiedScore);
                 player.ScoreStats.AverageAccuracy = allScores.Average(s => s.Accuracy);
                 player.ScoreStats.MedianAccuracy = allScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
+                player.ScoreStats.AverageRank = allScores.Average(s => (float)s.Rank);
             }
 
             if (player.ScoreStats.RankedPlayCount > 0)
@@ -832,6 +891,7 @@ namespace BeatLeader_Server.Controllers
                 player.ScoreStats.MedianRankedAccuracy = rankedScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
                 player.ScoreStats.TopAccuracy = rankedScores.Max(s => s.Accuracy);
                 player.ScoreStats.TopPp = rankedScores.Max(s => s.Pp);
+                player.ScoreStats.AverageRankedRank = rankedScores.Average(s => (float)s.Rank);
 
                 player.ScoreStats.SSPPlays = rankedScores.Where(s => s.Accuracy > 0.95).Count();
                 player.ScoreStats.SSPlays = rankedScores.Where(s => 0.9 < s.Accuracy && s.Accuracy < 0.95).Count();

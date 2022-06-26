@@ -8,6 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="CronJobs\**" />
+    <Content Remove="CronJobs\**" />
+    <EmbeddedResource Remove="CronJobs\**" />
+    <None Remove="CronJobs\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Anemonis.AspNetCore.RequestDecompression" Version="1.14.0" />
     <PackageReference Include="AspNet.Security.OAuth.Patreon" Version="6.0.6" />
     <PackageReference Include="AspNet.Security.OpenId.Steam" Version="6.0.0" />
