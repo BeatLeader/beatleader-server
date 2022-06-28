@@ -101,17 +101,23 @@ namespace BeatLeader_Server.Controllers
                     .FirstOrDefault();
 
             if (leaderboard == null) {
-                return NotFound();
+                Song? song = _context.Songs.Include(s => s.Difficulties).Where(s => s.Difficulties.FirstOrDefault(d => s.Id + d.Value + d.Mode == id) != null).FirstOrDefault();
+                if (song == null) {
+                    return NotFound();
+                } else {
+                    DifficultyDescription difficulty = song.Difficulties.First(d => song.Id + d.Value + d.Mode == id);
+                    return ResponseFromLeaderboard((await GetByHash(song.Hash, difficulty.DifficultyName, difficulty.ModeName, song)).Value);
+                }
             }
 
             return leaderboard;
         }
 
         [NonAction]
-        public async Task<ActionResult<Leaderboard>> GetByHash(string hash, string diff, string mode) {
+        public async Task<ActionResult<Leaderboard>> GetByHash(string hash, string diff, string mode, Song? inputSong = null) {
             Leaderboard? leaderboard;
 
-            leaderboard = await _context
+            leaderboard = inputSong != null ? null : await _context
                     .Leaderboards
                     .Include(lb => lb.Difficulty)
                     .Include(lb => lb.Song)
@@ -120,7 +126,7 @@ namespace BeatLeader_Server.Controllers
                     .FirstOrDefaultAsync();
 
             if (leaderboard == null) {
-                Song? song = (await _songController.GetHash(hash)).Value;
+                Song? song = inputSong ?? (await _songController.GetHash(hash)).Value;
                 if (song == null)
                 {
                     return NotFound();
