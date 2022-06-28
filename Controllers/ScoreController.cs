@@ -17,18 +17,15 @@ namespace BeatLeader_Server.Controllers
     {
         private readonly AppContext _context;
         private readonly BlobContainerClient _containerClient;
-        private readonly PlayerController _playerController;
         private readonly IServerTiming _serverTiming;
 
         public ScoreController(
             AppContext context,
             IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env,
-            PlayerController playerController,
             IServerTiming serverTiming)
         {
             _context = context;
-            _playerController = playerController;
             _serverTiming = serverTiming;
             if (env.IsDevelopment())
             {

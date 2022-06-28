@@ -30,6 +30,7 @@
         public Leaderboard Leaderboard { get; set; }
         public ScoreImprovement? ScoreImprovement { get; set; }
         public bool Banned { get; set; } = false;
+        public RankVoting? RankVoting { get; set; }
     }
 
     public class FailedScore
