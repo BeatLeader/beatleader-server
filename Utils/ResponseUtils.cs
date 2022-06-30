@@ -61,6 +61,7 @@ namespace BeatLeader_Server.Utils
             public int WallsHit { get; set; }
             public int Pauses { get; set; }
             public bool FullCombo { get; set; }
+            public string Platform { get; set; }
             public int Hmd { get; set; }
             public string LeaderboardId { get; set; }
             public string Timeset { get; set; }
@@ -110,6 +111,7 @@ namespace BeatLeader_Server.Utils
                 Hmd = s.Hmd,
                 Timeset = s.Timeset,
                 LeaderboardId = s.LeaderboardId,
+                Platform = s.Platform,
                 Player = ResponseFromPlayer(s.Player),
                 ScoreImprovement = s.ScoreImprovement
             };

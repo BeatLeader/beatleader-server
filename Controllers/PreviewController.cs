@@ -47,7 +47,7 @@ namespace BeatLeader_Server.Controllers
                 player = _context.Players.Where(p => p.Id == playerID).FirstOrDefault() ?? await GetPlayerFromSS("https://scoresaber.com/api/player/" + playerID + "/full");
                 song = _context.Songs.Select(s => new SongSelect { Id = s.Id, CoverImage = s.CoverImage, Name = s.Name }).Where(s => s.Id == id).FirstOrDefault();
             } else if (scoreId != null) {
-                score = await _context.Scores.Where(s => s.Id == scoreId).Include(s => s.Player).Include(s => s.Leaderboard).ThenInclude(l => l.Song).FirstOrDefaultAsync();
+                score = await _context.Scores.Where(s => s.Id == scoreId).Include(s => s.Player).Include(s => s.Leaderboard).ThenInclude(l => l.Song).Include(s => s.Leaderboard).ThenInclude(l => l.Difficulty).FirstOrDefaultAsync();
                 if (score != null) {
                     player = score.Player;
                     song = new SongSelect { Id = score.Leaderboard.Song.Id, CoverImage = score.Leaderboard.Song.CoverImage, Name = score.Leaderboard.Song.Name };
@@ -105,6 +105,17 @@ namespace BeatLeader_Server.Controllers
                 string rankandpp = "#" + score.Rank + (score.Pp > 0 ? " (" + Math.Round(score.Pp, 2) + "pp)" : "");
                 SizeF size4 = graphics.MeasureString(rankandpp, new Font(fontFamily, 17), width);
                 graphics.DrawString(rankandpp, new Font(fontFamily, 17), new SolidBrush(Color.White), new Point((int)(width - 120 - size4.Width / 2), 15));
+
+                (Color color, string diff) = DiffColorAndName(score.Leaderboard.Difficulty.DifficultyName);
+                if (score.Leaderboard.Difficulty.Ranked) {
+                    diff += " " + score.Leaderboard.Difficulty.Stars + "★";
+                }
+                graphics.DrawString(diff, new Font(fontFamily, 11), new SolidBrush(color), new Point((int)(width / 2), 55), stringFormat);
+
+                string modifiersAndCombo = (score.FullCombo ? "FC" : "") + (score.Modifiers.Length > 0 ? (score.FullCombo ? "," : "") + score.Modifiers : "");
+                if (modifiersAndCombo.Length > 0) {
+                    graphics.DrawString(modifiersAndCombo, new Font(fontFamily, 10), new SolidBrush(Color.White), new Point((int)(width / 2), 172), stringFormat);
+                }
             }
             
 
@@ -197,7 +208,17 @@ namespace BeatLeader_Server.Controllers
                 return Color.FromArgb(255, v, p, q);
         }
 
-
+        public static (Color, string) DiffColorAndName(string diff) {
+            switch (diff)
+            {
+                case "Easy": return (Color.FromArgb(16, 232, 113), "Easy");
+                case "Normal": return (Color.FromArgb(99, 180, 242), "Normal");
+                case "Hard": return (Color.FromArgb(255, 123, 99), "Hard");
+                case "Expert": return (Color.FromArgb(227, 54, 172), "Expert");
+                case "ExpertPlus": return (Color.FromArgb(180, 110, 255), "Expert+");
+            }
+            return (Color.White, diff);
+        }
     }
 
     public static class GraphicsExtension

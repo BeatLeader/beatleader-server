@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System.Dynamic;
+using System.Linq.Expressions;
 using System.Net;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
@@ -600,7 +601,9 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int? scores_from = null,
             [FromQuery] int? scores_to = null,
             [FromQuery] string? platform = null,
-            [FromQuery] string? role = null)
+            [FromQuery] string? role = null,
+            [FromQuery] string? hmd = null,
+            [FromQuery] string? clans = null)
         {
             IQueryable<Player> request = _context.Players.Include(p => p.ScoreStats).Include(p => p.Clans).Where(p => !p.Banned);
             if (countries.Length != 0)
@@ -609,19 +612,49 @@ namespace BeatLeader_Server.Controllers
             }
             if (search.Length != 0)
             {
+                var player = Expression.Parameter(typeof(Player), "p");
+                
+                var contains = "".GetType().GetMethod("Contains", new[] { typeof(string) });
+
+                // 1 != 2 is here to trigger `OrElse` further the line.
+                var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
                 foreach (var term in search.ToLower().Split(","))
                 {
-                    string lowterm = term.ToLower();
-                    request = request.Where(p => p.Name.Contains(lowterm) || p.Clans.FirstOrDefault(c => c.Name.Contains(lowterm)) != null || p.Clans.FirstOrDefault(c => c.Tag.Contains(lowterm)) != null);
-                } 
-                
+                    exp = Expression.OrElse(exp, Expression.Call(Expression.Property(player, "Name"), contains, Expression.Constant(term)));
+                }
+                request = request.Where((Expression<Func<Player, bool>>)Expression.Lambda(exp, player));
+            }
+
+            if (clans != null)
+            {
+                request = request.Where(p => p.Clans.FirstOrDefault(c => clans.Contains(c.Tag)) != null);
             }
             if (platform != null) {
-                request = request.Where(p => p.ScoreStats.TopPlatform.Contains(platform));
+                var platforms = platform.ToLower().Split(",");
+                request = request.Where(p => platforms.Contains(p.ScoreStats.TopPlatform.ToLower()));
             }
             if (role != null)
             {
-                request = request.Where(p => p.Role.Contains(role));
+                var player = Expression.Parameter(typeof(Player), "p");
+
+                var contains = "".GetType().GetMethod("Contains", new[] { typeof(string) });
+
+                // 1 != 2 is here to trigger `OrElse` further the line.
+                var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
+                foreach (var term in role.ToLower().Split(","))
+                {
+                    exp = Expression.OrElse(exp, Expression.Call(Expression.Property(player, "Role"), contains, Expression.Constant(term)));
+                }
+                request = request.Where((Expression<Func<Player, bool>>)Expression.Lambda(exp, player));
+            }
+            if (hmd != null)
+            {
+                try
+                {
+                    var hmds = hmd.ToLower().Split(",").Select(s => Int32.Parse(s));
+                    request = request.Where(p => hmds.Contains(p.ScoreStats.TopHMD));
+                }
+                catch { }
             }
             if (pp_from != null)
             {
@@ -792,31 +825,33 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/players/steam/refresh")]
         public async Task<ActionResult> RefreshSteamPlayers()
         {
-            var players = _context.Players.ToList();
-            foreach (Player p in players)
-            {
-                if (Int64.Parse(p.Id) <= 70000000000000000) { continue; }
-                Player? update = await GetPlayerFromSteam(p.Id);
-
-                if (update != null)
+            HttpContext.Response.OnCompleted(async () => {
+                var players = _context.Players.ToList();
+                foreach (Player p in players)
                 {
-                    p.ExternalProfileUrl = update.ExternalProfileUrl;
-                    p.AllTime = update.AllTime;
-                    p.LastTwoWeeksTime = update.LastTwoWeeksTime;
+                    if (Int64.Parse(p.Id) <= 70000000000000000) { continue; }
+                    Player? update = await GetPlayerFromSteam(p.Id);
 
-                    if (p.Avatar.Contains("steamcdn"))
+                    if (update != null)
                     {
-                        p.Avatar = update.Avatar;
-                    }
+                        p.ExternalProfileUrl = update.ExternalProfileUrl;
+                        p.AllTime = update.AllTime;
+                        p.LastTwoWeeksTime = update.LastTwoWeeksTime;
 
-                    if (p.Country == "not set" && update.Country != "not set")
-                    {
-                        p.Country = update.Country;
+                        if (p.Avatar.Contains("steamcdn"))
+                        {
+                            p.Avatar = update.Avatar;
+                        }
+
+                        if (p.Country == "not set" && update.Country != "not set")
+                        {
+                            p.Country = update.Country;
+                        }
                     }
                 }
-            }
 
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
+            });
 
             return Ok();
         }
