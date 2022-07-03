@@ -29,6 +29,7 @@ namespace BeatLeader_Server.Controllers
             public string Id { get; set; }
             public string CoverImage { get; set; }
             public string Name { get; set; }
+            public string Hash { get; set; }
         }
 
         [HttpGet("~/preview/replay")]
@@ -118,6 +119,101 @@ namespace BeatLeader_Server.Controllers
                 }
             }
             
+
+            graphics.DrawRectangle(new Pen(new LinearGradientBrush(new Point(1, 1), new Point(100, 100), Color.Red, Color.BlueViolet), 5), new Rectangle(0, 0, width, height));
+
+            using (MemoryStream ms = new MemoryStream())
+            {
+                bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                return File(ms.ToArray(), "image/png");
+            }
+        }
+
+        [HttpGet("~/preview/royale")]
+        public async Task<ActionResult> GetRoyale(
+            [FromQuery] string? players = null,
+            [FromQuery] string? hash = null,
+            [FromQuery] string? difficulty = null,
+            [FromQuery] string? mode = null)
+        {
+
+            List<Player> playersList = new List<Player>();
+            SongSelect? song = null;
+
+            if (players != null && hash != null)
+            {
+                var ids = players.Split(",");
+                playersList = _context.Players.Where(p => ids.Contains(p.Id)).ToList();
+                foreach (var id in ids)
+                {
+                    if (playersList.FirstOrDefault(p => p.Id == id) == null) {
+                        Player? ssplayer = await GetPlayerFromSS("https://scoresaber.com/api/player/" + id + "/full");
+                        if (ssplayer != null) {
+                            playersList.Add(ssplayer);
+                        }
+                    }
+                }
+                    
+                
+                song = _context.Songs.Select(s => new SongSelect { Hash = s.Hash, CoverImage = s.CoverImage, Name = s.Name }).Where(s => s.Hash == hash).FirstOrDefault();
+            }
+
+            if (playersList.Count == 0 || song == null)
+            {
+                return NotFound();
+            }
+
+            int width = 500; int height = 300;
+            Bitmap bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+            Graphics graphics = Graphics.FromImage(bitmap);
+            graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+            graphics.DrawImage(new Bitmap(_webHostEnvironment.WebRootPath + "/images/background.png"), new Rectangle(0, 0, width, height));
+            graphics.DrawImage(new Bitmap(_webHostEnvironment.WebRootPath + "/images/royale.png"), new Rectangle(width - 120, 20, 100, 100));
+
+            PrivateFontCollection fontCollection = new PrivateFontCollection();
+            fontCollection.AddFontFile(_webHostEnvironment.WebRootPath + "/fonts/Audiowide-Regular.ttf");
+            var fontFamily = fontCollection.Families[0];
+
+            StringFormat left = new StringFormat();
+            left.Alignment = StringAlignment.Near;
+
+            StringFormat center = new StringFormat();
+            center.Alignment = StringAlignment.Center;
+            graphics.DrawString("BS", new Font(fontFamily, 9), new SolidBrush(Color.FromArgb(233, 2, 141)), new RectangleF(width - 120, 12, 100, 20), center);
+            graphics.DrawString("Battle royale!", new Font(fontFamily, 9), new SolidBrush(Color.FromArgb(233, 2, 141)), new RectangleF(width - 120, 106, 100, 20), center);
+
+            for (int i = 0; i < playersList.Count; i++)
+            {
+                var player = playersList[i];
+
+                using (var request = new HttpRequestMessage(HttpMethod.Get, player.Avatar))
+                {
+                    Stream contentStream = await (await _client.SendAsync(request)).Content.ReadAsStreamAsync();
+                    Bitmap avatarBitmap = new Bitmap(contentStream);
+
+                    graphics.DrawImage(avatarBitmap, new Rectangle(18, 15 + i * 27, 20, 20));
+                }
+
+                var nameFont = new Font(fontFamily, 14 - (player.Name.Length / 5) - (player.Name.Length > 15 ? 3 : 0));
+                graphics.DrawString(player.Name, nameFont, new SolidBrush(Color.White), new RectangleF(40, 15 + i * 27, width / 2, 40));
+            }
+
+            using (var request = new HttpRequestMessage(HttpMethod.Get, song.CoverImage))
+            {
+                Stream contentStream = await (await _client.SendAsync(request)).Content.ReadAsStreamAsync();
+                Bitmap coverBitmap = new Bitmap(contentStream);
+
+                graphics.DrawImage(coverBitmap, new Rectangle(width / 2 - 40, 15, 135, 135));
+            }
+
+            if (difficulty != null) {
+                (Color color, string diff) = DiffColorAndName(difficulty);
+                graphics.DrawString(diff, new Font(fontFamily, 12), new SolidBrush(color), new Point((int)(width / 2 - 44), 160), left);
+            }
+
+            var songNameFont = new Font(fontFamily, 24 - song.Name.Length / 5);
+            graphics.DrawString(song.Name, songNameFont, new SolidBrush(Color.FromArgb(250, 42, 125)), 30, new RectangleF(width / 2 - 46, 170, width / 2 + 60, 160), left);
 
             graphics.DrawRectangle(new Pen(new LinearGradientBrush(new Point(1, 1), new Point(100, 100), Color.Red, Color.BlueViolet), 5), new Rectangle(0, 0, width, height));
 
