@@ -596,10 +596,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string order = "desc",
             [FromQuery] string countries = "",
             [FromQuery] bool friends = false,
-            [FromQuery] float? pp_from = null,
-            [FromQuery] float? pp_to = null,
-            [FromQuery] int? scores_from = null,
-            [FromQuery] int? scores_to = null,
+            [FromQuery] string? pp_range = null,
+            [FromQuery] string? score_range = null,
             [FromQuery] string? platform = null,
             [FromQuery] string? role = null,
             [FromQuery] string? hmd = null,
@@ -656,21 +654,23 @@ namespace BeatLeader_Server.Controllers
                 }
                 catch { }
             }
-            if (pp_from != null)
+            if (pp_range != null)
             {
-                request = request.Where(p => p.Pp >= pp_from);
+                try {
+                    var array = pp_range.Split(",").Select(s => float.Parse(s)).ToArray();
+                    float from = array[0]; float to = array[1];
+                    request = request.Where(p => p.Pp >= from && p.Pp <= to);
+                } catch { }
             }
-            if (pp_to != null)
+            if (score_range != null)
             {
-                request = request.Where(p => p.Pp <= pp_to);
-            }
-            if (scores_from != null)
-            {
-                request = request.Where(p => p.ScoreStats.RankedPlayCount >= scores_from);
-            }
-            if (scores_to != null)
-            {
-                request = request.Where(p => p.ScoreStats.RankedPlayCount <= scores_to);
+                try
+                {
+                    var array = score_range.Split(",").Select(s => int.Parse(s)).ToArray();
+                    int from = array[0]; int to = array[1];
+                    request = request.Where(p => p.ScoreStats.RankedPlayCount >= from && p.ScoreStats.RankedPlayCount <= to);
+                }
+                catch { }
             }
             if (friends) {
                 string currentID = HttpContext.CurrentUserID();
