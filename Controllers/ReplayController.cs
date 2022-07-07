@@ -242,8 +242,14 @@ namespace BeatLeader_Server.Controllers
 
                 if (currentScore != null)
                 {
+                    improvement.Timeset = currentScore.Timeset;
                     improvement.Score = resultScore.ModifiedScore - currentScore.ModifiedScore;
                     improvement.Accuracy = resultScore.Accuracy - currentScore.Accuracy;
+
+                    improvement.BadCuts = resultScore.BadCuts - currentScore.BadCuts;
+                    improvement.BombCuts = resultScore.BombCuts - currentScore.BombCuts;
+                    improvement.MissedNotes = resultScore.MissedNotes - currentScore.MissedNotes;
+                    improvement.WallsHit = resultScore.WallsHit - currentScore.WallsHit;
 
                     player.ScoreStats.TotalScore -= currentScore.ModifiedScore;
                     if (player.ScoreStats.TotalPlayCount == 1)
@@ -287,6 +293,11 @@ namespace BeatLeader_Server.Controllers
                             player.ScoreStats.APlays--;
                             break;
                     }
+                    if (currentScore.RankVoting != null)
+                    {
+                        resultScore.RankVoting = currentScore.RankVoting;
+                    }
+
                     try
                     {
                         leaderboard.Scores.Remove(currentScore);
