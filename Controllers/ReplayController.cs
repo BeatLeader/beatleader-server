@@ -295,7 +295,15 @@ namespace BeatLeader_Server.Controllers
                     }
                     if (currentScore.RankVoting != null)
                     {
-                        resultScore.RankVoting = currentScore.RankVoting;
+                        resultScore.RankVoting = new RankVoting {
+                            PlayerId = currentScore.RankVoting.PlayerId,
+                            Hash = currentScore.RankVoting.Hash,
+                            Diff = currentScore.RankVoting.Diff,
+                            Mode = currentScore.RankVoting.Mode,
+                            Rankability = currentScore.RankVoting.Rankability,
+                            Stars = currentScore.RankVoting.Stars,
+                            Type = currentScore.RankVoting.Type,
+                        };
                     }
 
                     try

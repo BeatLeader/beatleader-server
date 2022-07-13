@@ -696,20 +696,36 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/user/failedscores")]
-        public async Task<ActionResult<IEnumerable<FailedScore>>> GetFailedScores()
+        public async Task<ActionResult<ResponseWithMetadata<FailedScore>>> GetFailedScores(
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 3)
         {
             string? id = GetId().Value;
             if (id == null) {
                 return NotFound();
             }
             Player? currentPlayer = _context.Players.Find(id);
-            if (currentPlayer != null && currentPlayer.Role.Contains("admin"))
+            IQueryable<FailedScore> query = _context.FailedScores.Include(lb => lb.Player).ThenInclude(p => p.ScoreStats).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
-                return _context.FailedScores.Include(lb => lb.Player).Take(3).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).ToList();
-            } else {
-                return _context.FailedScores.Where(t => t.PlayerId == id).Take(3).Include(lb => lb.Player).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).ToList();
+                query = query.Where(t => t.PlayerId == id);
             }
-        }
+
+            return new ResponseWithMetadata<FailedScore> {
+                Metadata = new Metadata()
+                {
+                    Page = page,
+                    ItemsPerPage = count,
+                    Total = query.Count()
+                },
+                Data = query
+                        .Skip((page - 1) * count)
+                        .Take(count)
+
+                        .ToList()
+            };
+    }
 
         [HttpPost("~/user/failedscore/remove")]
         public async Task<ActionResult> RemoveFailedScore([FromQuery] int id)
@@ -818,7 +834,6 @@ namespace BeatLeader_Server.Controllers
         {
             string userId = GetId().Value;
 
-            var transaction = _context.Database.BeginTransaction();
             var player = await _context.Players.FindAsync(userId);
 
             if (id != null && player != null && player.Role.Contains("admin"))
@@ -858,7 +873,6 @@ namespace BeatLeader_Server.Controllers
             _context.Bans.Add(ban);
 
             await _context.SaveChangesAsync();
-            transaction.Commit();
 
             HttpContext.Response.OnCompleted(async () => {
                 foreach (var item in leaderboardsToUpdate)

@@ -182,8 +182,6 @@ namespace BeatLeader_Server.Controllers
             var query = _context.Leaderboards.Where(l => l.Difficulty.Ranked).Include(s => s.Scores).Include(l => l.Difficulty);
             var allLeaderboards = (leaderboardId != null ? query.Where(s => s.Id == leaderboardId) : query).Select(l => new { Scores = l.Scores, Difficulty = l.Difficulty }).ToList();
 
-            var transaction = _context.Database.BeginTransaction();
-
             foreach (var leaderboard in allLeaderboards) {
                 var allScores = leaderboard.Scores.Where(s => !s.Banned).ToList();
                 foreach (Score s in allScores)
@@ -252,12 +250,6 @@ namespace BeatLeader_Server.Controllers
             {
                 return NotFound();
             }
-        }
-
-        [HttpGet("~/failedscores/")]
-        public async Task<ActionResult<IEnumerable<FailedScore>>> FailedSсores()
-        {
-            return _context.FailedScores.OrderByDescending(s => s.Id).Include(el => el.Leaderboard).Include(el => el.Player).ToList();
         }
 
         public ScoreResponse SetRank(ScoreResponse s, int i)

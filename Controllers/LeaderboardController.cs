@@ -66,6 +66,7 @@ namespace BeatLeader_Server.Controllers
                         .ThenInclude(s => s.Clans);
                 } else {
                     query = query.Include(lb => lb.Scores
+                            .Where(s => !s.Banned)
                             .OrderBy(s => s.Rank)
                             .Skip((page - 1) * count)
                             .Take(count))
