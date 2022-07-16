@@ -1,10 +1,13 @@
-﻿using BeatLeader_Server.Extensions;
+﻿using Azure.Identity;
+using Azure.Storage.Blobs;
+using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System.Dynamic;
@@ -18,14 +21,34 @@ namespace BeatLeader_Server.Controllers
     {
         private readonly AppContext _context;
         private readonly IConfiguration _configuration;
+        BlobContainerClient _assetsContainerClient;
+        IWebHostEnvironment _environment;
 
         private readonly IServerTiming _serverTiming;
 
-        public PlayerController(AppContext context, IConfiguration configuration, IServerTiming serverTiming)
+        public PlayerController(
+            AppContext context, 
+            IConfiguration configuration, 
+            IServerTiming serverTiming,
+            IOptions<AzureStorageConfig> config,
+            IWebHostEnvironment env)
         {
             _context = context;
             _configuration = configuration;
             _serverTiming = serverTiming;
+            _environment = env;
+            if (env.IsDevelopment())
+            {
+                _assetsContainerClient = new BlobContainerClient(config.Value.AccountName, config.Value.AssetsContainerName);
+            }
+            else
+            {
+                string containerEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
+                                                        config.Value.AccountName,
+                                                       config.Value.AssetsContainerName);
+
+                _assetsContainerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
+            }
         }
 
         [HttpGet("~/player/{id}")]
@@ -35,15 +58,24 @@ namespace BeatLeader_Server.Controllers
             try
             {
                 oculusId = Int64.Parse(id);
-            } catch {}
+            }
+            catch { }
             AccountLink? link = null;
-            if (oculusId < 70000000000000000) {
+            if (oculusId < 2000000000000000)
+            {
                 using (_serverTiming.TimeAction("link"))
                 {
                     link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
                 }
             }
-            string userId = (link != null ? link.SteamID : id);
+            if (link == null && oculusId < 70000000000000000)
+            {
+                using (_serverTiming.TimeAction("link"))
+                {
+                    link = _context.AccountLinks.FirstOrDefault(el => el.PCOculusID == id);
+                }
+            }
+            string userId = (link != null ? (link.SteamID.Length > 0 ? link.SteamID : link.PCOculusID) : id);
             Player? player;
             using (_serverTiming.TimeAction("player"))
             {
@@ -74,21 +106,35 @@ namespace BeatLeader_Server.Controllers
             if (player == null) {
                 Int64 userId = Int64.Parse(id);
                 if (userId > 70000000000000000) {
-                    player = await GetPlayerFromSteam(id);
+                    player = await PlayerUtils.GetPlayerFromSteam(id, _configuration.GetValue<string>("SteamKey"));
                     if (player == null) {
                         return NotFound();
-                    } else {
-                        player.Platform = "steam";
                     }
-                } else {
-                    player = await GetPlayerFromOculus(id);
+                } else if (userId > 2000000000000000) {
+                    player = await PlayerUtils.GetPlayerFromOculus(id, _configuration.GetValue<string>("OculusToken"));
                     if (player == null)
                     {
                         return NotFound();
                     }
-                    else
+                    if (addToBase) {
+                        var net = new System.Net.WebClient();
+                        var data = net.DownloadData(player.Avatar);
+                        var readStream = new System.IO.MemoryStream(data);
+                        string fileName = player.Id;
+
+                        (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(readStream);
+                        fileName += extension;
+
+                        await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
+                        await _assetsContainerClient.UploadBlobAsync(fileName, stream);
+
+                        player.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://cdn.beatleader.xyz/assets/") + fileName;
+                    }
+                } else {
+                    player = await GetPlayerFromBL(id);
+                    if (player == null)
                     {
-                        player.Platform = "oculus";
+                        return NotFound();
                     }
                 }
                 player.Id = id;
@@ -673,11 +719,7 @@ namespace BeatLeader_Server.Controllers
                 catch { }
             }
             if (friends) {
-                string currentID = HttpContext.CurrentUserID();
-                long intId = Int64.Parse(currentID);
-                AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-                string userId = accountLink != null ? accountLink.SteamID : currentID;
+                string userId = HttpContext.CurrentUserID(_context);
                 var player = await _context.Players.FindAsync(userId);
                 if (player == null)
                 {
@@ -830,7 +872,7 @@ namespace BeatLeader_Server.Controllers
                 foreach (Player p in players)
                 {
                     if (Int64.Parse(p.Id) <= 70000000000000000) { continue; }
-                    Player? update = await GetPlayerFromSteam(p.Id);
+                    Player? update = await PlayerUtils.GetPlayerFromSteam(p.Id, _configuration.GetValue<string>("SteamKey"));
 
                     if (update != null)
                     {
@@ -1104,53 +1146,43 @@ namespace BeatLeader_Server.Controllers
             return player;
         }
 
-        [NonAction]
-        public async Task<Player?> GetPlayerFromSteam(string playerID)
+        [HttpGet("~/oculususer")]
+        public async Task<ActionResult<OculusUser>> GetOculusUser([FromQuery] string token)
         {
-            dynamic? info = await GetPlayer("http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=" + _configuration.GetValue<string>("SteamKey") + "&steamids=" + playerID);
-
-            if (info == null) return null;
-
-            dynamic playerInfo = info.response.players[0];
-            Player result = new Player();
-            result.Name = playerInfo.personaname;
-            result.Avatar = playerInfo.avatarfull;
-            if (ExpandantoObject.HasProperty(playerInfo, "loccountrycode"))
+            (string? id, string? error) = await SteamHelper.GetPlayerIDFromTicket(token, _configuration);
+            if (id == null)
             {
-                result.Country = playerInfo.loccountrycode;
+                return NotFound();
             }
-            else
-            {
-                result.Country = "not set";
-            }
-            result.ExternalProfileUrl = playerInfo.profileurl;
 
-            dynamic? gamesInfo = await GetPlayer("http://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v0001/?key=" + _configuration.GetValue<string>("SteamKey") + "&steamid=" + playerID);
-            if (gamesInfo != null && ExpandantoObject.HasProperty(gamesInfo, "response") && ExpandantoObject.HasProperty(gamesInfo.response, "total_count"))
+            var link = _context.AccountLinks.Where(l => l.PCOculusID == id).FirstOrDefault();
+            if (link != null)
             {
-                dynamic response = gamesInfo.response;
-                dynamic? beatSaber = null;
+                string playerId = link.SteamID.Length > 0 ? link.SteamID : id;
 
-                for (int i = 0; i < response.total_count; i++)
+                var player = _context.Players.Find(playerId);
+
+                return new OculusUser
                 {
-                    if (response.games[i].appid == 620980)
-                    {
-                        beatSaber = response.games[i];
-                    }
-                }
-
-                if (beatSaber != null)
-                {
-                    result.AllTime = beatSaber.playtime_forever / 60.0f;
-                    result.LastTwoWeeksTime = beatSaber.playtime_2weeks / 60.0f;
-                }
+                    Id = id,
+                    Migrated = true,
+                    MigratedId = playerId,
+                    Name = player.Name,
+                    Avatar = player.Avatar,
+                };
             }
+            var oculusPlayer = await PlayerUtils.GetPlayerFromOculus(id, token);
 
-            return result;
+            return new OculusUser
+            {
+                Id = id,
+                Name = oculusPlayer.Name,
+                Avatar = oculusPlayer.Avatar,
+            };
         }
 
         [NonAction]
-        public async Task<Player?> GetPlayerFromOculus(string playerID)
+        public async Task<Player?> GetPlayerFromBL(string playerID)
         {
             AuthInfo? authInfo = _context.Auths.FirstOrDefault(el => el.Id.ToString() == playerID);
 
@@ -1163,54 +1195,6 @@ namespace BeatLeader_Server.Controllers
             result.SetDefaultAvatar();
 
             return result;
-        }
-
-        [NonAction]
-        public Task<dynamic?> GetPlayer(string url)
-        {
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-            request.Method = "GET";
-            request.Proxy = null;
-
-            WebResponse? response = null;
-            dynamic? song = null;
-            var stream = 
-            Task<(WebResponse?, dynamic?)>.Factory.FromAsync(request.BeginGetResponse, result =>
-            {
-                try
-                {
-                    response = request.EndGetResponse(result);
-                }
-                catch (Exception e)
-                {
-                    song = null;
-                }
-            
-                return (response, song);
-            }, request);
-
-            return stream.ContinueWith(t => ReadPlayerFromResponse(t.Result));
-        }
-
-        [NonAction]
-        private dynamic? ReadPlayerFromResponse((WebResponse?, dynamic?) response)
-        {
-            if (response.Item1 != null) {
-                using (Stream responseStream = response.Item1.GetResponseStream())
-                using (StreamReader reader = new StreamReader(responseStream))
-                {
-                    string results = reader.ReadToEnd();
-                    if (string.IsNullOrEmpty(results))
-                    {
-                        return null;
-                    }
-
-                    return JsonConvert.DeserializeObject<ExpandoObject>(results, new ExpandoObjectConverter());
-                }
-            } else {
-                return response.Item2;
-            }
-            
         }
     }
 }

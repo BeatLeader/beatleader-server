@@ -421,9 +421,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/score/{playerID}/{hash}/{diff}/{mode}")]
         public async Task<ActionResult<Score>> GetPlayer(string playerID, string hash, string diff, string mode)
         {
-            Int64 oculusId = Int64.Parse(playerID);
-            AccountLink? link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
-            string userId = (link != null ? link.SteamID : playerID);
+            string userId = HttpContext.CurrentUserID(_context);
 
             var score = await _context
                 .Scores
@@ -455,11 +453,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null)
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
+            string userId = HttpContext.CurrentUserID(_context);
             var player = await _context.Players.FindAsync(userId);
             if (player == null) {
                 return NotFound();

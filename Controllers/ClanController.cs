@@ -101,18 +101,14 @@ namespace BeatLeader_Server.Controllers
         {
             Clan? clan = null;
             if (tag == "my") {
-                string currentID = HttpContext.CurrentUserID();
-                long intId = Int64.Parse(currentID);
-                AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-                string userId = accountLink != null ? accountLink.SteamID : currentID;
-                var player = await _context.Players.FindAsync(userId);
+                string currentID = HttpContext.CurrentUserID(_context);
+                var player = await _context.Players.FindAsync(currentID);
 
                 if (player == null)
                 {
                     return NotFound();
                 }
-                clan = await _context.Clans.Where(c => c.LeaderID == userId).Include(c => c.Players).FirstOrDefaultAsync();
+                clan = await _context.Clans.Where(c => c.LeaderID == currentID).Include(c => c.Players).FirstOrDefaultAsync();
             } else {
                 clan = await _context.Clans.Where(c => c.Tag == tag).Include(c => c.Players).FirstOrDefaultAsync();
             }
@@ -157,13 +153,9 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string description = "",
             [FromQuery] string bio = "")
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+            string currentID = HttpContext.CurrentUserID(_context);
 
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
-
-            var player = await _context.Players.Where(p => p.Id == userId).Include(p => p.Clans).Include(p => p.ScoreStats).FirstOrDefaultAsync();
+            var player = await _context.Players.Where(p => p.Id == currentID).Include(p => p.Clans).Include(p => p.ScoreStats).FirstOrDefaultAsync();
             if (player.Clans.Count == 3) {
                 return BadRequest("You can join only up to 3 clans.");
             }
@@ -184,7 +176,7 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Clan with such name or tag is already exists");
             }
 
-            if (_context.Clans.FirstOrDefault(c => c.LeaderID == userId) != null)
+            if (_context.Clans.FirstOrDefault(c => c.LeaderID == currentID) != null)
             {
                 return BadRequest("You already have a clan");
             }
@@ -247,7 +239,7 @@ namespace BeatLeader_Server.Controllers
                 Name = name,
                 Tag = upperTag,
                 Color = color,
-                LeaderID = userId,
+                LeaderID = currentID,
                 Icon = icon ?? "https://cdn.beatleader.xyz/assets/clan.png",
                 Description = description,
                 Bio = bio,
@@ -270,12 +262,8 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> DeleteClan([FromQuery] int? id = null)
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
-            var player = await _context.Players.FindAsync(userId);
+            string currentID = HttpContext.CurrentUserID(_context);
+            var player = await _context.Players.FindAsync(currentID);
 
             if (player == null)
             {
@@ -289,7 +277,7 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
-                clan = await _context.Clans.FirstOrDefaultAsync(c => c.LeaderID == userId);
+                clan = await _context.Clans.FirstOrDefaultAsync(c => c.LeaderID == currentID);
             }
             if (clan == null)
             {
@@ -311,12 +299,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string description = "",
             [FromQuery] string bio = "")
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
-            var player = await _context.Players.FindAsync(userId);
+            string currentID = HttpContext.CurrentUserID(_context);
+            var player = await _context.Players.FindAsync(currentID);
 
             if (player == null)
             {
@@ -335,7 +319,7 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
-                clan = await _context.Clans.FirstOrDefaultAsync(c => c.LeaderID == userId);
+                clan = await _context.Clans.FirstOrDefaultAsync(c => c.LeaderID == currentID);
             }
             if (clan == null)
             {
@@ -421,13 +405,9 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> InviteToClan([FromQuery] string player)
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
-            var currentPlayer = await _context.Players.FindAsync(userId);
-            
             if (currentPlayer == null)
             {
                 return NotFound();
@@ -437,7 +417,7 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("You are banned!");
             }
 
-            Clan? clan = _context.Clans.FirstOrDefault(c => c.LeaderID == userId);
+            Clan? clan = _context.Clans.FirstOrDefault(c => c.LeaderID == currentID);
             if (clan == null) {
                 return NotFound("Current user is not leader of any clan");
             }
@@ -476,13 +456,9 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> CancelinviteToClan([FromQuery] string player)
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+            string currentID = HttpContext.CurrentUserID(_context);
 
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
-
-            Clan? clan = _context.Clans.FirstOrDefault(c => c.LeaderID == userId);
+            Clan? clan = _context.Clans.FirstOrDefault(c => c.LeaderID == currentID);
             if (clan == null)
             {
                 return NotFound("Current user is not leader of any clan");
@@ -523,14 +499,10 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string player,
             [FromQuery] int? id = null)
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
+            string currentID = HttpContext.CurrentUserID(_context);
 
             Clan? clan;
-            var currentPlayer = await _context.Players.FindAsync(userId);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
             
             if (id != null && currentPlayer != null && currentPlayer.Role.Contains("admin"))
             {
@@ -538,7 +510,7 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
-                clan = _context.Clans.FirstOrDefault(c => c.LeaderID == userId);
+                clan = _context.Clans.FirstOrDefault(c => c.LeaderID == currentID);
             }
 
             if (clan == null)
@@ -579,13 +551,9 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> AcceptRequest([FromQuery] int id)
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+            string currentID = HttpContext.CurrentUserID(_context);
 
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
-
-            User? user = _userController.GetUserLazy(userId);
+            User? user = _userController.GetUserLazy(currentID);
             if (user == null)
             {
                 return NotFound("No such player");
@@ -628,13 +596,9 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> RejectRequest([FromQuery] int id, bool ban = false)
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+            string currentID = HttpContext.CurrentUserID(_context);
 
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
-
-            User? user = _userController.GetUserLazy(userId);
+            User? user = _userController.GetUserLazy(currentID);
             if (user == null)
             {
                 return NotFound("No such player");
@@ -660,13 +624,9 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> UnbanClan([FromQuery] int id)
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+            string currentID = HttpContext.CurrentUserID(_context);
 
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
-
-            User? user = _userController.GetUserLazy(userId);
+            User? user = _userController.GetUserLazy(currentID);
             if (user == null)
             {
                 return NotFound("No such player");
@@ -690,13 +650,9 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> leaveClan([FromQuery] int id)
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+            string currentID = HttpContext.CurrentUserID(_context);
 
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
-
-            User? user = _userController.GetUserLazy(userId);
+            User? user = _userController.GetUserLazy(currentID);
             if (user == null)
             {
                 return NotFound("No such player");
@@ -708,7 +664,7 @@ namespace BeatLeader_Server.Controllers
                 return NotFound("User is not member of this clan");
             }
 
-            if (clan.LeaderID == userId) {
+            if (clan.LeaderID == currentID) {
                 return BadRequest("You cannot leave your own clan");
             }
 
@@ -729,12 +685,8 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> ReserveTag([FromQuery] string tag)
         {
             tag = tag.ToUpper();
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
-            var currentPlayer = await _context.Players.FindAsync(userId);
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (!currentPlayer.Role.Contains("admin")) {
                 return Unauthorized();
@@ -752,12 +704,8 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> AllowTag([FromQuery] string tag)
         {
             tag = tag.ToUpper();
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
-            var currentPlayer = await _context.Players.FindAsync(userId);
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (!currentPlayer.Role.Contains("admin"))
             {
@@ -778,7 +726,6 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/clans/refresh")]
         public async Task<ActionResult> RefreshClans()
         {
-
             var clans = _context.Clans.Include(c => c.Players.Where(p => !p.Banned)).ThenInclude(p => p.ScoreStats).ToList();
             foreach (var clan in clans)
             {

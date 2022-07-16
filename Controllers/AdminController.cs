@@ -46,12 +46,8 @@ namespace BeatLeader_Server.Controllers
         [HttpPost("~/admin/role")]
         public async Task<ActionResult> AddRole([FromQuery] string playerId, [FromQuery] string role)
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
-            var currentPlayer = await _context.Players.FindAsync(userId);
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin") || role == "admin")
             {
@@ -71,12 +67,8 @@ namespace BeatLeader_Server.Controllers
         [HttpDelete("~/admin/role")]
         public async Task<ActionResult> RemoveRole([FromQuery] string playerId, [FromQuery] string role)
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
-            var currentPlayer = await _context.Players.FindAsync(userId);
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin") || role == "admin")
             {
@@ -97,12 +89,8 @@ namespace BeatLeader_Server.Controllers
         [HttpPost("~/admin/clan/{id}/setLeader")]
         public async Task<ActionResult> SetLeader(int id, [FromQuery] string newLeader)
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
-            var currentPlayer = await _context.Players.FindAsync(userId);
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
@@ -128,12 +116,8 @@ namespace BeatLeader_Server.Controllers
         [HttpPost("~/admin/clan/{id}/addMember")]
         public async Task<ActionResult> AddMember(int id, [FromQuery] string newLeader)
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
-            var currentPlayer = await _context.Players.FindAsync(userId);
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {

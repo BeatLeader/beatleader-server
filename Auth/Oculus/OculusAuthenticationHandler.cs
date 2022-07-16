@@ -188,6 +188,11 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
     }
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties) {
+        if (properties.RedirectUri.Length > 1)
+        {
+            Response.Redirect(properties.RedirectUri);
+        }
+
         return HandleAuthenticateOnceAsync();
     }
 

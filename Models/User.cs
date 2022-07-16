@@ -54,4 +54,13 @@ namespace BeatLeader_Server.Models
         public bool Migrated { get; set; }
         public bool Patreoned { get; set; }
     }
+
+    public class OculusUser {
+        public string Name { get; set; }
+        public string Id { get; set; }
+        public string Avatar { get; set; }
+
+        public bool Migrated { get; set; }
+        public string? MigratedId { get; set; }
+    }
 }

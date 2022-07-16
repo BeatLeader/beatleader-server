@@ -352,11 +352,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/map/star/{hash}/{difficulty}")]
         public async Task<ActionResult> SetStarValue(string hash, string difficulty, [FromQuery] float star)
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
+            string userId = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(userId);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
@@ -394,11 +390,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/map/rdate/{hash}")]
         public async Task<ActionResult> SetStarValue(string hash, [FromQuery] int diff, [FromQuery] string date)
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
+            string userId = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(userId);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))

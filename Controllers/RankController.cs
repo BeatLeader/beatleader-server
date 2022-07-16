@@ -44,8 +44,8 @@ namespace BeatLeader_Server.Controllers
             }
             player = player ?? HttpContext.CurrentUserID();
             Int64 oculusId = Int64.Parse(player);
-            AccountLink? link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
-            string userId = (link != null ? link.SteamID : player);
+            AccountLink? link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId || el.PCOculusID == player);
+            string userId = (link != null ? (link.SteamID.Length > 0 ? link.SteamID : link.PCOculusID) : player);
 
             var score = await _context
                 .Scores
@@ -81,7 +81,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] float stars = 0,
             [FromQuery] int type = 0)
         {
-            string? currentID = HttpContext.CurrentUserID();
+            string? currentID = HttpContext.CurrentUserID(_context);
             if (currentID == null) {
                 return VoteStatus.CantVote;
             }
@@ -103,6 +103,14 @@ namespace BeatLeader_Server.Controllers
             {
                 return VoteStatus.CantVote;
             }
+            long intId = Int64.Parse(id);
+            if (intId < 70000000000000000)
+            {
+                AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.PCOculusID == id);
+                if (accountLink != null && accountLink.SteamID.Length > 0) {
+                    id = accountLink.SteamID;
+                }
+            }
             return await VotePrivate(hash, diff, mode, id, rankability, stars, type);
         }
 
@@ -118,7 +126,7 @@ namespace BeatLeader_Server.Controllers
         {
             Int64 oculusId = Int64.Parse(player);
             AccountLink? link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
-            string userId = (link != null ? link.SteamID : player);
+            string userId = (link != null ? (link.SteamID.Length > 0 ? link.SteamID : link.PCOculusID) : player);
 
             var score = await _context
                 .Scores

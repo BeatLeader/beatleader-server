@@ -44,11 +44,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/user/oneclickplaylist")]
         public async Task<ActionResult> GetOneClickPlaylist()
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
+            string userId = HttpContext.CurrentUserID(_context);
 
             BlobClient blobClient = _playlistContainerClient.GetBlobClient(userId + "oneclick.bplist");
             MemoryStream stream = new MemoryStream(5);
@@ -79,11 +75,7 @@ namespace BeatLeader_Server.Controllers
         [HttpPost("~/user/oneclickplaylist")]
         public async Task<ActionResult> UpdateOneClickPlaylist()
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
+            string userId = HttpContext.CurrentUserID(_context);
 
             var ms = new MemoryStream(5);
             await Request.Body.CopyToAsync(ms);
@@ -128,11 +120,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/user/oneclickdone")]
         public async Task<ActionResult> CleanOneClickPlaylist()
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
+            string userId = HttpContext.CurrentUserID(_context);
 
             BlobClient blobClient = _playlistContainerClient.GetBlobClient(userId + "oneclick.bplist");
             MemoryStream stream = new MemoryStream(5);

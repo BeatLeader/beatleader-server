@@ -574,7 +574,9 @@ namespace BeatLeader_Server.Models
             int lengthOffset = 0;
             if (length > 0)
             {
-                while (BitConverter.ToInt32(buffer, length + pointer + 4 + lengthOffset) != 6 && BitConverter.ToInt32(buffer, length + pointer + 4 + lengthOffset) != 5)
+                while (BitConverter.ToInt32(buffer, length + pointer + 4 + lengthOffset) != 6 
+                    && BitConverter.ToInt32(buffer, length + pointer + 4 + lengthOffset) != 5 
+                    && BitConverter.ToInt32(buffer, length + pointer + 4 + lengthOffset) != 8)
                 {
                     lengthOffset++;
                 }

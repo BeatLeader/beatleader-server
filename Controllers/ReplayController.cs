@@ -73,6 +73,14 @@ namespace BeatLeader_Server.Controllers
             if (id == null && error != null) {
                 return Unauthorized(error);
             }
+            long intId = Int64.Parse(id);
+            if (intId < 70000000000000000)
+            {
+                AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.PCOculusID == id);
+                if (accountLink != null && accountLink.SteamID.Length > 0) {
+                    id = accountLink.SteamID;
+                }
+            }
             return await PostReplayFromBody(id);
         }
 
@@ -80,9 +88,8 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult<ScoreResponse>> PostOculusReplay()
         {
-            string currentID = HttpContext.CurrentUserID();
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == Int64.Parse(currentID));
-            return await PostReplayFromBody(accountLink != null ? accountLink.SteamID : currentID);
+            string userId = HttpContext.CurrentUserID(_context);
+            return await PostReplayFromBody(userId);
         }
 
         [NonAction]

@@ -53,9 +53,13 @@ namespace BeatLeader_Server.Extensions
                 if (currentID == null) return null;
 
                 long intId = Int64.Parse(currentID);
-                AccountLink? accountLink = dbcontext.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+                if (intId < 70000000000000000) {
+                    AccountLink? accountLink = dbcontext.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
 
-                return accountLink != null ? accountLink.SteamID : currentID;
+                    return accountLink != null ? (accountLink.SteamID.Length > 0 ? accountLink.SteamID : accountLink.PCOculusID) : currentID;
+                } else {
+                    return currentID;
+                }
             }
             catch (Exception)
             {

@@ -25,6 +25,7 @@ namespace BeatLeader_Server.Controllers
         PlayerController _playerController;
         ReplayController _replayController;
         IWebHostEnvironment _environment;
+        IConfiguration _configuration;
         ScoreController _scoreController;
 
         public CurrentUserController(
@@ -33,12 +34,14 @@ namespace BeatLeader_Server.Controllers
             IWebHostEnvironment env,
             PlayerController playerController,
             ReplayController replayController,
-            ScoreController scoreController)
+            ScoreController scoreController,
+            IConfiguration configuration)
         {
             _context = context;
             _playerController = playerController;
             _replayController = replayController;
             _scoreController = scoreController;
+            _configuration = configuration;
             _environment = env;
             if (env.IsDevelopment())
             {
@@ -56,16 +59,8 @@ namespace BeatLeader_Server.Controllers
 
         [HttpGet("~/user/id")]
         public ActionResult<string> GetId()
-        {
-            string currentID = HttpContext.CurrentUserID();
-
-            if (currentID == null) {
-                return BadRequest();
-            }
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-            
-            return accountLink != null ? accountLink.SteamID : currentID;
+        {   
+            return HttpContext.CurrentUserID(_context); ;
         }
 
         [HttpGet("~/user")]
@@ -84,8 +79,8 @@ namespace BeatLeader_Server.Controllers
             Clan? clan = _context.Clans.Include(c => c.Players).Where(f => f.LeaderID == id).FirstOrDefault();
 
             long intId = Int64.Parse(id);
-            if (intId > 70000000000000000) {
-                var link = _context.AccountLinks.FirstOrDefault(el => el.SteamID == id);
+            if (intId > 2000000000000000) {
+                var link = _context.AccountLinks.FirstOrDefault(el => el.SteamID == id || el.PCOculusID == id);
                 if (link != null) {
                     intId = link.OculusID;
                 }
@@ -529,29 +524,75 @@ namespace BeatLeader_Server.Controllers
             {
                 return Unauthorized("Login or password is invalid");
             }
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.SteamID == steamID || el.OculusID == authInfo.Id);
-            if (accountLink != null)
+
+            return await MigratePrivate(steamID, authInfo.Id.ToString());
+        }
+
+        [HttpGet("~/user/migrateoculuspc")]
+        public async Task<ActionResult<int>> MigrateOculusPC([FromQuery] string ReturnUrl, [FromQuery] string Token)
+        {
+            string currentId = HttpContext.CurrentUserID();
+            (string? id, string? error) = await SteamHelper.GetPlayerIDFromTicket(Token, _configuration);
+            if (id == null)
             {
-                return Unauthorized("Accounts are already linked");
+                return Unauthorized("Token seems to be wrong");
+            }
+            var player = await _playerController.GetLazy(id, true);
+            if (player == null) {
+                return BadRequest("Can't find player");
             }
 
-            return await MigratePrivate(steamID, authInfo.Id);
+            if (Int64.Parse(currentId) < 2000000000000000) {
+                await _playerController.GetLazy(currentId, true);
+                await MigratePrivate(id, currentId);
+            } else {
+                await MigratePrivate(currentId, id);
+            }
+
+            return Redirect(ReturnUrl);
         }
 
         [NonAction]
-        public async Task<ActionResult<int>> MigratePrivate(string fromId, int id)
+        public async Task<ActionResult<int>> MigratePrivate(string migrateToId, string migrateFromId)
         {
-            if (Int64.Parse(fromId) < 70000000000000000)
+            if (Int64.Parse(migrateToId) < 2000000000000000)
             {
-                return Unauthorized("You need to be logged in with Steam");
+                return Unauthorized("You need to be logged in with Steam or Oculus");
             }
-            Player? currentPlayer = await _context.Players.Where(p => p.Id == id.ToString())
+            long fromIntID = Int64.Parse(migrateFromId);
+
+            var accountLinks = _context.AccountLinks.Where(l => l.OculusID == fromIntID || l.SteamID == migrateToId || l.PCOculusID == migrateFromId || l.PCOculusID == migrateToId).ToList();
+
+            AccountLink? accountLink = null;
+            if (accountLinks.Count == 1)
+            {
+                accountLink = accountLinks[0];
+            }
+            else if (accountLinks.Count > 1)
+            {
+                if (accountLinks.Count == 2)
+                {
+                    accountLink = accountLinks.FirstOrDefault(al => al.SteamID.Length > 0);
+
+                    var oculusLink = accountLinks.FirstOrDefault(al => al.PCOculusID.Length > 0);
+                    migrateFromId = oculusLink.PCOculusID;
+                    fromIntID = Int64.Parse(migrateFromId);
+
+                    _context.AccountLinks.Remove(oculusLink);
+
+                }
+                else
+                {
+                    return BadRequest("Too much migrations to handle");
+                }
+            }
+            Player? currentPlayer = await _context.Players.Where(p => p.Id == migrateFromId)
                 .Include(p => p.Clans)
                 .Include(p => p.PatreonFeatures)
                 .Include(p => p.StatsHistory)
                 .Include(p => p.Badges)
                 .FirstOrDefaultAsync();
-            Player? migratedToPlayer = await _context.Players.Where(p => p.Id == fromId)
+            Player? migratedToPlayer = await _context.Players.Where(p => p.Id == migrateToId)
                 .Include(p => p.Clans)
                 .Include(p => p.PatreonFeatures)
                 .Include(p => p.StatsHistory)
@@ -579,13 +620,56 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Both players are clan leaders, delete one of the clans");
             }
 
-            AccountLink? accountLink = new AccountLink
-            {
-                OculusID = id,
-                SteamID = fromId,
-            };
+            if (accountLink == null) {
+               if (fromIntID < 2000000000000000) {
+                    if (Int64.Parse(migrateToId) > 70000000000000000) {
+                        accountLink = new AccountLink
+                        {
+                            OculusID = (int)fromIntID,
+                            SteamID = migrateToId,
+                        };
+                    } else {
+                        accountLink = new AccountLink
+                        {
+                            OculusID = (int)fromIntID,
+                            PCOculusID = migrateToId,
+                        };
+                    }
+                } else {
+                    accountLink = new AccountLink
+                    {
+                        PCOculusID = migrateFromId,
+                        SteamID = migrateToId,
+                    };
+                }
+                _context.AccountLinks.Add(accountLink);
+            } else {
+                if (fromIntID < 2000000000000000)
+                {
+                    if (Int64.Parse(migrateToId) > 70000000000000000)
+                    {
+                        if (accountLink.SteamID.Length > 0 && accountLink.OculusID > 0) return BadRequest("Account already linked");
 
-            _context.AccountLinks.Add(accountLink);
+                        accountLink.OculusID = (int)fromIntID;
+                        accountLink.SteamID = migrateToId;
+                    }
+                    else
+                    {
+                        if (accountLink.PCOculusID.Length > 0 && accountLink.OculusID > 0) return BadRequest("Account already linked");
+
+                        accountLink.OculusID = (int)fromIntID;
+                        accountLink.PCOculusID = migrateToId;
+                    }
+                }
+                else
+                {
+                    if (accountLink.PCOculusID.Length > 0 && accountLink.SteamID.Length > 0) return BadRequest("Account already linked");
+
+                    accountLink.PCOculusID = migrateFromId;
+                    accountLink.SteamID = migrateToId;
+                }
+            }
+            
 
             if (migratedToPlayer.Country == "Not set" && currentPlayer.Country != "Not set")
             {
@@ -643,7 +727,7 @@ namespace BeatLeader_Server.Controllers
             if (scores.Count() > 0) {
                 foreach (Score score in scores)
                 {
-                    Score? migScore = score.Leaderboard.Scores.FirstOrDefault(el => el.PlayerId == fromId);
+                    Score? migScore = score.Leaderboard.Scores.FirstOrDefault(el => el.PlayerId == migrateToId);
                     if (migScore != null)
                     {
                         if (migScore.ModifiedScore >= score.ModifiedScore)
@@ -654,7 +738,7 @@ namespace BeatLeader_Server.Controllers
                         {
                             score.Leaderboard.Scores.Remove(migScore);
                             score.Player = migratedToPlayer;
-                            score.PlayerId = fromId;
+                            score.PlayerId = migrateToId;
                         }
 
                         var rankedScores = score.Leaderboard.Scores.Where(sc => sc != null).OrderByDescending(el => el.ModifiedScore).ToList();
@@ -669,7 +753,7 @@ namespace BeatLeader_Server.Controllers
                     else
                     {
                         score.Player = migratedToPlayer;
-                        score.PlayerId = fromId;
+                        score.PlayerId = migrateToId;
                     }
                 }
             }

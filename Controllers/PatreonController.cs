@@ -35,11 +35,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> AddPatreonRole(string role)
         {
             await RemovePatreonRoles();
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-            string playerId = accountLink != null ? accountLink.SteamID : currentID;
+            string playerId = HttpContext.CurrentUserID(_context);
             if (playerId == null)
             {
                 return NotFound();
@@ -56,11 +52,7 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         public async Task<ActionResult> RemovePatreonRoles()
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-            string playerId = accountLink != null ? accountLink.SteamID : currentID;
+            string playerId = HttpContext.CurrentUserID(_context);
             if (playerId == null)
             {
                 return NotFound();
@@ -78,11 +70,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/user/linkPatreon")]
         public async Task<ActionResult> LinkPatreon([FromQuery] string returnUrl)
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-            string playerId = accountLink != null ? accountLink.SteamID : currentID;
+            string playerId = HttpContext.CurrentUserID(_context);
             if (playerId == null)
             {
                 return Redirect(returnUrl);
@@ -153,12 +141,8 @@ namespace BeatLeader_Server.Controllers
         [HttpPatch("~/user/patreon")]
         public async Task<ActionResult> PatchPatreonFeatures([FromQuery] string? message = null, [FromQuery] string? leftSaberColor = null, [FromQuery] string? rightSaberColor = null, [FromQuery] string? id = null)
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
-            var player = await _context.Players.Where(p => p.Id == userId).Include(p => p.PatreonFeatures).FirstOrDefaultAsync();
+            string playerId = HttpContext.CurrentUserID(_context);
+            var player = await _context.Players.Where(p => p.Id == playerId).Include(p => p.PatreonFeatures).FirstOrDefaultAsync();
 
             if (id != null && player != null && player.Role.Contains("admin"))
             {

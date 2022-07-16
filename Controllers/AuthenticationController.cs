@@ -114,12 +114,38 @@ namespace BeatLeader_Server.Controllers
                     {
                         _context.AccountLinkRequests.Remove(request);
                         await _context.SaveChangesAsync();
-                        await _currentUserController.MigratePrivate(userId, request.OculusID);
+                        await _currentUserController.MigratePrivate(userId, request.OculusID.ToString());
                     }
                 }
             }
 
             return Redirect(ReturnUrl);
+        }
+
+        [HttpPost("~/signinmigrate/oculuspc")]
+        public async Task<IActionResult> SignInMigrateOculus(
+            [FromForm] string provider, 
+            [FromForm] string returnUrl,
+            [FromForm] string token)
+        {
+            // Note: the "provider" parameter corresponds to the external
+            // authentication provider choosen by the user agent.
+            if (string.IsNullOrWhiteSpace(provider))
+            {
+                return BadRequest();
+            }
+
+            if (!await HttpContext.IsProviderSupportedAsync(provider))
+            {
+                return BadRequest();
+            }
+
+            var redirectUrl = Url.Action("MigrateOculusPC", "CurrentUser", new { ReturnUrl = returnUrl, Token = token });
+
+            // Instruct the middleware corresponding to the requested external identity
+            // provider to redirect the user agent to its own authorization endpoint.
+            // Note: the authenticationScheme parameter must match the value configured in Startup.cs
+            return Challenge(new AuthenticationProperties { RedirectUri = redirectUrl }, provider);
         }
 
         [HttpPost("~/signinoculus")]
@@ -130,6 +156,20 @@ namespace BeatLeader_Server.Controllers
             // provider to redirect the user agent to its own authorization endpoint.
             // Note: the authenticationScheme parameter must match the value configured in Startup.cs
             var result = Challenge(new AuthenticationProperties { RedirectUri = "/" }, "oculus");
+
+            return result;
+        }
+
+        [HttpPost("~/signinoculus/oculuspc")]
+        public IActionResult SignInOculusMigrateOculus(
+            [FromForm] string token,
+            [FromForm] string returnUrl)
+        {
+
+            // Instruct the middleware corresponding to the requested external identity
+            // provider to redirect the user agent to its own authorization endpoint.
+            // Note: the authenticationScheme parameter must match the value configured in Startup.cs
+            var result = Challenge(new AuthenticationProperties { RedirectUri = Url.Action("MigrateOculusPC", "CurrentUser", new { ReturnUrl = returnUrl, Token = token }) }, "oculus");
 
             return result;
         }
