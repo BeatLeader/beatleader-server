@@ -7,6 +7,7 @@
         public int Score { get; set; }
         public float Accuracy { get; set; }
         public float Pp { get; set; }
+        public float BonusPp { get; set; }
         public int Rank { get; set; }
         public float AccRight { get; set; }
         public float AccLeft { get; set; }

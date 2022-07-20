@@ -14,6 +14,7 @@ namespace BeatLeader_Server.Models
 
         public float TopAccuracy { get; set; }
         public float TopPp { get; set; }
+        public float TopBonusPP { get; set; }
         public int TotalPlayCount { get; set; }
         public int RankedPlayCount { get; set; }
         public int ReplaysWatched { get; set; }

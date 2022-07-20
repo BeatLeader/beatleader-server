@@ -898,22 +898,38 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        public struct SubScore
+        {
+            public string PlayerId;
+            public string Platform;
+            public int Hmd;
+            public int ModifiedScore ;
+            public float Accuracy;
+            public float Pp;
+            public float BonusPp;
+            public int Rank;
+        }
+
         [NonAction]
-        public async Task RefreshStats(Player player)
+        public async Task RefreshStats(Player player, List<SubScore>? scores = null)
         {
             if (player.ScoreStats == null)
             {
                 player.ScoreStats = new PlayerScoreStats();
                 _context.Stats.Add(player.ScoreStats);
             }
-            var allScores = await _context.Scores.Where(s => s.PlayerId == player.Id).Select(s => new {
-                Platform = s.Platform,
-                Hmd = s.Hmd,
-                ModifiedScore = s.ModifiedScore,
-                Accuracy = s.Accuracy,
-                Pp = s.Pp,
-                Rank = s.Rank
-            }).ToListAsync();
+            var allScores = scores ??
+                await _context.Scores.Where(s => s.PlayerId == player.Id).Select(s => new SubScore
+                {
+                    PlayerId = s.PlayerId,
+                    Platform = s.Platform,
+                    Hmd = s.Hmd,
+                    ModifiedScore = s.ModifiedScore,
+                    Accuracy = s.Accuracy,
+                    Pp = s.Pp,
+                    BonusPp = s.BonusPp,
+                    Rank = s.Rank
+                }).ToListAsync();
 
             if (allScores.Count() == 0) return;
             var rankedScores = allScores.Where(s => s.Pp != 0);
@@ -968,6 +984,7 @@ namespace BeatLeader_Server.Controllers
                 player.ScoreStats.MedianRankedAccuracy = rankedScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
                 player.ScoreStats.TopAccuracy = rankedScores.Max(s => s.Accuracy);
                 player.ScoreStats.TopPp = rankedScores.Max(s => s.Pp);
+                player.ScoreStats.TopBonusPP = rankedScores.Max(s => s.BonusPp);
                 player.ScoreStats.AverageRankedRank = rankedScores.Average(s => (float)s.Rank);
 
                 player.ScoreStats.SSPPlays = rankedScores.Where(s => s.Accuracy > 0.95).Count();
@@ -1024,13 +1041,14 @@ namespace BeatLeader_Server.Controllers
             {
                 return Unauthorized();
             }
+            var scores = await _context.Scores.Where(s => s.Pp != 0).ToListAsync();
             var players = _context.Players.ToList();
             Dictionary<string, int> countries = new Dictionary<string, int>();
             foreach (Player p in players)
             {
-                await RefreshPlayer(p);
+                _context.RecalculatePP(p, scores.Where(s => s.PlayerId == p.Id).OrderByDescending(s => s.Pp).ToList());
             }
-            var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
+            var ranked = players.OrderByDescending(t => t.Pp).ToList();
             foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
             {
                 p.Rank = i + 1;
@@ -1052,9 +1070,19 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> RefreshPlayersStats()
         {
             var players = await _context.Players.Where(p => !p.Banned).Include(p => p.ScoreStats).ToListAsync();
+            var scores = await _context.Scores.Select(s => new SubScore {
+                PlayerId = s.PlayerId,
+                Platform = s.Platform,
+                Hmd = s.Hmd,
+                ModifiedScore = s.ModifiedScore,
+                Accuracy = s.Accuracy,
+                Pp = s.Pp,
+                BonusPp = s.BonusPp,
+                Rank = s.Rank
+            }).ToListAsync();
             foreach (var player in players)
             {
-                await RefreshStats(player);
+                await RefreshStats(player, scores.Where(s => s.PlayerId == player.Id).ToList());
             }
             _context.SaveChanges();
             return Ok();
@@ -1085,8 +1113,6 @@ namespace BeatLeader_Server.Controllers
 
                 p.CountryRank = countries[p.Country];
                 countries[p.Country]++;
-
-                _context.Players.Update(p);
             }
             await _context.SaveChangesAsync();
 

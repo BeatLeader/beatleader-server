@@ -121,7 +121,6 @@ namespace BeatLeader_Server.Controllers
             leaderboard = inputSong != null ? null : await _context
                     .Leaderboards
                     .Include(lb => lb.Difficulty)
-                    .Include(lb => lb.Song)
                     .Where(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff)
                     .Include(lb => lb.Scores.Where(s => !s.Banned))
                     .ThenInclude(s => s.RankVoting)
@@ -264,17 +263,19 @@ namespace BeatLeader_Server.Controllers
             var leaderboards = _context.Leaderboards.Include(lb => lb.Scores).ToArray();
             foreach (var leaderboard in leaderboards)
             {
-                var rankedScores = leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();
+                List<Score>? rankedScores;
+                if (leaderboard.Difficulty.Ranked) {
+                    rankedScores = leaderboard.Scores.OrderByDescending(el => el.Pp).ToList();
+                } else {
+                    rankedScores = leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();
+                }
                 foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
                 {
                     s.Rank = i + 1;
-                    _context.Scores.Update(s);
                 }
                 leaderboard.Scores = rankedScores;
-                _context.Leaderboards.Update(leaderboard);
             }
             _context.SaveChanges();
-            
 
             return Ok();
         }

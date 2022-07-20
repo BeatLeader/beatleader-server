@@ -4,6 +4,24 @@ namespace BeatLeader_Server.Utils
 {
     class ReplayUtils
     {
+        public static float Curve(float acc, float stars)
+        {
+            float l = (float)(1f - (0.03f * (stars - 3.0f) / 11.0f));
+            float a = 0.96f * l;
+            float f = 1.2f - 0.6f * stars / 14.0f;
+
+            return MathF.Pow(MathF.Log10(l / (l - acc)) / MathF.Log10(l / (l - a)), f);
+        }
+
+        public static (float, float) PpFromScore(Score s, DifficultyDescription difficulty) {
+            float mp = GetPositiveMultiplier(s.Modifiers);
+            mp = 1 + (mp - 1) * 2f;
+
+            float rawPP = (float)(Curve(s.Accuracy, (float)difficulty.Stars - 0.5f) * ((float)difficulty.Stars + 0.5f) * 42);
+
+            return (rawPP * mp, rawPP * (mp - 1));
+        }
+
         public static (Replay, Score, int) ProcessReplay(Replay replay, Leaderboard leaderboard) {
             Score score = new Score();
             
@@ -30,12 +48,24 @@ namespace BeatLeader_Server.Utils
             }
             score.FullCombo = score.BombCuts == 0 && score.MissedNotes == 0 && score.WallsHit == 0 && score.BadCuts == 0;
             score.Hmd = HMD(replay.info.hmd);
-            score.ModifiedScore = (int)(score.BaseScore * GetTotalMultiplier(replay.info.modifiers));
 
+            if (leaderboard.Difficulty.Ranked)
+            {
+                score.ModifiedScore = (int)(score.BaseScore * GetNegativeMultiplier(replay.info.modifiers));
+            } else
+            {
+                score.ModifiedScore = (int)(score.BaseScore * GetTotalMultiplier(replay.info.modifiers));
+            }
             int maxScore = leaderboard.Difficulty.MaxScore > 0 ? leaderboard.Difficulty.MaxScore : MaxScoreForNote(leaderboard.Difficulty.Notes);
             score.Accuracy = (float)score.ModifiedScore / (float)maxScore;
             score.Modifiers = replay.info.modifiers;
+
+            if (leaderboard.Difficulty.Ranked) {
+                (score.Pp, score.BonusPp) = PpFromScore(score, leaderboard.Difficulty);
+            }
+            
             score.Platform = replay.info.platform + "," + replay.info.gameVersion + "," + replay.info.version;
+
             score.Timeset = replay.info.timestamp;
             
             return (replay, score, maxScore);
@@ -87,6 +117,32 @@ namespace BeatLeader_Server.Utils
 
 			return multiplier;
 		}
+
+        public static float GetPositiveMultiplier(string modifiers)
+        {
+            float multiplier = 1;
+
+            var modifiersMap = Modifiers();
+            foreach (var modifier in modifiersMap.Keys)
+            {
+                if (modifiers.Contains(modifier) && modifiersMap[modifier] > 0) { multiplier += modifiersMap[modifier]; }
+            }
+
+            return multiplier;
+        }
+
+        public static float GetNegativeMultiplier(string modifiers)
+        {
+            float multiplier = 1;
+
+            var modifiersMap = Modifiers();
+            foreach (var modifier in modifiersMap.Keys)
+            {
+                if (modifiers.Contains(modifier) && modifiersMap[modifier] < 0) { multiplier += modifiersMap[modifier]; }
+            }
+
+            return multiplier;
+        }
 
         public static (string, float) GetNegativeMultipliers(string modifiers)
         {
