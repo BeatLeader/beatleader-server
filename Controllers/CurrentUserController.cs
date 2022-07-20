@@ -64,13 +64,13 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/user")]
-        public ActionResult<UserReturn> GetCurrentUser()
+        public async Task<ActionResult<UserReturn>> GetCurrentUser()
         {
             string? id = GetId().Value;
             if (id == null) {
                 return NotFound();
             }
-            User? user = GetUserLazy(id);
+            User? user = await GetUserLazy(id);
             if (user == null) {
                return NotFound();
             }
@@ -123,12 +123,12 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public User? GetUserLazy(string id)
+        public async Task<User?> GetUserLazy(string id)
         {
             User? user = _context.Users.Where(u => u.Id == id).Include(u => u.Player).ThenInclude(p => p.Clans).Include(u => u.Player).ThenInclude(p => p.ScoreStats).Include(u => u.ClanRequest).Include(u => u.BannedClans).FirstOrDefault();
             if (user == null)
             {
-                Player? player = _context.Players.Where(u => u.Id == id).FirstOrDefault();
+                Player? player = (await _playerController.GetLazy(id)).Value;
                 if (player == null)
                 {
                     return null;

@@ -422,7 +422,7 @@ namespace BeatLeader_Server.Controllers
                 return NotFound("Current user is not leader of any clan");
             }
 
-            User? user = _userController.GetUserLazy(player);
+            User? user = await _userController.GetUserLazy(player);
             if (user == null) {
                 return NotFound("No such player");
             }
@@ -464,7 +464,7 @@ namespace BeatLeader_Server.Controllers
                 return NotFound("Current user is not leader of any clan");
             }
 
-            User? user = _userController.GetUserLazy(player);
+            User? user = await _userController.GetUserLazy(player);
             if (user == null)
             {
                 return NotFound("No such player");
@@ -522,7 +522,7 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("You cannot leave your own clan");
             }
 
-            User? user = _userController.GetUserLazy(player);
+            User? user = await _userController.GetUserLazy(player);
             if (user == null)
             {
                 return NotFound("No such player");
@@ -553,7 +553,7 @@ namespace BeatLeader_Server.Controllers
         {
             string currentID = HttpContext.CurrentUserID(_context);
 
-            User? user = _userController.GetUserLazy(currentID);
+            User? user = await _userController.GetUserLazy(currentID);
             if (user == null)
             {
                 return NotFound("No such player");
@@ -598,7 +598,7 @@ namespace BeatLeader_Server.Controllers
         {
             string currentID = HttpContext.CurrentUserID(_context);
 
-            User? user = _userController.GetUserLazy(currentID);
+            User? user = await _userController.GetUserLazy(currentID);
             if (user == null)
             {
                 return NotFound("No such player");
@@ -626,7 +626,7 @@ namespace BeatLeader_Server.Controllers
         {
             string currentID = HttpContext.CurrentUserID(_context);
 
-            User? user = _userController.GetUserLazy(currentID);
+            User? user = await _userController.GetUserLazy(currentID);
             if (user == null)
             {
                 return NotFound("No such player");
@@ -652,7 +652,7 @@ namespace BeatLeader_Server.Controllers
         {
             string currentID = HttpContext.CurrentUserID(_context);
 
-            User? user = _userController.GetUserLazy(currentID);
+            User? user = await _userController.GetUserLazy(currentID);
             if (user == null)
             {
                 return NotFound("No such player");
