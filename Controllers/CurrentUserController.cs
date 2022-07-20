@@ -79,7 +79,7 @@ namespace BeatLeader_Server.Controllers
             Clan? clan = _context.Clans.Include(c => c.Players).Where(f => f.LeaderID == id).FirstOrDefault();
 
             long intId = Int64.Parse(id);
-            if (intId > 2000000000000000) {
+            if (intId > 1000000000000000) {
                 var link = _context.AccountLinks.FirstOrDefault(el => el.SteamID == id || el.PCOculusID == id);
                 if (link != null) {
                     intId = link.OculusID;
@@ -542,7 +542,7 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Can't find player");
             }
 
-            if (Int64.Parse(currentId) < 2000000000000000) {
+            if (Int64.Parse(currentId) < 1000000000000000) {
                 await _playerController.GetLazy(currentId, true);
                 await MigratePrivate(id, currentId);
             } else {
@@ -555,7 +555,7 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         public async Task<ActionResult<int>> MigratePrivate(string migrateToId, string migrateFromId)
         {
-            if (Int64.Parse(migrateToId) < 2000000000000000)
+            if (Int64.Parse(migrateToId) < 1000000000000000)
             {
                 return Unauthorized("You need to be logged in with Steam or Oculus");
             }
@@ -621,7 +621,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (accountLink == null) {
-               if (fromIntID < 2000000000000000) {
+               if (fromIntID < 1000000000000000) {
                     if (Int64.Parse(migrateToId) > 70000000000000000) {
                         accountLink = new AccountLink
                         {
@@ -644,7 +644,7 @@ namespace BeatLeader_Server.Controllers
                 }
                 _context.AccountLinks.Add(accountLink);
             } else {
-                if (fromIntID < 2000000000000000)
+                if (fromIntID < 1000000000000000)
                 {
                     if (Int64.Parse(migrateToId) > 70000000000000000)
                     {

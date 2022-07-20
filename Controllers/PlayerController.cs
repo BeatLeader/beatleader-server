@@ -61,7 +61,7 @@ namespace BeatLeader_Server.Controllers
             }
             catch { }
             AccountLink? link = null;
-            if (oculusId < 2000000000000000)
+            if (oculusId < 1000000000000000)
             {
                 using (_serverTiming.TimeAction("link"))
                 {
@@ -110,7 +110,7 @@ namespace BeatLeader_Server.Controllers
                     if (player == null) {
                         return NotFound();
                     }
-                } else if (userId > 2000000000000000) {
+                } else if (userId > 1000000000000000) {
                     player = await PlayerUtils.GetPlayerFromOculus(id, _configuration.GetValue<string>("OculusToken"));
                     if (player == null)
                     {
