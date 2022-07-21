@@ -179,7 +179,8 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            var allLeaderboards = _context.Leaderboards.Where(l => l.Difficulty.Ranked).Include(s => s.Scores).Include(l => l.Difficulty).Select(l => new { Scores = l.Scores, Difficulty = l.Difficulty }).ToList();
+            var query = _context.Leaderboards.Where(l => l.Difficulty.Ranked).Include(s => s.Scores).Include(l => l.Difficulty);
+            var allLeaderboards = (leaderboardId != null ? query.Where(s => s.Id == leaderboardId) : query).Select(l => new { Scores = l.Scores, Difficulty = l.Difficulty }).ToList();
 
             int counter = 0;
             var transaction = _context.Database.BeginTransaction();

@@ -51,6 +51,7 @@ namespace BeatLeader_Server.Utils
             public float Accuracy { get; set; }
             public string PlayerId { get; set; }
             public float Pp { get; set; }
+            public float BonusPp { get; set; }
             public int Rank { get; set; }
             public int CountryRank { get; set; }
             public string Replay { get; set; }
@@ -99,6 +100,7 @@ namespace BeatLeader_Server.Utils
                 PlayerId = s.PlayerId,
                 Accuracy = s.Accuracy,
                 Pp = s.Pp,
+                BonusPp = s.BonusPp,
                 Rank = s.Rank,
                 Replay = s.Replay,
                 Modifiers = s.Modifiers,

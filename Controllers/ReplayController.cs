@@ -309,6 +309,7 @@ namespace BeatLeader_Server.Controllers
                             Rankability = currentScore.RankVoting.Rankability,
                             Stars = currentScore.RankVoting.Stars,
                             Type = currentScore.RankVoting.Type,
+                            Timeset = currentScore.RankVoting.Timeset
                         };
                     }
 
