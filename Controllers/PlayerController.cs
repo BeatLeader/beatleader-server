@@ -92,10 +92,12 @@ namespace BeatLeader_Server.Controllers
                 {
                     player = (await GetLazy(id, true)).Value;
                 }
-
-                return player;
             }
-            return player;
+            if (player != null) {
+                return player;
+            } else {
+                return NotFound();
+            }
         }
 
         [NonAction]

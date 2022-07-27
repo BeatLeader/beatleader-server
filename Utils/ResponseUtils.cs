@@ -68,6 +68,7 @@ namespace BeatLeader_Server.Utils
             public string Timeset { get; set; }
             public PlayerResponse Player { get; set; }
             public ScoreImprovement? ScoreImprovement { get; set; }
+            public RankVoting? RankVoting { get; set; }
         }
 
         public class LeaderboardResponse {
@@ -75,19 +76,44 @@ namespace BeatLeader_Server.Utils
             public Song Song { get; set; }
             public DifficultyDescription Difficulty { get; set; }
             public IEnumerable<ScoreResponse> Scores { get; set; }
+
+            public RankQualification? Qualification { get; set; }
             public int Plays { get; set; }
         }
 
-        public class ScoreResponseWithMyScore : ScoreResponse
+        public class ScoreResponseWithAcc : ScoreResponse
         {
-            public ScoreResponse? MyScore { get; set; }
-
             public float Weight { get; set; }
 
             public float AccLeft { get; set; }
             public float AccRight { get; set; }
+        }
+
+        public class ScoreResponseWithMyScore : ScoreResponseWithAcc
+        {
+            public ScoreResponse? MyScore { get; set; }
 
             public LeaderboardResponse Leaderboard { get; set; }
+        }
+
+        public class VotingResponse {
+            public float Rankability { get; set; } = 0;
+            public float Stars { get; set; } = 0;
+            public int Type { get; set; } = 0;
+            public int Timeset { get; set; } = 0;
+
+        }
+
+        public class LeaderboardInfoResponse
+        {
+            public string Id { get; set; }
+            public Song Song { get; set; }
+            public DifficultyDescription Difficulty { get; set; }
+            public int Plays { get; set; }
+
+            public ScoreResponseWithAcc? MyScore { get; set; }
+
+            public IEnumerable<VotingResponse> Votes { get; set; }
         }
 
         public static T RemoveLeaderboard<T>  (Score s, int i) where T : ScoreResponse, new()
@@ -115,12 +141,18 @@ namespace BeatLeader_Server.Utils
                 LeaderboardId = s.LeaderboardId,
                 Platform = s.Platform,
                 Player = ResponseFromPlayer(s.Player),
-                ScoreImprovement = s.ScoreImprovement
+                ScoreImprovement = s.ScoreImprovement,
+                RankVoting = s.RankVoting,
             };
         }
 
         public static ScoreResponse RemoveLeaderboard(Score s, int i) {
             return RemoveLeaderboard<ScoreResponse>(s, i);
+        }
+
+        public static ScoreResponse? RemoveNullableLeaderboard(Score? s, int i)
+        {
+            return s == null ? null : RemoveLeaderboard<ScoreResponse>(s, i);
         }
 
         public static ScoreResponseWithMyScore ScoreWithMyScore(Score s, int i) {
@@ -171,7 +203,8 @@ namespace BeatLeader_Server.Utils
                 Song = l.Song,
                 Difficulty = l.Difficulty,
                 Scores = l.Scores.Select(RemoveLeaderboard),
-                Plays = l.Plays
+                Plays = l.Plays,
+                Qualification = l.Qualification,
             };
         }
 

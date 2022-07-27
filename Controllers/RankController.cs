@@ -87,6 +87,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] float stars = 0,
             [FromQuery] int type = 0)
         {
+
             string? currentID = HttpContext.CurrentUserID(_context);
             if (currentID == null) {
                 return VoteStatus.CantVote;
@@ -101,7 +102,7 @@ namespace BeatLeader_Server.Controllers
             string mode,
             [FromQuery] string ticket,
             [FromQuery] float rankability,
-            [FromQuery] float stars = 0,
+            [FromQuery] string stars = "",
             [FromQuery] int type = 0)
         {
             (string? id, string? error) = await SteamHelper.GetPlayerIDFromTicket(ticket, _configuration);
@@ -117,7 +118,22 @@ namespace BeatLeader_Server.Controllers
                     id = accountLink.SteamID;
                 }
             }
-            return await VotePrivate(hash, diff, mode, id, rankability, stars, type);
+
+            float fixedStars = 0;
+            if (stars.Length > 0)
+            {
+                var parts = stars.Split(",");
+                if (parts.Length != 2)
+                {
+                    parts = stars.Split(".");
+                }
+                if (parts.Length == 2)
+                {
+                    fixedStars = float.Parse(parts[0]) + float.Parse(parts[1]) / MathF.Pow(10, parts[1].Length);
+                }
+            }
+
+            return await VotePrivate(hash, diff, mode, id, rankability, fixedStars, type);
         }
 
         [NonAction]
@@ -173,6 +189,92 @@ namespace BeatLeader_Server.Controllers
         }
 
         [Authorize]
+        [HttpPost("~/votefeedback/")]
+        public async Task<ActionResult> MakeVoteFeedback([FromQuery] int scoreId, [FromQuery] float value)
+        {
+            string userId = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(userId);
+
+            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
+            {
+                return Unauthorized();
+            }
+
+            var voting = _context.RankVotings.Where(v => v.ScoreId == scoreId).Include(v => v.Feedbacks).FirstOrDefault();
+            if (voting == null) {
+                return NotFound("No such voting");
+            }
+            if (voting.PlayerId == userId) {
+                return BadRequest("You can't feedback yourself");
+            }
+            if (voting.Feedbacks?.Where(f => f.RTMember == userId).FirstOrDefault() != null) {
+                return BadRequest("Feedback from this member already exist");
+            }
+
+            if (voting.Feedbacks == null) {
+                voting.Feedbacks = new List<VoterFeedback>();
+            }
+
+            voting.Feedbacks.Add(new VoterFeedback {
+                RTMember = userId,
+                Value = value
+            });
+            _context.SaveChanges();
+
+
+            return Ok();
+        }
+
+        [Authorize]
+        [HttpPost("~/qualify/{hash}/{diff}/{mode}/")]
+        public async Task<ActionResult> QualifyMap(
+            string hash,
+            string diff,
+            string mode,
+            [FromQuery] float stars = 0,
+            [FromQuery] int type = 0,
+            [FromQuery] bool allowed = false)
+        {
+            string currentID = HttpContext.CurrentUserID();
+            long intId = Int64.Parse(currentID);
+            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+            string userId = accountLink != null ? accountLink.SteamID : currentID;
+            var currentPlayer = await _context.Players.FindAsync(userId);
+
+            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
+            {
+                return Unauthorized();
+            }
+
+            Leaderboard? leaderboard = _context.Leaderboards.Include(l => l.Difficulty).Include(l => l.Song).FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+
+            if (leaderboard != null)
+            {
+                DifficultyDescription? difficulty = leaderboard.Difficulty;
+
+                if (difficulty.Qualified || difficulty.Ranked)
+                {
+                    return BadRequest("Already qualified or ranked");
+                }
+
+                difficulty.Qualified = true;
+                difficulty.QualifiedTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+                difficulty.Stars = stars;
+                leaderboard.Qualification = new RankQualification {
+                    Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
+                    RTMember = currentID,
+                    MapperAllowed = allowed
+                };
+                difficulty.Type = type;
+                _context.SaveChanges();
+                await _scoreController.RefreshScores(leaderboard.Id);
+            }
+
+            return Ok();
+        }
+
+        [Authorize]
         [HttpPost("~/rank/{hash}/{diff}/{mode}/")]
         public async Task<ActionResult> SetStarValue(
             string hash,
@@ -215,8 +317,12 @@ namespace BeatLeader_Server.Controllers
                 _context.RankChanges.Add(rankChange);
 
                 difficulty.Ranked = rankability > 0;
+                if (difficulty.Qualified) {
+                    difficulty.Qualified = false;
+                }
+                leaderboard.Qualification = null;
                 difficulty.Stars = stars;
-                difficulty.RankedTime = "" + DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+                difficulty.RankedTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                 difficulty.Type = type;
                 _context.SaveChanges();
                 await _scoreController.RefreshScores(leaderboard.Id);
@@ -224,6 +330,32 @@ namespace BeatLeader_Server.Controllers
             }
 
             return Ok();
+        }
+
+        [Authorize]
+        [HttpPost("~/rankabunch/")]
+        public async Task<ActionResult> SetStarValues([FromBody] Dictionary<string, float> values) {
+            string userId = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(userId);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var allKeys = values.Keys.Select(k => k.Split(",").First());
+            var leaderboards = _context.Leaderboards.Where(lb => allKeys.Contains(lb.Song.Hash.ToUpper())).Include(lb => lb.Song).Include(lb => lb.Difficulty).ToList();
+            foreach (var lb in leaderboards)
+            {
+                if (lb.Difficulty.Ranked && values.ContainsKey(lb.Song.Hash.ToUpper() + "," + lb.Difficulty.DifficultyName + "," + lb.Difficulty.ModeName)) {
+                    lb.Difficulty.Ranked = true;
+                    lb.Difficulty.Stars = values[lb.Song.Hash.ToUpper() + "," + lb.Difficulty.DifficultyName + "," + lb.Difficulty.ModeName];
+                }
+
+            }
+            await _context.SaveChangesAsync();
+            return Ok();
+
         }
 
         //[Authorize]

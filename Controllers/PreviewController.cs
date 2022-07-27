@@ -48,7 +48,14 @@ namespace BeatLeader_Server.Controllers
                 player = _context.Players.Where(p => p.Id == playerID).FirstOrDefault() ?? await GetPlayerFromSS("https://scoresaber.com/api/player/" + playerID + "/full");
                 song = _context.Songs.Select(s => new SongSelect { Id = s.Id, CoverImage = s.CoverImage, Name = s.Name }).Where(s => s.Id == id).FirstOrDefault();
             } else if (scoreId != null) {
-                score = await _context.Scores.Where(s => s.Id == scoreId).Include(s => s.Player).Include(s => s.Leaderboard).ThenInclude(l => l.Song).Include(s => s.Leaderboard).ThenInclude(l => l.Difficulty).FirstOrDefaultAsync();
+                score = await _context.Scores
+                    .Where(s => s.Id == scoreId)
+                    .Include(s => s.Player)
+                    .Include(s => s.Leaderboard)
+                        .ThenInclude(l => l.Song)
+                    .Include(s => s.Leaderboard)
+                        .ThenInclude(l => l.Difficulty)
+                    .FirstOrDefaultAsync();
                 if (score != null) {
                     player = score.Player;
                     song = new SongSelect { Id = score.Leaderboard.Song.Id, CoverImage = score.Leaderboard.Song.CoverImage, Name = score.Leaderboard.Song.Name };

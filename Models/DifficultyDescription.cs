@@ -9,10 +9,10 @@
         public string ModeName { get; set; }
 
         public bool Qualified { get; set; }
-        public string QualifiedTime { get; set; } = "";
+        public int QualifiedTime { get; set; }
 
         public bool Ranked { get; set; }
-        public string RankedTime { get; set; } = "";
+        public int RankedTime { get; set; }
         public float? Stars { get; set; }
 
         public float Njs { get; set; }
@@ -22,6 +22,6 @@
         public int Walls { get; set; }
         public int MaxScore { get; set; }
 
-        public int Type { get; set; } = 0;
+        public int Type { get; set; }
     }
 }

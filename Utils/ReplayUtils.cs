@@ -18,8 +18,9 @@ namespace BeatLeader_Server.Utils
             mp = 1 + (mp - 1) * 2f;
 
             float rawPP = (float)(Curve(s.Accuracy, (float)difficulty.Stars - 0.5f) * ((float)difficulty.Stars + 0.5f) * 42);
+            float fullPP = (float)(Curve(s.Accuracy, (float)difficulty.Stars * mp - 0.5f) * ((float)difficulty.Stars * mp + 0.5f) * 42);
 
-            return (rawPP * mp, rawPP * (mp - 1));
+            return (fullPP, fullPP - rawPP);
         }
 
         public static (Replay, Score, int) ProcessReplay(Replay replay, Leaderboard leaderboard) {
@@ -60,10 +61,12 @@ namespace BeatLeader_Server.Utils
             score.Accuracy = (float)score.ModifiedScore / (float)maxScore;
             score.Modifiers = replay.info.modifiers;
 
-            if (leaderboard.Difficulty.Ranked) {
+            if (leaderboard.Difficulty.Ranked || leaderboard.Difficulty.Qualified) {
                 (score.Pp, score.BonusPp) = PpFromScore(score, leaderboard.Difficulty);
             }
-            
+
+            score.Qualification = leaderboard.Difficulty.Qualified;
+
             score.Platform = replay.info.platform + "," + replay.info.gameVersion + "," + replay.info.version;
 
             score.Timeset = replay.info.timestamp;

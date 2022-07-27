@@ -147,6 +147,13 @@ namespace BeatLeader_Server.Controllers
             if (replay == null) {
                 return BadRequest("It's not a replay or it has old version.");
             }
+            
+            var version = replay.info.version.Split(".");
+            if (version.Length < 3 || int.Parse(version[1]) < 3) {
+                Thread.Sleep(8000); // Error may not show if returned too quick
+                return BadRequest("Please update your mod. v0.3 or higher");
+            }
+
             if (replay.notes.Count == 0 || replay.frames.Count == 0)
             {
                 return BadRequest("Replay is broken, update your mode please.");
@@ -278,6 +285,10 @@ namespace BeatLeader_Server.Controllers
                         }
 
                         improvement.AverageRankedAccuracy = player.ScoreStats.AverageRankedAccuracy - oldAverageAcc;
+                        
+                    }
+
+                    if (leaderboard.Difficulty.Ranked || leaderboard.Difficulty.Qualified) {
                         improvement.Pp = resultScore.Pp - currentScore.Pp;
                     }
 
@@ -309,7 +320,8 @@ namespace BeatLeader_Server.Controllers
                             Rankability = currentScore.RankVoting.Rankability,
                             Stars = currentScore.RankVoting.Stars,
                             Type = currentScore.RankVoting.Type,
-                            Timeset = currentScore.RankVoting.Timeset
+                            Timeset = currentScore.RankVoting.Timeset,
+                            Feedbacks = currentScore.RankVoting.Feedbacks
                         };
                     }
 
@@ -345,7 +357,8 @@ namespace BeatLeader_Server.Controllers
                     leaderboard.Scores.Add(resultScore);
                 }
 
-                var rankedScores = leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();
+                var isRanked = leaderboard.Difficulty.Ranked || leaderboard.Difficulty.Qualified;
+                var rankedScores = leaderboard.Scores.OrderByDescending(el => isRanked ? el.Pp : el.ModifiedScore).ToList();
                 foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
                 {
                     if (s.Rank != i + 1) {
@@ -358,7 +371,7 @@ namespace BeatLeader_Server.Controllers
                 }
                 
                 leaderboard.Plays = rankedScores.Count;
-                }
+            }
 
 
             using (_serverTiming.TimeAction("db"))

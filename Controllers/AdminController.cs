@@ -144,6 +144,20 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpGet("~/admin/allScores")]
+        public async Task<ActionResult<List<Score>>> GetAllScores([FromQuery] int from, [FromQuery] int to)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            return _context.Scores.Where(s => s.Timepost >= from && s.Timepost <= to).ToList();
+        }
+
         public static string GolovaID = "76561198059961776";
     }
 }

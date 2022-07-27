@@ -14,5 +14,7 @@ namespace BeatLeader_Server.Models
         public float Stars { get; set; } = 0;
         public int Type { get; set; } = 0;
         public int Timeset { get; set; } = 0;
+
+        public ICollection<VoterFeedback>? Feedbacks { get; set; }
     }
 }

@@ -179,7 +179,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            var query = _context.Leaderboards.Where(l => l.Difficulty.Ranked).Include(s => s.Scores).Include(l => l.Difficulty);
+            var query = _context.Leaderboards.Where(l => l.Difficulty.Ranked || l.Difficulty.Qualified).Include(s => s.Scores).Include(l => l.Difficulty);
             var allLeaderboards = (leaderboardId != null ? query.Where(s => s.Id == leaderboardId) : query).Select(l => new { Scores = l.Scores, Difficulty = l.Difficulty }).ToList();
 
             int counter = 0;
@@ -201,11 +201,20 @@ namespace BeatLeader_Server.Controllers
                     if (s.Accuracy > 0.999f) {
                         s.Accuracy = 1.0f;
                     }
-                    if (leaderboard.Difficulty.Ranked) {
+                    if (leaderboard.Difficulty.Ranked || leaderboard.Difficulty.Qualified) {
                         (s.Pp, s.BonusPp) = ReplayUtils.PpFromScore(s, leaderboard.Difficulty);
                     }
+                    s.Qualification = leaderboard.Difficulty.Qualified;
                     if (float.IsNaN(s.Pp)) {
                         s.Pp = 0.0f;
+                    }
+                    if (float.IsNaN(s.BonusPp))
+                    {
+                        s.BonusPp = 0.0f;
+                    }
+                    if (float.IsNaN(s.Accuracy))
+                    {
+                        s.Accuracy = 0.0f;
                     }
                     counter++;
                 }
@@ -453,11 +462,9 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/score/{playerID}/{hash}/{diff}/{mode}")]
         public async Task<ActionResult<Score>> GetPlayer(string playerID, string hash, string diff, string mode)
         {
-            string userId = HttpContext.CurrentUserID(_context);
-
             var score = await _context
                 .Scores
-                .Where(l => l.Leaderboard.Song.Hash == hash && l.Leaderboard.Difficulty.DifficultyName == diff && l.Leaderboard.Difficulty.ModeName == mode && l.PlayerId == userId)
+                .Where(l => l.Leaderboard.Song.Hash == hash && l.Leaderboard.Difficulty.DifficultyName == diff && l.Leaderboard.Difficulty.ModeName == mode && l.PlayerId == playerID)
                 .Include(el => el.Player).ThenInclude(el => el.PatreonFeatures)
                 .FirstOrDefaultAsync();
 

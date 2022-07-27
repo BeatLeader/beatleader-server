@@ -9,6 +9,7 @@
         public string PlayerId { get; set; }
         public float Pp { get; set; }
         public float BonusPp { get; set; }
+        public bool Qualification { get; set; }
         public float Weight { get; set; }
         public int Rank { get; set; }
         public int CountryRank { get; set; }

@@ -297,7 +297,7 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Original plist dead. Wake up NSGolova!");
             }
 
-            playlist.songs = _context.Songs.Include(s => s.Difficulties).Where(s => s.Difficulties.FirstOrDefault(d => d.Ranked) != null).Select(s => new {
+            var songs = _context.Songs.Include(s => s.Difficulties).Where(s => s.Difficulties.FirstOrDefault(d => d.Ranked) != null).Select(s => new {
                 hash = s.Hash,
                 songName = s.Name,
                 levelAuthorName = s.Mapper,
@@ -307,10 +307,55 @@ namespace BeatLeader_Server.Controllers
                 })
             }).ToList();
 
+            playlist.songs = songs.DistinctBy(s => s.hash).ToList();
+
             await _playlistContainerClient.DeleteBlobIfExistsAsync("ranked.bplist");
             await _playlistContainerClient.UploadBlobAsync("ranked.bplist", new BinaryData(JsonConvert.SerializeObject(playlist)));
 
             return Ok();
         }
+
+        [Authorize]
+        [HttpGet("~/playlist/refreshqualified")]
+        public async Task<ActionResult> RefreshQualifiedPlaylist()
+        {
+            string userId = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(userId);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            BlobClient blobClient = _playlistContainerClient.GetBlobClient("qualified.bplist");
+            MemoryStream stream = new MemoryStream(5);
+            await blobClient.DownloadToAsync(stream);
+            stream.Position = 0;
+
+            dynamic? playlist = ObjectFromStream(stream);
+
+            if (playlist == null)
+            {
+                return BadRequest("Original plist dead. Wake up NSGolova!");
+            }
+
+            var songs = _context.Songs.Include(s => s.Difficulties).Where(s => s.Difficulties.FirstOrDefault(d => d.Qualified) != null).Select(s => new {
+                hash = s.Hash,
+                songName = s.Name,
+                levelAuthorName = s.Mapper,
+                difficulties = s.Difficulties.Where(d => d.Ranked).Select(d => new {
+                    name = d.DifficultyName.FirstCharToLower(),
+                    characteristic = d.ModeName
+                })
+            }).ToList();
+
+            playlist.songs = songs.DistinctBy(s => s.hash).ToList();
+
+            await _playlistContainerClient.DeleteBlobIfExistsAsync("qualified.bplist");
+            await _playlistContainerClient.UploadBlobAsync("qualified.bplist", new BinaryData(JsonConvert.SerializeObject(playlist)));
+
+            return Ok();
+        }
+
     }
 }

@@ -10,7 +10,7 @@ namespace BeatLeader_Server.Utils
     {
         public static void RecalculatePP(this AppContext context, Player player, List<Score>? scores = null)
         {
-            var ranked = scores ?? context.Scores.Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned).OrderByDescending(s => s.Pp).ToList();
+            var ranked = scores ?? context.Scores.Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification).OrderByDescending(s => s.Pp).ToList();
             float resultPP = 0f;
             foreach ((int i, Score s) in ranked.Select((value, i) => (i, value)))
             {
@@ -29,7 +29,7 @@ namespace BeatLeader_Server.Utils
         {
             float oldPp = player.Pp;
 
-            var rankedScores = context.Scores.Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned).OrderByDescending(s => s.Pp).Select(s => new { Pp = s.Pp }).ToList();
+            var rankedScores = context.Scores.Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification).OrderByDescending(s => s.Pp).Select(s => new { Pp = s.Pp }).ToList();
             float resultPP = 0f;
             foreach ((int i, float pp) in rankedScores.Select((value, i) => (i, value.Pp)))
             {
@@ -64,7 +64,7 @@ namespace BeatLeader_Server.Utils
         {
             dynamic? info = await GetPlayer("http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=" + steamKey + "&steamids=" + playerID);
 
-            if (info == null) return null;
+            if (info == null || info.response.players.Count == 0) return null;
 
             dynamic playerInfo = info.response.players[0];
             Player result = new Player();
