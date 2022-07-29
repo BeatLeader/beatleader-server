@@ -127,6 +127,25 @@ namespace BeatLeader_Server.Utils
             return result;
         }
 
+        public static async Task<Player?> GetPlayerFromBeatSaver(string playerID)
+        {
+            string bslink = "https://beatsaver.com/";
+            dynamic? info = await GetPlayer(bslink + "api/users/id/" + playerID);
+
+            if (info == null) return null;
+
+            Player result = new Player();
+            result.Name = info.name;
+            result.Id = (30000000 + info.id) + "";
+            result.MapperId = (int)info.id;
+            result.Platform = "beatsaver";
+            result.Country = "not set";
+            result.Avatar = info.avatar;
+            result.ExternalProfileUrl = bslink + "profile/" + playerID;
+
+            return result;
+        }
+
         public static Task<dynamic?> GetPlayer(string url, string? token = null)
         {
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);

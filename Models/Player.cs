@@ -10,6 +10,7 @@
         public string Histories { get; set; } = "";
 
         public string Role { get; set; } = "";
+        public int MapperId { get; set; }
 
         public float Pp { get; set; }
         public int Rank { get; set; }

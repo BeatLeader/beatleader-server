@@ -51,12 +51,27 @@ namespace BeatLeader_Server.Controllers
                 redirectUrl = Url.Action("SteamLoginCallback", new { ReturnUrl = returnUrl });
             } else if (provider == "Patreon") {
                 redirectUrl = Url.Action("LinkPatreon", "Patreon", new { returnUrl = returnUrl });
+            } else if (provider == "BeatSaver") {
+                redirectUrl = Url.Action("LinkBeatSaver", "BeatSaver", new { returnUrl = returnUrl });
             }
 
             // Instruct the middleware corresponding to the requested external identity
             // provider to redirect the user agent to its own authorization endpoint.
             // Note: the authenticationScheme parameter must match the value configured in Startup.cs
             return Challenge(new AuthenticationProperties { RedirectUri =  redirectUrl }, provider);
+        }
+
+        [HttpPost("~/signin/approve")]
+        public async Task<IActionResult> SignInApprove([FromForm] string returnUrl, [FromQuery] string leaderboardId)
+        {
+            string redirectUrl = returnUrl;
+
+            redirectUrl = Url.Action("LinkBeatSaverAndApprove", "BeatSaver", new { returnUrl = returnUrl, leaderboardId = leaderboardId });
+
+            // Instruct the middleware corresponding to the requested external identity
+            // provider to redirect the user agent to its own authorization endpoint.
+            // Note: the authenticationScheme parameter must match the value configured in Startup.cs
+            return Challenge(new AuthenticationProperties { RedirectUri = redirectUrl }, "BeatSaver");
         }
 
         [Authorize]

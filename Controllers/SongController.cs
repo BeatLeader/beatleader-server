@@ -67,6 +67,7 @@ namespace BeatLeader_Server.Controllers
                     {
                         song.Difficulties.ElementAt(i).MaxScore = updatedSong.Difficulties.ElementAt(i).MaxScore;
                     }
+                    song.MapperId = updatedSong.MapperId;
                     _context.Songs.Update(song);
                     _context.SaveChanges();
                 }
@@ -130,6 +131,7 @@ namespace BeatLeader_Server.Controllers
                     result.SubName = info.metadata.songSubName;
                     result.Duration = info.metadata.duration;
                     result.Bpm = info.metadata.bpm;
+                    result.MapperId = info.metadata.mapperId;
                     if (ExpandantoObject.HasProperty(info, "tags")) {
                         result.Tags = string.Join(",", info.tags);
                     }

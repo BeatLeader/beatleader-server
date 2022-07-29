@@ -9,6 +9,7 @@
         public string? SubName { get; set; }
         public string Author { get; set; }
         public string Mapper { get; set; }
+        public int MapperId { get; set; }
         public string CoverImage { get; set; }
         public string DownloadUrl { get; set; }
         public double Bpm { get; set; }

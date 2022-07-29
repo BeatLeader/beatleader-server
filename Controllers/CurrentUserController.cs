@@ -60,7 +60,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/user/id")]
         public ActionResult<string> GetId()
         {   
-            return HttpContext.CurrentUserID(_context); ;
+            return HttpContext.CurrentUserID(_context);
         }
 
         [HttpGet("~/user")]

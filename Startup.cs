@@ -37,6 +37,9 @@ namespace BeatLeader_Server {
             string patreonId = Configuration.GetValue<string>("PatreonId");
             string patreonSecret = Configuration.GetValue<string>("PatreonSecret");
 
+            string beatSaverId = Configuration.GetValue<string>("BeatSaverId");
+            string beatSaverSecret = Configuration.GetValue<string>("BeatSaverSecret");
+
             string? cookieDomain = Configuration.GetValue<string>("CookieDomain");
 
             var authBuilder = services.AddAuthentication (options => {
@@ -59,6 +62,7 @@ namespace BeatLeader_Server {
                 options.SlidingExpiration = true;
             })
             .AddCookie("BLPatreon")
+            .AddCookie("BLBeatSaver")
             .AddSteamTicket(options =>
             {
                 options.Key = steamKey;
@@ -72,6 +76,12 @@ namespace BeatLeader_Server {
                     /* ... */
                     return Task.CompletedTask;
                 };
+            })
+            .AddBeatSaver(options => {
+                options.SignInScheme = "BLBeatSaver";
+                options.SaveTokens = true;
+                options.ClientId = beatSaverId;
+                options.ClientSecret = beatSaverSecret;
             });
 
             if (!Environment.IsDevelopment()) {
