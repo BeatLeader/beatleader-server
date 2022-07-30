@@ -643,6 +643,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string search = "",
             [FromQuery] string order = "desc",
             [FromQuery] string countries = "",
+            [FromQuery] string mapsType = "ranked",
             [FromQuery] bool friends = false,
             [FromQuery] string? pp_range = null,
             [FromQuery] string? score_range = null,
@@ -716,7 +717,19 @@ namespace BeatLeader_Server.Controllers
                 {
                     var array = score_range.Split(",").Select(s => int.Parse(s)).ToArray();
                     int from = array[0]; int to = array[1];
-                    request = request.Where(p => p.ScoreStats.RankedPlayCount >= from && p.ScoreStats.RankedPlayCount <= to);
+                    switch (mapsType)
+                    {
+                        case "ranked":
+                            request = request.Where(p => p.ScoreStats.RankedPlayCount >= from && p.ScoreStats.RankedPlayCount <= to);
+                            break;
+                        case "unranked":
+                            request = request.Where(p => p.ScoreStats.UnrankedPlayCount >= from && p.ScoreStats.UnrankedPlayCount <= to);
+                            break;
+                        case "all":
+                            request = request.Where(p => p.ScoreStats.TotalPlayCount >= from && p.ScoreStats.TotalPlayCount <= to);
+                            break;
+                    }
+                    
                 }
                 catch { }
             }
@@ -738,39 +751,8 @@ namespace BeatLeader_Server.Controllers
                     request = request.Where(p => p.Id == player.Id);
                 }
             }
-            switch (sortBy)
-            {
-                case "pp":
-                    request = request.Order(order, p => p.Pp);
-                    break;
-                case "rank":
-                    request = request.Order(order, p => p.ScoreStats.AverageRankedRank);
-                    break;
-                case "acc":
-                    request = request.Order(order, p => p.ScoreStats.AverageRankedAccuracy);
-                    break;
-                case "topAcc":
-                    request = request.Order(order, p => p.ScoreStats.TopAccuracy);
-                    break;
-                case "topPp":
-                    request = request.Order(order, p => p.ScoreStats.TopPp);
-                    break;
-                case "hmd":
-                    request = request.Order(order, p => p.ScoreStats.TopHMD);
-                    break;
-                case "playCount":
-                    request = request.Order(order, p => p.ScoreStats.RankedPlayCount);
-                    break;
-                case "score":
-                    request = request.Order(order, p => p.ScoreStats.TotalScore);
-                    break;
-
-                case "dailyImprovements":
-                    request = request.Order(order, p => p.ScoreStats.DailyImprovements);
-                    break;
-                default:
-                    break;
-            }
+            request = Sorted(request, sortBy, order, mapsType);
+            
             return new ResponseWithMetadata<PlayerResponseWithStats>()
             {
                 Metadata = new Metadata()
@@ -781,6 +763,112 @@ namespace BeatLeader_Server.Controllers
                 },
                 Data = request.Skip((page - 1) * count).Take(count).Select(ResponseWithStatsFromPlayer).ToList()
             };
+        }
+
+        private IQueryable<Player> Sorted(IQueryable<Player> request, string sortBy, string order, string mapsType) {
+            switch (mapsType)
+            {
+                case "ranked":
+                    switch (sortBy)
+                    {
+                        case "pp":
+                            request = request.Order(order, p => p.Pp);
+                            break;
+                        case "rank":
+                            request = request
+                                .Where(p => p.ScoreStats.AverageRankedRank != 0)
+                                .Order(order == "desc" ? "asc" : "desc", p => Math.Round(p.ScoreStats.AverageRankedRank))
+                                .ThenOrder(order, p => p.ScoreStats.RankedPlayCount); 
+                            break;
+                        case "acc":
+                            request = request.Order(order, p => p.ScoreStats.AverageRankedAccuracy);
+                            break;
+                        case "topAcc":
+                            request = request.Order(order, p => p.ScoreStats.TopRankedAccuracy);
+                            break;
+                        case "topPp":
+                            request = request.Order(order, p => p.ScoreStats.TopPp);
+                            break;
+                        case "hmd":
+                            request = request.Order(order, p => p.ScoreStats.TopHMD);
+                            break;
+                        case "playCount":
+                            request = request.Order(order, p => p.ScoreStats.RankedPlayCount);
+                            break;
+                        case "score":
+                            request = request.Order(order, p => p.ScoreStats.TotalRankedScore);
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                case "unranked":
+                    switch (sortBy)
+                    {
+                        case "rank":
+                            request = request
+                                .Where(p => p.ScoreStats.AverageUnrankedRank != 0)
+                                .Order(order == "desc" ? "asc" : "desc", p => Math.Round(p.ScoreStats.AverageUnrankedRank))
+                                .ThenOrder(order, p => p.ScoreStats.UnrankedPlayCount);
+                            break;
+                        case "acc":
+                            request = request.Order(order, p => p.ScoreStats.AverageUnrankedAccuracy);
+                            break;
+                        case "topAcc":
+                            request = request.Order(order, p => p.ScoreStats.TopUnrankedAccuracy);
+                            break;
+                        case "hmd":
+                            request = request.Order(order, p => p.ScoreStats.TopHMD);
+                            break;
+                        case "playCount":
+                            request = request.Order(order, p => p.ScoreStats.UnrankedPlayCount);
+                            break;
+                        case "score":
+                            request = request.Order(order, p => p.ScoreStats.TotalUnrankedScore);
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                case "all":
+                    switch (sortBy)
+                    {
+                        case "pp":
+                            request = request.Order(order, p => p.Pp);
+                            break;
+                        case "rank":
+                            request = request
+                                .Where(p => p.ScoreStats.AverageRank != 0)
+                                .Order(order == "desc" ? "asc" : "desc", p => Math.Round(p.ScoreStats.AverageRank))
+                                .ThenOrder(order, p => p.ScoreStats.TotalPlayCount);
+                            break;
+                        case "acc":
+                            request = request.Order(order, p => p.ScoreStats.AverageAccuracy);
+                            break;
+                        case "topAcc":
+                            request = request.Order(order, p => p.ScoreStats.TopAccuracy);
+                            break;
+                        case "topPp":
+                            request = request.Order(order, p => p.ScoreStats.TopPp);
+                            break;
+                        case "hmd":
+                            request = request.Order(order, p => p.ScoreStats.TopHMD);
+                            break;
+                        case "playCount":
+                            request = request.Order(order, p => p.ScoreStats.TotalPlayCount);
+                            break;
+                        case "score":
+                            request = request.Order(order, p => p.ScoreStats.TotalScore);
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                default:
+                    break;
+            }
+
+            return request;
         }
 
         private string GenerateListString(string current, int value) {
@@ -934,8 +1022,9 @@ namespace BeatLeader_Server.Controllers
                 }).ToListAsync();
 
             if (allScores.Count() == 0) return;
-            var rankedScores = allScores.Where(s => s.Pp != 0);
-            player.ScoreStats.TotalPlayCount = allScores.Count();
+
+            var rankedScores = allScores.Where(s => s.Pp != 0).ToList();
+            var unrankedScores = allScores.Where(s => s.Pp == 0).ToList();
 
             var lastScores = allScores.TakeLast(50);
             Dictionary<string, int> platforms = new Dictionary<string, int>();
@@ -966,25 +1055,39 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
+            player.ScoreStats.TotalPlayCount = allScores.Count();
+            player.ScoreStats.UnrankedPlayCount = unrankedScores.Count();
+            player.ScoreStats.RankedPlayCount = rankedScores.Count();
+
             player.ScoreStats.TopPlatform = platforms.OrderByDescending(s => s.Value).First().Key;
             player.ScoreStats.TopHMD = hmds.OrderByDescending(s => s.Value).First().Key;
 
-            player.ScoreStats.RankedPlayCount = rankedScores.Count();
             if (player.ScoreStats.TotalPlayCount > 0)
             {
                 int count = allScores.Count() / 2;
                 player.ScoreStats.TotalScore = allScores.Sum(s => s.ModifiedScore);
                 player.ScoreStats.AverageAccuracy = allScores.Average(s => s.Accuracy);
+                player.ScoreStats.TopAccuracy = allScores.Max(s => s.Accuracy);
                 player.ScoreStats.MedianAccuracy = allScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
                 player.ScoreStats.AverageRank = allScores.Average(s => (float)s.Rank);
+            }
+
+            if (player.ScoreStats.UnrankedPlayCount > 0)
+            {
+                int count = unrankedScores.Count() / 2;
+                player.ScoreStats.TotalUnrankedScore = unrankedScores.Sum(s => s.ModifiedScore);
+                player.ScoreStats.AverageUnrankedAccuracy = unrankedScores.Average(s => s.Accuracy);
+                player.ScoreStats.TopUnrankedAccuracy = unrankedScores.Max(s => s.Accuracy);
+                player.ScoreStats.AverageUnrankedRank = unrankedScores.Average(s => (float)s.Rank);
             }
 
             if (player.ScoreStats.RankedPlayCount > 0)
             {
                 int count = rankedScores.Count() / 2;
+                player.ScoreStats.TotalRankedScore = rankedScores.Sum(s => s.ModifiedScore);
                 player.ScoreStats.AverageRankedAccuracy = rankedScores.Average(s => s.Accuracy);
                 player.ScoreStats.MedianRankedAccuracy = rankedScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
-                player.ScoreStats.TopAccuracy = rankedScores.Max(s => s.Accuracy);
+                player.ScoreStats.TopRankedAccuracy = rankedScores.Max(s => s.Accuracy);
                 player.ScoreStats.TopPp = rankedScores.Max(s => s.Pp);
                 player.ScoreStats.TopBonusPP = rankedScores.Max(s => s.BonusPp);
                 player.ScoreStats.AverageRankedRank = rankedScores.Average(s => (float)s.Rank);

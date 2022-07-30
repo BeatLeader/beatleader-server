@@ -4,22 +4,32 @@ namespace BeatLeader_Server.Models
     public class PlayerScoreStats
     {
         public int Id { get; set; }
+
         public int TotalScore { get; set; }
+        public int TotalUnrankedScore { get; set; }
+        public int TotalRankedScore { get; set; }
 
         public float AverageRankedAccuracy { get; set; }
+        public float AverageUnrankedAccuracy { get; set; }
         public float AverageAccuracy { get; set; }
 
         public float MedianRankedAccuracy { get; set; }
         public float MedianAccuracy { get; set; }
 
+        public float TopRankedAccuracy { get; set; }
+        public float TopUnrankedAccuracy { get; set; }
         public float TopAccuracy { get; set; }
+
         public float TopPp { get; set; }
         public float TopBonusPP { get; set; }
-        public int TotalPlayCount { get; set; }
+
         public int RankedPlayCount { get; set; }
-        public int ReplaysWatched { get; set; }
-        public float AverageRank { get; set; }
+        public int UnrankedPlayCount { get; set; }
+        public int TotalPlayCount { get; set; }
+
         public float AverageRankedRank { get; set; }
+        public float AverageUnrankedRank { get; set; }
+        public float AverageRank { get; set; }
 
         public int SSPPlays { get; set; }
         public int SSPlays { get; set; }
@@ -31,6 +41,7 @@ namespace BeatLeader_Server.Models
         public int TopHMD { get ; set; }
 
         public int DailyImprovements { get; set; }
+        public int ReplaysWatched { get; set; }
     }
 }
 

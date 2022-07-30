@@ -82,6 +82,17 @@ namespace BeatLeader_Server.Extensions
                 return source.OrderBy(keySelector);
             }
         }
+        public static IOrderedQueryable<TSource> ThenOrder<TSource, TKey>(this IOrderedQueryable<TSource> source, string by, Expression<Func<TSource, TKey>> keySelector)
+        {
+            if (by == "desc")
+            {
+                return source.ThenByDescending(keySelector);
+            }
+            else
+            {
+                return source.ThenBy(keySelector);
+            }
+        }
         public static void SetPublicContainerPermissions(this BlobContainerClient container)
         {
             try {

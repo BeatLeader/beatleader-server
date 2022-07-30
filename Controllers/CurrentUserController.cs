@@ -562,6 +562,11 @@ namespace BeatLeader_Server.Controllers
             if (accountLinks.Count == 1)
             {
                 accountLink = accountLinks[0];
+                if (fromIntID < 1000000000000000 && accountLink.PCOculusID.Length > 0)
+                {
+                    migrateFromId = accountLink.PCOculusID;
+                    fromIntID = Int64.Parse(migrateFromId);
+                }
             }
             else if (accountLinks.Count > 1)
             {
