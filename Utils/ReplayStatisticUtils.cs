@@ -489,7 +489,76 @@ namespace BeatLeader_Server.Utils
             return ((int)beforeCutRawScore, (int)afterCutRawScore, (int)cutDistanceRawScore);
         }
 
+        public static List<float> AverageList(List<List<float>> total) {
+            int length = total.Max(t => t.Count);
+            var result = new List<float>(length);
+            for (int i = 0; i < length; i++)
+            {
+                float sum = 0;
+                float count = 0;
+                for (int j = 0; j < total.Count; j++)
+                {
+                    if (i < total[j].Count) {
+                        sum += total[j][i];
+                        count++;
+                    }
+                }
+                result.Add(count > 0 ? sum / count : 0);
+            }
+            return result;
+
+        }
+
+        public static void AverageStatistic(List<ScoreStatistic> statistics, LeaderboardStatistic leaderboardStatistic) {
+
+            leaderboardStatistic.WinTracker = new WinTracker {
+                Won = statistics.Average(st => st.WinTracker.Won ? 1.0 : 0.0) > 0.5,
+                EndTime = statistics.Average(st => st.WinTracker.EndTime),
+                NbOfPause = (int)Math.Round(statistics.Average(st => st.WinTracker.NbOfPause)),
+                JumpDistance = statistics.Average(st => st.WinTracker.JumpDistance),
+                TotalScore = (int)statistics.Average(st => st.WinTracker.TotalScore)
+            };
+
+            leaderboardStatistic.HitTracker = new HitTracker {
+                MaxCombo = (int)Math.Round(statistics.Average(st => st.HitTracker.MaxCombo)),
+                LeftMiss = (int)Math.Round(statistics.Average(st => st.HitTracker.LeftMiss)),
+                RightMiss = (int)Math.Round(statistics.Average(st => st.HitTracker.RightMiss)),
+                LeftBadCuts = (int)Math.Round(statistics.Average(st => st.HitTracker.LeftBadCuts)),
+                RightBadCuts = (int)Math.Round(statistics.Average(st => st.HitTracker.RightBadCuts)),
+                LeftBombs = (int)Math.Round(statistics.Average(st => st.HitTracker.LeftBombs)),
+                RightBombs = (int)Math.Round(statistics.Average(st => st.HitTracker.RightBombs))
+            };
+
+            leaderboardStatistic.AccuracyTracker = new AccuracyTracker {
+                AccRight = statistics.Average(st => st.AccuracyTracker.AccRight),
+                AccLeft = statistics.Average(st => st.AccuracyTracker.AccLeft),
+                LeftPreswing = statistics.Average(st => st.AccuracyTracker.LeftPreswing),
+                RightPreswing = statistics.Average(st => st.AccuracyTracker.RightPreswing),
+                AveragePreswing = statistics.Average(st => st.AccuracyTracker.AveragePreswing),
+                LeftPostswing = statistics.Average(st => st.AccuracyTracker.LeftPostswing),
+                RightPostswing = statistics.Average(st => st.AccuracyTracker.RightPostswing),
+                LeftTimeDependence = statistics.Average(st => st.AccuracyTracker.LeftTimeDependence),
+                RightTimeDependence = statistics.Average(st => st.AccuracyTracker.RightTimeDependence),
+                LeftAverageCut = AverageList(statistics.Select(st => st.AccuracyTracker.LeftAverageCut).ToList()),
+                RightAverageCut = AverageList(statistics.Select(st => st.AccuracyTracker.RightAverageCut).ToList()),
+                GridAcc = AverageList(statistics.Select(st => st.AccuracyTracker.GridAcc).ToList())
+            };
+
+            leaderboardStatistic.ScoreGraphTracker = new ScoreGraphTracker {
+                Graph = AverageList(statistics.Select(st => st.ScoreGraphTracker.Graph).ToList())
+            };
+        }
+
         public static void EncodeArrays(ScoreStatistic statistic)
+        {
+            statistic.AccuracyTracker.LeftAverageCutS = string.Join(",", statistic.AccuracyTracker.LeftAverageCut);
+            statistic.AccuracyTracker.RightAverageCutS = string.Join(",", statistic.AccuracyTracker.RightAverageCut);
+            statistic.AccuracyTracker.GridAccS = string.Join(",", statistic.AccuracyTracker.GridAcc);
+
+            statistic.ScoreGraphTracker.GraphS = string.Join(",", statistic.ScoreGraphTracker.Graph);
+        }
+
+        public static void EncodeArrays(LeaderboardStatistic statistic)
         {
             statistic.AccuracyTracker.LeftAverageCutS = string.Join(",", statistic.AccuracyTracker.LeftAverageCut);
             statistic.AccuracyTracker.RightAverageCutS = string.Join(",", statistic.AccuracyTracker.RightAverageCut);
@@ -505,6 +574,18 @@ namespace BeatLeader_Server.Utils
             statistic.AccuracyTracker.GridAcc = statistic.AccuracyTracker.GridAccS.Split(",").Select(x => float.Parse(x)).ToList();
 
             if (statistic.ScoreGraphTracker.GraphS.Length > 0) {
+                statistic.ScoreGraphTracker.Graph = statistic.ScoreGraphTracker.GraphS.Split(",").Select(x => float.Parse(x)).ToList();
+            }
+        }
+
+        public static void DecodeArrays(LeaderboardStatistic statistic)
+        {
+            statistic.AccuracyTracker.LeftAverageCut = statistic.AccuracyTracker.LeftAverageCutS.Split(",").Select(x => float.Parse(x)).ToList();
+            statistic.AccuracyTracker.RightAverageCut = statistic.AccuracyTracker.RightAverageCutS.Split(",").Select(x => float.Parse(x)).ToList();
+            statistic.AccuracyTracker.GridAcc = statistic.AccuracyTracker.GridAccS.Split(",").Select(x => float.Parse(x)).ToList();
+
+            if (statistic.ScoreGraphTracker.GraphS.Length > 0)
+            {
                 statistic.ScoreGraphTracker.Graph = statistic.ScoreGraphTracker.GraphS.Split(",").Select(x => float.Parse(x)).ToList();
             }
         }

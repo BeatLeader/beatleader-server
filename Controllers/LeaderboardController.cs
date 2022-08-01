@@ -144,6 +144,7 @@ namespace BeatLeader_Server.Controllers
                     .Leaderboards
                     .Include(lb => lb.Difficulty)
                     .Where(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff)
+                    .Include(lb => lb.Statistic)
                     .Include(lb => lb.Scores.Where(s => !s.Banned))
                     .ThenInclude(s => s.RankVoting)
                     .ThenInclude(v => v.Feedbacks)
@@ -530,6 +531,52 @@ namespace BeatLeader_Server.Controllers
             for (int i = 0; i < result.Type.Length; i++)
             {
                 result.Type[i] /= (counters.Type != 0 ? (float)counters.Type : 1.0f);
+            }
+
+            return result;
+        }
+
+        [HttpGet("~/leaderboard/statistic/{id}")]
+        public async Task<ActionResult<LeaderboardStatistic>> RefreshStatistic(string id)
+        {
+            var result = _context.LeaderboardStatistics
+                .Where(st => st.LeaderboardId == id)
+                .Include(st => st.WinTracker)
+                .Include(st => st.AccuracyTracker)
+                .Include(st => st.ScoreGraphTracker)
+                .Include(st => st.HitTracker).FirstOrDefault();
+
+            if (result == null || !result.Relevant) {
+                var leaderboard = _context.Leaderboards.Where(lb => lb.Id == id).Include(lb => lb.Scores.Where(s =>
+                    !s.Banned
+                    && !s.Modifiers.Contains("SS")
+                    && !s.Modifiers.Contains("NA")
+                    && !s.Modifiers.Contains("NB")
+                    && !s.Modifiers.Contains("NF")
+                    && !s.Modifiers.Contains("NO"))).FirstOrDefault();
+                if (leaderboard == null || leaderboard.Scores.Count == 0)
+                {
+                    return NotFound();
+                }
+
+                var scoreIds = leaderboard.Scores.Select(s => s.Id);
+
+                var statistics = _context.ScoreStatistics
+                    .Where(st => scoreIds.Contains(st.ScoreId))
+                    .Include(st => st.WinTracker)
+                    .Include(st => st.AccuracyTracker)
+                    .Include(st => st.ScoreGraphTracker)
+                    .Include(st => st.HitTracker).ToList();
+
+                result = new LeaderboardStatistic { Relevant = true, LeaderboardId = leaderboard.Id };
+
+                statistics.ForEach(ReplayStatisticUtils.DecodeArrays);
+                ReplayStatisticUtils.AverageStatistic(statistics, result);
+                ReplayStatisticUtils.EncodeArrays(result);
+                leaderboard.Statistic = result;
+                await _context.SaveChangesAsync();
+            } else {
+                ReplayStatisticUtils.DecodeArrays(result);
             }
 
             return result;

@@ -6,7 +6,7 @@
         public Song Song { get; set; }
         public DifficultyDescription Difficulty { get; set; }
         public ICollection<Score> Scores { get; set; }
-
+        public LeaderboardStatistic? Statistic { get; set; }
         public RankQualification? Qualification { get; set; }
         public int Plays { get; set; }
     }

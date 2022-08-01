@@ -68,5 +68,19 @@ namespace BeatLeader_Server.Models
         public WinTracker WinTracker { get; set; }
         public ScoreGraphTracker ScoreGraphTracker { get; set; }
     }
+
+    public class LeaderboardStatistic
+    {
+        public int Id { get; set; }
+
+        public bool Relevant { get; set; }
+
+        public string LeaderboardId { get; set; }
+
+        public HitTracker HitTracker { get; set; }
+        public AccuracyTracker AccuracyTracker { get; set; }
+        public WinTracker WinTracker { get; set; }
+        public ScoreGraphTracker ScoreGraphTracker { get; set; }
+    }
 }
 

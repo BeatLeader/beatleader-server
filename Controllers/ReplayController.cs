@@ -357,6 +357,10 @@ namespace BeatLeader_Server.Controllers
                     leaderboard.Scores.Add(resultScore);
                 }
 
+                if (leaderboard.Statistic != null) {
+                    leaderboard.Statistic.Relevant = false;
+                }
+
                 var isRanked = leaderboard.Difficulty.Ranked || leaderboard.Difficulty.Qualified;
                 var rankedScores = leaderboard.Scores.OrderByDescending(el => isRanked ? el.Pp : el.ModifiedScore).ToList();
                 foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))

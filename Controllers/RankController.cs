@@ -358,6 +358,32 @@ namespace BeatLeader_Server.Controllers
 
         }
 
+        [Authorize]
+        [HttpGet("~/voting/spread")]
+        public async Task<ActionResult<Dictionary<int, int>>> Spread() {
+
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
+            {
+                return Unauthorized();
+            }
+
+            var result = new Dictionary<int, int>();
+            var starsList = _context.RankVotings.Where(v => v.Stars > 0).Select(kv => new { Stars = kv.Stars });
+            foreach (var item in starsList)
+            {
+                int key = (int)Math.Round(item.Stars);
+                if (result.ContainsKey(key)) {
+                    result[key]++;
+                } else {
+                    result[key] = 1;
+                }
+            }
+            return result;
+        }
+
         //[Authorize]
         //[HttpGet("~/map/rdate/{hash}")]
         //public async Task<ActionResult> SetStarValue(string hash, [FromQuery] int diff, [FromQuery] string date)
