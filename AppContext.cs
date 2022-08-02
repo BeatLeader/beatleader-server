@@ -35,6 +35,7 @@ namespace BeatLeader_Server
         public DbSet<LoginAttempt> LoginAttempts { get; set; }
         public DbSet<PatreonLink> PatreonLinks { get; set; }
         public DbSet<LeaderboardStatistic> LeaderboardStatistics { get; set; }
+        public DbSet<BeatSaverLink> BeatSaverLinks { get; set; }
 
         public DbSet<ReservedClanTag> ReservedTags { get; set; }
         public DbSet<Ban> Bans { get; set; }

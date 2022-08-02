@@ -60,6 +60,26 @@ namespace BeatLeader_Server.Controllers
             }
         }
 
+        [HttpGet("~/score/random")]
+        public async Task<ActionResult<Score>> GetRandomScore()
+        {
+            var offset = Random.Shared.Next(1, _context.Scores.Count());
+            var score = await _context
+                .Scores
+                .Skip(offset)
+                .Take(1)
+                .FirstOrDefaultAsync();
+
+            if (score != null)
+            {
+                return score;
+            }
+            else
+            {
+                return NotFound();
+            }
+        }
+
         [HttpDelete("~/score/{id}")]
         [Authorize]
         public async Task<ActionResult> DeleteScore(int id)
