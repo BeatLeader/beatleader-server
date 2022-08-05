@@ -199,7 +199,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            var query = _context.Leaderboards.Where(l => l.Difficulty.Ranked || l.Difficulty.Qualified).Include(s => s.Scores).Include(l => l.Difficulty);
+            var query = _context.Leaderboards.Include(s => s.Scores).Include(l => l.Difficulty);
             var allLeaderboards = (leaderboardId != null ? query.Where(s => s.Id == leaderboardId) : query).Select(l => new { Scores = l.Scores, Difficulty = l.Difficulty }).ToList();
 
             int counter = 0;
@@ -223,6 +223,9 @@ namespace BeatLeader_Server.Controllers
                     }
                     if (leaderboard.Difficulty.Ranked || leaderboard.Difficulty.Qualified) {
                         (s.Pp, s.BonusPp) = ReplayUtils.PpFromScore(s, leaderboard.Difficulty);
+                    } else {
+                        s.Pp = 0;
+                        s.BonusPp = 0;
                     }
                     s.Qualification = leaderboard.Difficulty.Qualified;
                     if (float.IsNaN(s.Pp)) {

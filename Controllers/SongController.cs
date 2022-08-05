@@ -131,7 +131,7 @@ namespace BeatLeader_Server.Controllers
                     result.SubName = info.metadata.songSubName;
                     result.Duration = info.metadata.duration;
                     result.Bpm = info.metadata.bpm;
-                    result.MapperId = info.metadata.mapperId;
+                    result.MapperId = (int)info.uploader.id;
                     if (ExpandantoObject.HasProperty(info, "tags")) {
                         result.Tags = string.Join(",", info.tags);
                     }

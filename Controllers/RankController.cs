@@ -235,22 +235,39 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int type = 0,
             [FromQuery] bool allowed = false)
         {
-            string currentID = HttpContext.CurrentUserID();
-            long intId = Int64.Parse(currentID);
-            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-            string userId = accountLink != null ? accountLink.SteamID : currentID;
-            var currentPlayer = await _context.Players.FindAsync(userId);
-
-            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
-            {
-                return Unauthorized();
-            }
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             Leaderboard? leaderboard = _context.Leaderboards.Include(l => l.Difficulty).Include(l => l.Song).FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
+            bool isRT = true;
+            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
+            {
+                if (currentPlayer != null && currentPlayer.MapperId == leaderboard?.Song.MapperId) {
+                    isRT = false;
+                } else {
+                    return Unauthorized();
+                }
+            }
+
             if (leaderboard != null)
             {
+                var qualifiedLeaderboards = _context
+                       .Leaderboards
+                       .Include(lb => lb.Song)
+                       .Include(lb => lb.Qualification)
+                       .Where(lb => lb.Song.Id == leaderboard.Song.Id && lb.Qualification != null).ToList();
+                string? alreadyApproved = qualifiedLeaderboards.Count() == 0 ? null : qualifiedLeaderboards.FirstOrDefault(lb => lb.Qualification.MapperAllowed)?.Qualification.MapperId;
+
+                if (!isRT && alreadyApproved == null) {
+                    int previous = (await PrevQualificationTime()).Value.Time;
+                    int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+                    if (previous != null && (timestamp - previous) < 60 * 60 * 24 * 7)
+                    {
+                        return BadRequest("Error. You can qualify new map after " + (int)(7 - (timestamp - previous) / (60 * 60 * 24)) + " day(s)");
+                    }
+                }
+                
                 DifficultyDescription? difficulty = leaderboard.Difficulty;
 
                 if (difficulty.Qualified || difficulty.Ranked)
@@ -264,9 +281,80 @@ namespace BeatLeader_Server.Controllers
                 leaderboard.Qualification = new RankQualification {
                     Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
                     RTMember = currentID,
-                    MapperAllowed = allowed
+                    MapperId = !isRT ? currentID : alreadyApproved,
+                    MapperAllowed = !isRT || alreadyApproved != null,
+                    MapperQualification = !isRT
                 };
                 difficulty.Type = type;
+                _context.SaveChanges();
+                await _scoreController.RefreshScores(leaderboard.Id);
+            }
+
+            return Ok();
+        }
+
+        [Authorize]
+        [HttpPost("~/qualification/{hash}/{diff}/{mode}/")]
+        public async Task<ActionResult> UpdateMapQualification(
+            string hash,
+            string diff,
+            string mode,
+            [FromQuery] bool? stilQualifying,
+            [FromQuery] float? stars,
+            [FromQuery] int? type,
+            [FromQuery] bool? allowed,
+            [FromQuery] int? criteriaCheck,
+            [FromQuery] string? criteriaCommentary)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            Leaderboard? leaderboard = _context.Leaderboards
+                .Include(l => l.Difficulty)
+                .Include(l => l.Song)
+                .Include(l => l.Qualification)
+                .FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+
+            bool isRT = true;
+            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
+            {
+                return Unauthorized();
+            }
+
+            var qualification = leaderboard?.Qualification;
+
+            if (qualification != null)
+            {
+                if (stilQualifying == false) {
+                    leaderboard.Difficulty.Qualified = false;
+                    leaderboard.Difficulty.QualifiedTime = 0;
+                    leaderboard.Difficulty.Stars = 0;
+                } else {
+                    if (stars != null)
+                    {
+                        leaderboard.Difficulty.Stars = stars;
+                    }
+                    if (type != null)
+                    {
+                        leaderboard.Difficulty.Type = (int)type;
+                    }
+                }
+
+                if (allowed != null)
+                {
+                    qualification.MapperAllowed = (bool)allowed;
+                    qualification.MapperId = currentID;
+                }
+
+                if (criteriaCheck != null) {
+                    qualification.CriteriaMet = (int)criteriaCheck;
+                    qualification.CriteriaTimeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+                    qualification.CriteriaChecker = currentID;
+                }
+                if (criteriaCommentary != null) {
+                    qualification.CriteriaCommentary = criteriaCommentary;
+                }
+
                 _context.SaveChanges();
                 await _scoreController.RefreshScores(leaderboard.Id);
             }
@@ -330,6 +418,23 @@ namespace BeatLeader_Server.Controllers
             }
 
             return Ok();
+        }
+
+        public class PrevQualification {
+            public int Time { get; set; }
+        }
+
+        [Authorize]
+        [HttpGet("~/prevQualTime")]
+        public async Task<ActionResult<PrevQualification>> PrevQualificationTime()
+        {
+            string userId = HttpContext.CurrentUserID(_context);
+
+            return new PrevQualification {
+                Time = _context.Leaderboards
+                .Where(lb => lb.Qualification != null && lb.Qualification.RTMember == userId)
+                .Select(lb => new { time = lb.Difficulty.QualifiedTime }).FirstOrDefault()?.time ?? 0
+            };
         }
 
         [Authorize]

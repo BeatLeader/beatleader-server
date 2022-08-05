@@ -63,6 +63,9 @@ namespace BeatLeader_Server.Controllers
                 if (currentPlayer != null && (currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("rankedteam")))
                 {
                     query = query.Include(lb => lb.Scores).ThenInclude(s => s.RankVoting).ThenInclude(v => v.Feedbacks);
+                } else if (currentPlayer?.MapperId != 0) {
+                    int mapperId = currentPlayer.MapperId;
+                    query = query.Where(lb => lb.Song.MapperId == mapperId).Include(lb => lb.Scores).ThenInclude(s => s.RankVoting).ThenInclude(v => v.Feedbacks);
                 }
             }
 
@@ -239,10 +242,20 @@ namespace BeatLeader_Server.Controllers
                     sequence = sequence.Order(order, lb => lb.Scores.Where(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)).Count());
                     break;
                 case "voting":
-                    sequence = sequence.Order(order, lb => lb.Scores.Where(s => s.RankVoting != null && s.RankVoting.Rankability > 0).Count() - lb.Scores.Where(s => s.RankVoting != null && s.RankVoting.Rankability <= 0).Count());
+                    sequence = sequence
+                        .Where(lb => lb.Scores.Where(s => s.RankVoting != null).FirstOrDefault() != null)
+                        .Order(order, lb => lb.Scores.Where(s => s.RankVoting.Rankability > 0).Count() - lb.Scores.Where(s => s.RankVoting.Rankability <= 0).Count());
                     break;
                 case "votecount":
-                    sequence = sequence.Order(order, lb => lb.Scores.Where(s => s.RankVoting != null).Count());
+                    sequence = sequence
+                        .Where(lb => lb.Scores.Where(s => s.RankVoting != null).FirstOrDefault() != null)
+                        .Order(order, lb => lb.Scores.Where(s => s.RankVoting != null).Count());
+                    break;
+                case "voteratio":
+                    sequence = sequence
+                        .Where(lb => lb.Scores.Where(s => s.RankVoting != null).FirstOrDefault() != null)
+                        .Order(order, lb => (int)(lb.Scores.Where(s => s.RankVoting.Rankability > 0).Count() / lb.Scores.Where(s => s.RankVoting != null).Count() * 100.0))
+                        .ThenOrder(order, lb => lb.Scores.Where(s => s.RankVoting != null).Count());
                     break;
                 default:
                     break;
@@ -268,7 +281,16 @@ namespace BeatLeader_Server.Controllers
                         sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.Ranked);
                         break;
                     case "qualified":
-                        sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.Qualified);
+                        sequence = sequence
+                            .Include(lb => lb.Difficulty)
+                            .Include(lb => lb.Qualification)
+                            .Where(p => p.Difficulty.Qualified && !p.Qualification.MapperQualification);
+                        break;
+                    case "mapperqualified":
+                        sequence = sequence
+                            .Include(lb => lb.Difficulty)
+                            .Include(lb => lb.Qualification)
+                            .Where(p => p.Difficulty.Qualified && p.Qualification.MapperQualification);
                         break;
                     case "unranked":
                         sequence = sequence.Include(lb => lb.Difficulty).Where(p => !p.Difficulty.Ranked);
@@ -285,6 +307,10 @@ namespace BeatLeader_Server.Controllers
                     case "unplayed":
                         sequence = sequence.Where(p => p.Scores.FirstOrDefault(s => s.PlayerId == currentID) == null);
                         break;
+                    case "mymaps":
+                        var currentPlayer = await _context.Players.FindAsync(currentID);
+                        sequence = sequence.Where(p => p.Song.MapperId == currentPlayer.MapperId);
+                        break;
                 }
             }
 
@@ -299,7 +325,7 @@ namespace BeatLeader_Server.Controllers
 
             bool showVoting = false;
             bool showVotingDetails = false;
-            if (sortBy == "voting" || sortBy == "votecount") {
+            if (sortBy == "voting" || sortBy == "votecount" || sortBy == "voteratio") {
                 showVoting = true;
                 if (currentID != null)
                 {
@@ -336,6 +362,7 @@ namespace BeatLeader_Server.Controllers
                     Id = lb.Id,
                     Song = lb.Song,
                     Difficulty = lb.Difficulty,
+                    Qualification = lb.Qualification,
                     MyScore = currentID == null ? null : lb.Scores.Where(s => s.PlayerId == currentID).Select(s => new ScoreResponseWithAcc
                     {
                         Id = s.Id,
@@ -380,6 +407,7 @@ namespace BeatLeader_Server.Controllers
                     Id = lb.Id,
                     Song = lb.Song,
                     Difficulty = lb.Difficulty,
+                    Qualification = lb.Qualification,
                     MyScore = currentID == null ? null : lb.Scores.Where(s => s.PlayerId == currentID).Select(s => new ScoreResponseWithAcc
                     {
                         Id = s.Id,

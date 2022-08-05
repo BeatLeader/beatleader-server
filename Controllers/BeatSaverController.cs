@@ -37,6 +37,36 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [NonAction]
+        private async Task<ActionResult> ApproveWithMapper(string leaderboardId, Player? player) {
+            if (player == null)
+            {
+                return Unauthorized("Could find mapper");
+            }
+
+            var leaderboards = _context.Leaderboards
+                .Where(lb => lb.Qualification != null && lb.Song.MapperId == player.MapperId)
+                .Include(lb => lb.Qualification)
+                .Include(lb => lb.Song)
+                .ToList();
+            var song = leaderboards.Where(lb => lb.Id == leaderboardId).FirstOrDefault();
+            var leaderboardsToApprove = song != null ? leaderboards.Where(lb => lb.Song.Id == song.Id).ToList() : null;
+
+            if (leaderboardsToApprove == null || leaderboardsToApprove.Count() == 0 || leaderboardsToApprove[0].Qualification == null)
+            {
+                return NotFound("Mapper id is different from yours");
+            }
+
+            foreach (var lb in leaderboardsToApprove)
+            {
+                lb.Qualification.MapperAllowed = true;
+                lb.Qualification.MapperId = player.Id;
+            }
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
         [HttpGet("~/user/linkBeatSaverAndApprove")]
         public async Task<ActionResult> LinkBeatSaverAndApprove([FromQuery] string leaderboardId, [FromQuery] string? returnUrl = null) {
             (int? id, string? error) = await LinkBeatSaverPrivate();
@@ -44,46 +74,19 @@ namespace BeatLeader_Server.Controllers
             {
                 return Unauthorized(error);
             }
-            var leaderboard = _context.Leaderboards.Where(lb => lb.Id == leaderboardId).Include(lb => lb.Qualification).Include(lb => lb.Song).FirstOrDefault();
 
-            if (leaderboard == null || leaderboard.Qualification == null) {
-                return returnUrl != null ? Redirect(returnUrl) : NotFound();
-            }
+            var actionResult = await ApproveWithMapper(leaderboardId, _context.Players.Where(p => p.MapperId == id).FirstOrDefault());
+            
 
-            if (leaderboard.Song.MapperId == id) {
-                leaderboard.Qualification.MapperAllowed = true;
-                await _context.SaveChangesAsync();
-            }
-
-            return returnUrl != null ? Redirect(returnUrl) : Ok();
+            return returnUrl != null ? Redirect(returnUrl) : actionResult;
         }
 
         [HttpGet("~/user/approveQualification")]
         public async Task<ActionResult> ApproveQualification([FromQuery] string leaderboardId)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            if (currentPlayer == null || currentPlayer.MapperId == 0)
-            {
-                return Unauthorized();
-            }
-
-            var leaderboard = _context.Leaderboards.Where(lb => lb.Id == leaderboardId).Include(lb => lb.Qualification).Include(lb => lb.Song).FirstOrDefault();
-
-            if (leaderboard == null || leaderboard.Qualification == null)
-            {
-                return NotFound();
-            }
-
-            if (leaderboard.Song.MapperId == currentPlayer.MapperId)
-            {
-                leaderboard.Qualification.MapperAllowed = true;
-                await _context.SaveChangesAsync();
-                return Ok();
-            } else {
-                return Unauthorized("Mapper id is different from yours");
-            }
+            return await ApproveWithMapper(leaderboardId, await _context.Players.FindAsync(currentID));
         }
 
         [HttpGet("~/user/linkBeatSaver")]
@@ -96,6 +99,7 @@ namespace BeatLeader_Server.Controllers
             return returnUrl != null ? Redirect(returnUrl) : Ok();
         }
 
+        [NonAction]
         public async Task<(int?, string?)> LinkBeatSaverPrivate() {
             var auth = await HttpContext.AuthenticateAsync("BeatSaver");
             string? beatSaverId = auth?.Principal?.Claims.FirstOrDefault()?.Value.Split("/").LastOrDefault();
@@ -108,7 +112,12 @@ namespace BeatLeader_Server.Controllers
             string? playerId = HttpContext.CurrentUserID(_context);
 
             if (playerId != null && bslink != null && bslink.Id != playerId) {
-                return (null, "Something went wrong while linking");
+                if (Int64.Parse(bslink.Id) > 30000000 && Int64.Parse(bslink.Id) < 1000000000000000) {
+                    _context.BeatSaverLinks.Remove(bslink);
+                    bslink = null;
+                } else {
+                    return (null, "Something went wrong while linking");
+                }
             }
 
             Player? player = null;

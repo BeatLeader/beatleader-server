@@ -112,6 +112,7 @@ namespace BeatLeader_Server.Utils
             public int Plays { get; set; }
 
             public ScoreResponseWithAcc? MyScore { get; set; }
+            public RankQualification? Qualification { get; set; }
 
             public IEnumerable<VotingResponse> Votes { get; set; }
         }
