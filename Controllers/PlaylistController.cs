@@ -19,6 +19,7 @@ namespace BeatLeader_Server.Controllers
     {
         private readonly AppContext _context;
         BlobContainerClient _playlistContainerClient;
+        IWebHostEnvironment _environment;
 
         public PlaylistController(
             AppContext context,
@@ -38,15 +39,17 @@ namespace BeatLeader_Server.Controllers
 
                 _playlistContainerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
             }
+            _environment = env;
         }
 
         [Authorize]
         [HttpGet("~/user/oneclickplaylist")]
         public async Task<ActionResult> GetOneClickPlaylist()
         {
-            string userId = HttpContext.CurrentUserID(_context);
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null) return Unauthorized();
 
-            BlobClient blobClient = _playlistContainerClient.GetBlobClient(userId + "oneclick.bplist");
+            BlobClient blobClient = _playlistContainerClient.GetBlobClient(currentID + "oneclick.bplist");
             MemoryStream stream = new MemoryStream(5);
             if (!(await blobClient.ExistsAsync())) {
                 blobClient = _playlistContainerClient.GetBlobClient("oneclick.bplist");
@@ -71,11 +74,19 @@ namespace BeatLeader_Server.Controllers
             }
         }
 
+        public class CustomData
+        {
+            public string syncURL { get; set; }
+            public string owner { get; set; }
+            public string id { get; set; }
+        }
+
         [Authorize]
         [HttpPost("~/user/oneclickplaylist")]
         public async Task<ActionResult> UpdateOneClickPlaylist()
         {
-            string userId = HttpContext.CurrentUserID(_context);
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null) return Unauthorized();
 
             var ms = new MemoryStream(5);
             await Request.Body.CopyToAsync(ms);
@@ -86,7 +97,7 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Can't decode songs");
             }
 
-            BlobClient blobClient = _playlistContainerClient.GetBlobClient(userId + "oneclick.bplist");
+            BlobClient blobClient = _playlistContainerClient.GetBlobClient(currentID + "oneclick.bplist");
             MemoryStream stream = new MemoryStream(5);
             if (!(await blobClient.ExistsAsync()))
             {
@@ -110,8 +121,8 @@ namespace BeatLeader_Server.Controllers
 
             playlist.songs = mapscontainer.songs;
 
-            await _playlistContainerClient.DeleteBlobIfExistsAsync(userId + "oneclick.bplist");
-            await _playlistContainerClient.UploadBlobAsync(userId + "oneclick.bplist", new BinaryData(JsonConvert.SerializeObject(playlist)));
+            await _playlistContainerClient.DeleteBlobIfExistsAsync(currentID + "oneclick.bplist");
+            await _playlistContainerClient.UploadBlobAsync(currentID + "oneclick.bplist", new BinaryData(JsonConvert.SerializeObject(playlist)));
 
             return Ok();
         }
@@ -120,9 +131,10 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/user/oneclickdone")]
         public async Task<ActionResult> CleanOneClickPlaylist()
         {
-            string userId = HttpContext.CurrentUserID(_context);
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null) return Unauthorized();
 
-            BlobClient blobClient = _playlistContainerClient.GetBlobClient(userId + "oneclick.bplist");
+            BlobClient blobClient = _playlistContainerClient.GetBlobClient(currentID + "oneclick.bplist");
             MemoryStream stream = new MemoryStream(5);
             if (!(await blobClient.ExistsAsync()))
             {
@@ -147,8 +159,8 @@ namespace BeatLeader_Server.Controllers
 
             playlist.songs = new List<string>();
 
-            await _playlistContainerClient.DeleteBlobIfExistsAsync(userId + "oneclick.bplist");
-            await _playlistContainerClient.UploadBlobAsync(userId + "oneclick.bplist", new BinaryData(JsonConvert.SerializeObject(playlist)));
+            await _playlistContainerClient.DeleteBlobIfExistsAsync(currentID + "oneclick.bplist");
+            await _playlistContainerClient.UploadBlobAsync(currentID + "oneclick.bplist", new BinaryData(JsonConvert.SerializeObject(playlist)));
 
             return Ok();
         }
@@ -159,28 +171,22 @@ namespace BeatLeader_Server.Controllers
             return await _context.Playlists.Where(t=>t.IsShared).ToListAsync();
         }
 
-        [HttpGet("~/playlist")]
-        public async Task<ActionResult<Playlist>> Get([FromQuery] int id)
+        [HttpGet("~/playlist/{id}")]
+        public async Task<ActionResult> GetById(string id)
         {
-            var playlist = await _context.Playlists.FindAsync(id);
+            BlobClient blobClient = _playlistContainerClient.GetBlobClient(id + ".bplist");
+            MemoryStream stream = new MemoryStream(5);
 
-            if (playlist == null)
-            {
-                return NotFound();
-            }
+            await blobClient.DownloadToAsync(stream);
+            stream.Position = 0;
 
-            if (!playlist.IsShared && playlist.OwnerId != HttpContext.CurrentUserID())
-            {
-                return Unauthorized();
-            }
-
-            return playlist;
+            return File(stream, "application/json");
         }
 
-        [HttpGet("~/playlist/ranked")]
-        public async Task<ActionResult> GetRanked()
+        [HttpGet("~/playlist/qualified")]
+        public async Task<ActionResult> GetQualified()
         {
-            BlobClient blobClient = _playlistContainerClient.GetBlobClient("ranked.bplist");
+            BlobClient blobClient = _playlistContainerClient.GetBlobClient("qualified.bplist");
             MemoryStream stream = new MemoryStream(5);
 
             await blobClient.DownloadToAsync(stream);
@@ -192,97 +198,88 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/user/playlists")]
         public async Task<ActionResult<IEnumerable<Playlist>>> GetAllPlaylists()
         {
-            string currentId = HttpContext.CurrentUserID();
-            return await _context.Playlists.Where(t => t.OwnerId == currentId).ToListAsync();
-        }
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null) return Unauthorized();
 
-        [HttpGet("~/user/playlist")]
-        public async Task<ActionResult<Playlist>> GetFromUser([FromQuery] int id)
-        {
-            var playlist = await _context.Playlists.FindAsync(id);
-
-            if (playlist == null)
-            {
-                return NotFound();
-            }
-
-            if (!playlist.IsShared && playlist.OwnerId != HttpContext.CurrentUserID())
-            {
-                return Unauthorized();
-            }
-
-            return playlist;
+            return await _context.Playlists.Where(t => t.OwnerId == currentID).ToListAsync();
         }
 
         [HttpPost("~/user/playlist")]
-        public async Task<ActionResult<int>> PostPlaylist([FromBody] dynamic content, [FromQuery] bool shared)
+        public async Task<ActionResult<int>> PostPlaylist([FromQuery] int? id = null)
         {
-            Playlist newPlaylist = new Playlist();
-            //newPlaylist.Value = content.GetRawText();
-            newPlaylist.OwnerId = HttpContext.CurrentUserID();
-            newPlaylist.IsShared = shared;
-            _context.Playlists.Add(newPlaylist);
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null) return Unauthorized();
 
-            await _context.SaveChangesAsync();
+            Playlist? playlistRecord = null;
+            
+            if (id != null) {
+               playlistRecord = await _context.Playlists.Where(t => t.OwnerId == currentID && t.Id == id).FirstOrDefaultAsync();
+            }
 
-            return CreatedAtAction("PostPlaylist", new { id = newPlaylist.Id }, newPlaylist);
+            if (playlistRecord == null) {
+                playlistRecord = new Playlist {
+                    OwnerId = currentID,
+                    Link = ""
+                };
+                _context.Playlists.Add(playlistRecord);
+                await _context.SaveChangesAsync();
+                id = playlistRecord.Id;
+            }
+
+            var ms = new MemoryStream(5);
+            await Request.Body.CopyToAsync(ms);
+            ms.Position = 0;
+
+            dynamic? playlist = ObjectFromStream(ms);
+            if (playlist == null || !ExpandantoObject.HasProperty(playlist, "songs"))
+            {
+                return BadRequest("Can't decode songs");
+            }
+            playlist.customData = new CustomData { 
+                syncURL = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/playlists/" : "https://cdn.beatleader.xyz/playlists/") + id + ".bplist",
+                owner = currentID,
+                id = id.ToString()
+            };
+
+            await _playlistContainerClient.DeleteBlobIfExistsAsync(id + ".bplist");
+            await _playlistContainerClient.UploadBlobAsync(id + ".bplist", new BinaryData(JsonConvert.SerializeObject(playlist)));
+
+            return id;
         }
 
         [HttpDelete("~/user/playlist")]
         public async Task<ActionResult<int>> DeletePlaylist([FromQuery] int id)
         {
-            var playlist = await _context.Playlists.FindAsync(id);
-            if (playlist == null)
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null) return Unauthorized();
+
+            Playlist? playlistRecord = await _context.Playlists.Where(t => t.OwnerId == currentID && t.Id == id).FirstOrDefaultAsync();
+
+            if (playlistRecord == null)
             {
                 return NotFound();
             }
 
-            if (playlist.OwnerId != HttpContext.CurrentUserID())
-            {
-                return Unauthorized();
-            }
-            _context.Playlists.Remove(playlist);
-
+            await _playlistContainerClient.DeleteBlobIfExistsAsync(id + ".bplist");
+            _context.Playlists.Remove(playlistRecord);
             await _context.SaveChangesAsync();
 
             return Ok();
-        }
-
-        [HttpPatch("~/user/playlist")]
-        public async Task<ActionResult<Playlist>> SharePlaylist([FromBody] dynamic content, [FromQuery] bool shared, [FromQuery] int id)
-        {
-            var playlist = await _context.Playlists.FindAsync(id);
-
-            if (playlist == null)
-            {
-                return NotFound();
-            }
-
-            if (playlist.OwnerId != HttpContext.CurrentUserID())
-            {
-                return Unauthorized();
-            }
-
-            //playlist.Value = content.GetRawText();
-            playlist.IsShared = shared;
-
-            _context.Playlists.Update(playlist);
-
-            await _context.SaveChangesAsync();
-
-            return playlist;
         }
 
         [Authorize]
         [HttpGet("~/playlist/refreshranked")]
         public async Task<ActionResult> RefreshRankedPlaylist()
         {
-            string userId = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(userId);
-
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            if (HttpContext != null)
             {
-                return Unauthorized();
+                string userId = HttpContext.CurrentUserID(_context);
+                var currentPlayer = await _context.Players.FindAsync(userId);
+
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
             }
 
             BlobClient blobClient = _playlistContainerClient.GetBlobClient("ranked.bplist");
@@ -297,7 +294,9 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Original plist dead. Wake up NSGolova!");
             }
 
-            var songs = _context.Songs.Include(s => s.Difficulties).Where(s => s.Difficulties.FirstOrDefault(d => d.Ranked) != null).Select(s => new {
+            var deleted = new List<string> { "9a8581460386e3d3cca3ba62ee4bd621c131980c" };
+
+            var songs = _context.Songs.Include(s => s.Difficulties).Where(s => !deleted.Contains(s.Hash.ToLower()) && s.Difficulties.FirstOrDefault(d => d.Ranked) != null).Select(s => new {
                 hash = s.Hash,
                 songName = s.Name,
                 levelAuthorName = s.Mapper,
@@ -308,6 +307,11 @@ namespace BeatLeader_Server.Controllers
             }).ToList();
 
             playlist.songs = songs.DistinctBy(s => s.hash).ToList();
+            playlist.customData = new CustomData { 
+                syncURL = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/playlists/" : "https://cdn.beatleader.xyz/playlists/") + "ranked.bplist",
+                owner = "BeatLeader",
+                id = "ranked"
+            };
 
             await _playlistContainerClient.DeleteBlobIfExistsAsync("ranked.bplist");
             await _playlistContainerClient.UploadBlobAsync("ranked.bplist", new BinaryData(JsonConvert.SerializeObject(playlist)));
@@ -319,12 +323,15 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/playlist/refreshqualified")]
         public async Task<ActionResult> RefreshQualifiedPlaylist()
         {
-            string userId = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(userId);
-
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            if (HttpContext != null)
             {
-                return Unauthorized();
+                string userId = HttpContext.CurrentUserID(_context);
+                var currentPlayer = await _context.Players.FindAsync(userId);
+
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
             }
 
             BlobClient blobClient = _playlistContainerClient.GetBlobClient("qualified.bplist");
@@ -350,6 +357,11 @@ namespace BeatLeader_Server.Controllers
             }).ToList();
 
             playlist.songs = songs.DistinctBy(s => s.hash).ToList();
+            playlist.customData = new CustomData { 
+                syncURL = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/playlists/" : "https://cdn.beatleader.xyz/playlists/") + "qualified.bplist",
+                owner = "BeatLeader",
+                id = "qualified"
+            };
 
             await _playlistContainerClient.DeleteBlobIfExistsAsync("qualified.bplist");
             await _playlistContainerClient.UploadBlobAsync("qualified.bplist", new BinaryData(JsonConvert.SerializeObject(playlist)));

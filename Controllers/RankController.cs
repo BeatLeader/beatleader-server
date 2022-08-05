@@ -15,6 +15,7 @@ namespace BeatLeader_Server.Controllers
         private readonly IConfiguration _configuration;
         private readonly ScoreController _scoreController;
         private readonly PlayerController _playerController;
+        private readonly PlaylistController _playlistController;
 
         public RankController(
             AppContext context,
@@ -22,13 +23,15 @@ namespace BeatLeader_Server.Controllers
             IServerTiming serverTiming,
             IConfiguration configuration,
             ScoreController scoreController,
-            PlayerController playerController)
+            PlayerController playerController,
+            PlaylistController playlistController)
         {
             _context = context;
             _serverTiming = serverTiming;
             _configuration = configuration;
             _scoreController = scoreController;
             _playerController = playerController;
+            _playlistController = playlistController;
         }
 
         public enum VoteStatus
@@ -260,7 +263,7 @@ namespace BeatLeader_Server.Controllers
                 string? alreadyApproved = qualifiedLeaderboards.Count() == 0 ? null : qualifiedLeaderboards.FirstOrDefault(lb => lb.Qualification.MapperAllowed)?.Qualification.MapperId;
 
                 if (!isRT && alreadyApproved == null) {
-                    int previous = (await PrevQualificationTime()).Value.Time;
+                    int previous = (await PrevQualificationTime(leaderboard.Song.Hash)).Value.Time;
                     int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                     if (previous != null && (timestamp - previous) < 60 * 60 * 24 * 7)
                     {
@@ -288,6 +291,7 @@ namespace BeatLeader_Server.Controllers
                 difficulty.Type = type;
                 _context.SaveChanges();
                 await _scoreController.RefreshScores(leaderboard.Id);
+                await _playlistController.RefreshQualifiedPlaylist();
             }
 
             return Ok();
@@ -340,10 +344,12 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
-                if (allowed != null)
+                if (!qualification.MapperAllowed && allowed != null)
                 {
                     qualification.MapperAllowed = (bool)allowed;
-                    qualification.MapperId = currentID;
+                    if ((bool)allowed) {
+                        qualification.MapperId = currentID;
+                    }
                 }
 
                 if (criteriaCheck != null) {
@@ -357,6 +363,7 @@ namespace BeatLeader_Server.Controllers
 
                 _context.SaveChanges();
                 await _scoreController.RefreshScores(leaderboard.Id);
+                await _playlistController.RefreshQualifiedPlaylist();
             }
 
             return Ok();
@@ -415,6 +422,7 @@ namespace BeatLeader_Server.Controllers
                 _context.SaveChanges();
                 await _scoreController.RefreshScores(leaderboard.Id);
                 await _playerController.RefreshLeaderboardPlayers(leaderboard.Id);
+                await _playlistController.RefreshRankedPlaylist();
             }
 
             return Ok();
@@ -425,10 +433,17 @@ namespace BeatLeader_Server.Controllers
         }
 
         [Authorize]
-        [HttpGet("~/prevQualTime")]
-        public async Task<ActionResult<PrevQualification>> PrevQualificationTime()
+        [HttpGet("~/prevQualTime/{hash}")]
+        public async Task<ActionResult<PrevQualification>> PrevQualificationTime(string hash)
         {
             string userId = HttpContext.CurrentUserID(_context);
+
+            if (_context.Leaderboards.Where(lb => lb.Difficulty.Qualified && lb.Song.Hash.ToLower() == hash.ToLower()).FirstOrDefault() != null) {
+                return new PrevQualification
+                {
+                    Time = 0
+                };
+            }
 
             return new PrevQualification {
                 Time = _context.Leaderboards
