@@ -436,6 +436,14 @@ namespace BeatLeader_Server.Controllers
                         break;
                 }
 
+                if (currentScore != null) {
+                    _context.ScoreRedirects.Add(new ScoreRedirect
+                    {
+                        OldScoreId = currentScore.Id,
+                        NewScoreId = resultScore.Id,
+                    });
+                }
+
                 _context.RecalculatePPAndRankFast(player);
             }
 

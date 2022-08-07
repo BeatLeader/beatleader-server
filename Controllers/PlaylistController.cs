@@ -350,7 +350,7 @@ namespace BeatLeader_Server.Controllers
                 hash = s.Hash,
                 songName = s.Name,
                 levelAuthorName = s.Mapper,
-                difficulties = s.Difficulties.Where(d => d.Ranked).Select(d => new {
+                difficulties = s.Difficulties.Where(d => d.Qualified).Select(d => new {
                     name = d.DifficultyName.FirstCharToLower(),
                     characteristic = d.ModeName
                 })

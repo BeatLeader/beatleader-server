@@ -59,6 +59,12 @@ namespace BeatLeader_Server.Controllers
                 if (score != null) {
                     player = score.Player;
                     song = new SongSelect { Id = score.Leaderboard.Song.Id, CoverImage = score.Leaderboard.Song.CoverImage, Name = score.Leaderboard.Song.Name };
+                } else {
+                    var redirect = await _context.ScoreRedirects.FirstOrDefaultAsync(sr => sr.OldScoreId == scoreId);
+                    if (redirect != null && redirect.NewScoreId != scoreId)
+                    {
+                        return await Get(scoreId: redirect.NewScoreId);
+                    }
                 }
             }
 

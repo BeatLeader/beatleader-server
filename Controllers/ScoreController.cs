@@ -56,7 +56,12 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
-                return NotFound();
+                var redirect = await _context.ScoreRedirects.FirstOrDefaultAsync(sr => sr.OldScoreId == id);
+                if (redirect != null && redirect.NewScoreId != id) {
+                    return await GetScore(redirect.NewScoreId);
+                } else {
+                    return NotFound();
+                }
             }
         }
 

@@ -41,6 +41,7 @@ namespace BeatLeader_Server
         public DbSet<Ban> Bans { get; set; }
         public DbSet<RankVoting> RankVotings { get; set; }
         public DbSet<RankChange> RankChanges { get; set; }
+        public DbSet<ScoreRedirect> ScoreRedirects { get; set; }
 
         public void RejectChanges()
         {
