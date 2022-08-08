@@ -49,8 +49,8 @@ namespace BeatLeader_Server.Controllers
                 .Include(lb => lb.Qualification)
                 .Include(lb => lb.Song)
                 .ToList();
-            var song = leaderboards.Where(lb => lb.Id == leaderboardId).FirstOrDefault();
-            var leaderboardsToApprove = song != null ? leaderboards.Where(lb => lb.Song.Id == song.Id).ToList() : null;
+            var leaderboard = leaderboards.Where(lb => lb.Id == leaderboardId).FirstOrDefault();
+            var leaderboardsToApprove = leaderboard != null ? leaderboards.Where(lb => lb.Song.Id == leaderboard.Song.Id).ToList() : null;
 
             if (leaderboardsToApprove == null || leaderboardsToApprove.Count() == 0 || leaderboardsToApprove[0].Qualification == null)
             {

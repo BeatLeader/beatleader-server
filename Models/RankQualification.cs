@@ -15,6 +15,9 @@
         public string? MapperId { get; set; }
 
         public bool MapperQualification { get; set; }
-        public int RTVotes { get; set; }
+
+        public int ApprovalTimeset { get; set; }
+        public bool Approved { get; set; }
+        public string? Approvers { get; set; }
     }
 }
