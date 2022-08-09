@@ -39,7 +39,6 @@
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="6.3.1" />
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="6.3.1" />
     <PackageReference Include="System.Drawing.Common" Version="6.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.AzureAppServices" Version="6.0.6" />
   </ItemGroup>
 
   <ItemGroup>
@@ -51,7 +50,6 @@
   <ItemGroup>
     <None Remove="Auth\SteamTicket\" />
     <None Remove="Auth\Oculus\" />
-    <None Remove="Microsoft.Extensions.Logging.AzureAppServices" />
   </ItemGroup>
   <ProjectExtensions>
     <MonoDevelop>

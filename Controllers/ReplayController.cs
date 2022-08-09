@@ -288,7 +288,7 @@ namespace BeatLeader_Server.Controllers
                         
                     }
 
-                    if (leaderboard.Difficulty.Ranked || leaderboard.Difficulty.Qualified) {
+                    if (leaderboard.Difficulty.Ranked || leaderboard.Difficulty.Qualified || leaderboard.Difficulty.Nominated) {
                         improvement.Pp = resultScore.Pp - currentScore.Pp;
                     }
 
@@ -361,7 +361,7 @@ namespace BeatLeader_Server.Controllers
                     leaderboard.Statistic.Relevant = false;
                 }
 
-                var isRanked = leaderboard.Difficulty.Ranked || leaderboard.Difficulty.Qualified;
+                var isRanked = leaderboard.Difficulty.Ranked || leaderboard.Difficulty.Qualified || leaderboard.Difficulty.Nominated;
                 var rankedScores = leaderboard.Scores.OrderByDescending(el => isRanked ? el.Pp : el.ModifiedScore).ToList();
                 foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
                 {

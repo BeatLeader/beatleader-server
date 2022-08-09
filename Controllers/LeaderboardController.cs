@@ -232,6 +232,9 @@ namespace BeatLeader_Server.Controllers
                 case "ranked":
                     sequence = sequence.Order(order, t => t.Difficulty.RankedTime);
                     break;
+                case "nominated":
+                    sequence = sequence.Order(order, t => t.Difficulty.NominatedTime);
+                    break;
                 case "qualified":
                     sequence = sequence.Order(order, t => t.Difficulty.QualifiedTime);
                     break;
@@ -280,17 +283,17 @@ namespace BeatLeader_Server.Controllers
                     case "ranked":
                         sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.Ranked);
                         break;
+                    case "nominated":
+                        sequence = sequence
+                            .Include(lb => lb.Difficulty)
+                            .Include(lb => lb.Qualification)
+                            .Where(p => p.Difficulty.Nominated);
+                        break;
                     case "qualified":
                         sequence = sequence
                             .Include(lb => lb.Difficulty)
                             .Include(lb => lb.Qualification)
-                            .Where(p => p.Difficulty.Qualified && !p.Qualification.MapperQualification);
-                        break;
-                    case "mapperqualified":
-                        sequence = sequence
-                            .Include(lb => lb.Difficulty)
-                            .Include(lb => lb.Qualification)
-                            .Where(p => p.Difficulty.Qualified && p.Qualification.MapperQualification);
+                            .Where(p => p.Difficulty.Qualified);
                         break;
                     case "unranked":
                         sequence = sequence.Include(lb => lb.Difficulty).Where(p => !p.Difficulty.Ranked);

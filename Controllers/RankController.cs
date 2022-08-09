@@ -273,13 +273,13 @@ namespace BeatLeader_Server.Controllers
                 
                 DifficultyDescription? difficulty = leaderboard.Difficulty;
 
-                if (difficulty.Qualified || difficulty.Ranked)
+                if (difficulty.Qualified || difficulty.Nominated || difficulty.Ranked)
                 {
                     return BadRequest("Already qualified or ranked");
                 }
 
-                difficulty.Qualified = true;
-                difficulty.QualifiedTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+                difficulty.Nominated = true;
+                difficulty.NominatedTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                 difficulty.Stars = stars;
                 leaderboard.Qualification = new RankQualification {
                     Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
@@ -291,7 +291,7 @@ namespace BeatLeader_Server.Controllers
                 difficulty.Type = type;
                 _context.SaveChanges();
                 await _scoreController.RefreshScores(leaderboard.Id);
-                await _playlistController.RefreshQualifiedPlaylist();
+                await _playlistController.RefreshNominatedPlaylist();
             }
 
             return Ok();
@@ -350,11 +350,16 @@ namespace BeatLeader_Server.Controllers
                         {
                             qualification.Approvers += "," + currentID;
                         }
+                        leaderboard.Difficulty.Nominated = false;
+                        leaderboard.Difficulty.Qualified = true;
+                        leaderboard.Difficulty.QualifiedTime = qualification.ApprovalTimeset;
                     }
 
                     qualification.Approved = (bool)stilQualifying;
                 } else {
                     if (stilQualifying == false) {
+                        leaderboard.Difficulty.Nominated = false;
+                        leaderboard.Difficulty.NominatedTime = 0;
                         leaderboard.Difficulty.Qualified = false;
                         leaderboard.Difficulty.QualifiedTime = 0;
                         leaderboard.Difficulty.Stars = 0;
@@ -389,6 +394,7 @@ namespace BeatLeader_Server.Controllers
 
                 _context.SaveChanges();
                 await _scoreController.RefreshScores(leaderboard.Id);
+                await _playlistController.RefreshNominatedPlaylist();
                 await _playlistController.RefreshQualifiedPlaylist();
             }
 
@@ -451,21 +457,30 @@ namespace BeatLeader_Server.Controllers
                 };
                 _context.RankChanges.Add(rankChange);
 
-                difficulty.Ranked = rankability > 0;
-                if (difficulty.Qualified) {
-                    difficulty.Qualified = false;
+                bool updatePlaylists = difficulty.Ranked != (rankability > 0); 
+
+                if (!difficulty.Ranked && rankability > 0) {
+                    difficulty.RankedTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                 }
+
+                difficulty.Ranked = rankability > 0;
+                difficulty.Qualified = false;
+                difficulty.Nominated = false;
                 difficulty.Stars = stars;
-                difficulty.RankedTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                 difficulty.Type = type;
                 _context.SaveChanges();
                 transaction.Commit();
+
+                if (updatePlaylists) {
+                    await _playlistController.RefreshNominatedPlaylist();
+                    await _playlistController.RefreshQualifiedPlaylist();
+                    await _playlistController.RefreshRankedPlaylist();
+                }
 
                 await _scoreController.RefreshScores(leaderboard.Id);
 
                 HttpContext.Response.OnCompleted(async () => {
                     await _playerController.RefreshLeaderboardPlayers(leaderboard.Id);
-                    await _playlistController.RefreshRankedPlaylist();
                 });
             }
 
@@ -482,7 +497,7 @@ namespace BeatLeader_Server.Controllers
         {
             string userId = HttpContext.CurrentUserID(_context);
 
-            if (_context.Leaderboards.Where(lb => lb.Difficulty.Qualified && lb.Song.Hash.ToLower() == hash.ToLower()).FirstOrDefault() != null) {
+            if (_context.Leaderboards.Where(lb => lb.Difficulty.Nominated && lb.Song.Hash.ToLower() == hash.ToLower()).FirstOrDefault() != null) {
                 return new PrevQualification
                 {
                     Time = 0
@@ -491,8 +506,8 @@ namespace BeatLeader_Server.Controllers
 
             return new PrevQualification {
                 Time = _context.Leaderboards
-                .Where(lb => lb.Qualification != null && lb.Qualification.RTMember == userId)
-                .Select(lb => new { time = lb.Difficulty.QualifiedTime }).FirstOrDefault()?.time ?? 0
+                .Where(lb => lb.Difficulty.Nominated && lb.Qualification.RTMember == userId)
+                .Select(lb => new { time = lb.Difficulty.NominatedTime }).FirstOrDefault()?.time ?? 0
             };
         }
 

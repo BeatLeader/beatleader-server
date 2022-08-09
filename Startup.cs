@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Azure;
-using Microsoft.Extensions.Logging.AzureAppServices;
 using Azure.Storage.Queues;
 using Azure.Storage.Blobs;
 using Azure.Core.Extensions;
@@ -125,13 +124,6 @@ namespace BeatLeader_Server {
                     });
             });
             }
-
-            services.Configure<AzureFileLoggerOptions>(options =>
-            {
-                options.FileName = "azure-diagnostics-";
-                options.FileSizeLimit = 50 * 1024;
-                options.RetainedFileCountLimit = 5;
-            });
 
             services.AddSwaggerGen();
 

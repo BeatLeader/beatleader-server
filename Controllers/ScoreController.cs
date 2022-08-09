@@ -226,13 +226,13 @@ namespace BeatLeader_Server.Controllers
                     if (s.Accuracy > 0.999f) {
                         s.Accuracy = 1.0f;
                     }
-                    if (leaderboard.Difficulty.Ranked || leaderboard.Difficulty.Qualified) {
+                    if (leaderboard.Difficulty.Ranked || leaderboard.Difficulty.Qualified || leaderboard.Difficulty.Nominated) {
                         (s.Pp, s.BonusPp) = ReplayUtils.PpFromScore(s, leaderboard.Difficulty);
                     } else {
                         s.Pp = 0;
                         s.BonusPp = 0;
                     }
-                    s.Qualification = leaderboard.Difficulty.Qualified;
+                    s.Qualification = leaderboard.Difficulty.Qualified || leaderboard.Difficulty.Nominated;
                     if (float.IsNaN(s.Pp)) {
                         s.Pp = 0.0f;
                     }

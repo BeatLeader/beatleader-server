@@ -61,11 +61,11 @@ namespace BeatLeader_Server.Utils
             score.Accuracy = (float)score.ModifiedScore / (float)maxScore;
             score.Modifiers = replay.info.modifiers;
 
-            if (leaderboard.Difficulty.Ranked || leaderboard.Difficulty.Qualified) {
+            if (leaderboard.Difficulty.Ranked || leaderboard.Difficulty.Qualified || leaderboard.Difficulty.Nominated) {
                 (score.Pp, score.BonusPp) = PpFromScore(score, leaderboard.Difficulty);
             }
 
-            score.Qualification = leaderboard.Difficulty.Qualified;
+            score.Qualification = leaderboard.Difficulty.Qualified || leaderboard.Difficulty.Nominated;
 
             score.Platform = replay.info.platform + "," + replay.info.gameVersion + "," + replay.info.version;
 
