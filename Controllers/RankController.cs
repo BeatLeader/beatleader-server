@@ -338,7 +338,8 @@ namespace BeatLeader_Server.Controllers
                     && qualification.MapperAllowed
                     && qualification.CriteriaChecker != currentID
                     && qualification.RTMember != currentID
-                    && qualification.CriteriaMet == 1)
+                    && qualification.CriteriaMet == 1
+                    && !currentPlayer.Role.Contains("juniorrankedteam"))
                 {
                     if (qualification.ApprovalTimeset == 0)
                     {
@@ -460,6 +461,7 @@ namespace BeatLeader_Server.Controllers
                 var qualification = leaderboard.Qualification;
                 if (!currentPlayer.Role.Contains("admin")) {
                     if (qualification == null
+                        || currentPlayer.Role.Contains("juniorrankedteam")
                         || !qualification.MapperAllowed
                         || qualification.CriteriaMet != 1
                         || !qualification.Approved
@@ -590,6 +592,63 @@ namespace BeatLeader_Server.Controllers
                 }
             }
             return result;
+        }
+
+        [Authorize]
+        [HttpGet("~/grantRTJunior/{playerId}")]
+        public async Task<ActionResult> GrantRTJunior(
+            string playerId)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || currentID == playerId || currentPlayer.Role.Contains("juniorrankedteam") || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
+            {
+                return Unauthorized();
+            }
+
+            Player? player = _context.Players.FirstOrDefault(p => p.Id == playerId);
+            if (player == null) {
+                return NotFound();
+            }
+
+            if (!player.Role.Contains("juniorrankedteam"))
+            {
+                player.Role = string.Join(",", player.Role.Split(",").Append("juniorrankedteam"));
+
+                _context.SaveChanges();
+            }
+
+            return Ok();
+        }
+
+        [Authorize]
+        [HttpGet("~/removeRTJunior/{playerId}")]
+        public async Task<ActionResult> RemoveRTJunior(
+            string playerId)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || currentID == playerId || currentPlayer.Role.Contains("juniorrankedteam") || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
+            {
+                return Unauthorized();
+            }
+
+            Player? player = _context.Players.FirstOrDefault(p => p.Id == playerId);
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            if (player.Role.Contains("juniorrankedteam"))
+            {
+                player.Role = string.Join(",", player.Role.Split(",").Where(s => s != "juniorrankedteam"));
+
+                _context.SaveChanges();
+            }
+
+            return Ok();
         }
 
         //[Authorize]
