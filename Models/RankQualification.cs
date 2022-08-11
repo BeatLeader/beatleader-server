@@ -19,5 +19,7 @@
         public int ApprovalTimeset { get; set; }
         public bool Approved { get; set; }
         public string? Approvers { get; set; }
+
+        public ICollection<QualificationChange>? Changes { get; set; }
     }
 }

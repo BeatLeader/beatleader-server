@@ -121,6 +121,7 @@ namespace BeatLeader_Server.Controllers
             leaderboard = query.Include(lb => lb.Scores)
                     .Include(lb => lb.Difficulty)
                     .Include(lb => lb.Qualification)
+                    .ThenInclude(q => q.Changes)
                     .Include(lb => lb.Song)
                     .ThenInclude(s => s.Difficulties)
                     .Select(ResponseFromLeaderboard)
@@ -220,6 +221,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? search = null,
             [FromQuery] string? diff = null,
             [FromQuery] string? type = null,
+            [FromQuery] int? mapType = null,
             [FromQuery] string? mytype = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
@@ -227,10 +229,14 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int? date_to = null) {
 
             var sequence = _context.Leaderboards.AsQueryable();
+            string? currentID = HttpContext.CurrentUserID(_context);
             switch (sortBy)
             {
                 case "ranked":
                     sequence = sequence.Order(order, t => t.Difficulty.RankedTime);
+                    break;
+                case "name":
+                    sequence = sequence.Order(order == "desc" ? "asc" : "desc", t => t.Song.Name);
                     break;
                 case "nominated":
                     sequence = sequence.Order(order, t => t.Difficulty.NominatedTime);
@@ -240,6 +246,14 @@ namespace BeatLeader_Server.Controllers
                     break;
                 case "stars":
                     sequence = sequence.Include(lb => lb.Difficulty).Order(order, t => t.Difficulty.Stars);
+                    break;
+                case "scoreTime":
+                    if (mytype == "played") {
+                        sequence = sequence.Order(order, lb => lb.Scores.Where(s => s.PlayerId == currentID).Max(s => s.Timepost));
+                    } else {
+                        sequence = sequence.Order(order, lb => lb.Scores.Max(s => s.Timepost));
+                    }
+                    
                     break;
                 case "playcount":
                     sequence = sequence.Order(order, lb => lb.Scores.Where(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)).Count());
@@ -276,7 +290,7 @@ namespace BeatLeader_Server.Controllers
             {
                 sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.DifficultyName.ToLower().Contains(diff.ToLower()));
             }
-            string? currentID = HttpContext.CurrentUserID(_context);
+            
             if (type != null && type.Length != 0)
             {
                 switch (type) {
@@ -300,6 +314,11 @@ namespace BeatLeader_Server.Controllers
                         break;
                 }
             }
+            if (mapType != null) {
+                int maptype = (int)mapType;
+                sequence = sequence.Include(lb => lb.Difficulty).Where(p => (p.Difficulty.Type & maptype) != 0);
+            }
+
             if (mytype != null && mytype.Length != 0)
             {
                 switch (mytype)
@@ -309,6 +328,12 @@ namespace BeatLeader_Server.Controllers
                         break;
                     case "unplayed":
                         sequence = sequence.Where(p => p.Scores.FirstOrDefault(s => s.PlayerId == currentID) == null);
+                        break;
+                    case "mynominated":
+                        sequence = sequence.Where(p => p.Qualification != null && p.Qualification.RTMember == currentID);
+                        break;
+                    case "othersnominated":
+                        sequence = sequence.Where(p => p.Qualification != null && p.Qualification.RTMember != currentID);
                         break;
                     case "mymaps":
                         var currentPlayer = await _context.Players.FindAsync(currentID);

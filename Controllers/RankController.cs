@@ -317,6 +317,7 @@ namespace BeatLeader_Server.Controllers
                 .Include(l => l.Difficulty)
                 .Include(l => l.Song)
                 .Include(l => l.Qualification)
+                .ThenInclude(q => q.Changes)
                 .FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             bool isRT = true;
@@ -329,34 +330,45 @@ namespace BeatLeader_Server.Controllers
 
             if (qualification != null)
             {
-                if (stilQualifying != null
+                if (stilQualifying != null 
+                    && (allowed == null || allowed == true)
                     && leaderboard.Difficulty.Stars == stars
                     && leaderboard.Difficulty.Type == type
-                    && criteriaCheck == 1
+                    && (criteriaCheck == null || criteriaCheck == 1)
                     && qualification.MapperAllowed
-                    && qualification.CriteriaMet == 1
                     && qualification.CriteriaChecker != currentID
-                    && qualification.RTMember != currentID)
+                    && qualification.RTMember != currentID
+                    && qualification.CriteriaMet == 1)
                 {
-
                     if (qualification.ApprovalTimeset == 0)
                     {
                         qualification.ApprovalTimeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-                        if (qualification.Approvers == null)
-                        {
-                            qualification.Approvers = currentID;
-                        }
-                        else if (!qualification.Approvers.Contains(currentID))
-                        {
-                            qualification.Approvers += "," + currentID;
-                        }
+                        
                         leaderboard.Difficulty.Nominated = false;
                         leaderboard.Difficulty.Qualified = true;
                         leaderboard.Difficulty.QualifiedTime = qualification.ApprovalTimeset;
                     }
 
+                    if (qualification.Approvers == null)
+                    {
+                        qualification.Approvers = currentID;
+                    }
+                    else if (!qualification.Approvers.Contains(currentID))
+                    {
+                        qualification.Approvers += "," + currentID;
+                    }
+
                     qualification.Approved = (bool)stilQualifying;
                 } else {
+                    QualificationChange qualificationChange = new QualificationChange {
+                        PlayerId = currentID,
+                        Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
+                        OldRankability = leaderboard.Difficulty.Qualified || leaderboard.Difficulty.Nominated ? 1.0f : 0,
+                        OldStars = (float)leaderboard.Difficulty.Stars,
+                        OldType = (int)leaderboard.Difficulty.Type,
+                        OldCriteriaMet = qualification.CriteriaMet,
+                    };
+
                     if (stilQualifying == false) {
                         leaderboard.Difficulty.Nominated = false;
                         leaderboard.Difficulty.NominatedTime = 0;
@@ -382,13 +394,30 @@ namespace BeatLeader_Server.Controllers
                         }
                     }
 
-                    if (criteriaCheck != null) {
+                    if (criteriaCheck != null && criteriaCheck != qualification.CriteriaMet) {
                         qualification.CriteriaMet = (int)criteriaCheck;
                         qualification.CriteriaTimeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                         qualification.CriteriaChecker = currentID;
                     }
+
                     if (criteriaCommentary != null) {
                         qualification.CriteriaCommentary = criteriaCommentary;
+                    }
+
+                    qualificationChange.NewRankability = leaderboard.Difficulty.Qualified || leaderboard.Difficulty.Nominated ? 1.0f : 0;
+                    qualificationChange.NewStars = (float)leaderboard.Difficulty.Stars;
+                    qualificationChange.NewType = (int)leaderboard.Difficulty.Type;
+                    qualificationChange.NewCriteriaMet = qualification.CriteriaMet;
+
+                    if (qualificationChange.NewRankability != qualificationChange.OldRankability
+                        || qualificationChange.NewStars != qualificationChange.OldStars
+                        || qualificationChange.NewType != qualificationChange.OldType
+                        || qualificationChange.NewCriteriaMet != qualificationChange.OldCriteriaMet) {
+
+                        if (qualification.Changes == null) {
+                            qualification.Changes = new List<QualificationChange>();
+                        }
+                        qualification.Changes.Add(qualificationChange);
                     }
                 }
 

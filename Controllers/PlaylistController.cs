@@ -255,6 +255,7 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [NonAction]
         public List<string> DeletedSongs() {
             return new List<string> { 
                 "9a8581460386e3d3cca3ba62ee4bd621c131980c", 
@@ -382,7 +383,7 @@ namespace BeatLeader_Server.Controllers
                 hash = lb.Song.Hash,
                 songName = lb.Song.Name,
                 levelAuthorName = lb.Song.Mapper,
-                difficulties = lb.Song.Difficulties.Where(d => d.Ranked).Select(d => new {
+                difficulties = lb.Song.Difficulties.Where(d => d.Nominated).Select(d => new {
                     name = d.DifficultyName.FirstCharToLower(),
                     characteristic = d.ModeName
                 })
