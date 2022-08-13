@@ -200,7 +200,8 @@ namespace BeatLeader_Server.Utils
                         index = 0;
                     }
 
-                    if (param.scoringType != ScoringType.BurstSliderElement)
+                    if (param.scoringType != ScoringType.BurstSliderElement
+                     && param.scoringType != ScoringType.BurstSliderHead)
                     {
                         gridCounts[index]++;
                         result.GridAcc[index] += (float)scoreValue;
@@ -214,7 +215,8 @@ namespace BeatLeader_Server.Utils
                             result.LeftPreswing += note.noteCutInfo.beforeCutRating;
                             leftCuts[0]++;
                         }
-                        if (param.scoringType != ScoringType.BurstSliderElement)
+                        if (param.scoringType != ScoringType.BurstSliderElement
+                         && param.scoringType != ScoringType.BurstSliderHead)
                         {
                             result.LeftAverageCut[1] += (float)acc;
                             result.AccLeft += (float)scoreValue;
@@ -238,7 +240,8 @@ namespace BeatLeader_Server.Utils
                             result.RightPreswing += note.noteCutInfo.beforeCutRating;
                             rightCuts[0]++;
                         }
-                        if (param.scoringType != ScoringType.BurstSliderElement)
+                        if (param.scoringType != ScoringType.BurstSliderElement 
+                         && param.scoringType != ScoringType.BurstSliderHead)
                         {
                             result.RightAverageCut[1] += (float)acc;
                             result.RightTimeDependence += Math.Abs(note.noteCutInfo.cutNormal.z);

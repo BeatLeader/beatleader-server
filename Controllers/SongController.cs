@@ -156,10 +156,6 @@ namespace BeatLeader_Server.Controllers
                         difficulty.Mode = SongUtils.ModeForModeName(diff.characteristic);
                         difficulty.DifficultyName = diff.difficulty;
                         difficulty.Value = SongUtils.DiffForDiffName(diff.difficulty);
-                        if (ExpandantoObject.HasProperty(diff, "stars")) {
-                            difficulty.Stars = (float)diff.stars;
-                            difficulty.Ranked = true;
-                        }
                         
                         difficulty.Njs = (float)diff.njs;
                         difficulty.Notes = (int)diff.notes;

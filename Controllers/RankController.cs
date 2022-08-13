@@ -330,7 +330,7 @@ namespace BeatLeader_Server.Controllers
 
             if (qualification != null)
             {
-                if (stilQualifying != null 
+                if (stilQualifying == true 
                     && (allowed == null || allowed == true)
                     && leaderboard.Difficulty.Stars == stars
                     && leaderboard.Difficulty.Type == type

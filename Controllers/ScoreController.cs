@@ -212,9 +212,17 @@ namespace BeatLeader_Server.Controllers
 
             foreach (var leaderboard in allLeaderboards) {
                 var allScores = leaderboard.Scores.Where(s => !s.Banned).ToList();
+                bool qualification = leaderboard.Difficulty.Qualified || leaderboard.Difficulty.Nominated;
+                bool hasPp = leaderboard.Difficulty.Ranked || qualification;
+
                 foreach (Score s in allScores)
                 {
-                    s.ModifiedScore = (int)(s.BaseScore * ReplayUtils.GetNegativeMultiplier(s.Modifiers));
+                    if (hasPp) {
+                        s.ModifiedScore = (int)(s.BaseScore * ReplayUtils.GetNegativeMultiplier(s.Modifiers));
+                    } else {
+                        s.ModifiedScore = (int)(s.BaseScore * ReplayUtils.GetTotalMultiplier(s.Modifiers));
+                    }
+
                     if (leaderboard.Difficulty.MaxScore > 0)
                     {
                         s.Accuracy = (float)s.ModifiedScore / (float)leaderboard.Difficulty.MaxScore;
@@ -226,13 +234,15 @@ namespace BeatLeader_Server.Controllers
                     if (s.Accuracy > 0.999f) {
                         s.Accuracy = 1.0f;
                     }
-                    if (leaderboard.Difficulty.Ranked || leaderboard.Difficulty.Qualified || leaderboard.Difficulty.Nominated) {
+                    if (hasPp) {
                         (s.Pp, s.BonusPp) = ReplayUtils.PpFromScore(s, leaderboard.Difficulty);
                     } else {
                         s.Pp = 0;
                         s.BonusPp = 0;
                     }
-                    s.Qualification = leaderboard.Difficulty.Qualified || leaderboard.Difficulty.Nominated;
+
+                    s.Qualification = qualification;
+
                     if (float.IsNaN(s.Pp)) {
                         s.Pp = 0.0f;
                     }
@@ -247,7 +257,7 @@ namespace BeatLeader_Server.Controllers
                     counter++;
                 }
 
-                var rankedScores = allScores.OrderByDescending(el => el.Pp).ToList();
+                var rankedScores = hasPp ? allScores.OrderByDescending(el => el.Pp).ToList() : allScores.OrderByDescending(el => el.ModifiedScore).ToList();
                 foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
                 {
                     s.Rank = i + 1;

@@ -140,6 +140,32 @@ namespace BeatLeader_Server.Controllers
             return leaderboard;
         }
 
+        [HttpGet("~/leaderboards/hash/{hash}")]
+        public async Task<ActionResult<LeaderboardsResponse>> GetLeaderboardsByHash(string hash) {
+            var loverHash = hash.ToLower();
+
+            var leaderboards = await _context.Leaderboards
+                .Where(lb => lb.Song.Hash.ToLower() == loverHash)
+                .Include(lb => lb.Song)
+                .Include(lb => lb.Difficulty)
+                .Include(lb => lb.Qualification)
+                .ToListAsync();
+
+            if (leaderboards.Count() == 0) {
+                return NotFound();
+            }
+
+            return new LeaderboardsResponse
+            {
+                Song = leaderboards[0].Song,
+                Leaderboards = leaderboards.Select(lb => new LeaderboardsInfoResponse {
+                    Id = lb.Id,
+                    Qualification = lb.Qualification,
+                    Difficulty = lb.Difficulty,
+                }).ToList()
+            };
+        }
+
         [NonAction]
         public async Task<ActionResult<Leaderboard>> GetByHash(string hash, string diff, string mode, Song? inputSong = null) {
             Leaderboard? leaderboard;

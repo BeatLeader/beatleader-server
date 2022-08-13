@@ -71,6 +71,18 @@ namespace BeatLeader_Server.Utils
             public RankVoting? RankVoting { get; set; }
         }
 
+        public class LeaderboardsResponse
+        {
+            public Song Song { get; set; }
+            public ICollection<LeaderboardsInfoResponse> Leaderboards { get; set; }
+        }
+
+        public class LeaderboardsInfoResponse {
+            public string Id { get; set; }
+            public DifficultyDescription Difficulty { get; set; }
+            public RankQualification? Qualification { get; set; }
+        }
+
         public class LeaderboardResponse {
             public string Id { get; set; }
             public Song Song { get; set; }
