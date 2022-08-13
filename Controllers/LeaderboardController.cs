@@ -258,47 +258,86 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             switch (sortBy)
             {
-                case "ranked":
-                    sequence = sequence.Order(order, t => t.Difficulty.RankedTime);
+                case "timestamp":
+                    switch (type)
+                    {
+                        default:
+                            sequence = sequence.Where(s => (date_from == null || s.Difficulty.RankedTime >= date_from) && (date_to == null || s.Difficulty.RankedTime <= date_to))
+                            .Order(order, t => t.Difficulty.RankedTime);
+                            break;
+                        case "nominated":
+                            sequence = sequence.Where(s => (date_from == null || s.Difficulty.NominatedTime >= date_from) && (date_to == null || s.Difficulty.NominatedTime <= date_to))
+                            .Order(order, t => t.Difficulty.NominatedTime);
+                            break;
+                        case "qualified":
+                            sequence = sequence.Where(s => (date_from == null || s.Difficulty.QualifiedTime >= date_from) && (date_to == null || s.Difficulty.QualifiedTime <= date_to))
+                            .Order(order, t => t.Difficulty.QualifiedTime);
+                            break;
+                    }
+                    
                     break;
                 case "name":
                     sequence = sequence.Order(order == "desc" ? "asc" : "desc", t => t.Song.Name);
-                    break;
-                case "nominated":
-                    sequence = sequence.Order(order, t => t.Difficulty.NominatedTime);
-                    break;
-                case "qualified":
-                    sequence = sequence.Order(order, t => t.Difficulty.QualifiedTime);
                     break;
                 case "stars":
                     sequence = sequence.Include(lb => lb.Difficulty).Order(order, t => t.Difficulty.Stars);
                     break;
                 case "scoreTime":
                     if (mytype == "played") {
-                        sequence = sequence.Order(order, lb => lb.Scores.Where(s => s.PlayerId == currentID).Max(s => s.Timepost));
+                        sequence = sequence
+                            .Order(order, lb => 
+                                lb.Scores
+                                    .Where(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to) && s.PlayerId == currentID)
+                                    .Max(s => s.Timepost));
                     } else {
-                        sequence = sequence.Order(order, lb => lb.Scores.Max(s => s.Timepost));
+                        sequence = sequence
+                            .Order(order, lb => 
+                                lb.Scores
+                                    .Where(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to))
+                                    .Max(s => s.Timepost));
                     }
                     
                     break;
                 case "playcount":
-                    sequence = sequence.Order(order, lb => lb.Scores.Where(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)).Count());
+                    sequence = sequence
+                        .Order(order, lb => 
+                            lb.Scores
+                                .Where(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to))
+                                .Count());
                     break;
                 case "voting":
                     sequence = sequence
                         .Where(lb => lb.Scores.Where(s => s.RankVoting != null).FirstOrDefault() != null)
-                        .Order(order, lb => lb.Scores.Where(s => s.RankVoting.Rankability > 0).Count() - lb.Scores.Where(s => s.RankVoting.Rankability <= 0).Count());
+                        .Order(order, lb => 
+                            lb.Scores
+                                .Where(s => (date_from == null || s.RankVoting.Timeset >= date_from) && (date_to == null || s.RankVoting.Timeset <= date_to) && s.RankVoting.Rankability > 0).Count() 
+                            - 
+                            lb.Scores
+                                .Where(s => (date_from == null || s.RankVoting.Timeset >= date_from) && (date_to == null || s.RankVoting.Timeset <= date_to) && s.RankVoting.Rankability <= 0).Count());
                     break;
                 case "votecount":
                     sequence = sequence
                         .Where(lb => lb.Scores.Where(s => s.RankVoting != null).FirstOrDefault() != null)
-                        .Order(order, lb => lb.Scores.Where(s => s.RankVoting != null).Count());
+                        .Order(order, lb => 
+                            lb.Scores
+                                .Where(s => (date_from == null || s.RankVoting.Timeset >= date_from) && (date_to == null || s.RankVoting.Timeset <= date_to) && s.RankVoting != null)
+                                .Count());
                     break;
                 case "voteratio":
                     sequence = sequence
-                        .Where(lb => lb.Scores.Where(s => s.RankVoting != null).FirstOrDefault() != null)
-                        .Order(order, lb => (int)(lb.Scores.Where(s => s.RankVoting.Rankability > 0).Count() / lb.Scores.Where(s => s.RankVoting != null).Count() * 100.0))
-                        .ThenOrder(order, lb => lb.Scores.Where(s => s.RankVoting != null).Count());
+                        .Where(lb => 
+                            lb.Scores
+                                .Where(s => (date_from == null || s.RankVoting.Timeset >= date_from) && (date_to == null || s.RankVoting.Timeset <= date_to) && s.RankVoting != null)
+                                .FirstOrDefault() != null)
+                        .Order(order, lb => (int)(
+                            lb.Scores
+                                .Where(s => (date_from == null || s.RankVoting.Timeset >= date_from) && (date_to == null || s.RankVoting.Timeset <= date_to) && s.RankVoting.Rankability > 0).Count() 
+                            / 
+                            lb.Scores
+                                .Where(s => (date_from == null || s.RankVoting.Timeset >= date_from) && (date_to == null || s.RankVoting.Timeset <= date_to) && s.RankVoting != null).Count() * 100.0))
+                        .ThenOrder(order, lb => 
+                            lb.Scores
+                                .Where(s => (date_from == null || s.RankVoting.Timeset >= date_from) && (date_to == null || s.RankVoting.Timeset <= date_to) && s.RankVoting != null).Count());
                     break;
                 default:
                     break;
@@ -445,7 +484,7 @@ namespace BeatLeader_Server.Controllers
             }).FirstOrDefault(),
                     Plays = showPlays ? lb.Scores.Where(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)).Count() : 0,
                     Votes = lb.Scores
-                        .Where(s => s.RankVoting != null)
+                        .Where(s => (date_from == null || s.RankVoting.Timeset >= date_from) && (date_to == null || s.RankVoting.Timeset <= date_to) && s.RankVoting != null)
                         .Select(s => new VotingResponse
                         {
                             Rankability = s.RankVoting.Rankability,
