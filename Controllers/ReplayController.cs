@@ -273,7 +273,8 @@ namespace BeatLeader_Server.Controllers
                         player.ScoreStats.AverageAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, currentScore.Accuracy);
                     }
                     
-                    if (leaderboard.Difficulty.Ranked)
+                    var status1 = leaderboard.Difficulty.Status;
+                    if (status1 == DifficultyStatus.ranked)
                     {
                         float oldAverageAcc = player.ScoreStats.AverageRankedAccuracy;
                         if (player.ScoreStats.RankedPlayCount == 1)
@@ -288,7 +289,8 @@ namespace BeatLeader_Server.Controllers
                         
                     }
 
-                    if (leaderboard.Difficulty.Ranked || leaderboard.Difficulty.Qualified || leaderboard.Difficulty.Nominated) {
+
+                    if (status1 == DifficultyStatus.ranked || status1 == DifficultyStatus.qualified || status1 == DifficultyStatus.nominated) {
                         improvement.Pp = resultScore.Pp - currentScore.Pp;
                     }
 
@@ -342,7 +344,7 @@ namespace BeatLeader_Server.Controllers
                 }
                 else
                 {
-                    if (leaderboard.Difficulty.Ranked)
+                    if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
                     {
                         player.ScoreStats.RankedPlayCount++;
                     }
@@ -361,7 +363,8 @@ namespace BeatLeader_Server.Controllers
                     leaderboard.Statistic.Relevant = false;
                 }
 
-                var isRanked = leaderboard.Difficulty.Ranked || leaderboard.Difficulty.Qualified || leaderboard.Difficulty.Nominated;
+                var status = leaderboard.Difficulty.Status;
+                var isRanked = status == DifficultyStatus.ranked || status == DifficultyStatus.qualified || status == DifficultyStatus.nominated;
                 var rankedScores = leaderboard.Scores.OrderByDescending(el => isRanked ? el.Pp : el.ModifiedScore).ToList();
                 foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
                 {
@@ -400,7 +403,7 @@ namespace BeatLeader_Server.Controllers
             {
                 player.ScoreStats.TotalScore += resultScore.ModifiedScore;
                 player.ScoreStats.AverageAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, resultScore.Accuracy);
-                if (leaderboard.Difficulty.Ranked)
+                if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
                 {
                     player.ScoreStats.AverageRankedAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, resultScore.Accuracy);
                     if (resultScore.Accuracy > player.ScoreStats.TopAccuracy) {
@@ -607,7 +610,7 @@ namespace BeatLeader_Server.Controllers
                 player.ScoreStats.AverageAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, score.Accuracy);
             }
 
-            if (leaderboard.Difficulty.Ranked)
+            if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
             {
                 if (player.ScoreStats.RankedPlayCount == 1)
                 {
@@ -629,7 +632,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (previousScore == null) {
-                if (leaderboard.Difficulty.Ranked)
+                if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
                 {
                     player.ScoreStats.RankedPlayCount--;
                 }
@@ -647,7 +650,7 @@ namespace BeatLeader_Server.Controllers
 
                 player.ScoreStats.TotalScore += previousScore.ModifiedScore;
                 player.ScoreStats.AverageAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, previousScore.Accuracy);
-                if (leaderboard.Difficulty.Ranked)
+                if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
                 {
                     player.ScoreStats.AverageRankedAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, previousScore.Accuracy);
                 }

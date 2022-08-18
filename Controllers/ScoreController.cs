@@ -130,7 +130,7 @@ namespace BeatLeader_Server.Controllers
                 player.ScoreStats.AverageAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, score.Accuracy);
             }
 
-            if (leaderboard.Difficulty.Ranked)
+            if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
             {
                 if (player.ScoreStats.RankedPlayCount == 1)
                 {
@@ -151,7 +151,7 @@ namespace BeatLeader_Server.Controllers
                 leaderboard.Scores.Remove(score);
             }
 
-            if (leaderboard.Difficulty.Ranked)
+            if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
             {
                 player.ScoreStats.RankedPlayCount--;
             }
@@ -212,8 +212,9 @@ namespace BeatLeader_Server.Controllers
 
             foreach (var leaderboard in allLeaderboards) {
                 var allScores = leaderboard.Scores.Where(s => !s.Banned).ToList();
-                bool qualification = leaderboard.Difficulty.Qualified || leaderboard.Difficulty.Nominated;
-                bool hasPp = leaderboard.Difficulty.Ranked || qualification;
+                var status = leaderboard.Difficulty.Status;
+                bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.nominated;
+                bool hasPp = status == DifficultyStatus.ranked || qualification;
 
                 foreach (Score s in allScores)
                 {
@@ -590,7 +591,7 @@ namespace BeatLeader_Server.Controllers
                 }
                 if (type != null)
                 {
-                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Ranked : !p.Leaderboard.Difficulty.Ranked);
+                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked : p.Leaderboard.Difficulty.Status != DifficultyStatus.ranked);
                 }
                 if (stars_from != null)
                 {

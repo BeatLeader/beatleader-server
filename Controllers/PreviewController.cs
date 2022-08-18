@@ -121,7 +121,8 @@ namespace BeatLeader_Server.Controllers
                 graphics.DrawString(rankandpp, new Font(fontFamily, 17), new SolidBrush(Color.White), new Point((int)(width - 120 - size4.Width / 2), 15));
 
                 (Color color, string diff) = DiffColorAndName(score.Leaderboard.Difficulty.DifficultyName);
-                if (score.Leaderboard.Difficulty.Ranked) {
+                var status = score.Leaderboard.Difficulty.Status;
+                if (status == DifficultyStatus.ranked || status == DifficultyStatus.nominated || status == DifficultyStatus.qualified) {
                     diff += " " + score.Leaderboard.Difficulty.Stars + "★";
                 }
                 graphics.DrawString(diff, new Font(fontFamily, 11), new SolidBrush(color), new Point((int)(width / 2), 55), stringFormat);

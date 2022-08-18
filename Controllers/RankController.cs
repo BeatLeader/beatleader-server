@@ -273,12 +273,12 @@ namespace BeatLeader_Server.Controllers
                 
                 DifficultyDescription? difficulty = leaderboard.Difficulty;
 
-                if (difficulty.Qualified || difficulty.Nominated || difficulty.Ranked)
+                if (difficulty.Status != DifficultyStatus.unranked)
                 {
                     return BadRequest("Already qualified or ranked");
                 }
 
-                difficulty.Nominated = true;
+                difficulty.Status = DifficultyStatus.nominated;
                 difficulty.NominatedTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                 difficulty.Stars = stars;
                 leaderboard.Qualification = new RankQualification {
@@ -344,9 +344,8 @@ namespace BeatLeader_Server.Controllers
                     if (qualification.ApprovalTimeset == 0)
                     {
                         qualification.ApprovalTimeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-                        
-                        leaderboard.Difficulty.Nominated = false;
-                        leaderboard.Difficulty.Qualified = true;
+
+                        leaderboard.Difficulty.Status = DifficultyStatus.qualified;
                         leaderboard.Difficulty.QualifiedTime = qualification.ApprovalTimeset;
                     }
 
@@ -364,16 +363,15 @@ namespace BeatLeader_Server.Controllers
                     QualificationChange qualificationChange = new QualificationChange {
                         PlayerId = currentID,
                         Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
-                        OldRankability = leaderboard.Difficulty.Qualified || leaderboard.Difficulty.Nominated ? 1.0f : 0,
+                        OldRankability = leaderboard.Difficulty.Status == DifficultyStatus.nominated || leaderboard.Difficulty.Status == DifficultyStatus.qualified ? 1.0f : 0,
                         OldStars = (float)leaderboard.Difficulty.Stars,
                         OldType = (int)leaderboard.Difficulty.Type,
                         OldCriteriaMet = qualification.CriteriaMet,
                     };
 
                     if (stilQualifying == false) {
-                        leaderboard.Difficulty.Nominated = false;
+                        leaderboard.Difficulty.Status = DifficultyStatus.unrankable;
                         leaderboard.Difficulty.NominatedTime = 0;
-                        leaderboard.Difficulty.Qualified = false;
                         leaderboard.Difficulty.QualifiedTime = 0;
                         leaderboard.Difficulty.Stars = 0;
                     } else {
@@ -405,7 +403,7 @@ namespace BeatLeader_Server.Controllers
                         qualification.CriteriaCommentary = criteriaCommentary;
                     }
 
-                    qualificationChange.NewRankability = leaderboard.Difficulty.Qualified || leaderboard.Difficulty.Nominated ? 1.0f : 0;
+                    qualificationChange.NewRankability = leaderboard.Difficulty.Status == DifficultyStatus.nominated || leaderboard.Difficulty.Status == DifficultyStatus.qualified ? 1.0f : 0;
                     qualificationChange.NewStars = (float)leaderboard.Difficulty.Stars;
                     qualificationChange.NewType = (int)leaderboard.Difficulty.Type;
                     qualificationChange.NewCriteriaMet = qualification.CriteriaMet;
@@ -479,7 +477,7 @@ namespace BeatLeader_Server.Controllers
                     Hash = hash,
                     Diff = diff,
                     Mode = mode,
-                    OldRankability = difficulty.Ranked ? 1 : 0,
+                    OldRankability = difficulty.Status == DifficultyStatus.ranked ? 1 : 0,
                     OldStars = difficulty.Stars ?? 0,
                     OldType = difficulty.Type,
                     NewRankability = rankability,
@@ -488,15 +486,13 @@ namespace BeatLeader_Server.Controllers
                 };
                 _context.RankChanges.Add(rankChange);
 
-                bool updatePlaylists = difficulty.Ranked != (rankability > 0); 
+                bool updatePlaylists = (difficulty.Status == DifficultyStatus.ranked) != (rankability > 0); 
 
-                if (!difficulty.Ranked && rankability > 0) {
+                if (difficulty.Status != DifficultyStatus.ranked && rankability > 0) {
                     difficulty.RankedTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                 }
 
-                difficulty.Ranked = rankability > 0;
-                difficulty.Qualified = false;
-                difficulty.Nominated = false;
+                difficulty.Status = rankability > 0 ? DifficultyStatus.ranked : DifficultyStatus.unranked;
                 difficulty.Stars = stars;
                 difficulty.Type = type;
                 _context.SaveChanges();
@@ -528,7 +524,7 @@ namespace BeatLeader_Server.Controllers
         {
             string userId = HttpContext.CurrentUserID(_context);
 
-            if (_context.Leaderboards.Where(lb => lb.Difficulty.Nominated && lb.Song.Hash.ToLower() == hash.ToLower()).FirstOrDefault() != null) {
+            if (_context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.nominated && lb.Song.Hash.ToLower() == hash.ToLower()).FirstOrDefault() != null) {
                 return new PrevQualification
                 {
                     Time = 0
@@ -537,7 +533,7 @@ namespace BeatLeader_Server.Controllers
 
             return new PrevQualification {
                 Time = _context.Leaderboards
-                .Where(lb => lb.Difficulty.Nominated && lb.Qualification.RTMember == userId)
+                .Where(lb => lb.Difficulty.Status == DifficultyStatus.nominated && lb.Qualification.RTMember == userId)
                 .Select(lb => new { time = lb.Difficulty.NominatedTime }).FirstOrDefault()?.time ?? 0
             };
         }
@@ -557,8 +553,7 @@ namespace BeatLeader_Server.Controllers
             var leaderboards = _context.Leaderboards.Where(lb => allKeys.Contains(lb.Song.Hash.ToUpper())).Include(lb => lb.Song).Include(lb => lb.Difficulty).ToList();
             foreach (var lb in leaderboards)
             {
-                if (lb.Difficulty.Ranked && values.ContainsKey(lb.Song.Hash.ToUpper() + "," + lb.Difficulty.DifficultyName + "," + lb.Difficulty.ModeName)) {
-                    lb.Difficulty.Ranked = true;
+                if (lb.Difficulty.Status == DifficultyStatus.ranked && values.ContainsKey(lb.Song.Hash.ToUpper() + "," + lb.Difficulty.DifficultyName + "," + lb.Difficulty.ModeName)) {
                     lb.Difficulty.Stars = values[lb.Song.Hash.ToUpper() + "," + lb.Difficulty.DifficultyName + "," + lb.Difficulty.ModeName];
                 }
 

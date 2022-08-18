@@ -50,7 +50,11 @@ namespace BeatLeader_Server.Utils
             score.FullCombo = score.BombCuts == 0 && score.MissedNotes == 0 && score.WallsHit == 0 && score.BadCuts == 0;
             score.Hmd = HMD(replay.info.hmd);
 
-            if (leaderboard.Difficulty.Ranked || leaderboard.Difficulty.Qualified || leaderboard.Difficulty.Nominated)
+            var status = leaderboard.Difficulty.Status;
+            bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.nominated;
+            bool hasPp = status == DifficultyStatus.ranked || qualification;
+
+            if (hasPp)
             {
                 score.ModifiedScore = (int)(score.BaseScore * GetNegativeMultiplier(replay.info.modifiers));
             } else
@@ -61,11 +65,11 @@ namespace BeatLeader_Server.Utils
             score.Accuracy = (float)score.ModifiedScore / (float)maxScore;
             score.Modifiers = replay.info.modifiers;
 
-            if (leaderboard.Difficulty.Ranked || leaderboard.Difficulty.Qualified || leaderboard.Difficulty.Nominated) {
+            if (hasPp) {
                 (score.Pp, score.BonusPp) = PpFromScore(score, leaderboard.Difficulty);
             }
 
-            score.Qualification = leaderboard.Difficulty.Qualified || leaderboard.Difficulty.Nominated;
+            score.Qualification = qualification;
 
             score.Platform = replay.info.platform + "," + replay.info.gameVersion + "," + replay.info.version;
 

@@ -254,6 +254,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? diff = null,
             [FromQuery] string? type = null,
             [FromQuery] int? mapType = null,
+            [FromQuery] bool allTypes = false,
             [FromQuery] string? mytype = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
@@ -313,7 +314,6 @@ namespace BeatLeader_Server.Controllers
                     break;
                 case "voting":
                     sequence = sequence
-                        .Where(lb => lb.Scores.Where(s => s.RankVoting != null).FirstOrDefault() != null)
                         .Order(order, lb => 
                             lb.Scores
                                 .Where(s => (date_from == null || s.RankVoting.Timeset >= date_from) && (date_to == null || s.RankVoting.Timeset <= date_to) && s.RankVoting.Rankability > 0).Count() 
@@ -323,7 +323,6 @@ namespace BeatLeader_Server.Controllers
                     break;
                 case "votecount":
                     sequence = sequence
-                        .Where(lb => lb.Scores.Where(s => s.RankVoting != null).FirstOrDefault() != null)
                         .Order(order, lb => 
                             lb.Scores
                                 .Where(s => (date_from == null || s.RankVoting.Timeset >= date_from) && (date_to == null || s.RankVoting.Timeset <= date_to) && s.RankVoting != null)
@@ -366,28 +365,34 @@ namespace BeatLeader_Server.Controllers
             {
                 switch (type) {
                     case "ranked":
-                        sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.Ranked);
+                        sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.Status == DifficultyStatus.ranked);
                         break;
                     case "nominated":
                         sequence = sequence
                             .Include(lb => lb.Difficulty)
                             .Include(lb => lb.Qualification)
-                            .Where(p => p.Difficulty.Nominated);
+                            .ThenInclude(q => q.Changes)
+                            .Where(p => p.Difficulty.Status == DifficultyStatus.nominated);
                         break;
                     case "qualified":
                         sequence = sequence
                             .Include(lb => lb.Difficulty)
                             .Include(lb => lb.Qualification)
-                            .Where(p => p.Difficulty.Qualified);
+                            .ThenInclude(q => q.Changes)
+                            .Where(p => p.Difficulty.Status == DifficultyStatus.qualified);
                         break;
                     case "unranked":
-                        sequence = sequence.Include(lb => lb.Difficulty).Where(p => !p.Difficulty.Ranked);
+                        sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.Status != DifficultyStatus.ranked);
                         break;
                 }
             }
             if (mapType != null) {
                 int maptype = (int)mapType;
-                sequence = sequence.Include(lb => lb.Difficulty).Where(p => (p.Difficulty.Type & maptype) != 0);
+                if (allTypes) {
+                    sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.Type == maptype);
+                } else {
+                    sequence = sequence.Include(lb => lb.Difficulty).Where(p => (p.Difficulty.Type & maptype) != 0);
+                }
             }
 
             if (mytype != null && mytype.Length != 0)
@@ -549,7 +554,8 @@ namespace BeatLeader_Server.Controllers
             foreach (var leaderboard in leaderboards)
             {
                 List<Score>? rankedScores;
-                if (leaderboard.Difficulty.Ranked) {
+                var status = leaderboard.Difficulty.Status;
+                if (status == DifficultyStatus.ranked || status == DifficultyStatus.qualified || status == DifficultyStatus.nominated) {
                     rankedScores = leaderboard.Scores.OrderByDescending(el => el.Pp).ToList();
                 } else {
                     rankedScores = leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();

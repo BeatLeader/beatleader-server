@@ -326,11 +326,11 @@ namespace BeatLeader_Server.Controllers
 
             var deleted = DeletedSongs();
 
-            var songs = _context.Leaderboards.Where(lb => lb.Difficulty.Ranked).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).Where(lb => !deleted.Contains(lb.Song.Hash.ToLower())).Select(lb => new {
+            var songs = _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).Where(lb => !deleted.Contains(lb.Song.Hash.ToLower())).Select(lb => new {
                 hash = lb.Song.Hash,
                 songName = lb.Song.Name,
                 levelAuthorName = lb.Song.Mapper,
-                difficulties = lb.Song.Difficulties.Where(d => d.Ranked).Select(d => new {
+                difficulties = lb.Song.Difficulties.Where(d => d.Status == DifficultyStatus.ranked).Select(d => new {
                     name = d.DifficultyName.FirstCharToLower(),
                     characteristic = d.ModeName
                 })
@@ -379,11 +379,11 @@ namespace BeatLeader_Server.Controllers
 
             var deleted = DeletedSongs();
 
-            var songs = _context.Leaderboards.Where(lb => lb.Difficulty.Nominated).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).Where(lb => !deleted.Contains(lb.Song.Hash.ToLower())).Select(lb => new {
+            var songs = _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.nominated).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).Where(lb => !deleted.Contains(lb.Song.Hash.ToLower())).Select(lb => new {
                 hash = lb.Song.Hash,
                 songName = lb.Song.Name,
                 levelAuthorName = lb.Song.Mapper,
-                difficulties = lb.Song.Difficulties.Where(d => d.Nominated).Select(d => new {
+                difficulties = lb.Song.Difficulties.Where(d => d.Status == DifficultyStatus.nominated).Select(d => new {
                     name = d.DifficultyName.FirstCharToLower(),
                     characteristic = d.ModeName
                 })
@@ -432,11 +432,11 @@ namespace BeatLeader_Server.Controllers
 
             var deleted = DeletedSongs();
 
-            var songs = _context.Leaderboards.Where(lb => lb.Difficulty.Qualified).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).Where(lb => !deleted.Contains(lb.Song.Hash.ToLower())).Select(lb => new {
+            var songs = _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.qualified).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).Where(lb => !deleted.Contains(lb.Song.Hash.ToLower())).Select(lb => new {
                 hash = lb.Song.Hash,
                 songName = lb.Song.Name,
                 levelAuthorName = lb.Song.Mapper,
-                difficulties = lb.Song.Difficulties.Where(d => d.Qualified).Select(d => new {
+                difficulties = lb.Song.Difficulties.Where(d => d.Status == DifficultyStatus.qualified).Select(d => new {
                     name = d.DifficultyName.FirstCharToLower(),
                     characteristic = d.ModeName
                 })

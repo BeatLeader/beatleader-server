@@ -37,12 +37,6 @@ namespace BeatLeader_Server.Controllers
                         songId += "x";
                     }
                     song.Id = songId;
-                    if (song.Hash != hash) {
-                        foreach (var diff in song.Difficulties)
-                        {
-                            diff.Ranked = false;
-                        }
-                    }
                     song.Hash = hash;
                     _context.Songs.Add(song);
                     await _context.SaveChangesAsync();
@@ -74,12 +68,6 @@ namespace BeatLeader_Server.Controllers
             }
 
             return song;
-        }
-
-        [HttpGet("~/maps")]
-        public async Task<ActionResult<ICollection<Song>>> GetAll([FromQuery] bool ranked = false, [FromQuery] int page = 0, [FromQuery] int count = 100)
-        {
-            return _context.Songs.Where(s => s.Difficulties.First(d => d.Ranked == ranked) != null).Include(s => s.Difficulties).ToList();
         }
 
         [NonAction]

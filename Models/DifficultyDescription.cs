@@ -1,5 +1,15 @@
 ﻿namespace BeatLeader_Server.Models
 {
+    public enum DifficultyStatus
+    {
+        unranked = 0,
+        nominated = 1,
+        qualified = 2,
+        ranked = 3,
+        unrankable = 4,
+        outdated = 5,
+    }
+
     public class DifficultyDescription
     {
         public int Id { get; set; }
@@ -7,6 +17,7 @@
         public int Mode { get; set; }
         public string DifficultyName { get; set; }
         public string ModeName { get; set; }
+        public DifficultyStatus Status { get; set; }
 
         public bool Nominated { get; set; }
         public int NominatedTime { get; set; }

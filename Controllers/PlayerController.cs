@@ -305,7 +305,7 @@ namespace BeatLeader_Server.Controllers
                                     .Include(lb => lb.Leaderboard)
                                     .ThenInclude(lb => lb.Difficulty)
                                     .Order(order, s => s.Leaderboard.Difficulty.Stars)
-                                    .Where(s => s.Leaderboard.Difficulty.Ranked);
+                                    .Where(s => s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked);
                         break;
                     default:
                         break;
@@ -326,7 +326,7 @@ namespace BeatLeader_Server.Controllers
                 }
                 if (type != null)
                 {
-                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Ranked : !p.Leaderboard.Difficulty.Ranked);
+                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked : p.Leaderboard.Difficulty.Status != DifficultyStatus.ranked);
                 }
                 if (stars_from != null)
                 {
@@ -487,7 +487,7 @@ namespace BeatLeader_Server.Controllers
                                     .Include(lb => lb.Leaderboard)
                                     .ThenInclude(lb => lb.Difficulty)
                                     .Order(order, s => s.Leaderboard.Difficulty.Stars)
-                                    .Where(s => s.Leaderboard.Difficulty.Ranked);
+                                    .Where(s => s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked);
                         break;
                     default:
                         break;
@@ -508,7 +508,7 @@ namespace BeatLeader_Server.Controllers
                 }
                 if (type != null)
                 {
-                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Ranked : !p.Leaderboard.Difficulty.Ranked);
+                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked : p.Leaderboard.Difficulty.Status != DifficultyStatus.ranked);
                 }
                 if (stars_from != null)
                 {
@@ -618,7 +618,7 @@ namespace BeatLeader_Server.Controllers
                 .ThenInclude(l => l.Difficulty)
                 .Include(s => s.Leaderboard)
                 .ThenInclude(l => l.Song)
-                .Where(s => s.PlayerId == id && s.Leaderboard.Difficulty.Ranked)
+                .Where(s => s.PlayerId == id && s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked)
                 .Select(s => new GraphResponse
                 {
                     LeaderboardId = s.Leaderboard.Id,
