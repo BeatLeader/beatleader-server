@@ -754,8 +754,19 @@ namespace BeatLeader_Server.Controllers
             }
             if (activityPeriod != null) {
                 int timetreshold = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - (int)activityPeriod;
-                request = request.Where(p => p.ScoreStats.LastScoreTime >= timetreshold);
 
+                switch (mapsType)
+                {
+                    case "ranked":
+                        request = request.Where(p => p.ScoreStats.LastRankedScoreTime >= timetreshold);
+                        break;
+                    case "unranked":
+                        request = request.Where(p => p.ScoreStats.LastUnrankedScoreTime >= timetreshold);
+                        break;
+                    case "all":
+                        request = request.Where(p => p.ScoreStats.LastScoreTime >= timetreshold);
+                        break;
+                }
             }
             request = Sorted(request, sortBy, order, mapsType);
             

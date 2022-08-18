@@ -174,11 +174,11 @@ namespace BeatLeader_Server.Utils
         {
             return new Dictionary<string, float>
             {
-                ["DA"] = 0.01f,
-                ["FS"] = 0.04f,
+                ["DA"] = 0.005f,
+                ["FS"] = 0.11f,
                 ["SS"] = -0.3f,
-                ["SF"] = 0.08f,
-                ["GN"] = 0.05f,
+                ["SF"] = 0.25f,
+                ["GN"] = 0.04f,
                 ["NA"] = -0.3f,
                 ["NB"] = -0.2f,
                 ["NF"] = -0.5f,
@@ -186,40 +186,6 @@ namespace BeatLeader_Server.Utils
                 ["PM"] = 0.0f,
                 ["SC"] = 0.0f
             };
-        }
-
-        private static byte[] OrderToBlob(int[] order) {
-            Stream stream = new MemoryStream();
-            BinaryWriter writer = new BinaryWriter(stream);
-
-            writer.Write(order.Length);
-            for (int i = 0; i < order.Length; i++) {
-                writer.Write(order[i]);
-            }
-
-            stream.Position = 0;
-
-            byte[] result = new byte[stream.Length];
-            stream.Read(result, 0, result.Length);
-            return result;
-        }
-
-        private static int[] BlobToOrder(byte[] blob) {
-            int pointer = 0;
-            int length = DecodeInt(blob, ref pointer);
-            int[] result = new int[length];
-
-            for (int i = 0; i < length; i++) {
-                result[i] = DecodeInt(blob, ref pointer);
-            }
-            return result;
-        }
-
-        private static int DecodeInt(byte[] buffer, ref int pointer)
-        {
-            int result = BitConverter.ToInt32(buffer, pointer);
-            pointer += 4;
-            return result;
         }
     }
 }
