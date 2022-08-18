@@ -9,6 +9,10 @@ namespace BeatLeader_Server.Models
         public int TotalUnrankedScore { get; set; }
         public int TotalRankedScore { get; set; }
 
+        public int LastScoreTime { get; set; }
+        public int LastUnrankedScoreTime { get; set; }
+        public int LastRankedScoreTime { get; set; }
+
         public float AverageRankedAccuracy { get; set; }
         public float AverageUnrankedAccuracy { get; set; }
         public float AverageAccuracy { get; set; }

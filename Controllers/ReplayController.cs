@@ -246,12 +246,13 @@ namespace BeatLeader_Server.Controllers
 
             using (_serverTiming.TimeAction("score"))
             {
+                int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
                 resultScore.PlayerId = replay.info.playerID;
                 resultScore.Player = player;
                 resultScore.Leaderboard = leaderboard;
                 resultScore.Replay = "";
-                resultScore.Timepost = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+                resultScore.Timepost = timeset;
 
                 if (currentScore != null)
                 {
@@ -350,6 +351,13 @@ namespace BeatLeader_Server.Controllers
                     }
                     player.ScoreStats.TotalPlayCount++;
                 }
+                if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
+                {
+                    player.ScoreStats.LastRankedScoreTime = timeset;
+                } else {
+                    player.ScoreStats.LastUnrankedScoreTime = timeset;
+                }
+                player.ScoreStats.LastScoreTime = timeset;
                 try
                 {
                     leaderboard.Scores.Add(resultScore);

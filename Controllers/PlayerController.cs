@@ -650,7 +650,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? platform = null,
             [FromQuery] string? role = null,
             [FromQuery] string? hmd = null,
-            [FromQuery] string? clans = null)
+            [FromQuery] string? clans = null,
+            [FromQuery] int? activityPeriod = null)
         {
             IQueryable<Player> request = _context.Players.Include(p => p.ScoreStats).Include(p => p.Clans).Where(p => !p.Banned);
             if (countries.Length != 0)
@@ -751,6 +752,11 @@ namespace BeatLeader_Server.Controllers
                     request = request.Where(p => p.Id == player.Id);
                 }
             }
+            if (activityPeriod != null) {
+                int timetreshold = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - (int)activityPeriod;
+                request = request.Where(p => p.ScoreStats.LastScoreTime >= timetreshold);
+
+            }
             request = Sorted(request, sortBy, order, mapsType);
             
             return new ResponseWithMetadata<PlayerResponseWithStats>()
@@ -798,6 +804,9 @@ namespace BeatLeader_Server.Controllers
                         case "score":
                             request = request.Order(order, p => p.ScoreStats.TotalRankedScore);
                             break;
+                        case "lastplay":
+                            request = request.Order(order, p => p.ScoreStats.LastRankedScoreTime);
+                            break;
                         default:
                             break;
                     }
@@ -825,6 +834,9 @@ namespace BeatLeader_Server.Controllers
                             break;
                         case "score":
                             request = request.Order(order, p => p.ScoreStats.TotalUnrankedScore);
+                            break;
+                        case "lastplay":
+                            request = request.Order(order, p => p.ScoreStats.LastUnrankedScoreTime);
                             break;
                         default:
                             break;
@@ -859,6 +871,9 @@ namespace BeatLeader_Server.Controllers
                             break;
                         case "score":
                             request = request.Order(order, p => p.ScoreStats.TotalScore);
+                            break;
+                        case "lastplay":
+                            request = request.Order(order, p => p.ScoreStats.LastScoreTime);
                             break;
                         default:
                             break;
@@ -998,6 +1013,7 @@ namespace BeatLeader_Server.Controllers
             public float Pp;
             public float BonusPp;
             public int Rank;
+            public int Timeset;
         }
 
         [NonAction]
@@ -1018,7 +1034,8 @@ namespace BeatLeader_Server.Controllers
                     Accuracy = s.Accuracy,
                     Pp = s.Pp,
                     BonusPp = s.BonusPp,
-                    Rank = s.Rank
+                    Rank = s.Rank,
+                    Timeset = s.Timepost
                 }).ToListAsync();
 
             if (allScores.Count() == 0) return;
@@ -1070,6 +1087,7 @@ namespace BeatLeader_Server.Controllers
                 player.ScoreStats.TopAccuracy = allScores.Max(s => s.Accuracy);
                 player.ScoreStats.MedianAccuracy = allScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
                 player.ScoreStats.AverageRank = allScores.Average(s => (float)s.Rank);
+                player.ScoreStats.LastScoreTime = allScores.OrderByDescending(s => s.Timeset).First().Timeset;
             }
 
             if (player.ScoreStats.UnrankedPlayCount > 0)
@@ -1079,6 +1097,7 @@ namespace BeatLeader_Server.Controllers
                 player.ScoreStats.AverageUnrankedAccuracy = unrankedScores.Average(s => s.Accuracy);
                 player.ScoreStats.TopUnrankedAccuracy = unrankedScores.Max(s => s.Accuracy);
                 player.ScoreStats.AverageUnrankedRank = unrankedScores.Average(s => (float)s.Rank);
+                player.ScoreStats.LastUnrankedScoreTime = unrankedScores.OrderByDescending(s => s.Timeset).First().Timeset;
             }
 
             if (player.ScoreStats.RankedPlayCount > 0)
@@ -1091,6 +1110,7 @@ namespace BeatLeader_Server.Controllers
                 player.ScoreStats.TopPp = rankedScores.Max(s => s.Pp);
                 player.ScoreStats.TopBonusPP = rankedScores.Max(s => s.BonusPp);
                 player.ScoreStats.AverageRankedRank = rankedScores.Average(s => (float)s.Rank);
+                player.ScoreStats.LastRankedScoreTime = rankedScores.OrderByDescending(s => s.Timeset).First().Timeset;
 
                 player.ScoreStats.SSPPlays = rankedScores.Where(s => s.Accuracy > 0.95).Count();
                 player.ScoreStats.SSPlays = rankedScores.Where(s => 0.9 < s.Accuracy && s.Accuracy < 0.95).Count();
@@ -1233,7 +1253,8 @@ namespace BeatLeader_Server.Controllers
                 Accuracy = s.Accuracy,
                 Pp = s.Pp,
                 BonusPp = s.BonusPp,
-                Rank = s.Rank
+                Rank = s.Rank,
+                Timeset = s.Timepost
             }).ToListAsync();
             foreach (var player in players)
             {
