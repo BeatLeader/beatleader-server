@@ -201,7 +201,7 @@ namespace BeatLeader_Server.Controllers
             using (_serverTiming.TimeAction("currS"))
             {
                 currentScore = leaderboard.Scores.FirstOrDefault(el => el.PlayerId == replay.info.playerID);
-                if (currentScore != null && (currentScore.Pp > resultScore.Pp || currentScore.ModifiedScore > resultScore.ModifiedScore))
+                if (currentScore != null && (currentScore.Pp > resultScore.Pp || (currentScore.Pp == 0 && currentScore.ModifiedScore > resultScore.ModifiedScore)))
                 {
                     transaction.Commit();
                     return BadRequest("Score is lower than existing one");

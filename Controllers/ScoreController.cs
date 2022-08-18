@@ -232,9 +232,9 @@ namespace BeatLeader_Server.Controllers
                     {
                         s.Accuracy = (float)s.ModifiedScore / (float)ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
                     }
-                    if (s.Accuracy > 1.13f)
+                    if (s.Accuracy > 1.29f)
                     {
-                        s.Accuracy = 1.13f;
+                        s.Accuracy = 1.29f;
                     }
                     if (hasPp) {
                         (s.Pp, s.BonusPp) = ReplayUtils.PpFromScore(s, leaderboard.Difficulty);
