@@ -12,6 +12,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System.Dynamic;
 using System.Net;
+using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -105,7 +106,7 @@ namespace BeatLeader_Server.Controllers
             var player = user.Player;
 
             return new UserReturn {
-                Player = player,
+                Player = ResponseUtils.ResponseFullFromPlayer(player),
                 Ban = player.Banned ? _context
                     .Bans
                     .Where(b => b.PlayerId == player.Id)
@@ -113,7 +114,7 @@ namespace BeatLeader_Server.Controllers
                     .FirstOrDefault() : null,
                 ClanRequest = user.ClanRequest,
                 BannedClans = user.BannedClans,
-                Friends = friends != null ? friends.Friends.ToList() : new List<Player>(),
+                Friends = friends != null ? friends.Friends.Select(ResponseUtils.ResponseFullFromPlayer).ToList() : new List<PlayerResponseFull>(),
                 Login = _context.Auths.FirstOrDefault(a => a.Id == intId)?.Login,
                 
                 Migrated = _context.AccountLinks.FirstOrDefault(a => a.SteamID == id) != null,

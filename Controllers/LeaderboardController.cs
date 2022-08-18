@@ -149,6 +149,12 @@ namespace BeatLeader_Server.Controllers
                 .Include(lb => lb.Song)
                 .Include(lb => lb.Difficulty)
                 .Include(lb => lb.Qualification)
+                .Select(lb => new {
+                    Song = lb.Song,
+                    Id = lb.Id,
+                    Qualification = lb.Qualification,
+                    Difficulty = lb.Difficulty
+                })
                 .ToListAsync();
 
             if (leaderboards.Count() == 0) {

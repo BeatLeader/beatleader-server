@@ -1165,12 +1165,44 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
             var scores = await _context.Scores.Where(s => s.Pp != 0).ToListAsync();
-            var players = _context.Players.ToList();
+            var players = _context.Players.Where(s => s.Pp != 0).ToList();
             Dictionary<string, int> countries = new Dictionary<string, int>();
+
+            var transaction = _context.Database.BeginTransaction();
+
+            int counter = 0;
             foreach (Player p in players)
             {
-                _context.RecalculatePP(p, scores.Where(s => s.PlayerId == p.Id).OrderByDescending(s => s.Pp).ToList());
+                _context.RecalculatePP(p, scores.Where(s => s.PlayerId == p.Id && !s.Banned && !s.Qualification).OrderByDescending(s => s.Pp).ToList());
+
+                counter++;
+                if (counter == 1000) {
+                    counter = 0;
+                    try
+                    {
+                        await _context.SaveChangesAsync();
+                    }
+                    catch (Exception e)
+                    {
+
+                        _context.RejectChanges();
+                        transaction.Rollback();
+                        transaction = _context.Database.BeginTransaction();
+                        continue;
+                    }
+                    transaction.Commit();
+                    transaction = _context.Database.BeginTransaction();
+                }
             }
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception e)
+            {
+                _context.RejectChanges();
+            }
+            transaction.Commit();
             var ranked = players.OrderByDescending(t => t.Pp).ToList();
             foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
             {
