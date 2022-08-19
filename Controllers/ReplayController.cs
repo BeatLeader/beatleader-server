@@ -461,6 +461,12 @@ namespace BeatLeader_Server.Controllers
             context.Response.OnCompleted(async () => {
 
                 _context.RecalculatePP(player);
+                if (leaderboard.Events != null) {
+                    foreach (var ev in leaderboard.Events)
+                    {
+                        _context.RecalculatePPEvent(player, ev);
+                    }
+                }
                 float resultPP = player.Pp;
                 var rankedPlayers = _context.Players.Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned).OrderByDescending(t => t.Pp).ToList();
 

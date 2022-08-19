@@ -19,6 +19,7 @@ namespace BeatLeader_Server.Controllers
     {
         private readonly AppContext _context;
         BlobContainerClient _playlistContainerClient;
+        BlobContainerClient _assetsContainerClient;
         IWebHostEnvironment _environment;
 
         public PlaylistController(
@@ -38,6 +39,18 @@ namespace BeatLeader_Server.Controllers
                                                        config.Value.PlaylistContainerName);
 
                 _playlistContainerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
+            }
+            if (env.IsDevelopment())
+            {
+                _assetsContainerClient = new BlobContainerClient(config.Value.AccountName, config.Value.AssetsContainerName);
+            }
+            else
+            {
+                string containerEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
+                                                        config.Value.AccountName,
+                                                       config.Value.AssetsContainerName);
+
+                _assetsContainerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
             }
             _environment = env;
         }
@@ -453,6 +466,157 @@ namespace BeatLeader_Server.Controllers
             await _playlistContainerClient.UploadBlobAsync("qualified.bplist", new BinaryData(JsonConvert.SerializeObject(playlist)));
 
             return Ok();
+        }
+
+        [HttpPost("~/event/start/{id}")]
+        public async Task<ActionResult> StartEvent(
+               int id, 
+               [FromQuery] string name,
+               [FromQuery] int endDate)
+        {
+            if (HttpContext != null)
+            {
+                string userId = HttpContext.CurrentUserID(_context);
+                var currentPlayer = await _context.Players.FindAsync(userId);
+
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+
+            BlobClient blobClient = _playlistContainerClient.GetBlobClient(id + ".bplist");
+            MemoryStream stream = new MemoryStream(5);
+
+            await blobClient.DownloadToAsync(stream);
+            stream.Position = 0;
+
+            dynamic? playlist = ObjectFromStream(stream);
+
+            if (playlist == null)
+            {
+                return BadRequest("Can't find such plist");
+            }
+
+            string fileName = id + "-event";
+            try
+            {
+                await _assetsContainerClient.CreateIfNotExistsAsync();
+
+                var ms = new MemoryStream(5);
+                await Request.Body.CopyToAsync(ms);
+                ms.Position = 0;
+
+                (string extension, MemoryStream stream2) = ImageUtils.GetFormatAndResize(ms);
+                fileName += extension;
+
+                await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
+                await _assetsContainerClient.UploadBlobAsync(fileName, stream2);
+            }
+            catch (Exception)
+            {
+                return BadRequest("Error saving avatar");
+            }
+
+            var leaderboards = new List<Leaderboard>();
+            var players = new List<EventPlayer>();
+            var basicPlayers = new List<Player>();
+            var playerScores = new Dictionary<string, List<Score>>();
+
+            foreach (var song in playlist.songs) {
+                foreach (var diff in song.difficulties)
+                {
+                    string hash = song.hash.ToLower();
+                    string diffName = diff.name.ToLower();
+                    string characteristic = diff.characteristic.ToLower();
+
+                    var lb = _context.Leaderboards.Where(lb => 
+                        lb.Song.Hash.ToLower() == hash && 
+                        lb.Difficulty.DifficultyName.ToLower() == diffName &&
+                        lb.Difficulty.ModeName.ToLower() == characteristic).Include(lb => lb.Scores).ThenInclude(s => s.Player).FirstOrDefault();
+
+                    if (lb != null) {
+                        leaderboards.Add(lb);
+                        foreach (var score in lb.Scores)
+                        {
+                            if (players.FirstOrDefault(p => p.PlayerId == score.PlayerId) == null) {
+                                players.Add(new EventPlayer {
+                                    PlayerId = score.PlayerId,
+                                    Country = score.Player.Country,
+                                });
+                                basicPlayers.Add(score.Player);
+                                playerScores[score.PlayerId] = new List<Score> { score };
+                            } else {
+                                playerScores[score.PlayerId].Add(score);
+                            }
+                        }
+                    }
+                }
+            }
+
+            foreach (var player in players) {
+                float resultPP = 0f;
+                foreach ((int i, Score s) in playerScores[player.PlayerId].OrderByDescending(s => s.Pp).Select((value, i) => (i, value)))
+                {
+
+                    resultPP += s.Pp * MathF.Pow(0.965f, i);
+                }
+
+                player.Pp = resultPP;
+            }
+
+            Dictionary<string, int> countries = new Dictionary<string, int>();
+            
+            int ii = 0;
+            foreach (EventPlayer p in players.OrderByDescending(s => s.Pp))
+            {
+                if (p.Rank != 0) {
+                    p.Rank = p.Rank;
+                }
+                p.Rank = ii + 1;
+                if (!countries.ContainsKey(p.Country))
+                {
+                    countries[p.Country] = 1;
+                }
+
+                p.CountryRank = countries[p.Country];
+                countries[p.Country]++;
+                ii++;
+            }
+
+            var eventRanking = new EventRanking
+            {
+                Name = name,
+                Leaderboards = leaderboards,
+                Players = players,
+                EndDate = endDate,
+                PlaylistId = id,
+                Image = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://cdn.beatleader.xyz/assets/") + fileName
+            };
+
+            _context.EventRankings.Add(eventRanking);
+
+            _context.SaveChanges();
+
+            foreach (var player in players)
+            {
+                var basicPlayer = basicPlayers.Where(p => p.Id == player.PlayerId).FirstOrDefault();
+                if (basicPlayer != null) {
+                    if (basicPlayer.EventsParticipating == null) {
+                        basicPlayer.EventsParticipating = new List<EventPlayer>();
+                    }
+                    basicPlayer.EventsParticipating.Add(player);
+                }
+                player.EventId = eventRanking.Id;
+            }
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
+        [HttpGet("~/event/{id}")]
+        public async Task<ActionResult<EventRanking>> GetEvent(int id) {
+            return _context.EventRankings.Where(e => e.Id == id).FirstOrDefault();
         }
     }
 }

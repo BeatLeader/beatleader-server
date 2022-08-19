@@ -897,6 +897,56 @@ namespace BeatLeader_Server.Controllers
             return request;
         }
 
+        [HttpGet("~/event/{id}/players")]
+        public async Task<ActionResult<ResponseWithMetadata<PlayerResponseWithStats>>> GetEventPlayers(
+            int id,
+            [FromQuery] string sortBy = "pp", 
+            [FromQuery] int page = 1, 
+            [FromQuery] int count = 50, 
+            [FromQuery] string search = "",
+            [FromQuery] string order = "desc",
+            [FromQuery] string countries = "",
+            [FromQuery] string mapsType = "ranked",
+            [FromQuery] bool friends = false,
+            [FromQuery] string? pp_range = null,
+            [FromQuery] string? score_range = null,
+            [FromQuery] string? platform = null,
+            [FromQuery] string? role = null,
+            [FromQuery] string? hmd = null,
+            [FromQuery] string? clans = null,
+            [FromQuery] int? activityPeriod = null)
+        {
+            var players = _context
+                .Players
+                .Include(p => p.EventsParticipating)
+                .Include(p => p.ScoreStats)
+                .Where(p => p.EventsParticipating.FirstOrDefault(e => e.EventId == id) != null)
+                .OrderByDescending(p => p.EventsParticipating.First(e => e.EventId == id).Pp);
+
+            var allPlayers = players.Skip((page - 1) * count).Take(count);
+
+            var resultPlayers = allPlayers.Select(ResponseWithStatsFromPlayer).ToList();
+            foreach (var resultPlayer in resultPlayers)
+            {
+                var eventPlayer = allPlayers.First(p => p.Id == resultPlayer.Id).EventsParticipating.First(e => e.EventId == id);
+
+                resultPlayer.Rank = eventPlayer.Rank;
+                resultPlayer.Pp = eventPlayer.Pp;
+                resultPlayer.CountryRank = eventPlayer.CountryRank;
+            }
+
+            return new ResponseWithMetadata<PlayerResponseWithStats>()
+            {
+                Metadata = new Metadata()
+                {
+                    Page = page,
+                    ItemsPerPage = count,
+                    Total = players.Count()
+                },
+                Data = resultPlayers
+            };
+        }
+
         private string GenerateListString(string current, int value) {
             var histories = current.Length == 0 ? new string[0] : current.Split(",");
             if (histories.Length == 50)

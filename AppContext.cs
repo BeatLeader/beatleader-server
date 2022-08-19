@@ -43,6 +43,8 @@ namespace BeatLeader_Server
         public DbSet<RankChange> RankChanges { get; set; }
         public DbSet<ScoreRedirect> ScoreRedirects { get; set; }
 
+        public DbSet<EventRanking> EventRankings { get; set; }
+
         public void RejectChanges()
         {
             foreach (var entry in ChangeTracker.Entries())

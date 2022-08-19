@@ -360,6 +360,12 @@ namespace BeatLeader_Server.Controllers
 
                     qualification.Approved = (bool)stilQualifying;
                 } else {
+
+                    if (leaderboard.Difficulty.Status == DifficultyStatus.qualified && currentPlayer.Role.Contains("juniorrankedteam"))
+                    {
+                        return Unauthorized();
+                    }
+
                     QualificationChange qualificationChange = new QualificationChange {
                         PlayerId = currentID,
                         Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
@@ -370,6 +376,7 @@ namespace BeatLeader_Server.Controllers
                     };
 
                     if (stilQualifying == false) {
+                        
                         leaderboard.Difficulty.Status = DifficultyStatus.unrankable;
                         leaderboard.Difficulty.NominatedTime = 0;
                         leaderboard.Difficulty.QualifiedTime = 0;

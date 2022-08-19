@@ -32,6 +32,8 @@
 
         public PatreonFeatures? PatreonFeatures { get; set; }
 
+        public ICollection<EventPlayer>? EventsParticipating { get; set; }
+
         public void SetDefaultAvatar()
         {
             this.Avatar = "https://cdn.beatleader.xyz/assets/" + this.Platform + "avatar.png";

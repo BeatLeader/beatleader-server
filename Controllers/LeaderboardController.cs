@@ -181,6 +181,8 @@ namespace BeatLeader_Server.Controllers
                     .Include(lb => lb.Difficulty)
                     .Where(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff)
                     .Include(lb => lb.Statistic)
+                    .Include(lb => lb.Events)
+                    .ThenInclude(e => e.Players)
                     .Include(lb => lb.Scores.Where(s => !s.Banned))
                     .ThenInclude(s => s.RankVoting)
                     .ThenInclude(v => v.Feedbacks)
