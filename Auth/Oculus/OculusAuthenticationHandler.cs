@@ -130,13 +130,6 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
                 await Context.Response.WriteAsync("User with such login already exists");
                 return AuthenticateResult.Fail("User with such login already exists");
             }
-            Player? player = dbContext.Players.FirstOrDefault(el => el.Name == login);
-            if (player != null)
-            {
-                Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await Context.Response.WriteAsync("User with such login already exists");
-                return AuthenticateResult.Fail("User with such login already exists");
-            }
             if (login.Trim().Length < 2)
             {
                 Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
