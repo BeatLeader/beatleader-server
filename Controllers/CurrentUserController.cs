@@ -59,22 +59,19 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/user/id")]
-        public ActionResult<string> GetId()
-        {   
-            return HttpContext.CurrentUserID(_context);
-        }
+        public ActionResult<string> GetIdResult() => GetId();
+
+        [NonAction]
+        public string? GetId() => HttpContext.CurrentUserID(_context);
 
         [HttpGet("~/user")]
         public async Task<ActionResult<UserReturn>> GetCurrentUser()
         {
-            string? id = GetId().Value;
-            if (id == null) {
-                return NotFound();
-            }
-            User? user = await GetUserLazy(id);
+            User? user = await GetCurrentUserLazy();
             if (user == null) {
                return NotFound();
             }
+            string id = user.Id;
 
             PlayerFriends? friends = _context.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == id);
             Clan? clan = _context.Clans.Include(c => c.Players).Where(f => f.LeaderID == id).FirstOrDefault();
@@ -123,10 +120,21 @@ namespace BeatLeader_Server.Controllers
             };
         }
 
+        [HttpGet("~/user/modinterface")]
+        public async Task<ActionResult<PlayerResponse>> GetCurrentUserMod() => ResponseUtils.ResponseFromPlayer((await GetCurrentUserLazy())?.Player);
+
         [NonAction]
-        public async Task<User?> GetUserLazy(string id)
+        public async Task<User?> GetCurrentUserLazy() => await GetUserLazy(GetId());
+
+        [NonAction]
+        public async Task<User?> GetUserLazy(string? id)
         {
-            User? user = _context.Users.Where(u => u.Id == id).Include(u => u.Player).ThenInclude(p => p.Clans).Include(u => u.Player).ThenInclude(p => p.ScoreStats).Include(u => u.ClanRequest).Include(u => u.BannedClans).FirstOrDefault();
+            if (string.IsNullOrEmpty(id))
+            {
+                return null;
+            }
+
+            User? user = await _context.Users.Where(u => u.Id == id).Include(u => u.Player).ThenInclude(p => p.Clans).Include(u => u.Player).ThenInclude(p => p.ScoreStats).Include(u => u.ClanRequest).Include(u => u.BannedClans).FirstOrDefaultAsync();
             if (user == null)
             {
                 Player? player = (await _playerController.GetLazy(id)).Value;
@@ -150,7 +158,7 @@ namespace BeatLeader_Server.Controllers
         [HttpPost("~/user/friend")]
         public async Task<ActionResult> AddFriend([FromQuery] string playerId)
         {
-            string? id = GetId().Value;
+            string? id = GetId();
             if (playerId == id) {
                 return BadRequest("Couldnt add user as a friend to himself");
             }
@@ -187,7 +195,7 @@ namespace BeatLeader_Server.Controllers
         [HttpDelete("~/user/friend")]
         public async Task<ActionResult> RemoveFriend([FromQuery] string playerId)
         {
-            string? id = GetId().Value;
+            string? id = GetId();
             if (playerId == id)
             {
                 return BadRequest("Couldnt remove user as a friend from himself");
@@ -217,7 +225,7 @@ namespace BeatLeader_Server.Controllers
         [HttpPatch("~/user/avatar")]
         public async Task<ActionResult> ChangeAvatar([FromQuery] string? id = null)
         {
-            string userId = GetId().Value;
+            string userId = GetId();
             var player = await _context.Players.FindAsync(userId);
 
             if (id != null && player != null && player.Role.Contains("admin"))
@@ -265,7 +273,7 @@ namespace BeatLeader_Server.Controllers
         [HttpPatch("~/user/name")]
         public async Task<ActionResult> ChangeName([FromQuery] string newName, [FromQuery] string? id = null)
         {
-            string userId = GetId().Value;
+            string userId = GetId();
             var player = await _context.Players.FindAsync(userId);
 
             if (id != null && player != null && player.Role.Contains("admin"))
@@ -296,7 +304,7 @@ namespace BeatLeader_Server.Controllers
         [HttpPatch("~/user/country")]
         public async Task<ActionResult> ChangeCountry([FromQuery] string newCountry, [FromQuery] string? id = null)
         {
-            string userId = GetId().Value;
+            string userId = GetId();
             var player = await _context.Players.FindAsync(userId);
             bool adminChange = false;
 
@@ -365,7 +373,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized("To much login attempts in one day");
             }
 
-            string userId = GetId().Value;
+            string userId = GetId();
             AuthInfo? authInfo = _context.Auths.FirstOrDefault(a => a.Login == login && a.Password == oldPassword && Int64.Parse(userId) == a.Id);
 
             if (authInfo == null) {
@@ -404,7 +412,7 @@ namespace BeatLeader_Server.Controllers
         [HttpPatch("~/user/resetPassword")]
         public ActionResult ChangePassword([FromForm] string login, [FromForm] string newPassword)
         {
-            string userId = GetId().Value;
+            string userId = GetId();
             AccountLink? link = _context.AccountLinks.FirstOrDefault(a => a.SteamID == userId);
             if (link == null) {
                 return Unauthorized("Login is incorrect. Or there is no link");
@@ -444,7 +452,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized("To much login changes attempts in one day");
             }
 
-            string userId = GetId().Value;
+            string userId = GetId();
 
             long intId = Int64.Parse(userId);
             if (intId > 70000000000000000)
@@ -785,7 +793,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int count = 3)
         {
-            string? id = GetId().Value;
+            string? id = GetId();
             if (id == null) {
                 return NotFound();
             }
@@ -815,7 +823,7 @@ namespace BeatLeader_Server.Controllers
         [HttpPost("~/user/failedscore/remove")]
         public async Task<ActionResult> RemoveFailedScore([FromQuery] int id)
         {
-            string? playerId = GetId().Value;
+            string? playerId = GetId();
             if (playerId == null)
             {
                 return NotFound();
@@ -842,7 +850,7 @@ namespace BeatLeader_Server.Controllers
         [HttpPost("~/user/failedscore/retry")]
         public async Task<ActionResult> RetryFailedScore([FromQuery] int id)
         {
-            string? playerId = GetId().Value;
+            string? playerId = GetId();
             if (playerId == null)
             {
                 return NotFound();
@@ -874,7 +882,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/players/avatarsrefresh")]
         public async Task<ActionResult> ResizeAvatars([FromQuery] int hundred)
         {
-            string userId = GetId().Value;
+            string userId = GetId();
             var player = await _context.Players.FindAsync(userId);
 
             if (player == null || !player.Role.Contains("admin"))
@@ -917,7 +925,7 @@ namespace BeatLeader_Server.Controllers
         [HttpPost("~/user/ban")]
         public async Task<ActionResult> Ban([FromQuery] string? id = null, [FromQuery] string? reason = null, [FromQuery] int? duration = null)
         {
-            string userId = GetId().Value;
+            string userId = GetId();
 
             var player = await _context.Players.FindAsync(userId);
 
@@ -974,7 +982,7 @@ namespace BeatLeader_Server.Controllers
         [HttpPost("~/user/unban")]
         public async Task<ActionResult> Unban([FromQuery] string? id = null)
         {
-            string userId = GetId().Value;
+            string userId = GetId();
             var transaction = _context.Database.BeginTransaction();
             var player = await _context.Players.FindAsync(userId);
             bool adminUnban = false;

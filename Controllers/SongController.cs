@@ -23,14 +23,18 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/map/hash/{hash}")]
         public async Task<ActionResult<Song>> GetHash(string hash)
         {
-            Song? song = _context.Songs.Where(el => el.Hash == hash).Include(song => song.Difficulties).FirstOrDefault();
+            Song? song = GetSongWithDiffsFromHash(hash);
 
-            if (song == null) {
+            if (song == null)
+            {
                 song = await GetSongFromBeatSaver("https://api.beatsaver.com/maps/hash/" + hash);
 
-                if (song == null) {
+                if (song == null)
+                {
                     return NotFound();
-                } else {
+                }
+                else
+                {
                     string songId = song.Id;
                     while (await _context.Songs.FirstOrDefaultAsync(i => i.Id == songId) != null)
                     {
@@ -49,7 +53,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/map/refresh/{hash}")]
         public async Task<ActionResult<Song>> RefreshHash(string hash)
         {
-            Song? song = _context.Songs.Where(el => el.Hash == hash).Include(song => song.Difficulties).FirstOrDefault();
+            Song? song = GetSongWithDiffsFromHash(hash);
 
             if (song != null)
             {
@@ -68,6 +72,20 @@ namespace BeatLeader_Server.Controllers
             }
 
             return song;
+        }
+
+        [HttpGet("~/map/modinterface/{hash}")]
+        public ActionResult<ICollection<DifficultyDescription>> GetModSongInfos(string hash)
+        {
+            ICollection<DifficultyDescription>? diffs = _context.Songs.Where(el => el.Hash == hash).Select(song => song.Difficulties).FirstOrDefault();
+
+            return diffs is null ? NotFound() : new ActionResult<ICollection<DifficultyDescription>>(diffs);
+        }
+
+        [NonAction]
+        private Song? GetSongWithDiffsFromHash(string hash)
+        {
+            return _context.Songs.Where(el => el.Hash == hash).Include(song => song.Difficulties).FirstOrDefault();
         }
 
         [NonAction]
