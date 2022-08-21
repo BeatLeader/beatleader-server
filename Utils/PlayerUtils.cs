@@ -3,14 +3,15 @@ using System.Net;
 using BeatLeader_Server.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using Microsoft.EntityFrameworkCore;
 
 namespace BeatLeader_Server.Utils
 {
     public static class PlayerUtils
     {
-        public static void RecalculatePP(this AppContext context, Player player, List<Score>? scores = null)
+        public static async Task RecalculatePP(this AppContext context, Player player, List<Score>? scores = null)
         {
-            var ranked = scores ?? context.Scores.Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification).OrderByDescending(s => s.Pp).ToList();
+            var ranked = scores ?? await context.Scores.Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification).OrderByDescending(s => s.Pp).ToListAsync();
             float resultPP = 0f;
             foreach ((int i, Score s) in ranked.Select((value, i) => (i, value)))
             {
@@ -25,11 +26,11 @@ namespace BeatLeader_Server.Utils
             player.Pp = resultPP;
         }
 
-        public static void RecalculatePPAndRankFast(this AppContext context, Player player)
+        public static async Task RecalculatePPAndRankFast(this AppContext context, Player player)
         {
             float oldPp = player.Pp;
 
-            var rankedScores = context.Scores.Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification).OrderByDescending(s => s.Pp).Select(s => new { Pp = s.Pp }).ToList();
+            var rankedScores = await context.Scores.Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification).OrderByDescending(s => s.Pp).Select(s => new { Pp = s.Pp }).ToListAsync();
             float resultPP = 0f;
             foreach ((int i, float pp) in rankedScores.Select((value, i) => (i, value.Pp)))
             {
@@ -38,12 +39,12 @@ namespace BeatLeader_Server.Utils
             }
             player.Pp = resultPP;
 
-            var rankedPlayers = context
+            var rankedPlayers = await context
                 .Players
                 .Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id)
                 .OrderByDescending(t => t.Pp)
                 .Select(p => new { Pp = p.Pp, Country = p.Country, Rank = p.Rank, CountryRank = p.CountryRank })
-                .ToList();
+                .ToListAsync();
 
             if (rankedPlayers.Count() > 0)
             {
@@ -57,47 +58,82 @@ namespace BeatLeader_Server.Utils
             }
         }
 
-        public static void RecalculatePPEvent(this AppContext context, Player player, EventRanking eventRanking)
+        public static async Task RecalculateEventsPP(this AppContext context, Player player, Leaderboard leaderboard)
         {
-            var ranked = context.Scores.Where(s => s.Leaderboard.Events.FirstOrDefault(e => e.Id == eventRanking.Id) != null && 
-                                 s.PlayerId == player.Id && 
-                                 s.Pp != 0 && !s.Banned && 
-                                 !s.Qualification).OrderByDescending(s => s.Pp).ToList();
-            if (eventRanking.Players == null) {
-                eventRanking.Players = new List<EventPlayer>();
+            var events = await context.EventRankings
+                .Where(ev => ev.Leaderboards.Contains(leaderboard))
+                .Include(ev => ev.Players)
+                .ToListAsync();
+            if (events.Count() == 0) {
+                return;
             }
 
-            var eventPlayer = eventRanking.Players.Where(p => p.PlayerId == player.Id).FirstOrDefault();
-
-            if (eventPlayer == null) {
-                eventRanking.Players.Add(new EventPlayer {
-                    PlayerId = player.Id,
-                    Country = player.Country
-                });
-            }
-            
-            float resultPP = 0f;
-            foreach ((int i, Score s) in ranked.Select((value, i) => (i, value)))
+            foreach (var eventRanking in events)
             {
-
-                resultPP += s.Pp * MathF.Pow(0.965f, i);
-            }
-
-            eventPlayer.Pp = resultPP;
-
-            var players = eventRanking.Players.OrderByDescending(t => t.Pp).ToList();
-            Dictionary<string, int> countries = new Dictionary<string, int>();
-
-            foreach ((int i, EventPlayer p) in players.Select((value, i) => (i, value)))
-            {
-                p.Rank = i + 1;
-                if (!countries.ContainsKey(p.Country))
+                var ranked = context.Leaderboards.Where(lb => lb.Events.FirstOrDefault(e => e.Id == eventRanking.Id) != null)
+                    .Select(lb => new { Pp = lb.Scores.Where(s =>
+                        s.PlayerId == player.Id &&
+                        s.Pp != 0 &&
+                        !s.Banned &&
+                        !s.Qualification).Count() > 0 ? lb.Scores.Where(s =>
+                        s.PlayerId == player.Id &&
+                        s.Pp != 0 &&
+                        !s.Banned &&
+                        !s.Qualification).First().Pp : 0 } )
+                    .OrderByDescending(s => s.Pp).ToList();
+                if (eventRanking.Players == null)
                 {
-                    countries[p.Country] = 1;
+                    eventRanking.Players = new List<EventPlayer>();
                 }
 
-                p.CountryRank = countries[p.Country];
-                countries[p.Country]++;
+                var eventPlayer = eventRanking.Players.Where(p => p.PlayerId == player.Id).FirstOrDefault();
+
+                if (eventPlayer == null)
+                {
+                    eventPlayer = new EventPlayer
+                    {
+                        PlayerId = player.Id,
+                        Country = player.Country,
+                        EventId = eventRanking.Id
+                    };
+                    eventRanking.Players.Add(eventPlayer);
+                    context.SaveChanges();
+                }
+
+                if (player.EventsParticipating == null || player.EventsParticipating.FirstOrDefault(e => e.EventId == eventRanking.Id) == null)
+                {
+                    if (player.EventsParticipating == null)
+                    {
+                        player.EventsParticipating = new List<EventPlayer> { eventPlayer };
+                    }
+                    else
+                    {
+                        player.EventsParticipating.Add(eventPlayer);
+                    }
+                }
+
+                float resultPP = 0f;
+                foreach ((int i, var s) in ranked.Select((value, i) => (i, value)))
+                {
+                    resultPP += s.Pp * MathF.Pow(0.965f, i);
+                }
+
+                eventPlayer.Pp = resultPP;
+
+                var players = eventRanking.Players.OrderByDescending(t => t.Pp).ToList();
+                Dictionary<string, int> countries = new Dictionary<string, int>();
+
+                foreach ((int i, EventPlayer p) in players.Select((value, i) => (i, value)))
+                {
+                    p.Rank = i + 1;
+                    if (!countries.ContainsKey(p.Country))
+                    {
+                        countries[p.Country] = 1;
+                    }
+
+                    p.CountryRank = countries[p.Country];
+                    countries[p.Country]++;
+                }
             }
         }
 

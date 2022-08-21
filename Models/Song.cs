@@ -1,5 +1,8 @@
-﻿namespace BeatLeader_Server.Models
+﻿using Microsoft.EntityFrameworkCore;
+
+namespace BeatLeader_Server.Models
 {
+    [Index(nameof(Hash), IsUnique = true)]
     public class Song
     {
         public string Id { get; set; }
@@ -16,6 +19,7 @@
         public double Duration { get; set; }
         public string? Tags { get; set; }
         public string CreatedTime { get; set; } = "";
+        public int UploadTime { get; set; }
         public ICollection<DifficultyDescription> Difficulties { get; set; }
     }
 }

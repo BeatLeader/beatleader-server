@@ -1,7 +1,6 @@
 ﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using static BeatLeader_Server.Utils.ResponseUtils;
@@ -181,8 +180,6 @@ namespace BeatLeader_Server.Controllers
                     .Include(lb => lb.Difficulty)
                     .Where(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff)
                     .Include(lb => lb.Statistic)
-                    .Include(lb => lb.Events)
-                    .ThenInclude(e => e.Players)
                     .Include(lb => lb.Scores.Where(s => !s.Banned))
                     .ThenInclude(s => s.RankVoting)
                     .ThenInclude(v => v.Feedbacks)
@@ -286,10 +283,23 @@ namespace BeatLeader_Server.Controllers
                     
                     break;
                 case "name":
-                    sequence = sequence.Order(order == "desc" ? "asc" : "desc", t => t.Song.Name);
+                    sequence = sequence
+                        .Where(s => (date_from == null || s.Song.UploadTime >= date_from) && (date_to == null || s.Song.UploadTime <= date_to))
+                        .Order(order == "desc" ? "asc" : "desc", t => t.Song.Name);
                     break;
                 case "stars":
-                    sequence = sequence.Include(lb => lb.Difficulty).Order(order, t => t.Difficulty.Stars);
+                    sequence = sequence
+                        .Where(s => (date_from == null || (
+                                        (s.Difficulty.Status == DifficultyStatus.nominated && s.Difficulty.NominatedTime >= date_from) ||
+                                        (s.Difficulty.Status == DifficultyStatus.qualified && s.Difficulty.QualifiedTime >= date_from) ||
+                                        (s.Difficulty.Status == DifficultyStatus.ranked && s.Difficulty.RankedTime >= date_from)
+                                        )) 
+                                 && (date_to == null || (
+                                        (s.Difficulty.Status == DifficultyStatus.nominated && s.Difficulty.NominatedTime <= date_to) ||
+                                        (s.Difficulty.Status == DifficultyStatus.qualified && s.Difficulty.QualifiedTime <= date_to) ||
+                                        (s.Difficulty.Status == DifficultyStatus.ranked && s.Difficulty.RankedTime <= date_to)
+                                        )))
+                        .Include(lb => lb.Difficulty).Order(order, t => t.Difficulty.Stars);
                     break;
                 case "scoreTime":
                     if (mytype == "played") {
@@ -384,7 +394,7 @@ namespace BeatLeader_Server.Controllers
                             .Where(p => p.Difficulty.Status == DifficultyStatus.qualified);
                         break;
                     case "unranked":
-                        sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.Status != DifficultyStatus.ranked);
+                        sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.Status == DifficultyStatus.unranked);
                         break;
                 }
             }

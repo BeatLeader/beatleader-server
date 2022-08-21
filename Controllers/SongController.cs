@@ -32,12 +32,27 @@ namespace BeatLeader_Server.Controllers
                     return NotFound();
                 } else {
                     string songId = song.Id;
-                    while (await _context.Songs.FirstOrDefaultAsync(i => i.Id == songId) != null)
+                    Song? existingSong = await _context.Songs.Include(s => s.Difficulties).FirstOrDefaultAsync(i => i.Id == songId);
+                    while (existingSong != null)
                     {
+                        if (song.Hash.ToLower() == hash.ToLower()) {
+                            foreach (var item in existingSong.Difficulties)
+                            {
+                                item.Status = DifficultyStatus.outdated;
+                            } 
+                        }
                         songId += "x";
+                        existingSong = await _context.Songs.Include(s => s.Difficulties).FirstOrDefaultAsync(i => i.Id == songId);
                     }
                     song.Id = songId;
                     song.Hash = hash;
+                    if (song.Hash.ToLower() != hash.ToLower())
+                    {
+                        foreach (var item in song.Difficulties)
+                        {
+                            item.Status = DifficultyStatus.outdated;
+                        }
+                    }
                     _context.Songs.Add(song);
                     await _context.SaveChangesAsync();
                 }
@@ -120,6 +135,7 @@ namespace BeatLeader_Server.Controllers
                     result.Duration = info.metadata.duration;
                     result.Bpm = info.metadata.bpm;
                     result.MapperId = (int)info.uploader.id;
+                    result.UploadTime = (int)info.uploaded.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                     if (ExpandantoObject.HasProperty(info, "tags")) {
                         result.Tags = string.Join(",", info.tags);
                     }

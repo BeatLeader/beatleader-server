@@ -212,7 +212,7 @@ namespace BeatLeader_Server.Controllers
 
             using (_serverTiming.TimeAction("player"))
             {
-                player = currentScore?.Player ?? (await _playerController.GetLazy(replay.info.playerID)).Value;
+                player = (await _playerController.GetLazy(replay.info.playerID)).Value;
                 if (player == null) {
                     player = new Player();
                     player.Id = replay.info.playerID;
@@ -455,18 +455,13 @@ namespace BeatLeader_Server.Controllers
                     });
                 }
 
-                _context.RecalculatePPAndRankFast(player);
+                await _context.RecalculatePPAndRankFast(player);
             }
 
             context.Response.OnCompleted(async () => {
 
-                _context.RecalculatePP(player);
-                if (leaderboard.Events != null) {
-                    foreach (var ev in leaderboard.Events)
-                    {
-                        _context.RecalculatePPEvent(player, ev);
-                    }
-                }
+                await _context.RecalculatePP(player);
+                await _context.RecalculateEventsPP(player, leaderboard);
                 float resultPP = player.Pp;
                 var rankedPlayers = _context.Players.Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned).OrderByDescending(t => t.Pp).ToList();
 
@@ -681,7 +676,7 @@ namespace BeatLeader_Server.Controllers
 
             leaderboard.Plays = rankedScores.Count;
 
-            _context.RecalculatePP(player);
+            await _context.RecalculatePP(player);
 
             var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
             var country = player.Country; var countryRank = 1;
