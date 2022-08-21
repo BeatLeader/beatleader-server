@@ -6,6 +6,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System.Dynamic;
 using System.Net;
+using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -75,11 +76,42 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/map/modinterface/{hash}")]
-        public ActionResult<ICollection<DifficultyDescription>> GetModSongInfos(string hash)
+        public async Task<ActionResult<List<DiffModResponse>>> GetModSongInfos(string hash)
         {
-            ICollection<DifficultyDescription>? diffs = _context.Songs.Where(el => el.Hash == hash).Select(song => song.Difficulties).FirstOrDefault();
+            ICollection<DifficultyDescription>? diffs = await _context.Songs
+                .Where(el => el.Hash == hash)
+                .Select(song => song.Difficulties)
+                .FirstOrDefaultAsync();
 
-            return diffs is null ? NotFound() : new ActionResult<ICollection<DifficultyDescription>>(diffs);
+            if (diffs is null)
+            {
+                return NotFound();
+            }
+
+            List<DiffModResponse> result = new();
+
+            foreach(DifficultyDescription? diff in diffs)
+            {
+                if(diff is not null)
+                {
+                    result.Add(new()
+                    {
+                        DifficultyName = diff.DifficultyName,
+                        ModeName = diff.ModeName,
+                        Stars = diff.Stars,
+                        Nominated = diff.Nominated,
+                        Qualified = diff.Qualified,
+                        Ranked = diff.Ranked,
+                        Type = diff.Type,
+                        Votes = await _context.RankVotings
+                                .Where(rankvoting => rankvoting.Hash == hash && rankvoting.Diff == diff.DifficultyName && rankvoting.Mode == diff.ModeName)
+                                .Select(rankvoting => rankvoting.Rankability)
+                                .ToArrayAsync()
+                    });
+                }
+            }
+
+            return result;
         }
 
         [NonAction]
