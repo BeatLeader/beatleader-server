@@ -103,7 +103,7 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         public async Task<ActionResult<Player>> GetLazy(string id, bool addToBase = true)
         {
-            Player? player = await _context.Players.Include(p => p.ScoreStats).FirstOrDefaultAsync(p => p.Id == id);
+            Player? player = await _context.Players.Include(p => p.ScoreStats).Include(p => p.EventsParticipating).FirstOrDefaultAsync(p => p.Id == id);
 
             if (player == null) {
                 Int64 userId = Int64.Parse(id);
@@ -1183,7 +1183,7 @@ namespace BeatLeader_Server.Controllers
 
         [NonAction]
         public async Task RefreshPlayer(Player player, bool refreshRank = true) {
-            _context.RecalculatePP(player);
+            await _context.RecalculatePP(player);
 
             if (refreshRank)
             {
@@ -1254,7 +1254,7 @@ namespace BeatLeader_Server.Controllers
             int counter = 0;
             foreach (Player p in players)
             {
-                _context.RecalculatePP(p, scores.Where(s => s.PlayerId == p.Id && !s.Banned && !s.Qualification).OrderByDescending(s => s.Pp).ToList());
+                await _context.RecalculatePP(p, scores.Where(s => s.PlayerId == p.Id && !s.Banned && !s.Qualification).OrderByDescending(s => s.Pp).ToList());
 
                 counter++;
                 if (counter == 1000) {

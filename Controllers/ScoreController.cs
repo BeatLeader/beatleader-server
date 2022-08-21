@@ -172,7 +172,7 @@ namespace BeatLeader_Server.Controllers
             leaderboard.Plays = rankedScores.Count;
 
             _context.SaveChanges();
-            _context.RecalculatePP(player);
+            await _context.RecalculatePP(player);
 
             var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
             var country = player.Country; var countryRank = 1;

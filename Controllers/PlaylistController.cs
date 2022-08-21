@@ -614,9 +614,54 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpGet("~/event/{id}/refresh")]
+        public async Task<ActionResult> RefreshEvent(int id)
+        {
+            if (HttpContext != null)
+            {
+                string userId = HttpContext.CurrentUserID(_context);
+                var currentPlayer = await _context.Players.FindAsync(userId);
+
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+
+            var eventRanking = _context.EventRankings
+                .Where(e => e.Id == id)
+                .Include(e => e.Leaderboards)
+                .ThenInclude(lb => lb.Scores)
+                .ThenInclude(s => s.Player)
+                .ThenInclude(pl => pl.EventsParticipating).FirstOrDefault();
+
+            List<Player> players = new List<Player>();
+
+            foreach (var lb in eventRanking.Leaderboards)
+            {
+                foreach (var score in lb.Scores)
+                {
+                    if (!players.Contains(score.Player)) {
+                        players.Add(score.Player);
+                        if (score.Player.EventsParticipating != null && score.Player.EventsParticipating.Count() == 1) {
+                            score.Player.EventsParticipating.First().EventId = id;
+                        }
+                    }
+                }
+            }
+
+            foreach (var player in players)
+            {
+                await _context.RecalculateEventsPP(player, eventRanking.Leaderboards.First());
+            }
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
         [HttpGet("~/event/{id}")]
         public async Task<ActionResult<EventRanking>> GetEvent(int id) {
-            return _context.EventRankings.Where(e => e.Id == id).FirstOrDefault();
+            return _context.EventRankings.FirstOrDefault(e => e.Id == id);
         }
     }
 }
