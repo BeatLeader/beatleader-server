@@ -361,6 +361,18 @@ namespace BeatLeader_Server.Utils
                 Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
             };
         }
-            
+        
+        public static DiffModResponse DiffModResponseFromDiffAndVotes(DifficultyDescription diff, float[] votes)
+        {
+            return new DiffModResponse
+            {
+                DifficultyName = diff.DifficultyName,
+                ModeName = diff.ModeName,
+                Stars = diff.Stars,
+                Status = diff.Status,
+                Type = diff.Type,
+                Votes = votes
+            };
+        }
     }
 }

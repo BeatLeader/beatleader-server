@@ -57,41 +57,42 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/map/modinterface/{hash}")]
-        public async Task<ActionResult<List<DiffModResponse>>> GetModSongInfos(string hash)
+        public async Task<ActionResult<IEnumerable<DiffModResponse>>> GetModSongInfos(string hash)
         {
-            Song? song = await GetOrAddSong(hash);
-            
-            if(song is null)
-            {
-                return NotFound();
-            }
+            var resFromLB = await _context.Leaderboards
+                .Where(lb => lb.Song.Hash == hash)
+                .Select(lb => new { 
+                    DiffModResponse = ResponseUtils.DiffModResponseFromDiffAndVotes(lb.Difficulty, lb.Scores.Where(score => score.RankVoting != null).Select(score => score.RankVoting!.Rankability).ToArray()), 
+                    SongDiffs = lb.Song.Difficulties 
+                })
+                .ToArrayAsync();
 
-            List<DiffModResponse> result = new();
-
-            foreach (DifficultyDescription? diff in song.Difficulties)
+            ICollection<DifficultyDescription> difficulties;
+            if(resFromLB.Length == 0)
             {
-                if (diff is not null)
+                // We couldnt find any Leaderboard with that hash. Therefor we need to check if we can atleast get the song
+                Song? song = await this.GetOrAddSong(hash);
+                // Otherwise the song does not exist
+                if (song is null)
                 {
-                    result.Add(new()
-                    {
-                        DifficultyName = diff.DifficultyName,
-                        ModeName = diff.ModeName,
-                        Stars = diff.Stars,
-                        Status = diff.Status,
-                        Type = diff.Type,
-                        Votes = await _context.RankVotings
-                                .Where(rankvoting => rankvoting.Hash == hash && rankvoting.Diff == diff.DifficultyName && rankvoting.Mode == diff.ModeName)
-                                .Select(rankvoting => rankvoting.Rankability)
-                                .ToArrayAsync()
-                    });
+                    return NotFound();
                 }
+                difficulties = song.Difficulties;
+            }
+            else
+            {
+                // Else we can use the found difficulties of the song
+                difficulties = resFromLB[0].SongDiffs;
             }
 
-            return result;
+            // Now we need to return the LB DiffModResponses. If there are diffs in the song, that have no leaderboard we return the diffs without votes, as no leaderboard = no scores = no votes
+            return difficulties.Select(diff =>
+                resFromLB.FirstOrDefault(element => element.DiffModResponse.DifficultyName == diff.DifficultyName && element.DiffModResponse.ModeName == diff.ModeName)?.DiffModResponse
+                ?? ResponseUtils.DiffModResponseFromDiffAndVotes(diff, Array.Empty<float>())).ToArray();
         }
 
         [NonAction]
-        private async Task<Song?> GetOrAddSong(string hash)
+        public async Task<Song?> GetOrAddSong(string hash)
         {
             Song? song = GetSongWithDiffsFromHash(hash);
 
