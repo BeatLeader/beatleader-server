@@ -921,14 +921,14 @@ namespace BeatLeader_Server.Controllers
                 .Include(p => p.EventsParticipating)
                 .Include(p => p.ScoreStats)
                 .Where(p => p.EventsParticipating.FirstOrDefault(e => e.EventId == id) != null)
+                .Select(ResponseWithStatsFromPlayer)
                 .OrderByDescending(p => p.EventsParticipating.First(e => e.EventId == id).Pp);
 
-            var allPlayers = players.Skip((page - 1) * count).Take(count);
+            var allPlayers = players.Skip((page - 1) * count).Take(count).ToList();
 
-            var resultPlayers = allPlayers.Select(ResponseWithStatsFromPlayer).ToList();
-            foreach (var resultPlayer in resultPlayers)
+            foreach (var resultPlayer in allPlayers)
             {
-                var eventPlayer = allPlayers.First(p => p.Id == resultPlayer.Id).EventsParticipating.First(e => e.EventId == id);
+                var eventPlayer = resultPlayer.EventsParticipating.First(e => e.EventId == id);
 
                 resultPlayer.Rank = eventPlayer.Rank;
                 resultPlayer.Pp = eventPlayer.Pp;
@@ -943,7 +943,7 @@ namespace BeatLeader_Server.Controllers
                     ItemsPerPage = count,
                     Total = players.Count()
                 },
-                Data = resultPlayers
+                Data = allPlayers
             };
         }
 

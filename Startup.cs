@@ -68,6 +68,9 @@ namespace BeatLeader_Server {
                 options.ApplicationID = "620980";
                 options.ApiUrl = steamApi;
             })
+            .AddOculusToken (options =>
+            {
+            })
             .AddOculus(options => {})
             .AddSteam (options => {
                 options.ApplicationKey = steamKey;

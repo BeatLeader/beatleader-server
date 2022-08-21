@@ -42,6 +42,7 @@ namespace BeatLeader_Server.Utils
             public string Histories { get; set; } = "";
 
             public PlayerScoreStats ScoreStats { get; set; }
+            public IEnumerable<EventPlayer>? EventsParticipating { get; set; }
         }
 
         public class PlayerResponseFull : PlayerResponseWithStats
@@ -309,6 +310,7 @@ namespace BeatLeader_Server.Utils
                 Rank = p.Rank,
                 CountryRank = p.CountryRank,
                 Role = p.Role,
+                EventsParticipating = p.EventsParticipating,
                 PatreonFeatures = p.PatreonFeatures == null ? null :
                     new PatreonResponse
                     {
