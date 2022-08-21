@@ -24,45 +24,11 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/map/hash/{hash}")]
         public async Task<ActionResult<Song>> GetHash(string hash)
         {
-            Song? song = GetSongWithDiffsFromHash(hash);
-
-            if (song == null)
+            Song? song = await GetOrAddSong(hash);
+            if(song is null)
             {
-                song = await GetSongFromBeatSaver("https://api.beatsaver.com/maps/hash/" + hash);
-
-                if (song == null)
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    string songId = song.Id;
-                    Song? existingSong = await _context.Songs.Include(s => s.Difficulties).FirstOrDefaultAsync(i => i.Id == songId);
-                    while (existingSong != null)
-                    {
-                        if (song.Hash.ToLower() == hash.ToLower()) {
-                            foreach (var item in existingSong.Difficulties)
-                            {
-                                item.Status = DifficultyStatus.outdated;
-                            } 
-                        }
-                        songId += "x";
-                        existingSong = await _context.Songs.Include(s => s.Difficulties).FirstOrDefaultAsync(i => i.Id == songId);
-                    }
-                    song.Id = songId;
-                    song.Hash = hash;
-                    if (song.Hash.ToLower() != hash.ToLower())
-                    {
-                        foreach (var item in song.Difficulties)
-                        {
-                            item.Status = DifficultyStatus.outdated;
-                        }
-                    }
-                    _context.Songs.Add(song);
-                    await _context.SaveChangesAsync();
-                }
+                return NotFound();
             }
-
             return song;
         }
 
@@ -93,30 +59,25 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/map/modinterface/{hash}")]
         public async Task<ActionResult<List<DiffModResponse>>> GetModSongInfos(string hash)
         {
-            ICollection<DifficultyDescription>? diffs = await _context.Songs
-                .Where(el => el.Hash == hash)
-                .Select(song => song.Difficulties)
-                .FirstOrDefaultAsync();
-
-            if (diffs is null)
+            Song? song = await GetOrAddSong(hash);
+            
+            if(song is null)
             {
                 return NotFound();
             }
 
             List<DiffModResponse> result = new();
 
-            foreach(DifficultyDescription? diff in diffs)
+            foreach (DifficultyDescription? diff in song.Difficulties)
             {
-                if(diff is not null)
+                if (diff is not null)
                 {
                     result.Add(new()
                     {
                         DifficultyName = diff.DifficultyName,
                         ModeName = diff.ModeName,
                         Stars = diff.Stars,
-                        Nominated = diff.Nominated,
-                        Qualified = diff.Qualified,
-                        Ranked = diff.Ranked,
+                        Status = diff.Status,
                         Type = diff.Type,
                         Votes = await _context.RankVotings
                                 .Where(rankvoting => rankvoting.Hash == hash && rankvoting.Diff == diff.DifficultyName && rankvoting.Mode == diff.ModeName)
@@ -127,6 +88,52 @@ namespace BeatLeader_Server.Controllers
             }
 
             return result;
+        }
+
+        [NonAction]
+        private async Task<Song?> GetOrAddSong(string hash)
+        {
+            Song? song = GetSongWithDiffsFromHash(hash);
+
+            if (song == null)
+            {
+                song = await GetSongFromBeatSaver("https://api.beatsaver.com/maps/hash/" + hash);
+
+                if (song == null)
+                {
+                    return null;
+                }
+                else
+                {
+                    string songId = song.Id;
+                    Song? existingSong = await _context.Songs.Include(s => s.Difficulties).FirstOrDefaultAsync(i => i.Id == songId);
+                    while (existingSong != null)
+                    {
+                        if (song.Hash.ToLower() == hash.ToLower())
+                        {
+                            foreach (var item in existingSong.Difficulties)
+                            {
+                                item.Status = DifficultyStatus.outdated;
+                            }
+                        }
+                        songId += "x";
+                        existingSong = await _context.Songs.Include(s => s.Difficulties).FirstOrDefaultAsync(i => i.Id == songId);
+                    }
+                    song.Id = songId;
+                    song.Hash = hash;
+                    if (song.Hash.ToLower() != hash.ToLower())
+                    {
+                        foreach (var item in song.Difficulties)
+                        {
+                            item.Status = DifficultyStatus.outdated;
+                        }
+                    }
+                    _context.Songs.Add(song);
+                    await _context.SaveChangesAsync();
+                }
+            }
+
+            return song;
         }
 
         [NonAction]

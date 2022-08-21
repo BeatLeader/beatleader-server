@@ -498,26 +498,6 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
-        [HttpGet("~/scores/modinterface/{hash}/{diff}/{mode}/{context}/{scope}/{method}")]
-        public async Task<ActionResult<ResponseWithMetadataAndSelection<ScoreResponse>>> GetByHashMod(
-            string hash,
-            string diff,
-            string mode,
-            string context,
-            string scope,
-            string method,
-            [FromQuery] string player,
-            [FromQuery] int page = 1,
-            [FromQuery] int count = 10)
-        {
-            ActionResult<ResponseWithMetadataAndSelection<ScoreResponse>> fullresponse = await GetByHash3(hash, diff, mode, context, scope, method, player, page, count);
-            foreach(ScoreResponse scoreResponse in fullresponse.Value!.Data)
-            {
-                scoreResponse.RankVoting = null;
-            }
-            return fullresponse;
-        }
-
 
         [HttpGet("~/score/{playerID}/{hash}/{diff}/{mode}")]
         public async Task<ActionResult<Score>> GetPlayer(string playerID, string hash, string diff, string mode)

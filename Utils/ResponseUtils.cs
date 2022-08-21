@@ -192,9 +192,7 @@ namespace BeatLeader_Server.Utils
             public string DifficultyName { get; set; }
             public string ModeName { get; set; }
             public float? Stars { get; set; }
-            public bool Nominated { get; set; }
-            public bool Qualified { get; set; }
-            public bool Ranked { get; set; }
+            public DifficultyStatus Status { get; set; }
             public int Type { get; set; }
             public float[] Votes { get; set; }
         }
