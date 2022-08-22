@@ -6,6 +6,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System.Dynamic;
 using System.Net;
+using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -23,23 +24,98 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/map/hash/{hash}")]
         public async Task<ActionResult<Song>> GetHash(string hash)
         {
-            Song? song = _context.Songs.Where(el => el.Hash == hash).Include(song => song.Difficulties).FirstOrDefault();
+            Song? song = await GetOrAddSong(hash);
+            if(song is null)
+            {
+                return NotFound();
+            }
+            return song;
+        }
 
-            if (song == null) {
+        [HttpGet("~/map/refresh/{hash}")]
+        public async Task<ActionResult<Song>> RefreshHash(string hash)
+        {
+            Song? song = GetSongWithDiffsFromHash(hash);
+
+            if (song != null)
+            {
+                Song? updatedSong = await GetSongFromBeatSaver("https://api.beatsaver.com/maps/hash/" + hash);
+
+                if (updatedSong != null)
+                {
+                    for (int i = 0; i < song.Difficulties.Count; i++)
+                    {
+                        song.Difficulties.ElementAt(i).MaxScore = updatedSong.Difficulties.ElementAt(i).MaxScore;
+                    }
+                    song.MapperId = updatedSong.MapperId;
+                    _context.Songs.Update(song);
+                    _context.SaveChanges();
+                }
+            }
+
+            return song;
+        }
+
+        [HttpGet("~/map/modinterface/{hash}")]
+        public async Task<ActionResult<IEnumerable<DiffModResponse>>> GetModSongInfos(string hash)
+        {
+            var resFromLB = await _context.Leaderboards
+                .Where(lb => lb.Song.Hash == hash)
+                .Select(lb => new { 
+                    DiffModResponse = ResponseUtils.DiffModResponseFromDiffAndVotes(lb.Difficulty, lb.Scores.Where(score => score.RankVoting != null).Select(score => score.RankVoting!.Rankability).ToArray()), 
+                    SongDiffs = lb.Song.Difficulties 
+                })
+                .ToArrayAsync();
+
+            ICollection<DifficultyDescription> difficulties;
+            if(resFromLB.Length == 0)
+            {
+                // We couldnt find any Leaderboard with that hash. Therefor we need to check if we can atleast get the song
+                Song? song = await this.GetOrAddSong(hash);
+                // Otherwise the song does not exist
+                if (song is null)
+                {
+                    return NotFound();
+                }
+                difficulties = song.Difficulties;
+            }
+            else
+            {
+                // Else we can use the found difficulties of the song
+                difficulties = resFromLB[0].SongDiffs;
+            }
+
+            // Now we need to return the LB DiffModResponses. If there are diffs in the song, that have no leaderboard we return the diffs without votes, as no leaderboard = no scores = no votes
+            return difficulties.Select(diff =>
+                resFromLB.FirstOrDefault(element => element.DiffModResponse.DifficultyName == diff.DifficultyName && element.DiffModResponse.ModeName == diff.ModeName)?.DiffModResponse
+                ?? ResponseUtils.DiffModResponseFromDiffAndVotes(diff, Array.Empty<float>())).ToArray();
+        }
+
+        [NonAction]
+        public async Task<Song?> GetOrAddSong(string hash)
+        {
+            Song? song = GetSongWithDiffsFromHash(hash);
+
+            if (song == null)
+            {
                 song = await GetSongFromBeatSaver("https://api.beatsaver.com/maps/hash/" + hash);
 
-                if (song == null) {
-                    return NotFound();
-                } else {
+                if (song == null)
+                {
+                    return null;
+                }
+                else
+                {
                     string songId = song.Id;
                     Song? existingSong = await _context.Songs.Include(s => s.Difficulties).FirstOrDefaultAsync(i => i.Id == songId);
                     while (existingSong != null)
                     {
-                        if (song.Hash.ToLower() == hash.ToLower()) {
+                        if (song.Hash.ToLower() == hash.ToLower())
+                        {
                             foreach (var item in existingSong.Difficulties)
                             {
                                 item.Status = DifficultyStatus.outdated;
-                            } 
+                            }
                         }
                         songId += "x";
                         existingSong = await _context.Songs.Include(s => s.Difficulties).FirstOrDefaultAsync(i => i.Id == songId);
@@ -61,28 +137,10 @@ namespace BeatLeader_Server.Controllers
             return song;
         }
 
-        [HttpGet("~/map/refresh/{hash}")]
-        public async Task<ActionResult<Song>> RefreshHash(string hash)
+        [NonAction]
+        private Song? GetSongWithDiffsFromHash(string hash)
         {
-            Song? song = _context.Songs.Where(el => el.Hash == hash).Include(song => song.Difficulties).FirstOrDefault();
-
-            if (song != null)
-            {
-                Song? updatedSong = await GetSongFromBeatSaver("https://api.beatsaver.com/maps/hash/" + hash);
-
-                if (updatedSong != null)
-                {
-                    for (int i = 0; i < song.Difficulties.Count; i++)
-                    {
-                        song.Difficulties.ElementAt(i).MaxScore = updatedSong.Difficulties.ElementAt(i).MaxScore;
-                    }
-                    song.MapperId = updatedSong.MapperId;
-                    _context.Songs.Update(song);
-                    _context.SaveChanges();
-                }
-            }
-
-            return song;
+            return _context.Songs.Where(el => el.Hash == hash).Include(song => song.Difficulties).FirstOrDefault();
         }
 
         [NonAction]
