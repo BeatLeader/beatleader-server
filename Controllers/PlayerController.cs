@@ -905,22 +905,32 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int count = 50, 
             [FromQuery] string search = "",
             [FromQuery] string order = "desc",
-            [FromQuery] string countries = "",
-            [FromQuery] string mapsType = "ranked",
-            [FromQuery] bool friends = false,
-            [FromQuery] string? pp_range = null,
-            [FromQuery] string? score_range = null,
-            [FromQuery] string? platform = null,
-            [FromQuery] string? role = null,
-            [FromQuery] string? hmd = null,
-            [FromQuery] string? clans = null,
-            [FromQuery] int? activityPeriod = null)
+            [FromQuery] string countries = ""
+            )
         {
-            var players = _context
-                .Players
-                .Include(p => p.EventsParticipating)
-                .Include(p => p.ScoreStats)
-                .Where(p => p.EventsParticipating.FirstOrDefault(e => e.EventId == id) != null)
+            IQueryable<Player> request = _context.Players.Include(p => p.ScoreStats).Include(p => p.EventsParticipating).Where(p => !p.Banned);
+            
+            if (countries.Length != 0)
+            {
+                request = request.Where(p => countries.Contains(p.Country));
+            }
+
+            if (search.Length != 0)
+            {
+                var player = Expression.Parameter(typeof(Player), "p");
+
+                var contains = "".GetType().GetMethod("Contains", new[] { typeof(string) });
+
+                // 1 != 2 is here to trigger `OrElse` further the line.
+                var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
+                foreach (var term in search.ToLower().Split(","))
+                {
+                    exp = Expression.OrElse(exp, Expression.Call(Expression.Property(player, "Name"), contains, Expression.Constant(term)));
+                }
+                request = request.Where((Expression<Func<Player, bool>>)Expression.Lambda(exp, player));
+            }
+
+            var players = request.Where(p => p.EventsParticipating.FirstOrDefault(e => e.EventId == id) != null)
                 .Select(ResponseWithStatsFromPlayer)
                 .OrderByDescending(p => p.EventsParticipating.First(e => e.EventId == id).Pp);
 
