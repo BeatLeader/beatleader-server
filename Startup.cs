@@ -33,9 +33,6 @@ namespace BeatLeader_Server {
             string steamKey = Configuration.GetValue<string>("SteamKey");
             string steamApi = Configuration.GetValue<string>("SteamApi");
 
-            string patreonId = Configuration.GetValue<string>("PatreonId");
-            string patreonSecret = Configuration.GetValue<string>("PatreonSecret");
-
             string beatSaverId = Configuration.GetValue<string>("BeatSaverId");
             string beatSaverSecret = Configuration.GetValue<string>("BeatSaverSecret");
 
@@ -61,6 +58,8 @@ namespace BeatLeader_Server {
                 options.SlidingExpiration = true;
             })
             .AddCookie("BLPatreon")
+            .AddCookie("BLTwitch")
+            .AddCookie("BLTwitter")
             .AddCookie("BLBeatSaver")
             .AddSteamTicket(options =>
             {
@@ -87,19 +86,38 @@ namespace BeatLeader_Server {
             });
 
             if (!Environment.IsDevelopment()) {
+
+                string patreonId = Configuration.GetValue<string>("PatreonId");
+                string patreonSecret = Configuration.GetValue<string>("PatreonSecret");
+
                 authBuilder.AddPatreon(options => {
                     options.SignInScheme = "BLPatreon";
                     options.SaveTokens = true;
                     options.ClientId = patreonId;
                     options.ClientSecret = patreonSecret;
                 });
-            }
 
-            string connection;
-            if (Environment.IsDevelopment()) {
-                connection = "Data Source = tcp:localhost,1433; Initial Catalog = BeatLeader; User Id = sa; Password = SuperStrong!";
-            } else {
-                connection = Configuration.GetConnectionString("DefaultConnection");
+                string twitchId = Configuration.GetValue<string>("TwitchId");
+                string twitchSecret = Configuration.GetValue<string>("TwitchSecret");
+
+                authBuilder.AddTwitch(options =>
+                {
+                    options.SaveTokens = true;
+                    options.ClientId = twitchId;
+                    options.ClientSecret = twitchSecret;
+                    options.SignInScheme = "BLTwitch";
+                });
+
+                string twitterId = Configuration.GetValue<string>("TwitterId");
+                string twitterSecret = Configuration.GetValue<string>("TwitterSecret");
+
+                authBuilder.AddTwitter(options =>
+                {
+                    options.SaveTokens = true;
+                    options.ClientId = twitterId;
+                    options.ClientSecret = twitterSecret;
+                    options.SignInScheme = "BLTwitter";
+                });
             }
             
             services.AddServerTiming();

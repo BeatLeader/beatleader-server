@@ -47,12 +47,17 @@ namespace BeatLeader_Server.Controllers
             string redirectUrl = returnUrl;
             
             if (provider == "Steam") {
-
-                redirectUrl = Url.Action("SteamLoginCallback", new { ReturnUrl = returnUrl });
+                redirectUrl = Url.Action("SteamLoginCallback", new { ReturnUrl = returnUrl ?? "/" });
             } else if (provider == "Patreon") {
-                redirectUrl = Url.Action("LinkPatreon", "Patreon", new { returnUrl = returnUrl });
+                redirectUrl = Url.Action("LinkPatreon", "Patreon", new { returnUrl = returnUrl ?? "/" });
             } else if (provider == "BeatSaver") {
-                redirectUrl = Url.Action("LinkBeatSaver", "BeatSaver", new { returnUrl = returnUrl });
+                redirectUrl = Url.Action("LinkBeatSaver", "BeatSaver", new { returnUrl = returnUrl ?? "/" });
+            } else if (provider == "Twitch") {
+                redirectUrl = Url.Action("LinkTwitch", "Socials", new { returnUrl = returnUrl ?? "/" });
+            }
+            else if (provider == "Twitter")
+            {
+                redirectUrl = Url.Action("LinkTwitter", "Socials", new { returnUrl = returnUrl ?? "/" });
             }
 
             // Instruct the middleware corresponding to the requested external identity

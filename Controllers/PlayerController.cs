@@ -80,7 +80,16 @@ namespace BeatLeader_Server.Controllers
             using (_serverTiming.TimeAction("player"))
             {
                 if (stats) {
-                    player = await _context.Players.Where(p => p.Id == userId).Include(p => p.ScoreStats).Include(p => p.Badges).Include(p => p.StatsHistory).Include(p => p.Clans).Include(p => p.PatreonFeatures).FirstOrDefaultAsync();
+                    player = await _context
+                        .Players
+                        .Where(p => p.Id == userId)
+                        .Include(p => p.ScoreStats)
+                        .Include(p => p.Badges)
+                        .Include(p => p.StatsHistory)
+                        .Include(p => p.Clans)
+                        .Include(p => p.PatreonFeatures)
+                        .Include(p => p.Socials)
+                        .FirstOrDefaultAsync();
                 } else {
                     player = await _context.Players.FindAsync(userId);
                 }

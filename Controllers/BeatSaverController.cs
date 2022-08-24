@@ -1,4 +1,5 @@
 ﻿using BeatLeader_Server.Extensions;
+using BeatLeader_Server.Migrations;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authentication;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using static System.Net.WebRequestMethods;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -114,9 +116,9 @@ namespace BeatLeader_Server.Controllers
             if (playerId != null && bslink != null && bslink.Id != playerId) {
                 if (Int64.Parse(bslink.Id) > 30000000 && Int64.Parse(bslink.Id) < 1000000000000000) {
                     
-                    var bsplayer = _context.Players.Where(p => p.Id == bslink.Id).FirstOrDefault();
-                    if (bsplayer != null) {
-                        _context.Players.Remove(bsplayer);
+                    var oldplayer = _context.Players.Where(p => p.Id == bslink.Id).FirstOrDefault();
+                    if (oldplayer != null) {
+                        _context.Players.Remove(oldplayer);
                     }
                     _context.BeatSaverLinks.Remove(bslink);
                     bslink = null;
@@ -127,9 +129,11 @@ namespace BeatLeader_Server.Controllers
 
             Player? player = null;
 
+            Player? bsplayer = await PlayerUtils.GetPlayerFromBeatSaver(beatSaverId);
+
             if (playerId == null) {
                 if (bslink == null) {
-                    player = await PlayerUtils.GetPlayerFromBeatSaver(beatSaverId);
+                    player = bsplayer;
                     if (player == null) {
                         return (null, "Could not receive this user from BeatSaver");
                     }
@@ -170,15 +174,56 @@ namespace BeatLeader_Server.Controllers
                 await AddMapperRole(playerId);
 
                 if (player == null) {
-                    player = _context.Players.Where(p => p.Id == playerId).FirstOrDefault();
+                    player = _context.Players.Include(p => p.Socials).Where(p => p.Id == playerId).FirstOrDefault();
                 }
                 if (player != null) {
                     player.MapperId = Int32.Parse(beatSaverId);
+                    if (player.Socials == null) {
+                        player.Socials = new List<PlayerSocial>();
+                    }
+                    player.Socials.Add(new PlayerSocial {
+                        Service = "BeatSaver",
+                        UserId = beatSaverId,
+                        Link = "https://beatsaver.com/profile/" + beatSaverId,
+                        User = bsplayer?.Name ?? ""
+                    });
                 }
             }
             _context.SaveChanges();
 
             return (Int32.Parse(beatSaverId), null);
+        }
+
+        [HttpGet("~/beatsaver/refresh")]
+        public async Task<ActionResult> BeatSaverRefresh()
+        {
+
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var mappers = _context.Players.Where(p => p.MapperId != 0).Include(p => p.Socials).ToList();
+            foreach (var mapper in mappers)
+            {
+                if (mapper.Socials == null) {
+                    mapper.Socials = new List<PlayerSocial>();
+                }
+
+                Player? bsplayer = await PlayerUtils.GetPlayerFromBeatSaver("" + mapper.MapperId);
+
+                mapper.Socials.Add(new PlayerSocial {
+                    Service = "BeatSaver",
+                    UserId = mapper.MapperId + "",
+                    User = bsplayer?.Name ?? "",
+                    Link = "https://beatsaver.com/profile/" + mapper.MapperId,
+                });
+            }
+            _context.SaveChanges();
+            return Ok();
         }
     }
 }

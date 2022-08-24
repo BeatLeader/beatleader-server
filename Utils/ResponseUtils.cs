@@ -53,6 +53,7 @@ namespace BeatLeader_Server.Utils
             public bool Inactive { get; set; }
 
             public string ExternalProfileUrl { get; set; } = "";
+            public ICollection<PlayerSocial>? Socials { get; set; }
 
             public PlayerStatsHistory? StatsHistory { get; set; }
 
@@ -353,6 +354,7 @@ namespace BeatLeader_Server.Utils
                 Rank = p.Rank,
                 CountryRank = p.CountryRank,
                 Role = p.Role,
+                Socials = p.Socials,
                 PatreonFeatures = p.PatreonFeatures == null ? null :
                     new PatreonResponse
                     {

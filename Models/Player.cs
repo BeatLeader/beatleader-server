@@ -33,6 +33,7 @@
         public PatreonFeatures? PatreonFeatures { get; set; }
 
         public ICollection<EventPlayer>? EventsParticipating { get; set; }
+        public ICollection<PlayerSocial>? Socials { get; set; }
 
         public void SetDefaultAvatar()
         {

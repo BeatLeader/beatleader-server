@@ -134,7 +134,18 @@ namespace BeatLeader_Server.Controllers
                 return null;
             }
 
-            User? user = await _context.Users.Where(u => u.Id == id).Include(u => u.Player).ThenInclude(p => p.Clans).Include(u => u.Player).ThenInclude(p => p.ScoreStats).Include(u => u.ClanRequest).Include(u => u.BannedClans).FirstOrDefaultAsync();
+            User? user = await _context
+                .Users
+                .Where(u => u.Id == id)
+                .Include(u => u.Player)
+                .ThenInclude(p => p.Clans)
+                .Include(u => u.Player)
+                .ThenInclude(p => p.ScoreStats)
+                .Include(u => u.Player)
+                .ThenInclude(p => p.Socials)
+                .Include(u => u.ClanRequest)
+                .Include(u => u.BannedClans)
+                .FirstOrDefaultAsync();
             if (user == null)
             {
                 Player? player = (await _playerController.GetLazy(id)).Value;

@@ -417,6 +417,8 @@ namespace BeatLeader_Server.Controllers
                     .ThenInclude(p => p.Clans)
                 .Include(s => s.Player)
                     .ThenInclude(p => p.PatreonFeatures)
+                .Include(s => s.Player)
+                    .ThenInclude(p => p.Socials)
                 .Include(s => s.ScoreImprovement)
                 .Select(RemoveLeaderboard)
                 .ToList();

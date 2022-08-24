@@ -141,10 +141,8 @@ namespace BeatLeader_Server.Controllers
 
         [HttpGet("~/leaderboards/hash/{hash}")]
         public async Task<ActionResult<LeaderboardsResponse>> GetLeaderboardsByHash(string hash) {
-            var loverHash = hash.ToLower();
-
-            var leaderboards = await _context.Leaderboards
-                .Where(lb => lb.Song.Hash.ToLower() == loverHash)
+           var leaderboards = await _context.Leaderboards
+                .Where(lb => lb.Song.Hash == hash)
                 .Include(lb => lb.Song)
                 .Include(lb => lb.Difficulty)
                 .Include(lb => lb.Qualification)

@@ -5,11 +5,13 @@ using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Linq;
 using System.Dynamic;
 using System.Net;
 
@@ -22,13 +24,16 @@ namespace BeatLeader_Server.Controllers
     {
         private readonly AppContext _context;
         IWebHostEnvironment _environment;
+        IConfiguration _configuration;
 
         public PatreonController(
             AppContext context,
-            IWebHostEnvironment env)
+            IWebHostEnvironment env,
+            IConfiguration configuration)
         {
             _context = context;
             _environment = env;
+            _configuration = configuration;
         }
 
         [NonAction]
@@ -64,6 +69,15 @@ namespace BeatLeader_Server.Controllers
                 _context.SaveChanges();
             }
             return Ok();
+        }
+
+        [NonAction]
+        public async void UpdatePatreonRole(Player player, string? role)
+        {
+            player.Role = string.Join(",", player.Role.Split(",").Where(r => r != "tipper" && r != "supporter" && r != "sponsor"));
+            if (role != null) {
+                player.Role += "," + role;
+            }
         }
 
 
@@ -216,6 +230,75 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpGet("~/refreshPatreon")]
+        public async Task<ActionResult> RefreshPatreon()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var links = _context.PatreonLinks.ToList();
+
+            foreach (var link in links)
+            {
+                var user = await GetPatreonUser(link.Token);
+
+                if (user != null) {
+                    string? tier = null;
+
+                    foreach (var item in user.included)
+                    {
+                        if (ExpandantoObject.HasProperty(item.attributes, "title"))
+                        {
+                            tier = item.attributes.title.ToLower();
+                            break;
+                        }
+                    }
+
+                    if (tier != link.Tier) {
+                        var player = _context.Players.Where(p => p.Id == link.Id).FirstOrDefault();
+                        if (tier != null) {
+                            if (tier.Contains("tipper"))
+                            {
+                                UpdatePatreonRole(player, "tipper");
+                            }
+                            else if (tier.Contains("supporter"))
+                            {
+                                UpdatePatreonRole(player, "supporter");
+                            }
+                            else if (tier.Contains("sponsor"))
+                            {
+                                UpdatePatreonRole(player, "sponsor");
+                            }
+                            else {
+                                UpdatePatreonRole(player, null);
+                            }
+                            link.Tier = tier;
+                        } else {
+                            UpdatePatreonRole(player, null);
+                            link.Tier = tier;
+                        }
+                    }
+                } else {
+                    var newToken = await RefreshToken(link.RefreshToken);
+                    if (newToken != null) {
+                        link.Token = newToken.access_token;
+                        link.RefreshToken = newToken.refresh_token;
+                    } else {
+                        _context.PatreonLinks.Remove(link);
+                    }
+                }
+            }
+
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
         [NonAction]
         public Task<dynamic?> GetPatreonUser(string token)
         {
@@ -224,48 +307,23 @@ namespace BeatLeader_Server.Controllers
             request.Headers.Add("Authorization", "Bearer " + token);
             request.Proxy = null;
 
-            WebResponse? response = null;
-            dynamic? song = null;
-            var stream =
-            Task<(WebResponse?, dynamic?)>.Factory.FromAsync(request.BeginGetResponse, result =>
-            {
-                try
-                {
-                    response = request.EndGetResponse(result);
-                }
-                catch (Exception e)
-                {
-                    song = null;
-                }
-
-                return (response, song);
-            }, request);
-
-            return stream.ContinueWith(t => ReadPlayerFromResponse(t.Result));
+            return request.DynamicResponse();
         }
 
         [NonAction]
-        private dynamic? ReadPlayerFromResponse((WebResponse?, dynamic?) response)
+        public Task<dynamic?> RefreshToken(string token)
         {
-            if (response.Item1 != null)
-            {
-                using (Stream responseStream = response.Item1.GetResponseStream())
-                using (StreamReader reader = new StreamReader(responseStream))
-                {
-                    string results = reader.ReadToEnd();
-                    if (string.IsNullOrEmpty(results))
-                    {
-                        return null;
-                    }
+            string id = _configuration.GetValue<string>("PatreonId");
+            string secret = _configuration.GetValue<string>("PatreonSecret");
 
-                    return JsonConvert.DeserializeObject<ExpandoObject>(results, new ExpandoObjectConverter());
-                }
-            }
-            else
-            {
-                return response.Item2;
-            }
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(
+                "https://www.patreon.com/api/oauth2/token?grant_type=refresh_token&refresh_token=" + token + 
+                "&client_id=" + id +
+                "&client_secret =" + secret);
+            request.Method = "POST";
+            request.Proxy = null;
 
+            return request.DynamicResponse();
         }
     }
 }

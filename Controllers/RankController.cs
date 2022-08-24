@@ -531,7 +531,7 @@ namespace BeatLeader_Server.Controllers
         {
             string userId = HttpContext.CurrentUserID(_context);
 
-            if (_context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.nominated && lb.Song.Hash.ToLower() == hash.ToLower()).FirstOrDefault() != null) {
+            if (_context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.nominated && lb.Song.Hash == hash).FirstOrDefault() != null) {
                 return new PrevQualification
                 {
                     Time = 0

@@ -1,7 +1,11 @@
 ﻿using Azure.Storage.Blobs;
 using BeatLeader_Server.Models;
 using Microsoft.AspNetCore.Authentication;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json;
+using System.Dynamic;
 using System.Linq.Expressions;
+using System.Net;
 
 namespace BeatLeader_Server.Extensions
 {
@@ -110,5 +114,52 @@ namespace BeatLeader_Server.Extensions
                 "" => "",
                 _ => string.Concat(input[0].ToString().ToLower(), input.AsSpan(1))
             };
+    }
+
+    public static class HttpWebRequestExtensions
+    {
+        public static Task<dynamic?> DynamicResponse(this HttpWebRequest request)
+        {
+            WebResponse? response = null;
+            dynamic? song = null;
+            var stream =
+            Task<(WebResponse?, dynamic?)>.Factory.FromAsync(request.BeginGetResponse, result =>
+            {
+                try
+                {
+                    response = request.EndGetResponse(result);
+                }
+                catch (Exception e)
+                {
+                    song = null;
+                }
+
+                return (response, song);
+            }, request);
+
+            return stream.ContinueWith(t => ReadObjectFromResponse(t.Result));
+        }
+
+        private static dynamic? ReadObjectFromResponse((WebResponse?, dynamic?) response)
+        {
+            if (response.Item1 != null)
+            {
+                using (Stream responseStream = response.Item1.GetResponseStream())
+                using (StreamReader reader = new StreamReader(responseStream))
+                {
+                    string results = reader.ReadToEnd();
+                    if (string.IsNullOrEmpty(results))
+                    {
+                        return null;
+                    }
+
+                    return JsonConvert.DeserializeObject<ExpandoObject>(results, new ExpandoObjectConverter());
+                }
+            }
+            else
+            {
+                return response.Item2;
+            }
+        }
     }
 }
