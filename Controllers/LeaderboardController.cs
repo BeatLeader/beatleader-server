@@ -135,7 +135,7 @@ namespace BeatLeader_Server.Controllers
                     return NotFound();
                 } else {
                     DifficultyDescription difficulty = song.Difficulties.First(d => song.Id + d.Value + d.Mode == id);
-                    return ResponseFromLeaderboard((await GetByHash(song.Hash, difficulty.DifficultyName, difficulty.ModeName, song)).Value);
+                    return ResponseFromLeaderboard((await GetByHash(song.Hash, difficulty.DifficultyName, difficulty.ModeName)).Value);
                 }
             }
 
@@ -172,11 +172,11 @@ namespace BeatLeader_Server.Controllers
             };
         }
 
-        [NonAction]
-        public async Task<ActionResult<Leaderboard>> GetByHash(string hash, string diff, string mode, Song? inputSong = null) {
+        [HttpGet("~/leaderboard/hash/{hash}/{diff}/{mode}")]
+        public async Task<ActionResult<Leaderboard>> GetByHash(string hash, string diff, string mode) {
             Leaderboard? leaderboard;
 
-            leaderboard = inputSong != null ? null : _context
+            leaderboard = _context
                     .Leaderboards
                     .Include(lb => lb.Difficulty)
                     .Where(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff)
@@ -187,14 +187,14 @@ namespace BeatLeader_Server.Controllers
                     .FirstOrDefault();
 
             if (leaderboard == null) {
-                Song? song = inputSong ?? (await _songController.GetHash(hash)).Value;
+                Song? song = (await _songController.GetHash(hash)).Value;
                 if (song == null)
                 {
                     return NotFound();
                 }
 
                 leaderboard = new Leaderboard();
-                leaderboard.Song = song;
+                leaderboard.SongId = song.Id;
                 IEnumerable<DifficultyDescription> difficulties = song.Difficulties.Where(el => el.DifficultyName == diff);
                 DifficultyDescription? difficulty = difficulties.FirstOrDefault(x => x.ModeName == mode);
                 if (difficulty == null) {
