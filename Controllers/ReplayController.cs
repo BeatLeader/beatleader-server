@@ -497,10 +497,7 @@ namespace BeatLeader_Server.Controllers
                     improvement.TotalPp = player.Pp - oldPp;
                     improvement.TotalRank = player.Rank - oldRank;
                 }
-                //_context.RecalculateEventsPP(player, leaderboard);
-                
-
-                
+                _context.RecalculateEventsPP(player, leaderboard);
 
                 try
                 {

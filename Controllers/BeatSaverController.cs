@@ -116,8 +116,9 @@ namespace BeatLeader_Server.Controllers
             if (playerId != null && bslink != null && bslink.Id != playerId) {
                 if (Int64.Parse(bslink.Id) > 30000000 && Int64.Parse(bslink.Id) < 1000000000000000) {
                     
-                    var oldplayer = _context.Players.Where(p => p.Id == bslink.Id).FirstOrDefault();
+                    var oldplayer = _context.Players.Where(p => p.Id == bslink.Id).Include(p => p.Socials).FirstOrDefault();
                     if (oldplayer != null) {
+                        oldplayer.Socials = null;
                         _context.Players.Remove(oldplayer);
                     }
                     _context.BeatSaverLinks.Remove(bslink);

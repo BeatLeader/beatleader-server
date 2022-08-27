@@ -139,7 +139,7 @@ namespace BeatLeader_Server.Controllers
                 return null;
             }
 
-            User? user = _readContext
+            User? user = _context
                 .Users
                 .Where(u => u.Id == id)
                 .Include(u => u.Player)
@@ -616,6 +616,7 @@ namespace BeatLeader_Server.Controllers
                 .Include(p => p.PatreonFeatures)
                 .Include(p => p.StatsHistory)
                 .Include(p => p.Badges)
+                .Include(p => p.Socials)
                 .FirstOrDefault();
             Player? migratedToPlayer = _context.Players.Where(p => p.Id == migrateToId)
                 .Include(p => p.Clans)
@@ -794,6 +795,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
+            currentPlayer.Socials = null;
             _context.Players.Remove(currentPlayer);
 
             await _context.SaveChangesAsync();

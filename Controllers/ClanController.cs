@@ -255,7 +255,6 @@ namespace BeatLeader_Server.Controllers
             _context.SaveChanges();
 
             player.Clans.Add(newClan);
-            _context.Players.Update(player);
             _context.SaveChanges();
 
             return newClan;
@@ -449,7 +448,6 @@ namespace BeatLeader_Server.Controllers
             }
 
             user.ClanRequest.Add(clan);
-            _context.Users.Update(user);
             _context.SaveChanges();
 
             return Ok();
@@ -490,7 +488,6 @@ namespace BeatLeader_Server.Controllers
             }
 
             user.ClanRequest.Remove(clanRequest);
-            _context.Users.Update(user);
             _context.SaveChanges();
 
             return Ok();
@@ -541,7 +538,6 @@ namespace BeatLeader_Server.Controllers
             clan.AverageAccuracy = MathUtils.RemoveFromAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageRankedAccuracy);
             clan.AverageRank = MathUtils.RemoveFromAverage(clan.AverageRank, clan.PlayersCount, user.Player.Rank);
             clan.PlayersCount--;
-            _context.Users.Update(user);
             _context.SaveChanges();
 
             clan.Pp = _context.RecalculateClanPP(clan.Id);
@@ -586,7 +582,6 @@ namespace BeatLeader_Server.Controllers
             clan.PlayersCount++;
             clan.AverageAccuracy = MathUtils.AddToAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageRankedAccuracy);
             clan.AverageRank = MathUtils.AddToAverage(clan.AverageRank, clan.PlayersCount, user.Player.Rank);
-            _context.Users.Update(user);
             _context.SaveChanges();
 
             clan.Pp = _context.RecalculateClanPP(clan.Id);
@@ -617,7 +612,6 @@ namespace BeatLeader_Server.Controllers
             if (ban) {
                 user.BannedClans.Add(clan);
             }
-            _context.Users.Update(user);
             _context.SaveChanges();
 
             return Ok();
@@ -642,8 +636,6 @@ namespace BeatLeader_Server.Controllers
             }
 
             user.BannedClans.Remove(clan);
-            
-            _context.Users.Update(user);
             _context.SaveChanges();
 
             return Ok();
@@ -675,7 +667,6 @@ namespace BeatLeader_Server.Controllers
             clan.AverageAccuracy = MathUtils.RemoveFromAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageRankedAccuracy);
             clan.AverageRank = MathUtils.RemoveFromAverage(clan.AverageRank, clan.PlayersCount, user.Player.Rank);
             clan.PlayersCount--;
-            _context.Users.Update(user);
             _context.SaveChanges();
 
             clan.Pp = _context.RecalculateClanPP(clan.Id);
