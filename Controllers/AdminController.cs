@@ -47,7 +47,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> AddRole([FromQuery] string playerId, [FromQuery] string role)
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
+            var currentPlayer = _context.Players.Find(currentID);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin") || role == "admin")
             {
@@ -67,7 +67,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> RemoveRole([FromQuery] string playerId, [FromQuery] string role)
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
+            var currentPlayer = _context.Players.Find(currentID);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin") || role == "admin")
             {
@@ -88,7 +88,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> SetLeader(int id, [FromQuery] string newLeader)
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
+            var currentPlayer = _context.Players.Find(currentID);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
@@ -115,7 +115,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> AddMember(int id, [FromQuery] string newLeader)
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
+            var currentPlayer = _context.Players.Find(currentID);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
@@ -148,7 +148,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<List<Score>>> GetAllScores([FromQuery] int from, [FromQuery] int to)
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
+            var currentPlayer = _context.Players.Find(currentID);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {

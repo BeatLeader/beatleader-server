@@ -88,7 +88,7 @@ namespace BeatLeader_Server.Controllers
         {
             string? currentID = HttpContext.CurrentUserID(_context);
 
-            return await ApproveWithMapper(leaderboardId, await _context.Players.FindAsync(currentID));
+            return await ApproveWithMapper(leaderboardId, _context.Players.Find(currentID));
         }
 
         [HttpGet("~/user/linkBeatSaver")]

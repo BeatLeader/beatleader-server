@@ -14,6 +14,8 @@ namespace BeatLeader_Server.Controllers
     public class ClanController : Controller
     {
         private readonly AppContext _context;
+        private readonly ReadAppContext _readContext;
+
         BlobContainerClient _assetsContainerClient;
         CurrentUserController _userController;
         IWebHostEnvironment _environment;
@@ -22,11 +24,13 @@ namespace BeatLeader_Server.Controllers
             AppContext context,
             IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env,
-            CurrentUserController userController)
+            CurrentUserController userController,
+            ReadAppContext readContext)
         {
             _context = context;
             _userController = userController;
             _environment = env;
+            _readContext = readContext;
             if (env.IsDevelopment())
             {
                 _assetsContainerClient = new BlobContainerClient(config.Value.AccountName, config.Value.AssetsContainerName);
@@ -51,7 +55,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? search = null,
             [FromQuery] string? type = null)
         {
-            var sequence = _context.Clans.AsQueryable();
+            var sequence = _readContext.Clans.AsQueryable();
             switch (sort)
             {
                 case "pp":
@@ -85,7 +89,7 @@ namespace BeatLeader_Server.Controllers
                     ItemsPerPage = count,
                     Total = sequence.Count()
                 },
-                Data = await sequence.Skip((page - 1) * count).Take(count).ToListAsync()
+                Data = sequence.Skip((page - 1) * count).Take(count).ToList()
             };
         }
 
@@ -101,16 +105,16 @@ namespace BeatLeader_Server.Controllers
         {
             Clan? clan = null;
             if (tag == "my") {
-                string currentID = HttpContext.CurrentUserID(_context);
-                var player = await _context.Players.FindAsync(currentID);
+                string currentID = HttpContext.CurrentUserID(_readContext);
+                var player = _readContext.Players.Find(currentID);
 
                 if (player == null)
                 {
                     return NotFound();
                 }
-                clan = await _context.Clans.Where(c => c.LeaderID == currentID).Include(c => c.Players).FirstOrDefaultAsync();
+                clan = _readContext.Clans.Where(c => c.LeaderID == currentID).Include(c => c.Players).FirstOrDefault();
             } else {
-                clan = await _context.Clans.Where(c => c.Tag == tag).Include(c => c.Players).FirstOrDefaultAsync();
+                clan = _readContext.Clans.Where(c => c.Tag == tag).Include(c => c.Players).FirstOrDefault();
             }
             if (clan == null)
             {
@@ -128,7 +132,6 @@ namespace BeatLeader_Server.Controllers
                     break;
                 case "rank":
                     players = players.Order(order, t => t.Rank);
-                    break;
                     break;
                 default:
                     break;
@@ -155,7 +158,7 @@ namespace BeatLeader_Server.Controllers
         {
             string currentID = HttpContext.CurrentUserID(_context);
 
-            var player = await _context.Players.Where(p => p.Id == currentID).Include(p => p.Clans).Include(p => p.ScoreStats).FirstOrDefaultAsync();
+            var player = _context.Players.Where(p => p.Id == currentID).Include(p => p.Clans).Include(p => p.ScoreStats).FirstOrDefault();
             if (player.Clans.Count == 3) {
                 return BadRequest("You can join only up to 3 clans.");
             }
@@ -263,7 +266,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> DeleteClan([FromQuery] int? id = null)
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var player = await _context.Players.FindAsync(currentID);
+            var player = _context.Players.Find(currentID);
 
             if (player == null)
             {
@@ -273,11 +276,11 @@ namespace BeatLeader_Server.Controllers
             Clan? clan = null;
             if (id != null && player != null && player.Role.Contains("admin"))
             {
-                clan = await _context.Clans.FindAsync(id);
+                clan = _context.Clans.Find(id);
             }
             else
             {
-                clan = await _context.Clans.FirstOrDefaultAsync(c => c.LeaderID == currentID);
+                clan = _context.Clans.FirstOrDefault(c => c.LeaderID == currentID);
             }
             if (clan == null)
             {
@@ -300,7 +303,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string bio = "")
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var player = await _context.Players.FindAsync(currentID);
+            var player = _context.Players.Find(currentID);
 
             if (player == null)
             {
@@ -315,11 +318,11 @@ namespace BeatLeader_Server.Controllers
             Clan? clan = null;
             if (id != null && player != null && player.Role.Contains("admin"))
             {
-                clan = await _context.Clans.FindAsync(id);
+                clan = _context.Clans.Find(id);
             }
             else
             {
-                clan = await _context.Clans.FirstOrDefaultAsync(c => c.LeaderID == currentID);
+                clan = _context.Clans.FirstOrDefault(c => c.LeaderID == currentID);
             }
             if (clan == null)
             {
@@ -406,7 +409,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> InviteToClan([FromQuery] string player)
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
+            var currentPlayer = _context.Players.Find(currentID);
 
             if (currentPlayer == null)
             {
@@ -502,11 +505,11 @@ namespace BeatLeader_Server.Controllers
             string currentID = HttpContext.CurrentUserID(_context);
 
             Clan? clan;
-            var currentPlayer = await _context.Players.FindAsync(currentID);
+            var currentPlayer = _context.Players.Find(currentID);
             
             if (id != null && currentPlayer != null && currentPlayer.Role.Contains("admin"))
             {
-                clan = await _context.Clans.FindAsync(id);
+                clan = _context.Clans.Find(id);
             }
             else
             {
@@ -686,7 +689,7 @@ namespace BeatLeader_Server.Controllers
         {
             tag = tag.ToUpper();
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
+            var currentPlayer = _context.Players.Find(currentID);
 
             if (!currentPlayer.Role.Contains("admin")) {
                 return Unauthorized();
@@ -705,7 +708,7 @@ namespace BeatLeader_Server.Controllers
         {
             tag = tag.ToUpper();
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
+            var currentPlayer = _context.Players.Find(currentID);
 
             if (!currentPlayer.Role.Contains("admin"))
             {

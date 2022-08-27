@@ -9,9 +9,13 @@ namespace BeatLeader_Server.Utils
 {
     public static class PlayerUtils
     {
-        public static async Task RecalculatePP(this AppContext context, Player player, List<Score>? scores = null)
+        public static void RecalculatePP(this AppContext context, Player player, List<Score>? scores = null)
         {
-            var ranked = scores ?? await context.Scores.Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification).OrderByDescending(s => s.Pp).ToListAsync();
+            var ranked = scores ?? context
+                .Scores
+                .Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification)
+                .OrderByDescending(s => s.Pp)
+                .ToList();
             float resultPP = 0f;
             foreach ((int i, Score s) in ranked.Select((value, i) => (i, value)))
             {
@@ -26,11 +30,16 @@ namespace BeatLeader_Server.Utils
             player.Pp = resultPP;
         }
 
-        public static async Task RecalculatePPAndRankFast(this AppContext context, Player player)
+        public static void RecalculatePPAndRankFast(this AppContext context, Player player)
         {
             float oldPp = player.Pp;
 
-            var rankedScores = await context.Scores.Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification).OrderByDescending(s => s.Pp).Select(s => new { Pp = s.Pp }).ToListAsync();
+            var rankedScores = context
+                .Scores
+                .Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification)
+                .OrderByDescending(s => s.Pp)
+                .Select(s => new { Pp = s.Pp })
+                .ToList();
             float resultPP = 0f;
             foreach ((int i, float pp) in rankedScores.Select((value, i) => (i, value.Pp)))
             {
@@ -39,12 +48,12 @@ namespace BeatLeader_Server.Utils
             }
             player.Pp = resultPP;
 
-            var rankedPlayers = await context
+            var rankedPlayers = context
                 .Players
                 .Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id)
                 .OrderByDescending(t => t.Pp)
                 .Select(p => new { Pp = p.Pp, Country = p.Country, Rank = p.Rank, CountryRank = p.CountryRank })
-                .ToListAsync();
+                .ToList();
 
             if (rankedPlayers.Count() > 0)
             {
@@ -58,12 +67,13 @@ namespace BeatLeader_Server.Utils
             }
         }
 
-        public static async Task RecalculateEventsPP(this AppContext context, Player player, Leaderboard leaderboard)
+        public static void RecalculateEventsPP(this AppContext context, Player player, Leaderboard leaderboard)
         {
-            var events = await context.EventRankings
-                .Where(ev => ev.Leaderboards.Contains(leaderboard))
+            int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+            var events = context.EventRankings
+                .Where(ev => ev.EndDate < timestamp && ev.Leaderboards.Contains(leaderboard))
                 .Include(ev => ev.Players)
-                .ToListAsync();
+                .ToList();
             if (events.Count() == 0) {
                 return;
             }

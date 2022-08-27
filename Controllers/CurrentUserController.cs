@@ -22,6 +22,8 @@ namespace BeatLeader_Server.Controllers
     public class CurrentUserController : ControllerBase
     {
         private readonly AppContext _context;
+        private readonly ReadAppContext _readContext;
+
         BlobContainerClient _assetsContainerClient;
         PlayerController _playerController;
         ReplayController _replayController;
@@ -31,6 +33,7 @@ namespace BeatLeader_Server.Controllers
 
         public CurrentUserController(
             AppContext context,
+            ReadAppContext readContext,
             IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env,
             PlayerController playerController,
@@ -39,6 +42,8 @@ namespace BeatLeader_Server.Controllers
             IConfiguration configuration)
         {
             _context = context;
+            _readContext = readContext;
+
             _playerController = playerController;
             _replayController = replayController;
             _scoreController = scoreController;
@@ -62,7 +67,7 @@ namespace BeatLeader_Server.Controllers
         public ActionResult<string> GetIdResult() => GetId();
 
         [NonAction]
-        public string? GetId() => HttpContext.CurrentUserID(_context);
+        public string? GetId() => HttpContext.CurrentUserID(_readContext);
 
         [HttpGet("~/user")]
         public async Task<ActionResult<UserReturn>> GetCurrentUser()
@@ -73,12 +78,12 @@ namespace BeatLeader_Server.Controllers
             }
             string id = user.Id;
 
-            PlayerFriends? friends = _context.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == id);
-            Clan? clan = _context.Clans.Include(c => c.Players).Where(f => f.LeaderID == id).FirstOrDefault();
+            PlayerFriends? friends = _readContext.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == id);
+            Clan? clan = _readContext.Clans.Include(c => c.Players).Where(f => f.LeaderID == id).FirstOrDefault();
 
             long intId = Int64.Parse(id);
             if (intId > 1000000000000000) {
-                var link = _context.AccountLinks.FirstOrDefault(el => el.SteamID == id || el.PCOculusID == id);
+                var link = _readContext.AccountLinks.FirstOrDefault(el => el.SteamID == id || el.PCOculusID == id);
                 if (link != null) {
                     intId = link.OculusID;
                 }
@@ -98,13 +103,13 @@ namespace BeatLeader_Server.Controllers
                 AverageRank = clan.AverageRank,
                 AverageAccuracy = clan.AverageAccuracy,
                 Players = clan.Players.Select(p => p.Id).ToList(),
-                PendingInvites = _context.Users.Where(u => u.ClanRequest.Contains(clan)).Select(f => f.Id).ToList(),
+                PendingInvites = _readContext.Users.Where(u => u.ClanRequest.Contains(clan)).Select(f => f.Id).ToList(),
             } : null;
             var player = user.Player;
 
             return new UserReturn {
                 Player = ResponseUtils.ResponseFullFromPlayer(player),
-                Ban = player.Banned ? _context
+                Ban = player.Banned ? _readContext
                     .Bans
                     .Where(b => b.PlayerId == player.Id)
                     .Select(b => new BanReturn { Reason = b.BanReason, Duration = b.Duration, Timeset = b.Timeset })
@@ -112,10 +117,10 @@ namespace BeatLeader_Server.Controllers
                 ClanRequest = user.ClanRequest,
                 BannedClans = user.BannedClans,
                 Friends = friends != null ? friends.Friends.Select(ResponseUtils.ResponseFullFromPlayer).ToList() : new List<PlayerResponseFull>(),
-                Login = _context.Auths.FirstOrDefault(a => a.Id == intId)?.Login,
+                Login = _readContext.Auths.FirstOrDefault(a => a.Id == intId)?.Login,
                 
-                Migrated = _context.AccountLinks.FirstOrDefault(a => a.SteamID == id) != null,
-                Patreoned = _context.PatreonLinks.Find(id) != null,
+                Migrated = _readContext.AccountLinks.FirstOrDefault(a => a.SteamID == id) != null,
+                Patreoned = _readContext.PatreonLinks.Find(id) != null,
                 Clan = clanReturn
             };
         }
@@ -134,7 +139,7 @@ namespace BeatLeader_Server.Controllers
                 return null;
             }
 
-            User? user = await _context
+            User? user = _readContext
                 .Users
                 .Where(u => u.Id == id)
                 .Include(u => u.Player)
@@ -145,7 +150,7 @@ namespace BeatLeader_Server.Controllers
                 .ThenInclude(p => p.Socials)
                 .Include(u => u.ClanRequest)
                 .Include(u => u.BannedClans)
-                .FirstOrDefaultAsync();
+                .FirstOrDefault();
             if (user == null)
             {
                 Player? player = (await _playerController.GetLazy(id)).Value;
@@ -237,11 +242,11 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> ChangeAvatar([FromQuery] string? id = null)
         {
             string userId = GetId();
-            var player = await _context.Players.FindAsync(userId);
+            var player = _context.Players.Find(userId);
 
             if (id != null && player != null && player.Role.Contains("admin"))
             {
-                player = await _context.Players.FindAsync(id);
+                player = _context.Players.Find(id);
             }
 
             if (player == null)
@@ -285,11 +290,11 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> ChangeName([FromQuery] string newName, [FromQuery] string? id = null)
         {
             string userId = GetId();
-            var player = await _context.Players.FindAsync(userId);
+            var player = _context.Players.Find(userId);
 
             if (id != null && player != null && player.Role.Contains("admin"))
             {
-                player = await _context.Players.FindAsync(id);
+                player = _context.Players.Find(id);
             }
 
             if (player == null)
@@ -316,12 +321,12 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> ChangeCountry([FromQuery] string newCountry, [FromQuery] string? id = null)
         {
             string userId = GetId();
-            var player = await _context.Players.FindAsync(userId);
+            var player = _context.Players.Find(userId);
             bool adminChange = false;
 
             if (id != null && player != null && player.Role.Contains("admin"))
             {
-                player = await _context.Players.FindAsync(id);
+                player = _context.Players.Find(id);
                 adminChange = true;
             }
 
@@ -606,18 +611,18 @@ namespace BeatLeader_Server.Controllers
                     return BadRequest("Too much migrations to handle");
                 }
             }
-            Player? currentPlayer = await _context.Players.Where(p => p.Id == migrateFromId)
+            Player? currentPlayer = _context.Players.Where(p => p.Id == migrateFromId)
                 .Include(p => p.Clans)
                 .Include(p => p.PatreonFeatures)
                 .Include(p => p.StatsHistory)
                 .Include(p => p.Badges)
-                .FirstOrDefaultAsync();
-            Player? migratedToPlayer = await _context.Players.Where(p => p.Id == migrateToId)
+                .FirstOrDefault();
+            Player? migratedToPlayer = _context.Players.Where(p => p.Id == migrateToId)
                 .Include(p => p.Clans)
                 .Include(p => p.PatreonFeatures)
                 .Include(p => p.StatsHistory)
                 .Include(p => p.Badges)
-                .FirstOrDefaultAsync();
+                .FirstOrDefault();
 
             if (currentPlayer == null || migratedToPlayer == null)
             {
@@ -739,11 +744,11 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            List<Score> scores = await _context.Scores
+            List<Score> scores = _context.Scores
                 .Include(el => el.Player)
                 .Where(el => el.Player.Id == currentPlayer.Id)
                 .Include(el => el.Leaderboard)
-                .ThenInclude(el => el.Scores).ToListAsync();
+                .ThenInclude(el => el.Scores).ToList();
             if (scores.Count() > 0) {
                 foreach (Score score in scores)
                 {
@@ -808,8 +813,8 @@ namespace BeatLeader_Server.Controllers
             if (id == null) {
                 return NotFound();
             }
-            Player? currentPlayer = _context.Players.Find(id);
-            IQueryable<FailedScore> query = _context.FailedScores.Include(lb => lb.Player).ThenInclude(p => p.ScoreStats).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties);
+            Player? currentPlayer = _readContext.Players.Find(id);
+            IQueryable<FailedScore> query = _readContext.FailedScores.Include(lb => lb.Player).ThenInclude(p => p.ScoreStats).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
@@ -894,7 +899,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> ResizeAvatars([FromQuery] int hundred)
         {
             string userId = GetId();
-            var player = await _context.Players.FindAsync(userId);
+            var player = _context.Players.Find(userId);
 
             if (player == null || !player.Role.Contains("admin"))
             {
@@ -938,14 +943,14 @@ namespace BeatLeader_Server.Controllers
         {
             string userId = GetId();
 
-            var player = await _context.Players.FindAsync(userId);
+            var player = _context.Players.Find(userId);
 
             if (id != null && player != null && player.Role.Contains("admin"))
             {
                 if (reason == null || duration == null) {
                     return BadRequest("Provide ban reason and duration");
                 }
-                player = await _context.Players.FindAsync(id);
+                player = _context.Players.Find(id);
             }
 
             if (player == null)
@@ -995,13 +1000,13 @@ namespace BeatLeader_Server.Controllers
         {
             string userId = GetId();
             var transaction = _context.Database.BeginTransaction();
-            var player = await _context.Players.FindAsync(userId);
+            var player = _context.Players.Find(userId);
             bool adminUnban = false;
 
             if (id != null && player != null && player.Role.Contains("admin"))
             {
                 adminUnban = true;
-                player = await _context.Players.FindAsync(id);
+                player = _context.Players.Find(id);
             }
 
             if (player == null)

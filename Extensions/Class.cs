@@ -71,6 +71,32 @@ namespace BeatLeader_Server.Extensions
             }
 
         }
+
+        public static string? CurrentUserID(this HttpContext context, ReadAppContext dbcontext)
+        {
+            try
+            {
+                string? currentID = context.User.Claims.FirstOrDefault()?.Value.Split("/").LastOrDefault();
+                if (currentID == null) return null;
+
+                long intId = Int64.Parse(currentID);
+                if (intId < 70000000000000000)
+                {
+                    AccountLink? accountLink = dbcontext.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+                    return accountLink != null ? (accountLink.SteamID.Length > 0 ? accountLink.SteamID : accountLink.PCOculusID) : currentID;
+                }
+                else
+                {
+                    return currentID;
+                }
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+
+        }
     }
 
     public static class LinqExtensions

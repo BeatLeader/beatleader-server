@@ -16,16 +16,20 @@ namespace BeatLeader_Server.Controllers
     public class ScoreController : Controller
     {
         private readonly AppContext _context;
+        private readonly ReadAppContext _readContext;
+
         private readonly BlobContainerClient _containerClient;
         private readonly IServerTiming _serverTiming;
 
         public ScoreController(
             AppContext context,
+            ReadAppContext readContext,
             IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env,
             IServerTiming serverTiming)
         {
             _context = context;
+            _readContext = readContext;
             _serverTiming = serverTiming;
             if (env.IsDevelopment())
             {
@@ -44,11 +48,11 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/score/{id}")]
         public async Task<ActionResult<Score>> GetScore(int id)
         {
-            var score = await _context
+            var score = _readContext
                 .Scores
                 .Where(l => l.Id == id)
                 .Include(el => el.Player).ThenInclude(el => el.PatreonFeatures)
-                .FirstOrDefaultAsync();
+                .FirstOrDefault();
 
             if (score != null)
             {
@@ -56,7 +60,7 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
-                var redirect = await _context.ScoreRedirects.FirstOrDefaultAsync(sr => sr.OldScoreId == id);
+                var redirect = _readContext.ScoreRedirects.FirstOrDefault(sr => sr.OldScoreId == id);
                 if (redirect != null && redirect.NewScoreId != id) {
                     return await GetScore(redirect.NewScoreId);
                 } else {
@@ -68,12 +72,12 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/score/random")]
         public async Task<ActionResult<Score>> GetRandomScore()
         {
-            var offset = Random.Shared.Next(1, _context.Scores.Count());
-            var score = await _context
+            var offset = Random.Shared.Next(1, _readContext.Scores.Count());
+            var score = _readContext
                 .Scores
                 .Skip(offset)
                 .Take(1)
-                .FirstOrDefaultAsync();
+                .FirstOrDefault();
 
             if (score != null)
             {
@@ -172,7 +176,7 @@ namespace BeatLeader_Server.Controllers
             leaderboard.Plays = rankedScores.Count;
 
             _context.SaveChanges();
-            await _context.RecalculatePP(player);
+            _context.RecalculatePP(player);
 
             var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
             var country = player.Country; var countryRank = 1;
@@ -300,11 +304,11 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/scores/{hash}/{diff}/{mode}")]
         public async Task<ActionResult<IEnumerable<Score>>> GetByHash(string hash, string diff, string mode, [FromQuery] string? country, [FromQuery] string? player, [FromQuery] int page = 1, [FromQuery] int count = 8)
         {
-            var leaderboard = _context.Leaderboards.Include(el => el.Song).Include(el => el.Difficulty).FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+            var leaderboard = _readContext.Leaderboards.Include(el => el.Song).Include(el => el.Difficulty).FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             if (leaderboard != null)
             {
-                IEnumerable<Score> query = _context.Leaderboards.Include(el => el.Scores).ThenInclude(s => s.Player).First(el => el.Id == leaderboard.Id).Scores;
+                IEnumerable<Score> query = _readContext.Leaderboards.Include(el => el.Scores).ThenInclude(s => s.Player).First(el => el.Id == leaderboard.Id).Scores;
                 if (query.Count() == 0)
                 {
                     return new List<Score>();
@@ -393,14 +397,14 @@ namespace BeatLeader_Server.Controllers
             }
 
             PlayerResponse? currentPlayer = null;
-            var song = await _context.Songs.Select(s => new { Id = s.Id, Hash = s.Hash }).FirstOrDefaultAsync(s => s.Hash == hash);
+            var song = _readContext.Songs.Select(s => new { Id = s.Id, Hash = s.Hash }).FirstOrDefault(s => s.Hash == hash);
             if (song == null) {
                 return result;
             }
 
             int modeValue = SongUtils.ModeForModeName(mode);
             if (modeValue == 0) {
-                var customMode = await _context.CustomModes.FirstOrDefaultAsync(m => m.Name == mode);
+                var customMode = _readContext.CustomModes.FirstOrDefault(m => m.Name == mode);
                 if (customMode != null) {
                     modeValue = customMode.Id + 10;
                 } else {
@@ -410,7 +414,7 @@ namespace BeatLeader_Server.Controllers
 
             var leaderboardId = song.Id + SongUtils.DiffForDiffName(diff).ToString() + modeValue.ToString();
 
-            IEnumerable<ScoreResponse> query = _context
+            IEnumerable<ScoreResponse> query = _readContext
                 .Scores
                 .Where(s => !s.Banned && s.LeaderboardId == leaderboardId)
                 .Include(s => s.Player)
@@ -430,10 +434,16 @@ namespace BeatLeader_Server.Controllers
 
             if (context.ToLower() == "standard")
             {
-                query = query.Select(RemovePositiveModifiers);
+                query = query.Select(s => RemovePositiveModifiers(s)).OrderByDescending(p => p.Accuracy);
+            } else {
+                if (query.FirstOrDefault()?.Pp > 0) {
+                    query = query.OrderByDescending(p => p.Pp);
+                } else {
+                    query = query.OrderByDescending(p => p.Accuracy);
+                }
             }
 
-            query = query.OrderByDescending(p => p.ModifiedScore).OrderByDescending(p => p.Pp);
+            
             //Dictionary<string, int> countries = new Dictionary<string, int>();
             //query = query.Select((s, i) => {
             //    if (s.CountryRank == 0) {
@@ -449,7 +459,7 @@ namespace BeatLeader_Server.Controllers
             //});
             if (scope.ToLower() == "friends")
             {
-                PlayerFriends? friends = await _context.Friends.Include(f => f.Friends).FirstOrDefaultAsync(f => f.Id == player);
+                PlayerFriends? friends = _readContext.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == player);
                 if (friends != null) {
                     query = query.Where(s => s.PlayerId == player || friends.Friends.FirstOrDefault(f => f.Id == s.PlayerId) != null);
                 } else {
@@ -457,7 +467,7 @@ namespace BeatLeader_Server.Controllers
                 }
             } else if (scope.ToLower() == "country")
             {
-                currentPlayer = currentPlayer ?? ResponseFromPlayer(_context.Players.Find(player));
+                currentPlayer = currentPlayer ?? ResponseFromPlayer(_readContext.Players.Find(player));
                 if (currentPlayer == null)
                 {
                     return result;
@@ -485,7 +495,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     int rank = query.TakeWhile(s => s.PlayerId != player).Count();
                     result.Selection = SetRank(highlightedScore, rank);
-                    result.Selection.Player = currentPlayer ?? ResponseFromPlayer(_context.Players.Find(player));
+                    result.Selection.Player = currentPlayer ?? ResponseFromPlayer(_readContext.Players.Find(player));
                 }
             }
 
@@ -504,11 +514,11 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/score/{playerID}/{hash}/{diff}/{mode}")]
         public async Task<ActionResult<Score>> GetPlayer(string playerID, string hash, string diff, string mode)
         {
-            var score = await _context
+            var score = _readContext
                 .Scores
                 .Where(l => l.Leaderboard.Song.Hash == hash && l.Leaderboard.Difficulty.DifficultyName == diff && l.Leaderboard.Difficulty.ModeName == mode && l.PlayerId == playerID)
                 .Include(el => el.Player).ThenInclude(el => el.PatreonFeatures)
-                .FirstOrDefaultAsync();
+                .FirstOrDefault();
 
             if (score != null)
             {
@@ -534,8 +544,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null)
         {
-            string userId = HttpContext.CurrentUserID(_context);
-            var player = await _context.Players.FindAsync(userId);
+            string userId = HttpContext.CurrentUserID(_readContext);
+            var player = _readContext.Players.Find(userId);
             if (player == null) {
                 return NotFound();
             }
@@ -544,15 +554,15 @@ namespace BeatLeader_Server.Controllers
 
             using (_serverTiming.TimeAction("sequence"))
             {
-                var friends = await _context.Friends.Where(f => f.Id == player.Id).Include(f => f.Friends).FirstOrDefaultAsync();
+                var friends = _readContext.Friends.Where(f => f.Id == player.Id).Include(f => f.Friends).FirstOrDefault();
                 if (friends != null)
                 {
                     var friendsList = friends.Friends.Select(f => f.Id).ToList();
-                    sequence = _context.Scores.Where(s => s.PlayerId == player.Id || friendsList.Contains(s.PlayerId));
+                    sequence = _readContext.Scores.Where(s => s.PlayerId == player.Id || friendsList.Contains(s.PlayerId));
                 }
                 else
                 {
-                    sequence = _context.Scores.Where(s => s.PlayerId == player.Id);
+                    sequence = _readContext.Scores.Where(s => s.PlayerId == player.Id);
                 }
                 switch (sortBy)
                 {
@@ -616,51 +626,36 @@ namespace BeatLeader_Server.Controllers
                         ItemsPerPage = count,
                         Total = sequence.Count()
                     },
-                    Data = await sequence.Skip((page - 1) * count).Take(count).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).ToListAsync()
+                    Data = sequence.Skip((page - 1) * count).Take(count).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).ToList()
                 };
             }
             return result;
         }
 
+        [HttpGet("~/scores/fix")]
+        public async Task<ActionResult> GetStatistifwegfc()
+        {
+            var scores = _context.Scores.Where(s => s.Replay == "").OrderByDescending(s => s.Timepost).Include(s => s.Leaderboard).ThenInclude(lb => lb.Difficulty).Include(s => s.Leaderboard).ThenInclude(lb => lb.Song).ToList();
+            foreach (var score in scores)
+            {
+                string fileName = score.PlayerId + "-" + score.Leaderboard.Difficulty.DifficultyName + "-" + score.Leaderboard.Difficulty.ModeName + "-" + score.Leaderboard.Song.Hash.ToUpper() + ".bsor";
+                score.Replay = "https://cdn.beatleader.xyz/replays/" + fileName;
+                await CalculateStatisticScore(score);
+
+            }
+            return Ok();
+        }
+
         [HttpGet("~/score/statistic/{id}")]
         public async Task<ActionResult<ScoreStatistic>> GetStatistic(int id)
         {
-            ScoreStatistic? scoreStatistic = _context.ScoreStatistics.Where(s => s.ScoreId == id).Include(s => s.AccuracyTracker).Include(s => s.HitTracker).Include(s => s.ScoreGraphTracker).Include(s => s.WinTracker).FirstOrDefault();
+            ScoreStatistic? scoreStatistic = _readContext.ScoreStatistics.Where(s => s.ScoreId == id).Include(s => s.AccuracyTracker).Include(s => s.HitTracker).Include(s => s.ScoreGraphTracker).Include(s => s.WinTracker).FirstOrDefault();
             if (scoreStatistic == null)
             {
                 return NotFound();
             }
             ReplayStatisticUtils.DecodeArrays(scoreStatistic);
             return scoreStatistic;
-        }
-
-        [HttpGet("~/score/calculatestatistic/players")]
-        public async Task<ActionResult> CalculateStatisticPlayers()
-        {
-            var players = _context.Players.ToList();
-            foreach (Player p in players)
-            {
-                await CalculateStatisticPlayer(p.Id);
-            }
-
-            return Ok();
-        }
-
-        [HttpGet("~/score/calculatestatistic/player/{id}")]
-        public async Task<ActionResult> CalculateStatisticPlayer(string id)
-        {
-           Player? player = _context.Players.Find(id);
-            if (player == null)
-            {
-                return NotFound();
-            }
-
-            var scores = _context.Scores.Where(s => s.PlayerId == id).Include(s => s.Leaderboard).ThenInclude(l => l.Song).ToArray();
-            foreach (var score in scores)
-            {
-                await CalculateStatisticScore(score);
-            }
-            return Ok();
         }
 
         [HttpGet("~/score/calculatestatistic/{id}")]

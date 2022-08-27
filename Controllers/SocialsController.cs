@@ -136,7 +136,7 @@ namespace BeatLeader_Server.Controllers
                 return Redirect(returnUrl);
             }
 
-            var player = await _context.Players.Where(p => p.Id == playerId).Include(p => p.Socials).FirstOrDefaultAsync();
+            var player = _context.Players.Where(p => p.Id == playerId).Include(p => p.Socials).FirstOrDefault();
 
             if (player == null)
             {
@@ -154,20 +154,20 @@ namespace BeatLeader_Server.Controllers
                 case "BeatSaver":
                     player.MapperId = 0;
                     player.Role = string.Join(",", player.Role.Split(",").Where(r => r != "mapper"));
-                    var link = await _context.BeatSaverLinks.Where(l => l.Id == player.Id).FirstOrDefaultAsync();
+                    var link = _context.BeatSaverLinks.Where(l => l.Id == player.Id).FirstOrDefault();
                     if (link != null) {
                         _context.BeatSaverLinks.Remove(link);
                     }
                     break;
                 case "Twitter":
-                    var link1 = await _context.TwitterLinks.Where(l => l.Id == player.Id).FirstOrDefaultAsync();
+                    var link1 = _context.TwitterLinks.Where(l => l.Id == player.Id).FirstOrDefault();
                     if (link1 != null)
                     {
                         _context.TwitterLinks.Remove(link1);
                     }
                     break;
                 case "Twitch":
-                    var link2 = await _context.TwitchLinks.Where(l => l.Id == player.Id).FirstOrDefaultAsync();
+                    var link2 = _context.TwitchLinks.Where(l => l.Id == player.Id).FirstOrDefault();
                     if (link2 != null)
                     {
                         _context.TwitchLinks.Remove(link2);

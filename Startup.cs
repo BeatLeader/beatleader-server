@@ -122,7 +122,29 @@ namespace BeatLeader_Server {
             
             services.AddServerTiming();
 
-            services.AddDbContext<AppContext> (options => options.UseSqlServer (connection));
+            string readWriteConnection;
+            if (Environment.IsDevelopment())
+            {
+                readWriteConnection = "Data Source = tcp:localhost,1433; Initial Catalog = BeatLeader; User Id = sa; Password = SuperStrong!";
+            }
+            else
+            {
+                readWriteConnection = Configuration.GetConnectionString("DefaultConnection");
+            }
+            string readConnection;
+            if (Environment.IsDevelopment())
+            {
+                readConnection = "Data Source = tcp:localhost,1433; Initial Catalog = BeatLeader; ApplicationIntent=ReadOnly; User Id = sa; Password = SuperStrong!";
+            }
+            else
+            {
+                readConnection = Configuration.GetConnectionString("ReadOnlyConnection");
+            }
+
+
+            services.AddDbContext<AppContext>(options => options.UseSqlServer(readWriteConnection));
+            services.AddDbContext<ReadAppContext>(options => options.UseSqlServer(readConnection));
+
 
             services.Configure<AzureStorageConfig> (Configuration.GetSection ("AzureStorageConfig"));
 

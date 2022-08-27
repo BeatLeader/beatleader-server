@@ -4,12 +4,12 @@ namespace BeatLeader_Server.Controllers
 {
     public class MiniRankingController : Controller
     {
-        private readonly AppContext _context;
+        private readonly ReadAppContext _readContext;
         private readonly IConfiguration _configuration;
 
-        public MiniRankingController(AppContext context, IConfiguration configuration)
+        public MiniRankingController(ReadAppContext readContext, IConfiguration configuration)
         {
-            _context = context;
+            _readContext = readContext;
             _configuration = configuration;
         }
 
@@ -29,7 +29,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/minirankings")]
-        public async Task<ActionResult<MiniRankingResponse>> GetMiniRankings([FromQuery] int rank, [FromQuery] string country, [FromQuery] int countryRank)
+        public ActionResult<MiniRankingResponse> GetMiniRankings([FromQuery] int rank, [FromQuery] string country, [FromQuery] int countryRank)
         {
             if (rank < 4) {
                 rank = 4;
@@ -38,7 +38,7 @@ namespace BeatLeader_Server.Controllers
                 countryRank = 4;
             }
 
-            var players = _context.Players.Where(p => 
+            var players = _readContext.Players.Where(p => 
                 !p.Banned 
              && ((p.Country == country && p.CountryRank <= countryRank + 1 && p.CountryRank >= countryRank - 3)
              || (p.Rank <= rank + 1 && p.Rank >= rank - 3)))

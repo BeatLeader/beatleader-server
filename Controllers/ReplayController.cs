@@ -454,42 +454,53 @@ namespace BeatLeader_Server.Controllers
                         NewScoreId = resultScore.Id,
                     });
                 }
-
-                await _context.RecalculatePPAndRankFast(player);
+                if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
+                {
+                    _context.RecalculatePPAndRankFast(player);
+                }
             }
 
             context.Response.OnCompleted(async () => {
 
-                await _context.RecalculatePP(player);
-                await _context.RecalculateEventsPP(player, leaderboard);
-                float resultPP = player.Pp;
-                var rankedPlayers = _context.Players.Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned).OrderByDescending(t => t.Pp).ToList();
+                if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
 
-                if (rankedPlayers.Count() > 0) {
+                    _context.RecalculatePP(player);
 
-                    var country = player.Country;
-                    int topRank = rankedPlayers.First().Rank; int? topCountryRank = rankedPlayers.Where(p => p.Country == country).FirstOrDefault()?.CountryRank;
-                    player.Rank = topRank;
-                    if (topCountryRank != null) {
-                        player.CountryRank = (int)topCountryRank;
-                        topCountryRank++;
-                    }
+                    float resultPP = player.Pp;
+                    var rankedPlayers = _context.Players.Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned).OrderByDescending(t => t.Pp).ToList();
 
-                    topRank++;
-                
-                    foreach ((int i, Player p) in rankedPlayers.Select((value, i) => (i, value)))
+                    if (rankedPlayers.Count() > 0)
                     {
-                        p.Rank = i + topRank;
-                        if (p.Country == country && topCountryRank != null)
+
+                        var country = player.Country;
+                        int topRank = rankedPlayers.First().Rank; int? topCountryRank = rankedPlayers.Where(p => p.Country == country).FirstOrDefault()?.CountryRank;
+                        player.Rank = topRank;
+                        if (topCountryRank != null)
                         {
-                            p.CountryRank = (int)topCountryRank;
+                            player.CountryRank = (int)topCountryRank;
                             topCountryRank++;
                         }
-                    }
-                }
 
-                improvement.TotalPp = player.Pp - oldPp;
-                improvement.TotalRank = player.Rank - oldRank;
+                        topRank++;
+
+                        foreach ((int i, Player p) in rankedPlayers.Select((value, i) => (i, value)))
+                        {
+                            p.Rank = i + topRank;
+                            if (p.Country == country && topCountryRank != null)
+                            {
+                                p.CountryRank = (int)topCountryRank;
+                                topCountryRank++;
+                            }
+                        }
+                    }
+
+                    improvement.TotalPp = player.Pp - oldPp;
+                    improvement.TotalRank = player.Rank - oldRank;
+                }
+                //_context.RecalculateEventsPP(player, leaderboard);
+                
+
+                
 
                 try
                 {
@@ -647,15 +658,15 @@ namespace BeatLeader_Server.Controllers
                 }
                 player.ScoreStats.TotalPlayCount--;
             } else {
-                try
-                {
-                    leaderboard.Scores.Add(previousScore);
-                }
-                catch (Exception)
-                {
-                    leaderboard.Scores = new List<Score>(leaderboard.Scores);
-                    leaderboard.Scores.Add(previousScore);
-                }
+                //try
+                //{
+                //    leaderboard.Scores.Add(previousScore);
+                //}
+                //catch (Exception)
+                //{
+                //    leaderboard.Scores = new List<Score>(leaderboard.Scores);
+                //    leaderboard.Scores.Add(previousScore);
+                //}
 
                 player.ScoreStats.TotalScore += previousScore.ModifiedScore;
                 player.ScoreStats.AverageAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, previousScore.Accuracy);
@@ -676,7 +687,7 @@ namespace BeatLeader_Server.Controllers
 
             leaderboard.Plays = rankedScores.Count;
 
-            await _context.RecalculatePP(player);
+            _context.RecalculatePP(player);
 
             var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
             var country = player.Country; var countryRank = 1;

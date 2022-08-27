@@ -15,10 +15,12 @@ namespace BeatLeader_Server.Controllers
     public class SongController : Controller
     {
         private readonly AppContext _context;
+        private readonly ReadAppContext _readContext;
 
-        public SongController(AppContext context)
+        public SongController(AppContext context, ReadAppContext readContext)
         {
             _context = context;
+            _readContext = readContext;
         }
 
         [HttpGet("~/map/hash/{hash}")]
@@ -59,19 +61,19 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/map/modinterface/{hash}")]
         public async Task<ActionResult<IEnumerable<DiffModResponse>>> GetModSongInfos(string hash)
         {
-            var resFromLB = await _context.Leaderboards
+            var resFromLB = _readContext.Leaderboards
                 .Where(lb => lb.Song.Hash == hash)
                 .Select(lb => new { 
                     DiffModResponse = ResponseUtils.DiffModResponseFromDiffAndVotes(lb.Difficulty, lb.Scores.Where(score => score.RankVoting != null).Select(score => score.RankVoting!.Rankability).ToArray()), 
                     SongDiffs = lb.Song.Difficulties 
                 })
-                .ToArrayAsync();
+                .ToArray();
 
             ICollection<DifficultyDescription> difficulties;
             if(resFromLB.Length == 0)
             {
                 // We couldnt find any Leaderboard with that hash. Therefor we need to check if we can atleast get the song
-                Song? song = await this.GetOrAddSong(hash);
+                Song? song = await GetOrAddSong(hash);
                 // Otherwise the song does not exist
                 if (song is null)
                 {
@@ -107,7 +109,7 @@ namespace BeatLeader_Server.Controllers
                 else
                 {
                     string songId = song.Id;
-                    Song? existingSong = await _context.Songs.Include(s => s.Difficulties).FirstOrDefaultAsync(i => i.Id == songId);
+                    Song? existingSong = _context.Songs.Include(s => s.Difficulties).FirstOrDefault(i => i.Id == songId);
                     while (existingSong != null)
                     {
                         if (song.Hash.ToLower() == hash.ToLower())
@@ -118,7 +120,7 @@ namespace BeatLeader_Server.Controllers
                             }
                         }
                         songId += "x";
-                        existingSong = await _context.Songs.Include(s => s.Difficulties).FirstOrDefaultAsync(i => i.Id == songId);
+                        existingSong = _context.Songs.Include(s => s.Difficulties).FirstOrDefault(i => i.Id == songId);
                     }
                     song.Id = songId;
                     song.Hash = hash;
@@ -140,7 +142,7 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         private Song? GetSongWithDiffsFromHash(string hash)
         {
-            return _context.Songs.Where(el => el.Hash == hash).Include(song => song.Difficulties).FirstOrDefault();
+            return _readContext.Songs.Where(el => el.Hash == hash).Include(song => song.Difficulties).FirstOrDefault();
         }
 
         [NonAction]

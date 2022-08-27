@@ -17,12 +17,12 @@ namespace BeatLeader_Server.Controllers
     public class PreviewController : Controller
     {
         private readonly HttpClient _client;
-        private readonly AppContext _context;
+        private readonly ReadAppContext _readContext;
         private readonly IWebHostEnvironment _webHostEnvironment;
 
-        public PreviewController(AppContext context, IWebHostEnvironment webHostEnvironment) {
+        public PreviewController(ReadAppContext context, IWebHostEnvironment webHostEnvironment) {
             _client = new HttpClient();
-            _context = context;
+            _readContext = context;
             _webHostEnvironment = webHostEnvironment;
         }
         class SongSelect {
@@ -45,22 +45,22 @@ namespace BeatLeader_Server.Controllers
             Score? score = null;
 
             if (playerID != null && id != null) {
-                player = _context.Players.Where(p => p.Id == playerID).FirstOrDefault() ?? await GetPlayerFromSS("https://scoresaber.com/api/player/" + playerID + "/full");
-                song = _context.Songs.Select(s => new SongSelect { Id = s.Id, CoverImage = s.CoverImage, Name = s.Name }).Where(s => s.Id == id).FirstOrDefault();
+                player = _readContext.Players.Where(p => p.Id == playerID).FirstOrDefault() ?? await GetPlayerFromSS("https://scoresaber.com/api/player/" + playerID + "/full");
+                song = _readContext.Songs.Select(s => new SongSelect { Id = s.Id, CoverImage = s.CoverImage, Name = s.Name }).Where(s => s.Id == id).FirstOrDefault();
             } else if (scoreId != null) {
-                score = await _context.Scores
+                score = _readContext.Scores
                     .Where(s => s.Id == scoreId)
                     .Include(s => s.Player)
                     .Include(s => s.Leaderboard)
                         .ThenInclude(l => l.Song)
                     .Include(s => s.Leaderboard)
                         .ThenInclude(l => l.Difficulty)
-                    .FirstOrDefaultAsync();
+                    .FirstOrDefault();
                 if (score != null) {
                     player = score.Player;
                     song = new SongSelect { Id = score.Leaderboard.Song.Id, CoverImage = score.Leaderboard.Song.CoverImage, Name = score.Leaderboard.Song.Name };
                 } else {
-                    var redirect = await _context.ScoreRedirects.FirstOrDefaultAsync(sr => sr.OldScoreId == scoreId);
+                    var redirect = _readContext.ScoreRedirects.FirstOrDefault(sr => sr.OldScoreId == scoreId);
                     if (redirect != null && redirect.NewScoreId != scoreId)
                     {
                         return await Get(scoreId: redirect.NewScoreId);
@@ -157,7 +157,7 @@ namespace BeatLeader_Server.Controllers
             if (players != null && hash != null)
             {
                 var ids = players.Split(",");
-                playersList = _context.Players.Where(p => ids.Contains(p.Id)).ToList();
+                playersList = _readContext.Players.Where(p => ids.Contains(p.Id)).ToList();
                 foreach (var id in ids)
                 {
                     if (playersList.FirstOrDefault(p => p.Id == id) == null) {
@@ -169,7 +169,7 @@ namespace BeatLeader_Server.Controllers
                 }
                     
                 
-                song = _context.Songs.Select(s => new SongSelect { Hash = s.Hash, CoverImage = s.CoverImage, Name = s.Name }).Where(s => s.Hash == hash).FirstOrDefault();
+                song = _readContext.Songs.Select(s => new SongSelect { Hash = s.Hash, CoverImage = s.CoverImage, Name = s.Name }).Where(s => s.Hash == hash).FirstOrDefault();
             }
 
             if (playersList.Count == 0 || song == null)

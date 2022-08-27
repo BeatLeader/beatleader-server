@@ -18,16 +18,20 @@ namespace BeatLeader_Server.Controllers
     public class PlaylistController : Controller
     {
         private readonly AppContext _context;
+        private readonly ReadAppContext _readAppContext;
+
         BlobContainerClient _playlistContainerClient;
         BlobContainerClient _assetsContainerClient;
         IWebHostEnvironment _environment;
 
         public PlaylistController(
             AppContext context,
+            ReadAppContext readAppContext,
             IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env)
         {
             _context = context;
+            _readAppContext = readAppContext;
             if (env.IsDevelopment())
             {
                 _playlistContainerClient = new BlobContainerClient(config.Value.AccountName, config.Value.PlaylistContainerName);
@@ -59,7 +63,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/user/oneclickplaylist")]
         public async Task<ActionResult> GetOneClickPlaylist()
         {
-            string? currentID = HttpContext.CurrentUserID(_context);
+            string? currentID = HttpContext.CurrentUserID(_readAppContext);
             if (currentID == null) return Unauthorized();
 
             BlobClient blobClient = _playlistContainerClient.GetBlobClient(currentID + "oneclick.bplist");
@@ -179,9 +183,9 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/playlists")]
-        public async Task<ActionResult<IEnumerable<Playlist>>> Get()
+        public ActionResult<IEnumerable<Playlist>> Get()
         {
-            return await _context.Playlists.Where(t=>t.IsShared).ToListAsync();
+            return _readAppContext.Playlists.Where(t=>t.IsShared).ToList();
         }
 
         [HttpGet("~/playlist/{id}")]
@@ -197,12 +201,12 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/user/playlists")]
-        public async Task<ActionResult<IEnumerable<Playlist>>> GetAllPlaylists()
+        public ActionResult<IEnumerable<Playlist>> GetAllPlaylists()
         {
-            string? currentID = HttpContext.CurrentUserID(_context);
+            string? currentID = HttpContext.CurrentUserID(_readAppContext);
             if (currentID == null) return Unauthorized();
 
-            return await _context.Playlists.Where(t => t.OwnerId == currentID).ToListAsync();
+            return _readAppContext.Playlists.Where(t => t.OwnerId == currentID).ToList();
         }
 
         [HttpPost("~/user/playlist")]
@@ -214,7 +218,7 @@ namespace BeatLeader_Server.Controllers
             Playlist? playlistRecord = null;
             
             if (id != null) {
-               playlistRecord = await _context.Playlists.Where(t => t.OwnerId == currentID && t.Id == id).FirstOrDefaultAsync();
+               playlistRecord = _context.Playlists.Where(t => t.OwnerId == currentID && t.Id == id).FirstOrDefault();
             }
 
             if (playlistRecord == null) {
@@ -254,7 +258,7 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             if (currentID == null) return Unauthorized();
 
-            Playlist? playlistRecord = await _context.Playlists.Where(t => t.OwnerId == currentID && t.Id == id).FirstOrDefaultAsync();
+            Playlist? playlistRecord = _context.Playlists.Where(t => t.OwnerId == currentID && t.Id == id).FirstOrDefault();
 
             if (playlistRecord == null)
             {
@@ -316,7 +320,7 @@ namespace BeatLeader_Server.Controllers
             if (HttpContext != null)
             {
                 string userId = HttpContext.CurrentUserID(_context);
-                var currentPlayer = await _context.Players.FindAsync(userId);
+                var currentPlayer = _context.Players.Find(userId);
 
                 if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
                 {
@@ -369,7 +373,7 @@ namespace BeatLeader_Server.Controllers
             if (HttpContext != null)
             {
                 string userId = HttpContext.CurrentUserID(_context);
-                var currentPlayer = await _context.Players.FindAsync(userId);
+                var currentPlayer = _context.Players.Find(userId);
 
                 if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
                 {
@@ -423,7 +427,7 @@ namespace BeatLeader_Server.Controllers
             if (HttpContext != null)
             {
                 string userId = HttpContext.CurrentUserID(_context);
-                var currentPlayer = await _context.Players.FindAsync(userId);
+                var currentPlayer = _context.Players.Find(userId);
 
                 if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
                 {
@@ -477,7 +481,7 @@ namespace BeatLeader_Server.Controllers
             if (HttpContext != null)
             {
                 string userId = HttpContext.CurrentUserID(_context);
-                var currentPlayer = await _context.Players.FindAsync(userId);
+                var currentPlayer = _context.Players.Find(userId);
 
                 if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
                 {
@@ -620,7 +624,7 @@ namespace BeatLeader_Server.Controllers
             if (HttpContext != null)
             {
                 string userId = HttpContext.CurrentUserID(_context);
-                var currentPlayer = await _context.Players.FindAsync(userId);
+                var currentPlayer = _context.Players.Find(userId);
 
                 if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
                 {
@@ -652,7 +656,7 @@ namespace BeatLeader_Server.Controllers
 
             foreach (var player in players)
             {
-                await _context.RecalculateEventsPP(player, eventRanking.Leaderboards.First());
+                _context.RecalculateEventsPP(player, eventRanking.Leaderboards.First());
             }
             _context.SaveChanges();
 
@@ -660,8 +664,8 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/event/{id}")]
-        public async Task<ActionResult<EventRanking>> GetEvent(int id) {
-            return _context.EventRankings.FirstOrDefault(e => e.Id == id);
+        public ActionResult<EventRanking?> GetEvent(int id) {
+            return _readAppContext.EventRankings.FirstOrDefault(e => e.Id == id);
         }
     }
 }

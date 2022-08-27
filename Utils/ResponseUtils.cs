@@ -30,6 +30,7 @@ namespace BeatLeader_Server.Utils
             public int Rank { get; set; }
             public int CountryRank { get; set; }
             public string Role { get; set; }
+            public ICollection<PlayerSocial>? Socials { get; set; }
 
             public PatreonResponse? PatreonFeatures { get; set; }
             public IEnumerable<ClanResponse> Clans { get; set; }
@@ -40,7 +41,6 @@ namespace BeatLeader_Server.Utils
             public float LastTwoWeeksTime { get; set; }
             public float AllTime { get; set; }
             public string Histories { get; set; } = "";
-
             public PlayerScoreStats ScoreStats { get; set; }
             public IEnumerable<EventPlayer>? EventsParticipating { get; set; }
         }
@@ -53,7 +53,7 @@ namespace BeatLeader_Server.Utils
             public bool Inactive { get; set; }
 
             public string ExternalProfileUrl { get; set; } = "";
-            public ICollection<PlayerSocial>? Socials { get; set; }
+            
 
             public PlayerStatsHistory? StatsHistory { get; set; }
 
@@ -269,6 +269,7 @@ namespace BeatLeader_Server.Utils
                 Rank = p.Rank,
                 CountryRank = p.CountryRank,
                 Role = p.Role,
+                Socials = p.Socials,
                 PatreonFeatures = p.PatreonFeatures == null ? null :
                     new PatreonResponse
                     {

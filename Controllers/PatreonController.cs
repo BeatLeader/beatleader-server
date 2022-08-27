@@ -102,7 +102,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     string id = user.data.id;
 
-                    var existingPatreonLink = await _context.PatreonLinks.FirstOrDefaultAsync(pl => pl.PatreonId == id);
+                    var existingPatreonLink = _context.PatreonLinks.FirstOrDefault(pl => pl.PatreonId == id);
                     if (existingPatreonLink != null)
                     {
                         return Redirect(returnUrl);
@@ -156,11 +156,11 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> PatchPatreonFeatures([FromQuery] string? message = null, [FromQuery] string? leftSaberColor = null, [FromQuery] string? rightSaberColor = null, [FromQuery] string? id = null)
         {
             string playerId = HttpContext.CurrentUserID(_context);
-            var player = await _context.Players.Where(p => p.Id == playerId).Include(p => p.PatreonFeatures).FirstOrDefaultAsync();
+            var player = _context.Players.Where(p => p.Id == playerId).Include(p => p.PatreonFeatures).FirstOrDefault();
 
             if (id != null && player != null && player.Role.Contains("admin"))
             {
-                player = await _context.Players.FindAsync(id);
+                player = _context.Players.Find(id);
             }
 
             if (player == null)
@@ -234,7 +234,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> RefreshPatreon()
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
+            var currentPlayer = _context.Players.Find(currentID);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
