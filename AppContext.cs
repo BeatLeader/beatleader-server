@@ -44,6 +44,7 @@ namespace BeatLeader_Server
         public DbSet<RankVoting> RankVotings { get; set; }
         public DbSet<RankChange> RankChanges { get; set; }
         public DbSet<ScoreRedirect> ScoreRedirects { get; set; }
+        public DbSet<ModifiersMap> Modifiers { get; set; }
 
         public DbSet<EventRanking> EventRankings { get; set; }
 
@@ -107,6 +108,7 @@ namespace BeatLeader_Server
         public DbSet<RankVoting> RankVotings { get; set; }
         public DbSet<RankChange> RankChanges { get; set; }
         public DbSet<ScoreRedirect> ScoreRedirects { get; set; }
+        public DbSet<ModifiersMap> Modifiers { get; set; }
 
         public DbSet<EventRanking> EventRankings { get; set; }
 

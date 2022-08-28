@@ -58,6 +58,7 @@ namespace BeatLeader_Server.Utils
             public PlayerStatsHistory? StatsHistory { get; set; }
 
             public ICollection<Badge>? Badges { get; set; }
+            public ICollection<ScoreResponseWithMyScore>? PinnedScores { get; set; }
         }
 
         public class ScoreResponse
@@ -86,6 +87,7 @@ namespace BeatLeader_Server.Utils
             public PlayerResponse Player { get; set; }
             public ScoreImprovement? ScoreImprovement { get; set; }
             public RankVoting? RankVoting { get; set; }
+            public ScoreMetadata? Metadata { get; set; }
         }
 
         public class LeaderboardsResponse
@@ -197,6 +199,7 @@ namespace BeatLeader_Server.Utils
             public DifficultyStatus Status { get; set; }
             public int Type { get; set; }
             public float[] Votes { get; set; }
+            public ModifiersMap? ModifierValues { get; set; }
         }
 
         public static T RemoveLeaderboard<T>  (Score s, int i) where T : ScoreResponse, new()
@@ -226,6 +229,7 @@ namespace BeatLeader_Server.Utils
                 Player = ResponseFromPlayer(s.Player),
                 ScoreImprovement = s.ScoreImprovement,
                 RankVoting = s.RankVoting,
+                Metadata = s.Metadata
             };
         }
 
@@ -376,7 +380,8 @@ namespace BeatLeader_Server.Utils
                 Stars = diff.Stars,
                 Status = diff.Status,
                 Type = diff.Type,
-                Votes = votes
+                Votes = votes,
+                ModifierValues = diff.ModifierValues
             };
         }
     }

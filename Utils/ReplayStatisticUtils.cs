@@ -122,7 +122,8 @@ namespace BeatLeader_Server.Utils
                 Won = replay.info.failTime < 0.01,
                 EndTime = (replay.frames.LastOrDefault() != null) ? replay.frames.Last().time : 0,
                 NbOfPause = replay.pauses.Count(),
-                JumpDistance = replay.info.jumpDistance
+                JumpDistance = replay.info.jumpDistance,
+                AverageHeight = replay.heights.Count() > 0 ? replay.heights.Average(h => h.height) : replay.info.height
             };
 
             HitTracker hitTracker = new HitTracker();
@@ -519,6 +520,7 @@ namespace BeatLeader_Server.Utils
                 EndTime = statistics.Average(st => st.WinTracker.EndTime),
                 NbOfPause = (int)Math.Round(statistics.Average(st => st.WinTracker.NbOfPause)),
                 JumpDistance = statistics.Average(st => st.WinTracker.JumpDistance),
+                AverageHeight = statistics.Average(st => st.WinTracker.AverageHeight),
                 TotalScore = (int)statistics.Average(st => st.WinTracker.TotalScore)
             };
 

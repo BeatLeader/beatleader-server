@@ -59,6 +59,10 @@ namespace BeatLeader_Server.Controllers
             {
                 redirectUrl = Url.Action("LinkTwitter", "Socials", new { returnUrl = returnUrl ?? "/" });
             }
+            else if (provider == "Google")
+            {
+                redirectUrl = Url.Action("LinkGoogle", "Socials", new { returnUrl = returnUrl ?? "/" });
+            }
 
             // Instruct the middleware corresponding to the requested external identity
             // provider to redirect the user agent to its own authorization endpoint.

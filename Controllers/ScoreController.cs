@@ -208,7 +208,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            var query = _context.Leaderboards.Include(s => s.Scores).Include(l => l.Difficulty);
+            var query = _context.Leaderboards.Include(s => s.Scores).Include(l => l.Difficulty).ThenInclude(d => d.ModifierValues);
             var allLeaderboards = (leaderboardId != null ? query.Where(s => s.Id == leaderboardId) : query).Select(l => new { Scores = l.Scores, Difficulty = l.Difficulty }).ToList();
 
             int counter = 0;
@@ -217,15 +217,16 @@ namespace BeatLeader_Server.Controllers
             foreach (var leaderboard in allLeaderboards) {
                 var allScores = leaderboard.Scores.Where(s => !s.Banned).ToList();
                 var status = leaderboard.Difficulty.Status;
+                var modifiers = leaderboard.Difficulty.ModifierValues;
                 bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.nominated;
                 bool hasPp = status == DifficultyStatus.ranked || qualification;
 
                 foreach (Score s in allScores)
                 {
                     if (hasPp) {
-                        s.ModifiedScore = (int)(s.BaseScore * ReplayUtils.GetNegativeMultiplier(s.Modifiers));
+                        s.ModifiedScore = (int)(s.BaseScore * modifiers.GetNegativeMultiplier(s.Modifiers));
                     } else {
-                        s.ModifiedScore = (int)(s.BaseScore * ReplayUtils.GetTotalMultiplier(s.Modifiers));
+                        s.ModifiedScore = (int)(s.BaseScore * modifiers.GetTotalMultiplier(s.Modifiers));
                     }
 
                     if (leaderboard.Difficulty.MaxScore > 0)
@@ -343,26 +344,17 @@ namespace BeatLeader_Server.Controllers
             return s;
         }
 
-        private ScoreResponse RemovePositiveModifiers(ScoreResponse s)
+        private ScoreResponse RemovePositiveModifiers(ScoreResponse s, ModifiersMap modifiersObject)
         {
             ScoreResponse result = s;
 
             int maxScore = (int)(result.ModifiedScore / result.Accuracy);
-            if (result.Pp > 0)
-            {
-                result.Pp /= result.Accuracy;
-            }
 
-            (string modifiers, float value) = ReplayUtils.GetNegativeMultipliers(s.Modifiers);
+            (string modifiers, float value) = modifiersObject.GetNegativeMultipliers(s.Modifiers);
 
             result.ModifiedScore = (int)(result.BaseScore * value);
             result.Accuracy = (float)result.ModifiedScore / (float)maxScore;
             result.Modifiers = modifiers;
-
-            if (result.Pp > 0)
-            {
-                result.Pp *= result.Accuracy;
-            }
 
             return result;
         }
@@ -434,7 +426,8 @@ namespace BeatLeader_Server.Controllers
 
             if (context.ToLower() == "standard")
             {
-                query = query.Select(s => RemovePositiveModifiers(s)).OrderByDescending(p => p.Accuracy);
+                var modifiers = _context.Leaderboards.Where(lb => lb.Id == leaderboardId).Include(lb => lb.Difficulty).ThenInclude(d => d.ModifierValues).Select(lb => lb.Difficulty.ModifierValues).FirstOrDefault();
+                query = query.Select(s => RemovePositiveModifiers(s, modifiers)).OrderByDescending(p => p.Accuracy);
             } else {
                 if (query.FirstOrDefault()?.Pp > 0) {
                     query = query.OrderByDescending(p => p.Pp);
@@ -460,6 +453,7 @@ namespace BeatLeader_Server.Controllers
             if (scope.ToLower() == "friends")
             {
                 PlayerFriends? friends = _readContext.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == player);
+
                 if (friends != null) {
                     query = query.Where(s => s.PlayerId == player || friends.Friends.FirstOrDefault(f => f.Id == s.PlayerId) != null);
                 } else {
@@ -555,6 +549,7 @@ namespace BeatLeader_Server.Controllers
             using (_serverTiming.TimeAction("sequence"))
             {
                 var friends = _readContext.Friends.Where(f => f.Id == player.Id).Include(f => f.Friends).FirstOrDefault();
+
                 if (friends != null)
                 {
                     var friendsList = friends.Friends.Select(f => f.Id).ToList();
@@ -667,6 +662,129 @@ namespace BeatLeader_Server.Controllers
                 return NotFound("Score not found");
             }
             return await CalculateStatisticScore(score);
+        }
+
+        [HttpPut("~/score/{id}/pin")]
+        public async Task<ActionResult<ScoreMetadata>> PinScore(
+            int id,
+            [FromQuery] bool pin,
+            [FromQuery] string? description = null,
+            [FromQuery] string? link = null,
+            [FromQuery] int? priority = null)
+        {
+            string? currentId = HttpContext.CurrentUserID(_context);
+            Player? currentPlayer = _context.Players.Find(currentId);
+            if (currentPlayer == null)
+            {
+                return NotFound("Player not found");
+            }
+
+            bool hasDescription = Request.Query.ContainsKey("description");
+            bool hasLink = Request.Query.ContainsKey("link");
+
+            if (description != null && description.Length > 300) {
+                return BadRequest("The description is too long");
+            }
+
+            var scores = _context
+                .Scores
+                .Where(s => s.PlayerId == currentPlayer.Id && (s.Id == id || s.Metadata != null))
+                .Include(s => s.Metadata)
+                .ToList();
+            if (scores.Count() == 0 || scores.FirstOrDefault(s => s.Id == id) == null)
+            {
+                return NotFound("Score not found");
+            }
+
+            var score = scores.First(s => s.Id == id);
+
+            if (currentPlayer.Role.Contains("tipper") || currentPlayer.Role.Contains("supporter") || currentPlayer.Role.Contains("sponsor"))
+            {
+                if (scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned).Count() > 9 && pin && score.Metadata.Status != ScoreStatus.pinned)
+                {
+                    return BadRequest("Too many scores pinned");
+                }
+            }
+            else
+            {
+                if (scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned).Count() > 2 && pin && score.Metadata.Status != ScoreStatus.pinned)
+                {
+                    return BadRequest("Too many scores pinned");
+                }
+            }
+            ScoreMetadata? metadata = score.Metadata;
+            if (metadata == null) {
+                metadata = new ScoreMetadata {
+                    Priority = scores.Count == 1 ? 1 : scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned).Max(s => s.Metadata.Priority) + 1
+                };
+                score.Metadata = metadata;
+            }
+
+            if (hasDescription)
+            {
+                metadata.Description = description;
+            }
+            if (hasLink) {
+                if (link != null) {
+                    (string? service, string? icon) = LinkUtils.ServiceAndIconFromLink(link);
+                    if (service == null) {
+                        return BadRequest("Unsupported link");
+                    }
+
+                    metadata.LinkServiceIcon = icon;
+                    metadata.LinkService = service;
+                    metadata.Link = link;
+                } else {
+                    metadata.LinkServiceIcon = null;
+                    metadata.LinkService = null;
+                    metadata.Link = null;
+                }
+            }
+            
+            if (pin) {
+                metadata.Status = ScoreStatus.pinned;
+            } else {
+                metadata.Status = ScoreStatus.normal;
+            }
+            if (priority != null)
+            {
+                if (!(priority <= scores.Count)) return BadRequest("Priority is out of range");
+
+                int priorityValue = (int)priority;
+
+                if (priorityValue <= metadata.Priority) {
+                var scoresLower = scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned && s.Metadata.Priority >= priorityValue).ToList();
+                    if (scoresLower.Count > 0) {
+                        foreach (var item in scoresLower)
+                        {
+                            item.Metadata.Priority++;
+                        }
+                    }
+                } else {
+                    var scoresLower = scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned && s.Metadata.Priority <= priorityValue).ToList();
+                    if (scoresLower.Count > 0)
+                    {
+                        foreach (var item in scoresLower)
+                        {
+                            item.Metadata.Priority--;
+                        }
+                    }
+                }
+
+                metadata.Priority = priorityValue;
+            }
+
+            var scoresOrdered = scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned).OrderBy(s => s.Metadata.Priority).ToList();
+            if (scoresOrdered.Count > 0) {
+                foreach ((int i, Score p) in scoresOrdered.Select((value, i) => (i, value)))
+                {
+                    p.Metadata.Priority = i + 1;
+                }
+            }
+
+            _context.SaveChanges();
+
+            return metadata;
         }
 
         [NonAction]

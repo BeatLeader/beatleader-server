@@ -1,5 +1,23 @@
 ﻿namespace BeatLeader_Server.Models
 {
+    public enum ScoreStatus
+    {
+        normal = 0,
+        pinned = 1,
+    }
+
+    public class ScoreMetadata 
+    {
+        public int Id { get; set; }
+        public ScoreStatus Status { get; set; }
+        public int Priority { get; set; }
+        public string? Description { get; set; }
+
+        public string? LinkService { get; set; }
+        public string? LinkServiceIcon { get; set; }
+        public string? Link { get; set; }
+    }
+
     public class Score
     {
         public int Id { get; set; }
@@ -33,6 +51,7 @@
         public ScoreImprovement? ScoreImprovement { get; set; }
         public bool Banned { get; set; } = false;
         public RankVoting? RankVoting { get; set; }
+        public ScoreMetadata? Metadata { get; set; }
     }
 
     public class FailedScore

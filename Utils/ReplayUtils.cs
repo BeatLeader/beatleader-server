@@ -1,8 +1,10 @@
-﻿using BeatLeader_Server.Models;
+﻿using AngleSharp.Common;
+using BeatLeader_Server.Extensions;
+using BeatLeader_Server.Models;
 
 namespace BeatLeader_Server.Utils
 {
-    class ReplayUtils
+    static class ReplayUtils
     {
         public static float Curve(float acc, float stars)
         {
@@ -14,8 +16,8 @@ namespace BeatLeader_Server.Utils
         }
 
         public static (float, float) PpFromScore(Score s, DifficultyDescription difficulty) {
-            float mp = GetPositiveMultiplier(s.Modifiers);
-            mp = 1 + (mp - 1) * 2f;
+            float mp = difficulty.ModifierValues.GetPositiveMultiplier(s.Modifiers);
+            mp = 1 + (mp - 1);
 
             float rawPP = (float)(Curve(s.Accuracy, (float)difficulty.Stars - 0.5f) * ((float)difficulty.Stars + 0.5f) * 42);
             float fullPP = (float)(Curve(s.Accuracy, (float)difficulty.Stars * mp - 0.5f) * ((float)difficulty.Stars * mp + 0.5f) * 42);
@@ -51,15 +53,16 @@ namespace BeatLeader_Server.Utils
             score.Hmd = HMD(replay.info.hmd);
 
             var status = leaderboard.Difficulty.Status;
+            var modifers = leaderboard.Difficulty.ModifierValues;
             bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.nominated;
             bool hasPp = status == DifficultyStatus.ranked || qualification;
 
             if (hasPp)
             {
-                score.ModifiedScore = (int)(score.BaseScore * GetNegativeMultiplier(replay.info.modifiers));
+                score.ModifiedScore = (int)(score.BaseScore * modifers.GetNegativeMultiplier(replay.info.modifiers));
             } else
             {
-                score.ModifiedScore = (int)(score.BaseScore * GetTotalMultiplier(replay.info.modifiers));
+                score.ModifiedScore = (int)(score.BaseScore * modifers.GetTotalMultiplier(replay.info.modifiers));
             }
             int maxScore = leaderboard.Difficulty.MaxScore > 0 ? leaderboard.Difficulty.MaxScore : MaxScoreForNote(leaderboard.Difficulty.Notes);
             score.Accuracy = (float)score.ModifiedScore / (float)maxScore;
@@ -111,11 +114,11 @@ namespace BeatLeader_Server.Utils
           return note_score * (41 + (count - 13) * 8);
         }
 
-        public static float GetTotalMultiplier(string modifiers)
+        public static float GetTotalMultiplier(this ModifiersMap modifiersObject, string modifiers)
 		{
 			float multiplier = 1;
 
-            var modifiersMap = Modifiers();
+            var modifiersMap = modifiersObject.ToDictionary<float>();
             foreach (var modifier in modifiersMap.Keys)
             {
                 if (modifiers.Contains(modifier)) { multiplier += modifiersMap[modifier]; }
@@ -125,11 +128,11 @@ namespace BeatLeader_Server.Utils
 			return multiplier;
 		}
 
-        public static float GetPositiveMultiplier(string modifiers)
+        public static float GetPositiveMultiplier(this ModifiersMap modifiersObject, string modifiers)
         {
             float multiplier = 1;
 
-            var modifiersMap = Modifiers();
+            var modifiersMap = modifiersObject.ToDictionary<float>();
             foreach (var modifier in modifiersMap.Keys)
             {
                 if (modifiers.Contains(modifier) && modifiersMap[modifier] > 0) { multiplier += modifiersMap[modifier]; }
@@ -138,11 +141,11 @@ namespace BeatLeader_Server.Utils
             return multiplier;
         }
 
-        public static float GetNegativeMultiplier(string modifiers)
+        public static float GetNegativeMultiplier(this ModifiersMap modifiersObject, string modifiers)
         {
             float multiplier = 1;
 
-            var modifiersMap = Modifiers();
+            var modifiersMap = modifiersObject.ToDictionary<float>();
             foreach (var modifier in modifiersMap.Keys)
             {
                 if (modifiers.Contains(modifier) && modifiersMap[modifier] < 0) { multiplier += modifiersMap[modifier]; }
@@ -151,12 +154,12 @@ namespace BeatLeader_Server.Utils
             return multiplier;
         }
 
-        public static (string, float) GetNegativeMultipliers(string modifiers)
+        public static (string, float) GetNegativeMultipliers(this ModifiersMap modifiersObject, string modifiers)
         {
             float multiplier = 1;
             List<string> modifierArray = new List<string>();
 
-            var modifiersMap = Modifiers();
+            var modifiersMap = modifiersObject.ToDictionary<float>();
             foreach (var modifier in modifiersMap.Keys)
             {
                 if (modifiers.Contains(modifier)) {
@@ -170,7 +173,7 @@ namespace BeatLeader_Server.Utils
             return (String.Join(",", modifierArray), multiplier);
         }
 
-        public static Dictionary<string, float> Modifiers()
+        public static Dictionary<string, float> LegacyModifiers()
         {
             return new Dictionary<string, float>
             {

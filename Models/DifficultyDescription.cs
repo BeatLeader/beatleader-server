@@ -1,4 +1,6 @@
-﻿namespace BeatLeader_Server.Models
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace BeatLeader_Server.Models
 {
     public enum DifficultyStatus
     {
@@ -18,6 +20,7 @@
         public string DifficultyName { get; set; }
         public string ModeName { get; set; }
         public DifficultyStatus Status { get; set; }
+        public ModifiersMap? ModifierValues { get; set; } = new ModifiersMap();
 
         public bool Nominated { get; set; }
         public int NominatedTime { get; set; }

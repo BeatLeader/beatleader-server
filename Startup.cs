@@ -60,6 +60,8 @@ namespace BeatLeader_Server {
             .AddCookie("BLPatreon")
             .AddCookie("BLTwitch")
             .AddCookie("BLTwitter")
+            .AddCookie("BLGoogle")
+            //.AddCookie("BLDiscord")
             .AddCookie("BLBeatSaver")
             .AddSteamTicket(options =>
             {
@@ -118,8 +120,19 @@ namespace BeatLeader_Server {
                     options.ClientSecret = twitterSecret;
                     options.SignInScheme = "BLTwitter";
                 });
+
+                //string googleId = Configuration.GetValue<string>("GoogleId");
+                //string googleSecret = Configuration.GetValue<string>("GoogleSecret");
+
+                //authBuilder.AddGoogle(options => {
+                //    options.SaveTokens = true;
+                //    options.ClientId = googleId;
+                //    options.ClientSecret = googleSecret;
+                //    options.SignInScheme = "BLGoogle";
+                //    options.Scope.Add("https://www.googleapis.com/auth/youtube.readonly");
+                //});
             }
-            
+
             services.AddServerTiming();
 
             string readWriteConnection;

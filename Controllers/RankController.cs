@@ -261,6 +261,8 @@ namespace BeatLeader_Server.Controllers
                        .Leaderboards
                        .Include(lb => lb.Song)
                        .Include(lb => lb.Qualification)
+                       .Include(lb => lb.Difficulty)
+                       .ThenInclude(d => d.ModifierValues)
                        .Where(lb => lb.Song.Id == leaderboard.Song.Id && lb.Qualification != null).ToList();
                 string? alreadyApproved = qualifiedLeaderboards.Count() == 0 ? null : qualifiedLeaderboards.FirstOrDefault(lb => lb.Qualification.MapperAllowed)?.Qualification.MapperId;
 
@@ -290,6 +292,10 @@ namespace BeatLeader_Server.Controllers
                     MapperAllowed = !isRT || alreadyApproved != null,
                     MapperQualification = !isRT
                 };
+
+                var modifiers = difficulty.ModifierValues;
+                modifiers.FS *= 2; modifiers.SF *= 2; modifiers.DA *= 2; modifiers.GN *= 2; modifiers.NF = -1.0f;
+
                 difficulty.Type = type;
                 _context.SaveChanges();
                 await _scoreController.RefreshScores(leaderboard.Id);
@@ -318,6 +324,8 @@ namespace BeatLeader_Server.Controllers
             Leaderboard? leaderboard = _context.Leaderboards
                 .Include(l => l.Difficulty)
                 .Include(l => l.Song)
+                .Include(l => l.Difficulty)
+                .ThenInclude(d => d.ModifierValues)
                 .Include(l => l.Qualification)
                 .ThenInclude(q => q.Changes)
                 .FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
@@ -383,6 +391,9 @@ namespace BeatLeader_Server.Controllers
                         leaderboard.Difficulty.NominatedTime = 0;
                         leaderboard.Difficulty.QualifiedTime = 0;
                         leaderboard.Difficulty.Stars = 0;
+
+                        var modifiers = leaderboard.Difficulty.ModifierValues;
+                        modifiers.FS /= 2; modifiers.SF /= 2; modifiers.DA /= 2; modifiers.GN /= 2; modifiers.NF = -0.5f;
                     } else {
                         if (stars != null)
                         {
@@ -459,6 +470,7 @@ namespace BeatLeader_Server.Controllers
             var transaction = _context.Database.BeginTransaction();
             Leaderboard? leaderboard = _context.Leaderboards
                 .Include(l => l.Difficulty)
+                .ThenInclude(d => d.ModifierValues)
                 .Include(l => l.Song)
                 .Include(l => l.Qualification)
                 .FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
@@ -499,6 +511,11 @@ namespace BeatLeader_Server.Controllers
 
                 if (difficulty.Status != DifficultyStatus.ranked && rankability > 0) {
                     difficulty.RankedTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+                }
+
+                if (difficulty.Status == DifficultyStatus.ranked && rankability <= 0) {
+                    var modifiers = difficulty.ModifierValues;
+                    modifiers.FS /= 2; modifiers.SF /= 2; modifiers.DA /= 2; modifiers.GN /= 2; modifiers.NF = 0.5f;
                 }
 
                 difficulty.Status = rankability > 0 ? DifficultyStatus.ranked : DifficultyStatus.unranked;
@@ -575,7 +592,6 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         [HttpGet("~/voting/spread")]
         public ActionResult<Dictionary<int, int>> Spread() {
-
             string? currentID = HttpContext.CurrentUserID(_readContext);
             var currentPlayer = _readContext.Players.Find(currentID);
 

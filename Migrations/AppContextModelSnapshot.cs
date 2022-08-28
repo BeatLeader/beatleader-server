@@ -390,6 +390,9 @@ namespace BeatLeader_Server.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("ModifierValuesModifierId")
+                        .HasColumnType("int");
+
                     b.Property<float>("Njs")
                         .HasColumnType("real");
 
@@ -436,6 +439,8 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ModifierValuesModifierId");
 
                     b.HasIndex("SongId");
 
@@ -746,6 +751,52 @@ namespace BeatLeader_Server.Migrations
                     b.ToTable("LoginChanges");
                 });
 
+            modelBuilder.Entity("BeatLeader_Server.Models.ModifiersMap", b =>
+                {
+                    b.Property<int>("ModifierId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ModifierId"), 1L, 1);
+
+                    b.Property<float>("DA")
+                        .HasColumnType("real");
+
+                    b.Property<float>("FS")
+                        .HasColumnType("real");
+
+                    b.Property<float>("GN")
+                        .HasColumnType("real");
+
+                    b.Property<float>("NA")
+                        .HasColumnType("real");
+
+                    b.Property<float>("NB")
+                        .HasColumnType("real");
+
+                    b.Property<float>("NF")
+                        .HasColumnType("real");
+
+                    b.Property<float>("NO")
+                        .HasColumnType("real");
+
+                    b.Property<float>("PM")
+                        .HasColumnType("real");
+
+                    b.Property<float>("SC")
+                        .HasColumnType("real");
+
+                    b.Property<float>("SF")
+                        .HasColumnType("real");
+
+                    b.Property<float>("SS")
+                        .HasColumnType("real");
+
+                    b.HasKey("ModifierId");
+
+                    b.ToTable("Modifiers");
+                });
+
             modelBuilder.Entity("BeatLeader_Server.Models.PatreonFeatures", b =>
                 {
                     b.Property<int>("Id")
@@ -937,6 +988,9 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("real");
 
                     b.Property<float>("MedianRankedAccuracy")
+                        .HasColumnType("real");
+
+                    b.Property<float>("PeakRank")
                         .HasColumnType("real");
 
                     b.Property<int>("RankedPlayCount")
@@ -1376,6 +1430,9 @@ namespace BeatLeader_Server.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<int?>("MetadataId")
+                        .HasColumnType("int");
+
                     b.Property<int>("MissedNotes")
                         .HasColumnType("int");
 
@@ -1429,6 +1486,8 @@ namespace BeatLeader_Server.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("LeaderboardId");
+
+                    b.HasIndex("MetadataId");
 
                     b.HasIndex("PlayerId");
 
@@ -1514,6 +1573,37 @@ namespace BeatLeader_Server.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("ScoreImprovement");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.ScoreMetadata", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Link")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LinkService")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LinkServiceIcon")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ScoreMetadata");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ScoreRedirect", b =>
@@ -1758,6 +1848,9 @@ namespace BeatLeader_Server.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
 
+                    b.Property<float>("AverageHeight")
+                        .HasColumnType("real");
+
                     b.Property<float>("EndTime")
                         .HasColumnType("real");
 
@@ -1862,9 +1955,15 @@ namespace BeatLeader_Server.Migrations
 
             modelBuilder.Entity("BeatLeader_Server.Models.DifficultyDescription", b =>
                 {
+                    b.HasOne("BeatLeader_Server.Models.ModifiersMap", "ModifierValues")
+                        .WithMany()
+                        .HasForeignKey("ModifierValuesModifierId");
+
                     b.HasOne("BeatLeader_Server.Models.Song", null)
                         .WithMany("Difficulties")
                         .HasForeignKey("SongId");
+
+                    b.Navigation("ModifierValues");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.EventPlayer", b =>
@@ -2022,6 +2121,10 @@ namespace BeatLeader_Server.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("BeatLeader_Server.Models.ScoreMetadata", "Metadata")
+                        .WithMany()
+                        .HasForeignKey("MetadataId");
+
                     b.HasOne("BeatLeader_Server.Models.Player", "Player")
                         .WithMany()
                         .HasForeignKey("PlayerId")
@@ -2033,6 +2136,8 @@ namespace BeatLeader_Server.Migrations
                         .HasForeignKey("ScoreImprovementId");
 
                     b.Navigation("Leaderboard");
+
+                    b.Navigation("Metadata");
 
                     b.Navigation("Player");
 

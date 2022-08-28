@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <PackageReference Include="Anemonis.AspNetCore.RequestDecompression" Version="1.14.0" />
+    <PackageReference Include="AspNet.Security.OAuth.Discord" Version="6.0.8" />
     <PackageReference Include="AspNet.Security.OAuth.Patreon" Version="6.0.6" />
     <PackageReference Include="AspNet.Security.OAuth.Twitch" Version="6.0.8" />
     <PackageReference Include="AspNet.Security.OAuth.Twitter" Version="6.0.8" />
@@ -25,6 +26,7 @@
     <PackageReference Include="Azure.Storage.Files.Shares" Version="12.1.0" />
     <PackageReference Include="Azure.Storage.Queues" Version="12.2.0" />
     <PackageReference Include="Lib.AspNetCore.ServerTiming" Version="4.3.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="6.0.8" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="6.0.1">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>

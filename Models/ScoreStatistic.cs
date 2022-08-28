@@ -48,6 +48,7 @@ namespace BeatLeader_Server.Models
         public float EndTime { get; set; }
         public int NbOfPause { get; set; }
         public float JumpDistance { get; set; }
+        public float AverageHeight { get; set; }
         public int TotalScore { get; set; }
     }
     public class ScoreGraphTracker {

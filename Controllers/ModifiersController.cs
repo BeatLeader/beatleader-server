@@ -11,7 +11,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/modifiers")]
         public ActionResult<Dictionary<string, float>> GetModifiers()
         {
-            return ReplayUtils.Modifiers();
+            return ReplayUtils.LegacyModifiers();
         }
     }
 }

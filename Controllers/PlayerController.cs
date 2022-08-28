@@ -57,7 +57,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/player/{id}")]
-        public async Task<ActionResult<Player>> Get(string id, bool stats = true)
+        public async Task<ActionResult<PlayerResponseFull>> Get(string id, bool stats = true)
         {
             Int64 oculusId = 0;
             try
@@ -108,7 +108,19 @@ namespace BeatLeader_Server.Controllers
                 }
             }
             if (player != null) {
-                return player;
+                var result = ResponseFullFromPlayer(player);
+                result.PinnedScores = _readContext
+                    .Scores
+                    .Include(s => s.Metadata)
+                    .Include(s => s.Leaderboard)
+                    .ThenInclude(s => s.Song)
+                    .Include(s => s.Leaderboard)
+                    .ThenInclude(s => s.Difficulty)
+                    .Where(s => s.PlayerId == player.Id && s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned)
+                    .OrderBy(s => s.Metadata.Priority)
+                    .Select(ScoreWithMyScore)
+                    .ToList();
+                return result;
             } else {
                 return NotFound();
             }
@@ -371,6 +383,7 @@ namespace BeatLeader_Server.Controllers
                                 .ThenInclude(lb => lb.Difficulties)
                             .Include(lb => lb.Leaderboard)
                                 .ThenInclude(lb => lb.Difficulty)
+                                .ThenInclude(d => d.ModifierValues)
                             .Include(sc => sc.ScoreImprovement)
                             .Select(ScoreWithMyScore)
                             .ToList()

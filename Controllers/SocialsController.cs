@@ -127,6 +127,60 @@ namespace BeatLeader_Server.Controllers
             return Redirect(returnUrl);
         }
 
+        //[HttpGet("~/user/linkGoogle")]
+        //public async Task<ActionResult> LinkGoogle([FromQuery] string returnUrl)
+        //{
+        //    string playerId = HttpContext.CurrentUserID(_context);
+        //    if (playerId == null)
+        //    {
+        //        return Redirect(returnUrl);
+        //    }
+        //    var auth = await HttpContext.AuthenticateAsync("Google");
+
+        //    var player = _context.Players.Include(p => p.Socials).Where(p => p.Id == playerId).FirstOrDefault();
+        //    if (player != null && (player.Socials == null || player.Socials.FirstOrDefault(s => s.Service == "YouTube") == null))
+        //    {
+        //        if (player.Socials == null)
+        //        {
+        //            player.Socials = new List<PlayerSocial>();
+        //        }
+
+        //        var claims = auth.Principal.Claims;
+
+        //        var name = claims.FirstOrDefault(c => c.Type == "urn:twitter:name")?.Value;
+        //        var id = claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+        //        var username = claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
+
+        //        string? token = auth?.Properties?.Items[".Token.access_token"];
+
+        //        if (name != null && id != null && username != null && token != null)
+        //        {
+        //            player.Socials.Add(new PlayerSocial
+        //            {
+        //                Service = "YouTube",
+        //                User = name,
+        //                UserId = id,
+        //                Link = "https://twitter.com/" + username
+        //            });
+        //            _context.TwitterLinks.Add(new TwitterLink
+        //            {
+        //                Token = token,
+        //                RefreshToken = "",
+        //                TwitterId = id,
+        //                Id = playerId
+        //            });
+
+        //            _context.SaveChanges();
+        //        }
+        //    }
+        //    else
+        //    {
+        //        return Unauthorized("This YouTube profile is already linked");
+        //    }
+
+        //    return Redirect(returnUrl);
+        //}
+
         [HttpPost("~/user/unlink")]
         public async Task<ActionResult> Unlink([FromForm] string provider, [FromForm] string returnUrl)
         {
@@ -143,7 +197,9 @@ namespace BeatLeader_Server.Controllers
                 return Redirect(returnUrl);
             }
 
-            var social = player.Socials?.Where(s => s.Service == provider).FirstOrDefault();
+            string serviceName = provider == "Google" ? "YouTube" : provider;
+
+            var social = player.Socials?.Where(s => s.Service == serviceName).FirstOrDefault();
             
 
             if (social != null) {

@@ -201,11 +201,11 @@ namespace BeatLeader_Server.Controllers
             using (_serverTiming.TimeAction("currS"))
             {
                 currentScore = leaderboard.Scores.FirstOrDefault(el => el.PlayerId == replay.info.playerID);
-                if (currentScore != null && (currentScore.Pp > resultScore.Pp || (currentScore.Pp == 0 && currentScore.ModifiedScore > resultScore.ModifiedScore)))
-                {
-                    transaction.Commit();
-                    return BadRequest("Score is lower than existing one");
-                }
+                //if (currentScore != null && (currentScore.Pp > resultScore.Pp || (currentScore.Pp == 0 && currentScore.ModifiedScore > resultScore.ModifiedScore)))
+                //{
+                //    transaction.Commit();
+                //    return BadRequest("Score is lower than existing one");
+                //}
             }
 
             Player? player;
@@ -461,9 +461,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             context.Response.OnCompleted(async () => {
-
                 if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
-
                     _context.RecalculatePP(player);
 
                     float resultPP = player.Pp;
@@ -496,6 +494,10 @@ namespace BeatLeader_Server.Controllers
 
                     improvement.TotalPp = player.Pp - oldPp;
                     improvement.TotalRank = player.Rank - oldRank;
+
+                    if (player.Rank < player.ScoreStats.PeakRank) {
+                        player.ScoreStats.PeakRank = player.Rank;
+                    }
                 }
                 _context.RecalculateEventsPP(player, leaderboard);
 
@@ -581,7 +583,7 @@ namespace BeatLeader_Server.Controllers
 
         [NonAction]
         private void SaveFailedScore(IDbContextTransaction transaction, Score? previousScore, Score score, Leaderboard leaderboard, string failReason) {
-            try {
+            //try {
             RollbackScore(score, previousScore, leaderboard);
 
             FailedScore failedScore = new FailedScore {
@@ -610,7 +612,7 @@ namespace BeatLeader_Server.Controllers
             _context.SaveChanges();
 
             transaction.Commit();
-            } catch { }
+            //} catch { }
         }
 
         [NonAction]

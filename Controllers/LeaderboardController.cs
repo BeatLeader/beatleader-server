@@ -122,6 +122,7 @@ namespace BeatLeader_Server.Controllers
 
             leaderboard = query.Include(lb => lb.Scores)
                     .Include(lb => lb.Difficulty)
+                    .ThenInclude(d => d.ModifierValues)
                     .Include(lb => lb.Qualification)
                     .ThenInclude(q => q.Changes)
                     .Include(lb => lb.Song)
@@ -143,7 +144,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/leaderboards/hash/{hash}")]
-        public async Task<ActionResult<LeaderboardsResponse>> GetLeaderboardsByHash(string hash) {
+        public ActionResult<LeaderboardsResponse> GetLeaderboardsByHash(string hash) {
            var leaderboards = _readContext.Leaderboards
                 .Where(lb => lb.Song.Hash == hash)
                 .Include(lb => lb.Song)
@@ -179,6 +180,7 @@ namespace BeatLeader_Server.Controllers
             leaderboard = _context
                     .Leaderboards
                     .Include(lb => lb.Difficulty)
+                    .ThenInclude(d => d.ModifierValues)
                     .Where(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff)
                     .Include(lb => lb.Statistic)
                     .Include(lb => lb.Scores.Where(s => !s.Banned))
@@ -465,6 +467,7 @@ namespace BeatLeader_Server.Controllers
             sequence = sequence.Skip((page - 1) * count)
                 .Take(count)
                 .Include(lb => lb.Difficulty)
+                .ThenInclude(lb => lb.ModifierValues)
                 .Include(lb => lb.Song);
 
             bool showPlays = sortBy == "playcount";

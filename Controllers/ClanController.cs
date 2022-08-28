@@ -105,7 +105,7 @@ namespace BeatLeader_Server.Controllers
         {
             Clan? clan = null;
             if (tag == "my") {
-                string currentID = HttpContext.CurrentUserID(_readContext);
+                string? currentID = HttpContext.CurrentUserID(_readContext);
                 var player = _readContext.Players.Find(currentID);
 
                 if (player == null)
