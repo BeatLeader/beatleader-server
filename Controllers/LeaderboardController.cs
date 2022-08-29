@@ -149,6 +149,7 @@ namespace BeatLeader_Server.Controllers
                 .Where(lb => lb.Song.Hash == hash)
                 .Include(lb => lb.Song)
                 .Include(lb => lb.Difficulty)
+                .ThenInclude(d => d.ModifierValues)
                 .Include(lb => lb.Qualification)
                 .Select(lb => new {
                     Song = lb.Song,

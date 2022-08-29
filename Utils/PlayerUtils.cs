@@ -84,12 +84,10 @@ namespace BeatLeader_Server.Utils
                     .Select(lb => new { Pp = lb.Scores.Where(s =>
                         s.PlayerId == player.Id &&
                         s.Pp != 0 &&
-                        !s.Banned &&
-                        !s.Qualification).Count() > 0 ? lb.Scores.Where(s =>
+                        !s.Banned).Count() > 0 ? lb.Scores.Where(s =>
                         s.PlayerId == player.Id &&
                         s.Pp != 0 &&
-                        !s.Banned &&
-                        !s.Qualification).First().Pp : 0 } )
+                        !s.Banned).First().Pp : 0 } )
                     .OrderByDescending(s => s.Pp).ToList();
                 if (eventRanking.Players == null)
                 {
