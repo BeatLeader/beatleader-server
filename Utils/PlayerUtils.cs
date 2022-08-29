@@ -71,7 +71,7 @@ namespace BeatLeader_Server.Utils
         {
             int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             var events = context.EventRankings
-                .Where(ev => ev.EndDate < timestamp && ev.Leaderboards.Contains(leaderboard))
+                .Where(ev => ev.EndDate >= timestamp && ev.Leaderboards.Contains(leaderboard))
                 .Include(ev => ev.Players)
                 .ToList();
             if (events.Count() == 0) {

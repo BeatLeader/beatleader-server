@@ -9,7 +9,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Linq;
 using System.Dynamic;
+using System.Net;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -22,16 +24,19 @@ namespace BeatLeader_Server.Controllers
 
         BlobContainerClient _playlistContainerClient;
         BlobContainerClient _assetsContainerClient;
+        ScoreController _scoreController;
         IWebHostEnvironment _environment;
 
         public PlaylistController(
             AppContext context,
             ReadAppContext readAppContext,
+            ScoreController scoreController,
             IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env)
         {
             _context = context;
             _readAppContext = readAppContext;
+            _scoreController = scoreController;
             if (env.IsDevelopment())
             {
                 _playlistContainerClient = new BlobContainerClient(config.Value.AccountName, config.Value.PlaylistContainerName);
@@ -537,10 +542,26 @@ namespace BeatLeader_Server.Controllers
                     var lb = _context.Leaderboards.Where(lb => 
                         lb.Song.Hash.ToLower() == hash && 
                         lb.Difficulty.DifficultyName.ToLower() == diffName &&
-                        lb.Difficulty.ModeName.ToLower() == characteristic).Include(lb => lb.Scores).ThenInclude(s => s.Player).FirstOrDefault();
+                        lb.Difficulty.ModeName.ToLower() == characteristic).Include(lb => lb.Difficulty).Include(lb => lb.Scores).ThenInclude(s => s.Player).FirstOrDefault();
 
-                    if (lb != null) {
-                        leaderboards.Add(lb);
+                    if (lb != null && lb.Difficulty.Status != DifficultyStatus.outdated) {
+
+                        if (lb.Difficulty.Status == DifficultyStatus.unranked || lb.Difficulty.Status == DifficultyStatus.inevent)
+                        {
+                            var stars = await ExmachinaStars(hash, lb.Difficulty.Value);
+                            if (stars != null) {
+
+                                lb.Difficulty.Status = DifficultyStatus.inevent;
+                                lb.Difficulty.Stars = stars;
+                                _context.SaveChanges();
+
+                                await _scoreController.RefreshScores(lb.Id);
+                                leaderboards.Add(lb);
+                            } else { continue; }
+                        } else {
+                            leaderboards.Add(lb);
+                        }
+                        
                         foreach (var score in lb.Scores)
                         {
                             if (players.FirstOrDefault(p => p.PlayerId == score.PlayerId) == null) {
@@ -618,6 +639,18 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [NonAction]
+        public async Task<float?> ExmachinaStars(string hash, int diff) {
+
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://bs-replays-ai.azurewebsites.net/json/" + hash + "/" + diff + "/basic");
+            request.Method = "GET";
+            request.Proxy = null;
+
+            var response = await request.DynamicResponse();
+
+            return (float?)response?.balanced;
+        }
+
         [HttpGet("~/event/{id}/refresh")]
         public async Task<ActionResult> RefreshEvent(int id)
         {
@@ -647,9 +680,6 @@ namespace BeatLeader_Server.Controllers
                 {
                     if (!players.Contains(score.Player)) {
                         players.Add(score.Player);
-                        if (score.Player.EventsParticipating != null && score.Player.EventsParticipating.Count() == 1) {
-                            score.Player.EventsParticipating.First().EventId = id;
-                        }
                     }
                 }
             }

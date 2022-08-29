@@ -10,6 +10,7 @@ namespace BeatLeader_Server.Models
         ranked = 3,
         unrankable = 4,
         outdated = 5,
+        inevent = 6
     }
 
     public class DifficultyDescription

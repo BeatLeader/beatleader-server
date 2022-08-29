@@ -54,7 +54,7 @@ namespace BeatLeader_Server.Utils
 
             var status = leaderboard.Difficulty.Status;
             var modifers = leaderboard.Difficulty.ModifierValues;
-            bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.nominated;
+            bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent || status == DifficultyStatus.nominated;
             bool hasPp = status == DifficultyStatus.ranked || qualification;
 
             if (hasPp)

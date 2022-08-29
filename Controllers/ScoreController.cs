@@ -218,7 +218,7 @@ namespace BeatLeader_Server.Controllers
                 var allScores = leaderboard.Scores.Where(s => !s.Banned).ToList();
                 var status = leaderboard.Difficulty.Status;
                 var modifiers = leaderboard.Difficulty.ModifierValues;
-                bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.nominated;
+                bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.nominated || status == DifficultyStatus.inevent;
                 bool hasPp = status == DifficultyStatus.ranked || qualification;
 
                 foreach (Score s in allScores)
@@ -426,7 +426,7 @@ namespace BeatLeader_Server.Controllers
 
             if (context.ToLower() == "standard")
             {
-                var modifiers = _context.Leaderboards.Where(lb => lb.Id == leaderboardId).Include(lb => lb.Difficulty).ThenInclude(d => d.ModifierValues).Select(lb => lb.Difficulty.ModifierValues).FirstOrDefault();
+                var modifiers = _context.Leaderboards.Where(lb => lb.Id == leaderboardId).Include(lb => lb.Difficulty).ThenInclude(d => d.ModifierValues).Select(lb => lb.Difficulty.ModifierValues).FirstOrDefault() ?? new ModifiersMap();
                 query = query.Select(s => RemovePositiveModifiers(s, modifiers)).OrderByDescending(p => p.Accuracy);
             } else {
                 if (query.FirstOrDefault()?.Pp > 0) {
@@ -700,14 +700,14 @@ namespace BeatLeader_Server.Controllers
 
             if (currentPlayer.Role.Contains("tipper") || currentPlayer.Role.Contains("supporter") || currentPlayer.Role.Contains("sponsor"))
             {
-                if (scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned).Count() > 9 && pin && score.Metadata.Status != ScoreStatus.pinned)
+                if (scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned).Count() > 9 && pin && (score.Metadata == null || score.Metadata.Status != ScoreStatus.pinned))
                 {
                     return BadRequest("Too many scores pinned");
                 }
             }
             else
             {
-                if (scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned).Count() > 2 && pin && score.Metadata.Status != ScoreStatus.pinned)
+                if (scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned).Count() > 2 && pin && (score.Metadata == null || score.Metadata.Status != ScoreStatus.pinned))
                 {
                     return BadRequest("Too many scores pinned");
                 }
