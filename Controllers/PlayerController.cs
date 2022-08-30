@@ -568,6 +568,9 @@ namespace BeatLeader_Server.Controllers
 
         public string HistogrammValuee(string order, List<int> values, int batch, int count)
         {
+            if (values.Count() == 0) {
+                return "";
+            }
             Dictionary<int, HistogrammValue> result = new Dictionary<int, HistogrammValue>();
             int normalizedMin = (values.Min() / batch) * batch;
             int normalizedMax = (values.Max() / batch + 1) * batch;

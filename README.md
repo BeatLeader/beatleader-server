@@ -29,7 +29,7 @@ After everything is installed:
 3) `sudo docker run --cap-add SYS_PTRACE -e 'ACCEPT_EULA=Y' -e 'MSSQL_SA_PASSWORD=SuperStrong!' -p 1433:1433 --name sqledge -d mcr.microsoft.com/azure-sql-edge` (On Windows use " instead of ')
 4) `dotnet tool install --global dotnet-ef`
 5) `dotnet tool restore`
-6) `dotnet ef database update`
+6) `dotnet ef database update --context AppContext`
 7) `azurite -s -l azstorage -d azstorage\debug.log`
 8) Open the .sln in Visual Studio and run the project.
 

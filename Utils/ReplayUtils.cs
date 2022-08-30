@@ -22,12 +22,12 @@ namespace BeatLeader_Server.Utils
             float rawPP = (float)(Curve(s.Accuracy, (float)difficulty.Stars - 0.5f) * ((float)difficulty.Stars + 0.5f) * 42);
             float fullPP = (float)(Curve(s.Accuracy, (float)difficulty.Stars * mp - 0.5f) * ((float)difficulty.Stars * mp + 0.5f) * 42);
 
-            if (float.IsInfinity(rawPP)) {
+            if (float.IsInfinity(rawPP) || float.IsNaN(rawPP) || float.IsNegativeInfinity(rawPP)) {
                 rawPP = 1042;
 
             }
 
-            if (float.IsInfinity(fullPP))
+            if (float.IsInfinity(fullPP) || float.IsNaN(fullPP) || float.IsNegativeInfinity(fullPP))
             {
                 fullPP = 1042;
 

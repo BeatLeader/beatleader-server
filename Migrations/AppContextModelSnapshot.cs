@@ -1871,6 +1871,28 @@ namespace BeatLeader_Server.Migrations
                     b.ToTable("WinTracker");
                 });
 
+            modelBuilder.Entity("BeatLeader_Server.Models.YouTubeLink", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("GoogleId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Timestamp")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("YouTubeLinks");
+                });
+
             modelBuilder.Entity("ClanPlayer", b =>
                 {
                     b.Property<int>("ClansId")

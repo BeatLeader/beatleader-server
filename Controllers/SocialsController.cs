@@ -1,9 +1,11 @@
 ﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
+using System.Net;
 using System.Numerics;
 using System.Security.Claims;
 
@@ -127,59 +129,84 @@ namespace BeatLeader_Server.Controllers
             return Redirect(returnUrl);
         }
 
-        //[HttpGet("~/user/linkGoogle")]
-        //public async Task<ActionResult> LinkGoogle([FromQuery] string returnUrl)
-        //{
-        //    string playerId = HttpContext.CurrentUserID(_context);
-        //    if (playerId == null)
-        //    {
-        //        return Redirect(returnUrl);
-        //    }
-        //    var auth = await HttpContext.AuthenticateAsync("Google");
+        [HttpGet("~/user/linkGoogle")]
+        public async Task<ActionResult> LinkGoogle([FromQuery] string returnUrl)
+        {
+            string playerId = HttpContext.CurrentUserID(_context);
+            if (playerId == null)
+            {
+                return Redirect(returnUrl);
+            }
+            var auth = await HttpContext.AuthenticateAsync("Google");
 
-        //    var player = _context.Players.Include(p => p.Socials).Where(p => p.Id == playerId).FirstOrDefault();
-        //    if (player != null && (player.Socials == null || player.Socials.FirstOrDefault(s => s.Service == "YouTube") == null))
-        //    {
-        //        if (player.Socials == null)
-        //        {
-        //            player.Socials = new List<PlayerSocial>();
-        //        }
+            var player = _context.Players.Include(p => p.Socials).Where(p => p.Id == playerId).FirstOrDefault();
+            if (player != null && (player.Socials == null || player.Socials.FirstOrDefault(s => s.Service == "YouTube") == null))
+            {
+                if (player.Socials == null)
+                {
+                    player.Socials = new List<PlayerSocial>();
+                }
 
-        //        var claims = auth.Principal.Claims;
+                var claims = auth.Principal.Claims;
 
-        //        var name = claims.FirstOrDefault(c => c.Type == "urn:twitter:name")?.Value;
-        //        var id = claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
-        //        var username = claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
+                var id = claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+                var username = claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
 
-        //        string? token = auth?.Properties?.Items[".Token.access_token"];
+                string? token = auth?.Properties?.Items[".Token.access_token"];
+                string? timestamp = auth?.Properties?.Items[".Token.expires_at"];
 
-        //        if (name != null && id != null && username != null && token != null)
-        //        {
-        //            player.Socials.Add(new PlayerSocial
-        //            {
-        //                Service = "YouTube",
-        //                User = name,
-        //                UserId = id,
-        //                Link = "https://twitter.com/" + username
-        //            });
-        //            _context.TwitterLinks.Add(new TwitterLink
-        //            {
-        //                Token = token,
-        //                RefreshToken = "",
-        //                TwitterId = id,
-        //                Id = playerId
-        //            });
+                if (id != null && username != null && token != null)
+                {
+                    var channels = await ListChanneld(token);
+                    string? channelLink = null;
+                    if (channels != null && ExpandantoObject.HasProperty(channels, "items") && channels.items.Count > 0) {
 
-        //            _context.SaveChanges();
-        //        }
-        //    }
-        //    else
-        //    {
-        //        return Unauthorized("This YouTube profile is already linked");
-        //    }
+                        var channel = channels.items[0];
+                        if (channel.kind == "youtube#channel") {
+                            channelLink = "https://www.youtube.com/channel/" + channel.id;
+                        }
+                    }
 
-        //    return Redirect(returnUrl);
-        //}
+                    if (channelLink == null) {
+                        return Unauthorized("Please login with the YouTube account");
+                    }
+
+                    player.Socials.Add(new PlayerSocial
+                    {
+                        Service = "YouTube",
+                        User = username,
+                        UserId = id,
+                        Link = channelLink
+                    });
+                    _context.YouTubeLinks.Add(new YouTubeLink
+                    {
+                        Token = token,
+                        GoogleId = id,
+                        Id = playerId,
+                        Timestamp = timestamp ?? ""
+                    });
+
+                    _context.SaveChanges();
+                }
+            }
+            else
+            {
+                return Unauthorized("This YouTube profile is already linked");
+            }
+
+            return Redirect(returnUrl);
+        }
+
+        [NonAction]
+        public Task<dynamic?> ListChanneld(string token)
+        {
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://youtube.googleapis.com/youtube/v3/channels?part=id&mine=true&key=" + _configuration.GetValue<string>("GoogleSecret"));
+            request.Method = "GET";
+            request.Headers.Add("Authorization", "Bearer " + token);
+            request.Proxy = null;
+
+            return request.DynamicResponse();
+        }
 
         [HttpPost("~/user/unlink")]
         public async Task<ActionResult> Unlink([FromForm] string provider, [FromForm] string returnUrl)
@@ -227,6 +254,13 @@ namespace BeatLeader_Server.Controllers
                     if (link2 != null)
                     {
                         _context.TwitchLinks.Remove(link2);
+                    }
+                    break;
+                case "Google":
+                    var link3 = _context.YouTubeLinks.Where(l => l.Id == player.Id).FirstOrDefault();
+                    if (link3 != null)
+                    {
+                        _context.YouTubeLinks.Remove(link3);
                     }
                     break;
                 default:
