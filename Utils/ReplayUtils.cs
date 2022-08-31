@@ -16,11 +16,17 @@ namespace BeatLeader_Server.Utils
         }
 
         public static (float, float) PpFromScore(Score s, DifficultyDescription difficulty) {
+            var accuracy = s.Accuracy;
+            bool negativeAcc = float.IsNegative(accuracy);
+            if (negativeAcc) {
+                accuracy *= -1;
+            }
+
             float mp = difficulty.ModifierValues.GetPositiveMultiplier(s.Modifiers);
             mp = 1 + (mp - 1);
 
-            float rawPP = (float)(Curve(s.Accuracy, (float)difficulty.Stars - 0.5f) * ((float)difficulty.Stars + 0.5f) * 42);
-            float fullPP = (float)(Curve(s.Accuracy, (float)difficulty.Stars * mp - 0.5f) * ((float)difficulty.Stars * mp + 0.5f) * 42);
+            float rawPP = (float)(Curve(accuracy, (float)difficulty.Stars - 0.5f) * ((float)difficulty.Stars + 0.5f) * 42);
+            float fullPP = (float)(Curve(accuracy, (float)difficulty.Stars * mp - 0.5f) * ((float)difficulty.Stars * mp + 0.5f) * 42);
 
             if (float.IsInfinity(rawPP) || float.IsNaN(rawPP) || float.IsNegativeInfinity(rawPP)) {
                 rawPP = 1042;
@@ -31,6 +37,12 @@ namespace BeatLeader_Server.Utils
             {
                 fullPP = 1042;
 
+            }
+
+            if (negativeAcc) {
+
+                rawPP *= -1;
+                fullPP *= -1;
             }
 
             return (fullPP, fullPP - rawPP);
