@@ -383,6 +383,7 @@ namespace BeatLeader_Server.Controllers
                         OldStars = (float)leaderboard.Difficulty.Stars,
                         OldType = (int)leaderboard.Difficulty.Type,
                         OldCriteriaMet = qualification.CriteriaMet,
+                        OldCriteriaCommentary = qualification.CriteriaCommentary
                     };
 
                     if (stilQualifying == false) {
@@ -419,7 +420,7 @@ namespace BeatLeader_Server.Controllers
                         qualification.CriteriaChecker = currentID;
                     }
 
-                    if (criteriaCommentary != null) {
+                    if (Request.Query.ContainsKey("criteriaCommentary")) {
                         qualification.CriteriaCommentary = criteriaCommentary;
                     }
 
@@ -427,6 +428,7 @@ namespace BeatLeader_Server.Controllers
                     qualificationChange.NewStars = (float)leaderboard.Difficulty.Stars;
                     qualificationChange.NewType = (int)leaderboard.Difficulty.Type;
                     qualificationChange.NewCriteriaMet = qualification.CriteriaMet;
+                    qualificationChange.NewCriteriaCommentary = qualification.CriteriaCommentary;
 
                     if (qualificationChange.NewRankability != qualificationChange.OldRankability
                         || qualificationChange.NewStars != qualificationChange.OldStars

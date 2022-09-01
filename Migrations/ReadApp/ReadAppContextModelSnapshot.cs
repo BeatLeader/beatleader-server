@@ -191,6 +191,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Link")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("PlayerId")
                         .HasColumnType("nvarchar(450)");
 
@@ -1189,6 +1192,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
 
+                    b.Property<string>("NewCriteriaCommentary")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("NewCriteriaMet")
                         .HasColumnType("int");
 
@@ -1200,6 +1206,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
 
                     b.Property<int>("NewType")
                         .HasColumnType("int");
+
+                    b.Property<string>("OldCriteriaCommentary")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("OldCriteriaMet")
                         .HasColumnType("int");

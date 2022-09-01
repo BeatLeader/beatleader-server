@@ -1416,8 +1416,8 @@ namespace BeatLeader_Server.Controllers
 
         [HttpPut("~/badge")]
         [Authorize]
-        public ActionResult<Badge> CreateBadge([FromQuery] string description, [FromQuery] string image) {
-            string currentId = HttpContext.CurrentUserID();
+        public ActionResult<Badge> CreateBadge([FromQuery] string description, [FromQuery] string image, [FromQuery] string? link = null) {
+            string currentId = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = _context.Players.Find(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
@@ -1426,10 +1426,46 @@ namespace BeatLeader_Server.Controllers
 
             Badge badge = new Badge {
                 Description = description,
-                Image = image
+                Image = image,
+                Link = link
             };
 
             _context.Badges.Add(badge);
+            _context.SaveChanges();
+
+            return badge;
+        }
+
+        [HttpPut("~/badge/{id}")]
+        [Authorize]
+        public ActionResult<Badge> UpdateBadge(int id, [FromQuery] string? description, [FromQuery] string? image, [FromQuery] string? link = null)
+        {
+            string currentId = HttpContext.CurrentUserID(_context);
+            Player? currentPlayer = _context.Players.Find(currentId);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var badge = _context.Badges.Find(id);
+
+            if (badge == null) {
+                return NotFound();
+            }
+
+            if (description != null) {
+                badge.Description = description;
+            }
+
+            if (image != null) {
+                badge.Image = image;
+            }
+
+            if (Request.Query.ContainsKey("link"))
+            {
+                badge.Link = link;
+            }
+
             _context.SaveChanges();
 
             return badge;
@@ -1439,7 +1475,7 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult<Player>> AddBadge(string playerId, int badgeId)
         {
-            string currentId = HttpContext.CurrentUserID();
+            string currentId = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = _context.Players.Find(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
