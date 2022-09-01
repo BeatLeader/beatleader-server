@@ -199,7 +199,8 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> RefreshScores([FromQuery] string? leaderboardId = null)
         {
-            if (HttpContext != null) {
+            if (HttpContext != null)
+            {
                 string currentId = HttpContext.CurrentUserID();
                 Player? currentPlayer = _context.Players.Find(currentId);
                 if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
@@ -715,7 +716,7 @@ namespace BeatLeader_Server.Controllers
             ScoreMetadata? metadata = score.Metadata;
             if (metadata == null) {
                 metadata = new ScoreMetadata {
-                    Priority = scores.Count == 1 ? 1 : scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned).Max(s => s.Metadata.Priority) + 1
+                    Priority = scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned).Count() == 0 ? 1 : scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned).Max(s => s.Metadata.Priority) + 1
                 };
                 score.Metadata = metadata;
             }

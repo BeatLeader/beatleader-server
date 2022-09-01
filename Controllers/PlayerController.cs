@@ -1033,38 +1033,44 @@ namespace BeatLeader_Server.Controllers
                 _context.Add(cronTimestamps);
             }
             transaction.Commit();
-            HttpContext.Response.OnCompleted(async () => {
+            HttpContext.Response.OnCompleted(async () =>
+            {
                 await RefreshPlayersStats();
-                var ranked = _context.Players.Where(p => !p.Banned).Include(p => p.ScoreStats).Include(p => p.StatsHistory).ToList();
-                foreach (Player p in ranked)
+                var playersCount = _context.Players.Where(p => !p.Banned).Count();
+                for (int i = 0; i < playersCount; i += 2000)
                 {
-                    p.Histories = GenerateListString(p.Histories, p.Rank);
+                    var ranked = _context.Players.Where(p => !p.Banned).Include(p => p.ScoreStats).Include(p => p.StatsHistory).Skip(i).Take(2000).ToList();
+                    foreach (Player p in ranked)
+                    {
+                        p.Histories = GenerateListString(p.Histories, p.Rank);
 
-                    var stats = p.ScoreStats;
-                    var statsHistory = p.StatsHistory;
-                    if (statsHistory == null) {
-                        statsHistory = new PlayerStatsHistory();
+                        var stats = p.ScoreStats;
+                        var statsHistory = p.StatsHistory;
+                        if (statsHistory == null)
+                        {
+                            statsHistory = new PlayerStatsHistory();
+                        }
+
+                        statsHistory.Pp = GenerateListString(statsHistory.Pp, p.Pp);
+                        statsHistory.Rank = p.Histories;
+                        statsHistory.CountryRank = GenerateListString(statsHistory.CountryRank, p.CountryRank);
+                        statsHistory.TotalScore = GenerateListString(statsHistory.TotalScore, stats.TotalScore);
+                        statsHistory.AverageRankedAccuracy = GenerateListString(statsHistory.AverageRankedAccuracy, stats.AverageRankedAccuracy);
+                        statsHistory.TopAccuracy = GenerateListString(statsHistory.TopAccuracy, stats.TopAccuracy);
+                        statsHistory.TopPp = GenerateListString(statsHistory.TopPp, stats.TopPp);
+                        statsHistory.AverageAccuracy = GenerateListString(statsHistory.AverageAccuracy, stats.AverageAccuracy);
+                        statsHistory.MedianAccuracy = GenerateListString(statsHistory.MedianAccuracy, stats.MedianAccuracy);
+                        statsHistory.MedianRankedAccuracy = GenerateListString(statsHistory.MedianRankedAccuracy, stats.MedianRankedAccuracy);
+                        statsHistory.TotalPlayCount = GenerateListString(statsHistory.TotalPlayCount, stats.TotalPlayCount);
+                        statsHistory.RankedPlayCount = GenerateListString(statsHistory.RankedPlayCount, stats.RankedPlayCount);
+                        statsHistory.ReplaysWatched = GenerateListString(statsHistory.ReplaysWatched, stats.ReplaysWatched);
+
+                        p.StatsHistory = statsHistory;
+                        stats.DailyImprovements = 0;
                     }
 
-                    statsHistory.Pp = GenerateListString(statsHistory.Pp, p.Pp);
-                    statsHistory.Rank = p.Histories;
-                    statsHistory.CountryRank = GenerateListString(statsHistory.CountryRank, p.CountryRank);
-                    statsHistory.TotalScore = GenerateListString(statsHistory.TotalScore, stats.TotalScore);
-                    statsHistory.AverageRankedAccuracy = GenerateListString(statsHistory.AverageRankedAccuracy, stats.AverageRankedAccuracy);
-                    statsHistory.TopAccuracy = GenerateListString(statsHistory.TopAccuracy, stats.TopAccuracy);
-                    statsHistory.TopPp = GenerateListString(statsHistory.TopPp, stats.TopPp);
-                    statsHistory.AverageAccuracy = GenerateListString(statsHistory.AverageAccuracy, stats.AverageAccuracy);
-                    statsHistory.MedianAccuracy = GenerateListString(statsHistory.MedianAccuracy, stats.MedianAccuracy);
-                    statsHistory.MedianRankedAccuracy = GenerateListString(statsHistory.MedianRankedAccuracy, stats.MedianRankedAccuracy);
-                    statsHistory.TotalPlayCount = GenerateListString(statsHistory.TotalPlayCount, stats.TotalPlayCount);
-                    statsHistory.RankedPlayCount = GenerateListString(statsHistory.RankedPlayCount, stats.RankedPlayCount);
-                    statsHistory.ReplaysWatched = GenerateListString(statsHistory.ReplaysWatched, stats.ReplaysWatched);
-
-                    p.StatsHistory = statsHistory;
-                    stats.DailyImprovements = 0;
+                    _context.SaveChanges();
                 }
-
-                await _context.SaveChangesAsync();
             });
 
             return Ok();
@@ -1357,29 +1363,23 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/players/stats/refresh")]
         public async Task<ActionResult> RefreshPlayersStats()
         {
-            string currentId = HttpContext.CurrentUserID();
+            string currentId = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = _context.Players.Find(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
             }
-            var players = _context.Players.Where(p => !p.Banned).Include(p => p.ScoreStats).ToList();
-            var scores = _context.Scores.Select(s => new SubScore {
-                PlayerId = s.PlayerId,
-                Platform = s.Platform,
-                Hmd = s.Hmd,
-                ModifiedScore = s.ModifiedScore,
-                Accuracy = s.Accuracy,
-                Pp = s.Pp,
-                BonusPp = s.BonusPp,
-                Rank = s.Rank,
-                Timeset = s.Timepost
-            }).ToList();
-            foreach (var player in players)
+            var playersCount = _context.Players.Where(p => !p.Banned).Count();
+            for (int i = 0; i < playersCount; i += 2000)
             {
-                await RefreshStats(player, scores.Where(s => s.PlayerId == player.Id).ToList());
+                var players = _context.Players.Where(p => !p.Banned).Include(p => p.ScoreStats).Skip(i).Take(2000).ToList();
+                foreach (var player in players)
+                {
+                    await RefreshStats(player);
+                }
+                _context.SaveChanges();
             }
-            _context.SaveChanges();
+            
             return Ok();
         }
 
