@@ -433,7 +433,8 @@ namespace BeatLeader_Server.Controllers
                     if (qualificationChange.NewRankability != qualificationChange.OldRankability
                         || qualificationChange.NewStars != qualificationChange.OldStars
                         || qualificationChange.NewType != qualificationChange.OldType
-                        || qualificationChange.NewCriteriaMet != qualificationChange.OldCriteriaMet) {
+                        || qualificationChange.NewCriteriaMet != qualificationChange.OldCriteriaMet
+                        || qualificationChange.NewCriteriaCommentary != qualificationChange.OldCriteriaCommentary) {
 
                         if (qualification.Changes == null) {
                             qualification.Changes = new List<QualificationChange>();

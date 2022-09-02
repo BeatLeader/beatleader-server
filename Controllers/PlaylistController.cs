@@ -1,6 +1,7 @@
 ﻿using Azure.Identity;
 using Azure.Storage.Blobs;
 using BeatLeader_Server.Extensions;
+using BeatLeader_Server.Migrations.ReadApp;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authorization;
@@ -11,7 +12,9 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
 using System.Dynamic;
+using System.Linq;
 using System.Net;
+using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -475,6 +478,85 @@ namespace BeatLeader_Server.Controllers
             await _playlistContainerClient.UploadBlobAsync("qualified.bplist", new BinaryData(JsonConvert.SerializeObject(playlist)));
 
             return Ok();
+        }
+
+        public class PlaylistDifficulty {
+            public string name { get; set; }
+            public string characteristic { get; set; }
+        }
+
+        [HttpGet("~/playlist/generate")]
+        public async Task<ActionResult<string>> GetAll(
+            [FromQuery] int count = 100,
+            [FromQuery] string sortBy = "stars",
+            [FromQuery] string order = "desc",
+            [FromQuery] string? search = null,
+            [FromQuery] string? diff = null,
+            [FromQuery] string? type = null,
+            [FromQuery] int? mapType = null,
+            [FromQuery] bool allTypes = false,
+            [FromQuery] string? mytype = null,
+            [FromQuery] float? stars_from = null,
+            [FromQuery] float? stars_to = null,
+            [FromQuery] int? date_from = null,
+            [FromQuery] int? date_to = null)
+        {
+            if (count > 2000) {
+                return Unauthorized("Count is too big. 2000 max");
+            }
+
+            var sequence = _readAppContext.Leaderboards.AsQueryable();
+            string? currentID = HttpContext.CurrentUserID(_readAppContext);
+
+            sequence = sequence.Filter(_readAppContext, sortBy, order, search, diff, type, mapType, allTypes, mytype, stars_from, stars_to, date_from, date_to, currentID);
+
+            var diffsCount = sequence.Select(s => s.Song.Hash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash).Take(count).Last().Index + 1;
+
+            sequence = sequence
+                .Include(lb => lb.Difficulty)
+                .ThenInclude(lb => lb.ModifierValues)
+                .Include(lb => lb.Song)
+                .Take(diffsCount);
+
+            var songs = sequence.Select(lb => new {
+                hash = lb.Song.Hash,
+                songName = lb.Song.Name,
+                levelAuthorName = lb.Song.Mapper,
+                difficulties = new List<PlaylistDifficulty> { new PlaylistDifficulty
+                    {
+                        name = lb.Difficulty.DifficultyName.FirstCharToLower(),
+                        characteristic = lb.Difficulty.ModeName
+                    }
+                }
+            }).ToList().GroupBy(s => s.hash).Select(group => 
+                 new
+                {
+                    hash = group.First().hash,
+                    songName = group.First().songName,
+                    levelAuthorName = group.First().levelAuthorName,
+                    difficulties = group.Select(s => s.difficulties.First())
+                }
+            ).ToList();
+
+            BlobClient blobClient = _playlistContainerClient.GetBlobClient("searchresult.bplist");
+            MemoryStream stream = new MemoryStream(5);
+            await blobClient.DownloadToAsync(stream);
+            stream.Position = 0;
+
+            dynamic? playlist = ObjectFromStream(stream);
+
+            if (playlist == null)
+            {
+                return BadRequest("Original plist dead. Wake up NSGolova!");
+            }
+
+            playlist.songs = songs.ToList();
+            playlist.customData = new CustomData
+            {
+                owner = currentID
+            };
+
+            return JsonConvert.SerializeObject(playlist);
         }
 
         [HttpPost("~/event/start/{id}")]
