@@ -5,6 +5,7 @@ using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -453,6 +454,215 @@ namespace BeatLeader_Server.Controllers
         }
 
         [Authorize]
+        [HttpPost("~/reweight/{hash}/{diff}/{mode}/")]
+        public async Task<ActionResult> UpdateReweight(
+            string hash,
+            string diff,
+            string mode,
+            [FromQuery] bool? keep,
+            [FromQuery] float? stars,
+            [FromQuery] int? type,
+            [FromQuery] int? criteriaCheck,
+            [FromQuery] string? criteriaCommentary,
+            [FromQuery] string? modifiers)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = _context.Players.Find(currentID);
+
+            Leaderboard? leaderboard = _context.Leaderboards
+                .Include(l => l.Difficulty)
+                .Include(l => l.Song)
+                .Include(l => l.Difficulty)
+                .ThenInclude(d => d.ModifierValues)
+                .Include(l => l.Reweight)
+                .ThenInclude(q => q.Changes)
+                .FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+
+            bool isRT = true;
+            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
+            {
+                return Unauthorized();
+            }
+
+            var reweight = leaderboard?.Reweight;
+
+            ModifiersMap? modifierValues = modifiers == null ? null : JsonConvert.DeserializeObject<ModifiersMap>(modifiers);
+
+
+            if (reweight == null || reweight.Finished)
+            {
+                leaderboard.Reweight = new RankUpdate {
+                    Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
+                    RTMember = currentID,
+                    Keep = keep ?? true,
+                    Stars = stars ?? (float)leaderboard.Difficulty.Stars,
+                    CriteriaMet = criteriaCheck ?? 1,
+                    Modifiers = modifierValues ?? leaderboard.Difficulty.ModifierValues,
+                    Type = type ?? 0,
+                };
+            }
+            else
+            {
+                RankUpdateChange rankUpdateChange = new RankUpdateChange
+                {
+                    PlayerId = currentID,
+                    Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
+                    OldKeep = reweight.Keep,
+                    OldStars = reweight.Stars,
+                    OldType = reweight.Type,
+                    OldCriteriaMet = reweight.CriteriaMet,
+                    OldCriteriaCommentary = reweight.CriteriaCommentary,
+                    OldModifiers = reweight.Modifiers,
+                };
+
+                if (stars != null)
+                {
+                    reweight.Stars = (float)stars;
+                }
+                if (Request.Query.ContainsKey("type"))
+                {
+                    reweight.Type = type ?? 0;
+                }
+
+                if (criteriaCheck != null && criteriaCheck != reweight.CriteriaMet)
+                {
+                    reweight.CriteriaMet = (int)criteriaCheck;
+                }
+
+                if (Request.Query.ContainsKey("criteriaCommentary"))
+                {
+                    reweight.CriteriaCommentary = criteriaCommentary;
+                }
+
+                if (Request.Query.ContainsKey("keep"))
+                {
+                    reweight.Keep = keep ?? false;
+                }
+                if (Request.Query.ContainsKey("modifiers"))
+                {
+                    reweight.Modifiers = modifierValues;
+                }
+
+                rankUpdateChange.NewKeep = reweight.Keep;
+                rankUpdateChange.NewStars = reweight.Stars;
+                rankUpdateChange.NewType = reweight.Type;
+                rankUpdateChange.NewCriteriaMet = reweight.CriteriaMet;
+                rankUpdateChange.NewCriteriaCommentary = reweight.CriteriaCommentary;
+                rankUpdateChange.NewModifiers = reweight.Modifiers;
+
+                if (rankUpdateChange.NewKeep != rankUpdateChange.OldKeep
+                    || rankUpdateChange.NewStars != rankUpdateChange.OldStars
+                    || rankUpdateChange.NewType != rankUpdateChange.OldType
+                    || rankUpdateChange.NewCriteriaMet != rankUpdateChange.OldCriteriaMet
+                    || rankUpdateChange.NewCriteriaCommentary != rankUpdateChange.OldCriteriaCommentary 
+                    || rankUpdateChange.NewModifiers != rankUpdateChange.OldModifiers)
+                {
+
+                    if (reweight.Changes == null)
+                    {
+                        reweight.Changes = new List<RankUpdateChange>();
+                    }
+                    reweight.Changes.Add(rankUpdateChange);
+                }
+            }
+
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
+        [Authorize]
+        [HttpPost("~/reweight/approve/{hash}/{diff}/{mode}/")]
+        public async Task<ActionResult> ApproveReweight(
+            string hash,
+            string diff,
+            string mode)
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = _context.Players.Find(currentID);
+
+            if (currentPlayer == null || currentPlayer.Role.Contains("juniorrankedteam") ||(!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
+            {
+                return Unauthorized();
+            }
+
+            var transaction = _context.Database.BeginTransaction();
+            Leaderboard? leaderboard = _context.Leaderboards
+                .Include(l => l.Difficulty)
+                .ThenInclude(d => d.ModifierValues)
+                .Include(l => l.Song)
+                .Include(l => l.Reweight)
+                .FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+
+            if (leaderboard != null && leaderboard.Reweight != null)
+            {
+                
+                var reweight = leaderboard.Reweight;
+
+                if (reweight.RTMember == currentID)
+                {
+                    return Unauthorized("Can't approve own reweight");
+                }
+
+                DifficultyDescription? difficulty = leaderboard.Difficulty;
+                RankChange rankChange = new RankChange
+                {
+                    PlayerId = currentID,
+                    Hash = hash,
+                    Diff = diff,
+                    Mode = mode,
+                    OldRankability = difficulty.Status == DifficultyStatus.ranked ? 1 : 0,
+                    OldStars = difficulty.Stars ?? 0,
+                    OldType = difficulty.Type,
+                    OldModifiers = difficulty.ModifierValues,
+                    OldCriteriaMet = difficulty.Status == DifficultyStatus.ranked ? 1 : 0,
+                    NewRankability = reweight.Keep ? 1 : 0,
+                    NewStars = reweight.Stars,
+                    NewType = reweight.Type,
+                    NewModifiers = reweight.Modifiers,
+                    NewCriteriaMet = reweight.CriteriaMet
+                };
+                _context.RankChanges.Add(rankChange);
+                reweight.Finished = true;
+
+                bool updatePlaylists = (difficulty.Status == DifficultyStatus.ranked) != reweight.Keep;
+
+                if (difficulty.Status != DifficultyStatus.ranked && reweight.Keep)
+                {
+                    difficulty.RankedTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+                }
+
+                if (difficulty.Status == DifficultyStatus.ranked && !reweight.Keep)
+                {
+                    var modifiers = difficulty.ModifierValues;
+                    modifiers.FS /= 2; modifiers.SF /= 2; modifiers.DA /= 2; modifiers.GN /= 2; modifiers.NF = 0.5f;
+                }
+
+                difficulty.Status = reweight.Keep ? DifficultyStatus.ranked : DifficultyStatus.unranked;
+                difficulty.Stars = reweight.Stars;
+                difficulty.Type = reweight.Type;
+                _context.SaveChanges();
+                transaction.Commit();
+
+                if (updatePlaylists)
+                {
+                    await _playlistController.RefreshNominatedPlaylist();
+                    await _playlistController.RefreshQualifiedPlaylist();
+                    await _playlistController.RefreshRankedPlaylist();
+                }
+
+                await _scoreController.RefreshScores(leaderboard.Id);
+
+                HttpContext.Response.OnCompleted(async () => {
+                    await _playerController.RefreshLeaderboardPlayers(leaderboard.Id);
+                });
+            }
+
+            return Ok();
+        }
+
+
+        [Authorize]
         [HttpPost("~/rank/{hash}/{diff}/{mode}/")]
         public async Task<ActionResult> SetStarValue(
             string hash,
@@ -465,7 +675,7 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = _context.Players.Find(currentID);
 
-            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
             }
@@ -480,24 +690,10 @@ namespace BeatLeader_Server.Controllers
 
             if (leaderboard != null)
             {
-                var qualification = leaderboard.Qualification;
-                if (!currentPlayer.Role.Contains("admin")) {
-                    if (qualification == null
-                        || currentPlayer.Role.Contains("juniorrankedteam")
-                        || !qualification.MapperAllowed
-                        || qualification.CriteriaMet != 1
-                        || !qualification.Approved
-                        || !qualification.MapperAllowed
-                        || ((int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - qualification.ApprovalTimeset) < 60 * 60 * 24 * 7) {
-
-                        return Unauthorized();
-                    }
-                }
-
                 DifficultyDescription? difficulty = leaderboard.Difficulty;
                 RankChange rankChange = new RankChange
                 {
-                    PlayerId = currentID ?? "NSGolova",
+                    PlayerId = currentID,
                     Hash = hash,
                     Diff = diff,
                     Mode = mode,

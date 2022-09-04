@@ -1,6 +1,7 @@
 ﻿using AngleSharp.Common;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Utils
 {
@@ -40,6 +41,43 @@ namespace BeatLeader_Server.Utils
             }
 
             if (negativeAcc) {
+
+                rawPP *= -1;
+                fullPP *= -1;
+            }
+
+            return (fullPP, fullPP - rawPP);
+        }
+
+        public static (float, float) PpFromScoreResponse(ScoreResponse s, RankUpdate reweight)
+        {
+            var accuracy = s.Accuracy;
+            bool negativeAcc = float.IsNegative(accuracy);
+            if (negativeAcc)
+            {
+                accuracy *= -1;
+            }
+
+            float mp = reweight.Modifiers.GetPositiveMultiplier(s.Modifiers);
+            mp = 1 + (mp - 1);
+
+            float rawPP = (float)(Curve(accuracy, (float)reweight.Stars - 0.5f) * ((float)reweight.Stars + 0.5f) * 42);
+            float fullPP = (float)(Curve(accuracy, (float)reweight.Stars * mp - 0.5f) * ((float)reweight.Stars * mp + 0.5f) * 42);
+
+            if (float.IsInfinity(rawPP) || float.IsNaN(rawPP) || float.IsNegativeInfinity(rawPP))
+            {
+                rawPP = 1042;
+
+            }
+
+            if (float.IsInfinity(fullPP) || float.IsNaN(fullPP) || float.IsNegativeInfinity(fullPP))
+            {
+                fullPP = 1042;
+
+            }
+
+            if (negativeAcc)
+            {
 
                 rawPP *= -1;
                 fullPP *= -1;

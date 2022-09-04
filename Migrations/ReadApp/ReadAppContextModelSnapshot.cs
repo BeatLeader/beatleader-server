@@ -647,6 +647,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.Property<int?>("QualificationId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("ReweightId")
+                        .HasColumnType("int");
+
                     b.Property<string>("SongId")
                         .HasColumnType("nvarchar(450)");
 
@@ -655,6 +658,8 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.HasIndex("DifficultyId");
 
                     b.HasIndex("QualificationId");
+
+                    b.HasIndex("ReweightId");
 
                     b.HasIndex("SongId");
 
@@ -1259,6 +1264,12 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("NewCriteriaMet")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("NewModifiersModifierId")
+                        .HasColumnType("int");
+
                     b.Property<float>("NewRankability")
                         .HasColumnType("real");
 
@@ -1266,6 +1277,12 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .HasColumnType("real");
 
                     b.Property<int>("NewType")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OldCriteriaMet")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("OldModifiersModifierId")
                         .HasColumnType("int");
 
                     b.Property<float>("OldRankability")
@@ -1285,6 +1302,10 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("NewModifiersModifierId");
+
+                    b.HasIndex("OldModifiersModifierId");
 
                     b.ToTable("RankChanges");
                 });
@@ -1337,6 +1358,114 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.HasKey("Id");
 
                     b.ToTable("RankQualification");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.RankUpdate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<string>("CriteriaCommentary")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("CriteriaMet")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Finished")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("Keep")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("ModifiersModifierId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RTMember")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<float>("Stars")
+                        .HasColumnType("real");
+
+                    b.Property<int>("Timeset")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ModifiersModifierId");
+
+                    b.ToTable("RankUpdate");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.RankUpdateChange", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<string>("NewCriteriaCommentary")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("NewCriteriaMet")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("NewKeep")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("NewModifiersModifierId")
+                        .HasColumnType("int");
+
+                    b.Property<float>("NewStars")
+                        .HasColumnType("real");
+
+                    b.Property<int>("NewType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("OldCriteriaCommentary")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("OldCriteriaMet")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("OldKeep")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("OldModifiersModifierId")
+                        .HasColumnType("int");
+
+                    b.Property<float>("OldStars")
+                        .HasColumnType("real");
+
+                    b.Property<int>("OldType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PlayerId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("RankUpdateId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Timeset")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NewModifiersModifierId");
+
+                    b.HasIndex("OldModifiersModifierId");
+
+                    b.HasIndex("RankUpdateId");
+
+                    b.ToTable("RankUpdateChange");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.RankVoting", b =>
@@ -2039,6 +2168,10 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .WithMany()
                         .HasForeignKey("QualificationId");
 
+                    b.HasOne("BeatLeader_Server.Models.RankUpdate", "Reweight")
+                        .WithMany()
+                        .HasForeignKey("ReweightId");
+
                     b.HasOne("BeatLeader_Server.Models.Song", "Song")
                         .WithMany()
                         .HasForeignKey("SongId");
@@ -2046,6 +2179,8 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.Navigation("Difficulty");
 
                     b.Navigation("Qualification");
+
+                    b.Navigation("Reweight");
 
                     b.Navigation("Song");
                 });
@@ -2133,6 +2268,51 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.HasOne("BeatLeader_Server.Models.RankQualification", null)
                         .WithMany("Changes")
                         .HasForeignKey("RankQualificationId");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.RankChange", b =>
+                {
+                    b.HasOne("BeatLeader_Server.Models.ModifiersMap", "NewModifiers")
+                        .WithMany()
+                        .HasForeignKey("NewModifiersModifierId");
+
+                    b.HasOne("BeatLeader_Server.Models.ModifiersMap", "OldModifiers")
+                        .WithMany()
+                        .HasForeignKey("OldModifiersModifierId");
+
+                    b.Navigation("NewModifiers");
+
+                    b.Navigation("OldModifiers");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.RankUpdate", b =>
+                {
+                    b.HasOne("BeatLeader_Server.Models.ModifiersMap", "Modifiers")
+                        .WithMany()
+                        .HasForeignKey("ModifiersModifierId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Modifiers");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.RankUpdateChange", b =>
+                {
+                    b.HasOne("BeatLeader_Server.Models.ModifiersMap", "NewModifiers")
+                        .WithMany()
+                        .HasForeignKey("NewModifiersModifierId");
+
+                    b.HasOne("BeatLeader_Server.Models.ModifiersMap", "OldModifiers")
+                        .WithMany()
+                        .HasForeignKey("OldModifiersModifierId");
+
+                    b.HasOne("BeatLeader_Server.Models.RankUpdate", null)
+                        .WithMany("Changes")
+                        .HasForeignKey("RankUpdateId");
+
+                    b.Navigation("NewModifiers");
+
+                    b.Navigation("OldModifiers");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.RankVoting", b =>
@@ -2325,6 +2505,11 @@ namespace BeatLeader_Server.Migrations.ReadApp
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.RankQualification", b =>
+                {
+                    b.Navigation("Changes");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.RankUpdate", b =>
                 {
                     b.Navigation("Changes");
                 });

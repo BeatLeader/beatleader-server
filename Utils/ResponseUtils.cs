@@ -100,6 +100,7 @@ namespace BeatLeader_Server.Utils
             public string Id { get; set; }
             public DifficultyDescription Difficulty { get; set; }
             public RankQualification? Qualification { get; set; }
+            public RankUpdate? Reweight { get; set; }
         }
 
         public class ClanReturn
@@ -152,6 +153,7 @@ namespace BeatLeader_Server.Utils
             public IEnumerable<ScoreResponse> Scores { get; set; }
 
             public RankQualification? Qualification { get; set; }
+            public RankUpdate? Reweight { get; set; }
             public int Plays { get; set; }
         }
 
@@ -187,6 +189,7 @@ namespace BeatLeader_Server.Utils
 
             public ScoreResponseWithAcc? MyScore { get; set; }
             public RankQualification? Qualification { get; set; }
+            public RankUpdate? Reweight { get; set; }
 
             public IEnumerable<VotingResponse> Votes { get; set; }
         }
@@ -293,6 +296,7 @@ namespace BeatLeader_Server.Utils
                 Scores = l.Scores.Select(RemoveLeaderboard),
                 Plays = l.Plays,
                 Qualification = l.Qualification,
+                Reweight = l.Reweight
             };
         }
 

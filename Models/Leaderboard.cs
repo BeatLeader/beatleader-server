@@ -9,6 +9,7 @@
         public ICollection<Score> Scores { get; set; }
         public LeaderboardStatistic? Statistic { get; set; }
         public RankQualification? Qualification { get; set; }
+        public RankUpdate? Reweight { get; set; }
 
         public ICollection<EventRanking>? Events { get; set; }
         public int Plays { get; set; }

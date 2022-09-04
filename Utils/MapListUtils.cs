@@ -161,6 +161,20 @@ namespace BeatLeader_Server.Utils
                             .ThenInclude(q => q.Changes)
                             .Where(p => p.Difficulty.Status == DifficultyStatus.qualified);
                         break;
+                    case "reweighting":
+                        sequence = sequence
+                            .Include(lb => lb.Difficulty)
+                            .Include(lb => lb.Reweight)
+                            .ThenInclude(q => q.Changes)
+                            .Where(p => p.Reweight != null && !p.Reweight.Finished);
+                        break;
+                    case "reweighted":
+                        sequence = sequence
+                            .Include(lb => lb.Difficulty)
+                            .Include(lb => lb.Reweight)
+                            .ThenInclude(q => q.Changes)
+                            .Where(p => p.Reweight != null && p.Reweight.Finished);
+                        break;
                     case "unranked":
                         sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.Status == DifficultyStatus.unranked);
                         break;
