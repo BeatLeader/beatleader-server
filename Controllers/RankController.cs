@@ -1,6 +1,7 @@
 ﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
+using Discord.Webhook;
 using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -38,6 +39,12 @@ namespace BeatLeader_Server.Controllers
             _scoreController = scoreController;
             _playerController = playerController;
             _playlistController = playlistController;
+        }
+
+        public DiscordWebhookClient? reweightDSClient() {
+            var link = _configuration.GetValue<string?>("ReweightDSHook");
+            return link == null ? null : new DiscordWebhookClient(link);
+
         }
 
         public enum VoteStatus
@@ -476,6 +483,8 @@ namespace BeatLeader_Server.Controllers
                 .ThenInclude(d => d.ModifierValues)
                 .Include(l => l.Reweight)
                 .ThenInclude(q => q.Changes)
+                .Include(l => l.Reweight)
+                .ThenInclude(q => q.Modifiers)
                 .FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             bool isRT = true;
@@ -491,15 +500,36 @@ namespace BeatLeader_Server.Controllers
 
             if (reweight == null || reweight.Finished)
             {
-                leaderboard.Reweight = new RankUpdate {
+                reweight = new RankUpdate {
                     Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
                     RTMember = currentID,
                     Keep = keep ?? true,
                     Stars = stars ?? (float)leaderboard.Difficulty.Stars,
                     CriteriaMet = criteriaCheck ?? 1,
                     Modifiers = modifierValues ?? leaderboard.Difficulty.ModifierValues,
+                    CriteriaCommentary = criteriaCommentary,
                     Type = type ?? 0,
                 };
+                leaderboard.Reweight = reweight;
+
+                var dsClient = reweightDSClient();
+
+                if (dsClient != null) {
+                    string message = currentPlayer.Name + " initiated reweight for **" + leaderboard.Song.Name + "**\n";
+                    if (keep == false) {
+                        message += "*UNRANK!*\n Reason: " + criteriaCommentary;
+                    } else {
+                        if (reweight.Stars != leaderboard.Difficulty.Stars) {
+                            message += "★ " + leaderboard.Difficulty.Stars + " → " + reweight.Stars + "\n";
+                        }
+                        message += FormatUtils.DescribeTypeChanges(leaderboard.Difficulty.Type, reweight.Type);
+                        message += FormatUtils.DescribeModifiersChanges(leaderboard.Difficulty.ModifierValues, reweight.Modifiers);
+                    }
+                    message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
+
+                    dsClient.SendMessageAsync(message);
+                }
+
             }
             else
             {
@@ -596,7 +626,6 @@ namespace BeatLeader_Server.Controllers
 
             if (leaderboard != null && leaderboard.Reweight != null)
             {
-                
                 var reweight = leaderboard.Reweight;
 
                 if (reweight.RTMember == currentID)
@@ -624,6 +653,30 @@ namespace BeatLeader_Server.Controllers
                 };
                 _context.RankChanges.Add(rankChange);
                 reweight.Finished = true;
+
+                var dsClient = reweightDSClient();
+
+                if (dsClient != null)
+                {
+
+                    string message = currentPlayer.Name + " approved reweight for **" + leaderboard.Song.Name + "**!\n";
+                    if (!reweight.Keep)
+                    {
+                        message += "**UNRANKED!**\n Reason: " + reweight.CriteriaCommentary;
+                    }
+                    else
+                    {
+                        if (reweight.Stars != difficulty.Stars)
+                        {
+                            message += "★ " + difficulty.Stars + " → " + reweight.Stars;
+                        }
+                        message += FormatUtils.DescribeTypeChanges(leaderboard.Difficulty.Type, reweight.Type);
+                        message += FormatUtils.DescribeModifiersChanges(leaderboard.Difficulty.ModifierValues, reweight.Modifiers);
+                    }
+                    message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
+
+                    dsClient.SendMessageAsync(message);
+                }
 
                 bool updatePlaylists = (difficulty.Status == DifficultyStatus.ranked) != reweight.Keep;
 
@@ -656,6 +709,52 @@ namespace BeatLeader_Server.Controllers
                 HttpContext.Response.OnCompleted(async () => {
                     await _playerController.RefreshLeaderboardPlayers(leaderboard.Id);
                 });
+            }
+
+            return Ok();
+        }
+
+        [Authorize]
+        [HttpPost("~/reweight/cancel/{hash}/{diff}/{mode}/")]
+        public async Task<ActionResult> CancelReweight(
+            string hash,
+            string diff,
+            string mode)
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = _context.Players.Find(currentID);
+
+            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
+            {
+                return Unauthorized();
+            }
+
+            Leaderboard? leaderboard = _context.Leaderboards
+                .Include(l => l.Difficulty)
+                .ThenInclude(d => d.ModifierValues)
+                .Include(l => l.Song)
+                .Include(l => l.Reweight)
+                .FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+
+            if (leaderboard != null && leaderboard.Reweight != null)
+            {
+
+                if (leaderboard.Reweight.RTMember != currentID && currentPlayer.Role.Contains("juniorrankedteam"))
+                {
+                    return Unauthorized("Can't cancel this reweight");
+                }
+                leaderboard.Reweight = null;
+                _context.SaveChanges();
+
+                var dsClient = reweightDSClient();
+
+                if (dsClient != null)
+                {
+                    string message = currentPlayer.Name + " canceled reweight for **" + leaderboard.Song.Name + "**\n";
+                    message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
+
+                    dsClient.SendMessageAsync(message);
+                }
             }
 
             return Ok();

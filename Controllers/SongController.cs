@@ -117,6 +117,7 @@ namespace BeatLeader_Server.Controllers
                             foreach (var item in existingSong.Difficulties)
                             {
                                 item.Status = DifficultyStatus.outdated;
+                                item.Stars = 0;
                             }
                         }
                         songId += "x";
@@ -129,6 +130,7 @@ namespace BeatLeader_Server.Controllers
                         foreach (var item in song.Difficulties)
                         {
                             item.Status = DifficultyStatus.outdated;
+                            item.Stars = 0;
                         }
                     }
                     _context.Songs.Add(song);

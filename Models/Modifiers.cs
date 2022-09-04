@@ -18,5 +18,9 @@ namespace BeatLeader_Server.Models
         public float NO { get; set; } = -0.2f;
         public float PM { get; set; } = 0.0f;
         public float SC { get; set; } = 0.0f;
+
+        public bool EqualTo(ModifiersMap other) {
+            return DA == other.DA && FS == other.FS && SS == other.SS && SF == other.SF && GN == other.GN && NA == other.NA && NB == other.NB && NF == other.NF && NO == other.NF && PM == other.PM && SC == other.SC;
+        }
     }
 }

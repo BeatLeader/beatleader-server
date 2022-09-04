@@ -127,6 +127,10 @@ namespace BeatLeader_Server.Controllers
                     .ThenInclude(q => q.Changes)
                     .Include(lb => lb.Reweight)
                     .ThenInclude(q => q.Changes)
+                    .ThenInclude(ch => ch.NewModifiers)
+                    .Include(lb => lb.Reweight)
+                    .ThenInclude(q => q.Changes)
+                    .ThenInclude(ch => ch.OldModifiers)
                     .Include(lb => lb.Reweight)
                     .ThenInclude(q => q.Modifiers)
                     .Include(lb => lb.Song)
@@ -460,7 +464,9 @@ namespace BeatLeader_Server.Controllers
                 .Take(count)
                 .Include(lb => lb.Difficulty)
                 .ThenInclude(lb => lb.ModifierValues)
-                .Include(lb => lb.Song);
+                .Include(lb => lb.Song)
+                .Include(lb => lb.Reweight)
+                .ThenInclude(rew => rew.Modifiers);
 
             bool showPlays = sortBy == "playcount";
 
