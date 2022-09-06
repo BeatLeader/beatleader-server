@@ -729,7 +729,7 @@ namespace BeatLeader_Server.Controllers
             {
                 try
                 {
-                    var hmds = hmd.ToLower().Split(",").Select(s => Int32.Parse(s));
+                    var hmds = hmd.ToLower().Split(",").Select(s => (HMD)Int32.Parse(s));
                     request = request.Where(p => hmds.Contains(p.ScoreStats.TopHMD));
                 }
                 catch { }
@@ -1089,8 +1089,6 @@ namespace BeatLeader_Server.Controllers
                     if (update != null)
                     {
                         p.ExternalProfileUrl = update.ExternalProfileUrl;
-                        p.AllTime = update.AllTime;
-                        p.LastTwoWeeksTime = update.LastTwoWeeksTime;
 
                         if (p.Avatar.Contains("steamcdn"))
                         {
@@ -1114,7 +1112,7 @@ namespace BeatLeader_Server.Controllers
         {
             public string PlayerId;
             public string Platform;
-            public int Hmd;
+            public HMD Hmd;
             public int ModifiedScore ;
             public float Accuracy;
             public float Pp;
@@ -1152,7 +1150,7 @@ namespace BeatLeader_Server.Controllers
 
             var lastScores = allScores.TakeLast(50);
             Dictionary<string, int> platforms = new Dictionary<string, int>();
-            Dictionary<int, int> hmds = new Dictionary<int, int>();
+            Dictionary<HMD, int> hmds = new Dictionary<HMD, int>();
             foreach (var s in lastScores)
             {
                 string? platform = s.Platform.Split(",").FirstOrDefault();

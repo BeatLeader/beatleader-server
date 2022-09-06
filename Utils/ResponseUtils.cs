@@ -38,8 +38,6 @@ namespace BeatLeader_Server.Utils
 
         public class PlayerResponseWithStats : PlayerResponse
         {
-            public float LastTwoWeeksTime { get; set; }
-            public float AllTime { get; set; }
             public string Histories { get; set; } = "";
             public PlayerScoreStats ScoreStats { get; set; }
             public IEnumerable<EventPlayer>? EventsParticipating { get; set; }
@@ -81,7 +79,7 @@ namespace BeatLeader_Server.Utils
             public int Pauses { get; set; }
             public bool FullCombo { get; set; }
             public string Platform { get; set; }
-            public int Hmd { get; set; }
+            public HMD Hmd { get; set; }
             public string LeaderboardId { get; set; }
             public string Timeset { get; set; }
             public PlayerResponse Player { get; set; }
@@ -312,8 +310,6 @@ namespace BeatLeader_Server.Utils
                 Avatar = p.Avatar,
                 Country = p.Country,
                 Histories = p.Histories,
-                LastTwoWeeksTime = p.LastTwoWeeksTime,
-                AllTime = p.AllTime,
                 ScoreStats = p.ScoreStats,
 
                 Pp = p.Pp,
@@ -344,8 +340,6 @@ namespace BeatLeader_Server.Utils
                 Avatar = p.Avatar,
                 Country = p.Country,
                 Histories = p.Histories,
-                LastTwoWeeksTime = p.LastTwoWeeksTime,
-                AllTime = p.AllTime,
                 ScoreStats = p.ScoreStats,
 
                 MapperId = p.MapperId,

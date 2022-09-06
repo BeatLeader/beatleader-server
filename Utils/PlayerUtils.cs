@@ -169,27 +169,6 @@ namespace BeatLeader_Server.Utils
             }
             result.ExternalProfileUrl = playerInfo.profileurl;
 
-            dynamic? gamesInfo = await GetPlayer("http://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v0001/?key=" + steamKey + "&steamid=" + playerID);
-            if (gamesInfo != null && ExpandantoObject.HasProperty(gamesInfo, "response") && ExpandantoObject.HasProperty(gamesInfo.response, "total_count"))
-            {
-                dynamic response = gamesInfo.response;
-                dynamic? beatSaber = null;
-
-                for (int i = 0; i < response.total_count; i++)
-                {
-                    if (response.games[i].appid == 620980)
-                    {
-                        beatSaber = response.games[i];
-                    }
-                }
-
-                if (beatSaber != null)
-                {
-                    result.AllTime = beatSaber.playtime_forever / 60.0f;
-                    result.LastTwoWeeksTime = beatSaber.playtime_2weeks / 60.0f;
-                }
-            }
-
             return result;
         }
         public static async Task<Player?> GetPlayerFromOculus(string playerID, string token)

@@ -1,10 +1,13 @@
 ﻿using AngleSharp.Common;
 using BeatLeader_Server.Extensions;
+using BeatLeader_Server.Migrations;
 using BeatLeader_Server.Models;
+using System.Runtime.ConstrainedExecution;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Utils
 {
+    
     static class ReplayUtils
     {
         public static float Curve(float acc, float stars)
@@ -111,7 +114,7 @@ namespace BeatLeader_Server.Utils
                 }
             }
             score.FullCombo = score.BombCuts == 0 && score.MissedNotes == 0 && score.WallsHit == 0 && score.BadCuts == 0;
-            score.Hmd = HMD(replay.info.hmd);
+            score.Hmd = HMDFromName(replay.info.hmd);
 
             var status = leaderboard.Difficulty.Status;
             var modifers = leaderboard.Difficulty.ModifierValues;
@@ -142,22 +145,60 @@ namespace BeatLeader_Server.Utils
             return (replay, score, maxScore);
         }
 
-        private static int HMD(string hmdName) {
+
+
+
+ 
+
+        private static HMD HMDFromName(string hmdName) {
             string lowerHmd = hmdName.ToLower();
 
-            if (lowerHmd.Contains("quest 2")) return 256;
-            if (lowerHmd.Contains("quest_2")) return 256;
-            if (lowerHmd.Contains("vive cosmos")) return 128;
-            if (lowerHmd.Contains("vive_cosmos")) return 128;
-            if (lowerHmd.Contains("index")) return 64;
-            if (lowerHmd.Contains("quest")) return 32;
-            if (lowerHmd.Contains("rift s")) return 16;
-            if (lowerHmd.Contains("rift_s")) return 16;
-            if (lowerHmd.Contains("windows")) return 8;
-            if (lowerHmd.Contains("vive pro")) return 4;
-            if (lowerHmd.Contains("vive_pro")) return 4;
-            if (lowerHmd.Contains("vive")) return 2;
-            if (lowerHmd.Contains("rift")) return 1;
+            if (lowerHmd.Contains("pico neo 3")) return HMD.picoNeo3;
+            if (lowerHmd.Contains("pico neo3")) return HMD.picoNeo3;
+            if (lowerHmd.Contains("pico neo 2")) return HMD.picoNeo2;
+            if (lowerHmd.Contains("pico neo2")) return HMD.picoNeo2;
+            if (lowerHmd.Contains("vive pro 2")) return HMD.vivePro2;
+            if (lowerHmd.Contains("vive elite")) return HMD.viveElite;
+            if (lowerHmd.Contains("focus3")) return HMD.viveFocus;
+            if (lowerHmd.Contains("miramar")) return HMD.miramar;
+            if (lowerHmd.Contains("pimax vision 8k")) return HMD.pimax8k;
+            if (lowerHmd.Contains("pimax 5k")) return HMD.pimax5k;
+            if (lowerHmd.Contains("pimax artisan")) return HMD.pimaxArtisan;
+
+            if (lowerHmd.Contains("hp reverb")) return HMD.hpReverb;
+            if (lowerHmd.Contains("samsung windows")) return HMD.samsungWmr;
+            if (lowerHmd.Contains("qiyu dream")) return HMD.qiyuDream;
+            if (lowerHmd.Contains("disco")) return HMD.disco;
+            if (lowerHmd.Contains("lenovo explorer")) return HMD.lenovoExplorer;
+            if (lowerHmd.Contains("acer ah1010")) return HMD.acerWmr;
+            if (lowerHmd.Contains("acer ah5010")) return HMD.acerWmr;
+            if (lowerHmd.Contains("arpara")) return HMD.arpara;
+            if (lowerHmd.Contains("dell visor")) return HMD.dellVisor;
+
+            if (lowerHmd.Contains("e3")) return HMD.e3;
+            if (lowerHmd.Contains("vive dvt")) return HMD.viveDvt;
+            if (lowerHmd.Contains("3glasses s20")) return HMD.glasses20;
+            if (lowerHmd.Contains("hedy")) return HMD.hedy;
+            if (lowerHmd.Contains("vaporeon")) return HMD.vaporeon;
+            if (lowerHmd.Contains("huaweivr")) return HMD.huaweivr;
+            if (lowerHmd.Contains("asus mr0")) return HMD.asusWmr;
+            if (lowerHmd.Contains("cloudxr")) return HMD.cloudxr;
+            if (lowerHmd.Contains("vridge")) return HMD.vridge;
+            if (lowerHmd.Contains("medion mixed reality")) return HMD.medion;
+
+            if (lowerHmd.Contains("quest 2")) return HMD.quest2;
+            if (lowerHmd.Contains("quest_2")) return HMD.quest2;
+            if (lowerHmd.Contains("vive cosmos")) return HMD.viveCosmos;
+            if (lowerHmd.Contains("vive_cosmos")) return HMD.viveCosmos;
+            if (lowerHmd.Contains("index")) return HMD.index;
+            if (lowerHmd.Contains("quest")) return HMD.quest;
+            if (lowerHmd.Contains("rift s")) return HMD.riftS;
+            if (lowerHmd.Contains("rift_s")) return HMD.riftS;
+            if (lowerHmd.Contains("windows")) return HMD.wmr;
+            if (lowerHmd.Contains("vive pro")) return HMD.vivePro;
+            if (lowerHmd.Contains("vive_pro")) return HMD.vivePro;
+            if (lowerHmd.Contains("vive")) return HMD.vive;
+            if (lowerHmd.Contains("rift")) return HMD.rift;
 
             return 0;
         }

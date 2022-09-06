@@ -39,7 +39,7 @@
         public int WallsHit { get; set; }
         public int Pauses { get; set; }
         public bool FullCombo { get; set; }
-        public int Hmd { get; set; }
+        public HMD Hmd { get; set; }
         public float AccRight { get; set; }
         public float AccLeft { get; set; }
         public string Timeset { get; set; }
@@ -73,7 +73,7 @@
         public int WallsHit { get; set; }
         public int Pauses { get; set; }
         public bool FullCombo { get; set; }
-        public int Hmd { get; set; }
+        public HMD Hmd { get; set; }
         public string Timeset { get; set; }
         public Player Player { get; set; }
         public Leaderboard Leaderboard { get; set; }

@@ -280,7 +280,7 @@ namespace BeatLeader_Server.Controllers
                             link.Tier = tier;
                         } else {
                             UpdatePatreonRole(player, null);
-                            link.Tier = tier;
+                            link.Tier = "";
                         }
                     }
                 } else {

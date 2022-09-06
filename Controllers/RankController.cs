@@ -41,12 +41,6 @@ namespace BeatLeader_Server.Controllers
             _playlistController = playlistController;
         }
 
-        public DiscordWebhookClient? reweightDSClient() {
-            var link = _configuration.GetValue<string?>("ReweightDSHook");
-            return link == null ? null : new DiscordWebhookClient(link);
-
-        }
-
         public enum VoteStatus
         {
             CantVote = 1,
@@ -967,6 +961,13 @@ namespace BeatLeader_Server.Controllers
             }
 
             return Ok();
+        }
+
+        [NonAction]
+        public DiscordWebhookClient? reweightDSClient()
+        {
+            var link = _configuration.GetValue<string?>("ReweightDSHook");
+            return link == null ? null : new DiscordWebhookClient(link);
         }
     }
 }

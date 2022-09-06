@@ -5,6 +5,8 @@ using Azure.Storage.Blobs;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
+using Discord;
+using Discord.Webhook;
 using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -243,6 +245,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             ScoreImprovement improvement = new ScoreImprovement();
+            List<Score> rankedScores;
 
             using (_serverTiming.TimeAction("score"))
             {
@@ -373,7 +376,7 @@ namespace BeatLeader_Server.Controllers
 
                 var status = leaderboard.Difficulty.Status;
                 var isRanked = status == DifficultyStatus.ranked || status == DifficultyStatus.qualified || status == DifficultyStatus.nominated;
-                var rankedScores = leaderboard.Scores.OrderByDescending(el => isRanked ? el.Pp : el.ModifiedScore).ToList();
+                rankedScores = leaderboard.Scores.OrderByDescending(el => isRanked ? el.Pp : el.ModifiedScore).ToList();
                 foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
                 {
                     if (s.Rank != i + 1) {
@@ -494,6 +497,34 @@ namespace BeatLeader_Server.Controllers
 
                     improvement.TotalPp = player.Pp - oldPp;
                     improvement.TotalRank = player.Rank - oldRank;
+
+                    if (resultScore.Rank == 1) {
+                        var dsClient = top1DSClient();
+
+                        if (dsClient != null)
+                        {
+                            var song = _context.Leaderboards.Where(lb => lb.Id == leaderboard.Id).Include(lb => lb.Song).Select(lb => lb.Song).FirstOrDefault();
+                            string message = player.Name + " became top 1 on **" + (song != null ? song?.Name : leaderboard.Id) + "** \n";
+                            message += Math.Round(resultScore.Accuracy * 100, 2) + "% " + Math.Round(resultScore.Pp, 2) + "pp (" + Math.Round(resultScore.Weight * resultScore.Pp, 2) + "pp)\n";
+                            if (rankedScores.Count > 1) {
+                                message += "This beats previous record by **" + Math.Round(resultScore.Pp - rankedScores[1].Pp, 2) + "pp** and **" + Math.Round((resultScore.Accuracy - rankedScores[1].Accuracy) * 100, 2) + "%** ";
+                                if (resultScore.Modifiers.Length > 0) {
+                                    message += "using **" + resultScore.Modifiers + "**";
+                                }
+                                message += "\n";
+                            }
+                            message += Math.Round(improvement.TotalPp, 2) + " to the personal pp and " + improvement.TotalRank + " to rank \n";
+
+                            dsClient.SendMessageAsync(message, 
+                                embeds: new List<Embed> { 
+                                    new EmbedBuilder()
+                                    .WithTitle("Watch Replay")
+                                    .WithUrl("https://replay.beatleader.xyz?scoreId=" + resultScore.Id)
+                                    .WithImageUrl("https://api.beatleader.xyz/preview/replay?scoreId=" + resultScore.Id)
+                                    .Build() 
+                                    });
+                        }
+                    }
 
                     if (player.Rank < player.ScoreStats.PeakRank) {
                         player.ScoreStats.PeakRank = player.Rank;
@@ -822,6 +853,13 @@ namespace BeatLeader_Server.Controllers
             }
 
             return result;
+        }
+
+        [NonAction]
+        public DiscordWebhookClient? top1DSClient()
+        {
+            var link = _configuration.GetValue<string?>("Top1DSHook");
+            return link == null ? null : new DiscordWebhookClient(link);
         }
     }
 }

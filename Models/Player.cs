@@ -20,8 +20,6 @@
         public bool Inactive { get; set; }
 
         public string ExternalProfileUrl { get; set; } = "";
-        public float LastTwoWeeksTime { get; set; }
-        public float AllTime { get; set; }
 
         public PlayerScoreStats ScoreStats { get; set; } = new PlayerScoreStats();
         public PlayerStatsHistory? StatsHistory { get; set; }

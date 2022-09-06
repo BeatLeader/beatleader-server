@@ -17,7 +17,7 @@ namespace BeatLeader_Server.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.1")
+                .HasAnnotation("ProductVersion", "6.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder, 1L, 1);
@@ -399,9 +399,6 @@ namespace BeatLeader_Server.Migrations
                     b.Property<float>("Njs")
                         .HasColumnType("real");
 
-                    b.Property<bool>("Nominated")
-                        .HasColumnType("bit");
-
                     b.Property<int>("NominatedTime")
                         .HasColumnType("int");
 
@@ -411,14 +408,8 @@ namespace BeatLeader_Server.Migrations
                     b.Property<float>("Nps")
                         .HasColumnType("real");
 
-                    b.Property<bool>("Qualified")
-                        .HasColumnType("bit");
-
                     b.Property<int>("QualifiedTime")
                         .HasColumnType("int");
-
-                    b.Property<bool>("Ranked")
-                        .HasColumnType("bit");
 
                     b.Property<int>("RankedTime")
                         .HasColumnType("int");
@@ -869,9 +860,6 @@ namespace BeatLeader_Server.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<float>("AllTime")
-                        .HasColumnType("real");
-
                     b.Property<string>("Avatar")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -896,9 +884,6 @@ namespace BeatLeader_Server.Migrations
 
                     b.Property<bool>("Inactive")
                         .HasColumnType("bit");
-
-                    b.Property<float>("LastTwoWeeksTime")
-                        .HasColumnType("real");
 
                     b.Property<int>("MapperId")
                         .HasColumnType("int");
