@@ -504,7 +504,7 @@ namespace BeatLeader_Server.Controllers
                         if (dsClient != null)
                         {
                             var song = _context.Leaderboards.Where(lb => lb.Id == leaderboard.Id).Include(lb => lb.Song).Select(lb => lb.Song).FirstOrDefault();
-                            string message = player.Name + " became top 1 on **" + (song != null ? song?.Name : leaderboard.Id) + "** \n";
+                            string message = "**" + player.Name + "** has become No 1 on **" + (song != null ? song?.Name : leaderboard.Id) + "** :tada: \n";
                             message += Math.Round(resultScore.Accuracy * 100, 2) + "% " + Math.Round(resultScore.Pp, 2) + "pp (" + Math.Round(resultScore.Weight * resultScore.Pp, 2) + "pp)\n";
                             if (rankedScores.Count > 1) {
                                 message += "This beats previous record by **" + Math.Round(resultScore.Pp - rankedScores[1].Pp, 2) + "pp** and **" + Math.Round((resultScore.Accuracy - rankedScores[1].Accuracy) * 100, 2) + "%** ";
