@@ -11,6 +11,8 @@
         public RankQualification? Qualification { get; set; }
         public RankUpdate? Reweight { get; set; }
 
+        public ICollection<LeaderboardChange>? Changes { get; set; }
+
         public ICollection<EventRanking>? Events { get; set; }
         public int Plays { get; set; }
     }

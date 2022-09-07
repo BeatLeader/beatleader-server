@@ -4,16 +4,18 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace BeatLeader_Server.Migrations
+namespace BeatLeader_Server.Migrations.ReadApp
 {
-    [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [DbContext(typeof(ReadAppContext))]
+    [Migration("20220907155044_LeaderboardChanges")]
+    partial class LeaderboardChanges
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1288,6 +1290,72 @@ namespace BeatLeader_Server.Migrations
                     b.ToTable("QualificationChange");
                 });
 
+            modelBuilder.Entity("BeatLeader_Server.Models.RankChange", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<string>("Diff")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("NewCriteriaMet")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("NewModifiersModifierId")
+                        .HasColumnType("int");
+
+                    b.Property<float>("NewRankability")
+                        .HasColumnType("real");
+
+                    b.Property<float>("NewStars")
+                        .HasColumnType("real");
+
+                    b.Property<int>("NewType")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OldCriteriaMet")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("OldModifiersModifierId")
+                        .HasColumnType("int");
+
+                    b.Property<float>("OldRankability")
+                        .HasColumnType("real");
+
+                    b.Property<float>("OldStars")
+                        .HasColumnType("real");
+
+                    b.Property<int>("OldType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PlayerId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Timeset")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NewModifiersModifierId");
+
+                    b.HasIndex("OldModifiersModifierId");
+
+                    b.ToTable("RankChanges");
+                });
+
             modelBuilder.Entity("BeatLeader_Server.Models.RankQualification", b =>
                 {
                     b.Property<int>("Id")
@@ -2265,6 +2333,21 @@ namespace BeatLeader_Server.Migrations
                     b.HasOne("BeatLeader_Server.Models.RankQualification", null)
                         .WithMany("Changes")
                         .HasForeignKey("RankQualificationId");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.RankChange", b =>
+                {
+                    b.HasOne("BeatLeader_Server.Models.ModifiersMap", "NewModifiers")
+                        .WithMany()
+                        .HasForeignKey("NewModifiersModifierId");
+
+                    b.HasOne("BeatLeader_Server.Models.ModifiersMap", "OldModifiers")
+                        .WithMany()
+                        .HasForeignKey("OldModifiersModifierId");
+
+                    b.Navigation("NewModifiers");
+
+                    b.Navigation("OldModifiers");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.RankUpdate", b =>

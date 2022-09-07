@@ -1,14 +1,11 @@
 ﻿namespace BeatLeader_Server.Models
 {
-    public class RankChange
+    public class LeaderboardChange
     {
         public int Id { get; set; }
 
         public int Timeset { get; set; } = 0;
         public string PlayerId { get; set; }
-        public string Hash { get; set; } = "";
-        public string Diff { get; set; } = "";
-        public string Mode { get; set; } = "";
 
         public float OldRankability { get; set; } = 0;
         public float OldStars { get; set; } = 0;

@@ -615,6 +615,7 @@ namespace BeatLeader_Server.Controllers
                 .Include(l => l.Difficulty)
                 .ThenInclude(d => d.ModifierValues)
                 .Include(l => l.Song)
+                .Include(l => l.Changes)
                 .Include(l => l.Reweight)
                 .ThenInclude(r => r.Modifiers)
                 .FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
@@ -629,12 +630,13 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 DifficultyDescription? difficulty = leaderboard.Difficulty;
-                RankChange rankChange = new RankChange
+                if (leaderboard.Changes == null) {
+                    leaderboard.Changes = new List<LeaderboardChange>();
+                }
+                LeaderboardChange rankChange = new LeaderboardChange
                 {
+                    Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
                     PlayerId = currentID,
-                    Hash = hash,
-                    Diff = diff,
-                    Mode = mode,
                     OldRankability = difficulty.Status == DifficultyStatus.ranked ? 1 : 0,
                     OldStars = difficulty.Stars ?? 0,
                     OldType = difficulty.Type,
@@ -646,7 +648,7 @@ namespace BeatLeader_Server.Controllers
                     NewModifiers = reweight.Modifiers,
                     NewCriteriaMet = reweight.CriteriaMet
                 };
-                _context.RankChanges.Add(rankChange);
+                leaderboard.Changes.Add(rankChange);
                 reweight.Finished = true;
 
                 var dsClient = reweightDSClient();
@@ -780,17 +782,19 @@ namespace BeatLeader_Server.Controllers
                 .ThenInclude(d => d.ModifierValues)
                 .Include(l => l.Song)
                 .Include(l => l.Qualification)
+                .Include(l => l.Changes)
                 .FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             if (leaderboard != null)
             {
                 DifficultyDescription? difficulty = leaderboard.Difficulty;
-                RankChange rankChange = new RankChange
+                if (leaderboard.Changes == null) {
+                    leaderboard.Changes = new List<LeaderboardChange>();
+                }
+                LeaderboardChange rankChange = new LeaderboardChange
                 {
+                    Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
                     PlayerId = currentID,
-                    Hash = hash,
-                    Diff = diff,
-                    Mode = mode,
                     OldRankability = difficulty.Status == DifficultyStatus.ranked ? 1 : 0,
                     OldStars = difficulty.Stars ?? 0,
                     OldType = difficulty.Type,
@@ -798,7 +802,7 @@ namespace BeatLeader_Server.Controllers
                     NewStars = stars,
                     NewType = type
                 };
-                _context.RankChanges.Add(rankChange);
+                leaderboard.Changes.Add(rankChange);
 
                 bool updatePlaylists = (difficulty.Status == DifficultyStatus.ranked) != (rankability > 0); 
 
