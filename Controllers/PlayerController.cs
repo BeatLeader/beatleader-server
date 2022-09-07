@@ -599,7 +599,7 @@ namespace BeatLeader_Server.Controllers
 
         public string HistogrammValuee(string order, List<float> values, float batch, int count)
         {
-
+            if (values.Count() == 0) return "";
             Dictionary<float, HistogrammValue> result = new Dictionary<float, HistogrammValue>();
             int totalCount = 0;
             float normalizedMin = (int)(values.Min() / batch) * batch;

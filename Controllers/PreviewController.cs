@@ -1,7 +1,10 @@
-﻿using BeatLeader_Server.Models;
+﻿using Azure.Identity;
+using Azure.Storage.Blobs;
+using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System.Collections.Specialized;
@@ -19,11 +22,25 @@ namespace BeatLeader_Server.Controllers
         private readonly HttpClient _client;
         private readonly ReadAppContext _readContext;
         private readonly IWebHostEnvironment _webHostEnvironment;
+        BlobContainerClient _previewContainerClient;
 
-        public PreviewController(ReadAppContext context, IWebHostEnvironment webHostEnvironment) {
+        public PreviewController(ReadAppContext context, IWebHostEnvironment webHostEnvironment, IOptions<AzureStorageConfig> config) {
             _client = new HttpClient();
             _readContext = context;
             _webHostEnvironment = webHostEnvironment;
+
+            if (webHostEnvironment.IsDevelopment())
+            {
+                _previewContainerClient = new BlobContainerClient(config.Value.AccountName, config.Value.AssetsContainerName);
+            }
+            else
+            {
+                string containerEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
+                                                        config.Value.AccountName,
+                                                       config.Value.AssetsContainerName);
+
+                _previewContainerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
+            }
         }
         class SongSelect {
             public string Id { get; set; }
@@ -39,6 +56,16 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? difficulty = null, 
             [FromQuery] string? mode = null,
             [FromQuery] int? scoreId = null) {
+
+            if (scoreId != null)
+            {
+
+                BlobClient blobClient = _previewContainerClient.GetBlobClient(scoreId + "-preview.png");
+                if (await blobClient.ExistsAsync())
+                {
+                    return File(await blobClient.OpenReadAsync(), "image/png");
+                }
+            }
 
             Player? player = null;
             SongSelect? song = null;
@@ -132,15 +159,20 @@ namespace BeatLeader_Server.Controllers
                     graphics.DrawString(modifiersAndCombo, new Font(fontFamily, 10), new SolidBrush(Color.White), new Point((int)(width / 2), 172), stringFormat);
                 }
             }
-            
 
             graphics.DrawRectangle(new Pen(new LinearGradientBrush(new Point(1, 1), new Point(100, 100), Color.Red, Color.BlueViolet), 5), new Rectangle(0, 0, width, height));
 
-            using (MemoryStream ms = new MemoryStream())
+            
+            MemoryStream ms = new MemoryStream();
+            bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+            ms.Position = 0;
+            if (scoreId != null)
             {
-                bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-                return File(ms.ToArray(), "image/png");
+                await _previewContainerClient.DeleteBlobIfExistsAsync(scoreId + "-preview.png");
+                await _previewContainerClient.UploadBlobAsync(scoreId + "-preview.png", ms);
             }
+            ms.Position = 0;
+            return File(ms, "image/png");
         }
 
         [HttpGet("~/preview/royale")]

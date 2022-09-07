@@ -616,6 +616,7 @@ namespace BeatLeader_Server.Controllers
                 .ThenInclude(d => d.ModifierValues)
                 .Include(l => l.Song)
                 .Include(l => l.Reweight)
+                .ThenInclude(r => r.Modifiers)
                 .FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             if (leaderboard != null && leaderboard.Reweight != null)

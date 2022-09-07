@@ -8,7 +8,7 @@ namespace BeatLeader_Server.Utils
     {
         public static string DescribeModifiersChanges(ModifiersMap oldM, ModifiersMap newM) {
             string message = "";
-            if (!oldM.EqualTo(newM))
+            if (oldM != null && newM != null && !oldM.EqualTo(newM))
             {
                 var modifiersDictionary = newM.ToDictionary<float>();
                 var oldModifiersDictionary = oldM.ToDictionary<float>();
