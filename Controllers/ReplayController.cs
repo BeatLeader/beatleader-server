@@ -705,31 +705,6 @@ namespace BeatLeader_Server.Controllers
                     player.ScoreStats.AverageRankedAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, previousScore.Accuracy);
                 }
             }
-
-            var rankedScores = leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();
-            foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
-            {
-                if (s.Rank != i + 1)
-                {
-                    s.Rank = i + 1;
-                }
-            }
-
-            leaderboard.Plays = rankedScores.Count;
-
-            _context.RecalculatePP(player);
-
-            var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
-            var country = player.Country; var countryRank = 1;
-            foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
-            {
-                p.Rank = i + 1;
-                if (p.Country == country)
-                {
-                    p.CountryRank = countryRank;
-                    countryRank++;
-                }
-            }
         }
 
         [NonAction]

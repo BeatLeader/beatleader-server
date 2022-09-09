@@ -67,6 +67,11 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
+            if (!OperatingSystem.IsWindows())
+            {
+                return Redirect("https://freedm.azurewebsites.net/preview/replay" + Request.QueryString);
+            }
+
             Player? player = null;
             SongSelect? song = null;
             Score? score = null;

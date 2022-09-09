@@ -6,7 +6,8 @@
     },
     "storage1": {
       "type": "storage",
-      "connectionId": "CDN"
+      "connectionId": "CDN",
+      "dynamicId": null
     }
   }
 }

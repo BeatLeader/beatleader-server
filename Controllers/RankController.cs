@@ -702,10 +702,7 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 await _scoreController.RefreshScores(leaderboard.Id);
-
-                HttpContext.Response.OnCompleted(async () => {
-                    await _playerController.RefreshLeaderboardPlayers(leaderboard.Id);
-                });
+                await _playerController.RefreshLeaderboardPlayers(leaderboard.Id);
             }
 
             return Ok();
