@@ -13,6 +13,13 @@ namespace BeatLeader_Server.Models
         inevent = 6
     }
 
+    public enum MapperApproval
+    {
+        unknown = 0,
+        rejected = 1,
+        approved = 2,
+    }
+
     public class DifficultyDescription
     {
         public int Id { get; set; }
@@ -21,6 +28,7 @@ namespace BeatLeader_Server.Models
         public string DifficultyName { get; set; }
         public string ModeName { get; set; }
         public DifficultyStatus Status { get; set; }
+        public MapperApproval MapperApproval { get; set; }
         public ModifiersMap? ModifierValues { get; set; } = new ModifiersMap();
         public int NominatedTime { get; set; }
         public int QualifiedTime { get; set; }

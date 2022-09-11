@@ -1,4 +1,5 @@
-﻿using BeatLeader_Server.Models;
+﻿using BeatLeader_Server.Extensions;
+using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -91,6 +92,72 @@ namespace BeatLeader_Server.Controllers
             return difficulties.Select(diff =>
                 resFromLB.FirstOrDefault(element => element.DiffModResponse.DifficultyName == diff.DifficultyName && element.DiffModResponse.ModeName == diff.ModeName)?.DiffModResponse
                 ?? ResponseUtils.DiffModResponseFromDiffAndVotes(diff, Array.Empty<float>())).ToArray();
+        }
+
+        [HttpGet("~/maps/forapprove")]
+        public async Task<ActionResult<IEnumerable<Song>>> MapsForApprove()
+        {
+            string userId = HttpContext.CurrentUserID(_readContext);
+            var player = _readContext.Players.Find(userId);
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            return _context.Songs
+                .Where(s => s.MapperId == player.MapperId && s.Difficulties
+                    .FirstOrDefault(d => d.Status == DifficultyStatus.ranked && d.QualifiedTime == 0) != null)
+                .Include(s => s.Difficulties.Where(d => d.Status == DifficultyStatus.ranked)).ToList();
+        }
+
+        public class TotalPPResult {
+            public float TotalPP { get; set; }
+            public int PlayerCount { get; set; }
+        }
+
+        [HttpGet("~/map/totalpp")]
+        public async Task<ActionResult<TotalPPResult>> Totalpp([FromQuery] string songId)
+        {
+            string userId = HttpContext.CurrentUserID(_readContext);
+            var player = _readContext.Players.Find(userId);
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            var leaderboards = _context.Leaderboards.Where(lb => lb.SongId == songId && lb.Song.MapperId == player.MapperId).Select(lb => lb.Scores.Select(s => new { pp = s.Pp * s.Weight, player = s.PlayerId })).ToList();
+            if (leaderboards.Count() == 0) {
+
+                return NotFound();
+            }
+            return new TotalPPResult {
+                TotalPP = leaderboards.Sum(lb => lb.Sum(s => s.pp)),
+                PlayerCount = leaderboards.Sum(sc => sc.DistinctBy(s => s.player).Count())
+            };
+        }
+
+        [HttpPost("~/maps/approve")]
+        public async Task<ActionResult> ApproveMap([FromQuery] string songId, [FromQuery] MapperApproval approval)
+        {
+            string userId = HttpContext.CurrentUserID(_readContext);
+            var player = _readContext.Players.Find(userId);
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            var map = _context.Songs
+                .Where(s => s.Id == songId && s.MapperId == player.MapperId && s.Difficulties
+                    .FirstOrDefault(d => d.Status == DifficultyStatus.ranked && d.QualifiedTime == 0) != null)
+                .Include(s => s.Difficulties.Where(d => d.Status == DifficultyStatus.ranked)).FirstOrDefault();
+
+            foreach (var item in map.Difficulties)
+            {
+                item.MapperApproval = approval;
+            }
+            _context.SaveChanges();
+
+            return Ok();
         }
 
         [NonAction]
