@@ -854,7 +854,7 @@ namespace BeatLeader_Server.Controllers
             return new PrevQualification {
                 Time = _context.Leaderboards
                 .Where(lb => lb.Difficulty.Status == DifficultyStatus.nominated && lb.Qualification.RTMember == userId)
-                .Select(lb => new { time = lb.Difficulty.NominatedTime }).FirstOrDefault()?.time ?? 0
+                .Select(lb => new { time = lb.Difficulty.NominatedTime }).OrderByDescending(lb => lb.time).FirstOrDefault()?.time ?? 0
             };
         }
 

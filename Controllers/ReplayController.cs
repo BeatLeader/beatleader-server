@@ -516,7 +516,10 @@ namespace BeatLeader_Server.Controllers
                             message += Math.Round(improvement.TotalPp, 2) + " to the personal pp and " + improvement.TotalRank + " to rank \n";
 
                             dsClient.SendMessageAsync(message, 
-                                embeds: new List<Embed> { 
+                                embeds: new List<Embed> { new EmbedBuilder()
+                                    .WithTitle("Leaderboard")
+                                    .WithUrl("https://beatleader.xyz/leaderboard/global/" + leaderboard.Id)
+                                    .Build(),
                                     new EmbedBuilder()
                                     .WithTitle("Watch Replay")
                                     .WithUrl("https://replay.beatleader.xyz?scoreId=" + resultScore.Id)
