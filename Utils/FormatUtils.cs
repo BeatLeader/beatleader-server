@@ -49,5 +49,22 @@ namespace BeatLeader_Server.Utils
             }
             return message;
         }
+
+        public static string DescribeCriteria(int criteria)
+        {
+            switch (criteria)
+            {
+                case 0:
+                    return "Not checked";
+                case 1:
+                    return "Met criteria";
+                case 2:
+                    return "Unmet criteria";
+                case 3:
+                    return "Criteria on hold";
+                default:
+                    return "";
+            }
+        }
     }
 }

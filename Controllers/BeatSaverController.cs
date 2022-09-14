@@ -115,9 +115,23 @@ namespace BeatLeader_Server.Controllers
 
             if (playerId != null && bslink != null && bslink.Id != playerId) {
                 if (Int64.Parse(bslink.Id) > 30000000 && Int64.Parse(bslink.Id) < 1000000000000000) {
-                    
+                    var lbs = _context.Leaderboards.Where(lb => lb.Qualification != null && lb.Qualification.MapperId == bslink.Id).Include(lb => lb.Qualification).ToList();
+
+                    foreach (var lb in lbs)
+                    {
+                        if (lb.Qualification.MapperAllowed && lb.Qualification.MapperId != null)
+                        {
+                            lb.Qualification.MapperId = playerId;
+                            if (lb.Qualification.MapperQualification)
+                            {
+                                lb.Qualification.RTMember = playerId;
+                            }
+                        }
+                    }
+
                     var oldplayer = _context.Players.Where(p => p.Id == bslink.Id).Include(p => p.Socials).FirstOrDefault();
-                    if (oldplayer != null) {
+                    if (oldplayer != null)
+                    {
                         oldplayer.Socials = null;
                         _context.Players.Remove(oldplayer);
                     }

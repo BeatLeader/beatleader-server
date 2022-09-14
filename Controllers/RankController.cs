@@ -307,7 +307,7 @@ namespace BeatLeader_Server.Controllers
 
                 if (dsClient != null)
                 {
-                    string message = currentPlayer.Name + "nominated **" + diff + "** diff of **" + leaderboard.Song.Name + "**! \n";
+                    string message = currentPlayer.Name + " nominated **" + diff + "** diff of **" + leaderboard.Song.Name + "**! \n";
                     message += "★ " + difficulty.Stars + "  ";
                     message += " **T**  ";
                     message += FormatUtils.DescribeType(leaderboard.Difficulty.Type);
@@ -378,7 +378,7 @@ namespace BeatLeader_Server.Controllers
 
                         if (dsClient != null)
                         {
-                            string message = currentPlayer.Name + "qualified **" + diff + "** diff of **" + leaderboard.Song.Name + "**! \n";
+                            string message = currentPlayer.Name + " qualified **" + diff + "** diff of **" + leaderboard.Song.Name + "**! \n";
                             message += "★ " + leaderboard.Difficulty.Stars + "  ";
                             message += " **T**  ";
                             message += FormatUtils.DescribeType(leaderboard.Difficulty.Type);
@@ -459,6 +459,36 @@ namespace BeatLeader_Server.Controllers
                     qualificationChange.NewType = (int)leaderboard.Difficulty.Type;
                     qualificationChange.NewCriteriaMet = qualification.CriteriaMet;
                     qualificationChange.NewCriteriaCommentary = qualification.CriteriaCommentary;
+
+                    var dsClient = reweightDSClient();
+
+                    if (dsClient != null)
+                    {
+
+                        string message = currentPlayer.Name + " updated nomination for **" + leaderboard.Song.Name + "**!\n";
+                        if (qualificationChange.NewRankability <= 0)
+                        {
+                            message += "**Declined!**\n Reason: " + qualification.CriteriaCommentary;
+                        }
+                        else
+                        {
+                            if (qualificationChange.NewStars != qualificationChange.OldStars)
+                            {
+                                message += "★ " + qualificationChange.OldStars + " → " + qualificationChange.NewStars;
+                            }
+                            message += FormatUtils.DescribeTypeChanges(qualificationChange.OldType, qualificationChange.NewType);
+                            if (qualificationChange.OldCriteriaMet != qualificationChange.NewCriteriaMet) {
+                                message += "\n Criteria checked! Verdict: " +  FormatUtils.DescribeCriteria(qualificationChange.NewCriteriaMet) + "\n";
+                                if (qualificationChange.NewCriteriaCommentary != null) {
+                                    message += "With commentary: " + qualificationChange.NewCriteriaCommentary + "\n";
+                                }
+                            }
+                            //message += FormatUtils.DescribeModifiersChanges(qualificationChange.Old, reweight.Modifiers);
+                        }
+                        message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
+
+                        dsClient.SendMessageAsync(message);
+                    }
 
                     if (qualificationChange.NewRankability != qualificationChange.OldRankability
                         || qualificationChange.NewStars != qualificationChange.OldStars
