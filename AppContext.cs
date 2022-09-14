@@ -21,7 +21,6 @@ namespace BeatLeader_Server
         public DbSet<AuthIP> AuthIPs { get; set; }
         public DbSet<AuthID> AuthIDs { get; set; }
         public DbSet<AccountLink> AccountLinks { get; set; }
-        public DbSet<ScoreStatistic> ScoreStatistics { get; set; }
         public DbSet<PlayerStatsHistory> StatsHistory { get; set; }
         public DbSet<CronTimestamps> cronTimestamps { get; set; }
         public DbSet<Badge> Badges { get; set; }
@@ -37,7 +36,6 @@ namespace BeatLeader_Server
         public DbSet<TwitchLink> TwitchLinks { get; set; }
         public DbSet<TwitterLink> TwitterLinks { get; set; }
         public DbSet<YouTubeLink> YouTubeLinks { get; set; }
-        public DbSet<LeaderboardStatistic> LeaderboardStatistics { get; set; }
         public DbSet<BeatSaverLink> BeatSaverLinks { get; set; }
 
         public DbSet<ReservedClanTag> ReservedTags { get; set; }
@@ -85,7 +83,6 @@ namespace BeatLeader_Server
         public DbSet<AuthIP> AuthIPs { get; set; }
         public DbSet<AuthID> AuthIDs { get; set; }
         public DbSet<AccountLink> AccountLinks { get; set; }
-        public DbSet<ScoreStatistic> ScoreStatistics { get; set; }
         public DbSet<PlayerStatsHistory> StatsHistory { get; set; }
         public DbSet<CronTimestamps> cronTimestamps { get; set; }
         public DbSet<Badge> Badges { get; set; }
@@ -101,7 +98,6 @@ namespace BeatLeader_Server
         public DbSet<TwitchLink> TwitchLinks { get; set; }
         public DbSet<TwitterLink> TwitterLinks { get; set; }
         public DbSet<YouTubeLink> YouTubeLinks { get; set; }
-        public DbSet<LeaderboardStatistic> LeaderboardStatistics { get; set; }
         public DbSet<BeatSaverLink> BeatSaverLinks { get; set; }
 
         public DbSet<ReservedClanTag> ReservedTags { get; set; }

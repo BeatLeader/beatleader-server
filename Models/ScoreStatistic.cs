@@ -5,83 +5,52 @@ namespace BeatLeader_Server.Models
 {
     public class HitTracker
     {
-        public int Id { get; set; }
-        public int MaxCombo { get; set; }
-        public int LeftMiss { get; set; }
-        public int RightMiss { get; set; }
-        public int LeftBadCuts { get; set; }
-        public int RightBadCuts { get; set; }
-        public int LeftBombs { get; set; }
-        public int RightBombs { get; set; }
-    }
-
-    public class AccuracyTracker
-    {
-        public int Id { get; set; }
-        public float AccRight { get; set; }
-        public float AccLeft { get; set; }
-        public float LeftPreswing { get; set; }
-        public float RightPreswing { get; set; }
-        public float AveragePreswing { get; set; }
-        public float LeftPostswing { get; set; }
-        public float RightPostswing { get; set; }
-        public float LeftTimeDependence { get; set; }
-        public float RightTimeDependence { get; set; }
-
-        [NotMapped]
-        public List<float> LeftAverageCut { get; set; }
-        public string LeftAverageCutS { get; set; }
-
-        [NotMapped]
-        public List<float> RightAverageCut { get; set; }
-        public string RightAverageCutS { get; set; }
-
-        [NotMapped]
-        public List<float> GridAcc { get; set; }
-        public string GridAccS { get; set; }
+        public int maxCombo { get; set; }
+        public int leftMiss { get; set; }
+        public int rightMiss { get; set; }
+        public int leftBadCuts { get; set; }
+        public int rightBadCuts { get; set; }
+        public int leftBombs { get; set; }
+        public int rightBombs { get; set; }
     }
 
     public class WinTracker
     {
-        public int Id { get; set; }
-        public bool Won { get; set; }
-        public float EndTime { get; set; }
-        public int NbOfPause { get; set; }
-        public float JumpDistance { get; set; }
-        public float AverageHeight { get; set; }
-        public int TotalScore { get; set; }
-    }
-    public class ScoreGraphTracker {
-        public int Id { get; set; }
-
-        [NotMapped]
-        public List<float> Graph { get; set; }
-        public string GraphS { get; set; }
+        public bool won { get; set; }
+        public float endTime { get; set; }
+        public int nbOfPause { get; set; }
+        public float jumpDistance { get; set; }
+        public float averageHeight { get; set; }
+        public int totalScore { get; set; }
     }
 
     public class ScoreStatistic
     {
-        public int Id { get; set; }
-        public int ScoreId { get; set; }
-
-        public HitTracker HitTracker { get; set; }
-        public AccuracyTracker AccuracyTracker { get; set; }
-        public WinTracker WinTracker { get; set; }
-        public ScoreGraphTracker ScoreGraphTracker { get; set; }
+        public HitTracker hitTracker { get; set; }
+        public AccuracyTracker accuracyTracker { get; set; }
+        public WinTracker winTracker { get; set; }
+        public ScoreGraphTracker scoreGraphTracker { get; set; }
     }
 
-    public class LeaderboardStatistic
+    public class AccuracyTracker
     {
-        public int Id { get; set; }
+        public float accRight { get; set; }
+        public float accLeft { get; set; }
+        public float leftPreswing { get; set; }
+        public float rightPreswing { get; set; }
+        public float averagePreswing { get; set; }
+        public float leftPostswing { get; set; }
+        public float rightPostswing { get; set; }
+        public float leftTimeDependence { get; set; }
+        public float rightTimeDependence { get; set; }
+        public List<float> leftAverageCut { get; set; }
+        public List<float> rightAverageCut { get; set; }
+        public List<float> gridAcc { get; set; }
+    }
 
-        public bool Relevant { get; set; }
-
-        public string LeaderboardId { get; set; }
-
-        public HitTracker HitTracker { get; set; }
-        public AccuracyTracker AccuracyTracker { get; set; }
-        public WinTracker WinTracker { get; set; }
-        public ScoreGraphTracker ScoreGraphTracker { get; set; }
+    public class ScoreGraphTracker
+    {
+        public List<float> graph { get; set; }
     }
 }
 

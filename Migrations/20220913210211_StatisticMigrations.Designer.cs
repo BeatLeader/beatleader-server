@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20220913210211_StatisticMigrations")]
+    partial class StatisticMigrations
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -67,6 +69,58 @@ namespace BeatLeader_Server.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("AccountLinkRequests");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.AccuracyTracker", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<float>("AccLeft")
+                        .HasColumnType("real");
+
+                    b.Property<float>("AccRight")
+                        .HasColumnType("real");
+
+                    b.Property<float>("AveragePreswing")
+                        .HasColumnType("real");
+
+                    b.Property<string>("GridAccS")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LeftAverageCutS")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<float>("LeftPostswing")
+                        .HasColumnType("real");
+
+                    b.Property<float>("LeftPreswing")
+                        .HasColumnType("real");
+
+                    b.Property<float>("LeftTimeDependence")
+                        .HasColumnType("real");
+
+                    b.Property<string>("RightAverageCutS")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<float>("RightPostswing")
+                        .HasColumnType("real");
+
+                    b.Property<float>("RightPreswing")
+                        .HasColumnType("real");
+
+                    b.Property<float>("RightTimeDependence")
+                        .HasColumnType("real");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AccuracyTracker");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.AuthID", b =>
@@ -539,6 +593,40 @@ namespace BeatLeader_Server.Migrations
                     b.HasIndex("PlayerId");
 
                     b.ToTable("FailedScores");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.HitTracker", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<int>("LeftBadCuts")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LeftBombs")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LeftMiss")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxCombo")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RightBadCuts")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RightBombs")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RightMiss")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("HitTracker");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Leaderboard", b =>
@@ -1486,6 +1574,23 @@ namespace BeatLeader_Server.Migrations
                     b.ToTable("Scores");
                 });
 
+            modelBuilder.Entity("BeatLeader_Server.Models.ScoreGraphTracker", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<string>("GraphS")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ScoreGraphTracker");
+                });
+
             modelBuilder.Entity("BeatLeader_Server.Models.ScoreImprovement", b =>
                 {
                     b.Property<int>("Id")
@@ -1620,6 +1725,42 @@ namespace BeatLeader_Server.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("ScoreRemovalLogs");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.ScoreStatistic", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<int>("AccuracyTrackerId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("HitTrackerId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ScoreGraphTrackerId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ScoreId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WinTrackerId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccuracyTrackerId");
+
+                    b.HasIndex("HitTrackerId");
+
+                    b.HasIndex("ScoreGraphTrackerId");
+
+                    b.HasIndex("WinTrackerId");
+
+                    b.ToTable("ScoreStatistics");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Song", b =>
@@ -1775,6 +1916,37 @@ namespace BeatLeader_Server.Migrations
                     b.HasIndex("RankVotingScoreId");
 
                     b.ToTable("VoterFeedback");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.WinTracker", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<float>("AverageHeight")
+                        .HasColumnType("real");
+
+                    b.Property<float>("EndTime")
+                        .HasColumnType("real");
+
+                    b.Property<float>("JumpDistance")
+                        .HasColumnType("real");
+
+                    b.Property<int>("NbOfPause")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalScore")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Won")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("WinTracker");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.YouTubeLink", b =>
@@ -2084,6 +2256,41 @@ namespace BeatLeader_Server.Migrations
                     b.Navigation("Player");
 
                     b.Navigation("ScoreImprovement");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.ScoreStatistic", b =>
+                {
+                    b.HasOne("BeatLeader_Server.Models.AccuracyTracker", "AccuracyTracker")
+                        .WithMany()
+                        .HasForeignKey("AccuracyTrackerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BeatLeader_Server.Models.HitTracker", "HitTracker")
+                        .WithMany()
+                        .HasForeignKey("HitTrackerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BeatLeader_Server.Models.ScoreGraphTracker", "ScoreGraphTracker")
+                        .WithMany()
+                        .HasForeignKey("ScoreGraphTrackerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BeatLeader_Server.Models.WinTracker", "WinTracker")
+                        .WithMany()
+                        .HasForeignKey("WinTrackerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AccuracyTracker");
+
+                    b.Navigation("HitTracker");
+
+                    b.Navigation("ScoreGraphTracker");
+
+                    b.Navigation("WinTracker");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.User", b =>

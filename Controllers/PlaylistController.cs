@@ -12,6 +12,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
 using System.Dynamic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using static BeatLeader_Server.Utils.ResponseUtils;
@@ -86,19 +87,6 @@ namespace BeatLeader_Server.Controllers
             return File(stream, "application/json"); ;
         }
 
-        ExpandoObject? ObjectFromStream(MemoryStream ms) {
-            using (StreamReader reader = new StreamReader(ms))
-            {
-                string results = reader.ReadToEnd();
-                if (string.IsNullOrEmpty(results))
-                {
-                    return null;
-                }
-
-                return JsonConvert.DeserializeObject<ExpandoObject>(results, new ExpandoObjectConverter());
-            }
-        }
-
         public class CustomData
         {
             public string syncURL { get; set; }
@@ -117,7 +105,7 @@ namespace BeatLeader_Server.Controllers
             await Request.Body.CopyToAsync(ms);
             ms.Position = 0;
 
-            dynamic? mapscontainer = ObjectFromStream(ms);
+            dynamic? mapscontainer = ms.ObjectFromStream();
             if (mapscontainer == null || !ExpandantoObject.HasProperty(mapscontainer, "songs")) {
                 return BadRequest("Can't decode songs");
             }
@@ -131,13 +119,13 @@ namespace BeatLeader_Server.Controllers
             await blobClient.DownloadToAsync(stream);
             stream.Position = 0;
 
-            dynamic? playlist = ObjectFromStream(stream);
+            dynamic? playlist = stream.ObjectFromStream();
             if (playlist == null)
             {
                 stream.Position = 0;
                 blobClient = _playlistContainerClient.GetBlobClient("oneclick.bplist");
                 await blobClient.DownloadToAsync(stream);
-                playlist = ObjectFromStream(stream);
+                playlist = stream.ObjectFromStream();
             }
 
             if (playlist == null) {
@@ -168,13 +156,13 @@ namespace BeatLeader_Server.Controllers
             await blobClient.DownloadToAsync(stream);
             stream.Position = 0;
 
-            dynamic? playlist = ObjectFromStream(stream);
+            dynamic? playlist = stream.ObjectFromStream();
             if (playlist == null)
             {
                 stream.Position = 0;
                 blobClient = _playlistContainerClient.GetBlobClient("oneclick.bplist");
                 await blobClient.DownloadToAsync(stream);
-                playlist = ObjectFromStream(stream);
+                playlist = stream.ObjectFromStream();
             }
 
             if (playlist == null)
@@ -243,7 +231,7 @@ namespace BeatLeader_Server.Controllers
             await Request.Body.CopyToAsync(ms);
             ms.Position = 0;
 
-            dynamic? playlist = ObjectFromStream(ms);
+            dynamic? playlist = ms.ObjectFromStream();
             if (playlist == null || !ExpandantoObject.HasProperty(playlist, "songs"))
             {
                 return BadRequest("Can't decode songs");
@@ -341,7 +329,7 @@ namespace BeatLeader_Server.Controllers
             await blobClient.DownloadToAsync(stream);
             stream.Position = 0;
 
-            dynamic? playlist = ObjectFromStream(stream);
+            dynamic? playlist = stream.ObjectFromStream();
 
             if (playlist == null)
             {
@@ -394,7 +382,7 @@ namespace BeatLeader_Server.Controllers
             await blobClient.DownloadToAsync(stream);
             stream.Position = 0;
 
-            dynamic? playlist = ObjectFromStream(stream);
+            dynamic? playlist = stream.ObjectFromStream();
 
             if (playlist == null)
             {
@@ -448,7 +436,7 @@ namespace BeatLeader_Server.Controllers
             await blobClient.DownloadToAsync(stream);
             stream.Position = 0;
 
-            dynamic? playlist = ObjectFromStream(stream);
+            dynamic? playlist = stream.ObjectFromStream();
 
             if (playlist == null)
             {
@@ -543,7 +531,7 @@ namespace BeatLeader_Server.Controllers
             await blobClient.DownloadToAsync(stream);
             stream.Position = 0;
 
-            dynamic? playlist = ObjectFromStream(stream);
+            dynamic? playlist = stream.ObjectFromStream();
 
             if (playlist == null)
             {
@@ -582,7 +570,7 @@ namespace BeatLeader_Server.Controllers
             await blobClient.DownloadToAsync(stream);
             stream.Position = 0;
 
-            dynamic? playlist = ObjectFromStream(stream);
+            dynamic? playlist = stream.ObjectFromStream();
 
             if (playlist == null)
             {

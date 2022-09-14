@@ -1,8 +1,14 @@
-﻿using BeatLeader_Server.Extensions;
+﻿using Azure.Identity;
+using Azure.Storage.Blobs;
+using BeatLeader_Server.Extensions;
+using BeatLeader_Server.Migrations;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
+using Discord;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -13,11 +19,27 @@ namespace BeatLeader_Server.Controllers
         private readonly ReadAppContext _readContext;
         private readonly SongController _songController;
 
-        public LeaderboardController(AppContext context, ReadAppContext readContext, SongController songController)
+        private readonly BlobContainerClient _scoreStatsClient;
+
+        public LeaderboardController(AppContext context, ReadAppContext readContext, SongController songController, IOptions<AzureStorageConfig> config, IWebHostEnvironment env)
         {
             _context = context;
             _readContext = readContext;
             _songController = songController;
+
+            if (env.IsDevelopment())
+            {
+                _scoreStatsClient = new BlobContainerClient(config.Value.AccountName, config.Value.ScoreStatsContainerName);
+            }
+            else
+            {
+
+                string statsEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
+                                                        config.Value.AccountName,
+                                                       config.Value.ScoreStatsContainerName);
+
+                _scoreStatsClient = new BlobContainerClient(new Uri(statsEndpoint), new DefaultAzureCredential());
+            }
         }
 
         [HttpGet("~/leaderboard/{id}")]
@@ -357,7 +379,6 @@ namespace BeatLeader_Server.Controllers
                     .Include(lb => lb.Difficulty)
                     .ThenInclude(d => d.ModifierValues)
                     .Where(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff)
-                    .Include(lb => lb.Statistic)
                     .Include(lb => lb.Scores.Where(s => !s.Banned))
                     .ThenInclude(s => s.RankVoting)
                     .ThenInclude(v => v.Feedbacks)
@@ -696,47 +717,47 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/leaderboard/statistic/{id}")]
-        public async Task<ActionResult<LeaderboardStatistic>> RefreshStatistic(string id)
+        public async Task<ActionResult<Models.ScoreStatistic>> RefreshStatistic(string id)
         {
-            var result = _context.LeaderboardStatistics
-                .Where(st => st.LeaderboardId == id)
-                .Include(st => st.WinTracker)
-                .Include(st => st.AccuracyTracker)
-                .Include(st => st.ScoreGraphTracker)
-                .Include(st => st.HitTracker).FirstOrDefault();
-
-            if (result == null || !result.Relevant) {
-                var leaderboard = _context.Leaderboards.Where(lb => lb.Id == id).Include(lb => lb.Scores.Where(s =>
-                    !s.Banned
-                    && !s.Modifiers.Contains("SS")
-                    && !s.Modifiers.Contains("NA")
-                    && !s.Modifiers.Contains("NB")
-                    && !s.Modifiers.Contains("NF")
-                    && !s.Modifiers.Contains("NO"))).FirstOrDefault();
-                if (leaderboard == null || leaderboard.Scores.Count == 0)
-                {
-                    return NotFound();
-                }
-
-                var scoreIds = leaderboard.Scores.Select(s => s.Id);
-
-                var statistics = _context.ScoreStatistics
-                    .Where(st => scoreIds.Contains(st.ScoreId))
-                    .Include(st => st.WinTracker)
-                    .Include(st => st.AccuracyTracker)
-                    .Include(st => st.ScoreGraphTracker)
-                    .Include(st => st.HitTracker).ToList();
-
-                result = new LeaderboardStatistic { Relevant = true, LeaderboardId = leaderboard.Id };
-
-                statistics.ForEach(ReplayStatisticUtils.DecodeArrays);
-                ReplayStatisticUtils.AverageStatistic(statistics, result);
-                ReplayStatisticUtils.EncodeArrays(result);
-                leaderboard.Statistic = result;
-                await _context.SaveChangesAsync();
-            } else {
-                ReplayStatisticUtils.DecodeArrays(result);
+            var blobClient = _scoreStatsClient.GetBlobClient(id + "-leaderboard.json");
+            if (await blobClient.ExistsAsync()) {
+                return File(await blobClient.OpenReadAsync(), "application/json");
             }
+            
+            var leaderboard = _context.Leaderboards.Where(lb => lb.Id == id).Include(lb => lb.Scores.Where(s =>
+                !s.Banned
+                && !s.Modifiers.Contains("SS")
+                && !s.Modifiers.Contains("NA")
+                && !s.Modifiers.Contains("NB")
+                && !s.Modifiers.Contains("NF")
+                && !s.Modifiers.Contains("NO"))).FirstOrDefault();
+            if (leaderboard == null || leaderboard.Scores.Count == 0)
+            {
+                return NotFound();
+            }
+
+            var scoreIds = leaderboard.Scores.Select(s => s.Id);
+
+            var statistics = scoreIds.Select(async id =>
+            {
+                BlobClient blobClient = _scoreStatsClient.GetBlobClient(id + ".json");
+                MemoryStream stream = new MemoryStream(5);
+                if (!(await blobClient.ExistsAsync()))
+                {
+                    return null;
+                }
+                await blobClient.DownloadToAsync(stream);
+                stream.Position = 0;
+
+                return stream.ObjectFromStream<Models.ScoreStatistic>();
+            });
+
+            var result = new Models.ScoreStatistic();
+
+            await ReplayStatisticUtils.AverageStatistic(statistics, result);
+
+            _scoreStatsClient.DeleteBlobIfExists(id + "-leaderboard.json");
+            _scoreStatsClient.UploadBlobAsync(id + "-leaderboard.json", new BinaryData(JsonConvert.SerializeObject(result)));
 
             return result;
         }

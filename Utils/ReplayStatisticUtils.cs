@@ -117,17 +117,17 @@ namespace BeatLeader_Server.Utils
         public static ScoreStatistic ProcessReplay(Replay replay, Leaderboard leaderboard)
         {
             ScoreStatistic result = new ScoreStatistic();
-            result.WinTracker = new WinTracker
+            result.winTracker = new WinTracker
             {
-                Won = replay.info.failTime < 0.01,
-                EndTime = (replay.frames.LastOrDefault() != null) ? replay.frames.Last().time : 0,
-                NbOfPause = replay.pauses.Count(),
-                JumpDistance = replay.info.jumpDistance,
-                AverageHeight = replay.heights.Count() > 0 ? replay.heights.Average(h => h.height) : replay.info.height
+                won = replay.info.failTime < 0.01,
+                endTime = (replay.frames.LastOrDefault() != null) ? replay.frames.Last().time : 0,
+                nbOfPause = replay.pauses.Count(),
+                jumpDistance = replay.info.jumpDistance,
+                averageHeight = replay.heights.Count() > 0 ? replay.heights.Average(h => h.height) : replay.info.height
             };
 
             HitTracker hitTracker = new HitTracker();
-            result.HitTracker = hitTracker;
+            result.hitTracker = hitTracker;
 
             foreach (var item in replay.notes)
             {
@@ -137,31 +137,31 @@ namespace BeatLeader_Server.Utils
                     case NoteEventType.bad:
                         if (item.noteCutInfo.saberType == 0)
                         {
-                            hitTracker.LeftBadCuts++;
+                            hitTracker.leftBadCuts++;
                         }
                         else
                         {
-                            hitTracker.RightBadCuts++;
+                            hitTracker.rightBadCuts++;
                         }
                         break;
                     case NoteEventType.miss:
                         if (param.colorType == 0)
                         {
-                            hitTracker.LeftMiss++;
+                            hitTracker.leftMiss++;
                         }
                         else
                         {
-                            hitTracker.RightMiss++;
+                            hitTracker.rightMiss++;
                         }
                         break;
                     case NoteEventType.bomb:
                         if (param.colorType == 0)
                         {
-                            hitTracker.LeftBombs++;
+                            hitTracker.leftBombs++;
                         }
                         else
                         {
-                            hitTracker.RightBombs++;
+                            hitTracker.rightBombs++;
                         }
                         break;
                     default:
@@ -169,10 +169,10 @@ namespace BeatLeader_Server.Utils
                 }
             }
             (AccuracyTracker accuracy, List<NoteStruct> structs, int maxCombo) = Accuracy(replay);
-            result.HitTracker.MaxCombo = maxCombo;
-            result.WinTracker.TotalScore = structs.Last().totalScore;
-            result.AccuracyTracker = accuracy;
-            result.ScoreGraphTracker = ScoreGraph(structs, (int)replay.frames.Last().time);
+            result.hitTracker.maxCombo = maxCombo;
+            result.winTracker.totalScore = structs.Last().totalScore;
+            result.accuracyTracker = accuracy;
+            result.scoreGraphTracker = ScoreGraph(structs, (int)replay.frames.Last().time);
 
             return result;
         }
@@ -180,9 +180,9 @@ namespace BeatLeader_Server.Utils
         public static (AccuracyTracker, List<NoteStruct>, int) Accuracy(Replay replay)
         {
             AccuracyTracker result = new AccuracyTracker();
-            result.GridAcc = new List<float>(new float[12]);
-            result.LeftAverageCut = new List<float>(new float[3]);
-            result.RightAverageCut = new List<float>(new float[3]);
+            result.gridAcc = new List<float>(new float[12]);
+            result.leftAverageCut = new List<float>(new float[3]);
+            result.rightAverageCut = new List<float>(new float[3]);
 
             int[] gridCounts = new int[12];
             int[] leftCuts = new int[3];
@@ -205,31 +205,31 @@ namespace BeatLeader_Server.Utils
                      && param.scoringType != ScoringType.BurstSliderHead)
                     {
                         gridCounts[index]++;
-                        result.GridAcc[index] += (float)scoreValue;
+                        result.gridAcc[index] += (float)scoreValue;
                     }
 
                     (int before, int after, int acc) = CutScoresForNote(note, param.scoringType);
                     if (param.colorType == 0)
                     {
                         if (param.scoringType != ScoringType.SliderTail && param.scoringType != ScoringType.BurstSliderElement) {
-                            result.LeftAverageCut[0] += (float)before;
-                            result.LeftPreswing += note.noteCutInfo.beforeCutRating;
+                            result.leftAverageCut[0] += (float)before;
+                            result.leftPreswing += note.noteCutInfo.beforeCutRating;
                             leftCuts[0]++;
                         }
                         if (param.scoringType != ScoringType.BurstSliderElement
                          && param.scoringType != ScoringType.BurstSliderHead)
                         {
-                            result.LeftAverageCut[1] += (float)acc;
-                            result.AccLeft += (float)scoreValue;
-                            result.LeftTimeDependence += Math.Abs(note.noteCutInfo.cutNormal.z);
+                            result.leftAverageCut[1] += (float)acc;
+                            result.accLeft += (float)scoreValue;
+                            result.leftTimeDependence += Math.Abs(note.noteCutInfo.cutNormal.z);
                             leftCuts[1]++;
                         }
                         if (param.scoringType != ScoringType.SliderHead
                             && param.scoringType != ScoringType.BurstSliderHead
                             && param.scoringType != ScoringType.BurstSliderElement)
                         {
-                            result.LeftAverageCut[2] += (float)after;
-                            result.LeftPostswing += note.noteCutInfo.afterCutRating;
+                            result.leftAverageCut[2] += (float)after;
+                            result.leftPostswing += note.noteCutInfo.afterCutRating;
                             leftCuts[2]++;
                         }
                     }
@@ -237,24 +237,24 @@ namespace BeatLeader_Server.Utils
                     {
                         if (param.scoringType != ScoringType.SliderTail && param.scoringType != ScoringType.BurstSliderElement)
                         {
-                            result.RightAverageCut[0] += (float)before;
-                            result.RightPreswing += note.noteCutInfo.beforeCutRating;
+                            result.rightAverageCut[0] += (float)before;
+                            result.rightPreswing += note.noteCutInfo.beforeCutRating;
                             rightCuts[0]++;
                         }
                         if (param.scoringType != ScoringType.BurstSliderElement 
                          && param.scoringType != ScoringType.BurstSliderHead)
                         {
-                            result.RightAverageCut[1] += (float)acc;
-                            result.RightTimeDependence += Math.Abs(note.noteCutInfo.cutNormal.z);
-                            result.AccRight += (float)scoreValue;
+                            result.rightAverageCut[1] += (float)acc;
+                            result.rightTimeDependence += Math.Abs(note.noteCutInfo.cutNormal.z);
+                            result.accRight += (float)scoreValue;
                             rightCuts[1]++;
                         }
                         if (param.scoringType != ScoringType.SliderHead
                             && param.scoringType != ScoringType.BurstSliderHead
                             && param.scoringType != ScoringType.BurstSliderElement)
                         {
-                            result.RightAverageCut[2] += (float)after;
-                            result.RightPostswing += note.noteCutInfo.afterCutRating;
+                            result.rightAverageCut[2] += (float)after;
+                            result.rightPostswing += note.noteCutInfo.afterCutRating;
                             rightCuts[2]++;
                         }
                     }
@@ -279,54 +279,54 @@ namespace BeatLeader_Server.Utils
                 });
             }
 
-            for (int i = 0; i < result.GridAcc.Count(); i++)
+            for (int i = 0; i < result.gridAcc.Count(); i++)
             {
                 if (gridCounts[i] > 0)
                 {
-                    result.GridAcc[i] /= (float)gridCounts[i];
+                    result.gridAcc[i] /= (float)gridCounts[i];
                 }
             }
 
             if (leftCuts[0] > 0)
             {
-                result.LeftAverageCut[0] /= (float)leftCuts[0];
-                result.LeftPreswing /= (float)leftCuts[0];
+                result.leftAverageCut[0] /= (float)leftCuts[0];
+                result.leftPreswing /= (float)leftCuts[0];
             }
 
             if (leftCuts[1] > 0)
             {
-                result.LeftAverageCut[1] /= (float)leftCuts[1];
+                result.leftAverageCut[1] /= (float)leftCuts[1];
 
-                result.AccLeft /= (float)leftCuts[1];
-                result.LeftTimeDependence /= (float)leftCuts[1];
+                result.accLeft /= (float)leftCuts[1];
+                result.leftTimeDependence /= (float)leftCuts[1];
             }
 
             if (leftCuts[2] > 0)
             {
-                result.LeftAverageCut[2] /= (float)leftCuts[2];
+                result.leftAverageCut[2] /= (float)leftCuts[2];
 
-                result.LeftPostswing /= (float)leftCuts[2];
+                result.leftPostswing /= (float)leftCuts[2];
             }
 
             if (rightCuts[0] > 0)
             {
-                result.RightAverageCut[0] /= (float)rightCuts[0];
-                result.RightPreswing /= (float)rightCuts[0];
+                result.rightAverageCut[0] /= (float)rightCuts[0];
+                result.rightPreswing /= (float)rightCuts[0];
             }
 
             if (rightCuts[1] > 0)
             {
-                result.RightAverageCut[1] /= (float)rightCuts[1];
+                result.rightAverageCut[1] /= (float)rightCuts[1];
 
-                result.AccRight /= (float)rightCuts[1];
-                result.RightTimeDependence /= (float)rightCuts[1];
+                result.accRight /= (float)rightCuts[1];
+                result.rightTimeDependence /= (float)rightCuts[1];
             }
 
             if (rightCuts[2] > 0)
             {
-                result.RightAverageCut[2] /= (float)rightCuts[2];
+                result.rightAverageCut[2] /= (float)rightCuts[2];
 
-                result.RightPostswing /= (float)rightCuts[2];
+                result.rightPostswing /= (float)rightCuts[2];
             }
 
             allStructs = allStructs.OrderBy(s => s.time).ToList();
@@ -390,7 +390,7 @@ namespace BeatLeader_Server.Utils
         public static ScoreGraphTracker ScoreGraph(List<NoteStruct> structs, int replayLength)
         {
             ScoreGraphTracker scoreGraph = new ScoreGraphTracker();
-            scoreGraph.Graph = new List<float>(new float[replayLength]);
+            scoreGraph.graph = new List<float>(new float[replayLength]);
 
             int structIndex = 0;
 
@@ -406,11 +406,11 @@ namespace BeatLeader_Server.Utils
                 }
                 if (delimiter > 0)
                 {
-                    scoreGraph.Graph[i] = cumulative / (float)delimiter;
+                    scoreGraph.graph[i] = cumulative / (float)delimiter;
                 }
-                if (scoreGraph.Graph[i] == 0)
+                if (scoreGraph.graph[i] == 0)
                 {
-                    scoreGraph.Graph[i] = i == 0 ? 1.0f : scoreGraph.Graph[i - 1];
+                    scoreGraph.graph[i] = i == 0 ? 1.0f : scoreGraph.graph[i - 1];
                 }
             }
 
@@ -513,86 +513,47 @@ namespace BeatLeader_Server.Utils
 
         }
 
-        public static void AverageStatistic(List<ScoreStatistic> statistics, LeaderboardStatistic leaderboardStatistic) {
+        public static async Task AverageStatistic(IEnumerable<Task<ScoreStatistic>> statisticsAsync, ScoreStatistic leaderboardStatistic) {
+            var statistics = (await Task.WhenAll(statisticsAsync)).Where(st => st != null).ToList();
 
-            leaderboardStatistic.WinTracker = new WinTracker {
-                Won = statistics.Average(st => st.WinTracker.Won ? 1.0 : 0.0) > 0.5,
-                EndTime = statistics.Average(st => st.WinTracker.EndTime),
-                NbOfPause = (int)Math.Round(statistics.Average(st => st.WinTracker.NbOfPause)),
-                JumpDistance = statistics.Average(st => st.WinTracker.JumpDistance),
-                AverageHeight = statistics.Average(st => st.WinTracker.AverageHeight),
-                TotalScore = (int)statistics.Average(st => st.WinTracker.TotalScore)
+
+            leaderboardStatistic.winTracker = new WinTracker {
+                won = statistics.Average(st => st.winTracker.won ? 1.0 : 0.0) > 0.5,
+                endTime = statistics.Average(st => st.winTracker.endTime),
+                nbOfPause = (int)Math.Round(statistics.Average(st => st.winTracker.nbOfPause)),
+                jumpDistance = statistics.Average(st => st.winTracker.jumpDistance),
+                averageHeight = statistics.Average(st => st.winTracker.averageHeight),
+                totalScore = (int)statistics.Average(st => st.winTracker.totalScore)
             };
 
-            leaderboardStatistic.HitTracker = new HitTracker {
-                MaxCombo = (int)Math.Round(statistics.Average(st => st.HitTracker.MaxCombo)),
-                LeftMiss = (int)Math.Round(statistics.Average(st => st.HitTracker.LeftMiss)),
-                RightMiss = (int)Math.Round(statistics.Average(st => st.HitTracker.RightMiss)),
-                LeftBadCuts = (int)Math.Round(statistics.Average(st => st.HitTracker.LeftBadCuts)),
-                RightBadCuts = (int)Math.Round(statistics.Average(st => st.HitTracker.RightBadCuts)),
-                LeftBombs = (int)Math.Round(statistics.Average(st => st.HitTracker.LeftBombs)),
-                RightBombs = (int)Math.Round(statistics.Average(st => st.HitTracker.RightBombs))
+            leaderboardStatistic.hitTracker = new HitTracker {
+                maxCombo = (int)Math.Round(statistics.Average(st => st.hitTracker.maxCombo)),
+                leftMiss = (int)Math.Round(statistics.Average(st => st.hitTracker.leftMiss)),
+                rightMiss = (int)Math.Round(statistics.Average(st => st.hitTracker.rightMiss)),
+                leftBadCuts = (int)Math.Round(statistics.Average(st => st.hitTracker.leftBadCuts)),
+                rightBadCuts = (int)Math.Round(statistics.Average(st => st.hitTracker.rightBadCuts)),
+                leftBombs = (int)Math.Round(statistics.Average(st => st.hitTracker.leftBombs)),
+                rightBombs = (int)Math.Round(statistics.Average(st => st.hitTracker.rightBombs))
             };
 
-            leaderboardStatistic.AccuracyTracker = new AccuracyTracker {
-                AccRight = statistics.Average(st => st.AccuracyTracker.AccRight),
-                AccLeft = statistics.Average(st => st.AccuracyTracker.AccLeft),
-                LeftPreswing = statistics.Average(st => st.AccuracyTracker.LeftPreswing),
-                RightPreswing = statistics.Average(st => st.AccuracyTracker.RightPreswing),
-                AveragePreswing = statistics.Average(st => st.AccuracyTracker.AveragePreswing),
-                LeftPostswing = statistics.Average(st => st.AccuracyTracker.LeftPostswing),
-                RightPostswing = statistics.Average(st => st.AccuracyTracker.RightPostswing),
-                LeftTimeDependence = statistics.Average(st => st.AccuracyTracker.LeftTimeDependence),
-                RightTimeDependence = statistics.Average(st => st.AccuracyTracker.RightTimeDependence),
-                LeftAverageCut = AverageList(statistics.Select(st => st.AccuracyTracker.LeftAverageCut).ToList()),
-                RightAverageCut = AverageList(statistics.Select(st => st.AccuracyTracker.RightAverageCut).ToList()),
-                GridAcc = AverageList(statistics.Select(st => st.AccuracyTracker.GridAcc).ToList())
+            leaderboardStatistic.accuracyTracker = new AccuracyTracker {
+                accRight = statistics.Average(st => st.accuracyTracker.accRight),
+                accLeft = statistics.Average(st => st.accuracyTracker.accLeft),
+                leftPreswing = statistics.Average(st => st.accuracyTracker.leftPreswing),
+                rightPreswing = statistics.Average(st => st.accuracyTracker.rightPreswing),
+                averagePreswing = statistics.Average(st => st.accuracyTracker.averagePreswing),
+                leftPostswing = statistics.Average(st => st.accuracyTracker.leftPostswing),
+                rightPostswing = statistics.Average(st => st.accuracyTracker.rightPostswing),
+                leftTimeDependence = statistics.Average(st => st.accuracyTracker.leftTimeDependence),
+                rightTimeDependence = statistics.Average(st => st.accuracyTracker.rightTimeDependence),
+                leftAverageCut = AverageList(statistics.Select(st => st.accuracyTracker.leftAverageCut).ToList()),
+                rightAverageCut = AverageList(statistics.Select(st => st.accuracyTracker.rightAverageCut).ToList()),
+                gridAcc = AverageList(statistics.Select(st => st.accuracyTracker.gridAcc).ToList())
             };
 
-            leaderboardStatistic.ScoreGraphTracker = new ScoreGraphTracker {
-                Graph = AverageList(statistics.Select(st => st.ScoreGraphTracker.Graph).ToList())
+            leaderboardStatistic.scoreGraphTracker = new ScoreGraphTracker {
+                graph = AverageList(statistics.Select(st => st.scoreGraphTracker.graph).ToList())
             };
-        }
-
-        public static void EncodeArrays(ScoreStatistic statistic)
-        {
-            statistic.AccuracyTracker.LeftAverageCutS = string.Join(",", statistic.AccuracyTracker.LeftAverageCut);
-            statistic.AccuracyTracker.RightAverageCutS = string.Join(",", statistic.AccuracyTracker.RightAverageCut);
-            statistic.AccuracyTracker.GridAccS = string.Join(",", statistic.AccuracyTracker.GridAcc);
-
-            statistic.ScoreGraphTracker.GraphS = string.Join(",", statistic.ScoreGraphTracker.Graph);
-        }
-
-        public static void EncodeArrays(LeaderboardStatistic statistic)
-        {
-            statistic.AccuracyTracker.LeftAverageCutS = string.Join(",", statistic.AccuracyTracker.LeftAverageCut);
-            statistic.AccuracyTracker.RightAverageCutS = string.Join(",", statistic.AccuracyTracker.RightAverageCut);
-            statistic.AccuracyTracker.GridAccS = string.Join(",", statistic.AccuracyTracker.GridAcc);
-
-            statistic.ScoreGraphTracker.GraphS = string.Join(",", statistic.ScoreGraphTracker.Graph);
-        }
-
-        public static void DecodeArrays(ScoreStatistic statistic)
-        {
-            statistic.AccuracyTracker.LeftAverageCut = statistic.AccuracyTracker.LeftAverageCutS.Split(",").Select(x => float.Parse(x)).ToList();
-            statistic.AccuracyTracker.RightAverageCut = statistic.AccuracyTracker.RightAverageCutS.Split(",").Select(x => float.Parse(x)).ToList();
-            statistic.AccuracyTracker.GridAcc = statistic.AccuracyTracker.GridAccS.Split(",").Select(x => float.Parse(x)).ToList();
-
-            if (statistic.ScoreGraphTracker.GraphS.Length > 0) {
-                statistic.ScoreGraphTracker.Graph = statistic.ScoreGraphTracker.GraphS.Split(",").Select(x => float.Parse(x)).ToList();
-            }
-        }
-
-        public static void DecodeArrays(LeaderboardStatistic statistic)
-        {
-            statistic.AccuracyTracker.LeftAverageCut = statistic.AccuracyTracker.LeftAverageCutS.Split(",").Select(x => float.Parse(x)).ToList();
-            statistic.AccuracyTracker.RightAverageCut = statistic.AccuracyTracker.RightAverageCutS.Split(",").Select(x => float.Parse(x)).ToList();
-            statistic.AccuracyTracker.GridAcc = statistic.AccuracyTracker.GridAccS.Split(",").Select(x => float.Parse(x)).ToList();
-
-            if (statistic.ScoreGraphTracker.GraphS.Length > 0)
-            {
-                statistic.ScoreGraphTracker.Graph = statistic.ScoreGraphTracker.GraphS.Split(",").Select(x => float.Parse(x)).ToList();
-            }
         }
     }
 }

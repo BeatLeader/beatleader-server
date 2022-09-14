@@ -15,6 +15,7 @@ namespace BeatLeader_Server {
         public string ReplaysContainerName { get; set; }
         public string AssetsContainerName { get; set; }
         public string PlaylistContainerName { get; set; }
+        public string ScoreStatsContainerName { get; set; }
     }
 
     public class Startup {

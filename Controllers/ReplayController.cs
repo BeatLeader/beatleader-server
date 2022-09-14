@@ -21,7 +21,9 @@ namespace BeatLeader_Server.Controllers
 {
     public class ReplayController : Controller
     {
-        BlobContainerClient _containerClient;
+        private readonly BlobContainerClient _containerClient;
+        private readonly BlobContainerClient _scoreStatsClient;
+
         AppContext _context;
         LeaderboardController _leaderboardController;
         PlayerController _playerController;
@@ -66,7 +68,21 @@ namespace BeatLeader_Server.Controllers
 
 				_containerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
 			}
-		}
+
+            if (env.IsDevelopment())
+            {
+                _scoreStatsClient = new BlobContainerClient(config.Value.AccountName, config.Value.ScoreStatsContainerName);
+            }
+            else
+            {
+
+                string statsEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
+                                                        config.Value.AccountName,
+                                                       config.Value.ScoreStatsContainerName);
+
+                _scoreStatsClient = new BlobContainerClient(new Uri(statsEndpoint), new DefaultAzureCredential());
+            }
+        }
 
         [HttpPost("~/replay"), DisableRequestSizeLimit]
         public async Task<ActionResult<ScoreResponse>> PostSteamReplay([FromQuery] string ticket)
@@ -370,9 +386,7 @@ namespace BeatLeader_Server.Controllers
                     leaderboard.Scores.Add(resultScore);
                 }
 
-                if (leaderboard.Statistic != null) {
-                    leaderboard.Statistic.Relevant = false;
-                }
+                _scoreStatsClient.DeleteBlobIfExistsAsync(leaderboard.Id + "-leaderboard.json");
 
                 var status = leaderboard.Difficulty.Status;
                 var isRanked = status == DifficultyStatus.ranked || status == DifficultyStatus.qualified || status == DifficultyStatus.nominated;
@@ -569,18 +583,18 @@ namespace BeatLeader_Server.Controllers
                         return;
                     }
 
-                    double scoreRatio = (double)resultScore.BaseScore / (double)statistic.WinTracker.TotalScore;
+                    double scoreRatio = (double)resultScore.BaseScore / (double)statistic.winTracker.totalScore;
 
                     if (scoreRatio > 1.02 || scoreRatio < 0.98) {
-                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Calculated on server score is too different: " + statistic.WinTracker.TotalScore + ". You probably need to update the mod.");
+                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Calculated on server score is too different: " + statistic.winTracker.totalScore + ". You probably need to update the mod.");
 
                         return;
                     }
 
                     if (leaderboard.Difficulty.Notes > 30) {
                         var sameAccScore = leaderboard.Scores.FirstOrDefault(s => s.PlayerId != resultScore.PlayerId && s.AccLeft != 0 && s.AccRight != 0
-                                                                && s.AccLeft == statistic.AccuracyTracker.AccLeft
-                                                                && s.AccRight == statistic.AccuracyTracker.AccRight);
+                                                                && s.AccLeft == statistic.accuracyTracker.accLeft
+                                                                && s.AccRight == statistic.accuracyTracker.accRight);
                         if (sameAccScore != null)
                         {
                             SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Acc is suspiciously exact same as: " + sameAccScore.PlayerId + "'s score");
@@ -593,8 +607,8 @@ namespace BeatLeader_Server.Controllers
                     await _containerClient.DeleteBlobIfExistsAsync(tempName);
 
                     resultScore.Replay = replayLink;
-                    resultScore.AccLeft = statistic.AccuracyTracker.AccLeft;
-                    resultScore.AccRight = statistic.AccuracyTracker.AccRight;
+                    resultScore.AccLeft = statistic.accuracyTracker.accLeft;
+                    resultScore.AccRight = statistic.accuracyTracker.accRight;
 
                     if (currentScore != null) {
                         improvement.AccLeft = resultScore.AccLeft - currentScore.AccLeft;

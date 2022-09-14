@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Azure.Identity;
 using Azure.Storage.Blobs;
 using BeatLeader_Server.Extensions;
@@ -9,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -18,7 +20,9 @@ namespace BeatLeader_Server.Controllers
         private readonly AppContext _context;
         private readonly ReadAppContext _readContext;
 
-        private readonly BlobContainerClient _containerClient;
+        private readonly BlobContainerClient _replaysClient;
+        private readonly BlobContainerClient _scoreStatsClient;
+
         private readonly IServerTiming _serverTiming;
 
         public ScoreController(
@@ -33,7 +37,8 @@ namespace BeatLeader_Server.Controllers
             _serverTiming = serverTiming;
             if (env.IsDevelopment())
             {
-                _containerClient = new BlobContainerClient(config.Value.AccountName, config.Value.ReplaysContainerName);
+                _replaysClient = new BlobContainerClient(config.Value.AccountName, config.Value.ReplaysContainerName);
+                _scoreStatsClient = new BlobContainerClient(config.Value.AccountName, config.Value.ScoreStatsContainerName);
             }
             else
             {
@@ -41,7 +46,13 @@ namespace BeatLeader_Server.Controllers
                                                         config.Value.AccountName,
                                                        config.Value.ReplaysContainerName);
 
-                _containerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
+                _replaysClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
+
+                string statsEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
+                                                        config.Value.AccountName,
+                                                       config.Value.ScoreStatsContainerName);
+
+                _scoreStatsClient = new BlobContainerClient(new Uri(statsEndpoint), new DefaultAzureCredential());
             }
         }
 
@@ -643,15 +654,9 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/score/statistic/{id}")]
-        public async Task<ActionResult<ScoreStatistic>> GetStatistic(int id)
+        public async Task<ActionResult> GetStatistic(int id)
         {
-            ScoreStatistic? scoreStatistic = _readContext.ScoreStatistics.Where(s => s.ScoreId == id).Include(s => s.AccuracyTracker).Include(s => s.HitTracker).Include(s => s.ScoreGraphTracker).Include(s => s.WinTracker).FirstOrDefault();
-            if (scoreStatistic == null)
-            {
-                return NotFound();
-            }
-            ReplayStatisticUtils.DecodeArrays(scoreStatistic);
-            return scoreStatistic;
+            return File(await _scoreStatsClient.GetBlobClient(id + ".json").OpenReadAsync(), "application/json");
         }
 
         [HttpGet("~/score/calculatestatistic/{id}")]
@@ -663,6 +668,55 @@ namespace BeatLeader_Server.Controllers
                 return NotFound("Score not found");
             }
             return await CalculateStatisticScore(score);
+        }
+
+        [NonAction]
+        public async Task<ActionResult<ScoreStatistic?>> CalculateStatisticScore(Score score)
+        {
+            string blobName = score.Replay.Split("/").Last();
+
+            BlobClient blobClient = _replaysClient.GetBlobClient(blobName);
+            MemoryStream ms = new MemoryStream(5);
+            await blobClient.DownloadToAsync(ms);
+            Replay replay;
+            try
+            {
+                replay = ReplayDecoder.Decode(ms.ToArray());
+            }
+            catch (Exception)
+            {
+                return BadRequest("Error decoding replay");
+            }
+
+            (ScoreStatistic? statistic, string? error) = CalculateStatisticReplay(replay, score);
+            if (statistic == null) {
+                return BadRequest(error);
+            }
+
+            return statistic;
+        }
+
+        [NonAction]
+        public (ScoreStatistic?, string?) CalculateStatisticReplay(Replay replay, Score score)
+        {
+            ScoreStatistic? statistic = null;
+
+            try
+            {
+                statistic = ReplayStatisticUtils.ProcessReplay(replay, score.Leaderboard);
+            } catch (Exception e) {
+                return (null, e.ToString());
+            }
+
+            if (statistic == null)
+            {
+                return (null, "Could not calculate statistics");
+            }
+
+            _scoreStatsClient.DeleteBlobIfExists(score.Id + ".json");
+            _scoreStatsClient.UploadBlob(score.Id + ".json", new BinaryData(JsonConvert.SerializeObject(statistic)));
+
+            return (statistic, null);
         }
 
         [HttpPut("~/score/{id}/pin")]
@@ -683,7 +737,8 @@ namespace BeatLeader_Server.Controllers
             bool hasDescription = Request.Query.ContainsKey("description");
             bool hasLink = Request.Query.ContainsKey("link");
 
-            if (description != null && description.Length > 300) {
+            if (description != null && description.Length > 300)
+            {
                 return BadRequest("The description is too long");
             }
 
@@ -714,8 +769,10 @@ namespace BeatLeader_Server.Controllers
                 }
             }
             ScoreMetadata? metadata = score.Metadata;
-            if (metadata == null) {
-                metadata = new ScoreMetadata {
+            if (metadata == null)
+            {
+                metadata = new ScoreMetadata
+                {
                     Priority = scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned).Count() == 0 ? 1 : scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned).Max(s => s.Metadata.Priority) + 1
                 };
                 score.Metadata = metadata;
@@ -725,26 +782,34 @@ namespace BeatLeader_Server.Controllers
             {
                 metadata.Description = description;
             }
-            if (hasLink) {
-                if (link != null) {
+            if (hasLink)
+            {
+                if (link != null)
+                {
                     (string? service, string? icon) = LinkUtils.ServiceAndIconFromLink(link);
-                    if (service == null) {
+                    if (service == null)
+                    {
                         return BadRequest("Unsupported link");
                     }
 
                     metadata.LinkServiceIcon = icon;
                     metadata.LinkService = service;
                     metadata.Link = link;
-                } else {
+                }
+                else
+                {
                     metadata.LinkServiceIcon = null;
                     metadata.LinkService = null;
                     metadata.Link = null;
                 }
             }
-            
-            if (pin) {
+
+            if (pin)
+            {
                 metadata.Status = ScoreStatus.pinned;
-            } else {
+            }
+            else
+            {
                 metadata.Status = ScoreStatus.normal;
             }
             if (priority != null)
@@ -753,15 +818,19 @@ namespace BeatLeader_Server.Controllers
 
                 int priorityValue = (int)priority;
 
-                if (priorityValue <= metadata.Priority) {
-                var scoresLower = scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned && s.Metadata.Priority >= priorityValue).ToList();
-                    if (scoresLower.Count > 0) {
+                if (priorityValue <= metadata.Priority)
+                {
+                    var scoresLower = scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned && s.Metadata.Priority >= priorityValue).ToList();
+                    if (scoresLower.Count > 0)
+                    {
                         foreach (var item in scoresLower)
                         {
                             item.Metadata.Priority++;
                         }
                     }
-                } else {
+                }
+                else
+                {
                     var scoresLower = scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned && s.Metadata.Priority <= priorityValue).ToList();
                     if (scoresLower.Count > 0)
                     {
@@ -776,7 +845,8 @@ namespace BeatLeader_Server.Controllers
             }
 
             var scoresOrdered = scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned).OrderBy(s => s.Metadata.Priority).ToList();
-            if (scoresOrdered.Count > 0) {
+            if (scoresOrdered.Count > 0)
+            {
                 foreach ((int i, Score p) in scoresOrdered.Select((value, i) => (i, value)))
                 {
                     p.Metadata.Priority = i + 1;
@@ -786,62 +856,6 @@ namespace BeatLeader_Server.Controllers
             _context.SaveChanges();
 
             return metadata;
-        }
-
-        [NonAction]
-        public async Task<ActionResult<ScoreStatistic?>> CalculateStatisticScore(Score score)
-        {
-            string blobName = score.Replay.Split("/").Last();
-
-            BlobClient blobClient = _containerClient.GetBlobClient(blobName);
-            MemoryStream ms = new MemoryStream(5);
-            await blobClient.DownloadToAsync(ms);
-            Replay replay;
-            try
-            {
-                replay = ReplayDecoder.Decode(ms.ToArray());
-            }
-            catch (Exception)
-            {
-                return BadRequest("Error decoding replay");
-            }
-
-            (ScoreStatistic? statistic, string? error) = CalculateStatisticReplay(replay, score);
-            if (statistic == null) {
-                return BadRequest(error);
-            }
-
-            return statistic;
-        }
-
-        [NonAction]
-        public (ScoreStatistic?, string?) CalculateStatisticReplay(Replay replay, Score score)
-        {
-            ScoreStatistic? statistic = null;
-
-            try
-            {
-                statistic = ReplayStatisticUtils.ProcessReplay(replay, score.Leaderboard);
-                statistic.ScoreId = score.Id;
-                ReplayStatisticUtils.EncodeArrays(statistic);
-            } catch (Exception e) {
-                return (null, e.ToString());
-            }
-
-            if (statistic == null)
-            {
-                return (null, "Could not calculate statistics");
-            }
-
-            ScoreStatistic? currentStatistic = _context.ScoreStatistics.FirstOrDefault(s => s.ScoreId == score.Id);
-            _context.ScoreStatistics.Add(statistic);
-            if (currentStatistic != null)
-            {
-                _context.ScoreStatistics.Remove(currentStatistic);
-            }
-            _context.SaveChanges();
-
-            return (statistic, null);
         }
     }
 }
