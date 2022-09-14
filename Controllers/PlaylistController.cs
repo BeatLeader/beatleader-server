@@ -479,7 +479,6 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string sortBy = "stars",
             [FromQuery] string order = "desc",
             [FromQuery] string? search = null,
-            [FromQuery] string? diff = null,
             [FromQuery] string? type = null,
             [FromQuery] int? mapType = null,
             [FromQuery] bool allTypes = false,
@@ -496,7 +495,7 @@ namespace BeatLeader_Server.Controllers
             var sequence = _readAppContext.Leaderboards.AsQueryable();
             string? currentID = HttpContext.CurrentUserID(_readAppContext);
 
-            sequence = sequence.Filter(_readAppContext, sortBy, order, search, diff, type, mapType, allTypes, mytype, stars_from, stars_to, date_from, date_to, currentID);
+            sequence = sequence.Filter(_readAppContext, sortBy, order, search, type, mapType, allTypes, mytype, stars_from, stars_to, date_from, date_to, currentID);
 
             var diffsCount = sequence.Select(s => s.Song.Hash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash).Take(count).Last().Index + 1;
 

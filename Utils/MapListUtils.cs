@@ -11,10 +11,9 @@ namespace BeatLeader_Server.Utils
     {
         public static IQueryable<Leaderboard> Filter(this IQueryable<Leaderboard> source, 
             ReadAppContext context,
-            string sortBy = "stars",
-            string order = "desc",
+            string? sortBy = null,
+            string? order = null,
              string? search = null,
-            string? diff = null,
             string? type = null,
              int? mapType = null,
            bool allTypes = false,
@@ -131,13 +130,9 @@ namespace BeatLeader_Server.Utils
                 string lowSearch = search.ToLower();
                 sequence = sequence
                     .Include(lb => lb.Song)
-                    .Where(p => p.Song.Author.ToLower().Contains(lowSearch) ||
-                                p.Song.Mapper.ToLower().Contains(lowSearch) ||
-                                p.Song.Name.ToLower().Contains(lowSearch));
-            }
-            if (diff != null)
-            {
-                sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.DifficultyName.ToLower().Contains(diff.ToLower()));
+                    .Where(p => p.Song.Author.Contains(lowSearch) ||
+                                p.Song.Mapper.Contains(lowSearch) ||
+                                p.Song.Name.Contains(lowSearch));
             }
 
             if (type != null && type.Length != 0)

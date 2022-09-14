@@ -446,10 +446,9 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<ResponseWithMetadata<LeaderboardInfoResponse>>> GetAll(
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
-            [FromQuery] string sortBy = "stars",
-            [FromQuery] string order = "desc",
+            [FromQuery] string? sortBy = null,
+            [FromQuery] string? order = null,
             [FromQuery] string? search = null,
-            [FromQuery] string? diff = null,
             [FromQuery] string? type = null,
             [FromQuery] int? mapType = null,
             [FromQuery] bool allTypes = false,
@@ -461,7 +460,7 @@ namespace BeatLeader_Server.Controllers
 
             var sequence = _readContext.Leaderboards.AsQueryable();
             string? currentID = HttpContext.CurrentUserID(_readContext);
-            sequence = sequence.Filter(_readContext, sortBy, order, search, diff, type, mapType, allTypes, mytype, stars_from, stars_to, date_from, date_to, currentID);
+            sequence = sequence.Filter(_readContext, sortBy, order, search, type, mapType, allTypes, mytype, stars_from, stars_to, date_from, date_to, currentID);
 
             bool showVoting = false;
             bool showVotingDetails = false;
@@ -543,7 +542,7 @@ namespace BeatLeader_Server.Controllers
                             Type = showVotingDetails ? s.RankVoting.Type : 0,
                             Timeset = showVotingDetails ? s.RankVoting.Timeset : 0,
                         })
-                }).ToList();
+                });
             } else {
                 result.Data = sequence
                 .Select(lb => new LeaderboardInfoResponse
@@ -580,7 +579,7 @@ namespace BeatLeader_Server.Controllers
                         AccRight = s.AccRight
                     }).FirstOrDefault(),
                     Plays = showPlays ? lb.Scores.Where(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)).Count() : 0,
-                }).ToList();
+                });
             }
 
             return result;

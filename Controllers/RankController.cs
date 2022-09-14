@@ -279,7 +279,7 @@ namespace BeatLeader_Server.Controllers
                 
                 DifficultyDescription? difficulty = leaderboard.Difficulty;
 
-                if (difficulty.Status != DifficultyStatus.unranked)
+                if (difficulty.Status != DifficultyStatus.unranked && difficulty.Status != DifficultyStatus.unrankable)
                 {
                     return BadRequest("Already qualified or ranked");
                 }
@@ -302,6 +302,20 @@ namespace BeatLeader_Server.Controllers
                 _context.SaveChanges();
                 await _scoreController.RefreshScores(leaderboard.Id);
                 await _playlistController.RefreshNominatedPlaylist();
+
+                var dsClient = qualificationDSClient();
+
+                if (dsClient != null)
+                {
+                    string message = currentPlayer.Name + "nominated **" + diff + "** diff of **" + leaderboard.Song.Name + "**! \n";
+                    message += "★ " + difficulty.Stars + "  ";
+                    message += " **T**  ";
+                    message += FormatUtils.DescribeType(leaderboard.Difficulty.Type);
+                    message += "\n";
+                    message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
+
+                    dsClient.SendMessageAsync(message);
+                }
             }
 
             return Ok();
@@ -359,6 +373,20 @@ namespace BeatLeader_Server.Controllers
 
                         leaderboard.Difficulty.Status = DifficultyStatus.qualified;
                         leaderboard.Difficulty.QualifiedTime = qualification.ApprovalTimeset;
+
+                        var dsClient = qualificationDSClient();
+
+                        if (dsClient != null)
+                        {
+                            string message = currentPlayer.Name + "qualified **" + diff + "** diff of **" + leaderboard.Song.Name + "**! \n";
+                            message += "★ " + leaderboard.Difficulty.Stars + "  ";
+                            message += " **T**  ";
+                            message += FormatUtils.DescribeType(leaderboard.Difficulty.Type);
+                            message += "\n";
+                            message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
+
+                            dsClient.SendMessageAsync(message);
+                        }
                     }
 
                     if (qualification.Approvers == null)
@@ -969,6 +997,13 @@ namespace BeatLeader_Server.Controllers
         public DiscordWebhookClient? reweightDSClient()
         {
             var link = _configuration.GetValue<string?>("ReweightDSHook");
+            return link == null ? null : new DiscordWebhookClient(link);
+        }
+
+        [NonAction]
+        public DiscordWebhookClient? qualificationDSClient()
+        {
+            var link = _configuration.GetValue<string?>("QualificationDSHook");
             return link == null ? null : new DiscordWebhookClient(link);
         }
     }

@@ -203,7 +203,7 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
             {
                 response = request.EndGetResponse(result);
             }
-            catch (Exception e)
+            catch
             {
                 authenticateResult = null;
             }
