@@ -6,7 +6,7 @@ namespace BeatLeader_Server.Utils
 {
     public class FormatUtils
     {
-        public static string DescribeModifiersChanges(ModifiersMap oldM, ModifiersMap newM) {
+        public static string DescribeModifiersChanges(ModifiersMap? oldM, ModifiersMap? newM) {
             string message = "";
             if (oldM != null && newM != null && !oldM.EqualTo(newM))
             {

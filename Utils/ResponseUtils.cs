@@ -204,6 +204,18 @@ namespace BeatLeader_Server.Utils
             public ModifiersMap? ModifierValues { get; set; }
         }
 
+        public class EventResponse
+        {
+            public int Id { get; set; }
+            public string Name { get; set; }
+            public int EndDate { get; set; }
+            public int PlaylistId { get; set; }
+            public string Image { get; set; }
+
+            public int PlayerCount { get; set; }
+            public PlayerResponse Leader { get; set; }
+        }
+
         public static T RemoveLeaderboard<T>  (Score s, int i) where T : ScoreResponse, new()
         {
             return new T

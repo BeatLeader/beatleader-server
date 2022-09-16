@@ -33,11 +33,13 @@
         public int OldType { get; set; } = 0;
         public int OldCriteriaMet { get; set; } = 0;
         public string? OldCriteriaCommentary { get; set; }
+        public ModifiersMap? OldModifiers { get; set; }
 
         public float NewRankability { get; set; } = 0;
         public float NewStars { get; set; } = 0;
         public int NewType { get; set; } = 0;
         public int NewCriteriaMet { get; set; } = 0;
         public string? NewCriteriaCommentary { get; set; }
+        public ModifiersMap? NewModifiers { get; set; }
     }
 }

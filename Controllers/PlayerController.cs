@@ -94,6 +94,7 @@ namespace BeatLeader_Server.Controllers
                         .Include(p => p.Clans)
                         .Include(p => p.PatreonFeatures)
                         .Include(p => p.Socials)
+                        .Include(p => p.EventsParticipating)
                         .FirstOrDefault();
                 } else {
                     player = _readContext.Players.Find(userId);
@@ -302,7 +303,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? diff = null,
             [FromQuery] string? type = null,
             [FromQuery] float? stars_from = null,
-            [FromQuery] float? stars_to = null)
+            [FromQuery] float? stars_to = null,
+            [FromQuery] int? eventId = null)
         {
             IQueryable<Score> sequence;
 
@@ -345,6 +347,12 @@ namespace BeatLeader_Server.Controllers
                         .Where(p => p.Leaderboard.Song.Author.ToLower().Contains(lowSearch) ||
                                     p.Leaderboard.Song.Mapper.ToLower().Contains(lowSearch) ||
                                     p.Leaderboard.Song.Name.ToLower().Contains(lowSearch));
+                }
+                if (eventId != null) {
+                    var leaderboardIds = _context.EventRankings.Where(e => e.Id == eventId).Include(e => e.Leaderboards).Select(e => e.Leaderboards.Select(lb => lb.Id)).FirstOrDefault();
+                    if (leaderboardIds?.Count() != 0) {
+                        sequence = sequence.Where(s => leaderboardIds.Contains(s.LeaderboardId));
+                    }
                 }
                 if (diff != null)
                 {

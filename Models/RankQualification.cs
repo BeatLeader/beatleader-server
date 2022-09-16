@@ -20,6 +20,8 @@
         public bool Approved { get; set; }
         public string? Approvers { get; set; }
 
+        public ModifiersMap? Modifiers { get; set; }
+
         public ICollection<QualificationChange>? Changes { get; set; }
     }
 }

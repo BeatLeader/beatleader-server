@@ -147,6 +147,10 @@ namespace BeatLeader_Server.Utils
                             .Include(lb => lb.Difficulty)
                             .Include(lb => lb.Qualification)
                             .ThenInclude(q => q.Changes)
+                            .ThenInclude(ch => ch.OldModifiers)
+                            .Include(lb => lb.Qualification)
+                            .ThenInclude(q => q.Changes)
+                            .ThenInclude(ch => ch.NewModifiers)
                             .Where(p => p.Difficulty.Status == DifficultyStatus.nominated);
                         break;
                     case "qualified":
@@ -154,6 +158,10 @@ namespace BeatLeader_Server.Utils
                             .Include(lb => lb.Difficulty)
                             .Include(lb => lb.Qualification)
                             .ThenInclude(q => q.Changes)
+                            .ThenInclude(ch => ch.OldModifiers)
+                            .Include(lb => lb.Qualification)
+                            .ThenInclude(q => q.Changes)
+                            .ThenInclude(ch => ch.NewModifiers)
                             .Where(p => p.Difficulty.Status == DifficultyStatus.qualified);
                         break;
                     case "reweighting":
@@ -161,6 +169,10 @@ namespace BeatLeader_Server.Utils
                             .Include(lb => lb.Difficulty)
                             .Include(lb => lb.Reweight)
                             .ThenInclude(q => q.Changes)
+                            .ThenInclude(ch => ch.OldModifiers)
+                            .Include(lb => lb.Reweight)
+                            .ThenInclude(q => q.Changes)
+                            .ThenInclude(ch => ch.NewModifiers)
                             .Where(p => p.Reweight != null && !p.Reweight.Finished);
                         break;
                     case "reweighted":
@@ -168,6 +180,10 @@ namespace BeatLeader_Server.Utils
                             .Include(lb => lb.Difficulty)
                             .Include(lb => lb.Reweight)
                             .ThenInclude(q => q.Changes)
+                            .ThenInclude(ch => ch.OldModifiers)
+                            .Include(lb => lb.Reweight)
+                            .ThenInclude(q => q.Changes)
+                            .ThenInclude(ch => ch.NewModifiers)
                             .Where(p => p.Reweight != null && p.Reweight.Finished);
                         break;
                     case "unranked":

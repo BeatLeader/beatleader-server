@@ -240,7 +240,7 @@ namespace BeatLeader_Server.Controllers
             string mode,
             [FromQuery] float stars = 0,
             [FromQuery] int type = 0,
-            [FromQuery] bool allowed = false)
+            [FromQuery] string? modifiers = null)
         {
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = _context.Players.Find(currentID);
@@ -284,6 +284,12 @@ namespace BeatLeader_Server.Controllers
                     return BadRequest("Already qualified or ranked");
                 }
 
+                ModifiersMap? modifierValues = modifiers == null ? null : JsonConvert.DeserializeObject<ModifiersMap>(modifiers);
+                if (modifierValues == null) {
+                    modifierValues = new ModifiersMap();
+                    modifierValues.FS *= 2; modifierValues.SF *= 2; modifierValues.DA *= 2; modifierValues.GN *= 2; modifierValues.NF = -1.0f;
+                }
+
                 difficulty.Status = DifficultyStatus.nominated;
                 difficulty.NominatedTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                 difficulty.Stars = stars;
@@ -292,12 +298,11 @@ namespace BeatLeader_Server.Controllers
                     RTMember = currentID,
                     MapperId = !isRT ? currentID : alreadyApproved,
                     MapperAllowed = !isRT || alreadyApproved != null,
-                    MapperQualification = !isRT
+                    MapperQualification = !isRT,
+                    Modifiers = modifierValues,
                 };
-
-                var modifiers = difficulty.ModifierValues;
-                modifiers.FS *= 2; modifiers.SF *= 2; modifiers.DA *= 2; modifiers.GN *= 2; modifiers.NF = -1.0f;
-
+                
+                difficulty.ModifierValues = modifierValues;
                 difficulty.Type = type;
                 _context.SaveChanges();
                 await _scoreController.RefreshScores(leaderboard.Id);
@@ -332,7 +337,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int? type,
             [FromQuery] bool? allowed,
             [FromQuery] int? criteriaCheck,
-            [FromQuery] string? criteriaCommentary)
+            [FromQuery] string? criteriaCommentary,
+            [FromQuery] string? modifiers = null)
         {
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = _context.Players.Find(currentID);
@@ -344,6 +350,12 @@ namespace BeatLeader_Server.Controllers
                 .ThenInclude(d => d.ModifierValues)
                 .Include(l => l.Qualification)
                 .ThenInclude(q => q.Changes)
+                .ThenInclude(ch => ch.OldModifiers)
+                .Include(l => l.Qualification)
+                .ThenInclude(q => q.Changes)
+                .ThenInclude(ch => ch.NewModifiers)
+                .Include(l => l.Qualification)
+                .ThenInclude(q => q.Modifiers)
                 .FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             bool isRT = true;
@@ -353,6 +365,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             var qualification = leaderboard?.Qualification;
+            var newModifiers = modifiers == null ? null : JsonConvert.DeserializeObject<ModifiersMap>(modifiers);
 
             if (qualification != null)
             {
@@ -365,6 +378,7 @@ namespace BeatLeader_Server.Controllers
                     && qualification.CriteriaChecker != currentID
                     && qualification.RTMember != currentID
                     && qualification.CriteriaMet == 1
+                    && newModifiers?.EqualTo(qualification.Modifiers) != false
                     && !currentPlayer.Role.Contains("juniorrankedteam"))
                 {
                     if (qualification.ApprovalTimeset == 0)
@@ -413,18 +427,16 @@ namespace BeatLeader_Server.Controllers
                         OldStars = (float)leaderboard.Difficulty.Stars,
                         OldType = (int)leaderboard.Difficulty.Type,
                         OldCriteriaMet = qualification.CriteriaMet,
-                        OldCriteriaCommentary = qualification.CriteriaCommentary
+                        OldCriteriaCommentary = qualification.CriteriaCommentary,
+                        OldModifiers = qualification.Modifiers,
                     };
 
                     if (stilQualifying == false) {
-                        
                         leaderboard.Difficulty.Status = DifficultyStatus.unrankable;
                         leaderboard.Difficulty.NominatedTime = 0;
                         leaderboard.Difficulty.QualifiedTime = 0;
                         leaderboard.Difficulty.Stars = 0;
-
-                        var modifiers = leaderboard.Difficulty.ModifierValues;
-                        modifiers.FS /= 2; modifiers.SF /= 2; modifiers.DA /= 2; modifiers.GN /= 2; modifiers.NF = -0.5f;
+                        leaderboard.Difficulty.ModifierValues = new ModifiersMap();
                     } else {
                         if (stars != null)
                         {
@@ -454,52 +466,70 @@ namespace BeatLeader_Server.Controllers
                         qualification.CriteriaCommentary = criteriaCommentary;
                     }
 
+                    if (newModifiers != null) {
+                        qualification.Modifiers = newModifiers;
+                        leaderboard.Difficulty.ModifierValues = newModifiers;
+                    }
+
                     qualificationChange.NewRankability = leaderboard.Difficulty.Status == DifficultyStatus.nominated || leaderboard.Difficulty.Status == DifficultyStatus.qualified ? 1.0f : 0;
                     qualificationChange.NewStars = (float)leaderboard.Difficulty.Stars;
                     qualificationChange.NewType = (int)leaderboard.Difficulty.Type;
                     qualificationChange.NewCriteriaMet = qualification.CriteriaMet;
                     qualificationChange.NewCriteriaCommentary = qualification.CriteriaCommentary;
-
-                    var dsClient = reweightDSClient();
-
-                    if (dsClient != null)
-                    {
-
-                        string message = currentPlayer.Name + " updated nomination for **" + leaderboard.Song.Name + "**!\n";
-                        if (qualificationChange.NewRankability <= 0)
-                        {
-                            message += "**Declined!**\n Reason: " + qualification.CriteriaCommentary;
-                        }
-                        else
-                        {
-                            if (qualificationChange.NewStars != qualificationChange.OldStars)
-                            {
-                                message += "★ " + qualificationChange.OldStars + " → " + qualificationChange.NewStars;
-                            }
-                            message += FormatUtils.DescribeTypeChanges(qualificationChange.OldType, qualificationChange.NewType);
-                            if (qualificationChange.OldCriteriaMet != qualificationChange.NewCriteriaMet) {
-                                message += "\n Criteria checked! Verdict: " +  FormatUtils.DescribeCriteria(qualificationChange.NewCriteriaMet) + "\n";
-                                if (qualificationChange.NewCriteriaCommentary != null) {
-                                    message += "With commentary: " + qualificationChange.NewCriteriaCommentary + "\n";
-                                }
-                            }
-                            //message += FormatUtils.DescribeModifiersChanges(qualificationChange.Old, reweight.Modifiers);
-                        }
-                        message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
-
-                        dsClient.SendMessageAsync(message);
-                    }
+                    qualificationChange.NewModifiers = qualification.Modifiers;
 
                     if (qualificationChange.NewRankability != qualificationChange.OldRankability
                         || qualificationChange.NewStars != qualificationChange.OldStars
                         || qualificationChange.NewType != qualificationChange.OldType
                         || qualificationChange.NewCriteriaMet != qualificationChange.OldCriteriaMet
-                        || qualificationChange.NewCriteriaCommentary != qualificationChange.OldCriteriaCommentary) {
+                        || qualificationChange.NewCriteriaCommentary != qualificationChange.OldCriteriaCommentary
+                        || qualificationChange.NewModifiers?.EqualTo(qualificationChange.OldModifiers) == false) {
 
                         if (qualification.Changes == null) {
                             qualification.Changes = new List<QualificationChange>();
                         }
+
                         qualification.Changes.Add(qualificationChange);
+
+                        var dsClient = qualificationDSClient();
+
+                        if (dsClient != null)
+                        {
+
+                            string message = currentPlayer.Name + " updated nomination for **" + leaderboard.Song.Name + "**!\n";
+                            if (qualificationChange.NewRankability <= 0)
+                            {
+                                message += "**Declined!**\n Reason: " + qualification.CriteriaCommentary;
+                            }
+                            else
+                            {
+                                if (qualificationChange.NewStars != qualificationChange.OldStars)
+                                {
+                                    message += "★ " + qualificationChange.OldStars + " → " + qualificationChange.NewStars;
+                                }
+                                message += FormatUtils.DescribeTypeChanges(qualificationChange.OldType, qualificationChange.NewType);
+                                if (qualificationChange.OldCriteriaMet != qualificationChange.NewCriteriaMet)
+                                {
+                                    message += "\n Criteria checked! Verdict: " + FormatUtils.DescribeCriteria(qualificationChange.NewCriteriaMet) + "\n";
+                                    if (qualificationChange.NewCriteriaCommentary != null)
+                                    {
+                                        message += "With commentary: " + qualificationChange.NewCriteriaCommentary + "\n";
+                                    }
+                                }
+                                else
+                                {
+                                    if (qualificationChange.OldCriteriaCommentary != qualificationChange.NewCriteriaCommentary)
+                                    {
+                                        message += "Commentary update: " + qualificationChange.NewCriteriaCommentary + "\n";
+                                    }
+                                }
+
+                                message += FormatUtils.DescribeModifiersChanges(qualificationChange.OldModifiers, qualificationChange.NewModifiers);
+                            }
+                            message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
+
+                            dsClient.SendMessageAsync(message);
+                        }
                     }
                 }
 
@@ -637,7 +667,7 @@ namespace BeatLeader_Server.Controllers
                     || rankUpdateChange.NewType != rankUpdateChange.OldType
                     || rankUpdateChange.NewCriteriaMet != rankUpdateChange.OldCriteriaMet
                     || rankUpdateChange.NewCriteriaCommentary != rankUpdateChange.OldCriteriaCommentary 
-                    || rankUpdateChange.NewModifiers != rankUpdateChange.OldModifiers)
+                    || rankUpdateChange.NewModifiers?.EqualTo(rankUpdateChange.OldModifiers) == false)
                 {
 
                     if (reweight.Changes == null)
@@ -651,7 +681,7 @@ namespace BeatLeader_Server.Controllers
             _context.SaveChanges();
 
             return Ok();
-        }
+        }   
 
         [Authorize]
         [HttpPost("~/reweight/approve/{hash}/{diff}/{mode}/")]
@@ -742,8 +772,7 @@ namespace BeatLeader_Server.Controllers
 
                 if (difficulty.Status == DifficultyStatus.ranked && !reweight.Keep)
                 {
-                    var modifiers = difficulty.ModifierValues;
-                    modifiers.FS /= 2; modifiers.SF /= 2; modifiers.DA /= 2; modifiers.GN /= 2; modifiers.NF = 0.5f;
+                    difficulty.ModifierValues = new ModifiersMap();
                 }
 
                 difficulty.Status = reweight.Keep ? DifficultyStatus.ranked : DifficultyStatus.unranked;

@@ -7,6 +7,7 @@ using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -765,6 +766,43 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/event/{id}")]
         public ActionResult<EventRanking?> GetEvent(int id) {
             return _readAppContext.EventRankings.FirstOrDefault(e => e.Id == id);
+        }
+
+        [HttpGet("~/events")]
+        public ActionResult<ResponseWithMetadata<EventResponse>> GetEvents([FromQuery] int page = 1,
+            [FromQuery] int count = 10)
+        {
+            var query = _readAppContext.EventRankings.Include(e => e.Players);
+
+            var result = new ResponseWithMetadata<EventResponse>
+            {
+                Metadata = new Metadata
+                {
+                    Page = page,
+                    ItemsPerPage = count,
+                    Total = query.Count()
+                }
+            };
+
+            result.Data = query.Select(e => new EventResponse {
+                Id = e.Id,
+                Name = e.Name,
+                EndDate = e.EndDate,
+                PlaylistId = e.PlaylistId,
+                Image = e.Image,
+
+                PlayerCount = e.Players.Count(),
+                Leader = new PlayerResponse {
+                    Id = e.Players.OrderByDescending(p => p.Pp).FirstOrDefault().PlayerId
+                }
+            }).ToList();
+
+            foreach (var item in result.Data)
+            {
+                item.Leader = ResponseFromPlayer(_context.Players.Include(p => p.Clans).FirstOrDefault(p => p.Id == item.Leader.Id));
+            }
+
+            return result;
         }
     }
 }
