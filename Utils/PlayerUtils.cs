@@ -102,7 +102,8 @@ namespace BeatLeader_Server.Utils
                     {
                         PlayerId = player.Id,
                         Country = player.Country,
-                        EventId = eventRanking.Id
+                        EventId = eventRanking.Id,
+                        Name = eventRanking.Name
                     };
                     eventRanking.Players.Add(eventPlayer);
                     context.SaveChanges();

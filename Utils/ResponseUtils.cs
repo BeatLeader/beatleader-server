@@ -372,6 +372,7 @@ namespace BeatLeader_Server.Utils
                 CountryRank = p.CountryRank,
                 Role = p.Role,
                 Socials = p.Socials,
+                EventsParticipating = p.EventsParticipating,
                 PatreonFeatures = p.PatreonFeatures == null ? null :
                     new PatreonResponse
                     {

@@ -703,6 +703,7 @@ namespace BeatLeader_Server.Controllers
                     basicPlayer.EventsParticipating.Add(player);
                 }
                 player.EventId = eventRanking.Id;
+                player.Name = eventRanking.Name;
             }
             _context.SaveChanges();
 
@@ -769,10 +770,23 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/events")]
-        public ActionResult<ResponseWithMetadata<EventResponse>> GetEvents([FromQuery] int page = 1,
-            [FromQuery] int count = 10)
+        public ActionResult<ResponseWithMetadata<EventResponse>> GetEvents(
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10,
+            [FromQuery] string? sortBy = "date",
+            [FromQuery] string? search = null,
+            [FromQuery] string? order = "desc")
         {
-            var query = _readAppContext.EventRankings.Include(e => e.Players);
+            IQueryable<EventRanking> query = _readAppContext.EventRankings.Include(e => e.Players);
+
+            switch (sortBy)
+            {
+                case "date":
+                    query = query.Order(order, p => p.EndDate);
+                    break;
+                default:
+                    break;
+            }
 
             var result = new ResponseWithMetadata<EventResponse>
             {
@@ -795,7 +809,7 @@ namespace BeatLeader_Server.Controllers
                 Leader = new PlayerResponse {
                     Id = e.Players.OrderByDescending(p => p.Pp).FirstOrDefault().PlayerId
                 }
-            }).ToList();
+            }).Skip((page - 1) * count).Take(count).ToList();
 
             foreach (var item in result.Data)
             {

@@ -413,6 +413,10 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int?>("EventRankingId")
                         .HasColumnType("int");
 
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("PlayerId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
@@ -713,6 +717,9 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("real");
 
                     b.Property<float>("PM")
+                        .HasColumnType("real");
+
+                    b.Property<float>("SA")
                         .HasColumnType("real");
 
                     b.Property<float>("SC")
