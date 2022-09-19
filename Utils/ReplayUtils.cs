@@ -19,20 +19,23 @@ namespace BeatLeader_Server.Utils
             return MathF.Pow(MathF.Log10(l / (l - acc)) / MathF.Log10(l / (l - a)), f);
         }
 
-        public static (float, float) PpFromScore(Score s, DifficultyDescription difficulty) {
+        public static (float, float) PpFromScore(Score s, ModifiersMap modifierValues, float stars)
+        {
             var accuracy = s.Accuracy;
             bool negativeAcc = float.IsNegative(accuracy);
-            if (negativeAcc) {
+            if (negativeAcc)
+            {
                 accuracy *= -1;
             }
 
-            float mp = difficulty.ModifierValues.GetPositiveMultiplier(s.Modifiers);
+            float mp = modifierValues.GetPositiveMultiplier(s.Modifiers);
             mp = 1 + (mp - 1);
 
-            float rawPP = (float)(Curve(accuracy, (float)difficulty.Stars - 0.5f) * ((float)difficulty.Stars + 0.5f) * 42);
-            float fullPP = (float)(Curve(accuracy, (float)difficulty.Stars * mp - 0.5f) * ((float)difficulty.Stars * mp + 0.5f) * 42);
+            float rawPP = (float)(Curve(accuracy, (float)stars - 0.5f) * ((float)stars + 0.5f) * 42);
+            float fullPP = (float)(Curve(accuracy, (float)stars * mp - 0.5f) * ((float)stars * mp + 0.5f) * 42);
 
-            if (float.IsInfinity(rawPP) || float.IsNaN(rawPP) || float.IsNegativeInfinity(rawPP)) {
+            if (float.IsInfinity(rawPP) || float.IsNaN(rawPP) || float.IsNegativeInfinity(rawPP))
+            {
                 rawPP = 1042;
 
             }
@@ -43,13 +46,18 @@ namespace BeatLeader_Server.Utils
 
             }
 
-            if (negativeAcc) {
+            if (negativeAcc)
+            {
 
                 rawPP *= -1;
                 fullPP *= -1;
             }
 
             return (fullPP, fullPP - rawPP);
+        }
+
+        public static (float, float) PpFromScore(Score s, DifficultyDescription difficulty) {
+            return PpFromScore(s, difficulty.ModifierValues, (float)difficulty.Stars);
         }
 
         public static (float, float) PpFromScoreResponse(ScoreResponse s, RankUpdate reweight)
