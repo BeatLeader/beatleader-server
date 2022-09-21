@@ -82,6 +82,7 @@ namespace BeatLeader_Server.Utils
             public HMD Hmd { get; set; }
             public string LeaderboardId { get; set; }
             public string Timeset { get; set; }
+            public int Timepost { get; set; }
             public PlayerResponse Player { get; set; }
             public ScoreImprovement? ScoreImprovement { get; set; }
             public RankVoting? RankVoting { get; set; }
@@ -238,6 +239,7 @@ namespace BeatLeader_Server.Utils
                 FullCombo = s.FullCombo,
                 Hmd = s.Hmd,
                 Timeset = s.Timeset,
+                Timepost = s.Timepost,
                 LeaderboardId = s.LeaderboardId,
                 Platform = s.Platform,
                 Player = ResponseFromPlayer(s.Player),

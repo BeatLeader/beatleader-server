@@ -9,20 +9,21 @@ namespace BeatLeader_Server.Utils
 {
     public static class MapListUtils
     {
-        public static IQueryable<Leaderboard> Filter(this IQueryable<Leaderboard> source, 
+        public static IQueryable<Leaderboard> Filter(
+            this IQueryable<Leaderboard> source, 
             ReadAppContext context,
             string? sortBy = null,
             string? order = null,
-             string? search = null,
+            string? search = null,
             string? type = null,
-             int? mapType = null,
-           bool allTypes = false,
-           string? mytype = null,
+            int? mapType = null,
+            bool allTypes = false,
+            string? mytype = null,
             float? stars_from = null,
-           float? stars_to = null,
-             int? date_from = null,
-             int? date_to = null,
-             string? currentID = null)
+            float? stars_to = null,
+            int? date_from = null,
+            int? date_to = null,
+            string? currentID = null)
         {
             var sequence = source;
             switch (sortBy)
@@ -41,6 +42,21 @@ namespace BeatLeader_Server.Utils
                         case "qualified":
                             sequence = sequence.Where(s => (date_from == null || s.Difficulty.QualifiedTime >= date_from) && (date_to == null || s.Difficulty.QualifiedTime <= date_to))
                             .Order(order, t => t.Difficulty.QualifiedTime);
+                            break;
+                        case "ranking":
+                            sequence = sequence.Where(s => 
+                                (   
+                                    date_from == null || 
+                                    s.Difficulty.RankedTime >= date_from || 
+                                    s.Difficulty.NominatedTime >= date_from || 
+                                    s.Difficulty.QualifiedTime >= date_from ||
+                                    s.Changes.OrderByDescending(ch => ch.Timeset).FirstOrDefault().Timeset >= date_from) && 
+                                (
+                                    date_to == null || 
+                                    s.Difficulty.RankedTime <= date_to ||
+                                    s.Difficulty.NominatedTime <= date_to ||
+                                    s.Difficulty.QualifiedTime <= date_to ||
+                                    s.Changes.OrderByDescending(ch => ch.Timeset).FirstOrDefault().Timeset <= date_to));
                             break;
                     }
 
@@ -141,6 +157,24 @@ namespace BeatLeader_Server.Utils
                 {
                     case "ranked":
                         sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.Status == DifficultyStatus.ranked);
+                        break;
+                    case "ranking":
+                        sequence = sequence
+                            .Include(lb => lb.Difficulty)
+                            .Include(lb => lb.Qualification)
+                            .ThenInclude(q => q.Changes)
+                            .ThenInclude(ch => ch.OldModifiers)
+                            .Include(lb => lb.Qualification)
+                            .ThenInclude(q => q.Changes)
+                            .ThenInclude(ch => ch.NewModifiers)
+                            .Include(lb => lb.Difficulty)
+                            .Include(lb => lb.Reweight)
+                            .ThenInclude(q => q.Changes)
+                            .ThenInclude(ch => ch.OldModifiers)
+                            .Include(lb => lb.Reweight)
+                            .ThenInclude(q => q.Changes)
+                            .ThenInclude(ch => ch.NewModifiers)
+                            .Where(p => p.Difficulty.Status != DifficultyStatus.unranked && p.Difficulty.Status != DifficultyStatus.outdated);
                         break;
                     case "nominated":
                         sequence = sequence

@@ -306,32 +306,31 @@ namespace BeatLeader_Server.Controllers
                         }
 
                         improvement.AverageRankedAccuracy = player.ScoreStats.AverageRankedAccuracy - oldAverageAcc;
-                        
-                    }
 
+                        switch (currentScore.Accuracy)
+                        {
+                            case > 0.95f:
+                                player.ScoreStats.SSPPlays--;
+                                break;
+                            case > 0.9f:
+                                player.ScoreStats.SSPlays--;
+                                break;
+                            case > 0.85f:
+                                player.ScoreStats.SPPlays--;
+                                break;
+                            case > 0.8f:
+                                player.ScoreStats.SPlays--;
+                                break;
+                            default:
+                                player.ScoreStats.APlays--;
+                                break;
+                        }
+                    }
 
                     if (status1 == DifficultyStatus.ranked || status1 == DifficultyStatus.qualified || status1 == DifficultyStatus.nominated) {
                         improvement.Pp = resultScore.Pp - currentScore.Pp;
                     }
-
-                    switch (currentScore.Accuracy)
-                    {
-                        case > 0.95f:
-                            player.ScoreStats.SSPPlays--;
-                            break;
-                        case > 0.9f:
-                            player.ScoreStats.SSPlays--;
-                            break;
-                        case > 0.85f:
-                            player.ScoreStats.SPPlays--;
-                            break;
-                        case > 0.8f:
-                            player.ScoreStats.SPlays--;
-                            break;
-                        default:
-                            player.ScoreStats.APlays--;
-                            break;
-                    }
+                    
                     if (currentScore.RankVoting != null)
                     {
                         resultScore.RankVoting = new RankVoting {
@@ -443,25 +442,25 @@ namespace BeatLeader_Server.Controllers
                     {
                         player.ScoreStats.TopBonusPP = resultScore.BonusPp;
                     }
-                }
 
-                switch (resultScore.Accuracy)
-                {
-                    case > 0.95f:
-                        player.ScoreStats.SSPPlays++;
-                        break;
-                    case > 0.9f:
-                        player.ScoreStats.SSPlays++;
-                        break;
-                    case > 0.85f:
-                        player.ScoreStats.SPPlays++;
-                        break;
-                    case > 0.8f:
-                        player.ScoreStats.SPlays++;
-                        break;
-                    default:
-                        player.ScoreStats.APlays++;
-                        break;
+                    switch (resultScore.Accuracy)
+                    {
+                        case > 0.95f:
+                            player.ScoreStats.SSPPlays++;
+                            break;
+                        case > 0.9f:
+                            player.ScoreStats.SSPlays++;
+                            break;
+                        case > 0.85f:
+                            player.ScoreStats.SPPlays++;
+                            break;
+                        case > 0.8f:
+                            player.ScoreStats.SPlays++;
+                            break;
+                        default:
+                            player.ScoreStats.APlays++;
+                            break;
+                    }
                 }
 
                 if (currentScore != null) {

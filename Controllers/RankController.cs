@@ -778,6 +778,7 @@ namespace BeatLeader_Server.Controllers
                 difficulty.Status = reweight.Keep ? DifficultyStatus.ranked : DifficultyStatus.unranked;
                 difficulty.Stars = reweight.Stars;
                 difficulty.Type = reweight.Type;
+                difficulty.ModifierValues = reweight.Modifiers;
                 _context.SaveChanges();
                 transaction.Commit();
 
