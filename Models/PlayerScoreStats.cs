@@ -14,6 +14,7 @@ namespace BeatLeader_Server.Models
         public int LastRankedScoreTime { get; set; }
 
         public float AverageRankedAccuracy { get; set; }
+        public float AverageWeightedRankedAccuracy { get; set; }
         public float AverageUnrankedAccuracy { get; set; }
         public float AverageAccuracy { get; set; }
 
@@ -48,6 +49,16 @@ namespace BeatLeader_Server.Models
 
         public int DailyImprovements { get; set; }
         public int ReplaysWatched { get; set; }
+    }
+
+    public class PlayerVoteStats
+    {
+        public int Id { get; set; }
+    }
+
+    public class PlayerRankStats
+    {
+        public int Id { get; set; }
     }
 }
 

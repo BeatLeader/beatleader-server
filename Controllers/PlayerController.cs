@@ -838,6 +838,9 @@ namespace BeatLeader_Server.Controllers
                         case "acc":
                             request = request.Order(order, p => p.ScoreStats.AverageRankedAccuracy);
                             break;
+                        case "weightedAcc":
+                            request = request.Order(order, p => p.ScoreStats.AverageWeightedRankedAccuracy);
+                            break;
                         case "topAcc":
                             request = request.Order(order, p => p.ScoreStats.TopRankedAccuracy);
                             break;
@@ -1064,6 +1067,7 @@ namespace BeatLeader_Server.Controllers
                         statsHistory.CountryRank = GenerateListString(statsHistory.CountryRank, p.CountryRank);
                         statsHistory.TotalScore = GenerateListString(statsHistory.TotalScore, stats.TotalScore);
                         statsHistory.AverageRankedAccuracy = GenerateListString(statsHistory.AverageRankedAccuracy, stats.AverageRankedAccuracy);
+                        statsHistory.AverageWeightedRankedAccuracy = GenerateListString(statsHistory.AverageWeightedRankedAccuracy, stats.AverageWeightedRankedAccuracy);
                         statsHistory.TopAccuracy = GenerateListString(statsHistory.TopAccuracy, stats.TopAccuracy);
                         statsHistory.TopPp = GenerateListString(statsHistory.TopPp, stats.TopPp);
                         statsHistory.AverageAccuracy = GenerateListString(statsHistory.AverageAccuracy, stats.AverageAccuracy);
@@ -1127,6 +1131,7 @@ namespace BeatLeader_Server.Controllers
             public float BonusPp;
             public int Rank;
             public int Timeset;
+            public float Weight;
         }
 
         [NonAction]
@@ -1148,7 +1153,8 @@ namespace BeatLeader_Server.Controllers
                     Pp = s.Pp,
                     BonusPp = s.BonusPp,
                     Rank = s.Rank,
-                    Timeset = s.Timepost
+                    Timeset = s.Timepost,
+                    Weight = s.Weight
                 }).ToList();
 
             if (allScores.Count() == 0) return;
@@ -1156,7 +1162,7 @@ namespace BeatLeader_Server.Controllers
             var rankedScores = allScores.Where(s => s.Pp != 0).ToList();
             var unrankedScores = allScores.Where(s => s.Pp == 0).ToList();
 
-            var lastScores = allScores.TakeLast(50);
+            var lastScores = allScores.OrderByDescending(s => s.Timeset).TakeLast(50);
             Dictionary<string, int> platforms = new Dictionary<string, int>();
             Dictionary<HMD, int> hmds = new Dictionary<HMD, int>();
             foreach (var s in lastScores)
@@ -1218,6 +1224,11 @@ namespace BeatLeader_Server.Controllers
                 int count = rankedScores.Count() / 2;
                 player.ScoreStats.TotalRankedScore = rankedScores.Sum(s => s.ModifiedScore);
                 player.ScoreStats.AverageRankedAccuracy = rankedScores.Average(s => s.Accuracy);
+
+                var sum = rankedScores.Sum(s => s.Weight);
+                if (sum != 0) {
+                    player.ScoreStats.AverageWeightedRankedAccuracy = rankedScores.Sum(s => s.Accuracy * s.Weight) / sum;
+                }
                 player.ScoreStats.MedianRankedAccuracy = rankedScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
                 player.ScoreStats.TopRankedAccuracy = rankedScores.Max(s => s.Accuracy);
                 player.ScoreStats.TopPp = rankedScores.Max(s => s.Pp);

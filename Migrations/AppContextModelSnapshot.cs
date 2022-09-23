@@ -905,6 +905,9 @@ namespace BeatLeader_Server.Migrations
                     b.Property<float>("AverageUnrankedRank")
                         .HasColumnType("real");
 
+                    b.Property<float>("AverageWeightedRankedAccuracy")
+                        .HasColumnType("real");
+
                     b.Property<int>("DailyImprovements")
                         .HasColumnType("int");
 
@@ -1033,6 +1036,10 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("AverageRankedAccuracy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AverageWeightedRankedAccuracy")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 

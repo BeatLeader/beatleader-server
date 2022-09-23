@@ -17,6 +17,9 @@ namespace BeatLeader_Server.Utils
                 .OrderByDescending(s => s.Pp)
                 .ToList();
             float resultPP = 0f;
+
+            float weightedAccSum = 0f;
+            float weightsSum = 0f;
             foreach ((int i, Score s) in ranked.Select((value, i) => (i, value)))
             {
                 float weight = MathF.Pow(0.965f, i);
@@ -25,9 +28,14 @@ namespace BeatLeader_Server.Utils
                     s.Weight = weight;
                 }
 
-                resultPP += s.Pp * s.Weight;
+                resultPP += s.Pp * weight;
+                weightedAccSum += s.Accuracy * weight;
+                weightsSum += weight;
             }
             player.Pp = resultPP;
+            if (weightsSum > 0) {
+                player.ScoreStats.AverageWeightedRankedAccuracy = weightedAccSum / weightsSum;
+            }
         }
 
         public static void RecalculatePPAndRankFast(this AppContext context, Player player)
