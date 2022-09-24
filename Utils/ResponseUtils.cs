@@ -11,13 +11,6 @@ namespace BeatLeader_Server.Utils
             public string Color { get; set; }
         }
 
-        public class PatreonResponse
-        {
-            public string Message { get; set; } = "";
-            public string LeftSaberColor { get; set; } = "";
-            public string RightSaberColor { get; set; } = "";
-        }
-
         public class PlayerResponse
         {
             public string Id { get; set; }
@@ -32,7 +25,8 @@ namespace BeatLeader_Server.Utils
             public string Role { get; set; }
             public ICollection<PlayerSocial>? Socials { get; set; }
 
-            public PatreonResponse? PatreonFeatures { get; set; }
+            public PatreonFeatures? PatreonFeatures { get; set; }
+            public ProfileSettings? ProfileSettings { get; set; }
             public IEnumerable<ClanResponse> Clans { get; set; }
         }
 
@@ -290,13 +284,7 @@ namespace BeatLeader_Server.Utils
                 CountryRank = p.CountryRank,
                 Role = p.Role,
                 Socials = p.Socials,
-                PatreonFeatures = p.PatreonFeatures == null ? null :
-                    new PatreonResponse
-                    {
-                        Message = p.PatreonFeatures.Message,
-                        LeftSaberColor = p.PatreonFeatures.LeftSaberColor,
-                        RightSaberColor = p.PatreonFeatures.RightSaberColor,
-                    },
+                PatreonFeatures = p.PatreonFeatures,
                 Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
             };
         }
@@ -333,13 +321,7 @@ namespace BeatLeader_Server.Utils
                 CountryRank = p.CountryRank,
                 Role = p.Role,
                 EventsParticipating = p.EventsParticipating,
-                PatreonFeatures = p.PatreonFeatures == null ? null :
-                    new PatreonResponse
-                    {
-                        Message = p.PatreonFeatures.Message,
-                        LeftSaberColor = p.PatreonFeatures.LeftSaberColor,
-                        RightSaberColor = p.PatreonFeatures.RightSaberColor,
-                    },
+                PatreonFeatures = p.PatreonFeatures,
                 Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
             };
         }
@@ -375,13 +357,7 @@ namespace BeatLeader_Server.Utils
                 Role = p.Role,
                 Socials = p.Socials,
                 EventsParticipating = p.EventsParticipating,
-                PatreonFeatures = p.PatreonFeatures == null ? null :
-                    new PatreonResponse
-                    {
-                        Message = p.PatreonFeatures.Message,
-                        LeftSaberColor = p.PatreonFeatures.LeftSaberColor,
-                        RightSaberColor = p.PatreonFeatures.RightSaberColor,
-                    },
+                PatreonFeatures = p.PatreonFeatures,
                 Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
             };
         }

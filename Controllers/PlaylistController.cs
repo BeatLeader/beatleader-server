@@ -638,6 +638,7 @@ namespace BeatLeader_Server.Controllers
                                 players.Add(new EventPlayer {
                                     PlayerId = score.PlayerId,
                                     Country = score.Player.Country,
+                                    Name = name,
                                 });
                                 basicPlayers.Add(score.Player);
                                 playerScores[score.PlayerId] = new List<Score> { score };
@@ -654,7 +655,7 @@ namespace BeatLeader_Server.Controllers
                 foreach ((int i, Score s) in playerScores[player.PlayerId].OrderByDescending(s => s.Pp).Select((value, i) => (i, value)))
                 {
 
-                    resultPP += s.Pp * MathF.Pow(0.965f, i);
+                    resultPP += s.Pp * MathF.Pow(0.925f, i);
                 }
 
                 player.Pp = resultPP;

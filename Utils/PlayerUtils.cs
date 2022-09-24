@@ -132,7 +132,7 @@ namespace BeatLeader_Server.Utils
                 float resultPP = 0f;
                 foreach ((int i, var s) in ranked.Select((value, i) => (i, value)))
                 {
-                    resultPP += s.Pp * MathF.Pow(0.965f, i);
+                    resultPP += s.Pp * MathF.Pow(0.925f, i);
                 }
 
                 eventPlayer.Pp = resultPP;

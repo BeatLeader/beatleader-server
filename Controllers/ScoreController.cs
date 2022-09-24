@@ -63,6 +63,7 @@ namespace BeatLeader_Server.Controllers
                 .Scores
                 .Where(l => l.Id == id)
                 .Include(el => el.Player).ThenInclude(el => el.PatreonFeatures)
+                .Include(el => el.Player).ThenInclude(el => el.ProfileSettings)
                 .FirstOrDefault();
 
             if (score != null)
@@ -393,6 +394,8 @@ namespace BeatLeader_Server.Controllers
                 .Include(s => s.Player)
                     .ThenInclude(p => p.PatreonFeatures)
                 .Include(s => s.Player)
+                    .ThenInclude(p => p.ProfileSettings)
+                .Include(s => s.Player)
                     .ThenInclude(p => p.Socials)
                 .Include(s => s.ScoreImprovement)
                 .OrderBy(p => p.Rank);
@@ -477,6 +480,7 @@ namespace BeatLeader_Server.Controllers
                 .Scores
                 .Where(l => l.Leaderboard.Song.Hash == hash && l.Leaderboard.Difficulty.DifficultyName == diff && l.Leaderboard.Difficulty.ModeName == mode && l.PlayerId == playerID)
                 .Include(el => el.Player).ThenInclude(el => el.PatreonFeatures)
+                .Include(el => el.Player).ThenInclude(el => el.ProfileSettings)
                 .FirstOrDefault();
 
             if (score != null)

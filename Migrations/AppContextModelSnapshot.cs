@@ -842,6 +842,9 @@ namespace BeatLeader_Server.Migrations
                     b.Property<float>("Pp")
                         .HasColumnType("real");
 
+                    b.Property<int?>("ProfileSettingsId")
+                        .HasColumnType("int");
+
                     b.Property<int>("Rank")
                         .HasColumnType("int");
 
@@ -858,6 +861,8 @@ namespace BeatLeader_Server.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("PatreonFeaturesId");
+
+                    b.HasIndex("ProfileSettingsId");
 
                     b.HasIndex("ScoreStatsId");
 
@@ -1119,6 +1124,43 @@ namespace BeatLeader_Server.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Playlists");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.ProfileSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<string>("Bio")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EffectName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<float?>("Hue")
+                        .HasColumnType("real");
+
+                    b.Property<string>("LeftSaberColor")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Message")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ProfileAppearance")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RightSaberColor")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<float?>("Saturation")
+                        .HasColumnType("real");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ProfileSettings");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.QualificationChange", b =>
@@ -2007,6 +2049,10 @@ namespace BeatLeader_Server.Migrations
                         .WithMany()
                         .HasForeignKey("PatreonFeaturesId");
 
+                    b.HasOne("BeatLeader_Server.Models.ProfileSettings", "ProfileSettings")
+                        .WithMany()
+                        .HasForeignKey("ProfileSettingsId");
+
                     b.HasOne("BeatLeader_Server.Models.PlayerScoreStats", "ScoreStats")
                         .WithMany()
                         .HasForeignKey("ScoreStatsId")
@@ -2018,6 +2064,8 @@ namespace BeatLeader_Server.Migrations
                         .HasForeignKey("StatsHistoryId");
 
                     b.Navigation("PatreonFeatures");
+
+                    b.Navigation("ProfileSettings");
 
                     b.Navigation("ScoreStats");
 

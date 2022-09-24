@@ -238,6 +238,188 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpPatch("~/user")]
+        public async Task<ActionResult> ChangeFullName(
+            [FromQuery] string? name = null,
+            [FromQuery] string? country = null,
+            [FromQuery] string? profileAppearance = null,
+            [FromQuery] string? patreonMessage = null,
+            [FromQuery] float? hue = null,
+            [FromQuery] float? saturation = null,
+            [FromQuery] string? effectName = null,
+            [FromQuery] string? leftSaberColor = null,
+            [FromQuery] string? rightSaberColor = null,
+            [FromQuery] string? id = null)
+        {
+            string userId = GetId();
+            var player = _context.Players.Include(p => p.ProfileSettings).Include(p => p.PatreonFeatures).FirstOrDefault(p => p.Id == userId);
+            bool adminChange = false;
+
+            if (id != null && player != null && player.Role.Contains("admin"))
+            {
+                adminChange = true;
+                player = _context.Players.Include(p => p.ProfileSettings).Include(p => p.PatreonFeatures).FirstOrDefault(p => p.Id == id);
+            }
+
+            if (player == null)
+            {
+                return NotFound();
+            }
+            if (player.Banned)
+            {
+                return BadRequest("You are banned!");
+            }
+
+            if (name != null) {
+                if (name.Length < 3 || name.Length > 30)
+                {
+                    return BadRequest("Use name between the 3 and 30 symbols");
+                }
+
+                player.Name = name;
+            }
+
+            if (country != null) {
+                if (!PlayerUtils.AllowedCountries().Contains(country))
+                {
+                    return BadRequest("This country code is not allowed.");
+                }
+
+                int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+                var lastCountryChange = _context.CountryChanges.FirstOrDefault(el => el.Id == player.Id);
+                if (lastCountryChange != null && !adminChange && (timestamp - lastCountryChange.Timestamp) < 60 * 60 * 24 * 30)
+                {
+                    return BadRequest("Error. You can change country after " + (int)(30 - (timestamp - lastCountryChange.Timestamp) / (60 * 60 * 24)) + " day(s)");
+                }
+                if (lastCountryChange == null)
+                {
+                    lastCountryChange = new CountryChange { Id = player.Id };
+                    _context.CountryChanges.Add(lastCountryChange);
+                }
+                lastCountryChange.OldCountry = player.Country;
+                lastCountryChange.NewCountry = country;
+                lastCountryChange.Timestamp = timestamp;
+
+                var oldCountryList = _context.Players.Where(p => p.Country == player.Country && p.Id != player.Id).OrderByDescending(p => p.Pp).ToList();
+                foreach ((int i, Player p) in oldCountryList.Select((value, i) => (i, value)))
+                {
+                    p.CountryRank = i + 1;
+                }
+
+                player.Country = country;
+
+                var newCountryList = _context.Players.Where(p => p.Country == country || p.Id == player.Id).OrderByDescending(p => p.Pp).ToList();
+                foreach ((int i, Player p) in newCountryList.Select((value, i) => (i, value)))
+                {
+                    p.CountryRank = i + 1;
+                }
+            }
+
+            string? fileName = null;
+            try
+            {
+                await _assetsContainerClient.CreateIfNotExistsAsync();
+
+                var ms = new MemoryStream(5);
+                await Request.Body.CopyToAsync(ms);
+                ms.Position = 0;
+
+                (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(ms);
+                fileName = userId + extension;
+
+                await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
+                await _assetsContainerClient.UploadBlobAsync(fileName, stream);
+            }
+            catch {}
+
+            if (fileName != null) {
+                player.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://cdn.beatleader.xyz/assets/") + fileName;
+            }
+
+            PatreonFeatures? features = player.PatreonFeatures;
+            ProfileSettings? settings = player.ProfileSettings;
+            if (features == null)
+            {
+                features = new PatreonFeatures();
+                player.PatreonFeatures = features;
+            }
+            if (settings == null)
+            {
+                settings = new ProfileSettings();
+                player.ProfileSettings = settings;
+            }
+
+            if (Request.Query.ContainsKey("effectName")) {
+                settings.EffectName = effectName;
+            }
+            if (Request.Query.ContainsKey("profileAppearance"))
+            {
+                settings.ProfileAppearance = profileAppearance;
+            }
+            if (Request.Query.ContainsKey("hue"))
+            {
+                settings.Hue = hue;
+            }
+            if (Request.Query.ContainsKey("saturation"))
+            {
+                settings.Saturation = saturation;
+            }
+
+            if (Request.Query.ContainsKey("patreonMessage")) {
+                if (patreonMessage != null && (patreonMessage.Length < 3 || patreonMessage.Length > 150))
+                {
+                    return BadRequest("Use message between the 3 and 150 symbols");
+                }
+
+                features.Message = patreonMessage ?? "";
+                settings.Message = patreonMessage;
+            }
+
+            if (Request.Query.ContainsKey("leftSaberColor"))
+            {
+                if (leftSaberColor != null) {
+                    int colorLength = leftSaberColor.Length;
+                    try
+                    {
+                        if (!((colorLength == 7 || colorLength == 9) && Int64.Parse(leftSaberColor.Substring(1), System.Globalization.NumberStyles.HexNumber) != 0))
+                        {
+                            return BadRequest("leftSaberColor is not valid");
+                        }
+                    }
+                    catch
+                    {
+                        return BadRequest("leftSaberColor is not valid");
+                    }
+                }
+
+                settings.LeftSaberColor = leftSaberColor;
+            }
+
+            if (Request.Query.ContainsKey("rightSaberColor"))
+            {
+                if (rightSaberColor != null)
+                {
+                    int colorLength = rightSaberColor.Length;
+                    try
+                    {
+                        if (!((colorLength == 7 || colorLength == 9) && Int64.Parse(rightSaberColor.Substring(1), System.Globalization.NumberStyles.HexNumber) != 0))
+                        {
+                            return BadRequest("rightSaberColor is not valid");
+                        }
+                    }
+                    catch
+                    {
+                        return BadRequest("rightSaberColor is not valid");
+                    }
+                }
+                settings.RightSaberColor = rightSaberColor;
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
         [HttpPatch("~/user/avatar")]
         public async Task<ActionResult> ChangeAvatar([FromQuery] string? id = null)
         {
@@ -614,6 +796,7 @@ namespace BeatLeader_Server.Controllers
             Player? currentPlayer = _context.Players.Where(p => p.Id == migrateFromId)
                 .Include(p => p.Clans)
                 .Include(p => p.PatreonFeatures)
+                .Include(p => p.ProfileSettings)
                 .Include(p => p.StatsHistory)
                 .Include(p => p.Badges)
                 .Include(p => p.Socials)
@@ -621,6 +804,7 @@ namespace BeatLeader_Server.Controllers
             Player? migratedToPlayer = _context.Players.Where(p => p.Id == migrateToId)
                 .Include(p => p.Clans)
                 .Include(p => p.PatreonFeatures)
+                .Include(p => p.ProfileSettings)
                 .Include(p => p.StatsHistory)
                 .Include(p => p.Badges)
                 .FirstOrDefault();
@@ -738,11 +922,18 @@ namespace BeatLeader_Server.Controllers
             PatreonLink? link = _context.PatreonLinks.Find(currentPlayer.Id);
             if (link != null) {
                 link.Id = migratedToPlayer.Id;
-                PatreonFeatures? features = migratedToPlayer.PatreonFeatures;
-                if (features == null)
-                {
-                    migratedToPlayer.PatreonFeatures = currentPlayer.PatreonFeatures;
-                }
+            }
+
+            PatreonFeatures? features = migratedToPlayer.PatreonFeatures;
+            if (features == null)
+            {
+                migratedToPlayer.PatreonFeatures = currentPlayer.PatreonFeatures;
+            }
+
+            ProfileSettings? settings = migratedToPlayer.ProfileSettings;
+            if (settings == null)
+            {
+                migratedToPlayer.ProfileSettings = currentPlayer.ProfileSettings;
             }
 
             List<Score> scores = _context.Scores

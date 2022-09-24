@@ -153,7 +153,11 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpPatch("~/user/patreon")]
-        public async Task<ActionResult> PatchPatreonFeatures([FromQuery] string? message = null, [FromQuery] string? leftSaberColor = null, [FromQuery] string? rightSaberColor = null, [FromQuery] string? id = null)
+        public async Task<ActionResult> PatchPatreonFeatures(
+            [FromQuery] string? message = null, 
+            [FromQuery] string? leftSaberColor = null, 
+            [FromQuery] string? rightSaberColor = null, 
+            [FromQuery] string? id = null)
         {
             string playerId = HttpContext.CurrentUserID(_context);
             var player = _context.Players.Where(p => p.Id == playerId).Include(p => p.PatreonFeatures).FirstOrDefault();

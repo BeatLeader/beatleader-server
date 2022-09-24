@@ -93,6 +93,7 @@ namespace BeatLeader_Server.Controllers
                         .Include(p => p.StatsHistory)
                         .Include(p => p.Clans)
                         .Include(p => p.PatreonFeatures)
+                        .Include(p => p.ProfileSettings)
                         .Include(p => p.Socials)
                         .Include(p => p.EventsParticipating)
                         .FirstOrDefault();
@@ -1132,6 +1133,7 @@ namespace BeatLeader_Server.Controllers
             public int Rank;
             public int Timeset;
             public float Weight;
+            public bool Qualification;
         }
 
         [NonAction]
@@ -1154,15 +1156,16 @@ namespace BeatLeader_Server.Controllers
                     BonusPp = s.BonusPp,
                     Rank = s.Rank,
                     Timeset = s.Timepost,
-                    Weight = s.Weight
+                    Weight = s.Weight,
+                    Qualification = s.Qualification
                 }).ToList();
 
             if (allScores.Count() == 0) return;
 
-            var rankedScores = allScores.Where(s => s.Pp != 0).ToList();
-            var unrankedScores = allScores.Where(s => s.Pp == 0).ToList();
+            var rankedScores = allScores.Where(s => s.Pp != 0 && !s.Qualification).ToList();
+            var unrankedScores = allScores.Where(s => s.Pp == 0 || s.Qualification).ToList();
 
-            var lastScores = allScores.OrderByDescending(s => s.Timeset).TakeLast(50);
+            var lastScores = allScores.OrderByDescending(s => s.Timeset).Take(50).ToList();
             Dictionary<string, int> platforms = new Dictionary<string, int>();
             Dictionary<HMD, int> hmds = new Dictionary<HMD, int>();
             foreach (var s in lastScores)
@@ -1225,10 +1228,22 @@ namespace BeatLeader_Server.Controllers
                 player.ScoreStats.TotalRankedScore = rankedScores.Sum(s => s.ModifiedScore);
                 player.ScoreStats.AverageRankedAccuracy = rankedScores.Average(s => s.Accuracy);
 
-                var sum = rankedScores.Sum(s => s.Weight);
-                if (sum != 0) {
-                    player.ScoreStats.AverageWeightedRankedAccuracy = rankedScores.Sum(s => s.Accuracy * s.Weight) / sum;
+
+                var scoresForWeightedAcc = rankedScores.OrderByDescending(s => s.Accuracy).Take(100).ToList();
+                var sum = 0.0f;
+                var weights = 0.0f;
+
+                for (int i = 0; i < 100; i++)
+                {
+                    float weight = MathF.Pow(0.95f, i);
+                    if (i < scoresForWeightedAcc.Count) {
+                        sum += scoresForWeightedAcc[i].Accuracy * weight;
+                    }
+
+                    weights += weight;
                 }
+
+                player.ScoreStats.AverageWeightedRankedAccuracy = sum / weights;
                 player.ScoreStats.MedianRankedAccuracy = rankedScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
                 player.ScoreStats.TopRankedAccuracy = rankedScores.Max(s => s.Accuracy);
                 player.ScoreStats.TopPp = rankedScores.Max(s => s.Pp);

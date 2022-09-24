@@ -29,6 +29,7 @@
         public ICollection<Badge>? Badges { get; set; }
 
         public PatreonFeatures? PatreonFeatures { get; set; }
+        public ProfileSettings? ProfileSettings { get; set; }
 
         public ICollection<EventPlayer>? EventsParticipating { get; set; }
         public ICollection<PlayerSocial>? Socials { get; set; }
