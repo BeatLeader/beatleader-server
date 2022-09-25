@@ -110,7 +110,8 @@ namespace BeatLeader_Server.Controllers
                 }
             }
             if (player != null) {
-                var result = ResponseFullFromPlayer(player);
+                var result = PostProcessSettings(ResponseFullFromPlayer(player));
+                
                 result.PinnedScores = _readContext
                     .Scores
                     .Include(s => s.Metadata)
@@ -131,7 +132,12 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         public async Task<ActionResult<Player>> GetLazy(string id, bool addToBase = true)
         {
-            Player? player = _context.Players.Include(p => p.ScoreStats).Include(p => p.EventsParticipating).FirstOrDefault(p => p.Id == id);
+            Player? player = _context
+                .Players
+                .Include(p => p.ScoreStats)
+                .Include(p => p.EventsParticipating)
+                .Include(p => p.ProfileSettings)
+                .FirstOrDefault(p => p.Id == id);
 
             if (player == null) {
                 Int64 userId = Int64.Parse(id);
@@ -817,7 +823,7 @@ namespace BeatLeader_Server.Controllers
                     ItemsPerPage = count,
                     Total = request.Count()
                 },
-                Data = request.Skip((page - 1) * count).Take(count).Select(ResponseWithStatsFromPlayer).ToList()
+                Data = request.Skip((page - 1) * count).Take(count).Select(ResponseWithStatsFromPlayer).ToList().Select(PostProcessSettings)
             };
         }
 

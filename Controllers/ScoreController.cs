@@ -463,6 +463,11 @@ namespace BeatLeader_Server.Controllers
                 .Select(RemoveLeaderboard)
                 .ToList();
 
+            foreach (var item in resultList)
+            {
+                item.Player = PostProcessSettings(item.Player);
+            }
+
             for (int i = 0; i < resultList.Count; i++)
             {
                 resultList[i].Rank = i + (page - 1) * count + 1;

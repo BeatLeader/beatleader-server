@@ -108,7 +108,7 @@ namespace BeatLeader_Server.Controllers
             var player = user.Player;
 
             return new UserReturn {
-                Player = ResponseUtils.ResponseFullFromPlayer(player),
+                Player = PostProcessSettings(ResponseFullFromPlayer(player)),
                 Ban = player.Banned ? _readContext
                     .Bans
                     .Where(b => b.PlayerId == player.Id)
@@ -148,6 +148,8 @@ namespace BeatLeader_Server.Controllers
                 .ThenInclude(p => p.ScoreStats)
                 .Include(u => u.Player)
                 .ThenInclude(p => p.Socials)
+                .Include(u => u.Player)
+                .ThenInclude(p => p.ProfileSettings)
                 .Include(u => u.ClanRequest)
                 .Include(u => u.BannedClans)
                 .FirstOrDefault();
@@ -243,7 +245,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? name = null,
             [FromQuery] string? country = null,
             [FromQuery] string? profileAppearance = null,
-            [FromQuery] string? patreonMessage = null,
+            [FromQuery] string? message = null,
             [FromQuery] float? hue = null,
             [FromQuery] float? saturation = null,
             [FromQuery] string? effectName = null,
@@ -365,14 +367,14 @@ namespace BeatLeader_Server.Controllers
                 settings.Saturation = saturation;
             }
 
-            if (Request.Query.ContainsKey("patreonMessage")) {
-                if (patreonMessage != null && (patreonMessage.Length < 3 || patreonMessage.Length > 150))
+            if (Request.Query.ContainsKey("message")) {
+                if (message != null && (message.Length < 3 || message.Length > 150))
                 {
                     return BadRequest("Use message between the 3 and 150 symbols");
                 }
 
-                features.Message = patreonMessage ?? "";
-                settings.Message = patreonMessage;
+                features.Message = message ?? "";
+                settings.Message = message;
             }
 
             if (Request.Query.ContainsKey("leftSaberColor"))

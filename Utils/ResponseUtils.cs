@@ -285,6 +285,7 @@ namespace BeatLeader_Server.Utils
                 Role = p.Role,
                 Socials = p.Socials,
                 PatreonFeatures = p.PatreonFeatures,
+                ProfileSettings = p.ProfileSettings,
                 Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
             };
         }
@@ -322,6 +323,7 @@ namespace BeatLeader_Server.Utils
                 Role = p.Role,
                 EventsParticipating = p.EventsParticipating,
                 PatreonFeatures = p.PatreonFeatures,
+                ProfileSettings = p.ProfileSettings,
                 Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
             };
         }
@@ -358,6 +360,7 @@ namespace BeatLeader_Server.Utils
                 Socials = p.Socials,
                 EventsParticipating = p.EventsParticipating,
                 PatreonFeatures = p.PatreonFeatures,
+                ProfileSettings = p.ProfileSettings,
                 Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
             };
         }
@@ -374,6 +377,75 @@ namespace BeatLeader_Server.Utils
                 Votes = votes,
                 ModifierValues = diff.ModifierValues
             };
+        }
+
+        public static T PostProcessSettings<T>(T input) where T: PlayerResponse? {
+            if (input == null) return null;
+
+            var role = input.Role;
+            var settings = input.ProfileSettings;
+            var patreonFeatures = input.PatreonFeatures;
+
+            if (!role.Contains("sponsor")) {
+                if (settings != null) {
+                    settings.Message = null;
+                }
+                if (patreonFeatures != null) {
+                    patreonFeatures.Message = "";
+                }
+            }
+            
+            if (settings != null) {
+                if (settings.EffectName?.Contains("Tier1") == true) {
+                    if (!role.Contains("tipper") && 
+                        !role.Contains("supporter") && 
+                        !role.Contains("sponsor") && 
+                        !role.Contains("creator") && 
+                        !role.Contains("rankedteam") &&
+                        !role.Contains("juniorrankedteam") && 
+                        !role.Contains("admin")) {
+                        settings.EffectName = null;
+                    }
+                }
+                if (settings.EffectName?.Contains("Tier2") == true)
+                {
+                    if (!role.Contains("tipper") &&
+                        !role.Contains("supporter") &&
+                        !role.Contains("sponsor") &&
+                        !role.Contains("creator") &&
+                        !role.Contains("rankedteam") &&
+                        !role.Contains("juniorrankedteam") &&
+                        !role.Contains("admin"))
+                    {
+                        settings.EffectName = null;
+                    }
+                }
+                if (settings.EffectName?.Contains("Tier3") == true)
+                {
+                    if (!role.Contains("tipper") &&
+                        !role.Contains("supporter") &&
+                        !role.Contains("sponsor") &&
+                        !role.Contains("creator") &&
+                        !role.Contains("rankedteam") &&
+                        !role.Contains("juniorrankedteam") &&
+                        !role.Contains("admin"))
+                    {
+                        settings.EffectName = null;
+                    }
+                }
+                if (settings.EffectName?.Contains("Special") == true)
+                {
+                    if (!role.Contains("creator") &&
+                        !role.Contains("rankedteam") &&
+                        !role.Contains("juniorrankedteam") &&
+                        !role.Contains("admin"))
+                    {
+                        settings.EffectName = null;
+                    }
+                }
+            }
+
+            return input;
         }
     }
 }
