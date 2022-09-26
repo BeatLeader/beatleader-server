@@ -106,7 +106,7 @@ namespace BeatLeader_Server.Controllers
             {
                 using (_serverTiming.TimeAction("lazy"))
                 {
-                    player = (await GetLazy(id, true)).Value;
+                    player = (await GetLazy(id, false)).Value;
                 }
             }
             if (player != null) {
