@@ -142,7 +142,10 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            leaderboard = query.Include(lb => lb.Scores)
+            leaderboard = query
+                    .Include(lb => lb.Scores)
+                    .ThenInclude(sc => sc.Player)
+                    .ThenInclude(p => p.ProfileSettings)
                     .Include(lb => lb.Difficulty)
                     .ThenInclude(d => d.ModifierValues)
                     .Include(lb => lb.Qualification)
