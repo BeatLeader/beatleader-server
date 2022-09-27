@@ -14,6 +14,13 @@ namespace BeatLeader_Server.Models
         public int rightBombs { get; set; }
     }
 
+    public class AveragePosition 
+    {
+        public float x { get; set; }
+        public float y { get; set; }
+        public float z { get; set; }
+    }
+
     public class WinTracker
     {
         public bool won { get; set; }
@@ -21,6 +28,7 @@ namespace BeatLeader_Server.Models
         public int nbOfPause { get; set; }
         public float jumpDistance { get; set; }
         public float averageHeight { get; set; }
+        public AveragePosition? averageHeadPosition { get; set; }    
         public int totalScore { get; set; }
     }
 

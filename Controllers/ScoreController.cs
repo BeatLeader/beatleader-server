@@ -640,10 +640,10 @@ namespace BeatLeader_Server.Controllers
             BlobClient blobClient = _replaysClient.GetBlobClient(blobName);
             MemoryStream ms = new MemoryStream(5);
             await blobClient.DownloadToAsync(ms);
-            Replay replay;
+            Replay? replay;
             try
             {
-                replay = ReplayDecoder.Decode(ms.ToArray());
+                (replay, ReplayOffsets _) = ReplayDecoder.Decode(ms.ToArray());
             }
             catch (Exception)
             {
@@ -659,9 +659,14 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public (ScoreStatistic?, string?) CalculateStatisticReplay(Replay replay, Score score)
+        public (ScoreStatistic?, string?) CalculateStatisticReplay(Replay? replay, Score score)
         {
-            ScoreStatistic? statistic = null;
+            ScoreStatistic? statistic;
+
+            if (replay == null)
+            {
+                return (null, "Could not calculate statistics");
+            }
 
             try
             {

@@ -254,13 +254,23 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? id = null)
         {
             string userId = GetId();
-            var player = _context.Players.Include(p => p.ProfileSettings).Include(p => p.PatreonFeatures).FirstOrDefault(p => p.Id == userId);
+            var player = _context
+                .Players
+                .Include(p => p.ProfileSettings)
+                .Include(p => p.PatreonFeatures)
+                .Include(p => p.Changes)
+                .FirstOrDefault(p => p.Id == userId);
             bool adminChange = false;
 
             if (id != null && player != null && player.Role.Contains("admin"))
             {
                 adminChange = true;
-                player = _context.Players.Include(p => p.ProfileSettings).Include(p => p.PatreonFeatures).FirstOrDefault(p => p.Id == id);
+                player = _context
+                    .Players
+                    .Include(p => p.ProfileSettings)
+                    .Include(p => p.PatreonFeatures)
+                    .Include(p => p.Changes)
+                    .FirstOrDefault(p => p.Id == id);
             }
 
             if (player == null)
@@ -272,49 +282,60 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("You are banned!");
             }
 
-            if (name != null) {
-                if (name.Length < 3 || name.Length > 30)
-                {
-                    return BadRequest("Use name between the 3 and 30 symbols");
+            if (name != null || country != null)
+            {
+                var changes = player.Changes;
+                if (changes == null) {
+                   changes = player.Changes = new List<PlayerChange>();
                 }
-
-                player.Name = name;
-            }
-
-            if (country != null) {
-                if (!PlayerUtils.AllowedCountries().Contains(country))
-                {
-                    return BadRequest("This country code is not allowed.");
-                }
-
+                PlayerChange? lastChange = changes.Count > 0 ? changes.OrderByDescending(ch => ch.Timestamp).FirstOrDefault() : null;
                 int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-                var lastCountryChange = _context.CountryChanges.FirstOrDefault(el => el.Id == player.Id);
-                if (lastCountryChange != null && !adminChange && (timestamp - lastCountryChange.Timestamp) < 60 * 60 * 24 * 30)
-                {
-                    return BadRequest("Error. You can change country after " + (int)(30 - (timestamp - lastCountryChange.Timestamp) / (60 * 60 * 24)) + " day(s)");
-                }
-                if (lastCountryChange == null)
-                {
-                    lastCountryChange = new CountryChange { Id = player.Id };
-                    _context.CountryChanges.Add(lastCountryChange);
-                }
-                lastCountryChange.OldCountry = player.Country;
-                lastCountryChange.NewCountry = country;
-                lastCountryChange.Timestamp = timestamp;
+                PlayerChange newChange = new PlayerChange {
+                    OldName = player.Name,
+                    OldCountry = player.Country,
+                    Timestamp = timestamp
+                };
 
-                var oldCountryList = _context.Players.Where(p => p.Country == player.Country && p.Id != player.Id).OrderByDescending(p => p.Pp).ToList();
-                foreach ((int i, Player p) in oldCountryList.Select((value, i) => (i, value)))
+                if (name != null)
                 {
-                    p.CountryRank = i + 1;
+                    if (name.Length < 3 || name.Length > 30)
+                    {
+                        return BadRequest("Use name between the 3 and 30 symbols");
+                    }
+
+                    player.Name = name;
+                    newChange.NewName = name;
                 }
 
-                player.Country = country;
-
-                var newCountryList = _context.Players.Where(p => p.Country == country || p.Id == player.Id).OrderByDescending(p => p.Pp).ToList();
-                foreach ((int i, Player p) in newCountryList.Select((value, i) => (i, value)))
+                if (country != null)
                 {
-                    p.CountryRank = i + 1;
+                    if (!PlayerUtils.AllowedCountries().Contains(country))
+                    {
+                        return BadRequest("This country code is not allowed.");
+                    }
+                    
+                    if (lastChange != null && !adminChange && (timestamp - lastChange.Timestamp) < 60 * 60 * 24 * 30)
+                    {
+                        return BadRequest("Error. You can change country after " + (int)(30 - (timestamp - lastChange.Timestamp) / (60 * 60 * 24)) + " day(s)");
+                    }
+                    newChange.NewCountry = country;
+
+                    var oldCountryList = _context.Players.Where(p => p.Country == player.Country && p.Id != player.Id).OrderByDescending(p => p.Pp).ToList();
+                    foreach ((int i, Player p) in oldCountryList.Select((value, i) => (i, value)))
+                    {
+                        p.CountryRank = i + 1;
+                    }
+
+                    player.Country = country;
+
+                    var newCountryList = _context.Players.Where(p => p.Country == country || p.Id == player.Id).OrderByDescending(p => p.Pp).ToList();
+                    foreach ((int i, Player p) in newCountryList.Select((value, i) => (i, value)))
+                    {
+                        p.CountryRank = i + 1;
+                    }
                 }
+
+                player.Changes.Add(newChange);
             }
 
             string? fileName = null;

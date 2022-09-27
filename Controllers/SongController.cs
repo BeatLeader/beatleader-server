@@ -59,6 +59,22 @@ namespace BeatLeader_Server.Controllers
             return song;
         }
 
+        public class ApprovalInfo {
+            public string Mapper { get; set; }
+            public int Count { get; set; }
+        }
+
+        [HttpGet("~/notApprovedMappersRating")]
+        public async Task<IEnumerable<ApprovalInfo>> RefreshdwHash()
+        {
+            var lbs = _context.Leaderboards.Include(lb => lb.Song).Include(lb => lb.Difficulty).Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked && lb.Difficulty.RankedTime == 0).ToList();
+            return lbs.GroupBy(lb => lb.Song.MapperId).Where(gp => gp.All(a => a.Difficulty.MapperApproval == MapperApproval.unknown)).Select(gp => new ApprovalInfo {
+                Count = gp.Count(),
+                Mapper = gp.First().Song.Mapper
+                }).OrderByDescending(s => s.Count);
+        }
+
+
         [HttpGet("~/map/modinterface/{hash}")]
         public async Task<ActionResult<IEnumerable<DiffModResponse>>> GetModSongInfos(string hash)
         {
@@ -107,7 +123,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             return _context.Songs
-                .Where(s => s.MapperId == player.MapperId && s.Difficulties
+                .Where(s => s.MapperId == 12996 && s.Difficulties
                     .FirstOrDefault(d => d.Status == DifficultyStatus.ranked && d.QualifiedTime == 0) != null)
                 .Include(s => s.Difficulties.Where(d => d.Status == DifficultyStatus.ranked)).ToList();
         }
@@ -127,7 +143,7 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            var leaderboards = _context.Leaderboards.Where(lb => lb.SongId == songId && lb.Song.MapperId == player.MapperId).Select(lb => lb.Scores.Select(s => new { pp = s.Pp * s.Weight, player = s.PlayerId })).ToList();
+            var leaderboards = _context.Leaderboards.Where(lb => lb.SongId == songId && lb.Song.MapperId == 12996).Select(lb => lb.Scores.Select(s => new { pp = s.Pp * s.Weight, player = s.PlayerId })).ToList();
             if (leaderboards.Count() == 0) {
 
                 return NotFound();
@@ -149,7 +165,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             var map = _context.Songs
-                .Where(s => s.Id == songId && s.MapperId == player.MapperId && s.Difficulties
+                .Where(s => s.Id == songId && s.MapperId == 12996 && s.Difficulties
                     .FirstOrDefault(d => d.Status == DifficultyStatus.ranked && d.QualifiedTime == 0) != null)
                 .Include(s => s.Difficulties.Where(d => d.Status == DifficultyStatus.ranked)).FirstOrDefault();
 

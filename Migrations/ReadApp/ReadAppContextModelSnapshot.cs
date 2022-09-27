@@ -871,6 +871,36 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.ToTable("Players");
                 });
 
+            modelBuilder.Entity("BeatLeader_Server.Models.PlayerChange", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("NewCountry")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NewName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OldCountry")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OldName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PlayerId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("Timestamp")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlayerId");
+
+                    b.ToTable("PlayerChange");
+                });
+
             modelBuilder.Entity("BeatLeader_Server.Models.PlayerFriends", b =>
                 {
                     b.Property<string>("Id")
@@ -1429,6 +1459,34 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.ToTable("RankVotings");
                 });
 
+            modelBuilder.Entity("BeatLeader_Server.Models.ReplayOffsets", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<int>("Frames")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Heights")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Notes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Pauses")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Walls")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ReplayOffsets");
+                });
+
             modelBuilder.Entity("BeatLeader_Server.Models.ReservedClanTag", b =>
                 {
                     b.Property<int>("Id")
@@ -1528,6 +1586,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("ReplayOffsetsId")
+                        .HasColumnType("int");
+
                     b.Property<int?>("ScoreImprovementId")
                         .HasColumnType("int");
 
@@ -1551,6 +1612,8 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.HasIndex("MetadataId");
 
                     b.HasIndex("PlayerId");
+
+                    b.HasIndex("ReplayOffsetsId");
 
                     b.HasIndex("ScoreImprovementId");
 
@@ -2072,6 +2135,13 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.Navigation("StatsHistory");
                 });
 
+            modelBuilder.Entity("BeatLeader_Server.Models.PlayerChange", b =>
+                {
+                    b.HasOne("BeatLeader_Server.Models.Player", null)
+                        .WithMany("Changes")
+                        .HasForeignKey("PlayerId");
+                });
+
             modelBuilder.Entity("BeatLeader_Server.Models.PlayerSocial", b =>
                 {
                     b.HasOne("BeatLeader_Server.Models.Player", null)
@@ -2171,6 +2241,10 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("BeatLeader_Server.Models.ReplayOffsets", "ReplayOffsets")
+                        .WithMany()
+                        .HasForeignKey("ReplayOffsetsId");
+
                     b.HasOne("BeatLeader_Server.Models.ScoreImprovement", "ScoreImprovement")
                         .WithMany()
                         .HasForeignKey("ScoreImprovementId");
@@ -2180,6 +2254,8 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.Navigation("Metadata");
 
                     b.Navigation("Player");
+
+                    b.Navigation("ReplayOffsets");
 
                     b.Navigation("ScoreImprovement");
                 });
@@ -2292,6 +2368,8 @@ namespace BeatLeader_Server.Migrations.ReadApp
             modelBuilder.Entity("BeatLeader_Server.Models.Player", b =>
                 {
                     b.Navigation("Badges");
+
+                    b.Navigation("Changes");
 
                     b.Navigation("EventsParticipating");
 

@@ -18,6 +18,16 @@
         public string? Link { get; set; }
     }
 
+    public class ReplayOffsets
+    {
+        public int Id { get; set; }
+        public int Frames { get; set; }
+        public int Notes { get; set; }
+        public int Walls { get; set; }
+        public int Heights { get; set; }
+        public int Pauses { get; set; }
+    }
+
     public class Score
     {
         public int Id { get; set; }
@@ -48,10 +58,29 @@
         public Player Player { get; set; }
         public string LeaderboardId { get; set; }
         public Leaderboard Leaderboard { get; set; }
+        //public bool AltOnly { get; set; }
+        //public ICollection<AltScore>? AltScores { get; set; }
+        public ReplayOffsets? ReplayOffsets { get; set; }
+
         public ScoreImprovement? ScoreImprovement { get; set; }
         public bool Banned { get; set; } = false;
         public RankVoting? RankVoting { get; set; }
         public ScoreMetadata? Metadata { get; set; }
+    }
+
+    public class AltScore 
+    {
+        public int Id { get; set; }
+        public int ScoreId { get; set; }
+        public float Weight { get; set; }
+        public int Rank { get; set; }
+        public int BaseScore { get; set; }
+        public int ModifiedScore { get; set; }
+        public float Accuracy { get; set; }
+        public float Pp { get; set; }
+        public float BonusPp { get; set; }
+        public int? AltBoardId { get; set; }
+        public AltBoard? AltBoard { get; set; }
     }
 
     public class FailedScore

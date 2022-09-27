@@ -1,6 +1,4 @@
-﻿using System.Dynamic;
-using System.Net;
-using Azure.Identity;
+﻿using Azure.Identity;
 using Azure.Storage.Blobs;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
@@ -13,8 +11,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -27,7 +23,6 @@ namespace BeatLeader_Server.Controllers
         AppContext _context;
         LeaderboardController _leaderboardController;
         PlayerController _playerController;
-        SongController _songController;
         ScoreController _scoreController;
         IWebHostEnvironment _environment;
         IConfiguration _configuration;
@@ -39,7 +34,6 @@ namespace BeatLeader_Server.Controllers
             IOptions<AzureStorageConfig> config, 
             IWebHostEnvironment env,
             IConfiguration configuration,
-            SongController songController, 
             LeaderboardController leaderboardController, 
             PlayerController playerController,
             ScoreController scoreController,
@@ -48,7 +42,6 @@ namespace BeatLeader_Server.Controllers
 		{
             _leaderboardController = leaderboardController;
             _playerController = playerController;
-            _songController = songController;
             _scoreController = scoreController;
             _context = context;
             _environment = env;
@@ -106,14 +99,19 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult<ScoreResponse>> PostOculusReplay()
         {
-            string userId = HttpContext.CurrentUserID(_context);
+            string? userId = HttpContext.CurrentUserID(_context);
+            if (userId == null)
+            {
+                return Unauthorized("User is not authorized");
+            }
             return await PostReplayFromBody(userId);
         }
 
         [NonAction]
-        public async Task<ActionResult<ScoreResponse>> PostReplayFromBody(string? authenticatedPlayerID)
+        public async Task<ActionResult<ScoreResponse>> PostReplayFromBody(string authenticatedPlayerID)
         {
-            Replay replay;
+            Replay? replay;
+            ReplayOffsets? offsets;
             byte[] replayData;
 
             using (var ms = new MemoryStream(5))
@@ -127,7 +125,7 @@ namespace BeatLeader_Server.Controllers
                 replayData = ms.ToArray();
                 try
                 {
-                    replay = ReplayDecoder.Decode(replayData);
+                    (replay, offsets) = ReplayDecoder.Decode(replayData);
                 }
                 catch (Exception)
                 {
@@ -135,62 +133,51 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            return await PostReplay(authenticatedPlayerID, replay, replayData, HttpContext);
+            return await PostReplay(authenticatedPlayerID, replay, offsets, replayData, HttpContext);
         }
 
         [NonAction]
-        public async Task<ActionResult<ScoreResponse>> PostReplayFromCDN(string? authenticatedPlayerID, string name, HttpContext context)
+        public async Task<ActionResult<ScoreResponse>> PostReplayFromCDN(string authenticatedPlayerID, string name, HttpContext context)
         {
             BlobClient blobClient = _containerClient.GetBlobClient(name);
             MemoryStream ms = new MemoryStream(5);
             await blobClient.DownloadToAsync(ms);
             Replay? replay;
+            ReplayOffsets? offsets;
             byte[]? replayData;
             try
             {
                 replayData = ms.ToArray();
-                replay = ReplayDecoder.Decode(replayData);
+                (replay, offsets) = ReplayDecoder.Decode(replayData);
             }
             catch (Exception)
             {
                 return BadRequest();
             }
 
-            return await PostReplay(authenticatedPlayerID, replay, replayData, context);
+            return await PostReplay(authenticatedPlayerID, replay, offsets, replayData, context);
         }
 
         [NonAction]
-        public async Task<ActionResult<ScoreResponse>> PostReplay(string? authenticatedPlayerID, Replay? replay, byte[] replayData, HttpContext context)
+        public async Task<ActionResult<ScoreResponse>> PostReplay(
+            string authenticatedPlayerID, 
+            Replay? replay,
+            ReplayOffsets? offsets,
+            byte[] replayData, 
+            HttpContext context)
         {
-            if (replay == null) {
-                return BadRequest("It's not a replay or it has old version.");
-            }
-            
+            if (replay == null) return BadRequest("It's not a replay or it has old version.");
+            if (replay.notes.Count == 0 || replay.frames.Count == 0) return BadRequest("Replay is broken, update your mode please.");
+            if (replay.info.hash.Length < 40) return BadRequest("Hash is to short");
+
             var version = replay.info.version.Split(".");
             if (version.Length < 3 || int.Parse(version[1]) < 3) {
                 Thread.Sleep(8000); // Error may not show if returned too quick
                 return BadRequest("Please update your mod. v0.3 or higher");
             }
 
-            if (replay.notes.Count == 0 || replay.frames.Count == 0)
-            {
-                return BadRequest("Replay is broken, update your mode please.");
-            }
-            if (authenticatedPlayerID == null)
-            {
-                return Unauthorized("Session ticket is not valid");
-            }
-
             replay.info.playerID = authenticatedPlayerID;
-
-            if (replay.info.hash.Length < 40)
-            {
-                return BadRequest("Hash is to short");
-            }
-            else
-            {
-                replay.info.hash = replay.info.hash.Substring(0, 40);
-            }
+            replay.info.hash = replay.info.hash.Substring(0, 40);
 
             var transaction = _context.Database.BeginTransaction();
 
@@ -203,17 +190,8 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            FailedScore? failedScore;
-            using (_serverTiming.TimeAction("failS"))
-            {
-                failedScore = _context.FailedScores.FirstOrDefault(s => s.PlayerId == authenticatedPlayerID && s.Leaderboard.Id == leaderboard.Id);
-                if (failedScore != null) {
-                    _context.FailedScores.Remove(failedScore);
-                    _context.SaveChanges();
-                }
-            }
-
             (replay, Score resultScore, int maxScore) = ReplayUtils.ProcessReplay(replay, leaderboard);
+            resultScore.ReplayOffsets = offsets;
 
             Score? currentScore;
             using (_serverTiming.TimeAction("currS"))
@@ -227,7 +205,6 @@ namespace BeatLeader_Server.Controllers
             }
 
             Player? player;
-
             using (_serverTiming.TimeAction("player"))
             {
                 player = (await _playerController.GetLazy(replay.info.playerID)).Value;
@@ -246,19 +223,13 @@ namespace BeatLeader_Server.Controllers
                     var ip = context.Request.HttpContext.Connection.RemoteIpAddress;
                     if (ip != null)
                     {
-                        player.Country = GetCountryByIp(ip.ToString());
+                        player.Country = WebUtils.GetCountryByIp(ip.ToString());
                     }
                 }
             }
 
-            if (player.Banned)
-            {
-                return BadRequest("You are banned!");
-            }
-            
-            if (resultScore.BaseScore > maxScore) {
-                return BadRequest("Score is bigger than max possible on this map!");
-            }
+            if (player.Banned) return BadRequest("You are banned!");
+            if (resultScore.BaseScore > maxScore) return BadRequest("Score is bigger than max possible on this map!");
 
             ScoreImprovement improvement = new ScoreImprovement();
             List<Score> rankedScores;
@@ -376,14 +347,7 @@ namespace BeatLeader_Server.Controllers
                     player.ScoreStats.LastUnrankedScoreTime = timeset;
                 }
                 player.ScoreStats.LastScoreTime = timeset;
-                try
-                {
-                    leaderboard.Scores.Add(resultScore);
-                } catch (Exception)
-                {
-                    leaderboard.Scores = new List<Score>(leaderboard.Scores);
-                    leaderboard.Scores.Add(resultScore);
-                }
+                leaderboard.Scores.Add(resultScore);
 
                 _scoreStatsClient.DeleteBlobIfExistsAsync(leaderboard.Id + "-leaderboard.json");
 
@@ -477,59 +441,82 @@ namespace BeatLeader_Server.Controllers
             }
 
             context.Response.OnCompleted(async () => {
-                if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
-                    _context.RecalculatePP(player);
+                await PostUploadAction(replay, replayData, leaderboard, player, improvement, resultScore, currentScore, rankedScores, oldPp, oldRank, transaction2);
+            });
 
-                    float resultPP = player.Pp;
-                    var rankedPlayers = _context.Players.Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned).OrderByDescending(t => t.Pp).ToList();
+            return RemoveLeaderboard(resultScore, resultScore.Rank);
+        }
 
-                    if (rankedPlayers.Count() > 0)
+        [NonAction]
+        private async Task PostUploadAction(
+            Replay replay,
+            byte[] replayData,
+            Leaderboard leaderboard, 
+            Player player, 
+            ScoreImprovement improvement,
+            Score resultScore,
+            Score? currentScore,
+            List<Score> rankedScores,
+            float oldPp,
+            int oldRank,
+            IDbContextTransaction transaction2) {
+            if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
+            {
+                _context.RecalculatePP(player);
+
+                float resultPP = player.Pp;
+                var rankedPlayers = _context.Players.Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned).OrderByDescending(t => t.Pp).ToList();
+
+                if (rankedPlayers.Count() > 0)
+                {
+
+                    var country = player.Country;
+                    int topRank = rankedPlayers.First().Rank; int? topCountryRank = rankedPlayers.Where(p => p.Country == country).FirstOrDefault()?.CountryRank;
+                    player.Rank = topRank;
+                    if (topCountryRank != null)
                     {
-
-                        var country = player.Country;
-                        int topRank = rankedPlayers.First().Rank; int? topCountryRank = rankedPlayers.Where(p => p.Country == country).FirstOrDefault()?.CountryRank;
-                        player.Rank = topRank;
-                        if (topCountryRank != null)
-                        {
-                            player.CountryRank = (int)topCountryRank;
-                            topCountryRank++;
-                        }
-
-                        topRank++;
-
-                        foreach ((int i, Player p) in rankedPlayers.Select((value, i) => (i, value)))
-                        {
-                            p.Rank = i + topRank;
-                            if (p.Country == country && topCountryRank != null)
-                            {
-                                p.CountryRank = (int)topCountryRank;
-                                topCountryRank++;
-                            }
-                        }
+                        player.CountryRank = (int)topCountryRank;
+                        topCountryRank++;
                     }
 
-                    improvement.TotalPp = player.Pp - oldPp;
-                    improvement.TotalRank = player.Rank - oldRank;
+                    topRank++;
 
-                    if (resultScore.Rank == 1) {
-                        var dsClient = top1DSClient();
-
-                        if (dsClient != null)
+                    foreach ((int i, Player p) in rankedPlayers.Select((value, i) => (i, value)))
+                    {
+                        p.Rank = i + topRank;
+                        if (p.Country == country && topCountryRank != null)
                         {
-                            var song = _context.Leaderboards.Where(lb => lb.Id == leaderboard.Id).Include(lb => lb.Song).Select(lb => lb.Song).FirstOrDefault();
-                            string message = "**" + player.Name + "** has become No 1 on **" + (song != null ? song?.Name : leaderboard.Id) + "** :tada: \n";
-                            message += Math.Round(resultScore.Accuracy * 100, 2) + "% " + Math.Round(resultScore.Pp, 2) + "pp (" + Math.Round(resultScore.Weight * resultScore.Pp, 2) + "pp)\n";
-                            if (rankedScores.Count > 1) {
-                                message += "This beats previous record by **" + Math.Round(resultScore.Pp - rankedScores[1].Pp, 2) + "pp** and **" + Math.Round((resultScore.Accuracy - rankedScores[1].Accuracy) * 100, 2) + "%** ";
-                                if (resultScore.Modifiers.Length > 0) {
-                                    message += "using **" + resultScore.Modifiers + "**";
-                                }
-                                message += "\n";
-                            }
-                            message += Math.Round(improvement.TotalPp, 2) + " to the personal pp and " + improvement.TotalRank + " to rank \n";
+                            p.CountryRank = (int)topCountryRank;
+                            topCountryRank++;
+                        }
+                    }
+                }
 
-                            dsClient.SendMessageAsync(message, 
-                                embeds: new List<Embed> { new EmbedBuilder()
+                improvement.TotalPp = player.Pp - oldPp;
+                improvement.TotalRank = player.Rank - oldRank;
+
+                if (resultScore.Rank == 1)
+                {
+                    var dsClient = top1DSClient();
+
+                    if (dsClient != null)
+                    {
+                        var song = _context.Leaderboards.Where(lb => lb.Id == leaderboard.Id).Include(lb => lb.Song).Select(lb => lb.Song).FirstOrDefault();
+                        string message = "**" + player.Name + "** has become No 1 on **" + (song != null ? song?.Name : leaderboard.Id) + "** :tada: \n";
+                        message += Math.Round(resultScore.Accuracy * 100, 2) + "% " + Math.Round(resultScore.Pp, 2) + "pp (" + Math.Round(resultScore.Weight * resultScore.Pp, 2) + "pp)\n";
+                        if (rankedScores.Count > 1)
+                        {
+                            message += "This beats previous record by **" + Math.Round(resultScore.Pp - rankedScores[1].Pp, 2) + "pp** and **" + Math.Round((resultScore.Accuracy - rankedScores[1].Accuracy) * 100, 2) + "%** ";
+                            if (resultScore.Modifiers.Length > 0)
+                            {
+                                message += "using **" + resultScore.Modifiers + "**";
+                            }
+                            message += "\n";
+                        }
+                        message += Math.Round(improvement.TotalPp, 2) + " to the personal pp and " + improvement.TotalRank + " to rank \n";
+
+                        dsClient.SendMessageAsync(message,
+                            embeds: new List<Embed> { new EmbedBuilder()
                                     .WithTitle("Leaderboard")
                                     .WithUrl("https://beatleader.xyz/leaderboard/global/" + leaderboard.Id)
                                     .Build(),
@@ -537,95 +524,91 @@ namespace BeatLeader_Server.Controllers
                                     .WithTitle("Watch Replay")
                                     .WithUrl("https://replay.beatleader.xyz?scoreId=" + resultScore.Id)
                                     .WithImageUrl("https://api.beatleader.xyz/preview/replay?scoreId=" + resultScore.Id)
-                                    .Build() 
-                                    });
-                        }
-                    }
-
-                    if (player.Rank < player.ScoreStats.PeakRank) {
-                        player.ScoreStats.PeakRank = player.Rank;
+                                    .Build()
+                            });
                     }
                 }
-                _context.RecalculateEventsPP(player, leaderboard);
 
-                try
+                if (player.Rank < player.ScoreStats.PeakRank)
                 {
-                    await _context.SaveChangesAsync();
+                    player.ScoreStats.PeakRank = player.Rank;
                 }
-                catch (DbUpdateConcurrencyException ex)
+            }
+            _context.RecalculateEventsPP(player, leaderboard);
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                ex.Entries.Single().Reload();
+                await _context.SaveChangesAsync();
+            }
+
+            transaction2.Commit();
+
+            var transaction3 = _context.Database.BeginTransaction();
+            try
+            {
+                await _containerClient.CreateIfNotExistsAsync();
+                string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
+                resultScore.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/replays/" : "https://cdn.beatleader.xyz/replays/") + fileName;
+                string tempName = fileName + "temp";
+                string replayLink = resultScore.Replay;
+                resultScore.Replay += "temp";
+                await _containerClient.DeleteBlobIfExistsAsync(tempName);
+                await _containerClient.UploadBlobAsync(tempName, new BinaryData(replayData));
+                (ScoreStatistic? statistic, string? error) = _scoreController.CalculateStatisticReplay(replay, resultScore);
+                if (statistic == null)
                 {
-                    ex.Entries.Single().Reload();
-                    await _context.SaveChangesAsync();
+                    SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Could not recalculate score from replay. Error: " + error);
+                    return;
+                }
+                double scoreRatio = (double)resultScore.BaseScore / (double)statistic.winTracker.totalScore;
+
+                if (scoreRatio > 1.02 || scoreRatio < 0.98)
+                {
+                    SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Calculated on server score is too different: " + statistic.winTracker.totalScore + ". You probably need to update the mod.");
+
+                    return;
                 }
 
-                transaction2.Commit();
-
-                var transaction3 = _context.Database.BeginTransaction();
-                try
+                if (leaderboard.Difficulty.Notes > 30)
                 {
-                    await _containerClient.CreateIfNotExistsAsync();
-
-                    string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
-                    resultScore.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/replays/" : "https://cdn.beatleader.xyz/replays/") + fileName;
-
-                    string tempName = fileName + "temp";
-                    string replayLink = resultScore.Replay;
-                    resultScore.Replay += "temp";
-
-                    await _containerClient.DeleteBlobIfExistsAsync(tempName);
-                    await _containerClient.UploadBlobAsync(tempName, new BinaryData(replayData));
-
-                    (ScoreStatistic? statistic, string? error) = _scoreController.CalculateStatisticReplay(replay, resultScore);
-                    if (statistic == null) {
-                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Could not recalculate score from replay. Error: " + error);
+                    var sameAccScore = leaderboard.Scores.FirstOrDefault(s => s.PlayerId != resultScore.PlayerId && s.AccLeft != 0 && s.AccRight != 0
+                                                            && s.AccLeft == statistic.accuracyTracker.accLeft
+                                                            && s.AccRight == statistic.accuracyTracker.accRight);
+                    if (sameAccScore != null)
+                    {
+                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Acc is suspiciously exact same as: " + sameAccScore.PlayerId + "'s score");
 
                         return;
                     }
-
-                    double scoreRatio = (double)resultScore.BaseScore / (double)statistic.winTracker.totalScore;
-
-                    if (scoreRatio > 1.02 || scoreRatio < 0.98) {
-                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Calculated on server score is too different: " + statistic.winTracker.totalScore + ". You probably need to update the mod.");
-
-                        return;
-                    }
-
-                    if (leaderboard.Difficulty.Notes > 30) {
-                        var sameAccScore = leaderboard.Scores.FirstOrDefault(s => s.PlayerId != resultScore.PlayerId && s.AccLeft != 0 && s.AccRight != 0
-                                                                && s.AccLeft == statistic.accuracyTracker.accLeft
-                                                                && s.AccRight == statistic.accuracyTracker.accRight);
-                        if (sameAccScore != null)
-                        {
-                            SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Acc is suspiciously exact same as: " + sameAccScore.PlayerId + "'s score");
-
-                            return;
-                        }
-                    }
-
-                    await _containerClient.GetBlobClient(fileName).StartCopyFromUri(_containerClient.GetBlobClient(tempName).Uri).WaitForCompletionAsync();
-                    await _containerClient.DeleteBlobIfExistsAsync(tempName);
-
-                    resultScore.Replay = replayLink;
-                    resultScore.AccLeft = statistic.accuracyTracker.accLeft;
-                    resultScore.AccRight = statistic.accuracyTracker.accRight;
-
-                    if (currentScore != null) {
-                        improvement.AccLeft = resultScore.AccLeft - currentScore.AccLeft;
-                        improvement.AccRight = resultScore.AccRight - currentScore.AccRight;
-                    }
-
-                    resultScore.ScoreImprovement = improvement;
-
-                    _context.SaveChanges();
-                    transaction3.Commit();
                 }
-                catch (Exception e)
+
+                await _containerClient.GetBlobClient(fileName).StartCopyFromUri(_containerClient.GetBlobClient(tempName).Uri).WaitForCompletionAsync();
+                await _containerClient.DeleteBlobIfExistsAsync(tempName);
+
+                resultScore.Replay = replayLink;
+                resultScore.AccLeft = statistic.accuracyTracker.accLeft;
+                resultScore.AccRight = statistic.accuracyTracker.accRight;
+
+                if (currentScore != null)
                 {
-                    SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, e.ToString());
+                    improvement.AccLeft = resultScore.AccLeft - currentScore.AccLeft;
+                    improvement.AccRight = resultScore.AccRight - currentScore.AccRight;
                 }
-            });
 
-            return RemoveLeaderboard(resultScore, resultScore.Rank);
+                resultScore.ScoreImprovement = improvement;
+
+                _context.SaveChanges();
+                transaction3.Commit();
+            }
+            catch (Exception e)
+            {
+                SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, e.ToString());
+            }
         }
 
         [NonAction]
@@ -721,129 +704,6 @@ namespace BeatLeader_Server.Controllers
                     player.ScoreStats.AverageRankedAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, previousScore.Accuracy);
                 }
             }
-        }
-
-        [NonAction]
-        public async Task<ActionResult> MigrateReplays()
-        {
-            var scores = _context.Scores.ToList();
-            int migrated = 0;
-            var result = "";
-            foreach (var score in scores)
-            {
-                string replayFile = score.Replay;
-
-                var net = new System.Net.WebClient();
-                var data = net.DownloadData(replayFile);
-                var readStream = new System.IO.MemoryStream(data);
-
-                int arrayLength = (int)readStream.Length;
-                byte[] buffer = new byte[arrayLength];
-                readStream.Read(buffer, 0, arrayLength);
-
-                try
-                {
-                    Models.Old.Replay replay = Models.Old.ReplayDecoder.Decode(buffer);
-
-                    migrated++;
-
-                    Stream stream = new MemoryStream();
-                    Models.Old.ReplayEncoder.Encode(replay, new BinaryWriter(stream));
-                    stream.Position = 0;
-
-                    string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
-
-                    await _containerClient.DeleteBlobIfExistsAsync(fileName);
-                    await _containerClient.UploadBlobAsync(fileName, stream);
-
-                    
-                }
-                catch (Exception e) {
-                    result += "\n" + replayFile + "  " + e.ToString();
-                }
-            }
-            return Ok(result + "\nMigrated " + migrated + " out of " + _context.Scores.Count());
-        }
-
-        [HttpGet("~/player/{id}/restore")]
-        [Authorize]
-        public async Task<ActionResult> RestorePlayer(string id) {
-
-            Player? player = _context.Players.Find(id);
-            if (player == null)
-            {
-                return NotFound();
-            }
-
-            var resultSegment = _containerClient.GetBlobsAsync();
-            await foreach (var file in resultSegment)
-            {
-                var parsedName = file.Name.Split("-");
-                if (parsedName.Length == 4 && parsedName[0] == id)
-                {
-                    string playerId = parsedName[0];
-                    string difficultyName = parsedName[1];
-                    string modeName = parsedName[2];
-                    string hash = parsedName[3].Split(".").First();
-
-                    Score? score = _context
-                            .Scores
-                            .Include(s => s.Leaderboard)
-                            .ThenInclude(l => l.Song)
-                            .Include(s => s.Leaderboard)
-                            .ThenInclude(l => l.Difficulty)
-                            .FirstOrDefault(s => s.PlayerId == playerId
-                            && s.Leaderboard.Song.Hash == hash
-                            && s.Leaderboard.Difficulty.DifficultyName == difficultyName
-                            && s.Leaderboard.Difficulty.ModeName == modeName);
-
-                    if (score != null) { continue; }
-
-                    await PostReplayFromCDN(playerId, file.Name, HttpContext);
-                }
-            }
-
-            return Ok();
-        }
-
-        [NonAction]
-        public async Task<ActionResult> CheckReplay([FromQuery] string link)
-        {
-            var net = new System.Net.WebClient();
-            var data = net.DownloadData(link);
-            var readStream = new System.IO.MemoryStream(data);
-
-            int arrayLength = (int)readStream.Length;
-            byte[] buffer = new byte[arrayLength];
-            readStream.Read(buffer, 0, arrayLength);
-            try
-            {
-                Models.Old.Replay replay = Models.Old.ReplayDecoder.Decode(buffer);
-            }
-            catch {
-                arrayLength = 10;
-            }
-            return Ok();
-        }
-
-        [NonAction]
-        private static string GetCountryByIp(string ip)
-        {
-            string result = "not set";
-            try
-            {
-                string jsonResult = new WebClient().DownloadString("http://ipinfo.io/" + ip);
-                dynamic? info = JsonConvert.DeserializeObject<ExpandoObject>(jsonResult, new ExpandoObjectConverter());
-                if (info != null)
-                {
-                    result = info.country;
-                }
-            }
-            catch (Exception)
-            {
-            }
-
-            return result;
         }
 
         [NonAction]

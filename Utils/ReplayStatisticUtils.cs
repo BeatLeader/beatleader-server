@@ -123,7 +123,12 @@ namespace BeatLeader_Server.Utils
                 endTime = (replay.frames.LastOrDefault() != null) ? replay.frames.Last().time : 0,
                 nbOfPause = replay.pauses.Count(),
                 jumpDistance = replay.info.jumpDistance,
-                averageHeight = replay.heights.Count() > 0 ? replay.heights.Average(h => h.height) : replay.info.height
+                averageHeight = replay.heights.Count() > 0 ? replay.heights.Average(h => h.height) : replay.info.height,
+                averageHeadPosition = new AveragePosition {
+                    x = replay.frames.Average(f => f.head.position.x),
+                    y = replay.frames.Average(f => f.head.position.y),
+                    z = replay.frames.Average(f => f.head.position.z),
+                }
             };
 
             HitTracker hitTracker = new HitTracker();

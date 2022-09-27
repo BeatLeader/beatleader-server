@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Text.RegularExpressions;
+using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -94,7 +95,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/clan/{tag}")]
-        public async Task<ActionResult<ResponseWithMetadataAndContainer<Player, Clan>>> GetClan(
+        public async Task<ActionResult<ResponseWithMetadataAndContainer<PlayerResponse, Clan>>> GetClan(
             string tag, 
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
@@ -112,9 +113,19 @@ namespace BeatLeader_Server.Controllers
                 {
                     return NotFound();
                 }
-                clan = _readContext.Clans.Where(c => c.LeaderID == currentID).Include(c => c.Players).FirstOrDefault();
+                clan = _readContext
+                    .Clans
+                    .Where(c => c.LeaderID == currentID)
+                    .Include(c => c.Players)
+                    .ThenInclude(p => p.ProfileSettings)
+                    .FirstOrDefault();
             } else {
-                clan = _readContext.Clans.Where(c => c.Tag == tag).Include(c => c.Players).FirstOrDefault();
+                clan = _readContext
+                    .Clans
+                    .Where(c => c.Tag == tag)
+                    .Include(c => c.Players)
+                    .ThenInclude(p => p.ProfileSettings)
+                    .FirstOrDefault();
             }
             if (clan == null)
             {
@@ -136,9 +147,9 @@ namespace BeatLeader_Server.Controllers
                 default:
                     break;
             }
-            return new ResponseWithMetadataAndContainer<Player, Clan> {
+            return new ResponseWithMetadataAndContainer<PlayerResponse, Clan> {
                 Container = clan,
-                Data = players.Skip((page - 1) * count).Take(count),
+                Data = players.Skip((page - 1) * count).Take(count).Select(ResponseFromPlayer).Select(PostProcessSettings),
                 Metadata = new Metadata {
                     Page = 1,
                     ItemsPerPage = 10,

@@ -145,18 +145,13 @@ namespace BeatLeader_Server.Utils
             }
 
             score.Qualification = qualification;
-
             score.Platform = replay.info.platform + "," + replay.info.gameVersion + "," + replay.info.version;
-
             score.Timeset = replay.info.timestamp;
+
+
             
             return (replay, score, maxScore);
         }
-
-
-
-
- 
 
         private static HMD HMDFromName(string hmdName) {
             string lowerHmd = hmdName.ToLower();

@@ -96,6 +96,7 @@ namespace BeatLeader_Server.Controllers
                         .Include(p => p.ProfileSettings)
                         .Include(p => p.Socials)
                         .Include(p => p.EventsParticipating)
+                        .Include(p => p.Changes)
                         .FirstOrDefault();
                 } else {
                     player = _readContext.Players.Find(userId);
@@ -698,7 +699,13 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? clans = null,
             [FromQuery] int? activityPeriod = null)
         {
-            IQueryable<Player> request = _readContext.Players.Include(p => p.ScoreStats).Include(p => p.Clans).Where(p => !p.Banned);
+            IQueryable<Player> request = 
+                _readContext
+                .Players
+                .Include(p => p.ScoreStats)
+                .Include(p => p.Clans)
+                .Include(p => p.ProfileSettings)
+                .Where(p => !p.Banned);
             if (countries.Length != 0)
             {
                 request = request.Where(p => countries.Contains(p.Country));

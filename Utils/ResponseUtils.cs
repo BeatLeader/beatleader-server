@@ -51,6 +51,7 @@ namespace BeatLeader_Server.Utils
 
             public ICollection<Badge>? Badges { get; set; }
             public ICollection<ScoreResponseWithMyScore>? PinnedScores { get; set; }
+            public ICollection<PlayerChange>? Changes { get; set; }
         }
 
         public class ScoreResponse
@@ -352,6 +353,7 @@ namespace BeatLeader_Server.Utils
                 StatsHistory = p.StatsHistory,
 
                 Badges = p.Badges,
+                Changes = p.Changes,
 
                 Pp = p.Pp,
                 Rank = p.Rank,
@@ -404,7 +406,7 @@ namespace BeatLeader_Server.Utils
                         !role.Contains("rankedteam") &&
                         !role.Contains("juniorrankedteam") && 
                         !role.Contains("admin")) {
-                        settings.EffectName = null;
+                        settings.EffectName = "";
                     }
                 }
                 if (settings.EffectName?.Contains("Tier2") == true)
@@ -417,7 +419,7 @@ namespace BeatLeader_Server.Utils
                         !role.Contains("juniorrankedteam") &&
                         !role.Contains("admin"))
                     {
-                        settings.EffectName = null;
+                        settings.EffectName = "";
                     }
                 }
                 if (settings.EffectName?.Contains("Tier3") == true)
@@ -430,7 +432,7 @@ namespace BeatLeader_Server.Utils
                         !role.Contains("juniorrankedteam") &&
                         !role.Contains("admin"))
                     {
-                        settings.EffectName = null;
+                        settings.EffectName = "";
                     }
                 }
                 if (settings.EffectName?.Contains("Special") == true)
@@ -440,7 +442,7 @@ namespace BeatLeader_Server.Utils
                         !role.Contains("juniorrankedteam") &&
                         !role.Contains("admin"))
                     {
-                        settings.EffectName = null;
+                        settings.EffectName = "";
                     }
                 }
             }

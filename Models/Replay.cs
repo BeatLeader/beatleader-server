@@ -322,7 +322,7 @@ namespace BeatLeader_Server.Models
 
     static class ReplayDecoder
     {
-        public static Replay Decode(byte[] buffer)
+        public static (Replay?, ReplayOffsets?) Decode(byte[] buffer)
         {
             int arrayLength = (int)buffer.Length;
 
@@ -334,6 +334,7 @@ namespace BeatLeader_Server.Models
             if (magic == 0x442d3d69 && version == 1)
             {
                 Replay replay = new Replay();
+                ReplayOffsets offsets = new ReplayOffsets();
 
                 for (int a = 0; a < ((int)StructType.pauses) + 1 && pointer < arrayLength; a++)
                 {
@@ -345,28 +346,33 @@ namespace BeatLeader_Server.Models
                             replay.info = DecodeInfo(buffer, ref pointer);
                             break;
                         case StructType.frames:
+                            offsets.Frames = pointer;
                             replay.frames = DecodeFrames(buffer, ref pointer);
                             break;
                         case StructType.notes:
+                            offsets.Notes = pointer;
                             replay.notes = DecodeNotes(buffer, ref pointer);
                             break;
                         case StructType.walls:
+                            offsets.Walls = pointer;
                             replay.walls = DecodeWalls(buffer, ref pointer);
                             break;
                         case StructType.heights:
+                            offsets.Heights = pointer;
                             replay.heights = DecodeHeight(buffer, ref pointer);
                             break;
                         case StructType.pauses:
+                            offsets.Pauses = pointer;
                             replay.pauses = DecodePauses(buffer, ref pointer);
                             break;
                         }
                 }
 
-                return replay;
+                return (replay, offsets);
             }
             else
             {
-                return null;
+                return (null, null);
             }
         }
 
