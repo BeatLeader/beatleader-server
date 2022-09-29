@@ -353,7 +353,7 @@ namespace BeatLeader_Server.Controllers
 
                 var status = leaderboard.Difficulty.Status;
                 var isRanked = status == DifficultyStatus.ranked || status == DifficultyStatus.qualified || status == DifficultyStatus.nominated;
-                rankedScores = leaderboard.Scores.OrderByDescending(el => isRanked ? el.Pp : el.ModifiedScore).ToList();
+                rankedScores = (isRanked ? leaderboard.Scores.OrderByDescending(el => el.Pp) : leaderboard.Scores.OrderByDescending(el => el.ModifiedScore)).ToList();
                 foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
                 {
                     if (s.Rank != i + 1) {

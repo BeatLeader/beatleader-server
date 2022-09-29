@@ -128,16 +128,17 @@ namespace BeatLeader_Server.Utils
             var modifers = leaderboard.Difficulty.ModifierValues;
             bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent || status == DifficultyStatus.nominated;
             bool hasPp = status == DifficultyStatus.ranked || qualification;
+            int basicScore = (int)(score.BaseScore * modifers.GetNegativeMultiplier(replay.info.modifiers));
 
             if (hasPp)
             {
-                score.ModifiedScore = (int)(score.BaseScore * modifers.GetNegativeMultiplier(replay.info.modifiers));
+                score.ModifiedScore = basicScore;
             } else
             {
                 score.ModifiedScore = (int)(score.BaseScore * modifers.GetTotalMultiplier(replay.info.modifiers));
             }
             int maxScore = leaderboard.Difficulty.MaxScore > 0 ? leaderboard.Difficulty.MaxScore : MaxScoreForNote(leaderboard.Difficulty.Notes);
-            score.Accuracy = (float)score.ModifiedScore / (float)maxScore;
+            score.Accuracy = (float)basicScore / (float)maxScore;
             score.Modifiers = replay.info.modifiers;
 
             if (hasPp) {
@@ -147,8 +148,6 @@ namespace BeatLeader_Server.Utils
             score.Qualification = qualification;
             score.Platform = replay.info.platform + "," + replay.info.gameVersion + "," + replay.info.version;
             score.Timeset = replay.info.timestamp;
-
-
             
             return (replay, score, maxScore);
         }

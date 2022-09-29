@@ -2,7 +2,7 @@
 {
     public class PlayerChange
     {
-        public string Id { get; set; }
+        public int Id { get; set; }
         public int Timestamp { get; set; }
 
         public string? OldName { get; set; }

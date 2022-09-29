@@ -1,6 +1,24 @@
 ﻿namespace BeatLeader_Server.Models
 {
-    
+    public enum EndType
+    {
+        Unknown = 0,
+        Clear = 1,
+        Fail = 2,
+        Restart = 3,
+        Quit = 4
+    }
+
+    public class PlayerLeaderboardStats
+    {
+        public int Id { get; set; }
+        public string PlayerId { get; set; }
+        public EndType Type { get; set; }
+        public int Timeset { get; set; }
+        public float Time { get; set; }
+        public int Score { get; set; }
+    }
+
     public class Leaderboard
     {
         public string Id { get; set; }
@@ -12,6 +30,7 @@
         public RankUpdate? Reweight { get; set; }
 
         public ICollection<LeaderboardChange>? Changes { get; set; }
+        public ICollection<PlayerLeaderboardStats>? PlayerStats { get; set; }
 
         public ICollection<EventRanking>? Events { get; set; }
         //public ICollection<AltBoard>? AltBoards { get; set; }

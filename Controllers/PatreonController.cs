@@ -37,18 +37,23 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task<ActionResult> AddPatreonRole(string role)
+        public async Task<ActionResult> AddPatreonRole(string role, int tier)
         {
             await RemovePatreonRoles();
-            string playerId = HttpContext.CurrentUserID(_context);
+            string? playerId = HttpContext.CurrentUserID(_context);
             if (playerId == null)
             {
                 return NotFound();
             }
-            Player? currentPlayer = _context.Players.Find(playerId);
+            Player? currentPlayer = _context.Players.Include(p => p.ProfileSettings).Where(p => p.Id == playerId).FirstOrDefault();
             if (currentPlayer != null)
             {
                 currentPlayer.Role += "," + role;
+                if (currentPlayer.ProfileSettings == null) {
+                    currentPlayer.ProfileSettings = new ProfileSettings();
+                }
+
+                currentPlayer.ProfileSettings.EffectName = "TheSun_Tier" + tier;
                 _context.SaveChanges();
             }
             return Ok();
@@ -84,7 +89,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/user/linkPatreon")]
         public async Task<ActionResult> LinkPatreon([FromQuery] string returnUrl)
         {
-            string playerId = HttpContext.CurrentUserID(_context);
+            string? playerId = HttpContext.CurrentUserID(_context);
             if (playerId == null)
             {
                 return Redirect(returnUrl);
@@ -135,103 +140,21 @@ namespace BeatLeader_Server.Controllers
                         _context.PatreonLinks.Add(patreonLink);
                         if (tier.Contains("tipper"))
                         {
-                            await AddPatreonRole("tipper");
+                            await AddPatreonRole("tipper", 1);
                         }
                         else if (tier.Contains("supporter"))
                         {
-                            await AddPatreonRole("supporter");
+                            await AddPatreonRole("supporter", 2);
                         }
                         else if (tier.Contains("sponsor"))
                         {
-                            await AddPatreonRole("sponsor");
+                            await AddPatreonRole("sponsor", 3);
                         }
                     }
                 }
             }
 
             return Redirect(returnUrl);
-        }
-
-        [HttpPatch("~/user/patreon")]
-        public async Task<ActionResult> PatchPatreonFeatures(
-            [FromQuery] string? message = null, 
-            [FromQuery] string? leftSaberColor = null, 
-            [FromQuery] string? rightSaberColor = null, 
-            [FromQuery] string? id = null)
-        {
-            string playerId = HttpContext.CurrentUserID(_context);
-            var player = _context.Players.Where(p => p.Id == playerId).Include(p => p.PatreonFeatures).FirstOrDefault();
-
-            if (id != null && player != null && player.Role.Contains("admin"))
-            {
-                player = _context.Players.Find(id);
-            }
-
-            if (player == null)
-            {
-                return NotFound();
-            }
-
-            if (player.Role.Split(",").Where(r => r == "tipper" || r == "supporter" || r == "sponsor").Count() == 0) {
-                return Unauthorized("Not a supporter");
-            }
-
-            PatreonFeatures? features = player.PatreonFeatures;
-            if (features == null)
-            {
-                features = new PatreonFeatures();
-                player.PatreonFeatures = features;
-            }
-
-            if (message != null && player.Role.Contains("sponsor"))
-            {
-                if (message.Length < 3 || message.Length > 150)
-                {
-                    return BadRequest("Use message between the 3 and 150 symbols");
-                }
-
-                features.Message = message;
-            }
-
-            if (leftSaberColor != null)
-            {
-                int colorLength = leftSaberColor.Length;
-                try
-                {
-                    if (!((colorLength == 7 || colorLength == 9) && Int64.Parse(leftSaberColor.Substring(1), System.Globalization.NumberStyles.HexNumber) != 0))
-                    {
-                        return BadRequest("leftSaberColor is not valid");
-                    }
-                }
-                catch
-                {
-                    return BadRequest("leftSaberColor is not valid");
-                }
-
-                features.LeftSaberColor = leftSaberColor;
-            }
-
-            if (rightSaberColor != null)
-            {
-                int colorLength = rightSaberColor.Length;
-                try
-                {
-                    if (!((colorLength == 7 || colorLength == 9) && Int64.Parse(rightSaberColor.Substring(1), System.Globalization.NumberStyles.HexNumber) != 0))
-                    {
-                        return BadRequest("rightSaberColor is not valid");
-                    }
-                }
-                catch
-                {
-                    return BadRequest("rightSaberColor is not valid");
-                }
-
-                features.RightSaberColor = rightSaberColor;
-            }
-
-            await _context.SaveChangesAsync();
-
-            return Ok();
         }
 
         [HttpGet("~/refreshPatreon")]

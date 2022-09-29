@@ -58,6 +58,7 @@
         public Player Player { get; set; }
         public string LeaderboardId { get; set; }
         public Leaderboard Leaderboard { get; set; }
+        public int ReplayWatched { get; set; }
         //public bool AltOnly { get; set; }
         //public ICollection<AltScore>? AltScores { get; set; }
         public ReplayOffsets? ReplayOffsets { get; set; }
@@ -66,6 +67,12 @@
         public bool Banned { get; set; } = false;
         public RankVoting? RankVoting { get; set; }
         public ScoreMetadata? Metadata { get; set; }
+    }
+
+    public class ReplayWatchingSession {
+        public int Id { get; set; }
+        public int ScoreId { get; set; }
+        public int IPHash { get; set; }
     }
 
     public class AltScore 

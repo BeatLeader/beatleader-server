@@ -78,6 +78,7 @@ namespace BeatLeader_Server.Utils
             public string LeaderboardId { get; set; }
             public string Timeset { get; set; }
             public int Timepost { get; set; }
+            public int ReplaysWatched { get; set; }
             public PlayerResponse Player { get; set; }
             public ScoreImprovement? ScoreImprovement { get; set; }
             public RankVoting? RankVoting { get; set; }
@@ -234,10 +235,11 @@ namespace BeatLeader_Server.Utils
                 FullCombo = s.FullCombo,
                 Hmd = s.Hmd,
                 Timeset = s.Timeset,
+                ReplaysWatched = s.ReplayWatched,
                 Timepost = s.Timepost,
                 LeaderboardId = s.LeaderboardId,
                 Platform = s.Platform,
-                Player = ResponseFromPlayer(s.Player),
+                Player = PostProcessSettings(ResponseFromPlayer(s.Player)),
                 ScoreImprovement = s.ScoreImprovement,
                 RankVoting = s.RankVoting,
                 Metadata = s.Metadata
@@ -398,7 +400,17 @@ namespace BeatLeader_Server.Utils
             }
             
             if (settings != null) {
-                if (settings.EffectName?.Contains("Tier1") == true) {
+                if (settings.EffectName?.Contains("Special") == true)
+                {
+                    if (!role.Contains("creator") &&
+                        !role.Contains("rankedteam") &&
+                        !role.Contains("juniorrankedteam") &&
+                        !role.Contains("admin"))
+                    {
+                        settings.EffectName = "";
+                    }
+                }
+                else if (settings.EffectName?.Contains("Tier1") == true) {
                     if (!role.Contains("tipper") && 
                         !role.Contains("supporter") && 
                         !role.Contains("sponsor") && 
@@ -409,10 +421,9 @@ namespace BeatLeader_Server.Utils
                         settings.EffectName = "";
                     }
                 }
-                if (settings.EffectName?.Contains("Tier2") == true)
+                else if (settings.EffectName?.Contains("Tier2") == true)
                 {
-                    if (!role.Contains("tipper") &&
-                        !role.Contains("supporter") &&
+                    if (!role.Contains("supporter") &&
                         !role.Contains("sponsor") &&
                         !role.Contains("creator") &&
                         !role.Contains("rankedteam") &&
@@ -422,11 +433,9 @@ namespace BeatLeader_Server.Utils
                         settings.EffectName = "";
                     }
                 }
-                if (settings.EffectName?.Contains("Tier3") == true)
+                else if (settings.EffectName?.Contains("Tier3") == true)
                 {
-                    if (!role.Contains("tipper") &&
-                        !role.Contains("supporter") &&
-                        !role.Contains("sponsor") &&
+                    if (!role.Contains("sponsor") &&
                         !role.Contains("creator") &&
                         !role.Contains("rankedteam") &&
                         !role.Contains("juniorrankedteam") &&
@@ -435,15 +444,8 @@ namespace BeatLeader_Server.Utils
                         settings.EffectName = "";
                     }
                 }
-                if (settings.EffectName?.Contains("Special") == true)
-                {
-                    if (!role.Contains("creator") &&
-                        !role.Contains("rankedteam") &&
-                        !role.Contains("juniorrankedteam") &&
-                        !role.Contains("admin"))
-                    {
-                        settings.EffectName = "";
-                    }
+                else {
+                    settings.EffectName = "";
                 }
             }
 

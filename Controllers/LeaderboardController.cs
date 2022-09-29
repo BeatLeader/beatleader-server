@@ -251,6 +251,7 @@ namespace BeatLeader_Server.Controllers
             };
         }
 
+
         [HttpGet("~/leaderboard/hash/{hash}/{diff}/{mode}")]
         public async Task<ActionResult<Leaderboard>> GetByHash(string hash, string diff, string mode) {
             Leaderboard? leaderboard;
@@ -272,47 +273,13 @@ namespace BeatLeader_Server.Controllers
                     return NotFound();
                 }
 
-                leaderboard = new Leaderboard();
-                leaderboard.SongId = song.Id;
-                IEnumerable<DifficultyDescription> difficulties = song.Difficulties.Where(el => el.DifficultyName == diff);
-                DifficultyDescription? difficulty = difficulties.FirstOrDefault(x => x.ModeName == mode);
-                if (difficulty == null) {
-                    difficulty = difficulties.FirstOrDefault(x => x.ModeName == "Standard");
-                    if (difficulty == null) {
-                        return NotFound();
-                    } else {
-                        CustomMode? customMode = _context.CustomModes.FirstOrDefault(m => m.Name == mode);
-                        if (customMode == null) {
-                            customMode = new CustomMode {
-                                Name = mode
-                            };
-                            _context.CustomModes.Add(customMode);
-                            await _context.SaveChangesAsync();
-                        }
-
-                        difficulty = new DifficultyDescription {
-                            Value = difficulty.Value,
-                            Mode = customMode.Id + 10,
-                            DifficultyName = difficulty.DifficultyName,
-                            ModeName = mode,
-
-                            Njs = difficulty.Njs,
-                            Nps = difficulty.Nps,
-                            Notes = difficulty.Notes,
-                            Bombs = difficulty.Bombs,
-                            Walls = difficulty.Walls,
-                        };
-                        song.Difficulties.Add(difficulty);
-                        await _context.SaveChangesAsync();
-                    }
+                var difficulty = song.Difficulties.FirstOrDefault(d => d.DifficultyName == diff && d.ModeName == mode);
+                // Song migrated leaderboards
+                if (difficulty != null && difficulty.Status == DifficultyStatus.nominated) {
+                    return await GetByHash(hash, diff, mode);
+                } else {
+                    leaderboard = await _songController.NewLeaderboard(song, diff, mode);
                 }
-
-                leaderboard.Difficulty = difficulty;
-                leaderboard.Scores = new List<Score>();
-                leaderboard.Id = song.Id + difficulty.Value.ToString() + difficulty.Mode.ToString();
-
-                _context.Leaderboards.Add(leaderboard);
-                await _context.SaveChangesAsync();
             }
 
             if (leaderboard == null)
@@ -408,6 +375,7 @@ namespace BeatLeader_Server.Controllers
                         Hmd = s.Hmd,
                         Timeset = s.Timeset,
                         Timepost = s.Timepost,
+                        ReplaysWatched = s.ReplayWatched,
                         LeaderboardId = s.LeaderboardId,
                         Platform = s.Platform,
                         Weight = s.Weight,
@@ -459,7 +427,8 @@ namespace BeatLeader_Server.Controllers
                         Platform = s.Platform,
                         Weight = s.Weight,
                         AccLeft = s.AccLeft,
-                        AccRight = s.AccRight
+                        AccRight = s.AccRight,
+                        ReplaysWatched = s.ReplayWatched
                     }).FirstOrDefault(),
                     Plays = showPlays ? lb.Scores.Where(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)).Count() : 0,
                 });

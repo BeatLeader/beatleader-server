@@ -49,6 +49,7 @@ namespace BeatLeader_Server.Models
 
         public int DailyImprovements { get; set; }
         public int ReplaysWatched { get; set; }
+        public int WatchedReplays { get; set; }
     }
 
     public class PlayerVoteStats

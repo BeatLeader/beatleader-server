@@ -236,20 +236,22 @@ namespace BeatLeader_Server.Controllers
 
                 foreach (Score s in allScores)
                 {
+                    int basicScore = (int)(s.BaseScore * modifiers.GetNegativeMultiplier(s.Modifiers));
                     if (hasPp) {
-                        s.ModifiedScore = (int)(s.BaseScore * modifiers.GetNegativeMultiplier(s.Modifiers));
+                        s.ModifiedScore = basicScore;
                     } else {
                         s.ModifiedScore = (int)(s.BaseScore * modifiers.GetTotalMultiplier(s.Modifiers));
                     }
 
                     if (leaderboard.Difficulty.MaxScore > 0)
                     {
-                        s.Accuracy = (float)s.ModifiedScore / (float)leaderboard.Difficulty.MaxScore;
+                        s.Accuracy = (float)basicScore / (float)leaderboard.Difficulty.MaxScore;
                     }
                     else
                     {
-                        s.Accuracy = (float)s.ModifiedScore / (float)ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
+                        s.Accuracy = (float)basicScore / (float)ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
                     }
+
                     if (s.Accuracy > 1.29f)
                     {
                         s.Accuracy = 1.29f;
