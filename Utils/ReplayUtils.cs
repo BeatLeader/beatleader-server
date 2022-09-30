@@ -28,7 +28,7 @@ namespace BeatLeader_Server.Utils
                 accuracy *= -1;
             }
 
-            float mp = modifierValues.GetPositiveMultiplier(s.Modifiers);
+            float mp = modifierValues.GetTotalMultiplier(s.Modifiers);
             mp = 1 + (mp - 1);
 
             float rawPP = (float)(Curve(accuracy, (float)stars - 0.5f) * ((float)stars + 0.5f) * 42);
@@ -128,17 +128,16 @@ namespace BeatLeader_Server.Utils
             var modifers = leaderboard.Difficulty.ModifierValues;
             bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent || status == DifficultyStatus.nominated;
             bool hasPp = status == DifficultyStatus.ranked || qualification;
-            int basicScore = (int)(score.BaseScore * modifers.GetNegativeMultiplier(replay.info.modifiers));
 
             if (hasPp)
             {
-                score.ModifiedScore = basicScore;
+                score.ModifiedScore = (int)(score.BaseScore * modifers.GetNegativeMultiplier(replay.info.modifiers));
             } else
             {
                 score.ModifiedScore = (int)(score.BaseScore * modifers.GetTotalMultiplier(replay.info.modifiers));
             }
             int maxScore = leaderboard.Difficulty.MaxScore > 0 ? leaderboard.Difficulty.MaxScore : MaxScoreForNote(leaderboard.Difficulty.Notes);
-            score.Accuracy = (float)basicScore / (float)maxScore;
+            score.Accuracy = (float)score.BaseScore / (float)maxScore;
             score.Modifiers = replay.info.modifiers;
 
             if (hasPp) {

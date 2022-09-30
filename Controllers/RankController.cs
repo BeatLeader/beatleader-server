@@ -308,7 +308,7 @@ namespace BeatLeader_Server.Controllers
                 await _scoreController.RefreshScores(leaderboard.Id);
                 await _playlistController.RefreshNominatedPlaylist();
 
-                var dsClient = qualificationDSClient();
+                var dsClient = nominationDSClient();
 
                 if (dsClient != null)
                 {
@@ -491,7 +491,7 @@ namespace BeatLeader_Server.Controllers
 
                         qualification.Changes.Add(qualificationChange);
 
-                        var dsClient = qualificationDSClient();
+                        var dsClient = nominationDSClient();
 
                         if (dsClient != null)
                         {
@@ -1057,6 +1057,13 @@ namespace BeatLeader_Server.Controllers
         public DiscordWebhookClient? reweightDSClient()
         {
             var link = _configuration.GetValue<string?>("ReweightDSHook");
+            return link == null ? null : new DiscordWebhookClient(link);
+        }
+
+        [NonAction]
+        public DiscordWebhookClient? nominationDSClient()
+        {
+            var link = _configuration.GetValue<string?>("NominationDSHook");
             return link == null ? null : new DiscordWebhookClient(link);
         }
 

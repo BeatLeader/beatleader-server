@@ -192,11 +192,11 @@ namespace BeatLeader_Server.Controllers
 
                         if (leaderboard.Difficulty.MaxScore > 0)
                         {
-                            s.Accuracy = (float)s.ModifiedScore / (float)leaderboard.Difficulty.MaxScore;
+                            s.Accuracy = (float)s.BaseScore / (float)leaderboard.Difficulty.MaxScore;
                         }
                         else
                         {
-                            s.Accuracy = (float)s.ModifiedScore / (float)ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
+                            s.Accuracy = (float)s.BaseScore / (float)ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
                         }
                         (s.Pp, s.BonusPp) = ReplayUtils.PpFromScoreResponse(s, reweight);
 
