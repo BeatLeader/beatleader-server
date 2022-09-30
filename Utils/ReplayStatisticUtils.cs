@@ -117,11 +117,13 @@ namespace BeatLeader_Server.Utils
         public static ScoreStatistic ProcessReplay(Replay replay, Leaderboard leaderboard)
         {
             ScoreStatistic result = new ScoreStatistic();
+            float firstNoteTime = replay.notes.FirstOrDefault()?.eventTime ?? 0.0f;
+            float lastNoteTime = replay.notes.LastOrDefault()?.eventTime ?? 0.0f;
             result.winTracker = new WinTracker
             {
                 won = replay.info.failTime < 0.01,
                 endTime = (replay.frames.LastOrDefault() != null) ? replay.frames.Last().time : 0,
-                nbOfPause = replay.pauses.Count(),
+                nbOfPause = replay.pauses.Where(p => p.time >= firstNoteTime && p.time <= lastNoteTime).Count(),
                 jumpDistance = replay.info.jumpDistance,
                 averageHeight = replay.heights.Count() > 0 ? replay.heights.Average(h => h.height) : replay.info.height,
                 averageHeadPosition = new AveragePosition {

@@ -101,7 +101,8 @@ namespace BeatLeader_Server.Controllers
                 ScoreId = scoreId,
                 IPHash = ipHash
             });
-            
+            _context.SaveChanges();
+
             return Ok();
         }
     }
