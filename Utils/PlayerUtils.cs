@@ -228,7 +228,7 @@ namespace BeatLeader_Server.Utils
             result.Avatar = info.avatar;
             result.ExternalProfileUrl = bslink + "profile/" + playerID;
 
-            return (result, info.verifiedMapper);
+            return (result, ExpandantoObject.HasProperty(info, "verifiedMapper") && info.verifiedMapper);
         }
 
         public static Task<dynamic?> GetPlayer(string url, string? token = null)

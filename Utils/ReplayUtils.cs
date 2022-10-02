@@ -57,7 +57,7 @@ namespace BeatLeader_Server.Utils
         }
 
         public static (float, float) PpFromScore(Score s, DifficultyDescription difficulty) {
-            return PpFromScore(s, difficulty.ModifierValues, (float)difficulty.Stars);
+            return PpFromScore(s, difficulty.ModifierValues, difficulty.Stars ?? 0.0f);
         }
 
         public static (float, float) PpFromScoreResponse(ScoreResponse s, RankUpdate reweight)

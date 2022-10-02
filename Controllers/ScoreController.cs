@@ -213,7 +213,7 @@ namespace BeatLeader_Server.Controllers
         {
             if (HttpContext != null)
             {
-                string currentId = HttpContext.CurrentUserID();
+                string currentId = HttpContext.CurrentUserID(_context);
                 Player? currentPlayer = _context.Players.Find(currentId);
                 if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
                 {

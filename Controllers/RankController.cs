@@ -321,11 +321,11 @@ namespace BeatLeader_Server.Controllers
                 {
                     string message = "";
                     if (isRT) {
-                        message += "RT ";
+                        message += "RT";
                     } else if (verified) {
-                        message += "Verified mapper ";
+                        message += "Verified mapper";
                     } else {
-                        message += "Mapper ";
+                        message += "Mapper";
                     }
                         
                     message += " **" + currentPlayer.Name + "** nominated **" + diff + "** diff of **" + leaderboard.Song.Name + "**! \n";
