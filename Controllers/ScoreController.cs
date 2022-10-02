@@ -633,7 +633,8 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/score/statistic/{id}")]
         public async Task<ActionResult> GetStatistic(int id)
         {
-            return File(await _scoreStatsClient.GetBlobClient(id + ".json").OpenReadAsync(), "application/json");
+            var blob = _scoreStatsClient.GetBlobClient(id + ".json");
+            return (await blob.ExistsAsync()) ? File(await blob.OpenReadAsync(), "application/json") : NotFound();
         }
 
         [HttpGet("~/score/calculatestatistic/{id}")]

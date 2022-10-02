@@ -331,9 +331,6 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("MapperApproval")
-                        .HasColumnType("int");
-
                     b.Property<int>("MaxScore")
                         .HasColumnType("int");
 

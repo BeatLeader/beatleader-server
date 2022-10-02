@@ -248,6 +248,7 @@ namespace BeatLeader_Server.Controllers
             Leaderboard? leaderboard = _context.Leaderboards.Include(l => l.Difficulty).Include(l => l.Song).FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             bool isRT = true;
+            bool verified = false;
             if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
             {
                 if (currentPlayer != null && currentPlayer.MapperId == leaderboard?.Song.MapperId) {
@@ -271,9 +272,13 @@ namespace BeatLeader_Server.Controllers
                 if (!isRT && alreadyApproved == null) {
                     int? previous = PrevQualificationTime(leaderboard.Song.Hash).Value?.Time;
                     int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-                    if (previous != null && (timestamp - previous) < 60 * 60 * 24 * 7)
+                    int timeFromPrevious = (int)(timestamp - previous);
+                    (Player? bsplayer, verified) = await PlayerUtils.GetPlayerFromBeatSaver(currentPlayer.MapperId.ToString());
+
+                    int timeout = verified ? 7 : 30;
+                    if (previous != null && timeFromPrevious < 60 * 60 * 24 * timeout)
                     {
-                        return BadRequest("Error. You can qualify new map after " + (int)(7 - (timestamp - previous) / (60 * 60 * 24)) + " day(s)");
+                        return BadRequest("Error. You can qualify new map after " + (int)(timeout - timeFromPrevious / (60 * 60 * 24)) + " day(s)");
                     }
                 }
                 
@@ -292,7 +297,9 @@ namespace BeatLeader_Server.Controllers
 
                 difficulty.Status = DifficultyStatus.nominated;
                 difficulty.NominatedTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-                difficulty.Stars = stars;
+                if (isRT || verified) {
+                    difficulty.Stars = stars;
+                }
                 leaderboard.Qualification = new RankQualification {
                     Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
                     RTMember = currentID,
@@ -312,8 +319,19 @@ namespace BeatLeader_Server.Controllers
 
                 if (dsClient != null)
                 {
-                    string message = currentPlayer.Name + " nominated **" + diff + "** diff of **" + leaderboard.Song.Name + "**! \n";
-                    message += "★ " + difficulty.Stars + "  ";
+                    string message = "";
+                    if (isRT) {
+                        message += "RT ";
+                    } else if (verified) {
+                        message += "Verified mapper ";
+                    } else {
+                        message += "Mapper ";
+                    }
+                        
+                    message += " **" + currentPlayer.Name + "** nominated **" + diff + "** diff of **" + leaderboard.Song.Name + "**! \n";
+                    if (isRT || verified) {
+                        message += "★ " + difficulty.Stars + "  ";
+                    }
                     message += " **T**  ";
                     message += FormatUtils.DescribeType(leaderboard.Difficulty.Type);
                     message += "\n";

@@ -144,7 +144,7 @@ namespace BeatLeader_Server.Controllers
 
             Player? player = null;
 
-            Player? bsplayer = await PlayerUtils.GetPlayerFromBeatSaver(beatSaverId);
+            (Player? bsplayer, bool _) = await PlayerUtils.GetPlayerFromBeatSaver(beatSaverId);
 
             if (playerId == null) {
                 if (bslink == null) {
@@ -228,7 +228,7 @@ namespace BeatLeader_Server.Controllers
                     mapper.Socials = new List<PlayerSocial>();
                 }
 
-                Player? bsplayer = await PlayerUtils.GetPlayerFromBeatSaver("" + mapper.MapperId);
+                (Player? bsplayer, bool _) = await PlayerUtils.GetPlayerFromBeatSaver("" + mapper.MapperId);
 
                 mapper.Socials.Add(new PlayerSocial {
                     Service = "BeatSaver",

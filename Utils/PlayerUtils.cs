@@ -212,12 +212,12 @@ namespace BeatLeader_Server.Utils
             return result;
         }
 
-        public static async Task<Player?> GetPlayerFromBeatSaver(string playerID)
+        public static async Task<(Player?, bool)> GetPlayerFromBeatSaver(string playerID)
         {
             string bslink = "https://beatsaver.com/";
             dynamic? info = await GetPlayer(bslink + "api/users/id/" + playerID);
 
-            if (info == null) return null;
+            if (info == null) return (null, false);
 
             Player result = new Player();
             result.Name = info.name;
@@ -228,7 +228,7 @@ namespace BeatLeader_Server.Utils
             result.Avatar = info.avatar;
             result.ExternalProfileUrl = bslink + "profile/" + playerID;
 
-            return result;
+            return (result, info.verifiedMapper);
         }
 
         public static Task<dynamic?> GetPlayer(string url, string? token = null)
