@@ -108,35 +108,19 @@ namespace BeatLeader_Server.Utils
                     break;
                 case "voting":
                     sequence = sequence
-                        .Order(order, lb =>
-                            lb.Scores
-                                .Where(s => (date_from == null || s.RankVoting.Timeset >= date_from) && (date_to == null || s.RankVoting.Timeset <= date_to) && s.RankVoting.Rankability > 0).Count()
-                            -
-                            lb.Scores
-                                .Where(s => (date_from == null || s.RankVoting.Timeset >= date_from) && (date_to == null || s.RankVoting.Timeset <= date_to) && s.RankVoting.Rankability <= 0).Count());
+                        .Order(order, lb => lb.PositiveVotes - lb.NegativeVotes);
                     break;
                 case "votecount":
-                    sequence = sequence
-                        .Order(order, lb =>
-                            lb.Scores
-                                .Where(s => (date_from == null || s.RankVoting.Timeset >= date_from) && (date_to == null || s.RankVoting.Timeset <= date_to) && s.RankVoting != null)
-                                .Count());
+                    sequence = sequence.Order(order, lb => lb.PositiveVotes + lb.NegativeVotes);
                     break;
                 case "voteratio":
                     sequence = sequence
-                        .Where(lb =>
-                            lb.Scores
-                                .Where(s => (date_from == null || s.RankVoting.Timeset >= date_from) && (date_to == null || s.RankVoting.Timeset <= date_to) && s.RankVoting != null)
-                                .FirstOrDefault() != null)
+                        .Where(lb => lb.PositiveVotes > 0 || lb.NegativeVotes > 0)
                         .Order(order, lb => (int)(
-                            lb.Scores
-                                .Where(s => (date_from == null || s.RankVoting.Timeset >= date_from) && (date_to == null || s.RankVoting.Timeset <= date_to) && s.RankVoting.Rankability > 0).Count()
+                            lb.PositiveVotes
                             /
-                            lb.Scores
-                                .Where(s => (date_from == null || s.RankVoting.Timeset >= date_from) && (date_to == null || s.RankVoting.Timeset <= date_to) && s.RankVoting != null).Count() * 100.0))
-                        .ThenOrder(order, lb =>
-                            lb.Scores
-                                .Where(s => (date_from == null || s.RankVoting.Timeset >= date_from) && (date_to == null || s.RankVoting.Timeset <= date_to) && s.RankVoting != null).Count());
+                            (lb.PositiveVotes + lb.NegativeVotes) * 100.0))
+                        .ThenOrder(order, lb => lb.PositiveVotes + lb.NegativeVotes);
                     break;
                 default:
                     break;

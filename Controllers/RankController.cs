@@ -160,6 +160,7 @@ namespace BeatLeader_Server.Controllers
             var score = _context
                 .Scores
                 .Include(s => s.RankVoting)
+                .Include(s => s.Leaderboard)
                 .FirstOrDefault(l => l.Leaderboard.Song.Hash == hash && l.Leaderboard.Difficulty.DifficultyName == diff && l.Leaderboard.Difficulty.ModeName == mode && l.PlayerId == userId);
 
             if (score == null)
@@ -183,8 +184,17 @@ namespace BeatLeader_Server.Controllers
                     Stars = stars,
                     Type = type,
                     Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds
-            };
+                };
                 score.RankVoting = voting;
+                if (rankability > 0) {
+                    score.Leaderboard.PositiveVotes++;
+                } else {
+                    score.Leaderboard.NegativeVotes++;
+                }
+                if (stars > 0) {
+                    score.Leaderboard.StarVotes++;
+                    score.Leaderboard.VoteStars = MathUtils.AddToAverage(score.Leaderboard.VoteStars, score.Leaderboard.StarVotes, stars);
+                }
                 _context.SaveChanges();
 
                 return VoteStatus.Voted;
@@ -269,11 +279,14 @@ namespace BeatLeader_Server.Controllers
                        .Where(lb => lb.Song.Id == leaderboard.Song.Id && lb.Qualification != null).ToList();
                 string? alreadyApproved = qualifiedLeaderboards.Count() == 0 ? null : qualifiedLeaderboards.FirstOrDefault(lb => lb.Qualification.MapperAllowed)?.Qualification.MapperId;
 
+                if (!isRT) {
+                    (Player? _, verified) = await PlayerUtils.GetPlayerFromBeatSaver(currentPlayer.MapperId.ToString());
+                }
+
                 if (!isRT && alreadyApproved == null) {
                     int? previous = PrevQualificationTime(leaderboard.Song.Hash).Value?.Time;
                     int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                     int timeFromPrevious = (int)(timestamp - previous);
-                    (Player? bsplayer, verified) = await PlayerUtils.GetPlayerFromBeatSaver(currentPlayer.MapperId.ToString());
 
                     int timeout = verified ? 7 : 30;
                     if (previous != null && timeFromPrevious < 60 * 60 * 24 * timeout)

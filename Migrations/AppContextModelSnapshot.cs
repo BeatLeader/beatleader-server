@@ -550,7 +550,13 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int>("DifficultyId")
                         .HasColumnType("int");
 
+                    b.Property<int>("NegativeVotes")
+                        .HasColumnType("int");
+
                     b.Property<int>("Plays")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PositiveVotes")
                         .HasColumnType("int");
 
                     b.Property<int?>("QualificationId")
@@ -561,6 +567,12 @@ namespace BeatLeader_Server.Migrations
 
                     b.Property<string>("SongId")
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("StarVotes")
+                        .HasColumnType("int");
+
+                    b.Property<float>("VoteStars")
+                        .HasColumnType("real");
 
                     b.HasKey("Id");
 

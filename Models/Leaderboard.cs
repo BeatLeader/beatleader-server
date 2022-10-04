@@ -35,6 +35,11 @@
         public ICollection<EventRanking>? Events { get; set; }
         //public ICollection<AltBoard>? AltBoards { get; set; }
         public int Plays { get; set; }
+
+        public int PositiveVotes { get; set; }
+        public int StarVotes { get; set; }
+        public int NegativeVotes { get; set; }
+        public float VoteStars { get; set; }
     }
 
     public enum LeaderboardType

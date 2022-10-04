@@ -310,18 +310,6 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_readContext);
             sequence = sequence.Filter(_readContext, sortBy, order, search, type, mapType, allTypes, mytype, stars_from, stars_to, date_from, date_to, currentID);
 
-            bool showVoting = false;
-            bool showVotingDetails = false;
-            if (sortBy == "voting" || sortBy == "votecount" || sortBy == "voteratio") {
-                showVoting = true;
-                if (currentID != null)
-                {
-                    var currentPlayer = _readContext.Players.Find(currentID);
-
-                    showVotingDetails = currentPlayer != null && (currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("rankedteam"));
-                }
-            }
-
             var result = new ResponseWithMetadata<LeaderboardInfoResponse>()
             {
                 Metadata = new Metadata()
@@ -342,11 +330,7 @@ namespace BeatLeader_Server.Controllers
 
             bool showPlays = sortBy == "playcount";
 
-            if (showVoting) {
-                result.Data = sequence
-
-                .Include(lb => lb.Scores)
-                .ThenInclude(lb => lb.RankVoting)
+            result.Data = sequence
                 .Select(lb => new LeaderboardInfoResponse
                 {
                     Id = lb.Id,
@@ -354,6 +338,10 @@ namespace BeatLeader_Server.Controllers
                     Difficulty = lb.Difficulty,
                     Qualification = lb.Qualification,
                     Reweight = lb.Reweight,
+                    PositiveVotes = lb.PositiveVotes,
+                    NegativeVotes = lb.NegativeVotes,
+                    VoteStars = lb.VoteStars,
+                    StarVotes = lb.StarVotes,
                     MyScore = currentID == null ? null : lb.Scores.Where(s => s.PlayerId == currentID).Select(s => new ScoreResponseWithAcc
                     {
                         Id = s.Id,
@@ -381,59 +369,9 @@ namespace BeatLeader_Server.Controllers
                         Weight = s.Weight,
                         AccLeft = s.AccLeft,
                         AccRight = s.AccRight
-            }).FirstOrDefault(),
-                    Plays = showPlays ? lb.Scores.Where(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)).Count() : 0,
-                    Votes = lb.Scores
-                        .Where(s => (date_from == null || s.RankVoting.Timeset >= date_from) && (date_to == null || s.RankVoting.Timeset <= date_to) && s.RankVoting != null)
-                        .Select(s => new VotingResponse
-                        {
-                            Rankability = s.RankVoting.Rankability,
-                            Stars = showVotingDetails ? s.RankVoting.Stars : 0,
-                            Type = showVotingDetails ? s.RankVoting.Type : 0,
-                            Timeset = showVotingDetails ? s.RankVoting.Timeset : 0,
-                        })
-                });
-            } else {
-                result.Data = sequence
-                .Select(lb => new LeaderboardInfoResponse
-                {
-                    Id = lb.Id,
-                    Song = lb.Song,
-                    Difficulty = lb.Difficulty,
-                    Qualification = lb.Qualification,
-                    Reweight = lb.Reweight,
-                    MyScore = currentID == null ? null : lb.Scores.Where(s => s.PlayerId == currentID).Select(s => new ScoreResponseWithAcc
-                    {
-                        Id = s.Id,
-                        BaseScore = s.BaseScore,
-                        ModifiedScore = s.ModifiedScore,
-                        PlayerId = s.PlayerId,
-                        Accuracy = s.Accuracy,
-                        Pp = s.Pp,
-                        BonusPp = s.BonusPp,
-                        Rank = s.Rank,
-                        Replay = s.Replay,
-                        Modifiers = s.Modifiers,
-                        BadCuts = s.BadCuts,
-                        MissedNotes = s.MissedNotes,
-                        BombCuts = s.BombCuts,
-                        WallsHit = s.WallsHit,
-                        Pauses = s.Pauses,
-                        FullCombo = s.FullCombo,
-                        Hmd = s.Hmd,
-                        Timeset = s.Timeset,
-                        Timepost = s.Timepost,
-                        LeaderboardId = s.LeaderboardId,
-                        Platform = s.Platform,
-                        Weight = s.Weight,
-                        AccLeft = s.AccLeft,
-                        AccRight = s.AccRight,
-                        ReplaysWatched = s.ReplayWatched
                     }).FirstOrDefault(),
-                    Plays = showPlays ? lb.Scores.Where(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)).Count() : 0,
+                    Plays = showPlays ? lb.Scores.Where(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)).Count() : 0
                 });
-            }
-
             return result;
         }
 
