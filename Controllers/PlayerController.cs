@@ -1173,46 +1173,50 @@ namespace BeatLeader_Server.Controllers
                     Qualification = s.Qualification
                 }).ToList();
 
-            if (allScores.Count() == 0) return;
+            List<SubScore> rankedScores = new();
+            List<SubScore> unrankedScores = new();
 
-            var rankedScores = allScores.Where(s => s.Pp != 0 && !s.Qualification).ToList();
-            var unrankedScores = allScores.Where(s => s.Pp == 0 || s.Qualification).ToList();
+            if (allScores.Count() > 0) {
 
-            var lastScores = allScores.OrderByDescending(s => s.Timeset).Take(50).ToList();
-            Dictionary<string, int> platforms = new Dictionary<string, int>();
-            Dictionary<HMD, int> hmds = new Dictionary<HMD, int>();
-            foreach (var s in lastScores)
-            {
-                string? platform = s.Platform.Split(",").FirstOrDefault();
-                if (platform != null) {
-                    if (!platforms.ContainsKey(platform))
+                rankedScores = allScores.Where(s => s.Pp != 0 && !s.Qualification).ToList();
+                unrankedScores = allScores.Where(s => s.Pp == 0 || s.Qualification).ToList();
+
+                var lastScores = allScores.OrderByDescending(s => s.Timeset).Take(50).ToList();
+                Dictionary<string, int> platforms = new Dictionary<string, int>();
+                Dictionary<HMD, int> hmds = new Dictionary<HMD, int>();
+                foreach (var s in lastScores)
+                {
+                    string? platform = s.Platform.Split(",").FirstOrDefault();
+                    if (platform != null) {
+                        if (!platforms.ContainsKey(platform))
+                        {
+                            platforms[platform] = 1;
+                        }
+                        else
+                        {
+
+                            platforms[platform]++;
+                        }
+                    }
+
+                    if (!hmds.ContainsKey(s.Hmd))
                     {
-                        platforms[platform] = 1;
+                        hmds[s.Hmd] = 1;
                     }
                     else
                     {
 
-                        platforms[platform]++;
+                        hmds[s.Hmd]++;
                     }
                 }
 
-                if (!hmds.ContainsKey(s.Hmd))
-                {
-                    hmds[s.Hmd] = 1;
-                }
-                else
-                {
-
-                    hmds[s.Hmd]++;
-                }
+                player.ScoreStats.TopPlatform = platforms.OrderByDescending(s => s.Value).First().Key;
+                player.ScoreStats.TopHMD = hmds.OrderByDescending(s => s.Value).First().Key;
             }
 
             player.ScoreStats.TotalPlayCount = allScores.Count();
             player.ScoreStats.UnrankedPlayCount = unrankedScores.Count();
             player.ScoreStats.RankedPlayCount = rankedScores.Count();
-
-            player.ScoreStats.TopPlatform = platforms.OrderByDescending(s => s.Value).First().Key;
-            player.ScoreStats.TopHMD = hmds.OrderByDescending(s => s.Value).First().Key;
 
             if (player.ScoreStats.TotalPlayCount > 0)
             {
@@ -1223,6 +1227,13 @@ namespace BeatLeader_Server.Controllers
                 player.ScoreStats.MedianAccuracy = allScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
                 player.ScoreStats.AverageRank = allScores.Average(s => (float)s.Rank);
                 player.ScoreStats.LastScoreTime = allScores.OrderByDescending(s => s.Timeset).First().Timeset;
+            } else {
+                player.ScoreStats.TotalScore = 0;
+                player.ScoreStats.AverageAccuracy = 0;
+                player.ScoreStats.TopAccuracy = 0;
+                player.ScoreStats.MedianAccuracy = 0;
+                player.ScoreStats.AverageRank = 0;
+                player.ScoreStats.LastScoreTime = 0;
             }
 
             if (player.ScoreStats.UnrankedPlayCount > 0)
@@ -1233,6 +1244,12 @@ namespace BeatLeader_Server.Controllers
                 player.ScoreStats.TopUnrankedAccuracy = unrankedScores.Max(s => s.Accuracy);
                 player.ScoreStats.AverageUnrankedRank = unrankedScores.Average(s => (float)s.Rank);
                 player.ScoreStats.LastUnrankedScoreTime = unrankedScores.OrderByDescending(s => s.Timeset).First().Timeset;
+            } else {
+                player.ScoreStats.TotalUnrankedScore = 0;
+                player.ScoreStats.AverageUnrankedAccuracy = 0;
+                player.ScoreStats.TopUnrankedAccuracy = 0;
+                player.ScoreStats.AverageUnrankedRank = 0;
+                player.ScoreStats.LastUnrankedScoreTime = 0;
             }
 
             if (player.ScoreStats.RankedPlayCount > 0)
@@ -1269,6 +1286,22 @@ namespace BeatLeader_Server.Controllers
                 player.ScoreStats.SPPlays = rankedScores.Where(s => 0.85 < s.Accuracy && s.Accuracy < 0.9).Count();
                 player.ScoreStats.SPlays = rankedScores.Where(s => 0.8 < s.Accuracy && s.Accuracy < 0.85).Count();
                 player.ScoreStats.APlays = rankedScores.Where(s => s.Accuracy < 0.8).Count();
+            } else {
+                player.ScoreStats.TotalRankedScore = 0;
+                player.ScoreStats.AverageRankedAccuracy = 0;
+                player.ScoreStats.AverageWeightedRankedAccuracy = 0;
+                player.ScoreStats.MedianRankedAccuracy = 0;
+                player.ScoreStats.TopRankedAccuracy = 0;
+                player.ScoreStats.TopPp = 0;
+                player.ScoreStats.TopBonusPP = 0;
+                player.ScoreStats.AverageRankedRank = 0;
+                player.ScoreStats.LastRankedScoreTime = 0;
+
+                player.ScoreStats.SSPPlays = 0;
+                player.ScoreStats.SSPlays = 0;
+                player.ScoreStats.SPPlays = 0;
+                player.ScoreStats.SPlays = 0;
+                player.ScoreStats.APlays = 0;
             }
         }
 

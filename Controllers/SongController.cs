@@ -135,33 +135,33 @@ namespace BeatLeader_Server.Controllers
                 {
                     string songId = song.Id;
                     Song? existingSong = _context.Songs.Include(s => s.Difficulties).ThenInclude(d => d.ModifierValues).FirstOrDefault(i => i.Id == songId);
+                    List<Song> songsToMigrate = new List<Song>();
                     while (existingSong != null)
                     {
                         if (song.Hash.ToLower() == hash.ToLower())
                         {
-                            foreach (var item in existingSong.Difficulties)
-                            {
-                                if (item.Status == DifficultyStatus.nominated) {
-                                    await MigrateQualification(song, existingSong, item);
-                                }
-                                item.Status = DifficultyStatus.outdated;
-                                item.Stars = 0;
-                            }
+                            songsToMigrate.Add(existingSong);
                         }
                         songId += "x";
                         existingSong = _context.Songs.Include(s => s.Difficulties).FirstOrDefault(i => i.Id == songId);
                     }
                     song.Id = songId;
                     song.Hash = hash;
-                    if (song.Hash.ToLower() != hash.ToLower())
+                    _context.Songs.Add(song);
+                    await _context.SaveChangesAsync();
+
+                    foreach (var oldSong in songsToMigrate)
                     {
-                        foreach (var item in song.Difficulties)
+                        foreach (var item in oldSong.Difficulties)
                         {
+                            if (item.Status == DifficultyStatus.nominated)
+                            {
+                                await MigrateQualification(song, oldSong, item);
+                            }
                             item.Status = DifficultyStatus.outdated;
                             item.Stars = 0;
                         }
                     }
-                    _context.Songs.Add(song);
                     await _context.SaveChangesAsync();
                 }
             }

@@ -455,7 +455,7 @@ namespace BeatLeader_Server.Controllers
                         PlayerId = currentID,
                         Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
                         OldRankability = leaderboard.Difficulty.Status == DifficultyStatus.nominated || leaderboard.Difficulty.Status == DifficultyStatus.qualified ? 1.0f : 0,
-                        OldStars = (float)leaderboard.Difficulty.Stars,
+                        OldStars = leaderboard.Difficulty.Stars ?? 0,
                         OldType = (int)leaderboard.Difficulty.Type,
                         OldCriteriaMet = qualification.CriteriaMet,
                         OldCriteriaCommentary = qualification.CriteriaCommentary,
@@ -503,7 +503,7 @@ namespace BeatLeader_Server.Controllers
                     }
 
                     qualificationChange.NewRankability = leaderboard.Difficulty.Status == DifficultyStatus.nominated || leaderboard.Difficulty.Status == DifficultyStatus.qualified ? 1.0f : 0;
-                    qualificationChange.NewStars = (float)leaderboard.Difficulty.Stars;
+                    qualificationChange.NewStars = leaderboard.Difficulty.Stars ?? 0;
                     qualificationChange.NewType = (int)leaderboard.Difficulty.Type;
                     qualificationChange.NewCriteriaMet = qualification.CriteriaMet;
                     qualificationChange.NewCriteriaCommentary = qualification.CriteriaCommentary;
