@@ -35,6 +35,7 @@ namespace BeatLeader_Server.Models
         public int TotalPlayCount { get; set; }
 
         public float AverageRankedRank { get; set; }
+        public float AverageWeightedRankedRank { get; set; }
         public float AverageUnrankedRank { get; set; }
         public float AverageRank { get; set; }
 

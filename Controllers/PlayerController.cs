@@ -64,7 +64,9 @@ namespace BeatLeader_Server.Controllers
             {
                 oculusId = Int64.Parse(id);
             }
-            catch { }
+            catch { 
+                return BadRequest("Id should be a number");
+            }
             AccountLink? link = null;
             if (oculusId < 1000000000000000)
             {
@@ -855,6 +857,11 @@ namespace BeatLeader_Server.Controllers
                         case "weightedAcc":
                             request = request.Order(order, p => p.ScoreStats.AverageWeightedRankedAccuracy);
                             break;
+                        case "weightedRank":
+                            request = request
+                                .Where(p => p.ScoreStats.AverageRankedRank != 0)
+                                .Order(order == "desc" ? "asc" : "desc", p => p.ScoreStats.AverageWeightedRankedRank);
+                            break;
                         case "topAcc":
                             request = request.Order(order, p => p.ScoreStats.TopRankedAccuracy);
                             break;
@@ -1082,6 +1089,7 @@ namespace BeatLeader_Server.Controllers
                         statsHistory.TotalScore = GenerateListString(statsHistory.TotalScore, stats.TotalScore);
                         statsHistory.AverageRankedAccuracy = GenerateListString(statsHistory.AverageRankedAccuracy, stats.AverageRankedAccuracy);
                         statsHistory.AverageWeightedRankedAccuracy = GenerateListString(statsHistory.AverageWeightedRankedAccuracy, stats.AverageWeightedRankedAccuracy);
+                        statsHistory.AverageWeightedRankedRank = GenerateListString(statsHistory.AverageWeightedRankedRank, stats.AverageWeightedRankedRank);
                         statsHistory.TopAccuracy = GenerateListString(statsHistory.TopAccuracy, stats.TopAccuracy);
                         statsHistory.TopPp = GenerateListString(statsHistory.TopPp, stats.TopPp);
                         statsHistory.AverageAccuracy = GenerateListString(statsHistory.AverageAccuracy, stats.AverageAccuracy);
@@ -1274,6 +1282,24 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 player.ScoreStats.AverageWeightedRankedAccuracy = sum / weights;
+                var scoresForWeightedRank = rankedScores.OrderBy(s => s.Rank).Take(100).ToList();
+                sum = 0.0f;
+                weights = 0.0f;
+
+                for (int i = 0; i < 100; i++)
+                {
+                    float weight = MathF.Pow(1.05f, i);
+                    if (i < scoresForWeightedRank.Count)
+                    {
+                        sum += scoresForWeightedRank[i].Rank * weight;
+                    } else {
+                        sum += i * 10 * weight;
+                    }
+
+                    weights += weight;
+                }
+                player.ScoreStats.AverageWeightedRankedRank = sum / weights;
+
                 player.ScoreStats.MedianRankedAccuracy = rankedScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
                 player.ScoreStats.TopRankedAccuracy = rankedScores.Max(s => s.Accuracy);
                 player.ScoreStats.TopPp = rankedScores.Max(s => s.Pp);
@@ -1290,6 +1316,7 @@ namespace BeatLeader_Server.Controllers
                 player.ScoreStats.TotalRankedScore = 0;
                 player.ScoreStats.AverageRankedAccuracy = 0;
                 player.ScoreStats.AverageWeightedRankedAccuracy = 0;
+                player.ScoreStats.AverageWeightedRankedRank = 0;
                 player.ScoreStats.MedianRankedAccuracy = 0;
                 player.ScoreStats.TopRankedAccuracy = 0;
                 player.ScoreStats.TopPp = 0;

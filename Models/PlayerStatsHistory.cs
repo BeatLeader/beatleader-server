@@ -9,6 +9,7 @@
         public string TotalScore { get; set; } = "";
         public string AverageRankedAccuracy { get; set; } = "";
         public string AverageWeightedRankedAccuracy { get; set; } = "";
+        public string AverageWeightedRankedRank { get; set; } = "";
         public string TopAccuracy { get; set; } = "";
         public string TopPp { get; set; } = "";
         public string AverageAccuracy { get; set; } = "";

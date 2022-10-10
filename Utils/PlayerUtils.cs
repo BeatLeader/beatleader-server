@@ -45,6 +45,25 @@ namespace BeatLeader_Server.Utils
                 weights += weight;
             }
             player.ScoreStats.AverageWeightedRankedAccuracy = sum / weights;
+
+            var scoresForWeightedRank = ranked.OrderBy(s => s.Rank).Take(100).ToList();
+            sum = 0.0f;
+            weights = 0.0f;
+
+            for (int i = 0; i < 100; i++)
+            {
+                float weight = MathF.Pow(1.05f, i);
+                if (i < scoresForWeightedRank.Count)
+                {
+                    sum += scoresForWeightedRank[i].Rank * weight;
+                }
+                else {
+                    sum += i * 10 * weight;
+                }
+
+                weights += weight;
+            }
+            player.ScoreStats.AverageWeightedRankedRank = sum / weights;
         }
 
         public static void RecalculatePPAndRankFast(this AppContext context, Player player)
