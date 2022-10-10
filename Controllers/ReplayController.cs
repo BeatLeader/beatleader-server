@@ -581,7 +581,7 @@ namespace BeatLeader_Server.Controllers
                 _context.SaveChanges();
                 transaction3.Commit();
 
-                if (resultScore.Rank == 1)
+                if (leaderboard.Difficulty.Status == DifficultyStatus.ranked && resultScore.Rank == 1)
                 {
                     var dsClient = top1DSClient();
 
