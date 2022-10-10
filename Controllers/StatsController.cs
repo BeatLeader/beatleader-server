@@ -1,74 +1,158 @@
 ﻿using BeatLeader_Server.Extensions;
+using BeatLeader_Server.Migrations.ReadApp;
 using BeatLeader_Server.Models;
 using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using static BeatLeader_Server.Controllers.RankController;
+using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
 {
     public class StatsController : Controller
     {
         private readonly AppContext _context;
+        private readonly ReadAppContext _readContext;
 
         private readonly IServerTiming _serverTiming;
         private readonly IConfiguration _configuration;
 
         public StatsController(
             AppContext context,
+            ReadAppContext readContext,
             IWebHostEnvironment env,
             IServerTiming serverTiming,
             IConfiguration configuration)
         {
             _context = context;
+            _readContext = readContext;
 
             _serverTiming = serverTiming;
             _configuration = configuration;
         }
 
-        [HttpPost("~/played/{hash}/{diff}/{mode}/")]
-        [Authorize]
-        public async Task<ActionResult> Played(
-            string hash,
-            string diff,
-            string mode,
-            [FromQuery] float time = 0,
-            [FromQuery] int score = 0,
-            [FromQuery] EndType type = 0)
+        [HttpGet("~/player/{id}/scoresstats")]
+        public async Task<ActionResult<ResponseWithMetadata<PlayerLeaderboardStats>>> GetScoresStats(
+            string id,
+            [FromQuery] string sortBy = "date",
+            [FromQuery] string order = "desc",
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 8,
+            [FromQuery] string? search = null,
+            [FromQuery] string? diff = null,
+            [FromQuery] string? type = null,
+            [FromQuery] float? stars_from = null,
+            [FromQuery] float? stars_to = null,
+            [FromQuery] int? eventId = null)
         {
-            string? currentID = HttpContext.CurrentUserID(_context);
-            if (currentID == null)
+            IQueryable<PlayerLeaderboardStats> sequence;
+
+            using (_serverTiming.TimeAction("sequence"))
             {
-                return Unauthorized();
+                sequence = _readContext.PlayerLeaderboardStats.Include(pl => pl.Score).Where(t => t.PlayerId == id);
+                switch (sortBy)
+                {
+                    case "date":
+                        sequence = sequence.Order(order, t => t.Timeset);
+                        break;
+                    //case "pp":
+                    //    sequence = sequence.Order(order, t => t.Pp);
+                    //    break;
+                    //case "acc":
+                    //    sequence = sequence.Order(order, t => t.Accuracy);
+                    //    break;
+                    //case "pauses":
+                    //    sequence = sequence.Order(order, t => t.Pauses);
+                    //    break;
+                    //case "rank":
+                    //    sequence = sequence.Order(order, t => t.Rank);
+                    //    break;
+                    //case "stars":
+                    //    sequence = sequence
+                    //                .Include(lb => lb.Leaderboard)
+                    //                .ThenInclude(lb => lb.Difficulty)
+                    //                .Order(order, s => s.Leaderboard.Difficulty.Stars)
+                    //                .Where(s => s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked);
+                        break;
+                    default:
+                        break;
+                }
+                //if (search != null)
+                //{
+                //    string lowSearch = search.ToLower();
+                //    sequence = sequence
+                //        .Include(lb => lb.Leaderboard)
+                //        .ThenInclude(lb => lb.Song)
+                //        .Where(p => p.Leaderboard.Song.Author.ToLower().Contains(lowSearch) ||
+                //                    p.Leaderboard.Song.Mapper.ToLower().Contains(lowSearch) ||
+                //                    p.Leaderboard.Song.Name.ToLower().Contains(lowSearch));
+                //}
+                //if (eventId != null)
+                //{
+                //    var leaderboardIds = _context.EventRankings.Where(e => e.Id == eventId).Include(e => e.Leaderboards).Select(e => e.Leaderboards.Select(lb => lb.Id)).FirstOrDefault();
+                //    if (leaderboardIds?.Count() != 0)
+                //    {
+                //        sequence = sequence.Where(s => leaderboardIds.Contains(s.LeaderboardId));
+                //    }
+                //}
+                //if (diff != null)
+                //{
+                //    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.DifficultyName.ToLower().Contains(diff.ToLower()));
+                //}
+                //if (type != null)
+                //{
+                //    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked : p.Leaderboard.Difficulty.Status != DifficultyStatus.ranked);
+                //}
+                //if (stars_from != null)
+                //{
+                //    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.Stars >= stars_from);
+                //}
+                //if (stars_to != null)
+                //{
+                //    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.Stars <= stars_to);
+                //}
             }
 
-            var leaderboard = _context
-                .Leaderboards
-                .Include(s => s.PlayerStats)
-                .FirstOrDefault(l => 
-                    l.Song.Hash == hash && 
-                    l.Difficulty.DifficultyName == diff && 
-                    l.Difficulty.ModeName == mode);
-
-            if (leaderboard == null) {
-                return NotFound();
+            ResponseWithMetadata<PlayerLeaderboardStats> result;
+            using (_serverTiming.TimeAction("db"))
+            {
+                result = new ResponseWithMetadata<PlayerLeaderboardStats>()
+                {
+                    Metadata = new Metadata()
+                    {
+                        Page = page,
+                        ItemsPerPage = count,
+                        Total = sequence.Count()
+                    },
+                    Data = sequence
+                            .Skip((page - 1) * count)
+                            .Take(count)
+                            //.Include(lb => lb.Leaderboard)
+                            //    .ThenInclude(lb => lb.Song)
+                            //    .ThenInclude(lb => lb.Difficulties)
+                            //.Include(lb => lb.Leaderboard)
+                            //    .ThenInclude(lb => lb.Difficulty)
+                            //    .ThenInclude(d => d.ModifierValues)
+                            //.Include(sc => sc.ScoreImprovement)
+                            //.Select(ScoreWithMyScore)
+                            .ToList()
+                };
             }
 
-            if (leaderboard.PlayerStats == null) {
-                leaderboard.PlayerStats = new List<PlayerLeaderboardStats>();
-            }
+            //string? currentID = HttpContext.CurrentUserID(_readContext);
+            //if (currentID != null && currentID != id)
+            //{
+            //    var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
 
-            leaderboard.PlayerStats.Add(new PlayerLeaderboardStats {
-                Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
-                Time = time,
-                Score = score,
-                Type = type,
-                PlayerId = currentID
-            });
-            _context.SaveChanges();
+            //    var myScores = _readContext.Scores.Where(s => s.PlayerId == currentID && leaderboards.Contains(s.LeaderboardId)).Select(RemoveLeaderboard).ToList();
+            //    foreach (var score in result.Data)
+            //    {
+            //        score.MyScore = myScores.FirstOrDefault(s => s.LeaderboardId == score.LeaderboardId);
+            //    }
+            //}
 
-            return Ok();
+            return result;
         }
 
         [HttpGet("~/watched/{scoreId}/")]

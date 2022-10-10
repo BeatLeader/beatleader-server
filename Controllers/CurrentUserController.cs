@@ -293,7 +293,8 @@ namespace BeatLeader_Server.Controllers
                 PlayerChange newChange = new PlayerChange {
                     OldName = player.Name,
                     OldCountry = player.Country,
-                    Timestamp = timestamp
+                    Timestamp = timestamp,
+                    Changer = adminChange ? userId : null,
                 };
 
                 if (name != null)
@@ -335,7 +336,9 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
-                player.Changes.Add(newChange);
+                if (player.Country != newChange.OldCountry || player.Name != newChange.OldName) {
+                    player.Changes.Add(newChange);
+                }
             }
 
             string? fileName = null;

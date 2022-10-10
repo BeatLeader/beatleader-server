@@ -742,7 +742,7 @@ namespace BeatLeader_Server.Controllers
             var stats = new PlayerLeaderboardStats
             {
                 Timeset = timeset,
-                Time = time,
+                Time = time > 0 ? time : replay.frames.Last().time,
                 Score = replay.info.score,
                 Type = type,
                 PlayerId = replay.info.playerID,
@@ -787,7 +787,8 @@ namespace BeatLeader_Server.Controllers
                 Score = oldScore.BaseScore,
                 Type = EndType.Clear,
                 PlayerId = oldScore.PlayerId,
-                Replay = ""
+                Replay = "",
+                OldScore = oldScore
             };
 
             try {

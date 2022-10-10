@@ -19,6 +19,7 @@
         public int Score { get; set; }
 
         public string Replay { get; set; }
+        public Score? OldScore { get; set; }
     }
 
     public class Leaderboard

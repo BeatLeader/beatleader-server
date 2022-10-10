@@ -888,6 +888,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
 
+                    b.Property<string>("Changer")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("NewCountry")
                         .HasColumnType("nvarchar(max)");
 
@@ -934,6 +937,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.Property<string>("LeaderboardId")
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<int?>("OldScoreId")
+                        .HasColumnType("int");
+
                     b.Property<string>("PlayerId")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -957,6 +963,8 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.HasKey("Id");
 
                     b.HasIndex("LeaderboardId");
+
+                    b.HasIndex("OldScoreId");
 
                     b.ToTable("PlayerLeaderboardStats");
                 });
@@ -2229,6 +2237,12 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.HasOne("BeatLeader_Server.Models.Leaderboard", null)
                         .WithMany("PlayerStats")
                         .HasForeignKey("LeaderboardId");
+
+                    b.HasOne("BeatLeader_Server.Models.Score", "OldScore")
+                        .WithMany()
+                        .HasForeignKey("OldScoreId");
+
+                    b.Navigation("OldScore");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.PlayerSocial", b =>

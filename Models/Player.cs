@@ -10,6 +10,8 @@
 
         public string? OldCountry { get; set; }
         public string? NewCountry { get; set; }
+
+        public string? Changer { get; set; }
     }
 
     public class Player

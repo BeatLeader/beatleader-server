@@ -37,6 +37,7 @@ namespace BeatLeader_Server
         public DbSet<TwitterLink> TwitterLinks { get; set; }
         public DbSet<YouTubeLink> YouTubeLinks { get; set; }
         public DbSet<BeatSaverLink> BeatSaverLinks { get; set; }
+        public DbSet<PlayerLeaderboardStats> PlayerLeaderboardStats { get; set; }
 
         public DbSet<ReservedClanTag> ReservedTags { get; set; }
         public DbSet<Ban> Bans { get; set; }
@@ -100,6 +101,7 @@ namespace BeatLeader_Server
         public DbSet<TwitterLink> TwitterLinks { get; set; }
         public DbSet<YouTubeLink> YouTubeLinks { get; set; }
         public DbSet<BeatSaverLink> BeatSaverLinks { get; set; }
+        public DbSet<PlayerLeaderboardStats> PlayerLeaderboardStats { get; set; }
 
         public DbSet<ReservedClanTag> ReservedTags { get; set; }
         public DbSet<Ban> Bans { get; set; }
