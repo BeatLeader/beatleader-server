@@ -13,6 +13,7 @@ namespace BeatLeader_Server {
     public class AzureStorageConfig {
         public string AccountName { get; set; }
         public string ReplaysContainerName { get; set; }
+        public string OtherReplaysContainerName { get; set; }
         public string AssetsContainerName { get; set; }
         public string PlaylistContainerName { get; set; }
         public string ScoreStatsContainerName { get; set; }

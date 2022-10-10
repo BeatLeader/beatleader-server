@@ -264,6 +264,7 @@ namespace BeatLeader_Server.Controllers
                     .Include(lb => lb.Scores.Where(s => !s.Banned))
                     .ThenInclude(s => s.RankVoting)
                     .ThenInclude(v => v.Feedbacks)
+                    .Include(lb => lb.PlayerStats)
                     .FirstOrDefault();
 
             if (leaderboard == null) {

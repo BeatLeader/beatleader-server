@@ -17,7 +17,8 @@ namespace BeatLeader_Server.Controllers
 {
     public class ReplayController : Controller
     {
-        private readonly BlobContainerClient _containerClient;
+        private readonly BlobContainerClient _replaysClient;
+        private readonly BlobContainerClient _otherReplaysClient;
         private readonly BlobContainerClient _scoreStatsClient;
 
         AppContext _context;
@@ -28,6 +29,13 @@ namespace BeatLeader_Server.Controllers
         IConfiguration _configuration;
         private readonly IServerTiming _serverTiming;
 
+        private static BlobContainerClient ContainerWithName(IOptions<AzureStorageConfig> config, string name) {
+            string containerEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
+                                                        config.Value.AccountName,
+                                                       name);
+
+            return new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
+        }
 
         public ReplayController(
             AppContext context,
@@ -50,30 +58,17 @@ namespace BeatLeader_Server.Controllers
 
             if (env.IsDevelopment())
 			{
-				_containerClient = new BlobContainerClient(config.Value.AccountName, config.Value.ReplaysContainerName);
-                _containerClient.SetPublicContainerPermissions();
+				_replaysClient = new BlobContainerClient(config.Value.AccountName, config.Value.ReplaysContainerName);
+                _replaysClient.SetPublicContainerPermissions();
+                _otherReplaysClient = new BlobContainerClient(config.Value.AccountName, config.Value.OtherReplaysContainerName);
+
+                _scoreStatsClient = new BlobContainerClient(config.Value.AccountName, config.Value.ScoreStatsContainerName);
             }
 			else
 			{
-				string containerEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
-														config.Value.AccountName,
-													   config.Value.ReplaysContainerName);
-
-				_containerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
-			}
-
-            if (env.IsDevelopment())
-            {
-                _scoreStatsClient = new BlobContainerClient(config.Value.AccountName, config.Value.ScoreStatsContainerName);
-            }
-            else
-            {
-
-                string statsEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
-                                                        config.Value.AccountName,
-                                                       config.Value.ScoreStatsContainerName);
-
-                _scoreStatsClient = new BlobContainerClient(new Uri(statsEndpoint), new DefaultAzureCredential());
+				_replaysClient = ContainerWithName(config, config.Value.ReplaysContainerName);
+                _otherReplaysClient = ContainerWithName(config, config.Value.OtherReplaysContainerName);
+                _scoreStatsClient = ContainerWithName(config, config.Value.ScoreStatsContainerName);
             }
         }
 
@@ -97,18 +92,20 @@ namespace BeatLeader_Server.Controllers
 
         [HttpPut("~/replayoculus"), DisableRequestSizeLimit]
         [Authorize]
-        public async Task<ActionResult<ScoreResponse>> PostOculusReplay()
+        public async Task<ActionResult<ScoreResponse>> PostOculusReplay(
+            [FromQuery] float time = 0,
+            [FromQuery] EndType type = 0)
         {
             string? userId = HttpContext.CurrentUserID(_context);
             if (userId == null)
             {
                 return Unauthorized("User is not authorized");
             }
-            return await PostReplayFromBody(userId);
+            return await PostReplayFromBody(userId, time, type);
         }
 
         [NonAction]
-        public async Task<ActionResult<ScoreResponse>> PostReplayFromBody(string authenticatedPlayerID)
+        public async Task<ActionResult<ScoreResponse>> PostReplayFromBody(string authenticatedPlayerID, float time = 0, EndType type = 0)
         {
             Replay? replay;
             ReplayOffsets? offsets;
@@ -133,13 +130,13 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            return await PostReplay(authenticatedPlayerID, replay, offsets, replayData, HttpContext);
+            return await PostReplay(authenticatedPlayerID, replay, offsets, replayData, HttpContext, time, type);
         }
 
         [NonAction]
         public async Task<ActionResult<ScoreResponse>> PostReplayFromCDN(string authenticatedPlayerID, string name, HttpContext context)
         {
-            BlobClient blobClient = _containerClient.GetBlobClient(name);
+            BlobClient blobClient = _replaysClient.GetBlobClient(name);
             MemoryStream ms = new MemoryStream(5);
             await blobClient.DownloadToAsync(ms);
             Replay? replay;
@@ -164,10 +161,12 @@ namespace BeatLeader_Server.Controllers
             Replay? replay,
             ReplayOffsets? offsets,
             byte[] replayData, 
-            HttpContext context)
+            HttpContext context,
+            float time = 0, 
+            EndType type = 0)
         {
             if (replay == null) return BadRequest("It's not a replay or it has old version.");
-            if (replay.notes.Count == 0 || replay.frames.Count == 0) return BadRequest("Replay is broken, update your mode please.");
+            if (replay.notes.Count == 0 || (replay.frames.Count == 0 && type == EndType.Unknown)) return BadRequest("Replay is broken, update your mode please.");
             if (replay.info.hash.Length < 40) return BadRequest("Hash is to short");
 
             var version = replay.info.version.Split(".");
@@ -178,6 +177,12 @@ namespace BeatLeader_Server.Controllers
 
             replay.info.playerID = authenticatedPlayerID;
             replay.info.hash = replay.info.hash.Substring(0, 40);
+
+            if (type != EndType.Unknown && type != EndType.Clear) {
+
+                await CollectStats(replay, replayData, null, true, time, type);
+                return Ok();
+            }
 
             var transaction = _context.Database.BeginTransaction();
 
@@ -197,8 +202,9 @@ namespace BeatLeader_Server.Controllers
             using (_serverTiming.TimeAction("currS"))
             {
                 currentScore = leaderboard.Scores.FirstOrDefault(el => el.PlayerId == replay.info.playerID);
-                if (currentScore != null && (currentScore.Pp > resultScore.Pp || (currentScore.Pp == 0 && currentScore.ModifiedScore > resultScore.ModifiedScore)))
+                if (currentScore != null && (currentScore.Pp >= resultScore.Pp || (currentScore.Pp == 0 && currentScore.ModifiedScore >= resultScore.ModifiedScore)))
                 {
+                    await CollectStats(replay, replayData, null, true, time, type);
                     transaction.Commit();
                     return BadRequest("Score is lower than existing one");
                 }
@@ -495,6 +501,86 @@ namespace BeatLeader_Server.Controllers
                 improvement.TotalPp = player.Pp - oldPp;
                 improvement.TotalRank = player.Rank - oldRank;
 
+                if (player.Rank < player.ScoreStats.PeakRank)
+                {
+                    player.ScoreStats.PeakRank = player.Rank;
+                }
+            }
+            _context.RecalculateEventsPP(player, leaderboard);
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                ex.Entries.Single().Reload();
+                await _context.SaveChangesAsync();
+            }
+
+            transaction2.Commit();
+
+            var transaction3 = _context.Database.BeginTransaction();
+            try
+            {
+                if (currentScore != null) {
+                    await CollectStatsFromOldScore(currentScore, leaderboard);
+                }
+
+                await _replaysClient.CreateIfNotExistsAsync();
+                string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
+                resultScore.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/replays/" : "https://cdn.beatleader.xyz/replays/") + fileName;
+                string tempName = fileName + "temp";
+                string replayLink = resultScore.Replay;
+                resultScore.Replay += "temp";
+                await _replaysClient.DeleteBlobIfExistsAsync(tempName);
+                await _replaysClient.UploadBlobAsync(tempName, new BinaryData(replayData));
+                (ScoreStatistic? statistic, string? error) = _scoreController.CalculateStatisticReplay(replay, resultScore);
+                if (statistic == null)
+                {
+                    SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Could not recalculate score from replay. Error: " + error);
+                    return;
+                }
+                double scoreRatio = (double)resultScore.BaseScore / (double)statistic.winTracker.totalScore;
+
+                if (scoreRatio > 1.02 || scoreRatio < 0.98)
+                {
+                    SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Calculated on server score is too different: " + statistic.winTracker.totalScore + ". You probably need to update the mod.");
+
+                    return;
+                }
+
+                if (leaderboard.Difficulty.Notes > 30)
+                {
+                    var sameAccScore = leaderboard.Scores.FirstOrDefault(s => s.PlayerId != resultScore.PlayerId && s.AccLeft != 0 && s.AccRight != 0
+                                                            && s.AccLeft == statistic.accuracyTracker.accLeft
+                                                            && s.AccRight == statistic.accuracyTracker.accRight);
+                    if (sameAccScore != null)
+                    {
+                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Acc is suspiciously exact same as: " + sameAccScore.PlayerId + "'s score");
+
+                        return;
+                    }
+                }
+
+                await _replaysClient.GetBlobClient(fileName).StartCopyFromUri(_replaysClient.GetBlobClient(tempName).Uri).WaitForCompletionAsync();
+                await _replaysClient.DeleteBlobIfExistsAsync(tempName);
+
+                resultScore.Replay = replayLink;
+                resultScore.AccLeft = statistic.accuracyTracker.accLeft;
+                resultScore.AccRight = statistic.accuracyTracker.accRight;
+
+                if (currentScore != null)
+                {
+                    improvement.AccLeft = resultScore.AccLeft - currentScore.AccLeft;
+                    improvement.AccRight = resultScore.AccRight - currentScore.AccRight;
+                }
+
+                resultScore.ScoreImprovement = improvement;
+
+                _context.SaveChanges();
+                transaction3.Commit();
+
                 if (resultScore.Rank == 1)
                 {
                     var dsClient = top1DSClient();
@@ -528,82 +614,6 @@ namespace BeatLeader_Server.Controllers
                             });
                     }
                 }
-
-                if (player.Rank < player.ScoreStats.PeakRank)
-                {
-                    player.ScoreStats.PeakRank = player.Rank;
-                }
-            }
-            _context.RecalculateEventsPP(player, leaderboard);
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException ex)
-            {
-                ex.Entries.Single().Reload();
-                await _context.SaveChangesAsync();
-            }
-
-            transaction2.Commit();
-
-            var transaction3 = _context.Database.BeginTransaction();
-            try
-            {
-                await _containerClient.CreateIfNotExistsAsync();
-                string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
-                resultScore.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/replays/" : "https://cdn.beatleader.xyz/replays/") + fileName;
-                string tempName = fileName + "temp";
-                string replayLink = resultScore.Replay;
-                resultScore.Replay += "temp";
-                await _containerClient.DeleteBlobIfExistsAsync(tempName);
-                await _containerClient.UploadBlobAsync(tempName, new BinaryData(replayData));
-                (ScoreStatistic? statistic, string? error) = _scoreController.CalculateStatisticReplay(replay, resultScore);
-                if (statistic == null)
-                {
-                    SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Could not recalculate score from replay. Error: " + error);
-                    return;
-                }
-                double scoreRatio = (double)resultScore.BaseScore / (double)statistic.winTracker.totalScore;
-
-                if (scoreRatio > 1.02 || scoreRatio < 0.98)
-                {
-                    SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Calculated on server score is too different: " + statistic.winTracker.totalScore + ". You probably need to update the mod.");
-
-                    return;
-                }
-
-                if (leaderboard.Difficulty.Notes > 30)
-                {
-                    var sameAccScore = leaderboard.Scores.FirstOrDefault(s => s.PlayerId != resultScore.PlayerId && s.AccLeft != 0 && s.AccRight != 0
-                                                            && s.AccLeft == statistic.accuracyTracker.accLeft
-                                                            && s.AccRight == statistic.accuracyTracker.accRight);
-                    if (sameAccScore != null)
-                    {
-                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Acc is suspiciously exact same as: " + sameAccScore.PlayerId + "'s score");
-
-                        return;
-                    }
-                }
-
-                await _containerClient.GetBlobClient(fileName).StartCopyFromUri(_containerClient.GetBlobClient(tempName).Uri).WaitForCompletionAsync();
-                await _containerClient.DeleteBlobIfExistsAsync(tempName);
-
-                resultScore.Replay = replayLink;
-                resultScore.AccLeft = statistic.accuracyTracker.accLeft;
-                resultScore.AccRight = statistic.accuracyTracker.accRight;
-
-                if (currentScore != null)
-                {
-                    improvement.AccLeft = resultScore.AccLeft - currentScore.AccLeft;
-                    improvement.AccRight = resultScore.AccRight - currentScore.AccRight;
-                }
-
-                resultScore.ScoreImprovement = improvement;
-
-                _context.SaveChanges();
-                transaction3.Commit();
             }
             catch (Exception e)
             {
@@ -704,6 +714,93 @@ namespace BeatLeader_Server.Controllers
                     player.ScoreStats.AverageRankedAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, previousScore.Accuracy);
                 }
             }
+        }
+
+        [NonAction]
+        private async Task CollectStats(
+            Replay replay, 
+            byte[] replayData, 
+            Leaderboard? withLeaderboard, 
+            bool saveReplay,
+            float time = 0, 
+            EndType type = 0) {
+
+            var leaderboard = withLeaderboard ?? (await _leaderboardController.GetByHash(replay.info.hash, replay.info.difficulty, replay.info.mode)).Value;
+            if (leaderboard == null) return;
+
+            if (leaderboard.PlayerStats == null)
+            {
+                leaderboard.PlayerStats = new List<PlayerLeaderboardStats>();
+            }
+
+            if (leaderboard.PlayerStats.Count > 0 && 
+                leaderboard.PlayerStats.FirstOrDefault(s => s.PlayerId == replay.info.playerID && s.Score != replay.info.score) != null) {
+                return;
+            }
+
+            int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+            var stats = new PlayerLeaderboardStats
+            {
+                Timeset = timeset,
+                Time = time,
+                Score = replay.info.score,
+                Type = type,
+                PlayerId = replay.info.playerID,
+                Replay = ""
+            };
+
+            try {
+                if (saveReplay) {
+                    await _otherReplaysClient.CreateIfNotExistsAsync();
+                    string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + "-" + timeset + ".bsor";
+                    stats.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/otherreplays/" : "https://cdn.beatleader.xyz/otherreplays/") + fileName;
+                    await _otherReplaysClient.DeleteBlobIfExistsAsync(fileName);
+                    await _otherReplaysClient.UploadBlobAsync(fileName, new BinaryData(replayData));
+                }
+
+                leaderboard.PlayerStats.Add(stats);
+                _context.SaveChanges();
+            } catch { }
+        }
+
+        [NonAction]
+        private async Task CollectStatsFromOldScore(
+            Score oldScore,
+            Leaderboard leaderboard)
+        {
+            if (leaderboard.PlayerStats == null)
+            {
+                leaderboard.PlayerStats = new List<PlayerLeaderboardStats>();
+            }
+
+            if (leaderboard.PlayerStats.Count > 0 &&
+            leaderboard.PlayerStats.FirstOrDefault(s => s.PlayerId == oldScore.PlayerId && s.Score != oldScore.BaseScore) != null)
+            {
+                return;
+            }
+
+            int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+            var stats = new PlayerLeaderboardStats
+            {
+                Timeset = timeset,
+                Time = 0,
+                Score = oldScore.BaseScore,
+                Type = EndType.Clear,
+                PlayerId = oldScore.PlayerId,
+                Replay = ""
+            };
+
+            try {
+                if (oldScore.Replay.Length > 0)
+                {
+                    string oldFileName = oldScore.Replay.Split("/").Last();
+                    string newFileName = oldFileName.Split(".").First() + "-" + timeset + ".bsor";
+                    await _otherReplaysClient.GetBlobClient(newFileName).StartCopyFromUri(_replaysClient.GetBlobClient(oldFileName).Uri).WaitForCompletionAsync();
+                    stats.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/otherreplays/" : "https://cdn.beatleader.xyz/otherreplays/") + newFileName;
+                }
+
+                leaderboard.PlayerStats.Add(stats);
+            } catch { }
         }
 
         [NonAction]

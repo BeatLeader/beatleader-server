@@ -91,7 +91,7 @@ namespace BeatLeader_Server.Controllers
             string diff,
             string mode,
             [FromQuery] float rankability,
-            [FromQuery] float stars = 0,
+            [FromQuery] string stars = "",
             [FromQuery] int type = 0)
         {
 
@@ -99,7 +99,21 @@ namespace BeatLeader_Server.Controllers
             if (currentID == null) {
                 return VoteStatus.CantVote;
             }
-            return await VotePrivate(hash, diff, mode, currentID, rankability, stars, type);
+
+            float fixedStars = 0;
+            if (stars.Length > 0)
+            {
+                var parts = stars.Split(",");
+                if (parts.Length != 2)
+                {
+                    parts = stars.Split(".");
+                }
+                if (parts.Length == 2)
+                {
+                    fixedStars = float.Parse(parts[0]) + float.Parse(parts[1]) / MathF.Pow(10, parts[1].Length);
+                }
+            }
+            return await VotePrivate(hash, diff, mode, currentID, rankability, fixedStars, type);
         }
 
         [HttpPost("~/vote/steam/{hash}/{diff}/{mode}/")]

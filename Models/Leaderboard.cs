@@ -17,6 +17,8 @@
         public int Timeset { get; set; }
         public float Time { get; set; }
         public int Score { get; set; }
+
+        public string Replay { get; set; }
     }
 
     public class Leaderboard
