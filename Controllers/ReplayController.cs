@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
+using System.Threading;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -202,7 +203,7 @@ namespace BeatLeader_Server.Controllers
             using (_serverTiming.TimeAction("currS"))
             {
                 currentScore = leaderboard.Scores.FirstOrDefault(el => el.PlayerId == replay.info.playerID);
-                if (currentScore != null && (currentScore.Pp >= resultScore.Pp || (currentScore.Pp == 0 && currentScore.ModifiedScore >= resultScore.ModifiedScore)))
+                if (currentScore != null && ((currentScore.Pp != 0 && currentScore.Pp >= resultScore.Pp) || (currentScore.Pp == 0 && currentScore.ModifiedScore >= resultScore.ModifiedScore)))
                 {
                     await CollectStats(replay, replayData, null, true, time, type);
                     transaction.Commit();
@@ -239,6 +240,7 @@ namespace BeatLeader_Server.Controllers
 
             ScoreImprovement improvement = new ScoreImprovement();
             List<Score> rankedScores;
+            PlayerLeaderboardStats? stats = null;
 
             using (_serverTiming.TimeAction("score"))
             {
@@ -252,6 +254,8 @@ namespace BeatLeader_Server.Controllers
 
                 if (currentScore != null)
                 {
+                    stats = CollectStatsFromOldScore(currentScore, leaderboard);
+
                     improvement.Timeset = currentScore.Timeset;
                     improvement.Score = resultScore.ModifiedScore - currentScore.ModifiedScore;
                     improvement.Accuracy = resultScore.Accuracy - currentScore.Accuracy;
@@ -447,7 +451,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             context.Response.OnCompleted(async () => {
-                await PostUploadAction(replay, replayData, leaderboard, player, improvement, resultScore, currentScore, rankedScores, oldPp, oldRank, transaction2);
+                await PostUploadAction(replay, replayData, leaderboard, player, improvement, resultScore, currentScore, rankedScores, oldPp, oldRank, stats, transaction2);
             });
 
             return RemoveLeaderboard(resultScore, resultScore.Rank);
@@ -465,6 +469,7 @@ namespace BeatLeader_Server.Controllers
             List<Score> rankedScores,
             float oldPp,
             int oldRank,
+            PlayerLeaderboardStats? stats,
             IDbContextTransaction transaction2) {
             if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
             {
@@ -523,8 +528,8 @@ namespace BeatLeader_Server.Controllers
             var transaction3 = _context.Database.BeginTransaction();
             try
             {
-                if (currentScore != null) {
-                    await CollectStatsFromOldScore(currentScore, leaderboard);
+                if (currentScore != null && stats != null) {
+                    await MigrateOldReplay(currentScore, stats);
                 }
 
                 await _replaysClient.CreateIfNotExistsAsync();
@@ -574,6 +579,13 @@ namespace BeatLeader_Server.Controllers
                 {
                     improvement.AccLeft = resultScore.AccLeft - currentScore.AccLeft;
                     improvement.AccRight = resultScore.AccRight - currentScore.AccRight;
+                }
+
+                if (resultScore.Hmd == HMD.unknown && _context.Headsets.FirstOrDefault(h => h.Name == replay.info.hmd) == null) {
+                    _context.Headsets.Add(new Headset {
+                        Name = replay.info.hmd,
+                        Player = replay.info.playerID,
+                    });
                 }
 
                 resultScore.ScoreImprovement = improvement;
@@ -764,7 +776,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        private async Task CollectStatsFromOldScore(
+        private PlayerLeaderboardStats? CollectStatsFromOldScore(
             Score oldScore,
             Leaderboard leaderboard)
         {
@@ -776,7 +788,7 @@ namespace BeatLeader_Server.Controllers
             if (leaderboard.PlayerStats.Count > 0 &&
             leaderboard.PlayerStats.FirstOrDefault(s => s.PlayerId == oldScore.PlayerId && s.Score != oldScore.BaseScore) != null)
             {
-                return;
+                return null;
             }
 
             int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
@@ -791,17 +803,27 @@ namespace BeatLeader_Server.Controllers
                 OldScore = oldScore
             };
 
-            try {
+            leaderboard.PlayerStats.Add(stats);
+            return stats;
+        }
+
+        [NonAction]
+        private async Task MigrateOldReplay(
+            Score oldScore,
+            PlayerLeaderboardStats stats)
+        {
+            try
+            {
                 if (oldScore.Replay.Length > 0)
                 {
+                    int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                     string oldFileName = oldScore.Replay.Split("/").Last();
                     string newFileName = oldFileName.Split(".").First() + "-" + timeset + ".bsor";
                     await _otherReplaysClient.GetBlobClient(newFileName).StartCopyFromUri(_replaysClient.GetBlobClient(oldFileName).Uri).WaitForCompletionAsync();
                     stats.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/otherreplays/" : "https://cdn.beatleader.xyz/otherreplays/") + newFileName;
                 }
-
-                leaderboard.PlayerStats.Add(stats);
-            } catch { }
+            }
+            catch { }
         }
 
         [NonAction]

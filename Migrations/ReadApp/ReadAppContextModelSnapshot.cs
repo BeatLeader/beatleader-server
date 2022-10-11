@@ -542,6 +542,27 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.ToTable("FailedScores");
                 });
 
+            modelBuilder.Entity("BeatLeader_Server.Models.Headset", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Player")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Headsets");
+                });
+
             modelBuilder.Entity("BeatLeader_Server.Models.Leaderboard", b =>
                 {
                     b.Property<string>("Id")
@@ -2234,13 +2255,15 @@ namespace BeatLeader_Server.Migrations.ReadApp
 
             modelBuilder.Entity("BeatLeader_Server.Models.PlayerLeaderboardStats", b =>
                 {
-                    b.HasOne("BeatLeader_Server.Models.Leaderboard", null)
+                    b.HasOne("BeatLeader_Server.Models.Leaderboard", "Leaderboard")
                         .WithMany("PlayerStats")
                         .HasForeignKey("LeaderboardId");
 
                     b.HasOne("BeatLeader_Server.Models.Score", "OldScore")
                         .WithMany()
                         .HasForeignKey("OldScoreId");
+
+                    b.Navigation("Leaderboard");
 
                     b.Navigation("OldScore");
                 });

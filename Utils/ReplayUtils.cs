@@ -154,10 +154,9 @@ namespace BeatLeader_Server.Utils
         private static HMD HMDFromName(string hmdName) {
             string lowerHmd = hmdName.ToLower();
 
-            if (lowerHmd.Contains("pico neo 3")) return HMD.picoNeo3;
-            if (lowerHmd.Contains("pico neo3")) return HMD.picoNeo3;
-            if (lowerHmd.Contains("pico neo 2")) return HMD.picoNeo2;
-            if (lowerHmd.Contains("pico neo2")) return HMD.picoNeo2;
+            if (lowerHmd.Contains("pico neo") && lowerHmd.Contains("4")) return HMD.picoNeo4;
+            if (lowerHmd.Contains("pico neo") && lowerHmd.Contains("3")) return HMD.picoNeo3;
+            if (lowerHmd.Contains("pico neo") && lowerHmd.Contains("2")) return HMD.picoNeo2;
             if (lowerHmd.Contains("vive pro 2")) return HMD.vivePro2;
             if (lowerHmd.Contains("vive elite")) return HMD.viveElite;
             if (lowerHmd.Contains("focus3")) return HMD.viveFocus;
@@ -188,6 +187,7 @@ namespace BeatLeader_Server.Utils
             if (lowerHmd.Contains("medion mixed reality")) return HMD.medion;
 
             if (lowerHmd.Contains("quest") && lowerHmd.Contains("2")) return HMD.quest2;
+            if (lowerHmd.Contains("quest") && lowerHmd.Contains("pro")) return HMD.questPro;
 
             if (lowerHmd.Contains("vive cosmos")) return HMD.viveCosmos;
             if (lowerHmd.Contains("vive_cosmos")) return HMD.viveCosmos;

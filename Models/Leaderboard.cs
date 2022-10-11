@@ -20,6 +20,9 @@
 
         public string Replay { get; set; }
         public Score? OldScore { get; set; }
+
+        public string? LeaderboardId { get; set; }
+        public Leaderboard? Leaderboard { get; set; }
     }
 
     public class Leaderboard

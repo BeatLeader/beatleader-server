@@ -39,6 +39,8 @@
         asusWmr = 56,
         cloudxr = 57,
         vridge = 58,
-        medion = 59
+        medion = 59,
+        picoNeo4 = 60,
+        questPro = 61
     }
 }
