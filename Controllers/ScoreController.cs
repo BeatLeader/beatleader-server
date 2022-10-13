@@ -384,14 +384,14 @@ namespace BeatLeader_Server.Controllers
             }
 
             PlayerResponse? currentPlayer = null;
-            var song = _readContext.Songs.Select(s => new { Id = s.Id, Hash = s.Hash }).FirstOrDefault(s => s.Hash == hash);
+            var song = _context.Songs.Select(s => new { Id = s.Id, Hash = s.Hash }).FirstOrDefault(s => s.Hash == hash);
             if (song == null) {
                 return result;
             }
 
             int modeValue = SongUtils.ModeForModeName(mode);
             if (modeValue == 0) {
-                var customMode = _readContext.CustomModes.FirstOrDefault(m => m.Name == mode);
+                var customMode = _context.CustomModes.FirstOrDefault(m => m.Name == mode);
                 if (customMode != null) {
                     modeValue = customMode.Id + 10;
                 } else {
@@ -401,7 +401,7 @@ namespace BeatLeader_Server.Controllers
 
             var leaderboardId = song.Id + SongUtils.DiffForDiffName(diff).ToString() + modeValue.ToString();
 
-            IQueryable<Score> query = _readContext
+            IQueryable<Score> query = _context
                 .Scores
                 .Where(s => !s.Banned && s.LeaderboardId == leaderboardId)
                 .Include(s => s.Player)
@@ -419,7 +419,7 @@ namespace BeatLeader_Server.Controllers
 
             if (scope.ToLower() == "friends")
             {
-                PlayerFriends? friends = _readContext.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == player);
+                PlayerFriends? friends = _context.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == player);
 
                 if (friends != null) {
                     var idList = friends.Friends.Select(f => f.Id).ToArray();
@@ -429,7 +429,7 @@ namespace BeatLeader_Server.Controllers
                 }
             } else if (scope.ToLower() == "country")
             {
-                currentPlayer = currentPlayer ?? ResponseFromPlayer(_readContext.Players.Find(player));
+                currentPlayer = currentPlayer ?? ResponseFromPlayer(_context.Players.Find(player));
                 if (currentPlayer == null)
                 {
                     return result;
@@ -463,7 +463,7 @@ namespace BeatLeader_Server.Controllers
                 if (highlightedScore != null)
                 {
                     result.Selection = RemoveLeaderboard(highlightedScore, 0);
-                    result.Selection.Player = currentPlayer ?? ResponseFromPlayer(_readContext.Players.Find(player));
+                    result.Selection.Player = currentPlayer ?? ResponseFromPlayer(_context.Players.Find(player));
                     if (scope.ToLower() == "friends" || scope.ToLower() == "country") {
                         result.Selection.Rank = query.Where(s => s.Rank < result.Selection.Rank).Count() + 1;
                     }

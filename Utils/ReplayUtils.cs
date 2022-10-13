@@ -154,7 +154,7 @@ namespace BeatLeader_Server.Utils
         private static HMD HMDFromName(string hmdName) {
             string lowerHmd = hmdName.ToLower();
 
-            if (lowerHmd.Contains("pico neo") && lowerHmd.Contains("4")) return HMD.picoNeo4;
+            if (lowerHmd.Contains("pico") && lowerHmd.Contains("4")) return HMD.picoNeo4;
             if (lowerHmd.Contains("pico neo") && lowerHmd.Contains("3")) return HMD.picoNeo3;
             if (lowerHmd.Contains("pico neo") && lowerHmd.Contains("2")) return HMD.picoNeo2;
             if (lowerHmd.Contains("vive pro 2")) return HMD.vivePro2;
