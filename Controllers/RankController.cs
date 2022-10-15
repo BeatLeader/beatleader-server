@@ -55,12 +55,12 @@ namespace BeatLeader_Server.Controllers
             string mode,
             [FromQuery] string? player = null)
         {
-            string? userId = player ?? HttpContext.CurrentUserID(_readContext);
+            string? userId = player ?? HttpContext.CurrentUserID(_context);
             if (userId == null) {
                 return BadRequest("Provide player or authenticate");
             }
 
-            var score = _readContext
+            var score = _context
                 .Scores
                 .FirstOrDefault(l => l.Leaderboard.Song.Hash == hash && l.Leaderboard.Difficulty.DifficultyName == diff && l.Leaderboard.Difficulty.ModeName == mode && l.PlayerId == userId);
 
@@ -68,7 +68,7 @@ namespace BeatLeader_Server.Controllers
                 return VoteStatus.CantVote;
             }
 
-            var voting = _readContext.RankVotings.Find(score.Id);
+            var voting = _context.RankVotings.Find(score.Id);
             if (voting != null)
             {
                 return VoteStatus.Voted;

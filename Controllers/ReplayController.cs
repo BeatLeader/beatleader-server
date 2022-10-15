@@ -205,7 +205,7 @@ namespace BeatLeader_Server.Controllers
                 currentScore = leaderboard.Scores.FirstOrDefault(el => el.PlayerId == replay.info.playerID);
                 if (currentScore != null && ((currentScore.Pp != 0 && currentScore.Pp >= resultScore.Pp) || (currentScore.Pp == 0 && currentScore.ModifiedScore >= resultScore.ModifiedScore)))
                 {
-                    await CollectStats(replay, replayData, null, true, time, type);
+                    await CollectStats(replay, replayData, null, true, time, EndType.Clear);
                     transaction.Commit();
                     return BadRequest("Score is lower than existing one");
                 }
@@ -557,9 +557,14 @@ namespace BeatLeader_Server.Controllers
 
                 if (leaderboard.Difficulty.Notes > 30)
                 {
-                    var sameAccScore = leaderboard.Scores.FirstOrDefault(s => s.PlayerId != resultScore.PlayerId && s.AccLeft != 0 && s.AccRight != 0
-                                                            && s.AccLeft == statistic.accuracyTracker.accLeft
-                                                            && s.AccRight == statistic.accuracyTracker.accRight);
+                    var sameAccScore = leaderboard
+                        .Scores
+                        .FirstOrDefault(s => s.PlayerId != resultScore.PlayerId && 
+                                             s.AccLeft != 0 && 
+                                             s.AccRight != 0 && 
+                                             s.AccLeft == statistic.accuracyTracker.accLeft && 
+                                             s.AccRight == statistic.accuracyTracker.accRight &&
+                                             s.BaseScore == resultScore.BaseScore);
                     if (sameAccScore != null)
                     {
                         SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Acc is suspiciously exact same as: " + sameAccScore.PlayerId + "'s score");
