@@ -2,6 +2,7 @@
 using Azure.Storage.Blobs;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
+using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -18,9 +19,10 @@ namespace BeatLeader_Server.Controllers
     public class PreviewController : Controller
     {
         private readonly HttpClient _client;
-        private readonly ReadAppContext _readContext;
+        private readonly AppContext _context;
         private readonly IWebHostEnvironment _webHostEnvironment;
         BlobContainerClient _previewContainerClient;
+        private readonly IServerTiming _serverTiming;
 
         private Image StarImage;
         private Image AvatarMask;
@@ -29,11 +31,19 @@ namespace BeatLeader_Server.Controllers
         private Image GradientMask; 
         private Image CoverMask;
         private Image FinalMask;
+        private Image GradientMaskBlurred;
+        private FontFamily FontFamily;
+        private EmbedGenerator EmbedGenerator;
 
-        public PreviewController(ReadAppContext context, IWebHostEnvironment webHostEnvironment, IOptions<AzureStorageConfig> config) {
+        public PreviewController(
+            AppContext context, 
+            IWebHostEnvironment webHostEnvironment, 
+            IOptions<AzureStorageConfig> config,
+            IServerTiming serverTiming) {
             _client = new HttpClient();
-            _readContext = context;
+            _context = context;
             _webHostEnvironment = webHostEnvironment;
+            _serverTiming = serverTiming;
 
             if (webHostEnvironment.IsDevelopment())
             {
@@ -55,7 +65,25 @@ namespace BeatLeader_Server.Controllers
             GradientMask = LoadImage("GradientMask.png");
             CoverMask = LoadImage("CoverMask.png");
             FinalMask = LoadImage("FinalMask.png");
-    }
+            GradientMaskBlurred = LoadImage("GradientMaskBlurred.png");
+
+            var fontCollection = new PrivateFontCollection();
+            fontCollection.AddFontFile(Path.Combine(_webHostEnvironment.WebRootPath + "/fonts/Teko-SemiBold.ttf"));
+            FontFamily = fontCollection.Families[0];
+
+            EmbedGenerator = new EmbedGenerator(
+                new Size(500, 300),
+                StarImage,
+                AvatarMask,
+                AvatarShadow,
+                BackgroundImage,
+                GradientMask,
+                GradientMaskBlurred,
+                CoverMask,
+                FinalMask,
+                FontFamily
+            );
+        }
         class SongSelect {
             public string Id { get; set; }
             public string CoverImage { get; set; }
@@ -111,24 +139,27 @@ namespace BeatLeader_Server.Controllers
             SongSelect? song = null;
             Score? score = null;
 
-            if (scoreId != null) {
-                score = _readContext.Scores
-                    .Where(s => s.Id == scoreId)
-                    .Include(s => s.Player)
-                        .ThenInclude(p => p.ProfileSettings)
-                    .Include(s => s.Leaderboard)
-                        .ThenInclude(l => l.Song)
-                    .Include(s => s.Leaderboard)
-                        .ThenInclude(l => l.Difficulty)
-                    .FirstOrDefault();
-                if (score != null) {
-                    player = score.Player;
-                    song = new SongSelect { Id = score.Leaderboard.Song.Id, CoverImage = score.Leaderboard.Song.CoverImage, Name = score.Leaderboard.Song.Name };
-                } else {
-                    var redirect = _readContext.ScoreRedirects.FirstOrDefault(sr => sr.OldScoreId == scoreId);
-                    if (redirect != null && redirect.NewScoreId != scoreId)
-                    {
-                        return await Get(scoreId: redirect.NewScoreId);
+            using (_serverTiming.TimeAction("db"))
+            {
+                if (scoreId != null) {
+                    score = _context.Scores
+                        .Where(s => s.Id == scoreId)
+                        .Include(s => s.Player)
+                            .ThenInclude(p => p.ProfileSettings)
+                        .Include(s => s.Leaderboard)
+                            .ThenInclude(l => l.Song)
+                        .Include(s => s.Leaderboard)
+                            .ThenInclude(l => l.Difficulty)
+                        .FirstOrDefault();
+                    if (score != null) {
+                        player = score.Player;
+                        song = new SongSelect { Id = score.Leaderboard.Song.Id, CoverImage = score.Leaderboard.Song.CoverImage, Name = score.Leaderboard.Song.Name };
+                    } else {
+                        var redirect = _context.ScoreRedirects.FirstOrDefault(sr => sr.OldScoreId == scoreId);
+                        if (redirect != null && redirect.NewScoreId != scoreId)
+                        {
+                            return await Get(scoreId: redirect.NewScoreId);
+                        }
                     }
                 }
             }
@@ -138,65 +169,67 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            var fontCollection = new PrivateFontCollection();
-            fontCollection.AddFontFile(Path.Combine(_webHostEnvironment.WebRootPath + "/fonts/Teko-SemiBold.ttf"));
-            var tekoFontFamily = fontCollection.Families[0];
-
-            var embedGenerator = new EmbedGenerator(
-                new Size(500, 300),
-                StarImage,
-                AvatarMask,
-                AvatarShadow,
-                BackgroundImage,
-                GradientMask,
-                CoverMask,
-                FinalMask,
-                tekoFontFamily
-            );
-
             Bitmap avatarImage;
             Bitmap coverImage;
 
-            using (var request = new HttpRequestMessage(HttpMethod.Get, player.Avatar))
+            using (_serverTiming.TimeAction("pfpAndCover"))
             {
-                Stream contentStream = await (await _client.SendAsync(request)).Content.ReadAsStreamAsync();
-                avatarImage = new Bitmap(contentStream);
+                using (var request = new HttpRequestMessage(HttpMethod.Get, player.Avatar))
+                {
+                    Stream contentStream = await (await _client.SendAsync(request)).Content.ReadAsStreamAsync();
+                    avatarImage = new Bitmap(contentStream);
+                }
+
+                using (var request = new HttpRequestMessage(HttpMethod.Get, song.CoverImage))
+                {
+                    Stream contentStream = await (await _client.SendAsync(request)).Content.ReadAsStreamAsync();
+                    coverImage = new Bitmap(contentStream);
+                }
             }
 
-            using (var request = new HttpRequestMessage(HttpMethod.Get, song.CoverImage))
+            Image? overlayImage = null;
+            using (_serverTiming.TimeAction("overlay"))
             {
-                Stream contentStream = await (await _client.SendAsync(request)).Content.ReadAsStreamAsync();
-                coverImage = new Bitmap(contentStream);
+                overlayImage = await LoadOverlayImage(player);
             }
 
             (Color diffColor, string diff) = DiffColorAndName(score?.Leaderboard.Difficulty.DifficultyName);
 
-            var image = embedGenerator.Generate(
-                player.Name,
-                song.Name,
-                (score?.FullCombo == true ? "FC" : "") + (score?.Modifiers.Length > 0 ? (score.FullCombo ? ", " : "") + String.Join(", ", score.Modifiers.Split(",")) : ""),
-                diff,
-                score?.Accuracy,
-                score?.Rank,
-                score?.Pp,
-                score?.Leaderboard.Difficulty.Stars,
-                coverImage,
-                avatarImage,
-                await LoadOverlayImage(player),
-                player.ProfileSettings?.Hue,
-                player.ProfileSettings?.Saturation,
-                player.ProfileSettings?.RightSaberColor != null ? ColorTranslator.FromHtml(player.ProfileSettings.RightSaberColor) : Color.Red,
-                player.ProfileSettings?.LeftSaberColor != null ? ColorTranslator.FromHtml(player.ProfileSettings.LeftSaberColor) : Color.Blue,
-                diffColor
-            );
+            Image? result = null;
+            
+            using (_serverTiming.TimeAction("generate"))
+            {
+                result = EmbedGenerator.Generate(
+                    _serverTiming,
+                    player.Name,
+                    song.Name,
+                    (score?.FullCombo == true ? "FC" : "") + (score?.Modifiers.Length > 0 ? (score.FullCombo ? ", " : "") + String.Join(", ", score.Modifiers.Split(",")) : ""),
+                    diff,
+                    score?.Accuracy,
+                    score?.Rank,
+                    score?.Pp,
+                    score?.Leaderboard.Difficulty.Stars,
+                    coverImage,
+                    avatarImage,
+                    overlayImage,
+                    player.ProfileSettings?.Hue,
+                    player.ProfileSettings?.Saturation,
+                    player.ProfileSettings?.RightSaberColor != null ? ColorTranslator.FromHtml(player.ProfileSettings.RightSaberColor) : Color.Red,
+                    player.ProfileSettings?.LeftSaberColor != null ? ColorTranslator.FromHtml(player.ProfileSettings.LeftSaberColor) : Color.Blue,
+                    diffColor
+                );
+            }
             
             MemoryStream ms = new MemoryStream();
-            image.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+            result.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
             ms.Position = 0;
             if (scoreId != null)
             {
-                await _previewContainerClient.DeleteBlobIfExistsAsync(scoreId + "-preview.png");
-                await _previewContainerClient.UploadBlobAsync(scoreId + "-preview.png", ms);
+                HttpContext.Response.OnCompleted(async () => {
+                    await _previewContainerClient.DeleteBlobIfExistsAsync(scoreId + "-preview.png");
+                    await _previewContainerClient.UploadBlobAsync(scoreId + "-preview.png", ms);
+                });
+                
             }
             ms.Position = 0;
             return File(ms, "image/png");
@@ -219,8 +252,8 @@ namespace BeatLeader_Server.Controllers
 
             if (playerID != null && id != null)
             {
-                player = _readContext.Players.Where(p => p.Id == playerID).FirstOrDefault() ?? await GetPlayerFromSS("https://scoresaber.com/api/player/" + playerID + "/full");
-                song = _readContext.Songs.Select(s => new SongSelect { Id = s.Id, CoverImage = s.CoverImage, Name = s.Name }).Where(s => s.Id == id).FirstOrDefault();
+                player = _context.Players.Where(p => p.Id == playerID).FirstOrDefault() ?? await GetPlayerFromSS("https://scoresaber.com/api/player/" + playerID + "/full");
+                song = _context.Songs.Select(s => new SongSelect { Id = s.Id, CoverImage = s.CoverImage, Name = s.Name }).Where(s => s.Id == id).FirstOrDefault();
             }
 
             if (player == null || song == null)
@@ -287,7 +320,7 @@ namespace BeatLeader_Server.Controllers
             if (players != null && hash != null)
             {
                 var ids = players.Split(",");
-                playersList = _readContext.Players.Where(p => ids.Contains(p.Id)).ToList();
+                playersList = _context.Players.Where(p => ids.Contains(p.Id)).ToList();
                 foreach (var id in ids)
                 {
                     if (playersList.FirstOrDefault(p => p.Id == id) == null) {
@@ -299,7 +332,7 @@ namespace BeatLeader_Server.Controllers
                 }
                     
                 
-                song = _readContext.Songs.Select(s => new SongSelect { Hash = s.Hash, CoverImage = s.CoverImage, Name = s.Name }).Where(s => s.Hash == hash).FirstOrDefault();
+                song = _context.Songs.Select(s => new SongSelect { Hash = s.Hash, CoverImage = s.CoverImage, Name = s.Name }).Where(s => s.Hash == hash).FirstOrDefault();
             }
 
             if (playersList.Count == 0 || song == null)

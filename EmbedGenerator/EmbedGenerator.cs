@@ -4,16 +4,17 @@ using System.Drawing.Text;
 using System.Globalization;
 using ImageProcessor;
 using ImageProcessor.Imaging;
+using ImageProcessor.Imaging.Filters.Photo;
+using Lib.AspNetCore.ServerTiming;
 
-internal class EmbedGenerator {
+internal class EmbedGenerator
+{
     #region Constants
 
-    private static readonly Color CoverGradientTint = Color.FromArgb(40, 255, 255, 255);
     private static readonly Color CoverImageTint = Color.FromArgb(255, 160, 160, 160);
-    private const int CoverGradientBlur = 24;
-    private const int CoverImageBlur = 10;
 
-    private readonly NumberFormatInfo _numberFormatInfo = new() {
+    private readonly NumberFormatInfo _numberFormatInfo = new()
+    {
         NumberGroupSeparator = "",
         NumberDecimalSeparator = ".",
         NumberDecimalDigits = 2
@@ -27,6 +28,7 @@ internal class EmbedGenerator {
     private readonly Image _avatarMask;
     private readonly Image _avatarShadow;
     private readonly Image _gradientMask;
+    private readonly Image _gradientMaskBlurred;
     private readonly Image _backgroundImage;
     private readonly Image _coverMask;
     private readonly Image _finalMask;
@@ -43,10 +45,12 @@ internal class EmbedGenerator {
         Image avatarShadow,
         Image backgroundImage,
         Image gradientMask,
+        Image gradientMaskBlurred,
         Image coverMask,
         Image finalMask,
         FontFamily fontFamily
-    ) {
+    )
+    {
         _fontFamily = fontFamily;
         _layout = new EmbedLayout(size);
         _diffFont = new Font(_fontFamily, _layout.DiffFontSize);
@@ -56,6 +60,7 @@ internal class EmbedGenerator {
         _avatarShadow = avatarShadow.ResizeIfNecessary(_layout.AvatarOverlayRectangle.Size);
         _backgroundImage = backgroundImage.ResizeIfNecessary(_layout.FullRectangle.Size);
         _gradientMask = gradientMask.ResizeIfNecessary(_layout.FullRectangle.Size);
+        _gradientMaskBlurred = gradientMaskBlurred.ResizeIfNecessary(_layout.FullRectangle.Size);
         _coverMask = coverMask.ResizeIfNecessary(_layout.FullRectangle.Size);
         _finalMask = finalMask.ResizeIfNecessary(_layout.FullRectangle.Size);
 
@@ -69,6 +74,7 @@ internal class EmbedGenerator {
     #region Generate
 
     public Image Generate(
+        IServerTiming serverTiming,
         string playerName,
         string songName,
         string modifiers,
@@ -85,7 +91,8 @@ internal class EmbedGenerator {
         Color leftColor,
         Color rightColor,
         Color diffColor
-    ) {
+    )
+    {
         var hasStars = stars != null;
         var accuracyText = accuracy != null ? $"{MathF.Round((float)accuracy * 100, 2)}%" : "";
         var rankText = rank != null ? (pp != null && pp != 0 ? $"#{(int)rank} • {MathF.Round((float)pp, 2)}pp" : $"#{rank}") : "";
@@ -101,22 +108,29 @@ internal class EmbedGenerator {
             out var cornerAreaRectangle
         );
 
-        var gradient = GenerateGradient(leftColor, rightColor);
-        var cover = GenerateCover(coverImage, gradient);
-        var border = GenerateBorder(cornerAreaRectangle, gradient);
+        var borderGradient = GenerateGradient(_gradientMask, leftColor, rightColor);
+        var coverGradient = GenerateGradient(_gradientMaskBlurred, leftColor, rightColor);
+        var cover = GenerateCover(coverImage, coverGradient);
+        var border = GenerateBorder(cornerAreaRectangle, borderGradient);
         var avatar = GenerateAvatar(avatarImage);
 
-        factory.OverlayRegion(cover)
-            .OverlayRegion(border)
-            .OverlayRegion(_avatarShadow, _layout.AvatarOverlayRectangle)
-            .OverlayRegion(avatar, _layout.AvatarRectangle);
+        factory.OverlayRegion(cover).OverlayRegion(border);
 
-        if (avatarOverlayImage != null) {
-            var avatarOverlay = GenerateAvatarOverlay(avatarOverlayImage, overlayHueShift ?? 0, overlaySaturation ?? 1);
+        if (avatarOverlayImage == null)
+        {
+            factory.OverlayRegion(_avatarShadow, _layout.AvatarOverlayRectangle);
+        }
+
+        factory.OverlayRegion(avatar, _layout.AvatarRectangle);
+
+        if (avatarOverlayImage != null)
+        {
+            var avatarOverlay = GenerateAvatarOverlay(avatarOverlayImage, overlayHueShift != null ? (int)overlayHueShift : 0, overlaySaturation ?? 0);
             factory.OverlayRegion(avatarOverlay, _layout.AvatarOverlayRectangle);
         }
 
-        if (hasStars) {
+        if (hasStars)
+        {
             var star = GenerateStar(starRectangle.Size, diffColor);
             factory.OverlayRegion(star, starRectangle);
         }
@@ -137,7 +151,8 @@ internal class EmbedGenerator {
 
     #region Debug
 
-    private void DrawDebugInfo(Graphics graphics) {
+    private void DrawDebugInfo(Graphics graphics)
+    {
         var debugPen = new Pen(new SolidBrush(Color.Red), 1f);
         graphics.DrawRectangle(debugPen, _layout.AvatarRectangle);
         graphics.DrawRectangle(debugPen, _layout.SongNameRectangle);
@@ -151,7 +166,8 @@ internal class EmbedGenerator {
 
     #region GenerateStar
 
-    private Image GenerateStar(Size size, Color color) {
+    private Image GenerateStar(Size size, Color color)
+    {
         var factory = new ImageFactory()
             .Load(_starImage)
             .Resize(new ResizeLayer(size))
@@ -164,10 +180,12 @@ internal class EmbedGenerator {
 
     #region GenerateAvatar
 
-    private Image GenerateAvatar(Image avatarImage) {
+    private Image GenerateAvatar(Image avatarImage)
+    {
         var factory = new ImageFactory()
-            .Load(avatarImage)
+            .Load(_whitePixelBitmap).Filter(MatrixFilters.Invert)
             .Resize(new ResizeLayer(_layout.AvatarRectangle.Size, ResizeMode.Stretch))
+            .OverlayRegion(avatarImage)
             .MaskRegion(_avatarMask, _layout.AvatarRectangle.Size);
 
         return factory.Image;
@@ -179,9 +197,10 @@ internal class EmbedGenerator {
 
     private Image GenerateAvatarOverlay(
         Image avatarOverlayImage,
-        float hueShiftDegrees,
+        int hueShiftDegrees,
         float saturation
-    ) {
+    )
+    {
         return avatarOverlayImage
             .ApplyHsbTransform(hueShiftDegrees, saturation, 0f)
             .ResizeIfNecessary(_layout.AvatarOverlayRectangle.Size);
@@ -189,9 +208,10 @@ internal class EmbedGenerator {
 
     #endregion
 
-    #region GenerateGradient
+    #region GenerateGradients
 
-    private Image GenerateGradient(Color leftColor, Color rightColor) {
+    private Image GenerateGradient(Image mask, Color leftColor, Color rightColor)
+    {
         var gradientBrush = new LinearGradientBrush(
             new Point(0, _layout.Height),
             new Point(_layout.Width, 0),
@@ -201,7 +221,7 @@ internal class EmbedGenerator {
         var factory = new ImageFactory().Load(_fullSizeEmptyBitmap);
         var graphics = Graphics.FromImage(factory.Image);
         graphics.FillRectangle(gradientBrush, _layout.FullRectangle);
-        factory.MaskRegion(_gradientMask);
+        factory.MaskRegion(mask);
 
         return factory.Image;
     }
@@ -210,7 +230,8 @@ internal class EmbedGenerator {
 
     #region GenerateBorder
 
-    private Image GenerateBorder(Rectangle cornerRectangle, Image gradient) {
+    private Image GenerateBorder(Rectangle cornerRectangle, Image gradient)
+    {
         var cornerFactory = new ImageFactory()
             .Load(_whitePixelBitmap)
             .Resize(new ResizeLayer(cornerRectangle.Size, ResizeMode.Stretch))
@@ -232,18 +253,13 @@ internal class EmbedGenerator {
 
     #region GenerateCover
 
-    private Image GenerateCover(Image coverImage, Image gradient) {
-        var fadedGradient = new ImageFactory()
-            .Load(gradient)
-            .Tint(CoverGradientTint)
-            .GaussianBlur(CoverGradientBlur);
-
+    private Image GenerateCover(Image coverImage, Image gradient)
+    {
         var factory = new ImageFactory()
             .Load(coverImage)
             .Resize(new ResizeLayer(_layout.Size, ResizeMode.Crop))
-            .GaussianBlur(CoverImageBlur)
             .Tint(CoverImageTint)
-            .OverlayRegion(fadedGradient.Image);
+            .OverlayRegion(gradient);
 
         return factory.Image;
     }
