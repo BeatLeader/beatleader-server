@@ -380,10 +380,12 @@ namespace BeatLeader_Server.Utils
         public static T PostProcessSettings<T>(T input) where T: PlayerResponse? {
             if (input == null) return null;
 
-            var role = input.Role;
-            var settings = input.ProfileSettings;
-            var patreonFeatures = input.PatreonFeatures;
+            PostProcessSettings(input.Role, input.ProfileSettings, input.PatreonFeatures);
 
+            return input;
+        }
+
+        public static void PostProcessSettings(string role, ProfileSettings? settings, PatreonFeatures? patreonFeatures) {
             if (!role.Contains("sponsor")) {
                 if (settings != null) {
                     settings.Message = null;
@@ -441,9 +443,18 @@ namespace BeatLeader_Server.Utils
                 else {
                     settings.EffectName = "";
                 }
-            }
 
-            return input;
+                if (!role.Contains("tipper") &&
+                        !role.Contains("supporter") &&
+                        !role.Contains("sponsor") &&
+                        !role.Contains("creator") &&
+                        !role.Contains("rankedteam") &&
+                        !role.Contains("juniorrankedteam") &&
+                        !role.Contains("admin")) {
+                    settings.RightSaberColor = null;
+                    settings.LeftSaberColor = null;
+                }
+            }
         }
     }
 }
