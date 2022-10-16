@@ -17,7 +17,7 @@ namespace BeatLeader_Server.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.8")
+                .HasAnnotation("ProductVersion", "6.0.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder, 1L, 1);
@@ -1001,6 +1001,12 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int>("APlays")
                         .HasColumnType("int");
 
+                    b.Property<int>("AnonimusReplayWatched")
+                        .HasColumnType("int");
+
+                    b.Property<int>("AuthorizedReplayWatched")
+                        .HasColumnType("int");
+
                     b.Property<float>("AverageAccuracy")
                         .HasColumnType("real");
 
@@ -1047,9 +1053,6 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("real");
 
                     b.Property<int>("RankedPlayCount")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ReplaysWatched")
                         .HasColumnType("int");
 
                     b.Property<int>("SPPlays")
@@ -1584,8 +1587,11 @@ namespace BeatLeader_Server.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
 
-                    b.Property<int>("IPHash")
-                        .HasColumnType("int");
+                    b.Property<string>("IP")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Player")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("ScoreId")
                         .HasColumnType("int");
@@ -1628,6 +1634,12 @@ namespace BeatLeader_Server.Migrations
 
                     b.Property<float>("Accuracy")
                         .HasColumnType("real");
+
+                    b.Property<int>("AnonimusReplayWatched")
+                        .HasColumnType("int");
+
+                    b.Property<int>("AuthorizedReplayWatched")
+                        .HasColumnType("int");
 
                     b.Property<int>("BadCuts")
                         .HasColumnType("int");

@@ -49,7 +49,8 @@ namespace BeatLeader_Server.Models
         public HMD TopHMD { get ; set; }
 
         public int DailyImprovements { get; set; }
-        public int ReplaysWatched { get; set; }
+        public int AuthorizedReplayWatched { get; set; }
+        public int AnonimusReplayWatched { get; set; }
         public int WatchedReplays { get; set; }
     }
 

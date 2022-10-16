@@ -58,6 +58,8 @@
         public Player Player { get; set; }
         public string LeaderboardId { get; set; }
         public Leaderboard Leaderboard { get; set; }
+        public int AuthorizedReplayWatched { get; set; }
+        public int AnonimusReplayWatched { get; set; }
         public int ReplayWatched { get; set; }
         //public bool AltOnly { get; set; }
         //public ICollection<AltScore>? AltScores { get; set; }
@@ -72,7 +74,8 @@
     public class ReplayWatchingSession {
         public int Id { get; set; }
         public int ScoreId { get; set; }
-        public int IPHash { get; set; }
+        public string? IP { get; set; }
+        public string? Player { get; set; }
     }
 
     public class AltScore 

@@ -1094,7 +1094,7 @@ namespace BeatLeader_Server.Controllers
                         statsHistory.MedianRankedAccuracy = GenerateListString(statsHistory.MedianRankedAccuracy, stats.MedianRankedAccuracy);
                         statsHistory.TotalPlayCount = GenerateListString(statsHistory.TotalPlayCount, stats.TotalPlayCount);
                         statsHistory.RankedPlayCount = GenerateListString(statsHistory.RankedPlayCount, stats.RankedPlayCount);
-                        statsHistory.ReplaysWatched = GenerateListString(statsHistory.ReplaysWatched, stats.ReplaysWatched);
+                        statsHistory.ReplaysWatched = GenerateListString(statsHistory.ReplaysWatched, stats.AnonimusReplayWatched + stats.AuthorizedReplayWatched);
 
                         p.StatsHistory = statsHistory;
                         stats.DailyImprovements = 0;

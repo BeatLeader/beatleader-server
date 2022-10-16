@@ -163,27 +163,37 @@ namespace BeatLeader_Server.Controllers
 
             if (ip == null) return BadRequest();
 
-            int ipHash = ip.GetHashCode();
-
-            if ((await _context.WatchingSessions.FirstOrDefaultAsync(ws => ws.ScoreId == scoreId && ws.IPHash == ipHash)) != null) return Ok(); 
+            string ipString = ip.ToString();
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID != null) {
+                if ((await _context.WatchingSessions.FirstOrDefaultAsync(ws => ws.ScoreId == scoreId && ws.Player == currentID)) != null) return Ok();
+            } else {
+                if ((await _context.WatchingSessions.FirstOrDefaultAsync(ws => ws.ScoreId == scoreId && ws.IP == ipString)) != null) return Ok();
+            }
 
             Score? score = await _context.Scores.FindAsync(scoreId);
             if (score == null) return NotFound();
 
-            score.ReplayWatched++;
+            Player? scoreMaker = await _context.Players.Where(p => p.Id == score.PlayerId).Include(p => p.ScoreStats).FirstOrDefaultAsync();
+            if (scoreMaker == null) return NotFound();
 
-            string? currentID = HttpContext.CurrentUserID(_context);
             if (currentID != null)
             {
+                score.AuthorizedReplayWatched++;
+                scoreMaker.ScoreStats.AuthorizedReplayWatched++;
                 var player = await _context.Players.Where(p => p.Id == currentID).Include(p => p.ScoreStats).FirstOrDefaultAsync();
                 if (player != null) {
                     player.ScoreStats.WatchedReplays++;
                 }
+            } else {
+                score.AnonimusReplayWatched++;
+                scoreMaker.ScoreStats.AnonimusReplayWatched++;
             }
 
             _context.WatchingSessions.Add(new ReplayWatchingSession {
                 ScoreId = scoreId,
-                IPHash = ipHash
+                IP = currentID == null ? ipString : null,
+                Player = currentID
             });
             _context.SaveChanges();
 
