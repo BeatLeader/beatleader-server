@@ -19,6 +19,25 @@ public struct FloatColor {
 
     #endregion
 
+    #region Static
+
+    public static FloatColor LerpClamped(FloatColor a, FloatColor b, float t) {
+        var invT = 1.0f - t;
+
+        return t switch {
+            < 0 => a,
+            > 1 => b,
+            _ => new FloatColor(
+                a.R * invT + b.R * t,
+                a.G * invT + b.G * t,
+                a.B * invT + b.B * t,
+                a.A * invT + b.A * t
+            )
+        };
+    }
+
+    #endregion
+
     #region Cast
 
     public static FloatColor FromColor(Color color) {

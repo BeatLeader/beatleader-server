@@ -2,6 +2,7 @@
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 using System.Globalization;
+using System.Numerics;
 using ImageProcessor;
 using ImageProcessor.Imaging;
 using ImageProcessor.Imaging.Filters.Photo;
@@ -12,6 +13,7 @@ internal class EmbedGenerator
     #region Constants
 
     private static readonly Color CoverImageTint = Color.FromArgb(255, 160, 160, 160);
+    private const int CoverImageBlur = 4;
 
     private readonly NumberFormatInfo _numberFormatInfo = new()
     {
@@ -74,7 +76,6 @@ internal class EmbedGenerator
     #region Generate
 
     public Image Generate(
-        IServerTiming serverTiming,
         string playerName,
         string songName,
         string modifiers,
@@ -98,29 +99,20 @@ internal class EmbedGenerator
         var rankText = rank != null ? (pp != null && pp != 0 ? $"#{(int)rank} • {MathF.Round((float)pp, 2)}pp" : $"#{rank}") : "";
         var diffText = hasStars ? $"{difficulty} {((float)stars).ToString(_numberFormatInfo)}" : difficulty;
 
-        var factory = new ImageFactory().Load(_fullSizeEmptyBitmap);
-        var graphics = Graphics.FromImage(factory.Image);
-        graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-
-        _layout.CalculateCornerRectangles(graphics, _diffFont, diffText, hasStars,
+        _layout.CalculateCornerRectangles(Graphics.FromImage(_whitePixelBitmap), _diffFont, diffText, hasStars,
             out var textRectangle,
             out var starRectangle,
             out var cornerAreaRectangle
         );
 
-        var borderGradient = GenerateGradient(_gradientMask, leftColor, rightColor);
-        var coverGradient = GenerateGradient(_gradientMaskBlurred, leftColor, rightColor);
-        var cover = GenerateCover(coverImage, coverGradient);
-        var border = GenerateBorder(cornerAreaRectangle, borderGradient);
-        var avatar = GenerateAvatar(avatarImage);
-
-        factory.OverlayRegion(cover).OverlayRegion(border);
+        var factory = GenerateBackground(coverImage, cornerAreaRectangle, leftColor, rightColor);
 
         if (avatarOverlayImage == null)
         {
             factory.OverlayRegion(_avatarShadow, _layout.AvatarOverlayRectangle);
         }
 
+        var avatar = GenerateAvatar(avatarImage);
         factory.OverlayRegion(avatar, _layout.AvatarRectangle);
 
         if (avatarOverlayImage != null)
@@ -135,6 +127,8 @@ internal class EmbedGenerator
             factory.OverlayRegion(star, starRectangle);
         }
 
+        var graphics = Graphics.FromImage(factory.Image);
+        graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
         graphics.FitText(playerName, Color.White, _fontFamily, _layout.PlayerNameRectangle, _layout.MinPlayerNameFontSize);
         graphics.FitText(songName, Color.White, _fontFamily, _layout.SongNameRectangle, _layout.MinSongNameFontSize);
         graphics.FitText(accuracyText, Color.White, _fontFamily, _layout.AccTextRectangle);
@@ -202,66 +196,68 @@ internal class EmbedGenerator
     )
     {
         return avatarOverlayImage
-            .ApplyHsbTransform(hueShiftDegrees, saturation, 0f)
-            .ResizeIfNecessary(_layout.AvatarOverlayRectangle.Size);
+            .ResizeIfNecessary(_layout.AvatarOverlayRectangle.Size)
+            .ApplyHsbTransform(hueShiftDegrees, saturation, 0f);
     }
 
     #endregion
 
-    #region GenerateGradients
+    #region GenerateBackground
 
-    private Image GenerateGradient(Image mask, Color leftColor, Color rightColor)
+    private ImageFactory GenerateBackground(
+        Image coverImage,
+        Rectangle cornerRectangle,
+        Color leftColor,
+        Color rightColor
+    )
     {
-        var gradientBrush = new LinearGradientBrush(
-            new Point(0, _layout.Height),
-            new Point(_layout.Width, 0),
-            leftColor, rightColor
-        );
+        var bufferA = new ImageFactory();
+        var bufferB = new ImageFactory();
+        var bufferC = new ImageFactory();
 
-        var factory = new ImageFactory().Load(_fullSizeEmptyBitmap);
-        var graphics = Graphics.FromImage(factory.Image);
-        graphics.FillRectangle(gradientBrush, _layout.FullRectangle);
-        factory.MaskRegion(mask);
+        bufferC.Load(new Bitmap(cornerRectangle.Width, cornerRectangle.Height)); // C <- Transparent
+        DrawCornerMask(bufferC); // C <- CornerMask
 
-        return factory.Image;
-    }
+        bufferA.Load(_fullSizeEmptyBitmap); // A <- Transparent
+        DrawGradient(bufferA, _gradientMask, leftColor, rightColor); // A <- NonBlurredGradient
+        bufferB.Load(_backgroundImage).OverlayRegion(bufferA.Image); // B <- BackgroundWithGradient
+        bufferA.Load(_coverMask).OverlayRegion(bufferC.Image, cornerRectangle); // A <- BorderMask
+        bufferB.MaskRegion(bufferA.Image); // B <- Border
 
-    #endregion
+        DrawGradient(bufferA, _gradientMaskBlurred, leftColor, rightColor); // A <- BlurredGradient
 
-    #region GenerateBorder
-
-    private Image GenerateBorder(Rectangle cornerRectangle, Image gradient)
-    {
-        var cornerFactory = new ImageFactory()
-            .Load(_whitePixelBitmap)
-            .Resize(new ResizeLayer(cornerRectangle.Size, ResizeMode.Stretch))
-            .RoundedCorners(_layout.DiffCornerRadius);
-
-        var maskFactory = new ImageFactory()
-            .Load(_coverMask)
-            .OverlayRegion(cornerFactory.Image, cornerRectangle);
-
-        var factory = new ImageFactory()
-            .Load(_backgroundImage)
-            .OverlayRegion(gradient)
-            .MaskRegion(maskFactory.Image);
-
-        return factory.Image;
-    }
-
-    #endregion
-
-    #region GenerateCover
-
-    private Image GenerateCover(Image coverImage, Image gradient)
-    {
-        var factory = new ImageFactory()
-            .Load(coverImage)
+        bufferC.Load(coverImage)
+            .GaussianBlur(CoverImageBlur)
             .Resize(new ResizeLayer(_layout.Size, ResizeMode.Crop))
             .Tint(CoverImageTint)
-            .OverlayRegion(gradient);
+            .OverlayRegion(bufferA.Image)
+            .OverlayRegion(bufferB.Image);
 
-        return factory.Image;
+        return bufferC;
+    }
+
+    #endregion
+
+    #region DrawGradient
+
+    private void DrawGradient(ImageFactory factory, Image mask, Color leftColor, Color rightColor)
+    {
+        DrawingUtils.DrawGradient(factory.Image, leftColor, rightColor,
+            new Vector2(_layout.Width * 0.4f, _layout.Height * 0.6f),
+            new Vector2(_layout.Width * 0.6f, _layout.Height * 0.4f)
+        );
+        factory.MaskRegion(mask);
+    }
+
+    #endregion
+
+    #region DrawCornerMask
+
+    private void DrawCornerMask(ImageFactory factory)
+    {
+        var graphics = Graphics.FromImage(factory.Image);
+        graphics.FillRectangle(new SolidBrush(Color.White), 0, 0, factory.Image.Width, factory.Image.Height);
+        factory.RoundedCorners(_layout.DiffCornerRadius);
     }
 
     #endregion

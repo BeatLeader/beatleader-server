@@ -30,7 +30,7 @@ internal class EmbedLayout {
         MinPlayerNameFontSize = size.Height * 0.07f;
         MinSongNameFontSize = size.Height * 0.1f;
         DiffFontSize = size.Height * 0.06f;
-        DiffCornerRadius = (int)(size.Height * 0.04f);
+        DiffCornerRadius = (int)(size.Height * 0.03f);
 
         var center = new PointF(size.Width * 0.5f, size.Height * 0.5f);
 

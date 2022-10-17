@@ -200,7 +200,6 @@ namespace BeatLeader_Server.Controllers
             using (_serverTiming.TimeAction("generate"))
             {
                 result = EmbedGenerator.Generate(
-                    _serverTiming,
                     player.Name,
                     song.Name,
                     (score?.FullCombo == true ? "FC" : "") + (score?.Modifiers.Length > 0 ? (score.FullCombo ? ", " : "") + String.Join(", ", score.Modifiers.Split(",")) : ""),
@@ -214,8 +213,8 @@ namespace BeatLeader_Server.Controllers
                     overlayImage,
                     player.ProfileSettings?.Hue,
                     player.ProfileSettings?.Saturation,
-                    player.ProfileSettings?.RightSaberColor != null ? ColorTranslator.FromHtml(player.ProfileSettings.RightSaberColor) : Color.Red,
-                    player.ProfileSettings?.LeftSaberColor != null ? ColorTranslator.FromHtml(player.ProfileSettings.LeftSaberColor) : Color.Blue,
+                    player.ProfileSettings?.LeftSaberColor != null ? ColorTranslator.FromHtml(player.ProfileSettings.LeftSaberColor) : Color.FromArgb(255, 250, 20, 255),
+                    player.ProfileSettings?.RightSaberColor != null ? ColorTranslator.FromHtml(player.ProfileSettings.RightSaberColor) : Color.FromArgb(255, 128, 0, 255),
                     diffColor
                 );
             }
@@ -488,7 +487,7 @@ namespace BeatLeader_Server.Controllers
                 case "Normal": return (Color.FromArgb(99, 180, 242), "Normal");
                 case "Hard": return (Color.FromArgb(255, 123, 99), "Hard");
                 case "Expert": return (Color.FromArgb(227, 54, 172), "Expert");
-                case "ExpertPlus": return (Color.FromArgb(180, 110, 255), "Expert+");
+                case "ExpertPlus": return (Color.FromArgb(143, 72, 219), "Expert+");
             }
             return (Color.White, diff);
         }
