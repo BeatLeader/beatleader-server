@@ -20,6 +20,8 @@ namespace BeatLeader_Server.Controllers
     {
         private readonly HttpClient _client;
         private readonly AppContext _context;
+        private readonly ReadAppContext _readContext;
+
         private readonly IWebHostEnvironment _webHostEnvironment;
         BlobContainerClient _previewContainerClient;
         private readonly IServerTiming _serverTiming;
@@ -36,12 +38,14 @@ namespace BeatLeader_Server.Controllers
         private EmbedGenerator EmbedGenerator;
 
         public PreviewController(
-            AppContext context, 
+            AppContext context,
+            ReadAppContext readContext,
             IWebHostEnvironment webHostEnvironment, 
             IOptions<AzureStorageConfig> config,
             IServerTiming serverTiming) {
             _client = new HttpClient();
             _context = context;
+            _readContext = readContext;
             _webHostEnvironment = webHostEnvironment;
             _serverTiming = serverTiming;
 
@@ -91,17 +95,51 @@ namespace BeatLeader_Server.Controllers
             public string Hash { get; set; }
         }
 
+        class ScoreSelect {
+            public string SongId { get; set; }
+            public string CoverImage { get; set; }
+            public string SongName { get; set; }
+            public float? Stars { get; set; }
+
+            public float Accuracy { get; set; }
+            public string PlayerId { get; set; }
+            public float Pp { get; set; }
+            public int Rank { get; set; }
+            public string Modifiers { get; set; }
+            public bool FullCombo { get; set; }
+            public string Difficulty { get; set; }
+
+            public string PlayerAvatar { get; set; }
+            public string PlayerName { get; set; }
+            public string PlayerRole { get; set; }
+            public PatreonFeatures? PatreonFeatures { get; set; }
+            public ProfileSettings? ProfileSettings { get; set; }
+        }
+
         private Image LoadImage(string fileName)
         {
             return new Bitmap(_webHostEnvironment.WebRootPath + "/images/" + fileName);
         }
 
-        private async Task<Image?> LoadOverlayImage(Player player)
+        private async Task<Image?> LoadRemoteImage(string url)
         {
-            ResponseUtils.PostProcessSettings(player.Role, player.ProfileSettings, player.PatreonFeatures);
-            if (player.ProfileSettings?.EffectName == null || player.ProfileSettings.EffectName.Length == 0) return null;
+            Image? result = null;
+            using (var request = new HttpRequestMessage(HttpMethod.Get, url))
+            {
+                try {
+                    Stream contentStream = await (await _client.SendAsync(request)).Content.ReadAsStreamAsync();
+                    result = new Bitmap(contentStream);
+                } catch { }
+            }
+            return result;
+        }
 
-            BlobClient blobClient = _previewContainerClient.GetBlobClient(player.ProfileSettings.EffectName + "_Effect.png");
+        private async Task<Image?> LoadOverlayImage(ScoreSelect score)
+        {
+            ResponseUtils.PostProcessSettings(score.PlayerRole, score.ProfileSettings, score.PatreonFeatures);
+            if (score.ProfileSettings?.EffectName == null || score.ProfileSettings.EffectName.Length == 0) return null;
+
+            BlobClient blobClient = _previewContainerClient.GetBlobClient(score.ProfileSettings.EffectName + "_Effect.png");
 
             if (await blobClient.ExistsAsync())
             {
@@ -135,14 +173,12 @@ namespace BeatLeader_Server.Controllers
                 return Redirect("https://freedm.azurewebsites.net/preview/replay" + Request.QueryString);
             }
 
-            Player? player = null;
-            SongSelect? song = null;
-            Score? score = null;
+            ScoreSelect? score = null;
 
             using (_serverTiming.TimeAction("db"))
             {
                 if (scoreId != null) {
-                    score = _context.Scores
+                    score = await _readContext.Scores
                         .Where(s => s.Id == scoreId)
                         .Include(s => s.Player)
                             .ThenInclude(p => p.ProfileSettings)
@@ -150,12 +186,29 @@ namespace BeatLeader_Server.Controllers
                             .ThenInclude(l => l.Song)
                         .Include(s => s.Leaderboard)
                             .ThenInclude(l => l.Difficulty)
-                        .FirstOrDefault();
-                    if (score != null) {
-                        player = score.Player;
-                        song = new SongSelect { Id = score.Leaderboard.Song.Id, CoverImage = score.Leaderboard.Song.CoverImage, Name = score.Leaderboard.Song.Name };
-                    } else {
-                        var redirect = _context.ScoreRedirects.FirstOrDefault(sr => sr.OldScoreId == scoreId);
+                        .Select(s => new ScoreSelect {
+                            SongId = s.Leaderboard.Song.Id,
+                            CoverImage = s.Leaderboard.Song.CoverImage,
+                            SongName = s.Leaderboard.Song.Name,
+                            Stars = s.Leaderboard.Difficulty.Stars,
+
+                            Accuracy = s.Accuracy,
+                            PlayerId = s.PlayerId,
+                            Pp = s.Pp,
+                            Rank = s.Rank,
+                            Modifiers = s.Modifiers,
+                            FullCombo = s.FullCombo,
+                            Difficulty = s.Leaderboard.Difficulty.DifficultyName,
+
+                            PlayerAvatar = s.Player.Avatar,
+                            PlayerName = s.Player.Name,
+                            PlayerRole = s.Player.Role,
+                            PatreonFeatures = s.Player.PatreonFeatures,
+                            ProfileSettings = s.Player.ProfileSettings,
+                        })
+                        .FirstOrDefaultAsync();
+                    if (score == null) {
+                        var redirect = _readContext.ScoreRedirects.FirstOrDefault(sr => sr.OldScoreId == scoreId);
                         if (redirect != null && redirect.NewScoreId != scoreId)
                         {
                             return await Get(scoreId: redirect.NewScoreId);
@@ -164,59 +217,45 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            if (player == null || song == null)
+            if (score == null)
             {
                 return NotFound();
             }
 
-            Bitmap avatarImage;
-            Bitmap coverImage;
+            Image? avatarImage;
+            Image? coverImage;
+            Image? overlayImage;
 
-            using (_serverTiming.TimeAction("pfpAndCover"))
+            using (_serverTiming.TimeAction("images"))
             {
-                using (var request = new HttpRequestMessage(HttpMethod.Get, player.Avatar))
-                {
-                    Stream contentStream = await (await _client.SendAsync(request)).Content.ReadAsStreamAsync();
-                    avatarImage = new Bitmap(contentStream);
-                }
-
-                using (var request = new HttpRequestMessage(HttpMethod.Get, song.CoverImage))
-                {
-                    Stream contentStream = await (await _client.SendAsync(request)).Content.ReadAsStreamAsync();
-                    coverImage = new Bitmap(contentStream);
-                }
+               var images = await Task.WhenAll(LoadRemoteImage(score.PlayerAvatar), LoadRemoteImage(score.CoverImage), LoadOverlayImage(score));
+               (avatarImage, coverImage, overlayImage) = (images[0], images[1], images[2]);
             }
 
-            Image? overlayImage = null;
-            using (_serverTiming.TimeAction("overlay"))
-            {
-                overlayImage = await LoadOverlayImage(player);
-            }
-
-            (Color diffColor, string diff) = DiffColorAndName(score?.Leaderboard.Difficulty.DifficultyName);
+            (Color diffColor, string diff) = DiffColorAndName(score.Difficulty);
 
             Image? result = null;
             
             using (_serverTiming.TimeAction("generate"))
             {
-                result = EmbedGenerator.Generate(
-                    player.Name,
-                    song.Name,
-                    (score?.FullCombo == true ? "FC" : "") + (score?.Modifiers.Length > 0 ? (score.FullCombo ? ", " : "") + String.Join(", ", score.Modifiers.Split(",")) : ""),
+                result = await Task.Run(() => EmbedGenerator.Generate(
+                    score.PlayerName,
+                    score.SongName,
+                    (score.FullCombo ? "FC" : "") + (score.Modifiers.Length > 0 ? (score.FullCombo ? ", " : "") + String.Join(", ", score.Modifiers.Split(",")) : ""),
                     diff,
-                    score?.Accuracy,
-                    score?.Rank,
-                    score?.Pp,
-                    score?.Leaderboard.Difficulty.Stars,
+                    score.Accuracy,
+                    score.Rank,
+                    score.Pp,
+                    score.Stars,
                     coverImage,
                     avatarImage,
                     overlayImage,
-                    player.ProfileSettings?.Hue,
-                    player.ProfileSettings?.Saturation,
-                    player.ProfileSettings?.LeftSaberColor != null ? ColorTranslator.FromHtml(player.ProfileSettings.LeftSaberColor) : Color.FromArgb(255, 250, 20, 255),
-                    player.ProfileSettings?.RightSaberColor != null ? ColorTranslator.FromHtml(player.ProfileSettings.RightSaberColor) : Color.FromArgb(255, 128, 0, 255),
+                    score.ProfileSettings?.Hue,
+                    score.ProfileSettings?.Saturation,
+                    score.ProfileSettings?.LeftSaberColor != null ? ColorTranslator.FromHtml(score.ProfileSettings.LeftSaberColor) : Color.FromArgb(255, 250, 20, 255),
+                    score.ProfileSettings?.RightSaberColor != null ? ColorTranslator.FromHtml(score.ProfileSettings.RightSaberColor) : Color.FromArgb(255, 128, 0, 255),
                     diffColor
-                );
+                ));
             }
             
             MemoryStream ms = new MemoryStream();
@@ -224,11 +263,9 @@ namespace BeatLeader_Server.Controllers
             ms.Position = 0;
             if (scoreId != null)
             {
-                HttpContext.Response.OnCompleted(async () => {
-                    await _previewContainerClient.DeleteBlobIfExistsAsync(scoreId + "-preview.png");
+                try {
                     await _previewContainerClient.UploadBlobAsync(scoreId + "-preview.png", ms);
-                });
-                
+                } catch { }
             }
             ms.Position = 0;
             return File(ms, "image/png");
@@ -483,9 +520,9 @@ namespace BeatLeader_Server.Controllers
         public static (Color, string) DiffColorAndName(string diff) {
             switch (diff)
             {
-                case "Easy": return (Color.FromArgb(16, 232, 113), "Easy");
-                case "Normal": return (Color.FromArgb(99, 180, 242), "Normal");
-                case "Hard": return (Color.FromArgb(255, 123, 99), "Hard");
+                case "Easy": return (Color.FromArgb(0, 159, 72), "Easy");
+                case "Normal": return (Color.FromArgb(28, 156, 255), "Normal");
+                case "Hard": return (Color.FromArgb(255, 99, 71), "Hard");
                 case "Expert": return (Color.FromArgb(227, 54, 172), "Expert");
                 case "ExpertPlus": return (Color.FromArgb(143, 72, 219), "Expert+");
             }

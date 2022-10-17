@@ -27,8 +27,8 @@ namespace BeatLeader_Server.Controllers
         {
             return new ModVersions {
                 Pc = new ModVersion {
-                    Version = "0.4.4",
-                    Link = "https://github.com/BeatLeader/beatleader-mod/releases/tag/v0.4.4"
+                    Version = "0.5.0",
+                    Link = "https://github.com/BeatLeader/beatleader-mod/releases/tag/v0.5.0"
                 },
                 Quest = new ModVersion {
                     Version = "0.4.1",

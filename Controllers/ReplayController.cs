@@ -607,7 +607,7 @@ namespace BeatLeader_Server.Controllers
 
                     if (dsClient != null)
                     {
-                        _previewController.Get(scoreId: resultScore.Id);
+                        await _previewController.Get(scoreId: resultScore.Id);
                         var song = _context.Leaderboards.Where(lb => lb.Id == leaderboard.Id).Include(lb => lb.Song).Select(lb => lb.Song).FirstOrDefault();
                         string message = "**" + player.Name + "** has become No 1 on **" + (song != null ? song?.Name : leaderboard.Id) + "** :tada: \n";
                         message += Math.Round(resultScore.Accuracy * 100, 2) + "% " + Math.Round(resultScore.Pp, 2) + "pp (" + Math.Round(resultScore.Weight * resultScore.Pp, 2) + "pp)\n";

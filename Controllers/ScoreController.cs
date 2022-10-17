@@ -84,12 +84,13 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/score/random")]
         public async Task<ActionResult<Score>> GetRandomScore()
         {
-            var offset = Random.Shared.Next(1, _readContext.Scores.Count());
-            var score = _readContext
+            var offset = Random.Shared.Next(1, await _context.Scores.CountAsync());
+            var score = await _context
                 .Scores
+                .OrderBy(s => s.Id)
                 .Skip(offset)
                 .Take(1)
-                .FirstOrDefault();
+                .FirstOrDefaultAsync();
 
             if (score != null)
             {
