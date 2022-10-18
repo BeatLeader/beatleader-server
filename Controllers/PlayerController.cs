@@ -967,7 +967,12 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string countries = ""
             )
         {
-            IQueryable<Player> request = _readContext.Players.Include(p => p.ScoreStats).Include(p => p.EventsParticipating).Where(p => !p.Banned);
+            IQueryable<Player> request = _readContext
+                .Players
+                .Include(p => p.ScoreStats)
+                .Include(p => p.EventsParticipating)
+                .Include(p => p.ProfileSettings)
+                .Where(p => !p.Banned);
             
             if (countries.Length != 0)
             {

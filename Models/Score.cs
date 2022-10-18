@@ -60,10 +60,10 @@
         public Leaderboard Leaderboard { get; set; }
         public int AuthorizedReplayWatched { get; set; }
         public int AnonimusReplayWatched { get; set; }
-        public int ReplayWatched { get; set; }
         //public bool AltOnly { get; set; }
         //public ICollection<AltScore>? AltScores { get; set; }
         public ReplayOffsets? ReplayOffsets { get; set; }
+        public string? Country { get; set; }
 
         public ScoreImprovement? ScoreImprovement { get; set; }
         public bool Banned { get; set; } = false;

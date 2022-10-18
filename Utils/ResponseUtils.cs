@@ -229,7 +229,7 @@ namespace BeatLeader_Server.Utils
                 FullCombo = s.FullCombo,
                 Hmd = s.Hmd,
                 Timeset = s.Timeset,
-                ReplaysWatched = s.ReplayWatched,
+                ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
                 Timepost = s.Timepost,
                 LeaderboardId = s.LeaderboardId,
                 Platform = s.Platform,

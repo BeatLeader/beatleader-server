@@ -454,7 +454,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             context.Response.OnCompleted(async () => {
-                await PostUploadAction(replay, replayData, leaderboard, player, improvement, resultScore, currentScore, rankedScores, oldPp, oldRank, stats, transaction2);
+                await PostUploadAction(replay, replayData, leaderboard, player, improvement, resultScore, currentScore, rankedScores, oldPp, oldRank, context, stats, transaction2);
             });
 
             return RemoveLeaderboard(resultScore, resultScore.Rank);
@@ -472,6 +472,7 @@ namespace BeatLeader_Server.Controllers
             List<Score> rankedScores,
             float oldPp,
             int oldRank,
+            HttpContext context,
             PlayerLeaderboardStats? stats,
             IDbContextTransaction transaction2) {
             if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
@@ -582,6 +583,11 @@ namespace BeatLeader_Server.Controllers
                 resultScore.Replay = replayLink;
                 resultScore.AccLeft = statistic.accuracyTracker.accLeft;
                 resultScore.AccRight = statistic.accuracyTracker.accRight;
+                var ip = context.Request.HttpContext.Connection.RemoteIpAddress;
+                if (ip != null)
+                {
+                    resultScore.Country = WebUtils.GetCountryByIp(ip.ToString());
+                }
 
                 if (currentScore != null)
                 {

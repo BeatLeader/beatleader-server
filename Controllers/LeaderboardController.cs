@@ -364,7 +364,7 @@ namespace BeatLeader_Server.Controllers
                         Hmd = s.Hmd,
                         Timeset = s.Timeset,
                         Timepost = s.Timepost,
-                        ReplaysWatched = s.ReplayWatched,
+                        ReplaysWatched = s.AuthorizedReplayWatched + s.AnonimusReplayWatched,
                         LeaderboardId = s.LeaderboardId,
                         Platform = s.Platform,
                         Weight = s.Weight,

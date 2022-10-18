@@ -10,7 +10,8 @@ public struct FloatColor {
     public float B;
     public float A;
 
-    public FloatColor(float red, float green, float blue, float alpha) {
+    public FloatColor(float red, float green, float blue, float alpha)
+    {
         R = red;
         G = green;
         B = blue;
@@ -21,10 +22,16 @@ public struct FloatColor {
 
     #region Static
 
-    public static FloatColor LerpClamped(FloatColor a, FloatColor b, float t) {
+    public static FloatColor Transparent => new();
+    public static FloatColor White => new(1, 1, 1, 1);
+    public static FloatColor Black => new(0, 0, 0, 1);
+
+    public static FloatColor LerpClamped(FloatColor a, FloatColor b, float t)
+    {
         var invT = 1.0f - t;
 
-        return t switch {
+        return t switch
+        {
             < 0 => a,
             > 1 => b,
             _ => new FloatColor(
@@ -40,7 +47,8 @@ public struct FloatColor {
 
     #region Cast
 
-    public static FloatColor FromColor(Color color) {
+    public static FloatColor FromColor(Color color)
+    {
         return new FloatColor(
             color.R / 255f,
             color.G / 255f,
@@ -49,7 +57,8 @@ public struct FloatColor {
         );
     }
 
-    public Color ToColor() {
+    public Color ToColor()
+    {
         return Color.FromArgb(
             ConvertToByte(A),
             ConvertToByte(R),
@@ -58,12 +67,48 @@ public struct FloatColor {
         );
     }
 
-    private static byte ConvertToByte(float value) {
-        return value switch {
+    private static byte ConvertToByte(float value)
+    {
+        return value switch
+        {
             > 1f => 0xFF,
             < 0f => 0x00,
             _ => (byte)(value * 0xFF)
         };
+    }
+
+    #endregion
+
+    #region Math
+
+    public void Add(FloatColor color)
+    {
+        R += color.R;
+        G += color.G;
+        B += color.B;
+        A += color.A;
+    }
+
+    public void Multiply(FloatColor color)
+    {
+        R *= color.R;
+        G *= color.G;
+        B *= color.B;
+        A *= color.A;
+    }
+
+    public void AlphaBlend(FloatColor color)
+    {
+        var invAlpha = 1 - color.A;
+        R = color.R * color.A + R * invAlpha;
+        G = color.G * color.A + G * invAlpha;
+        B = color.B * color.A + B * invAlpha;
+        A = color.A + A * invAlpha;
+    }
+
+    public void AlphaMask(FloatColor color)
+    {
+        A *= color.A;
     }
 
     #endregion
@@ -82,7 +127,8 @@ public struct FloatColor {
         1f, -1.106f, 1.702f
     );
 
-    public void ApplyHsbTransform(float hueShiftRadians, float saturation, float brightness) {
+    public void ApplyHsbTransform(float hueShiftRadians, float saturation, float brightness)
+    {
         var rgb = new Vector3(R, G, B);
         var YIQ = Matrix3x3.Mul(RGB_YIQ, rgb);
         var hue = MathF.Atan2(YIQ.Z, YIQ.Y) - hueShiftRadians;

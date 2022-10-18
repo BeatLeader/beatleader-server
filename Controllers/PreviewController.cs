@@ -29,7 +29,6 @@ namespace BeatLeader_Server.Controllers
         private Image StarImage;
         private Image AvatarMask;
         private Image AvatarShadow;
-        private Image BackgroundImage;
         private Image GradientMask; 
         private Image CoverMask;
         private Image FinalMask;
@@ -65,7 +64,6 @@ namespace BeatLeader_Server.Controllers
             StarImage = LoadImage("Star.png");
             AvatarMask = LoadImage("AvatarMask.png");
             AvatarShadow = LoadImage("AvatarShadow.png");
-            BackgroundImage = LoadImage("Background.png");
             GradientMask = LoadImage("GradientMask.png");
             CoverMask = LoadImage("CoverMask.png");
             FinalMask = LoadImage("FinalMask.png");
@@ -80,7 +78,6 @@ namespace BeatLeader_Server.Controllers
                 StarImage,
                 AvatarMask,
                 AvatarShadow,
-                BackgroundImage,
                 GradientMask,
                 GradientMaskBlurred,
                 CoverMask,
@@ -246,12 +243,12 @@ namespace BeatLeader_Server.Controllers
                     score.Accuracy,
                     score.Rank,
                     score.Pp,
-                    score.Stars,
+                    score.Stars ?? 0,
                     coverImage,
                     avatarImage,
                     overlayImage,
-                    score.ProfileSettings?.Hue,
-                    score.ProfileSettings?.Saturation,
+                    score.ProfileSettings?.Hue != null ? (int)score.ProfileSettings?.Hue : 0,
+                    score.ProfileSettings?.Saturation ?? 1,
                     score.ProfileSettings?.LeftSaberColor != null ? ColorTranslator.FromHtml(score.ProfileSettings.LeftSaberColor) : Color.FromArgb(255, 250, 20, 255),
                     score.ProfileSettings?.RightSaberColor != null ? ColorTranslator.FromHtml(score.ProfileSettings.RightSaberColor) : Color.FromArgb(255, 128, 0, 255),
                     diffColor

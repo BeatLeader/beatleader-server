@@ -17,16 +17,21 @@ internal class EmbedLayout {
     public readonly float DiffFontSize;
     public readonly int DiffCornerRadius;
 
-    public Size Size => FullRectangle.Size;
-    public int Width => FullRectangle.Width;
-    public int Height => FullRectangle.Height;
+    public readonly Size Size;
+    public readonly int Width;
+    public readonly int Height;
 
     #endregion
 
     #region Constructor
 
-    public EmbedLayout(Size size) {
+    public EmbedLayout(Size size)
+    {
         FullRectangle = new Rectangle(Point.Empty, size);
+        Width = size.Width;
+        Height = size.Height;
+        Size = size;
+
         MinPlayerNameFontSize = size.Height * 0.07f;
         MinSongNameFontSize = size.Height * 0.1f;
         DiffFontSize = size.Height * 0.06f;
@@ -72,16 +77,17 @@ internal class EmbedLayout {
         out Rectangle textRectangle,
         out Rectangle starRectangle,
         out Rectangle cornerAreaRectangle
-    ) {
+    )
+    {
         var pad = font.Size * 0.53f;
-        
+
         var textSize = new SizeF(graphics.MeasureString(diffText, font).Width - font.Size * 0.4f, font.Size);
         var starSize = hasStars ? textSize with { Width = textSize.Height } : SizeF.Empty;
         var cornerAreaSize = new SizeF(textSize.Width + starSize.Width + pad * 2, textSize.Height + pad * 2);
-        
+
         var cornerAreaCenter = new PointF(Width - cornerAreaSize.Width / 2, cornerAreaSize.Height / 2);
         var textCenter = cornerAreaCenter with { X = cornerAreaCenter.X - starSize.Width / 2 };
-        var starCenter =  textCenter with { X = textCenter.X + (textSize.Width + starSize.Width) / 2 };
+        var starCenter = textCenter with { X = textCenter.X + (textSize.Width + starSize.Width) / 2 };
 
         cornerAreaRectangle = DrawingUtils.CenteredRectangle(cornerAreaCenter, cornerAreaSize);
         textRectangle = DrawingUtils.CenteredRectangle(textCenter, textSize);

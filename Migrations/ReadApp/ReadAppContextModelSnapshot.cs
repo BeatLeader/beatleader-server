@@ -1656,6 +1656,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.Property<float>("BonusPp")
                         .HasColumnType("real");
 
+                    b.Property<string>("Country")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("CountryRank")
                         .HasColumnType("int");
 
@@ -1707,9 +1710,6 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("ReplayOffsetsId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ReplayWatched")
                         .HasColumnType("int");
 
                     b.Property<int?>("ScoreImprovementId")
