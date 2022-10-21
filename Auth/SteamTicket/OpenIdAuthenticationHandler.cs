@@ -79,21 +79,23 @@ public partial class SteamTicketAuthenticationHandler<TOptions> : Authentication
                 using (Stream responseStream = response.Item1.GetResponseStream())
                 using (StreamReader reader = new StreamReader(responseStream))
                 {
-                    string results = reader.ReadToEnd();
-                    if (!string.IsNullOrEmpty(results))
-                    {
+                    AuthenticateResult result = AuthenticateResult.Fail("");
                     
+                    try {
+                        string results = reader.ReadToEnd();
+                        var info = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, Dictionary<string, string>>>>(results);
+
+                        var claims = new[] { new Claim(ClaimTypes.NameIdentifier, info["response"]["params"]["steamid"]) };
+                        var identity = new ClaimsIdentity(claims, "Test");
+                        var principal = new ClaimsPrincipal(identity);
+                        var ticket = new AuthenticationTicket(principal, "Cookies");
+
+                        AuthenticationHttpContextExtensions.SignInAsync(Context, CookieAuthenticationDefaults.AuthenticationScheme, principal);
+                        result = AuthenticateResult.Success(ticket);
+                    } catch (Exception e) {
+                        Response.StatusCode = 401;
+                        result = AuthenticateResult.Fail(e);
                     }
-                    var info = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, Dictionary<string, string>>>>(results);
-
-                    var claims = new[] { new Claim(ClaimTypes.NameIdentifier, info["response"]["params"]["steamid"]) };
-                    var identity = new ClaimsIdentity(claims, "Test");
-                    var principal = new ClaimsPrincipal(identity);
-                    var ticket = new AuthenticationTicket(principal, "Cookies");
-
-                    AuthenticationHttpContextExtensions.SignInAsync(Context, CookieAuthenticationDefaults.AuthenticationScheme, principal);
-
-                    var result = AuthenticateResult.Success(ticket);
                     return result;
                 }
             } else {

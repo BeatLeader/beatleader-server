@@ -29,6 +29,10 @@ namespace BeatLeader_Server.Utils
             public ProfileSettings? ProfileSettings { get; set; }
             public IEnumerable<ClanResponse> Clans { get; set; }
         }
+        public class PlayerResponseWithFriends : PlayerResponse
+        {
+            public ICollection<string> Friends { get; set; }
+        }
 
         public class PlayerResponseWithStats : PlayerResponse
         {
@@ -263,12 +267,11 @@ namespace BeatLeader_Server.Utils
             return result;
         }
 
-
-        public static PlayerResponse? ResponseFromPlayer(Player? p)
+        public static T? GeneralResponseFromPlayer<T>(Player? p) where T : PlayerResponse, new()
         {
             if (p == null) return null;
 
-            return new PlayerResponse
+            return new T
             {
                 Id = p.Id,
                 Name = p.Name,
@@ -285,6 +288,11 @@ namespace BeatLeader_Server.Utils
                 ProfileSettings = p.ProfileSettings,
                 Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
             };
+        }
+
+        public static PlayerResponse? ResponseFromPlayer(Player? p)
+        {
+            return GeneralResponseFromPlayer<PlayerResponse>(p);
         }
 
         public static LeaderboardResponse ResponseFromLeaderboard(Leaderboard l) {

@@ -19,7 +19,7 @@ namespace BeatLeader_Server.Controllers
     public class ReplayController : Controller
     {
         private readonly BlobContainerClient _replaysClient;
-        private readonly BlobContainerClient _otherReplaysClient;
+        //private readonly BlobContainerClient _otherReplaysClient;
         private readonly BlobContainerClient _scoreStatsClient;
 
         AppContext _context;
@@ -64,14 +64,14 @@ namespace BeatLeader_Server.Controllers
 			{
 				_replaysClient = new BlobContainerClient(config.Value.AccountName, config.Value.ReplaysContainerName);
                 _replaysClient.SetPublicContainerPermissions();
-                _otherReplaysClient = new BlobContainerClient(config.Value.AccountName, config.Value.OtherReplaysContainerName);
+                //_otherReplaysClient = new BlobContainerClient(config.Value.AccountName, config.Value.OtherReplaysContainerName);
 
                 _scoreStatsClient = new BlobContainerClient(config.Value.AccountName, config.Value.ScoreStatsContainerName);
             }
 			else
 			{
 				_replaysClient = ContainerWithName(config, config.Value.ReplaysContainerName);
-                _otherReplaysClient = ContainerWithName(config, config.Value.OtherReplaysContainerName);
+                //_otherReplaysClient = ContainerWithName(config, config.Value.OtherReplaysContainerName);
                 _scoreStatsClient = ContainerWithName(config, config.Value.ScoreStatsContainerName);
             }
         }
@@ -100,6 +100,10 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] float time = 0,
             [FromQuery] EndType type = 0)
         {
+            if (type != EndType.Unknown && type != EndType.Clear)
+            {
+                return Ok();
+            }
             string? userId = HttpContext.CurrentUserID(_context);
             if (userId == null)
             {
@@ -532,9 +536,9 @@ namespace BeatLeader_Server.Controllers
             var transaction3 = _context.Database.BeginTransaction();
             try
             {
-                if (currentScore != null && stats != null) {
-                    await MigrateOldReplay(currentScore, stats);
-                }
+                //if (currentScore != null && stats != null) {
+                //    await MigrateOldReplay(currentScore, stats);
+                //}
 
                 await _replaysClient.CreateIfNotExistsAsync();
                 string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
@@ -777,13 +781,13 @@ namespace BeatLeader_Server.Controllers
             };
 
             try {
-                if (saveReplay) {
-                    await _otherReplaysClient.CreateIfNotExistsAsync();
-                    string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + "-" + timeset + ".bsor";
-                    stats.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/otherreplays/" : "https://cdn.beatleader.xyz/otherreplays/") + fileName;
-                    await _otherReplaysClient.DeleteBlobIfExistsAsync(fileName);
-                    await _otherReplaysClient.UploadBlobAsync(fileName, new BinaryData(replayData));
-                }
+                //if (saveReplay) {
+                //    await _otherReplaysClient.CreateIfNotExistsAsync();
+                //    string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + "-" + timeset + ".bsor";
+                //    stats.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/otherreplays/" : "https://cdn.beatleader.xyz/otherreplays/") + fileName;
+                //    await _otherReplaysClient.DeleteBlobIfExistsAsync(fileName);
+                //    await _otherReplaysClient.UploadBlobAsync(fileName, new BinaryData(replayData));
+                //}
 
                 leaderboard.PlayerStats.Add(stats);
                 _context.SaveChanges();
@@ -822,24 +826,24 @@ namespace BeatLeader_Server.Controllers
             return stats;
         }
 
-        [NonAction]
-        private async Task MigrateOldReplay(
-            Score oldScore,
-            PlayerLeaderboardStats stats)
-        {
-            try
-            {
-                if (oldScore.Replay.Length > 0)
-                {
-                    int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-                    string oldFileName = oldScore.Replay.Split("/").Last();
-                    string newFileName = oldFileName.Split(".").First() + "-" + timeset + ".bsor";
-                    await _otherReplaysClient.GetBlobClient(newFileName).StartCopyFromUri(_replaysClient.GetBlobClient(oldFileName).Uri).WaitForCompletionAsync();
-                    stats.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/otherreplays/" : "https://cdn.beatleader.xyz/otherreplays/") + newFileName;
-                }
-            }
-            catch { }
-        }
+        //[NonAction]
+        //private async Task MigrateOldReplay(
+        //    Score oldScore,
+        //    PlayerLeaderboardStats stats)
+        //{
+        //    try
+        //    {
+        //        if (oldScore.Replay.Length > 0)
+        //        {
+        //            int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+        //            string oldFileName = oldScore.Replay.Split("/").Last();
+        //            string newFileName = oldFileName.Split(".").First() + "-" + timeset + ".bsor";
+        //            await _otherReplaysClient.GetBlobClient(newFileName).StartCopyFromUri(_replaysClient.GetBlobClient(oldFileName).Uri).WaitForCompletionAsync();
+        //            stats.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/otherreplays/" : "https://cdn.beatleader.xyz/otherreplays/") + newFileName;
+        //        }
+        //    }
+        //    catch { }
+        //}
 
         [NonAction]
         public DiscordWebhookClient? top1DSClient()

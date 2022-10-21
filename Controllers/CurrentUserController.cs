@@ -126,7 +126,47 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/user/modinterface")]
-        public async Task<ActionResult<PlayerResponse>> GetCurrentUserMod() => ResponseUtils.ResponseFromPlayer((await GetCurrentUserLazy())?.Player);
+        public async Task<ActionResult<PlayerResponseWithFriends>> GetCurrentUserMod() {
+            string? id = GetId();
+            if (id == null) {
+                return NotFound();
+            }
+
+            Player? player;
+
+            User? user = _context
+                .Users
+                .Where(u => u.Id == id)
+                .Include(u => u.Player)
+                .ThenInclude(p => p.ScoreStats)
+                .Include(u => u.Player)
+                .ThenInclude(p => p.Socials)
+                .Include(u => u.Player)
+                .ThenInclude(p => p.ProfileSettings)
+                .FirstOrDefault();
+            
+
+            if (user == null) {
+                player = (await _playerController.GetLazy(id)).Value;
+                if (player == null)
+                {
+                    return NotFound();
+                }
+                _context.Users.Add(new User
+                {
+                    Id = id,
+                    Player = player
+                });
+                _context.SaveChanges();
+            } else {
+                player = user.Player;
+            }
+            
+            var result = ResponseUtils.GeneralResponseFromPlayer<PlayerResponseWithFriends>(player);
+            PlayerFriends? friends = _readContext.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == id);
+            result.Friends = friends != null ? friends.Friends.Select(f => f.Id).ToList() : new List<string>();
+            return result;
+        }
 
         [NonAction]
         public async Task<User?> GetCurrentUserLazy() => await GetUserLazy(GetId());

@@ -516,7 +516,7 @@ namespace BeatLeader_Server.Controllers
 
         [HttpGet("~/user/friendScores")]
         [Authorize]
-        public async Task<ActionResult<ResponseWithMetadata<Score>>> FriendsScores(
+        public async Task<ActionResult<ResponseWithMetadata<ScoreResponseWithMyScore>>> FriendsScores(
             string id,
             [FromQuery] string sortBy = "date",
             [FromQuery] string order = "desc",
@@ -600,10 +600,10 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            ResponseWithMetadata<Score> result;
+            ResponseWithMetadata<ScoreResponseWithMyScore> result;
             using (_serverTiming.TimeAction("db"))
             {
-                result = new ResponseWithMetadata<Score>()
+                result = new ResponseWithMetadata<ScoreResponseWithMyScore>()
                 {
                     Metadata = new Metadata()
                     {
@@ -611,7 +611,16 @@ namespace BeatLeader_Server.Controllers
                         ItemsPerPage = count,
                         Total = sequence.Count()
                     },
-                    Data = sequence.Skip((page - 1) * count).Take(count).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).ToList()
+                    Data = sequence
+                        .Skip((page - 1) * count)
+                        .Take(count)
+                        .Include(lb => lb.Leaderboard)
+                        .ThenInclude(lb => lb.Song)
+                        .ThenInclude(lb => lb.Difficulties)
+                        .Include(lb => lb.Leaderboard)
+                        .ThenInclude(lb => lb.Difficulty)
+                        .Select(ScoreWithMyScore)
+                        .ToList()
                 };
             }
             return result;
