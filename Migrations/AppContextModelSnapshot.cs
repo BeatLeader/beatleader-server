@@ -1740,6 +1740,9 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("ScoreImprovementId");
 
+                    b.HasIndex("PlayerId", "LeaderboardId")
+                        .IsUnique();
+
                     b.ToTable("Scores");
                 });
 

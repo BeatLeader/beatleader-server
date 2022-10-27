@@ -1,4 +1,6 @@
-﻿namespace BeatLeader_Server.Models
+﻿using Microsoft.EntityFrameworkCore;
+
+namespace BeatLeader_Server.Models
 {
     public enum ScoreStatus
     {
@@ -27,7 +29,8 @@
         public int Heights { get; set; }
         public int Pauses { get; set; }
     }
-
+    [Index(nameof(PlayerId))]
+    [Index(nameof(PlayerId), nameof(LeaderboardId), IsUnique = true)]
     public class Score
     {
         public int Id { get; set; }
