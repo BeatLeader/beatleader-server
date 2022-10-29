@@ -369,7 +369,7 @@ namespace BeatLeader_Server.Controllers
                 _scoreStatsClient.DeleteBlobIfExistsAsync(leaderboard.Id + "-leaderboard.json");
 
                 var status = leaderboard.Difficulty.Status;
-                var isRanked = status == DifficultyStatus.ranked || status == DifficultyStatus.qualified || status == DifficultyStatus.nominated;
+                var isRanked = status == DifficultyStatus.ranked || status == DifficultyStatus.qualified || status == DifficultyStatus.nominated || status == DifficultyStatus.inevent;
                 rankedScores = (isRanked ? leaderboard.Scores.OrderByDescending(el => el.Pp) : leaderboard.Scores.OrderByDescending(el => el.ModifiedScore)).ToList();
                 foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
                 {

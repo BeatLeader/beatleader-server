@@ -29,10 +29,13 @@ namespace BeatLeader_Server.Utils
             }
 
             float mp = modifierValues.GetTotalMultiplier(s.Modifiers);
-            mp = 1 + (mp - 1);
 
-            float rawPP = (float)(Curve(accuracy, (float)stars - 0.5f) * ((float)stars + 0.5f) * 42);
-            float fullPP = (float)(Curve(accuracy, (float)stars * mp - 0.5f) * ((float)stars * mp + 0.5f) * 42);
+            float rawPP = 0; float fullPP = 0;
+            if (!s.Modifiers.Contains("NF"))
+            {
+                rawPP = (float)(Curve(accuracy, (float)stars - 0.5f) * ((float)stars + 0.5f) * 42);
+                fullPP = (float)(Curve(accuracy, (float)stars * mp - 0.5f) * ((float)stars * mp + 0.5f) * 42);
+            }
 
             if (float.IsInfinity(rawPP) || float.IsNaN(rawPP) || float.IsNegativeInfinity(rawPP))
             {
@@ -70,21 +73,21 @@ namespace BeatLeader_Server.Utils
             }
 
             float mp = reweight.Modifiers.GetPositiveMultiplier(s.Modifiers);
-            mp = 1 + (mp - 1);
 
-            float rawPP = (float)(Curve(accuracy, (float)reweight.Stars - 0.5f) * ((float)reweight.Stars + 0.5f) * 42);
-            float fullPP = (float)(Curve(accuracy, (float)reweight.Stars * mp - 0.5f) * ((float)reweight.Stars * mp + 0.5f) * 42);
+            float rawPP = 0; float fullPP = 0;
+            if (!s.Modifiers.Contains("NF")) {
+                rawPP = (float)(Curve(accuracy, (float)reweight.Stars - 0.5f) * ((float)reweight.Stars + 0.5f) * 42);
+                fullPP = (float)(Curve(accuracy, (float)reweight.Stars * mp - 0.5f) * ((float)reweight.Stars * mp + 0.5f) * 42);
+            }
 
             if (float.IsInfinity(rawPP) || float.IsNaN(rawPP) || float.IsNegativeInfinity(rawPP))
             {
                 rawPP = 1042;
-
             }
 
             if (float.IsInfinity(fullPP) || float.IsNaN(fullPP) || float.IsNegativeInfinity(fullPP))
             {
                 fullPP = 1042;
-
             }
 
             if (negativeAcc)

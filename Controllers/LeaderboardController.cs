@@ -379,7 +379,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/leaderboards/refresh")]
         public async Task<ActionResult> RefreshLeaderboards()
         {
-            string currentId = HttpContext.CurrentUserID();
+            string currentId = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = _context.Players.Find(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
