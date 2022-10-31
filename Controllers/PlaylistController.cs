@@ -718,9 +718,12 @@ namespace BeatLeader_Server.Controllers
             request.Method = "GET";
             request.Proxy = null;
 
+            try {
             var response = await request.DynamicResponse();
+                return (float?)response?.balanced;
+            } catch { return 4.2f; }
 
-            return (float?)response?.balanced;
+            
         }
 
         [HttpGet("~/event/{id}/refresh")]

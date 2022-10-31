@@ -31,8 +31,8 @@ namespace BeatLeader_Server.Controllers
                     Link = "https://github.com/BeatLeader/beatleader-mod/releases/tag/v0.5.0"
                 },
                 Quest = new ModVersion {
-                    Version = "0.4.1",
-                    Link = "https://github.com/BeatLeader/beatleader-qmod/releases/tag/v0.4.1"
+                    Version = "0.4.2",
+                    Link = "https://github.com/BeatLeader/beatleader-qmod/releases/tag/v0.4.2"
                 }
             };
         }

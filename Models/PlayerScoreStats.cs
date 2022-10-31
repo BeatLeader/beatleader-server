@@ -5,9 +5,9 @@ namespace BeatLeader_Server.Models
     {
         public int Id { get; set; }
 
-        public int TotalScore { get; set; }
-        public int TotalUnrankedScore { get; set; }
-        public int TotalRankedScore { get; set; }
+        public long TotalScore { get; set; }
+        public long TotalUnrankedScore { get; set; }
+        public long TotalRankedScore { get; set; }
 
         public int LastScoreTime { get; set; }
         public int LastUnrankedScoreTime { get; set; }

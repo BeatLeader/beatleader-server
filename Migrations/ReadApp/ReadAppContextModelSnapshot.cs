@@ -1092,14 +1092,14 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.Property<int>("TotalPlayCount")
                         .HasColumnType("int");
 
-                    b.Property<int>("TotalRankedScore")
-                        .HasColumnType("int");
+                    b.Property<long>("TotalRankedScore")
+                        .HasColumnType("bigint");
 
-                    b.Property<int>("TotalScore")
-                        .HasColumnType("int");
+                    b.Property<long>("TotalScore")
+                        .HasColumnType("bigint");
 
-                    b.Property<int>("TotalUnrankedScore")
-                        .HasColumnType("int");
+                    b.Property<long>("TotalUnrankedScore")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("UnrankedPlayCount")
                         .HasColumnType("int");
