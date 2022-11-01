@@ -8,6 +8,7 @@ using Azure.Storage.Blobs;
 using Azure.Core.Extensions;
 using System;
 using System.Text.Json.Serialization;
+using BeatLeader_Server.Services;
 
 namespace BeatLeader_Server {
     public class AzureStorageConfig {
@@ -164,6 +165,11 @@ namespace BeatLeader_Server {
 
             services.Configure<AzureStorageConfig> (Configuration.GetSection ("AzureStorageConfig"));
 
+            string servicesHost = Configuration.GetValue<string>("ServicesHost");
+            if (Configuration.GetValue<string>("ServicesHost") == "YES") {
+                services.AddHostedService<HistoryService>();
+                services.AddHostedService<HourlyRefresh>();
+            }
             services.AddMvc ().AddControllersAsServices ().AddJsonOptions (options => {
                 options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
             });

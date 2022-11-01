@@ -4,6 +4,7 @@
     {
         public int Id { get; set; }
         public int Timestamp { get; set; }
+        public string? PlayerId { get; set; }
 
         public string? OldName { get; set; }
         public string? NewName { get; set; }
@@ -45,6 +46,8 @@
         public PatreonFeatures? PatreonFeatures { get; set; }
         public ProfileSettings? ProfileSettings { get; set; }
         public ICollection<PlayerChange>? Changes { get; set; }
+
+        public ICollection<PlayerScoreStatsHistory>? History { get; set; }
 
         public ICollection<EventPlayer>? EventsParticipating { get; set; }
         public ICollection<PlayerSocial>? Socials { get; set; }

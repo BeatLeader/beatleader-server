@@ -863,7 +863,8 @@ namespace BeatLeader_Server.Controllers
                 .Include(p => p.Clans)
                 .Include(p => p.PatreonFeatures)
                 .Include(p => p.ProfileSettings)
-                .Include(p => p.StatsHistory)
+                .Include(p => p.Changes)
+                .Include(p => p.History)
                 .Include(p => p.Badges)
                 .Include(p => p.Socials)
                 .FirstOrDefault();
@@ -871,7 +872,8 @@ namespace BeatLeader_Server.Controllers
                 .Include(p => p.Clans)
                 .Include(p => p.PatreonFeatures)
                 .Include(p => p.ProfileSettings)
-                .Include(p => p.StatsHistory)
+                .Include(p => p.Changes)
+                .Include(p => p.History)
                 .Include(p => p.Badges)
                 .FirstOrDefault();
 
@@ -952,9 +954,19 @@ namespace BeatLeader_Server.Controllers
                 migratedToPlayer.Country = currentPlayer.Country;
             }
 
-            if (currentPlayer.Histories.Length >= migratedToPlayer.Histories.Length) {
-                migratedToPlayer.Histories = currentPlayer.Histories;
-                migratedToPlayer.StatsHistory = currentPlayer.StatsHistory;
+            if (currentPlayer.History?.Count >= migratedToPlayer.History?.Count) {
+                foreach (var item in currentPlayer.History)
+                {
+                    item.PlayerId = migrateToId;
+                }
+            }
+
+            if (currentPlayer.Changes?.Count >= migratedToPlayer.Changes?.Count)
+            {
+                foreach (var item in currentPlayer.Changes)
+                {
+                    item.PlayerId = migrateToId;
+                }
             }
 
             PlayerFriends? currentPlayerFriends = _context.Friends.Where(u => u.Id == currentPlayer.Id).Include(f => f.Friends).FirstOrDefault();
@@ -1052,6 +1064,8 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
+            currentPlayer.History = null;
+            currentPlayer.ProfileSettings = null;
             currentPlayer.Socials = null;
             _context.Players.Remove(currentPlayer);
 

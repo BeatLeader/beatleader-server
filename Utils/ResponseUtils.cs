@@ -51,7 +51,7 @@ namespace BeatLeader_Server.Utils
             public string ExternalProfileUrl { get; set; } = "";
             
 
-            public PlayerStatsHistory? StatsHistory { get; set; }
+            public ICollection<PlayerScoreStatsHistory>? History { get; set; }
 
             public ICollection<Badge>? Badges { get; set; }
             public ICollection<ScoreResponseWithMyScore>? PinnedScores { get; set; }
@@ -354,7 +354,7 @@ namespace BeatLeader_Server.Utils
 
                 ExternalProfileUrl = p.ExternalProfileUrl,
 
-                StatsHistory = p.StatsHistory,
+                History = p.History,
 
                 Badges = p.Badges,
                 Changes = p.Changes,

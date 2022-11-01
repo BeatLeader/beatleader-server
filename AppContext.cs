@@ -46,6 +46,7 @@ namespace BeatLeader_Server
         public DbSet<ModifiersMap> Modifiers { get; set; }
         public DbSet<ReplayWatchingSession> WatchingSessions { get; set; }
         public DbSet<Headset> Headsets { get; set; }
+        public DbSet<PlayerScoreStatsHistory> PlayerScoreStatsHistory { get; set; }
 
         public DbSet<EventRanking> EventRankings { get; set; }
 
@@ -111,6 +112,7 @@ namespace BeatLeader_Server
         public DbSet<ModifiersMap> Modifiers { get; set; }
         public DbSet<ReplayWatchingSession> WatchingSessions { get; set; }
         public DbSet<Headset> Headsets { get; set; }
+        public DbSet<PlayerScoreStatsHistory> PlayerScoreStatsHistory { get; set; }
 
         public DbSet<EventRanking> EventRankings { get; set; }
 

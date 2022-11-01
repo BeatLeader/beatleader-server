@@ -89,7 +89,6 @@ namespace BeatLeader_Server.Controllers
                         .Where(p => p.Id == userId)
                         .Include(p => p.ScoreStats)
                         .Include(p => p.Badges)
-                        .Include(p => p.StatsHistory)
                         .Include(p => p.Clans)
                         .Include(p => p.PatreonFeatures)
                         .Include(p => p.ProfileSettings)
@@ -110,20 +109,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
             if (player != null) {
-                var result = PostProcessSettings(ResponseFullFromPlayer(player));
-                
-                result.PinnedScores = _readContext
-                    .Scores
-                    .Include(s => s.Metadata)
-                    .Include(s => s.Leaderboard)
-                    .ThenInclude(s => s.Song)
-                    .Include(s => s.Leaderboard)
-                    .ThenInclude(s => s.Difficulty)
-                    .Where(s => s.PlayerId == player.Id && s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned)
-                    .OrderBy(s => s.Metadata.Priority)
-                    .Select(ScoreWithMyScore)
-                    .ToList();
-                return result;
+                return PostProcessSettings(ResponseFullFromPlayer(player));
             } else {
                 return NotFound();
             }
@@ -187,19 +173,36 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> DeletePlayer(string id)
         {
-            string currentId = HttpContext.CurrentUserID();
+            string currentId = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = _context.Players.Find(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
             }
-            Player? player = _context.Players.Find(id);
+            var bslink = _context.BeatSaverLinks.Where(link => link.Id == id).FirstOrDefault();
+            if (bslink != null) {
+                _context.BeatSaverLinks.Remove(bslink);
+            }
+
+            var plink = _context.PatreonLinks.Where(l => l.Id == id).FirstOrDefault();
+            if (plink != null) {
+                _context.PatreonLinks.Remove(plink);
+            }
+
+            Player? player = _context.Players.Where(p => p.Id == id)
+                .Include(p => p.Socials)
+                .Include(p => p.ProfileSettings)
+                .Include(p => p.History)
+                .Include(p => p.Changes).FirstOrDefault();
 
             if (player == null)
             {
                 return NotFound();
             }
 
+            player.Socials = null;
+            player.ProfileSettings = null;
+            player.History = null;
             _context.Players.Remove(player);
             await _context.SaveChangesAsync();
 
@@ -680,6 +683,33 @@ namespace BeatLeader_Server.Controllers
 
         }
 
+        [HttpGet("~/player/{id}/history")]
+        public async Task<ActionResult<ICollection<PlayerScoreStatsHistory>>> GetHistory(string id, [FromQuery] int count = 50)
+        {
+            return _readContext
+                    .PlayerScoreStatsHistory
+                    .Where(p => p.PlayerId == id)
+                    .OrderByDescending(s => s.Timestamp)
+                    .Take(count)
+                    .ToList();
+        }
+
+        [HttpGet("~/player/{id}/pinnedScores")]
+        public async Task<ActionResult<ICollection<ScoreResponseWithMyScore>>> GetPinnedScores(string id)
+        {
+            return _readContext
+                    .Scores
+                    .Include(s => s.Metadata)
+                    .Include(s => s.Leaderboard)
+                    .ThenInclude(s => s.Song)
+                    .Include(s => s.Leaderboard)
+                    .ThenInclude(s => s.Difficulty)
+                    .Where(s => s.PlayerId == id && s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned)
+                    .OrderBy(s => s.Metadata.Priority)
+                    .Select(ScoreWithMyScore)
+                    .ToList();
+        }
+
         [HttpGet("~/players")]
         public async Task<ActionResult<ResponseWithMetadata<PlayerResponseWithStats>>> GetPlayers(
             [FromQuery] string sortBy = "pp", 
@@ -1021,125 +1051,32 @@ namespace BeatLeader_Server.Controllers
             };
         }
 
-        private string GenerateListString(string current, int value) {
-            var histories = current.Length == 0 ? new string[0] : current.Split(",");
-            if (histories.Length == 50)
-            {
-                histories = histories.Skip(1).Take(49).ToArray();
-            }
-            histories = histories.Append(value.ToString()).ToArray();
-            return string.Join(",", histories);
-        }
-
-        private string GenerateListString(string current, float value)
-        {
-            var histories = current.Length == 0 ? new string[0] : current.Split(",");
-            if (histories.Length == 50)
-            {
-                histories = histories.Skip(1).Take(49).ToArray();
-            }
-            histories = histories.Append(value.ToString("#.#####")).ToArray();
-            return string.Join(",", histories);
-        }
-
-        [HttpGet("~/players/sethistories")]
-        public async Task<ActionResult> SetHistories()
-        {
-            var transaction = _context.Database.BeginTransaction();
-            int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-            CronTimestamps? cronTimestamps = _context.cronTimestamps.Find(1);
-            if (cronTimestamps != null)
-            {
-                if ((timestamp - cronTimestamps.HistoriesTimestamp) < 60 * 60 * 24 - 5 * 60)
-                {
-                    return BadRequest("Allowed only at midnight");
-                }
-                else
-                {
-                    cronTimestamps.HistoriesTimestamp = timestamp;
-                    _context.Update(cronTimestamps);
-                }
-            }
-            else
-            {
-                cronTimestamps = new CronTimestamps();
-                cronTimestamps.HistoriesTimestamp = timestamp;
-                _context.Add(cronTimestamps);
-            }
-            transaction.Commit();
-            HttpContext.Response.OnCompleted(async () =>
-            {
-                await RefreshPlayersStats();
-                var playersCount = _context.Players.Where(p => !p.Banned).Count();
-                for (int i = 0; i < playersCount; i += 2000)
-                {
-                    var ranked = _context.Players.Where(p => !p.Banned).Include(p => p.ScoreStats).Include(p => p.StatsHistory).Skip(i).Take(2000).ToList();
-                    foreach (Player p in ranked)
-                    {
-                        p.Histories = GenerateListString(p.Histories, p.Rank);
-
-                        var stats = p.ScoreStats;
-                        var statsHistory = p.StatsHistory;
-                        if (statsHistory == null)
-                        {
-                            statsHistory = new PlayerStatsHistory();
-                        }
-
-                        statsHistory.Pp = GenerateListString(statsHistory.Pp, p.Pp);
-                        statsHistory.Rank = p.Histories;
-                        statsHistory.CountryRank = GenerateListString(statsHistory.CountryRank, p.CountryRank);
-                        statsHistory.TotalScore = GenerateListString(statsHistory.TotalScore, stats.TotalScore);
-                        statsHistory.AverageRankedAccuracy = GenerateListString(statsHistory.AverageRankedAccuracy, stats.AverageRankedAccuracy);
-                        statsHistory.AverageWeightedRankedAccuracy = GenerateListString(statsHistory.AverageWeightedRankedAccuracy, stats.AverageWeightedRankedAccuracy);
-                        statsHistory.AverageWeightedRankedRank = GenerateListString(statsHistory.AverageWeightedRankedRank, stats.AverageWeightedRankedRank);
-                        statsHistory.TopAccuracy = GenerateListString(statsHistory.TopAccuracy, stats.TopAccuracy);
-                        statsHistory.TopPp = GenerateListString(statsHistory.TopPp, stats.TopPp);
-                        statsHistory.AverageAccuracy = GenerateListString(statsHistory.AverageAccuracy, stats.AverageAccuracy);
-                        statsHistory.MedianAccuracy = GenerateListString(statsHistory.MedianAccuracy, stats.MedianAccuracy);
-                        statsHistory.MedianRankedAccuracy = GenerateListString(statsHistory.MedianRankedAccuracy, stats.MedianRankedAccuracy);
-                        statsHistory.TotalPlayCount = GenerateListString(statsHistory.TotalPlayCount, stats.TotalPlayCount);
-                        statsHistory.RankedPlayCount = GenerateListString(statsHistory.RankedPlayCount, stats.RankedPlayCount);
-                        statsHistory.ReplaysWatched = GenerateListString(statsHistory.ReplaysWatched, stats.AnonimusReplayWatched + stats.AuthorizedReplayWatched);
-
-                        p.StatsHistory = statsHistory;
-                        stats.DailyImprovements = 0;
-                    }
-
-                    _context.SaveChanges();
-                }
-            });
-
-            return Ok();
-        }
-
         [HttpGet("~/players/steam/refresh")]
         public async Task<ActionResult> RefreshSteamPlayers()
         {
-            HttpContext.Response.OnCompleted(async () => {
-                var players = _context.Players.ToList();
-                foreach (Player p in players)
+            var players = _context.Players.ToList();
+            foreach (Player p in players)
+            {
+                if (Int64.Parse(p.Id) <= 70000000000000000) { continue; }
+                Player? update = await PlayerUtils.GetPlayerFromSteam(p.Id, _configuration.GetValue<string>("SteamKey"));
+
+                if (update != null)
                 {
-                    if (Int64.Parse(p.Id) <= 70000000000000000) { continue; }
-                    Player? update = await PlayerUtils.GetPlayerFromSteam(p.Id, _configuration.GetValue<string>("SteamKey"));
+                    p.ExternalProfileUrl = update.ExternalProfileUrl;
 
-                    if (update != null)
+                    if (p.Avatar.Contains("steamcdn"))
                     {
-                        p.ExternalProfileUrl = update.ExternalProfileUrl;
+                        p.Avatar = update.Avatar;
+                    }
 
-                        if (p.Avatar.Contains("steamcdn"))
-                        {
-                            p.Avatar = update.Avatar;
-                        }
-
-                        if (p.Country == "not set" && update.Country != "not set")
-                        {
-                            p.Country = update.Country;
-                        }
+                    if (p.Country == "not set" && update.Country != "not set")
+                    {
+                        p.Country = update.Country;
                     }
                 }
+            }
 
-                await _context.SaveChangesAsync();
-            });
+            await _context.SaveChangesAsync();
 
             return Ok();
         }

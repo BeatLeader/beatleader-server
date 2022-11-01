@@ -727,24 +727,5 @@ namespace BeatLeader_Server.Controllers
 
             return Ok();
         }
-
-        [HttpGet("~/clans/refresh")]
-        public async Task<ActionResult> RefreshClans()
-        {
-            var clans = _context.Clans.Include(c => c.Players.Where(p => !p.Banned)).ThenInclude(p => p.ScoreStats).ToList();
-            foreach (var clan in clans)
-            {
-                if (clan.Players.Count > 0) {
-                    clan.AverageAccuracy = clan.Players.Average(p => p.ScoreStats.AverageRankedAccuracy);
-                    clan.AverageRank = (float)clan.Players.Average(p => p.Rank);
-                    clan.PlayersCount = clan.Players.Count();
-                    clan.Pp = _context.RecalculateClanPP(clan.Id);
-                }
-            }
-            
-            _context.SaveChanges();
-
-            return Ok();
-        }
     }
 }
