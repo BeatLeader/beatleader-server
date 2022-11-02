@@ -160,6 +160,7 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
                 player.Id = id;
+                player.ScoreStats = new PlayerScoreStats();
                 if (addToBase) {
                     _context.Players.Add(player);
                     await _context.SaveChangesAsync();
@@ -1168,7 +1169,7 @@ namespace BeatLeader_Server.Controllers
             if (player.ScoreStats.TotalPlayCount > 0)
             {
                 int count = allScores.Count() / 2;
-                player.ScoreStats.TotalScore = allScores.Sum(s => s.ModifiedScore);
+                player.ScoreStats.TotalScore = allScores.Sum(s => (long)s.ModifiedScore);
                 player.ScoreStats.AverageAccuracy = allScores.Average(s => s.Accuracy);
                 player.ScoreStats.TopAccuracy = allScores.Max(s => s.Accuracy);
                 player.ScoreStats.MedianAccuracy = allScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
@@ -1186,7 +1187,7 @@ namespace BeatLeader_Server.Controllers
             if (player.ScoreStats.UnrankedPlayCount > 0)
             {
                 int count = unrankedScores.Count() / 2;
-                player.ScoreStats.TotalUnrankedScore = unrankedScores.Sum(s => s.ModifiedScore);
+                player.ScoreStats.TotalUnrankedScore = unrankedScores.Sum(s => (long)s.ModifiedScore);
                 player.ScoreStats.AverageUnrankedAccuracy = unrankedScores.Average(s => s.Accuracy);
                 player.ScoreStats.TopUnrankedAccuracy = unrankedScores.Max(s => s.Accuracy);
                 player.ScoreStats.AverageUnrankedRank = unrankedScores.Average(s => (float)s.Rank);
@@ -1202,7 +1203,7 @@ namespace BeatLeader_Server.Controllers
             if (player.ScoreStats.RankedPlayCount > 0)
             {
                 int count = rankedScores.Count() / 2;
-                player.ScoreStats.TotalRankedScore = rankedScores.Sum(s => s.ModifiedScore);
+                player.ScoreStats.TotalRankedScore = rankedScores.Sum(s => (long)s.ModifiedScore);
                 player.ScoreStats.AverageRankedAccuracy = rankedScores.Average(s => s.Accuracy);
 
 

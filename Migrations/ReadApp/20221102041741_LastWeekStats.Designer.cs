@@ -4,16 +4,18 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace BeatLeader_Server.Migrations
+namespace BeatLeader_Server.Migrations.ReadApp
 {
-    [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [DbContext(typeof(ReadAppContext))]
+    [Migration("20221102041741_LastWeekStats")]
+    partial class LastWeekStats
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -891,7 +893,7 @@ namespace BeatLeader_Server.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("ScoreStatsId")
+                    b.Property<int>("ScoreStatsId")
                         .HasColumnType("int");
 
                     b.Property<int?>("StatsHistoryId")
@@ -2389,7 +2391,9 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasOne("BeatLeader_Server.Models.PlayerScoreStats", "ScoreStats")
                         .WithMany()
-                        .HasForeignKey("ScoreStatsId");
+                        .HasForeignKey("ScoreStatsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("BeatLeader_Server.Models.PlayerStatsHistory", "StatsHistory")
                         .WithMany()

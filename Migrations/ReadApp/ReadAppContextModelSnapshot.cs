@@ -855,6 +855,15 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.Property<bool>("Inactive")
                         .HasColumnType("bit");
 
+                    b.Property<int>("LastWeekCountryRank")
+                        .HasColumnType("int");
+
+                    b.Property<float>("LastWeekPp")
+                        .HasColumnType("real");
+
+                    b.Property<int>("LastWeekRank")
+                        .HasColumnType("int");
+
                     b.Property<int>("MapperId")
                         .HasColumnType("int");
 
@@ -882,7 +891,7 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("ScoreStatsId")
+                    b.Property<int?>("ScoreStatsId")
                         .HasColumnType("int");
 
                     b.Property<int?>("StatsHistoryId")
@@ -2380,9 +2389,7 @@ namespace BeatLeader_Server.Migrations.ReadApp
 
                     b.HasOne("BeatLeader_Server.Models.PlayerScoreStats", "ScoreStats")
                         .WithMany()
-                        .HasForeignKey("ScoreStatsId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("ScoreStatsId");
 
                     b.HasOne("BeatLeader_Server.Models.PlayerStatsHistory", "StatsHistory")
                         .WithMany()

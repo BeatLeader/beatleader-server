@@ -38,6 +38,9 @@ namespace BeatLeader_Server.Utils
         {
             public string Histories { get; set; } = "";
             public PlayerScoreStats ScoreStats { get; set; }
+            public float LastWeekPp { get; set; }
+            public int LastWeekRank { get; set; }
+            public int LastWeekCountryRank { get; set; } 
             public IEnumerable<EventPlayer>? EventsParticipating { get; set; }
         }
 
@@ -325,6 +328,9 @@ namespace BeatLeader_Server.Utils
                 Pp = p.Pp,
                 Rank = p.Rank,
                 CountryRank = p.CountryRank,
+                LastWeekPp = p.LastWeekPp,
+                LastWeekRank = p.LastWeekRank,
+                LastWeekCountryRank = p.LastWeekCountryRank,
                 Role = p.Role,
                 EventsParticipating = p.EventsParticipating,
                 PatreonFeatures = p.PatreonFeatures,
@@ -362,6 +368,9 @@ namespace BeatLeader_Server.Utils
                 Pp = p.Pp,
                 Rank = p.Rank,
                 CountryRank = p.CountryRank,
+                LastWeekPp = p.LastWeekPp,
+                LastWeekRank = p.LastWeekRank,
+                LastWeekCountryRank = p.LastWeekCountryRank,
                 Role = p.Role,
                 Socials = p.Socials,
                 EventsParticipating = p.EventsParticipating,

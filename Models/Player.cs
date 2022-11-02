@@ -1,4 +1,6 @@
-﻿namespace BeatLeader_Server.Models
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace BeatLeader_Server.Models
 {
     public class PlayerChange
     {
@@ -17,6 +19,7 @@
 
     public class Player
     {
+        [Key]
         public string Id { get; set; }
         public string Name { get; set; } = "";
         public string Platform { get; set; } = "";
@@ -31,15 +34,19 @@
         public int Rank { get; set; }
         public int CountryRank { get; set; }
 
+        public float LastWeekPp { get; set; }
+        public int LastWeekRank { get; set; }
+        public int LastWeekCountryRank { get; set; }
+
         public bool Banned { get; set; }
         public bool Inactive { get; set; }
 
         public string ExternalProfileUrl { get; set; } = "";
 
-        public PlayerScoreStats ScoreStats { get; set; } = new PlayerScoreStats();
+        public PlayerScoreStats? ScoreStats { get; set; }
         public PlayerStatsHistory? StatsHistory { get; set; }
-        public ICollection<Clan> Clans { get; set; } = new List<Clan>();
-        public ICollection<PlayerFriends> Friends { get; set; } = new List<PlayerFriends>();
+        public ICollection<Clan>? Clans { get; set; }
+        public ICollection<PlayerFriends>? Friends { get; set; }
 
         public ICollection<Badge>? Badges { get; set; }
 

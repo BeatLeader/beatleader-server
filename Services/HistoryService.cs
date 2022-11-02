@@ -17,17 +17,18 @@ namespace BeatLeader_Server.Services
         {
             do {
                  int hourSpan = 24 - DateTime.Now.Hour;
-                 int numberOfHours = hourSpan;
+                int numberOfHours = hourSpan;
 
-                 if (hourSpan == 24)
-                 {
+                if (hourSpan == 24)
+                {
                     await SetHistories();
+                    await SetLastWeek();
 
                     hourSpan = 24 - DateTime.Now.Hour;
                     numberOfHours = hourSpan;
-                 }
+                }
 
-                 await Task.Delay(TimeSpan.FromHours(numberOfHours), stoppingToken);
+                await Task.Delay(TimeSpan.FromHours(numberOfHours), stoppingToken);
             }
             while (!stoppingToken.IsCancellationRequested);
         }
@@ -36,6 +37,7 @@ namespace BeatLeader_Server.Services
             using (var scope = _serviceScopeFactory.CreateScope())
             {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+
                 int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                 var playersCount = _context.Players.Where(p => !p.Banned).Count();
                 for (int i = 0; i < playersCount; i += 2000)
@@ -114,6 +116,44 @@ namespace BeatLeader_Server.Services
 
                     _context.SaveChanges();
                 }
+            }
+        }
+
+        public async Task SetLastWeek()
+        {
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+                _context.ChangeTracker.AutoDetectChangesEnabled = false;
+
+                int timesetFrom = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - 60 * 60 * 24 * 7 - 60 * 60 * 2;
+                int timesetTo = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - 60 * 60 * 24 * 7 + 60 * 60 * 2;
+                
+                var ranked = (await _context
+                    .PlayerScoreStatsHistory
+                    .Where(p => p.Timestamp > timesetFrom && p.Timestamp < timesetTo)
+                    .Select(p => new { 
+                        Rank = p.Rank,
+                        CountryRank = p.CountryRank,
+                        Pp = p.Pp,
+                        Id = p.PlayerId,
+                        Timestamp = p.Timestamp,
+                        })
+                    .ToListAsync())
+                    .DistinctBy(p => p.Id)
+                    .ToList();
+                foreach (var p in ranked)
+                {
+                    if (p.Id != null) {
+                        var player = new Player() { Id = p.Id, LastWeekRank = p.Rank, LastWeekPp = p.Pp, LastWeekCountryRank = p.CountryRank };
+                        _context.Players.Attach(player);
+                        _context.Entry(player).Property(x => x.LastWeekRank).IsModified = true;
+                        _context.Entry(player).Property(x => x.LastWeekPp).IsModified = true;
+                        _context.Entry(player).Property(x => x.LastWeekCountryRank).IsModified = true;
+                    }
+                }
+
+                await _context.BulkSaveChangesAsync();
             }
         }
     }
