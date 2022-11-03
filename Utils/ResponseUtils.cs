@@ -27,17 +27,17 @@ namespace BeatLeader_Server.Utils
 
             public PatreonFeatures? PatreonFeatures { get; set; }
             public ProfileSettings? ProfileSettings { get; set; }
-            public IEnumerable<ClanResponse> Clans { get; set; }
+            public IEnumerable<ClanResponse>? Clans { get; set; }
         }
         public class PlayerResponseWithFriends : PlayerResponse
         {
-            public ICollection<string> Friends { get; set; }
+            public ICollection<string>? Friends { get; set; }
         }
 
         public class PlayerResponseWithStats : PlayerResponse
         {
             public string Histories { get; set; } = "";
-            public PlayerScoreStats ScoreStats { get; set; }
+            public PlayerScoreStats? ScoreStats { get; set; }
             public float LastWeekPp { get; set; }
             public int LastWeekRank { get; set; }
             public int LastWeekCountryRank { get; set; } 
@@ -289,7 +289,7 @@ namespace BeatLeader_Server.Utils
                 Socials = p.Socials,
                 PatreonFeatures = p.PatreonFeatures,
                 ProfileSettings = p.ProfileSettings,
-                Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                Clans = p.Clans?.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
             };
         }
 
@@ -335,14 +335,19 @@ namespace BeatLeader_Server.Utils
                 EventsParticipating = p.EventsParticipating,
                 PatreonFeatures = p.PatreonFeatures,
                 ProfileSettings = p.ProfileSettings,
-                Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                Clans = p.Clans?.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
             };
         }
 
-        public static PlayerResponseFull? ResponseFullFromPlayer(Player? p)
+        public static PlayerResponseFull? ResponseFullFromPlayerNullable(Player? p)
         {
             if (p == null) return null;
 
+            return ResponseFullFromPlayer(p);
+        }
+
+        public static PlayerResponseFull ResponseFullFromPlayer(Player p)
+        {
             return new PlayerResponseFull
             {
                 Id = p.Id,
@@ -376,7 +381,7 @@ namespace BeatLeader_Server.Utils
                 EventsParticipating = p.EventsParticipating,
                 PatreonFeatures = p.PatreonFeatures,
                 ProfileSettings = p.ProfileSettings,
-                Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                Clans = p.Clans?.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
             };
         }
         

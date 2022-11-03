@@ -37,14 +37,15 @@ namespace BeatLeader_Server.Services
             using (var scope = _serviceScopeFactory.CreateScope())
             {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+                _context.ChangeTracker.AutoDetectChangesEnabled = false;
 
                 int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                 var playersCount = _context.Players.Where(p => !p.Banned).Count();
                 for (int i = 0; i < playersCount; i += 2000)
                 {
-                    var ranked = _context
+                    var ranked = await _context
                         .Players
-                        .Where(p => !p.Banned)
+                        .Where(p => !p.Banned && p.ScoreStats != null)
                         .Include(p => p.ScoreStats)
                         .Skip(i)
                         .Take(2000)
@@ -55,7 +56,7 @@ namespace BeatLeader_Server.Services
                             CountryRank = p.CountryRank,
                             Id = p.Id
                             })
-                        .ToList();
+                        .ToListAsync();
                     foreach (var p in ranked)
                     {
                         _context.PlayerScoreStatsHistory.Add(new PlayerScoreStatsHistory {
@@ -113,9 +114,8 @@ namespace BeatLeader_Server.Services
                             WatchedReplays = p.ScoreStats.WatchedReplays,
                         });
                     }
-
-                    _context.SaveChanges();
                 }
+                await _context.BulkSaveChangesAsync();
             }
         }
 

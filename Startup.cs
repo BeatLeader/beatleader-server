@@ -162,13 +162,13 @@ namespace BeatLeader_Server {
             services.AddDbContext<AppContext>(options => options.UseSqlServer(readWriteConnection));
             services.AddDbContext<ReadAppContext>(options => options.UseSqlServer(readConnection));
 
-
             services.Configure<AzureStorageConfig> (Configuration.GetSection ("AzureStorageConfig"));
 
-            string servicesHost = Configuration.GetValue<string>("ServicesHost");
-            if (Configuration.GetValue<string>("ServicesHost") == "YES") {
-                services.AddHostedService<HistoryService>();
+            if (Configuration.GetValue<string>("ServicesHost") == "YES")
+            {
                 services.AddHostedService<HourlyRefresh>();
+                services.AddHostedService<DailyRefresh>();
+                services.AddHostedService<HistoryService>();
             }
             services.AddMvc ().AddControllersAsServices ().AddJsonOptions (options => {
                 options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
