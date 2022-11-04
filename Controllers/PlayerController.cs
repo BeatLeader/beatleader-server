@@ -1342,52 +1342,51 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> RefreshPlayers()
         {
-            string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = _context.Players.Find(currentId);
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
-            var scores = _context.Scores.Where(s => s.Pp != 0).ToList();
-            var players = _context.Players.Where(s => s.Pp != 0).ToList();
-            Dictionary<string, int> countries = new Dictionary<string, int>();
-
-            var transaction = _context.Database.BeginTransaction();
-
-            int counter = 0;
-            foreach (Player p in players)
-            {
-                _context.RecalculatePP(p, scores.Where(s => s.PlayerId == p.Id && !s.Banned && !s.Qualification).OrderByDescending(s => s.Pp).ToList());
-
-                counter++;
-                if (counter == 1000) {
-                    counter = 0;
-                    try
-                    {
-                        await _context.SaveChangesAsync();
-                    }
-                    catch (Exception e)
-                    {
-
-                        _context.RejectChanges();
-                        transaction.Rollback();
-                        transaction = _context.Database.BeginTransaction();
-                        continue;
-                    }
-                    transaction.Commit();
-                    transaction = _context.Database.BeginTransaction();
+            if (HttpContext != null) {
+                string currentId = HttpContext.CurrentUserID(_context);
+                Player? currentPlayer = _context.Players.Find(currentId);
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
                 }
             }
-            try
+
+            var playersCount = _context.Players.Where(p => !p.Banned).Count();
+            for (int i = 0; i < playersCount; i += 2000)
             {
-                await _context.SaveChangesAsync();
+                var players = _context
+                    .Players
+                    .Skip(i)
+                    .Take(2000)
+                    .Include(p => p.ScoreStats)
+                    .Where(s => s.Pp != 0)
+                    .ToList();
+                var transaction = _context.Database.BeginTransaction();
+
+                foreach (Player p in players)
+                {
+                    _context.RecalculatePP(p);
+                }
+
+                try
+                {
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception e)
+                {
+                    _context.RejectChanges();
+                    transaction.Rollback();
+                    transaction = _context.Database.BeginTransaction();
+                }
+                transaction.Commit();
             }
-            catch (Exception e)
-            {
-                _context.RejectChanges();
-            }
-            transaction.Commit();
-            var ranked = players.OrderByDescending(t => t.Pp).ToList();
+
+            Dictionary<string, int> countries = new Dictionary<string, int>();
+            var ranked = _context
+                .Players
+                .Where(p => p.Pp > 0)
+                .OrderByDescending(t => t.Pp)
+                .ToList();
             foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
             {
                 p.Rank = i + 1;
@@ -1408,11 +1407,13 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/players/stats/refresh")]
         public async Task<ActionResult> RefreshPlayersStats()
         {
-            string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = _context.Players.Find(currentId);
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
+            if (HttpContext != null) {
+                string currentId = HttpContext.CurrentUserID(_context);
+                Player? currentPlayer = _context.Players.Find(currentId);
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
             }
             var playersCount = _context.Players.Where(p => !p.Banned).Count();
             for (int i = 0; i < playersCount; i += 2000)

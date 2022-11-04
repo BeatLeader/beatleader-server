@@ -13,7 +13,11 @@ namespace BeatLeader_Server.Utils
         {
             var ranked = scores ?? context
                 .Scores
-                .Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification)
+                .Where(s => 
+                    s.PlayerId == player.Id && 
+                    s.Pp != 0 && 
+                    !s.Banned && 
+                    !s.Qualification)
                 .OrderByDescending(s => s.Pp)
                 .ToList();
             float resultPP = 0f;

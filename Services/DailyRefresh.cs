@@ -1,4 +1,5 @@
-﻿using BeatLeader_Server.Models;
+﻿using BeatLeader_Server.Controllers;
+using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -19,16 +20,17 @@ namespace BeatLeader_Server.Services
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             do {
-                int hourSpan = 24 - DateTime.Now.Hour;
-                int numberOfHours = hourSpan;
+                int hoursUntil21 = (21 - (int)DateTime.Now.Hour + 24) % 24;
 
-                if (hourSpan == 1)
+                if (hoursUntil21 == 0)
                 {
                     await RefreshSteamPlayers();
-                    numberOfHours = 25;
+                    await RefreshStats();
+
+                    hoursUntil21 = 24;
                 }
 
-                await Task.Delay(TimeSpan.FromHours(numberOfHours - 1), stoppingToken);
+                await Task.Delay(TimeSpan.FromHours(hoursUntil21), stoppingToken);
             }
             while (!stoppingToken.IsCancellationRequested);
         }
@@ -88,6 +90,17 @@ namespace BeatLeader_Server.Services
 
                     await _context.BulkSaveChangesAsync();
                 }
+            }
+        }
+
+        public async Task RefreshStats()
+        {
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+
+                var _playerController = scope.ServiceProvider.GetRequiredService<PlayerController>();
+                await _playerController.RefreshPlayersStats();
             }
         }
     }
