@@ -100,11 +100,41 @@ namespace BeatLeader_Server.Utils
             return (fullPP, fullPP - rawPP);
         }
 
-        public static (Replay, Score, int) ProcessReplay(Replay replay, Leaderboard leaderboard) {
+        public static (Score, int) ProcessReplayInfo(ReplayInfo info, DifficultyDescription difficulty) {
             Score score = new Score();
             
-            score.BaseScore = replay.info.score;
-            score.Modifiers = replay.info.modifiers;
+            score.BaseScore = info.score;
+            score.Modifiers = info.modifiers;
+            score.Hmd = HMDFromName(info.hmd);
+
+            var status = difficulty.Status;
+            var modifers = difficulty.ModifierValues ?? new ModifiersMap();
+            bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent || status == DifficultyStatus.nominated;
+            bool hasPp = status == DifficultyStatus.ranked || qualification;
+
+            if (hasPp)
+            {
+                score.ModifiedScore = (int)(score.BaseScore * modifers.GetNegativeMultiplier(info.modifiers));
+            } else
+            {
+                score.ModifiedScore = (int)(score.BaseScore * modifers.GetTotalMultiplier(info.modifiers));
+            }
+            int maxScore = difficulty.MaxScore > 0 ? difficulty.MaxScore : MaxScoreForNote(difficulty.Notes);
+            score.Accuracy = (float)score.BaseScore / (float)maxScore;
+            score.Modifiers = info.modifiers;
+
+            if (hasPp) {
+                (score.Pp, score.BonusPp) = PpFromScore(score, difficulty);
+            }
+
+            score.Qualification = qualification;
+            score.Platform = info.platform + "," + info.gameVersion + "," + info.version;
+            score.Timeset = info.timestamp;
+            
+            return (score, maxScore);
+        }
+
+        public static void PostProcessReplay(Score score, Replay replay) {
             score.WallsHit = replay.walls.Count;
             score.Pauses = replay.pauses.Count;
             foreach (var item in replay.notes)
@@ -125,33 +155,6 @@ namespace BeatLeader_Server.Utils
                 }
             }
             score.FullCombo = score.BombCuts == 0 && score.MissedNotes == 0 && score.WallsHit == 0 && score.BadCuts == 0;
-            score.Hmd = HMDFromName(replay.info.hmd);
-
-            var status = leaderboard.Difficulty.Status;
-            var modifers = leaderboard.Difficulty.ModifierValues;
-            bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent || status == DifficultyStatus.nominated;
-            bool hasPp = status == DifficultyStatus.ranked || qualification;
-
-            if (hasPp)
-            {
-                score.ModifiedScore = (int)(score.BaseScore * modifers.GetNegativeMultiplier(replay.info.modifiers));
-            } else
-            {
-                score.ModifiedScore = (int)(score.BaseScore * modifers.GetTotalMultiplier(replay.info.modifiers));
-            }
-            int maxScore = leaderboard.Difficulty.MaxScore > 0 ? leaderboard.Difficulty.MaxScore : MaxScoreForNote(leaderboard.Difficulty.Notes);
-            score.Accuracy = (float)score.BaseScore / (float)maxScore;
-            score.Modifiers = replay.info.modifiers;
-
-            if (hasPp) {
-                (score.Pp, score.BonusPp) = PpFromScore(score, leaderboard.Difficulty);
-            }
-
-            score.Qualification = qualification;
-            score.Platform = replay.info.platform + "," + replay.info.gameVersion + "," + replay.info.version;
-            score.Timeset = replay.info.timestamp;
-            
-            return (replay, score, maxScore);
         }
 
         private static HMD HMDFromName(string hmdName) {

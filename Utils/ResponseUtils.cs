@@ -149,10 +149,10 @@ namespace BeatLeader_Server.Utils
         }
 
         public class LeaderboardResponse {
-            public string Id { get; set; }
-            public Song Song { get; set; }
-            public DifficultyDescription Difficulty { get; set; }
-            public IEnumerable<ScoreResponse> Scores { get; set; }
+            public string? Id { get; set; }
+            public Song? Song { get; set; }
+            public DifficultyDescription? Difficulty { get; set; }
+            public IEnumerable<ScoreResponse>? Scores { get; set; }
             public IEnumerable<LeaderboardChange>? Changes { get; set; }
 
             public RankQualification? Qualification { get; set; }
@@ -260,9 +260,9 @@ namespace BeatLeader_Server.Utils
             var result = RemoveLeaderboard<ScoreResponseWithMyScore>(s, i);
             result.Leaderboard = new LeaderboardResponse
             {
-                Id = s.Leaderboard.Id,
-                Song = s.Leaderboard.Song,
-                Difficulty = s.Leaderboard.Difficulty
+                Id = s.LeaderboardId,
+                Song = s.Leaderboard?.Song,
+                Difficulty = s.Leaderboard?.Difficulty
             };
             result.Weight = s.Weight;
             result.AccLeft = s.AccLeft;

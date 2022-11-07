@@ -320,6 +320,324 @@ namespace BeatLeader_Server.Models
         }
     }
 
+    public class AsyncReplayDecoder
+    {
+        public Replay replay = new Replay();
+        public ReplayOffsets offsets = new ReplayOffsets();
+
+        int offset = 0;
+        public byte[] replayData = new byte[1024000];
+
+        private Stream stream;
+
+        public async Task<(ReplayInfo?, Task<Replay?>?)> StartDecodingStream(Stream stream)
+        {
+            int magic = await DecodeInt(stream);
+            byte version = await DecodeByte(stream);
+
+            if (magic == 0x442d3d69 && version == 1)
+            {
+                StructType type = (StructType)await DecodeByte(stream);
+                if (type == StructType.info) {
+                    replay.info = await DecodeInfo(stream);
+                    this.stream = stream;
+                    return (replay.info, ContinueDecoding());
+                } else {
+                    return (null, null);
+                }
+            }
+            else
+            {
+                return (null, null);
+            }
+        }
+
+        private async Task<Replay?> ContinueDecoding() 
+        {
+            await Task.Delay(TimeSpan.FromSeconds(10));
+            for (int a = (int)StructType.frames; a < ((int)StructType.pauses) + 1; a++) {
+                StructType type = (StructType)await DecodeByte(stream);
+
+                switch (type)
+                {
+                    case StructType.frames:
+                        offsets.Frames = offset;
+                        replay.frames = await DecodeFrames(stream);
+                        break;
+                    case StructType.notes:
+                        offsets.Notes = offset;
+                        replay.notes = await DecodeNotes(stream);
+                        break;
+                    case StructType.walls:
+                        offsets.Walls = offset;
+                        replay.walls = await DecodeWalls(stream);
+                        break;
+                    case StructType.heights:
+                        offsets.Heights = offset;
+                        replay.heights = await DecodeHeight(stream);
+                        break;
+                    case StructType.pauses:
+                        offsets.Pauses = offset;
+                        replay.pauses = await DecodePauses(stream);
+                        break;
+                }
+            }
+
+            Array.Resize(ref replayData, offset);
+
+            return replay;
+        }
+
+        private async Task<ReplayInfo> DecodeInfo(Stream stream)
+        {
+                ReplayInfo result = new ReplayInfo();
+
+                result.version = await DecodeString(stream);
+                result.gameVersion = await DecodeString(stream);
+                result.timestamp = await DecodeString(stream);
+
+                result.playerID = await DecodeString(stream);
+                result.playerName = await DecodeString(stream);
+                result.platform = await DecodeString(stream);
+
+                result.trackingSytem = await DecodeString(stream);
+                result.hmd = await DecodeString(stream);
+                result.controller = await DecodeString(stream);
+
+                result.hash = await DecodeString(stream);
+                result.songName = await DecodeString(stream);
+                result.mapper = await DecodeString(stream);
+                result.difficulty = await DecodeString(stream);
+                
+                result.score = await DecodeInt(stream);
+                result.mode = await DecodeString(stream);
+                result.environment = await DecodeString(stream);
+                result.modifiers = await DecodeString(stream);
+                result.jumpDistance = await DecodeFloat(stream);
+                result.leftHanded = await DecodeBool(stream);
+                result.height = await DecodeFloat(stream);
+
+                result.startTime = await DecodeFloat(stream);
+                result.failTime = await DecodeFloat(stream);
+                result.speed = await DecodeFloat(stream);
+
+                return result;
+        }
+
+        private async Task<List<Frame>> DecodeFrames(Stream stream)
+        {
+            int length = await DecodeInt(stream);
+            List<Frame> result = new List<Frame>();
+            for (int i = 0; i < length; i++)
+            {
+                result.Add(await DecodeFrame(stream));
+            }
+            return result;
+        }
+
+        private async Task<Frame> DecodeFrame(Stream stream)
+        {
+            Frame result = new Frame();
+            result.time = await DecodeFloat(stream);
+            result.fps = await DecodeInt(stream);
+            result.head = await DecodeEuler(stream);
+            result.leftHand = await DecodeEuler(stream);
+            result.rightHand = await DecodeEuler(stream);
+
+            return result;
+        }
+
+        private async Task<List<NoteEvent>> DecodeNotes(Stream stream)
+        {
+            int length = await DecodeInt(stream);
+            List<NoteEvent> result = new List<NoteEvent>();
+            for (int i = 0; i < length; i++)
+            {
+                result.Add(await DecodeNote(stream));
+            }
+            return result;
+        }
+
+        private async Task<List<WallEvent>> DecodeWalls(Stream stream)
+        {
+            int length = await DecodeInt(stream);
+            List<WallEvent> result = new List<WallEvent>();
+            for (int i = 0; i < length; i++)
+            {
+                WallEvent wall = new WallEvent();
+                wall.wallID = await DecodeInt(stream);
+                wall.energy = await DecodeFloat(stream);
+                wall.time = await DecodeFloat(stream);
+                wall.spawnTime = await DecodeFloat(stream);
+                result.Add(wall);
+            }
+            return result;
+        }
+
+        private async Task<List<AutomaticHeight>> DecodeHeight(Stream stream)
+        {
+            int length = await DecodeInt(stream);
+            List<AutomaticHeight> result = new List<AutomaticHeight>();
+            for (int i = 0; i < length; i++)
+            {
+                AutomaticHeight height = new AutomaticHeight();
+                height.height = await DecodeFloat(stream);
+                height.time = await DecodeFloat(stream);
+                result.Add(height);
+            }
+            return result;
+        }
+
+        private async Task<List<Pause>> DecodePauses(Stream stream)
+        {
+            int length = await DecodeInt(stream);
+            List<Pause> result = new List<Pause>();
+            for (int i = 0; i < length; i++)
+            {
+                Pause pause = new Pause();
+                pause.duration = await DecodeLong(stream);
+                pause.time = await DecodeFloat(stream);
+                result.Add(pause);
+            }
+            return result;
+        }
+
+        private async Task<NoteEvent> DecodeNote(Stream stream)
+        {
+            NoteEvent result = new NoteEvent();
+            result.noteID = await DecodeInt(stream);
+            result.eventTime = await DecodeFloat(stream);
+            result.spawnTime = await DecodeFloat(stream);
+            result.eventType = (NoteEventType) await DecodeInt(stream);
+            if (result.eventType == NoteEventType.good || result.eventType == NoteEventType.bad) {
+                result.noteCutInfo = await DecodeCutInfo(stream);
+            }
+
+            if (result.noteID == -1 || (result.noteID > 0 && result.noteID < 100000 && result.noteID % 10 == 9)) {
+                result.noteID += 4;
+                result.eventType = NoteEventType.bomb;
+            }
+
+            return result;
+        }
+
+        private async Task<NoteCutInfo> DecodeCutInfo(Stream stream)
+        {
+            NoteCutInfo result = new NoteCutInfo();
+            result.speedOK = await DecodeBool(stream);
+            result.directionOK = await DecodeBool(stream);
+            result.saberTypeOK = await DecodeBool(stream);
+            result.wasCutTooSoon = await DecodeBool(stream);
+            result.saberSpeed = await DecodeFloat(stream);
+            result.saberDir = await DecodeVector3(stream);
+            result.saberType = await DecodeInt(stream);
+            result.timeDeviation = await DecodeFloat(stream);
+            result.cutDirDeviation = await DecodeFloat(stream);
+            result.cutPoint = await DecodeVector3(stream);
+            result.cutNormal = await DecodeVector3(stream);
+            result.cutDistanceToCenter = await DecodeFloat(stream);
+            result.cutAngle = await DecodeFloat(stream);
+            result.beforeCutRating = await DecodeFloat(stream);
+            result.afterCutRating = await DecodeFloat(stream);
+            return result;
+        }
+
+        private async Task<Transform> DecodeEuler(Stream stream)
+        {
+            Transform result = new Transform();
+            result.position = await DecodeVector3(stream);
+            result.rotation = await DecodeQuaternion(stream);
+
+            return result;
+        }
+
+        private async Task<Vector3> DecodeVector3(Stream stream)
+        {
+            Vector3 result = new Vector3();
+            result.x = await DecodeFloat(stream);
+            result.y = await DecodeFloat(stream);
+            result.z = await DecodeFloat(stream);
+
+            return result;
+        }
+
+        private async Task<Quaternion> DecodeQuaternion(Stream stream)
+        {
+            Quaternion result = new Quaternion();
+            result.x = await DecodeFloat(stream);
+            result.y = await DecodeFloat(stream);
+            result.z = await DecodeFloat(stream);
+            result.w = await DecodeFloat(stream);
+
+            return result;
+        }
+
+        private void EnsureBufferSize(int size) {
+            if (offset + size > replayData.Length) {
+                Array.Resize(ref replayData, replayData.Length * 2);
+            }
+        }
+
+        private async Task<long> DecodeLong(Stream stream)
+        {
+            EnsureBufferSize(8);
+            await stream.ReadAsync(replayData, offset, 8);
+            offset += 8;
+            return BitConverter.ToInt64(replayData, offset - 8);
+        }
+
+        private async Task<int> DecodeInt(Stream stream)
+        {
+            EnsureBufferSize(4);
+            await stream.ReadAsync(replayData, offset, 4);
+            offset += 4;
+            return BitConverter.ToInt32(replayData, offset - 4);
+        }
+
+        private async Task<byte> DecodeByte(Stream stream)
+        {
+            EnsureBufferSize(1);
+            await stream.ReadAsync(replayData, offset, 1);
+            offset++;
+            return replayData[offset - 1];
+        }
+
+        private async Task<string> DecodeString(Stream stream, int size = 4)
+        {
+            EnsureBufferSize(size);
+            await stream.ReadAsync(replayData, offset, size);
+            offset += size;
+            int length = BitConverter.ToInt32(replayData, offset - 4);
+
+            if (length > 1000 || length < 0)
+            {
+                return await DecodeString(stream, 1);
+            }
+
+            EnsureBufferSize(length);
+            await stream.ReadAsync(replayData, offset, length);
+            string @string = Encoding.UTF8.GetString(replayData, offset, length);
+            offset += length;
+            return @string;
+        }
+
+        private async Task<float> DecodeFloat(Stream stream)
+        {
+            EnsureBufferSize(4);
+            await stream.ReadAsync(replayData, offset, 4);
+            offset += 4;
+            return BitConverter.ToSingle(replayData, offset - 4);
+        }
+
+        private async Task<bool> DecodeBool(Stream stream)
+        {
+            EnsureBufferSize(1);
+            await stream.ReadAsync(replayData, offset, 1);
+            offset++;
+            return BitConverter.ToBoolean(replayData, offset - 1);
+        }
+    }
+
     static class ReplayDecoder
     {
         public static (Replay?, ReplayOffsets?) Decode(byte[] buffer)

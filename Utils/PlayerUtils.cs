@@ -16,7 +16,7 @@ namespace BeatLeader_Server.Utils
                 .Where(s => 
                     s.PlayerId == player.Id && 
                     s.Pp != 0 && 
-                    !s.Banned && 
+                    !s.Banned && s.LeaderboardId != null && 
                     !s.Qualification)
                 .OrderByDescending(s => s.Pp)
                 .ToList();
@@ -34,7 +34,89 @@ namespace BeatLeader_Server.Utils
             }
             player.Pp = resultPP;
 
-            var scoresForWeightedAcc = ranked.OrderByDescending(s => s.Accuracy).Take(100).ToList();
+            
+        }
+
+        public static void RecalculatePPAndRankFast(this AppContext context, Player player)
+        {
+            float oldPp = player.Pp;
+
+            var rankedScores = context
+                .Scores
+                .Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && s.LeaderboardId != null && !s.Qualification)
+                .OrderByDescending(s => s.Pp)
+                .Select(s => new { 
+                    Id = s.Id, 
+                    Accuracy = s.Accuracy, 
+                    Rank = s.Rank, 
+                    Pp = s.Pp,
+                    Weight = s.Weight
+                })
+                .ToList();
+            float resultPP = 0f;
+            foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
+            {
+                float weight = MathF.Pow(0.965f, i);
+                if (s.Weight != weight)
+                {
+                    var score = context.Scores.Local.FirstOrDefault(ls => ls.Id == s.Id);
+                    if (score == null) {
+                        score = new Score() { Id = s.Id };
+                        context.Scores.Attach(score);
+                    }
+                    score.Weight = weight;
+                    context.Entry(score).Property(x => x.Weight).IsModified = true;
+                }
+                resultPP += s.Pp * weight;
+            }
+            player.Pp = resultPP;
+
+            var rankedPlayers = context
+                .Players
+                .Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned)
+                .OrderByDescending(t => t.Pp)
+                .Select(p => new {
+                    Id = p.Id,
+                    Rank = p.Rank,
+                    Country = p.Country,
+                    CountryRank = p.CountryRank
+                })
+                .ToList();
+
+            if (rankedPlayers.Count() > 0)
+            {
+                var country = player.Country;
+                int topRank = rankedPlayers.First().Rank; int? topCountryRank = rankedPlayers.Where(p => p.Country == country).FirstOrDefault()?.CountryRank;
+                player.Rank = topRank;
+                if (topCountryRank != null)
+                {
+                    player.CountryRank = (int)topCountryRank;
+                    topCountryRank++;
+                }
+
+                topRank++;
+
+                foreach ((int i, var p) in rankedPlayers.Select((value, i) => (i, value)))
+                {
+                    var newPlayer = context.Players.Local.FirstOrDefault(lp => lp.Id == p.Id);
+
+                    if (newPlayer == null) {
+                        newPlayer = new Player() { Id = p.Id };
+                        context.Players.Attach(newPlayer);
+                    }
+                    newPlayer.Rank = i + topRank;
+                    context.Entry(newPlayer).Property(x => x.Rank).IsModified = true;
+
+                    if (p.Country == country && topCountryRank != null)
+                    {
+                        newPlayer.CountryRank = (int)topCountryRank;
+                        context.Entry(newPlayer).Property(x => x.CountryRank).IsModified = true;
+                        topCountryRank++;
+                    }
+                }
+            }
+
+            var scoresForWeightedAcc = rankedScores.OrderByDescending(s => s.Accuracy).Take(100).ToList();
             var sum = 0.0f;
             var weights = 0.0f;
 
@@ -50,7 +132,7 @@ namespace BeatLeader_Server.Utils
             }
             player.ScoreStats.AverageWeightedRankedAccuracy = sum / weights;
 
-            var scoresForWeightedRank = ranked.OrderBy(s => s.Rank).Take(100).ToList();
+            var scoresForWeightedRank = rankedScores.OrderBy(s => s.Rank).Take(100).ToList();
             sum = 0.0f;
             weights = 0.0f;
 
@@ -70,43 +152,6 @@ namespace BeatLeader_Server.Utils
             player.ScoreStats.AverageWeightedRankedRank = sum / weights;
         }
 
-        public static void RecalculatePPAndRankFast(this AppContext context, Player player)
-        {
-            float oldPp = player.Pp;
-
-            var rankedScores = context
-                .Scores
-                .Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification)
-                .OrderByDescending(s => s.Pp)
-                .Select(s => new { Pp = s.Pp })
-                .ToList();
-            float resultPP = 0f;
-            foreach ((int i, float pp) in rankedScores.Select((value, i) => (i, value.Pp)))
-            {
-                float weight = MathF.Pow(0.965f, i);
-                resultPP += pp * weight;
-            }
-            player.Pp = resultPP;
-
-            var rankedPlayers = context
-                .Players
-                .Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id)
-                .OrderByDescending(t => t.Pp)
-                .Select(p => new { Pp = p.Pp, Country = p.Country, Rank = p.Rank, CountryRank = p.CountryRank })
-                .ToList();
-
-            if (rankedPlayers.Count() > 0)
-            {
-                player.Rank = rankedPlayers[0].Rank;
-
-                var topCountryPlayer = rankedPlayers.FirstOrDefault(p => p.Country == player.Country);
-                if (topCountryPlayer != null)
-                {
-                    player.CountryRank = topCountryPlayer.CountryRank;
-                }
-            }
-        }
-
         public static void RecalculateEventsPP(this AppContext context, Player player, Leaderboard leaderboard)
         {
             int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
@@ -124,10 +169,10 @@ namespace BeatLeader_Server.Utils
                     .Select(lb => new { Pp = lb.Scores.Where(s =>
                         s.PlayerId == player.Id &&
                         s.Pp != 0 &&
-                        !s.Banned).Count() > 0 ? lb.Scores.Where(s =>
+                        !s.Banned && s.LeaderboardId != null).Count() > 0 ? lb.Scores.Where(s =>
                         s.PlayerId == player.Id &&
                         s.Pp != 0 &&
-                        !s.Banned).First().Pp : 0 } )
+                        !s.Banned && s.LeaderboardId != null).First().Pp : 0 } )
                     .OrderByDescending(s => s.Pp).ToList();
                 if (eventRanking.Players == null)
                 {

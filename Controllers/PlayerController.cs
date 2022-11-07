@@ -214,7 +214,7 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult<AccountLink>> GetPlayerLink(string login)
         {
-            string currentId = HttpContext.CurrentUserID();
+            string currentId = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = _context.Players.Find(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
@@ -238,7 +238,7 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> DeleteAuthInfo(string login)
         {
-            string currentId = HttpContext.CurrentUserID();
+            string currentId = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = _context.Players.Find(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
@@ -259,7 +259,7 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> DeleteAuthIps()
         {
-            string currentId = HttpContext.CurrentUserID();
+            string currentId = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = _context.Players.Find(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
@@ -280,7 +280,7 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> DeletePlayerLinked(string id)
         {
-            string currentId = HttpContext.CurrentUserID();
+            string currentId = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = _context.Players.Find(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
@@ -321,7 +321,7 @@ namespace BeatLeader_Server.Controllers
 
             using (_serverTiming.TimeAction("sequence"))
             {
-                sequence = _readContext.Scores.Where(t => t.PlayerId == id);
+                sequence = _readContext.Scores.Where(t => t.PlayerId == id && t.LeaderboardId != null);
                 switch (sortBy)
                 {
                     case "date":
@@ -413,7 +413,7 @@ namespace BeatLeader_Server.Controllers
             if (currentID != null && currentID != id) {
                 var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
 
-                var myScores = _readContext.Scores.Where(s => s.PlayerId == currentID && leaderboards.Contains(s.LeaderboardId)).Select(RemoveLeaderboard).ToList();
+                var myScores = _readContext.Scores.Where(s => s.PlayerId == currentID && s.LeaderboardId != null && leaderboards.Contains(s.LeaderboardId)).Select(RemoveLeaderboard).ToList();
                 foreach (var score in result.Data)
                 {
                     score.MyScore = myScores.FirstOrDefault(s => s.LeaderboardId == score.LeaderboardId);
@@ -498,16 +498,16 @@ namespace BeatLeader_Server.Controllers
                     if (friends != null)
                     {
                         var friendsList = friends.Friends.Select(f => f.Id).ToList();
-                        sequence = _readContext.Scores.Where(s => s.PlayerId == currentID || friendsList.Contains(s.PlayerId));
+                        sequence = _readContext.Scores.Where(s => s.LeaderboardId != null && (s.PlayerId == currentID || friendsList.Contains(s.PlayerId)));
                     }
                     else
                     {
-                        sequence = _readContext.Scores.Where(s => s.PlayerId == currentID);
+                        sequence = _readContext.Scores.Where(s => s.LeaderboardId != null && s.PlayerId == currentID);
                     }
                 }
                 else
                 {
-                    sequence = _readContext.Scores.Where(t => t.PlayerId == id);
+                    sequence = _readContext.Scores.Where(s => s.LeaderboardId != null && s.PlayerId == id);
                 }
 
                 
@@ -1106,7 +1106,7 @@ namespace BeatLeader_Server.Controllers
                 _context.Stats.Add(player.ScoreStats);
             }
             var allScores = scores ??
-                _context.Scores.Where(s => s.PlayerId == player.Id).Select(s => new SubScore
+                _context.Scores.Where(s => s.LeaderboardId != null && s.PlayerId == player.Id).Select(s => new SubScore
                 {
                     PlayerId = s.PlayerId,
                     Platform = s.Platform,
@@ -1434,7 +1434,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> RefreshRanks()
         {
             if (HttpContext != null) {
-                string currentId = HttpContext.CurrentUserID();
+                string currentId = HttpContext.CurrentUserID(_context);
                 Player? currentPlayer = _context.Players.Find(currentId);
                 if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
                 {

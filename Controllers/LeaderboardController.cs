@@ -97,7 +97,7 @@ namespace BeatLeader_Server.Controllers
             {
                 if (friendsList != null) {
                     query = query.Include(lb => lb.Scores
-                            .Where(s => !s.Banned && friendsList.Contains(s.PlayerId))
+                            .Where(s => !s.Banned && s.LeaderboardId != null && friendsList.Contains(s.PlayerId))
                             .OrderBy(s => s.Rank)
                             .Skip((page - 1) * count)
                             .Take(count))
@@ -105,7 +105,7 @@ namespace BeatLeader_Server.Controllers
                         .ThenInclude(s => s.Clans);
                 } else if (voters) {
                     query = query.Include(lb => lb.Scores
-                            .Where(s => !s.Banned && s.RankVoting != null)
+                            .Where(s => !s.Banned && s.LeaderboardId != null && s.RankVoting != null)
                             .OrderBy(s => s.Rank)
                             .Skip((page - 1) * count)
                             .Take(count))
@@ -114,7 +114,7 @@ namespace BeatLeader_Server.Controllers
                 }
                 else {
                     query = query.Include(lb => lb.Scores
-                            .Where(s => !s.Banned)
+                            .Where(s => !s.Banned && s.LeaderboardId != null)
                             .OrderBy(s => s.Rank)
                             .Skip((page - 1) * count)
                             .Take(count))
@@ -125,7 +125,7 @@ namespace BeatLeader_Server.Controllers
                 if (friendsList != null)
                 {
                     query = query.Include(lb => lb.Scores
-                        .Where(s => !s.Banned && friendsList.Contains(s.PlayerId) && countries.ToLower().Contains(s.Player.Country.ToLower()))
+                        .Where(s => !s.Banned && s.LeaderboardId != null && friendsList.Contains(s.PlayerId) && countries.ToLower().Contains(s.Player.Country.ToLower()))
                         .OrderBy(s => s.Rank)
                         .Skip((page - 1) * count)
                         .Take(count))
@@ -133,7 +133,7 @@ namespace BeatLeader_Server.Controllers
                     .ThenInclude(s => s.Clans);
                 } else {
                     query = query.Include(lb => lb.Scores
-                        .Where(s => !s.Banned && countries.ToLower().Contains(s.Player.Country.ToLower()))
+                        .Where(s => !s.Banned && s.LeaderboardId != null && countries.ToLower().Contains(s.Player.Country.ToLower()))
                         .OrderBy(s => s.Rank)
                         .Skip((page - 1) * count)
                         .Take(count))
@@ -261,10 +261,10 @@ namespace BeatLeader_Server.Controllers
                     .Include(lb => lb.Difficulty)
                     .ThenInclude(d => d.ModifierValues)
                     .Where(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff)
-                    .Include(lb => lb.Scores.Where(s => !s.Banned))
-                    .ThenInclude(s => s.RankVoting)
-                    .ThenInclude(v => v.Feedbacks)
-                    .Include(lb => lb.PlayerStats)
+                    //.Include(lb => lb.Scores.Where(s => !s.Banned && s.LeaderboardId != null))
+                    //.ThenInclude(s => s.RankVoting)
+                    //.ThenInclude(v => v.Feedbacks)
+                    //.Include(lb => lb.PlayerStats)
                     .FirstOrDefault();
 
             if (leaderboard == null) {
@@ -385,7 +385,7 @@ namespace BeatLeader_Server.Controllers
             {
                 return Unauthorized();
             }
-            var leaderboards = _context.Leaderboards.Include(lb => lb.Scores.Where(s => !s.Banned)).Include(l => l.Difficulty).ToArray();
+            var leaderboards = _context.Leaderboards.Include(lb => lb.Scores.Where(s => !s.Banned && s.LeaderboardId != null)).Include(l => l.Difficulty).ToArray();
             int counter = 0;
             var transaction = _context.Database.BeginTransaction();
             foreach (var leaderboard in leaderboards)
@@ -515,7 +515,7 @@ namespace BeatLeader_Server.Controllers
             }
             
             var leaderboard = _context.Leaderboards.Where(lb => lb.Id == id).Include(lb => lb.Scores.Where(s =>
-                !s.Banned
+                !s.Banned && s.LeaderboardId != null
                 && !s.Modifiers.Contains("SS")
                 && !s.Modifiers.Contains("NA")
                 && !s.Modifiers.Contains("NB")

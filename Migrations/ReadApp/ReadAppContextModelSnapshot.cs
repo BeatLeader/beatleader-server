@@ -1814,7 +1814,6 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .HasColumnType("int");
 
                     b.Property<string>("LeaderboardId")
-                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<int?>("MetadataId")
@@ -1827,7 +1826,6 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .HasColumnType("int");
 
                     b.Property<string>("Modifiers")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Pauses")
@@ -1838,7 +1836,6 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PlayerId")
-                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<float>("Pp")
@@ -1851,7 +1848,6 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .HasColumnType("int");
 
                     b.Property<string>("Replay")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("ReplayOffsetsId")
@@ -1864,8 +1860,10 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .HasColumnType("int");
 
                     b.Property<string>("Timeset")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("TimesetMig")
+                        .HasColumnType("int");
 
                     b.Property<int>("WallsHit")
                         .HasColumnType("int");
@@ -1886,7 +1884,8 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.HasIndex("ScoreImprovementId");
 
                     b.HasIndex("PlayerId", "LeaderboardId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[PlayerId] IS NOT NULL AND [LeaderboardId] IS NOT NULL");
 
                     b.ToTable("Scores");
                 });
@@ -2518,9 +2517,7 @@ namespace BeatLeader_Server.Migrations.ReadApp
                 {
                     b.HasOne("BeatLeader_Server.Models.Leaderboard", "Leaderboard")
                         .WithMany("Scores")
-                        .HasForeignKey("LeaderboardId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("LeaderboardId");
 
                     b.HasOne("BeatLeader_Server.Models.ScoreMetadata", "Metadata")
                         .WithMany()
@@ -2528,9 +2525,7 @@ namespace BeatLeader_Server.Migrations.ReadApp
 
                     b.HasOne("BeatLeader_Server.Models.Player", "Player")
                         .WithMany()
-                        .HasForeignKey("PlayerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("PlayerId");
 
                     b.HasOne("BeatLeader_Server.Models.ReplayOffsets", "ReplayOffsets")
                         .WithMany()

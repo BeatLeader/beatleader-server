@@ -106,7 +106,7 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> DeleteScore(int id)
         {
-            string currentId = HttpContext.CurrentUserID();
+            string currentId = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = currentId != null ? _context.Players.Find(currentId) : null;
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
@@ -234,7 +234,7 @@ namespace BeatLeader_Server.Controllers
 
                 foreach (var leaderboard in allLeaderboards)
                 {
-                    var allScores = leaderboard.Scores.Where(s => !s.Banned).ToList();
+                    var allScores = leaderboard.Scores.Where(s => !s.Banned && s.LeaderboardId != null).ToList();
                     var status = leaderboard.Difficulty.Status;
                     var modifiers = leaderboard.Difficulty.ModifierValues;
                     bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.nominated || status == DifficultyStatus.inevent;
@@ -404,7 +404,7 @@ namespace BeatLeader_Server.Controllers
 
             IQueryable<Score> query = _context
                 .Scores
-                .Where(s => !s.Banned && s.LeaderboardId == leaderboardId)
+                .Where(s => !s.Banned && s.LeaderboardId != null && s.LeaderboardId == leaderboardId)
                 .Include(s => s.Player)
                     .ThenInclude(p => p.Clans)
                 .Include(s => s.Player)
@@ -543,11 +543,11 @@ namespace BeatLeader_Server.Controllers
                 if (friends != null)
                 {
                     var friendsList = friends.Friends.Select(f => f.Id).ToList();
-                    sequence = _readContext.Scores.Where(s => s.PlayerId == player.Id || friendsList.Contains(s.PlayerId));
+                    sequence = _readContext.Scores.Where(s => s.LeaderboardId != null && (s.PlayerId == player.Id || friendsList.Contains(s.PlayerId)));
                 }
                 else
                 {
-                    sequence = _readContext.Scores.Where(s => s.PlayerId == player.Id);
+                    sequence = _readContext.Scores.Where(s => s.LeaderboardId != null && s.PlayerId == player.Id);
                 }
                 switch (sortBy)
                 {
@@ -624,20 +624,6 @@ namespace BeatLeader_Server.Controllers
                 };
             }
             return result;
-        }
-
-        [HttpGet("~/scores/fix")]
-        public async Task<ActionResult> GetStatistifwegfc()
-        {
-            var scores = _context.Scores.Where(s => s.Replay == "").OrderByDescending(s => s.Timepost).Include(s => s.Leaderboard).ThenInclude(lb => lb.Difficulty).Include(s => s.Leaderboard).ThenInclude(lb => lb.Song).ToList();
-            foreach (var score in scores)
-            {
-                string fileName = score.PlayerId + "-" + score.Leaderboard.Difficulty.DifficultyName + "-" + score.Leaderboard.Difficulty.ModeName + "-" + score.Leaderboard.Song.Hash.ToUpper() + ".bsor";
-                score.Replay = "https://cdn.beatleader.xyz/replays/" + fileName;
-                await CalculateStatisticScore(score);
-
-            }
-            return Ok();
         }
 
         [HttpGet("~/score/statistic/{id}")]
