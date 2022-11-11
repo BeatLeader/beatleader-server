@@ -390,6 +390,10 @@ namespace BeatLeader_Server.Controllers
                 return result;
             }
 
+            if (mode.EndsWith("OldDots")) {
+                mode = mode.Replace("OldDots", "");
+            }
+
             int modeValue = SongUtils.ModeForModeName(mode);
             if (modeValue == 0) {
                 var customMode = _context.CustomModes.FirstOrDefault(m => m.Name == mode);

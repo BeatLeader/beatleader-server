@@ -164,6 +164,13 @@ namespace BeatLeader_Server.Controllers
 
             if (info == null) return BadRequest("It's not a replay or it has old version.");
             if (info.hash.Length < 40) return BadRequest("Hash is to short");
+
+            var gameversion = replay.info.gameVersion.Split(".");
+            if (replay.info.mode.EndsWith("OldDots") || (gameversion.Length == 3 && int.Parse(gameversion[1]) < 20)) {
+                replay.info.mode = replay.info.mode.Replace("OldDots", "");
+                replay.info.modifiers += replay.info.modifiers.Length > 0 ? ",OD" : "OD";
+            }
+
             var version = info.version.Split(".");
             if (version.Length < 3 || int.Parse(version[1]) < 3) {
                 Thread.Sleep(8000); // Error may not show if returned too quick

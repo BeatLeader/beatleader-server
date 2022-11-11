@@ -252,7 +252,7 @@ namespace BeatLeader_Server.Controllers
         }
 
 
-        [HttpGet("~/leaderboard/hash/{hash}/{diff}/{mode}")]
+        [NonAction]
         public async Task<ActionResult<Leaderboard>> GetByHash(string hash, string diff, string mode) {
             Leaderboard? leaderboard;
 
