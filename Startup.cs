@@ -198,8 +198,7 @@ namespace BeatLeader_Server {
                 options.EnableForHttps = true;
             });
 
-            services.AddRequestDecompression();
-            
+            RequestDecompressionServiceCollectionExtensions.AddRequestDecompression(services);
         }
 
         public void Configure (IApplicationBuilder app)
@@ -215,7 +214,7 @@ namespace BeatLeader_Server {
             app.UseCors (MyAllowSpecificOrigins);
 
             app.UseResponseCompression();
-            app.UseRequestDecompression();
+            RequestDecompressionApplicationBuilderExtensions.UseRequestDecompression(app);
 
             app.UseEndpoints (endpoints => {
                 endpoints.MapDefaultControllerRoute ();

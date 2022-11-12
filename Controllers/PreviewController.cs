@@ -61,29 +61,33 @@ namespace BeatLeader_Server.Controllers
                 _previewContainerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
             }
 
-            StarImage = LoadImage("Star.png");
-            AvatarMask = LoadImage("AvatarMask.png");
-            AvatarShadow = LoadImage("AvatarShadow.png");
-            GradientMask = LoadImage("GradientMask.png");
-            CoverMask = LoadImage("CoverMask.png");
-            FinalMask = LoadImage("FinalMask.png");
-            GradientMaskBlurred = LoadImage("GradientMaskBlurred.png");
+            if (OperatingSystem.IsWindows())
+            {
 
-            var fontCollection = new PrivateFontCollection();
-            fontCollection.AddFontFile(Path.Combine(_webHostEnvironment.WebRootPath + "/fonts/Teko-SemiBold.ttf"));
-            FontFamily = fontCollection.Families[0];
+                StarImage = LoadImage("Star.png");
+                AvatarMask = LoadImage("AvatarMask.png");
+                AvatarShadow = LoadImage("AvatarShadow.png");
+                GradientMask = LoadImage("GradientMask.png");
+                CoverMask = LoadImage("CoverMask.png");
+                FinalMask = LoadImage("FinalMask.png");
+                GradientMaskBlurred = LoadImage("GradientMaskBlurred.png");
 
-            EmbedGenerator = new EmbedGenerator(
-                new Size(500, 300),
-                StarImage,
-                AvatarMask,
-                AvatarShadow,
-                GradientMask,
-                GradientMaskBlurred,
-                CoverMask,
-                FinalMask,
-                FontFamily
-            );
+                var fontCollection = new PrivateFontCollection();
+                fontCollection.AddFontFile(Path.Combine(_webHostEnvironment.WebRootPath + "/fonts/Teko-SemiBold.ttf"));
+                FontFamily = fontCollection.Families[0];
+
+                EmbedGenerator = new EmbedGenerator(
+                    new Size(500, 300),
+                    StarImage,
+                    AvatarMask,
+                    AvatarShadow,
+                    GradientMask,
+                    GradientMaskBlurred,
+                    CoverMask,
+                    FinalMask,
+                    FontFamily
+                );
+            }
         }
         class SongSelect {
             public string Id { get; set; }
