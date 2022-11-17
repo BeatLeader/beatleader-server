@@ -25,7 +25,6 @@ namespace BeatLeader_Server.Controllers
 
         LeaderboardController _leaderboardController;
         PlayerController _playerController;
-        PreviewController _previewController;
         ScoreController _scoreController;
         IWebHostEnvironment _environment;
         IConfiguration _configuration;
@@ -48,14 +47,12 @@ namespace BeatLeader_Server.Controllers
             LeaderboardController leaderboardController, 
             PlayerController playerController,
             ScoreController scoreController,
-            PreviewController previewController,
             IServerTiming serverTiming
             )
 		{
             _leaderboardController = leaderboardController;
             _playerController = playerController;
             _scoreController = scoreController;
-            _previewController = previewController;
             _context = context;
             _readContext = readContext;
             _environment = env;
@@ -681,7 +678,6 @@ namespace BeatLeader_Server.Controllers
 
                     if (dsClient != null)
                     {
-                        await _previewController.Get(scoreId: resultScore.Id);
                         var song = _context.Leaderboards.Where(lb => lb.Id == leaderboard.Id).Include(lb => lb.Song).Select(lb => lb.Song).FirstOrDefault();
                         string message = "**" + player.Name + "** has become No 1 on **" + (song != null ? song?.Name : leaderboard.Id) + "** :tada: \n";
                         message += Math.Round(resultScore.Accuracy * 100, 2) + "% " + Math.Round(resultScore.Pp, 2) + "pp (" + Math.Round(resultScore.Weight * resultScore.Pp, 2) + "pp)\n";

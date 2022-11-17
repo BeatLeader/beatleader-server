@@ -261,10 +261,6 @@ namespace BeatLeader_Server.Controllers
                     .Include(lb => lb.Difficulty)
                     .ThenInclude(d => d.ModifierValues)
                     .Where(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff)
-                    //.Include(lb => lb.Scores.Where(s => !s.Banned && s.LeaderboardId != null))
-                    //.ThenInclude(s => s.RankVoting)
-                    //.ThenInclude(v => v.Feedbacks)
-                    //.Include(lb => lb.PlayerStats)
                     .FirstOrDefault();
 
             if (leaderboard == null) {

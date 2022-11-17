@@ -637,8 +637,11 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized("To much login attempts in one day");
             }
 
-            string userId = GetId();
-            AuthInfo? authInfo = _context.Auths.FirstOrDefault(a => a.Login == login && a.Password == oldPassword && Int64.Parse(userId) == a.Id);
+            string? currentID = HttpContext.User.Claims.FirstOrDefault()?.Value.Split("/").LastOrDefault();
+            if (currentID == null) return Unauthorized("Login or password is incorrect");
+
+            long intId = Int64.Parse(currentID);
+            AuthInfo? authInfo = _context.Auths.FirstOrDefault(a => a.Login == login && a.Password == oldPassword && intId == a.Id);
 
             if (authInfo == null) {
                 if (loginAttempt == null)
