@@ -315,13 +315,40 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? type = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
+            [FromQuery] int? time_from = null,
+            [FromQuery] int? time_to = null,
             [FromQuery] int? eventId = null)
         {
             IQueryable<Score> sequence;
 
+            Int64 oculusId = 0;
+            try
+            {
+                oculusId = Int64.Parse(id);
+            }
+            catch { 
+                return BadRequest("Id should be a number");
+            }
+            AccountLink? link = null;
+            if (oculusId < 1000000000000000)
+            {
+                using (_serverTiming.TimeAction("link"))
+                {
+                    link = _readContext.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
+                }
+            }
+            if (link == null && oculusId < 70000000000000000)
+            {
+                using (_serverTiming.TimeAction("link"))
+                {
+                    link = _readContext.AccountLinks.FirstOrDefault(el => el.PCOculusID == id);
+                }
+            }
+            string userId = (link != null ? (link.SteamID.Length > 0 ? link.SteamID : link.PCOculusID) : id);
+
             using (_serverTiming.TimeAction("sequence"))
             {
-                sequence = _readContext.Scores.Where(t => t.PlayerId == id && t.LeaderboardId != null);
+                sequence = _readContext.Scores.Where(t => t.PlayerId == userId);
                 switch (sortBy)
                 {
                     case "date":
@@ -381,6 +408,14 @@ namespace BeatLeader_Server.Controllers
                 {
                     sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.Stars <= stars_to);
                 }
+                if (time_from != null)
+                {
+                    sequence = sequence.Where(s => s.Timepost >= time_from);
+                }
+                if (time_to != null)
+                {
+                    sequence = sequence.Where(s => s.Timepost <= time_to);
+                }
             }
 
             ResponseWithMetadata<ScoreResponseWithMyScore> result; 
@@ -410,7 +445,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             string? currentID = HttpContext.CurrentUserID(_readContext);
-            if (currentID != null && currentID != id) {
+            if (currentID != null && currentID != userId) {
                 var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
 
                 var myScores = _readContext.Scores.Where(s => s.PlayerId == currentID && s.LeaderboardId != null && leaderboards.Contains(s.LeaderboardId)).Select(RemoveLeaderboard).ToList();

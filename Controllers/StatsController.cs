@@ -41,7 +41,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int count = 8,
             [FromQuery] string? search = null,
             [FromQuery] string? diff = null,
-            [FromQuery] string? type = null,
+            [FromQuery] EndType? type = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
             [FromQuery] int? eventId = null)
@@ -50,7 +50,7 @@ namespace BeatLeader_Server.Controllers
 
             using (_serverTiming.TimeAction("sequence"))
             {
-                sequence = _readContext.PlayerLeaderboardStats.Include(pl => pl.Score).Where(t => t.PlayerId == id);
+                sequence = _readContext.PlayerLeaderboardStats.Include(pl => pl.Leaderboard).Where(t => t.PlayerId == id);
                 switch (sortBy)
                 {
                     case "date":
@@ -100,10 +100,10 @@ namespace BeatLeader_Server.Controllers
                 //{
                 //    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.DifficultyName.ToLower().Contains(diff.ToLower()));
                 //}
-                //if (type != null)
-                //{
-                //    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked : p.Leaderboard.Difficulty.Status != DifficultyStatus.ranked);
-                //}
+                if (type != null)
+                {
+                    sequence = sequence.Where(p => type == p.Type);
+                }
                 //if (stars_from != null)
                 //{
                 //    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.Stars >= stars_from);

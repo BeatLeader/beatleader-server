@@ -18,6 +18,7 @@ namespace BeatLeader_Server.Controllers
     public class ReplayController : Controller
     {
         private readonly BlobContainerClient _replaysClient;
+        private readonly BlobContainerClient _otherReplaysClient;
         private readonly BlobContainerClient _scoreStatsClient;
 
         private readonly AppContext _context;
@@ -63,12 +64,14 @@ namespace BeatLeader_Server.Controllers
 			{
 				_replaysClient = new BlobContainerClient(config.Value.AccountName, config.Value.ReplaysContainerName);
                 _replaysClient.SetPublicContainerPermissions();
+                _otherReplaysClient = new BlobContainerClient(config.Value.AccountName, config.Value.OtherReplaysContainerName);
 
                 _scoreStatsClient = new BlobContainerClient(config.Value.AccountName, config.Value.ScoreStatsContainerName);
             }
 			else
 			{
 				_replaysClient = ContainerWithName(config, config.Value.ReplaysContainerName);
+                _otherReplaysClient = ContainerWithName(config, config.Value.OtherReplaysContainerName);
                 _scoreStatsClient = ContainerWithName(config, config.Value.ScoreStatsContainerName);
             }
         }
@@ -91,20 +94,22 @@ namespace BeatLeader_Server.Controllers
             return await PostReplayFromBody(id);
         }
 
+        List<string> usersWithStats = new List<string> { "76561198059961776", "76561198110147969", "2769016623220259", "76561198404774259", "76561199104169308", "76561198960449289", "2169974796454690", "76561198153101808", "3225556157461414", "76561197995162898", "76561198329240371", "76561198410971373", "76561198255595858", "76561198167372371", "76561198362923485", "76561198979511454", "76561199003505371", "76561198187936410", "76561198072431907", "76561198835431545", "76561198273286768", "76561198303746219", "76561198204808809", "76561199017330732", "76561198152468561", "76561198279631500", "76561198101647485", "76561198209231603", "76561198351485033", "76561198027277296", "76561198989311828", "76561198801631622", "76561198366737508", "76561198313983208", "76561199082770472", "76561198318835649", "76561198120664513", "76561198108275916", "76561198064659288", "76561198303307533", "76561198991576823", "76561199081029968", "76561197966810968", "76561198066682244", "76561198376929690", "76561198199893013", "76561198802040781", "76561198375279971", "76561198879664253", "76561198333403325", "76561198438681935", "76561198815841580" };
+
         [HttpPut("~/replayoculus"), DisableRequestSizeLimit]
         [Authorize]
         public async Task<ActionResult<ScoreResponse>> PostOculusReplay(
             [FromQuery] float time = 0,
             [FromQuery] EndType type = 0)
         {
-            if (type != EndType.Unknown && type != EndType.Clear)
-            {
-                return Ok();
-            }
             string? userId = HttpContext.CurrentUserID(_context);
             if (userId == null)
             {
                 return Unauthorized("User is not authorized");
+            }
+            if (type != EndType.Unknown && type != EndType.Clear && !usersWithStats.Contains(userId))
+            {
+                return Ok();
             }
             return await PostReplayFromBody(userId, time, type);
         }
@@ -832,13 +837,14 @@ namespace BeatLeader_Server.Controllers
             };
 
             try {
-                //if (saveReplay) {
-                //    await _otherReplaysClient.CreateIfNotExistsAsync();
-                //    string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + "-" + timeset + ".bsor";
-                //    stats.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/otherreplays/" : "https://cdn.beatleader.xyz/otherreplays/") + fileName;
-                //    await _otherReplaysClient.DeleteBlobIfExistsAsync(fileName);
-                //    await _otherReplaysClient.UploadBlobAsync(fileName, new BinaryData(replayData));
-                //}
+                if (saveReplay)
+                {
+                    await _otherReplaysClient.CreateIfNotExistsAsync();
+                    string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + "-" + timeset + ".bsor";
+                    stats.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/otherreplays/" : "https://cdn.beatleader.xyz/otherreplays/") + fileName;
+                    await _otherReplaysClient.DeleteBlobIfExistsAsync(fileName);
+                    await _otherReplaysClient.UploadBlobAsync(fileName, new BinaryData(replayData));
+                }
 
                 leaderboard.PlayerStats.Add(stats);
                 _context.SaveChanges();
