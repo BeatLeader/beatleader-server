@@ -779,7 +779,7 @@ namespace BeatLeader_Server.Controllers
             {
                 var player = Expression.Parameter(typeof(Player), "p");
                 
-                var contains = "".GetType().GetMethod("Contains", new[] { typeof(string) });
+                var contains = typeof(string).GetMethod("Contains", new[] { typeof(string) });
 
                 // 1 != 2 is here to trigger `OrElse` further the line.
                 var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
