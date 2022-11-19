@@ -94,23 +94,23 @@ namespace BeatLeader_Server.Controllers
             return await PostReplayFromBody(id);
         }
 
-        List<string> usersWithStats = new List<string> { "76561198059961776", "76561198110147969", "2769016623220259", "76561198404774259", "76561199104169308", "76561198960449289", "2169974796454690", "76561198153101808", "3225556157461414", "76561197995162898", "76561198329240371", "76561198410971373", "76561198255595858", "76561198167372371", "76561198362923485", "76561198979511454", "76561199003505371", "76561198187936410", "76561198072431907", "76561198835431545", "76561198273286768", "76561198303746219", "76561198204808809", "76561199017330732", "76561198152468561", "76561198279631500", "76561198101647485", "76561198209231603", "76561198351485033", "76561198027277296", "76561198989311828", "76561198801631622", "76561198366737508", "76561198313983208", "76561199082770472", "76561198318835649", "76561198120664513", "76561198108275916", "76561198064659288", "76561198303307533", "76561198991576823", "76561199081029968", "76561197966810968", "76561198066682244", "76561198376929690", "76561198199893013", "76561198802040781", "76561198375279971", "76561198879664253", "76561198333403325", "76561198438681935", "76561198815841580" };
-
         [HttpPut("~/replayoculus"), DisableRequestSizeLimit]
         [Authorize]
         public async Task<ActionResult<ScoreResponse>> PostOculusReplay(
             [FromQuery] float time = 0,
             [FromQuery] EndType type = 0)
         {
+            if (type != EndType.Unknown && type != EndType.Clear)
+            {
+                return Ok();
+            }
+
             string? userId = HttpContext.CurrentUserID(_context);
             if (userId == null)
             {
                 return Unauthorized("User is not authorized");
             }
-            if (type != EndType.Unknown && type != EndType.Clear && !usersWithStats.Contains(userId))
-            {
-                return Ok();
-            }
+            
             return await PostReplayFromBody(userId, time, type);
         }
 
@@ -198,8 +198,14 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
+            if (leaderboard.Difficulty.Notes != 0 && replay.notes.Count > leaderboard.Difficulty.Notes) {
+                string? error = RemoveDuplicates(replay, leaderboard);
+                if (error != null) {
+                    return BadRequest("Failed to delete duplicate note: " + error);
+                }
+            }
+
             (Score resultScore, int maxScore) = ReplayUtils.ProcessReplayInfo(info, leaderboard.Difficulty);
-            
 
             Score? currentScore;
             using (_serverTiming.TimeAction("currS"))
@@ -614,7 +620,7 @@ namespace BeatLeader_Server.Controllers
                 resultScore.Replay += "temp";
                 await _replaysClient.DeleteBlobIfExistsAsync(tempName);
                 await _replaysClient.UploadBlobAsync(tempName, new BinaryData(replayData));
-                (ScoreStatistic? statistic, string? error) = _scoreController.CalculateStatisticReplay(replay, resultScore);
+                (ScoreStatistic? statistic, string? error) = _scoreController.CalculateAndSaveStatistic(replay, resultScore);
                 if (statistic == null)
                 {
                     SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Could not recalculate score from replay. Error: " + error);
@@ -881,6 +887,46 @@ namespace BeatLeader_Server.Controllers
 
             leaderboard.PlayerStats.Add(stats);
             return stats;
+        }
+
+        public string? RemoveDuplicates(Replay replay, Leaderboard leaderboard) {
+            var groups = replay.notes.GroupBy(n => n.noteID + n.spawnTime).Where(g => g.Count() > 1).ToList();
+
+            if (groups.Count > 0) {
+                int sliderCount = 0;
+                foreach (var group in groups)
+                {
+                    bool slider = false;
+
+                    var toRemove = group.OrderByDescending(n => {
+                        NoteParams param = new NoteParams(n.noteID);
+                        if (param.scoringType != ScoringType.Default || param.scoringType != ScoringType.Normal) {
+                            slider = true;
+                        }
+                        return ReplayStatisticUtils.ScoreForNote(n, param.scoringType);
+                    }).Skip(1).ToList();
+
+                    if (slider) {
+                        sliderCount++;
+                        continue;
+                    }
+
+                    foreach (var removal in toRemove)
+                    {
+                        replay.notes.Remove(removal);
+                    }
+                }
+                if (sliderCount == groups.Count) return null;
+
+                (ScoreStatistic? statistic, string? error) = _scoreController.CalculateStatisticFromReplay(replay, leaderboard);
+                if (statistic != null) {
+                    replay.info.score = statistic.winTracker.totalScore;
+                } else {
+                    return error;
+                }
+            }
+            
+            return null;
         }
 
         //[NonAction]

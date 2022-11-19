@@ -666,7 +666,7 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Error decoding replay");
             }
 
-            (ScoreStatistic? statistic, string? error) = CalculateStatisticReplay(replay, score);
+            (ScoreStatistic? statistic, string? error) = CalculateAndSaveStatistic(replay, score);
             if (statistic == null) {
                 return BadRequest(error);
             }
@@ -675,7 +675,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public (ScoreStatistic?, string?) CalculateStatisticReplay(Replay? replay, Score score)
+        public (ScoreStatistic?, string?) CalculateStatisticFromReplay(Replay? replay, Leaderboard leaderboard)
         {
             ScoreStatistic? statistic;
 
@@ -686,7 +686,7 @@ namespace BeatLeader_Server.Controllers
 
             try
             {
-                statistic = ReplayStatisticUtils.ProcessReplay(replay, score.Leaderboard);
+                statistic = ReplayStatisticUtils.ProcessReplay(replay, leaderboard);
             } catch (Exception e) {
                 return (null, e.ToString());
             }
@@ -694,6 +694,19 @@ namespace BeatLeader_Server.Controllers
             if (statistic == null)
             {
                 return (null, "Could not calculate statistics");
+            }
+
+            return (statistic, null);
+        }
+
+        [NonAction]
+        public (ScoreStatistic?, string?) CalculateAndSaveStatistic(Replay? replay, Score score)
+        {
+            (ScoreStatistic? statistic, string? error) = CalculateStatisticFromReplay(replay, score.Leaderboard);
+
+            if (statistic == null)
+            {
+                return (null, error);
             }
 
             _scoreStatsClient.DeleteBlobIfExists(score.Id + ".json");
