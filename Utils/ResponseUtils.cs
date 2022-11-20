@@ -270,6 +270,14 @@ namespace BeatLeader_Server.Utils
             return result;
         }
 
+        public static ScoreResponseWithAcc ScoreWithAcc(Score s, int i) {
+            var result = RemoveLeaderboard<ScoreResponseWithAcc>(s, i);
+            result.Weight = s.Weight;
+            result.AccLeft = s.AccLeft;
+            result.AccRight = s.AccRight;
+            return result;
+        }
+
         public static T? GeneralResponseFromPlayer<T>(Player? p) where T : PlayerResponse, new()
         {
             if (p == null) return null;

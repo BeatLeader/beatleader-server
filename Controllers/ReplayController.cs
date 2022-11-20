@@ -683,6 +683,8 @@ namespace BeatLeader_Server.Controllers
                 await _context.SaveChangesAsync();
                 transaction3.Commit();
 
+                await ScoresSocketController.TryPublishNewScore(resultScore, _configuration, _context);
+
                 if (leaderboard.Difficulty.Status == DifficultyStatus.ranked && resultScore.Rank == 1)
                 {
                     var dsClient = top1DSClient();

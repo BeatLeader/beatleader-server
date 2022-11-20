@@ -205,6 +205,9 @@ namespace BeatLeader_Server {
         {
             app.UseStaticFiles ();
             app.UseServerTiming();
+            app.UseWebSockets(new WebSocketOptions {
+                KeepAliveInterval = TimeSpan.FromMinutes(2)
+            });
 
             app.UseRouting ();
 
