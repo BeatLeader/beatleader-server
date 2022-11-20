@@ -487,7 +487,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
             [FromQuery] int? date_from = null,
-            [FromQuery] int? date_to = null)
+            [FromQuery] int? date_to = null,
+            [FromQuery] bool duplicate_diffs = false)
         {
             if (count > 2000) {
                 return Unauthorized("Count is too big. 2000 max");
@@ -506,7 +507,7 @@ namespace BeatLeader_Server.Controllers
                 .Include(lb => lb.Song)
                 .Take(diffsCount);
 
-            var songs = sequence.Select(lb => new {
+            var diffs = sequence.Select(lb => new {
                 hash = lb.Song.Hash,
                 songName = lb.Song.Name,
                 levelAuthorName = lb.Song.Mapper,
@@ -516,15 +517,7 @@ namespace BeatLeader_Server.Controllers
                         characteristic = lb.Difficulty.ModeName
                     }
                 }
-            }).ToList().GroupBy(s => s.hash).Select(group => 
-                 new
-                {
-                    hash = group.First().hash,
-                    songName = group.First().songName,
-                    levelAuthorName = group.First().levelAuthorName,
-                    difficulties = group.Select(s => s.difficulties.First())
-                }
-            ).ToList();
+            }).ToList();
 
             BlobClient blobClient = _playlistContainerClient.GetBlobClient("searchresult.bplist");
             MemoryStream stream = new MemoryStream(5);
@@ -538,7 +531,27 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Original plist dead. Wake up NSGolova!");
             }
 
-            playlist.songs = songs.ToList();
+            if (duplicate_diffs) {
+                playlist.songs = diffs.Select(diff => 
+                 new
+                {
+                    hash = diff.hash,
+                    songName = diff.songName,
+                    levelAuthorName = diff.levelAuthorName,
+                    difficulties = diff.difficulties
+                }
+                ).ToList();
+            } else {
+                playlist.songs = diffs.GroupBy(s => s.hash).Select(group => 
+                 new
+                {
+                    hash = group.First().hash,
+                    songName = group.First().songName,
+                    levelAuthorName = group.First().levelAuthorName,
+                    difficulties = group.Select(s => s.difficulties.First())
+                }
+                ).ToList();
+            }
             playlist.customData = new CustomData
             {
                 owner = currentID
