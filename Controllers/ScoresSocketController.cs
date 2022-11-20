@@ -10,6 +10,7 @@ using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
 {
+    [ApiExplorerSettings(IgnoreApi = true)]
     public class ScoresSocketController : Controller
     {
         public static List<(WebSocket, TaskCompletionSource)> sockets = new();
@@ -34,7 +35,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [Route("/scores")]
-        public async Task<ActionResult> Get()
+        public async Task<ActionResult> ScoresSocket()
         {
             if (HttpContext.WebSockets.IsWebSocketRequest)
             {

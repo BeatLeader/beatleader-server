@@ -678,6 +678,13 @@ namespace BeatLeader_Server.Controllers
                     });
                 }
 
+                if (_context.VRControllers.FirstOrDefault(h => h.Name == replay.info.controller) == null) {
+                    _context.VRControllers.Add(new VRController {
+                        Name = replay.info.controller,
+                        Player = replay.info.playerID,
+                    });
+                }
+
                 resultScore.ScoreImprovement = improvement;
 
                 await _context.SaveChangesAsync();
@@ -845,14 +852,14 @@ namespace BeatLeader_Server.Controllers
             };
 
             try {
-                if (saveReplay)
-                {
-                    await _otherReplaysClient.CreateIfNotExistsAsync();
-                    string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + "-" + timeset + ".bsor";
-                    stats.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/otherreplays/" : "https://cdn.beatleader.xyz/otherreplays/") + fileName;
-                    await _otherReplaysClient.DeleteBlobIfExistsAsync(fileName);
-                    await _otherReplaysClient.UploadBlobAsync(fileName, new BinaryData(replayData));
-                }
+                //if (saveReplay)
+                //{
+                //    await _otherReplaysClient.CreateIfNotExistsAsync();
+                //    string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + "-" + timeset + ".bsor";
+                //    stats.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/otherreplays/" : "https://cdn.beatleader.xyz/otherreplays/") + fileName;
+                //    await _otherReplaysClient.DeleteBlobIfExistsAsync(fileName);
+                //    await _otherReplaysClient.UploadBlobAsync(fileName, new BinaryData(replayData));
+                //}
 
                 leaderboard.PlayerStats.Add(stats);
                 _context.SaveChanges();
