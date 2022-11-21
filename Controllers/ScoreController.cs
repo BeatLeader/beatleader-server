@@ -686,7 +686,10 @@ namespace BeatLeader_Server.Controllers
 
             try
             {
-                statistic = ReplayStatisticUtils.ProcessReplay(replay, leaderboard);
+                (statistic, string? error) = ReplayStatisticUtils.ProcessReplay(replay, leaderboard);
+                if (statistic == null && error != null) {
+                    return (null, error);
+                }
             } catch (Exception e) {
                 return (null, e.ToString());
             }
