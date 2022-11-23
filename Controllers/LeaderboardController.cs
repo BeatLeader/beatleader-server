@@ -34,9 +34,7 @@ namespace BeatLeader_Server.Controllers
             else
             {
 
-                string statsEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
-                                                        config.Value.AccountName,
-                                                       config.Value.ScoreStatsContainerName);
+                string statsEndpoint = $"https://{config.Value.AccountName}.blob.core.windows.net/{config.Value.ScoreStatsContainerName}";
 
                 _scoreStatsClient = new BlobContainerClient(new Uri(statsEndpoint), new DefaultAzureCredential());
             }
@@ -82,7 +80,7 @@ namespace BeatLeader_Server.Controllers
             if (voters)
             {
                 string currentID = HttpContext.CurrentUserID(currentContext);
-                var currentPlayer = currentContext.Players.Find(currentID);
+                var currentPlayer = await currentContext.Players.FindAsync(currentID);
 
                 if (currentPlayer != null && (currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("rankedteam")))
                 {
@@ -172,7 +170,7 @@ namespace BeatLeader_Server.Controllers
                     .FirstOrDefault();
 
             if (leaderboard == null) {
-                Song? song = currentContext.Songs.Include(s => s.Difficulties).Where(s => s.Difficulties.FirstOrDefault(d => s.Id + d.Value + d.Mode == id) != null).FirstOrDefault();
+                Song? song = currentContext.Songs.Include(s => s.Difficulties).FirstOrDefault(s => s.Difficulties.FirstOrDefault(d => s.Id + d.Value + d.Mode == id) != null);
                 if (song == null) {
                     return NotFound();
                 } else {
@@ -181,7 +179,7 @@ namespace BeatLeader_Server.Controllers
                 }
             } else if (leaderboard.Reweight != null && !leaderboard.Reweight.Finished) {
                 string currentID = HttpContext.CurrentUserID(currentContext);
-                var currentPlayer = currentContext.Players.Find(currentID);
+                var currentPlayer = await currentContext.Players.FindAsync(currentID);
 
                 if (currentPlayer != null && (currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("rankedteam")))
                 {
@@ -257,11 +255,10 @@ namespace BeatLeader_Server.Controllers
             Leaderboard? leaderboard;
 
             leaderboard = _context
-                    .Leaderboards
-                    .Include(lb => lb.Difficulty)
-                    .ThenInclude(d => d.ModifierValues)
-                    .Where(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff)
-                    .FirstOrDefault();
+                .Leaderboards
+                .Include(lb => lb.Difficulty)
+                .ThenInclude(d => d.ModifierValues)
+                .FirstOrDefault(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff);
 
             if (leaderboard == null) {
                 Song? song = (await _songController.GetHash(hash)).Value;
@@ -272,7 +269,7 @@ namespace BeatLeader_Server.Controllers
 
                 var difficulty = song.Difficulties.FirstOrDefault(d => d.DifficultyName == diff && d.ModeName == mode);
                 // Song migrated leaderboards
-                if (difficulty != null && difficulty.Status == DifficultyStatus.nominated) {
+                if (difficulty is { Status: DifficultyStatus.nominated }) {
                     return await GetByHash(hash, diff, mode);
                 } else {
                     leaderboard = await _songController.NewLeaderboard(song, diff, mode);
@@ -367,7 +364,7 @@ namespace BeatLeader_Server.Controllers
                         AccLeft = s.AccLeft,
                         AccRight = s.AccRight
                     }).FirstOrDefault(),
-                    Plays = showPlays ? lb.Scores.Where(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)).Count() : 0
+                    Plays = showPlays ? lb.Scores.Count(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)) : 0
                 });
             return result;
         }
@@ -376,19 +373,19 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> RefreshLeaderboards()
         {
             string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = _context.Players.Find(currentId);
+            Player? currentPlayer = await _context.Players.FindAsync(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
             }
             var leaderboards = _context.Leaderboards.Include(lb => lb.Scores.Where(s => !s.Banned && s.LeaderboardId != null)).Include(l => l.Difficulty).ToArray();
             int counter = 0;
-            var transaction = _context.Database.BeginTransaction();
+            var transaction = await _context.Database.BeginTransactionAsync();
             foreach (var leaderboard in leaderboards)
             {
                 List<Score>? rankedScores;
                 var status = leaderboard.Difficulty.Status;
-                if (status == DifficultyStatus.ranked || status == DifficultyStatus.qualified || status == DifficultyStatus.nominated) {
+                if (status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.nominated) {
                     rankedScores = leaderboard.Scores.OrderByDescending(el => el.Pp).ToList();
                 } else {
                     rankedScores = leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();
@@ -410,12 +407,12 @@ namespace BeatLeader_Server.Controllers
                     {
 
                         _context.RejectChanges();
-                        transaction.Rollback();
-                        transaction = _context.Database.BeginTransaction();
+                        await transaction.RollbackAsync();
+                        transaction = await _context.Database.BeginTransactionAsync();
                         continue;
                     }
-                    transaction.Commit();
-                    transaction = _context.Database.BeginTransaction();
+                    await transaction.CommitAsync();
+                    transaction = await _context.Database.BeginTransactionAsync();
                 }
             }
 
@@ -427,7 +424,7 @@ namespace BeatLeader_Server.Controllers
             {
                 _context.RejectChanges();
             }
-            transaction.Commit();
+            await transaction.CommitAsync();
 
 
             return Ok();
@@ -542,8 +539,8 @@ namespace BeatLeader_Server.Controllers
 
             await ReplayStatisticUtils.AverageStatistic(statistics, result);
 
-            _scoreStatsClient.DeleteBlobIfExists(id + "-leaderboard.json");
-            _scoreStatsClient.UploadBlobAsync(id + "-leaderboard.json", new BinaryData(JsonConvert.SerializeObject(result)));
+            await _scoreStatsClient.DeleteBlobIfExistsAsync(id + "-leaderboard.json");
+            await _scoreStatsClient.UploadBlobAsync(id + "-leaderboard.json", new BinaryData(JsonConvert.SerializeObject(result)));
 
             return result;
         }

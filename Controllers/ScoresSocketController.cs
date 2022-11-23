@@ -54,7 +54,7 @@ namespace BeatLeader_Server.Controllers
 
                     return Ok();
                 } else {
-                    return Redirect("wss://" + socketHost + ".azurewebsites.net/scores");
+                    return Redirect($"wss://{socketHost}.azurewebsites.net/scores");
                 }
             }
             else
@@ -94,7 +94,7 @@ namespace BeatLeader_Server.Controllers
             string serverName = configuration.GetValue<string?>("ServerName");
             string socketHost = configuration.GetValue<string?>("SocketHost");
             if (serverName != socketHost) {
-                WebRequest.Create("https://" + socketHost + ".azurewebsites.net/newscore?id=" + score.Id).GetResponseAsync();
+                await WebRequest.Create($"https://{socketHost}.azurewebsites.net/newscore?id={score.Id}").GetResponseAsync();
             } else {
                 var scoreToPublish = ScoreWithMyScore(score, 0);
                 if (scoreToPublish.Leaderboard.Song == null) {

@@ -37,11 +37,9 @@ namespace BeatLeader_Server.Controllers
             }
             var auth = await HttpContext.AuthenticateAsync("Twitch");
 
-            var player = _context.Players.Include(p => p.Socials).Where(p => p.Id == playerId).FirstOrDefault();
+            var player = _context.Players.Include(p => p.Socials).FirstOrDefault(p => p.Id == playerId);
             if (player != null && (player.Socials == null || player.Socials.FirstOrDefault(s => s.Service == "Twitch") == null)) {
-                if (player.Socials == null) {
-                    player.Socials = new List<PlayerSocial>();
-                }
+                player.Socials ??= new List<PlayerSocial>();
 
                 var claims = auth.Principal.Claims;
 
@@ -66,7 +64,7 @@ namespace BeatLeader_Server.Controllers
                         Id = playerId
                     });;
 
-                    _context.SaveChanges();
+                    await _context.SaveChangesAsync();
                 }
             } else {
                 return Unauthorized("This Twitch profile is already linked");
@@ -85,13 +83,10 @@ namespace BeatLeader_Server.Controllers
             }
             var auth = await HttpContext.AuthenticateAsync("Twitter");
 
-            var player = _context.Players.Include(p => p.Socials).Where(p => p.Id == playerId).FirstOrDefault();
-            if (player != null && (player.Socials == null || player.Socials.FirstOrDefault(s => s.Service == "Twitter") == null))
+            var player = _context.Players.Include(p => p.Socials).FirstOrDefault(p => p.Id == playerId);
+            if (player != null && (player.Socials?.FirstOrDefault(s => s.Service == "Twitter") == null))
             {
-                if (player.Socials == null)
-                {
-                    player.Socials = new List<PlayerSocial>();
-                }
+                player.Socials ??= new List<PlayerSocial>();
 
                 var claims = auth.Principal.Claims;
 
@@ -118,7 +113,7 @@ namespace BeatLeader_Server.Controllers
                         Id = playerId
                     });
 
-                    _context.SaveChanges();
+                    await _context.SaveChangesAsync();
                 }
             }
             else
@@ -139,13 +134,10 @@ namespace BeatLeader_Server.Controllers
             }
             var auth = await HttpContext.AuthenticateAsync("Google");
 
-            var player = _context.Players.Include(p => p.Socials).Where(p => p.Id == playerId).FirstOrDefault();
-            if (player != null && (player.Socials == null || player.Socials.FirstOrDefault(s => s.Service == "YouTube") == null))
+            var player = _context.Players.Include(p => p.Socials).FirstOrDefault(p => p.Id == playerId);
+            if (player != null && (player.Socials?.FirstOrDefault(s => s.Service == "YouTube") == null))
             {
-                if (player.Socials == null)
-                {
-                    player.Socials = new List<PlayerSocial>();
-                }
+                player.Socials ??= new List<PlayerSocial>();
 
                 var claims = auth.Principal.Claims;
 
@@ -186,7 +178,7 @@ namespace BeatLeader_Server.Controllers
                         Timestamp = timestamp ?? ""
                     });
 
-                    _context.SaveChanges();
+                    await _context.SaveChangesAsync();
                 }
             }
             else
@@ -212,7 +204,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> Unlink([FromForm] string provider, [FromForm] string returnUrl)
         {
             string playerId = HttpContext.CurrentUserID(_context);
-            if (playerId == null || (Int64.Parse(playerId) < 1000000000000000 && provider == "BeatSaver"))
+            if (playerId == null || (long.Parse(playerId) < 1000000000000000 && provider == "BeatSaver"))
             {
                 return Redirect(returnUrl);
             }
@@ -237,27 +229,27 @@ namespace BeatLeader_Server.Controllers
                 case "BeatSaver":
                     player.MapperId = 0;
                     player.Role = string.Join(",", player.Role.Split(",").Where(r => r != "mapper"));
-                    var link = _context.BeatSaverLinks.Where(l => l.Id == player.Id).FirstOrDefault();
+                    var link = _context.BeatSaverLinks.FirstOrDefault(l => l.Id == player.Id);
                     if (link != null) {
                         _context.BeatSaverLinks.Remove(link);
                     }
                     break;
                 case "Twitter":
-                    var link1 = _context.TwitterLinks.Where(l => l.Id == player.Id).FirstOrDefault();
+                    var link1 = _context.TwitterLinks.FirstOrDefault(l => l.Id == player.Id);
                     if (link1 != null)
                     {
                         _context.TwitterLinks.Remove(link1);
                     }
                     break;
                 case "Twitch":
-                    var link2 = _context.TwitchLinks.Where(l => l.Id == player.Id).FirstOrDefault();
+                    var link2 = _context.TwitchLinks.FirstOrDefault(l => l.Id == player.Id);
                     if (link2 != null)
                     {
                         _context.TwitchLinks.Remove(link2);
                     }
                     break;
                 case "Google":
-                    var link3 = _context.YouTubeLinks.Where(l => l.Id == player.Id).FirstOrDefault();
+                    var link3 = _context.YouTubeLinks.FirstOrDefault(l => l.Id == player.Id);
                     if (link3 != null)
                     {
                         _context.YouTubeLinks.Remove(link3);
@@ -268,7 +260,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             await HttpContext.SignOutAsync("BL" + provider);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Redirect(returnUrl);
         }

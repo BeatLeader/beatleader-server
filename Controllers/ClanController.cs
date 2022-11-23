@@ -107,7 +107,7 @@ namespace BeatLeader_Server.Controllers
             Clan? clan = null;
             if (tag == "my") {
                 string? currentID = HttpContext.CurrentUserID(_readContext);
-                var player = _readContext.Players.Find(currentID);
+                var player = await _readContext.Players.FindAsync(currentID);
 
                 if (player == null)
                 {
@@ -194,16 +194,16 @@ namespace BeatLeader_Server.Controllers
             {
                 return BadRequest("You already have a clan");
             }
-            if (upperTag.Length > 4 || upperTag.Length < 2 || !Regex.IsMatch(upperTag, @"^[A-Z0-9]+$")) {
+            if (upperTag.Length is > 4 or < 2 || !Regex.IsMatch(upperTag, @"^[A-Z0-9]+$")) {
                 return BadRequest("Clan tag should be from 2 to 4 capital latin letters or numbers");
             }
-            if (name.Length > 25 || name.Length < 2)
+            if (name.Length is > 25 or < 2)
             {
                 return BadRequest("Clan name should be from 2 to 25 letters");
             }
             int colorLength = color.Length;
             try {
-                if (!((colorLength == 7 || colorLength == 9) && Int64.Parse(color.Substring(1), System.Globalization.NumberStyles.HexNumber) != 0)) {
+                if (!(colorLength is 7 or 9 && long.Parse(color[1..], System.Globalization.NumberStyles.HexNumber) != 0)) {
                     return BadRequest("Color is not valid");
                 }
             } catch {
@@ -263,10 +263,10 @@ namespace BeatLeader_Server.Controllers
                 AverageRank = player.Rank
             };
             _context.Clans.Add(newClan);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             player.Clans.Add(newClan);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return newClan;
         }
@@ -276,7 +276,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> DeleteClan([FromQuery] int? id = null)
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var player = _context.Players.Find(currentID);
+            var player = await _context.Players.FindAsync(currentID);
 
             if (player == null)
             {
@@ -286,7 +286,7 @@ namespace BeatLeader_Server.Controllers
             Clan? clan = null;
             if (id != null && player != null && player.Role.Contains("admin"))
             {
-                clan = _context.Clans.Find(id);
+                clan = await _context.Clans.FindAsync(id);
             }
             else
             {
@@ -313,7 +313,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string bio = "")
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var player = _context.Players.Find(currentID);
+            var player = await _context.Players.FindAsync(currentID);
 
             if (player == null)
             {
@@ -328,7 +328,7 @@ namespace BeatLeader_Server.Controllers
             Clan? clan = null;
             if (id != null && player != null && player.Role.Contains("admin"))
             {
-                clan = _context.Clans.Find(id);
+                clan = await _context.Clans.FindAsync(id);
             }
             else
             {
@@ -340,7 +340,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (name != null) {
-                if (name.Length < 3 || name.Length > 30)
+                if (name.Length is < 3 or > 30)
                 {
                     return BadRequest("Use name between the 3 and 30 symbols");
                 }
@@ -356,7 +356,7 @@ namespace BeatLeader_Server.Controllers
                 int colorLength = color.Length;
                 try
                 {
-                    if (!((colorLength == 7 || colorLength == 9) && Int64.Parse(color.Substring(1), System.Globalization.NumberStyles.HexNumber) != 0))
+                    if (!(colorLength is 7 or 9 && long.Parse(color[1..], System.Globalization.NumberStyles.HexNumber) != 0))
                     {
                         return BadRequest("Color is not valid");
                     }
@@ -419,7 +419,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> InviteToClan([FromQuery] string player)
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null)
             {
@@ -459,7 +459,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             user.ClanRequest.Add(clan);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
@@ -499,7 +499,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             user.ClanRequest.Remove(clanRequest);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
@@ -513,11 +513,11 @@ namespace BeatLeader_Server.Controllers
             string currentID = HttpContext.CurrentUserID(_context);
 
             Clan? clan;
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
             
             if (id != null && currentPlayer != null && currentPlayer.Role.Contains("admin"))
             {
-                clan = _context.Clans.Find(id);
+                clan = await _context.Clans.FindAsync(id);
             }
             else
             {
@@ -549,10 +549,10 @@ namespace BeatLeader_Server.Controllers
             clan.AverageAccuracy = MathUtils.RemoveFromAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageRankedAccuracy);
             clan.AverageRank = MathUtils.RemoveFromAverage(clan.AverageRank, clan.PlayersCount, user.Player.Rank);
             clan.PlayersCount--;
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             clan.Pp = _context.RecalculateClanPP(clan.Id);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
@@ -579,13 +579,13 @@ namespace BeatLeader_Server.Controllers
 
             if (user.Player.Clans.Count == 3)
             {
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
                 return BadRequest("You already joined maximum amount of clans.");
             }
 
             if (user.Player.Clans.FirstOrDefault(c => c.Id == clan.Id) != null)
             {
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
                 return BadRequest("Player already in this clan");
             }
 
@@ -593,10 +593,10 @@ namespace BeatLeader_Server.Controllers
             clan.PlayersCount++;
             clan.AverageAccuracy = MathUtils.AddToAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageRankedAccuracy);
             clan.AverageRank = MathUtils.AddToAverage(clan.AverageRank, clan.PlayersCount, user.Player.Rank);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             clan.Pp = _context.RecalculateClanPP(clan.Id);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
@@ -623,7 +623,7 @@ namespace BeatLeader_Server.Controllers
             if (ban) {
                 user.BannedClans.Add(clan);
             }
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
@@ -647,7 +647,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             user.BannedClans.Remove(clan);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
@@ -678,10 +678,10 @@ namespace BeatLeader_Server.Controllers
             clan.AverageAccuracy = MathUtils.RemoveFromAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageRankedAccuracy);
             clan.AverageRank = MathUtils.RemoveFromAverage(clan.AverageRank, clan.PlayersCount, user.Player.Rank);
             clan.PlayersCount--;
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             clan.Pp = _context.RecalculateClanPP(clan.Id);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
@@ -691,7 +691,7 @@ namespace BeatLeader_Server.Controllers
         {
             tag = tag.ToUpper();
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (!currentPlayer.Role.Contains("admin")) {
                 return Unauthorized();
@@ -700,7 +700,7 @@ namespace BeatLeader_Server.Controllers
             _context.ReservedTags.Add(new ReservedClanTag {
                 Tag = tag
             });
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
@@ -710,7 +710,7 @@ namespace BeatLeader_Server.Controllers
         {
             tag = tag.ToUpper();
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (!currentPlayer.Role.Contains("admin"))
             {
@@ -723,7 +723,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             _context.ReservedTags.Remove(rt);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }

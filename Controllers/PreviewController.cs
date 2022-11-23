@@ -289,8 +289,8 @@ namespace BeatLeader_Server.Controllers
 
             if (playerID != null && id != null)
             {
-                player = _context.Players.Where(p => p.Id == playerID).FirstOrDefault() ?? await GetPlayerFromSS("https://scoresaber.com/api/player/" + playerID + "/full");
-                song = _context.Songs.Select(s => new SongSelect { Id = s.Id, CoverImage = s.CoverImage, Name = s.Name }).Where(s => s.Id == id).FirstOrDefault();
+                player = _context.Players.FirstOrDefault(p => p.Id == playerID) ?? await GetPlayerFromSS("https://scoresaber.com/api/player/" + playerID + "/full");
+                song = _context.Songs.Select(s => new SongSelect { Id = s.Id, CoverImage = s.CoverImage, Name = s.Name }).FirstOrDefault(s => s.Id == id);
             }
 
             if (player == null || song == null)
@@ -369,7 +369,7 @@ namespace BeatLeader_Server.Controllers
                 }
                     
                 
-                song = _context.Songs.Select(s => new SongSelect { Hash = s.Hash, CoverImage = s.CoverImage, Name = s.Name }).Where(s => s.Hash == hash).FirstOrDefault();
+                song = _context.Songs.Select(s => new SongSelect { Hash = s.Hash, CoverImage = s.CoverImage, Name = s.Name }).FirstOrDefault(s => s.Hash == hash);
             }
 
             if (playersList.Count == 0 || song == null)
@@ -542,7 +542,7 @@ namespace BeatLeader_Server.Controllers
             // See https://stackoverflow.com/questions/6111298/best-way-to-specify-whitespace-in-a-string-split-operation
             string[] words = text.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
 
-            if (words.Length == 0) return new string[0];
+            if (words.Length == 0) return Array.Empty<string>();
 
             List<string> lines = new List<string>();
 
@@ -591,7 +591,7 @@ namespace BeatLeader_Server.Controllers
             {
                 SizeF lineSize = that.MeasureString(line, font);
                 float increment = lastDrawn.Height == 0 ? (lines.Count() == 1 ? lineHeight * 0.5f : 0) : lineHeight;
-                RectangleF lineOrigin = new RectangleF(lastDrawn.X, lastDrawn.Y + increment, layoutRectangle.Width, layoutRectangle.Height);
+                RectangleF lineOrigin = layoutRectangle with { X = lastDrawn.X, Y = lastDrawn.Y + increment };
                 that.DrawString(line, font, brush, lineOrigin, format);
                 lastDrawn = new Rectangle(Point.Round(lineOrigin.Location), Size.Round(lineSize));
             }

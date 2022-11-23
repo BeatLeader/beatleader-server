@@ -119,7 +119,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> RestorePlayer(string id)
         {
 
-            Player? player = _context.Players.Find(id);
+            Player? player = await _context.Players.FindAsync(id);
             if (player == null)
             {
                 return NotFound();

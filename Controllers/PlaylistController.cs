@@ -215,7 +215,7 @@ namespace BeatLeader_Server.Controllers
             Playlist? playlistRecord = null;
             
             if (id != null) {
-               playlistRecord = _context.Playlists.Where(t => t.OwnerId == currentID && t.Id == id).FirstOrDefault();
+               playlistRecord = _context.Playlists.FirstOrDefault(t => t.OwnerId == currentID && t.Id == id);
             }
 
             if (playlistRecord == null) {
@@ -255,7 +255,7 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             if (currentID == null) return Unauthorized();
 
-            Playlist? playlistRecord = _context.Playlists.Where(t => t.OwnerId == currentID && t.Id == id).FirstOrDefault();
+            Playlist? playlistRecord = _context.Playlists.FirstOrDefault(t => t.OwnerId == currentID && t.Id == id);
 
             if (playlistRecord == null)
             {
@@ -317,7 +317,7 @@ namespace BeatLeader_Server.Controllers
             if (HttpContext != null)
             {
                 string userId = HttpContext.CurrentUserID(_context);
-                var currentPlayer = _context.Players.Find(userId);
+                var currentPlayer = await _context.Players.FindAsync(userId);
 
                 if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
                 {
@@ -370,7 +370,7 @@ namespace BeatLeader_Server.Controllers
             if (HttpContext != null)
             {
                 string userId = HttpContext.CurrentUserID(_context);
-                var currentPlayer = _context.Players.Find(userId);
+                var currentPlayer = await _context.Players.FindAsync(userId);
 
                 if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
                 {
@@ -424,7 +424,7 @@ namespace BeatLeader_Server.Controllers
             if (HttpContext != null)
             {
                 string userId = HttpContext.CurrentUserID(_context);
-                var currentPlayer = _context.Players.Find(userId);
+                var currentPlayer = await _context.Players.FindAsync(userId);
 
                 if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
                 {
@@ -569,7 +569,7 @@ namespace BeatLeader_Server.Controllers
             if (HttpContext != null)
             {
                 string userId = HttpContext.CurrentUserID(_context);
-                var currentPlayer = _context.Players.Find(userId);
+                var currentPlayer = await _context.Players.FindAsync(userId);
 
                 if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
                 {
@@ -636,7 +636,7 @@ namespace BeatLeader_Server.Controllers
 
                                 lb.Difficulty.Status = DifficultyStatus.inevent;
                                 lb.Difficulty.Stars = stars;
-                                _context.SaveChanges();
+                                await _context.SaveChangesAsync();
 
                                 await _scoreController.RefreshScores(lb.Id);
                                 leaderboards.Add(lb);
@@ -705,11 +705,11 @@ namespace BeatLeader_Server.Controllers
 
             _context.EventRankings.Add(eventRanking);
 
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             foreach (var player in players)
             {
-                var basicPlayer = basicPlayers.Where(p => p.Id == player.PlayerId).FirstOrDefault();
+                var basicPlayer = basicPlayers.FirstOrDefault(p => p.Id == player.PlayerId);
                 if (basicPlayer != null) {
                     if (basicPlayer.EventsParticipating == null) {
                         basicPlayer.EventsParticipating = new List<EventPlayer>();
@@ -719,7 +719,7 @@ namespace BeatLeader_Server.Controllers
                 player.EventId = eventRanking.Id;
                 player.Name = eventRanking.Name;
             }
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
@@ -732,7 +732,7 @@ namespace BeatLeader_Server.Controllers
             request.Proxy = null;
 
             try {
-            var response = await request.DynamicResponse();
+                var response = await request.DynamicResponse();
                 return (float?)response?.balanced;
             } catch { return 4.2f; }
 
@@ -745,7 +745,7 @@ namespace BeatLeader_Server.Controllers
             if (HttpContext != null)
             {
                 string userId = HttpContext.CurrentUserID(_context);
-                var currentPlayer = _context.Players.Find(userId);
+                var currentPlayer = await _context.Players.FindAsync(userId);
 
                 if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
                 {
@@ -776,7 +776,7 @@ namespace BeatLeader_Server.Controllers
             {
                 _context.RecalculateEventsPP(player, eventRanking.Leaderboards.First());
             }
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }

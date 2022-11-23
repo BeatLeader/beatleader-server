@@ -35,9 +35,7 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
-                string containerEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
-                                                        config.Value.AccountName,
-                                                       config.Value.AssetsContainerName);
+                string containerEndpoint = $"https://{config.Value.AccountName}.blob.core.windows.net/{config.Value.AssetsContainerName}";
 
                 _assetsContainerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
             }
@@ -47,18 +45,18 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> AddRole([FromQuery] string playerId, [FromQuery] string role)
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin") || role == "admin")
             {
                 return Unauthorized();
             }
 
-            Player? player = _context.Players.Find(playerId);
+            Player? player = await _context.Players.FindAsync(playerId);
             if (player != null) {
                 player.Role = string.Join(",", player.Role.Split(",").Append(role));
             }
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
@@ -67,19 +65,19 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> RemoveRole([FromQuery] string playerId, [FromQuery] string role)
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin") || role == "admin")
             {
                 return Unauthorized();
             }
 
-            Player? player = _context.Players.Find(playerId);
+            Player? player = await _context.Players.FindAsync(playerId);
             if (player != null)
             {
                 player.Role = string.Join(",", player.Role.Split(",").Where(r => r != role));
             }
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
@@ -88,14 +86,14 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> SetLeader(int id, [FromQuery] string newLeader)
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
             }
 
-            Player? player = _context.Players.Find(newLeader);
+            Player? player = await _context.Players.FindAsync(newLeader);
             var clan = _context.Clans.FirstOrDefault(c => c.Id == id);
             if (player != null)
             {
@@ -103,7 +101,7 @@ namespace BeatLeader_Server.Controllers
 
                 player.Clans.Add(clan);
 
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
             } else {
                 return NotFound();
             }
@@ -115,14 +113,14 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> AddMember(int id, [FromQuery] string newLeader)
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
             }
 
-            Player? player = _context.Players.Find(newLeader);
+            Player? player = await _context.Players.FindAsync(newLeader);
             var clan = _context.Clans.FirstOrDefault(c => c.Id == id);
             if (player != null)
             {
@@ -130,11 +128,11 @@ namespace BeatLeader_Server.Controllers
                 clan.PlayersCount++;
                 clan.AverageAccuracy = MathUtils.AddToAverage(clan.AverageAccuracy, clan.PlayersCount, player.ScoreStats.AverageRankedAccuracy);
                 clan.AverageRank = MathUtils.AddToAverage(clan.AverageRank, clan.PlayersCount, player.Rank);
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
 
                 clan.Pp = _context.RecalculateClanPP(clan.Id);
 
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
             }
             else
             {
@@ -148,7 +146,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<List<Score>>> GetAllScores([FromQuery] int from, [FromQuery] int to)
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
