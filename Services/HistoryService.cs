@@ -41,14 +41,15 @@ namespace BeatLeader_Server.Services
 
                 int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                 var playersCount = _context.Players.Where(p => !p.Banned).Count();
-                for (int i = 0; i < playersCount; i += 2000)
+                for (int i = 0; i < playersCount; i += 5000)
                 {
-                    var ranked = await _context
+                    var ranked = _context
                         .Players
-                        .Where(p => !p.Banned && p.ScoreStats != null)
+                        .OrderBy(p => p.Id)
+                        .Where(p => !p.Banned)
                         .Include(p => p.ScoreStats)
                         .Skip(i)
-                        .Take(2000)
+                        .Take(5000)
                         .Select(p => new { 
                             Pp = p.Pp, 
                             ScoreStats = p.ScoreStats, 
@@ -56,9 +57,10 @@ namespace BeatLeader_Server.Services
                             CountryRank = p.CountryRank,
                             Id = p.Id
                             })
-                        .ToListAsync();
+                        .ToList();
                     foreach (var p in ranked)
                     {
+                        if (p.ScoreStats == null) continue;
                         _context.PlayerScoreStatsHistory.Add(new PlayerScoreStatsHistory {
                             PlayerId = p.Id,
                             Timestamp = timeset,
@@ -114,8 +116,9 @@ namespace BeatLeader_Server.Services
                             WatchedReplays = p.ScoreStats.WatchedReplays,
                         });
                     }
+                    await _context.BulkSaveChangesAsync();
                 }
-                await _context.BulkSaveChangesAsync();
+                
             }
         }
 
