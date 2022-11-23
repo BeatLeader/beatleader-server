@@ -81,7 +81,9 @@ namespace BeatLeader_Server.Utils
             public int Pauses { get; set; }
             public bool FullCombo { get; set; }
             public string Platform { get; set; }
+            public int MaxCombo { get; set; }
             public HMD Hmd { get; set; }
+            public ControllerEnum Controller { get; set; }
             public string LeaderboardId { get; set; }
             public string Timeset { get; set; }
             public int Timepost { get; set; }
@@ -235,6 +237,8 @@ namespace BeatLeader_Server.Utils
                 Pauses = s.Pauses,
                 FullCombo = s.FullCombo,
                 Hmd = s.Hmd,
+                Controller = s.Controller,
+                MaxCombo = s.MaxCombo,
                 Timeset = s.Timeset,
                 ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
                 Timepost = s.Timepost,

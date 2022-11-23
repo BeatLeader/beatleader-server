@@ -175,11 +175,13 @@ namespace BeatLeader_Server.Utils
                         break;
                 }
             }
-            ((AccuracyTracker? accuracy, List<NoteStruct>? structs, int? maxCombo), string? error) = Accuracy(replay);
-            if (accuracy == null) {
+            string? error = CheckReplay(replay);
+            if (error != null) {
                 return (null, error);
             }
-            result.hitTracker.maxCombo = maxCombo ?? 0;
+
+            (AccuracyTracker accuracy, List<NoteStruct> structs, int maxCombo) = Accuracy(replay);
+            result.hitTracker.maxCombo = maxCombo;
             result.winTracker.totalScore = structs.Last().totalScore;
             result.accuracyTracker = accuracy;
             result.scoreGraphTracker = ScoreGraph(structs, (int)replay.frames.Last().time);
@@ -187,7 +189,23 @@ namespace BeatLeader_Server.Utils
             return (result, null);
         }
 
-        public static ((AccuracyTracker?, List<NoteStruct>?, int?), string?) Accuracy(Replay replay)
+        public static string? CheckReplay(Replay replay) {
+            float endTime = replay.notes.Count > 0 ? replay.notes.Last().eventTime : 0;
+
+            foreach (var note in replay.notes)
+            {
+                NoteParams param = new NoteParams(note.noteID);
+                if (note.noteID < 100000 && note.noteID > 0 && endTime - note.eventTime > 1) {
+                    if (note.eventType == NoteEventType.good && param.colorType != note.noteCutInfo.saberType) {
+                        return "Wrong saber type on a good cut note";
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        public static (AccuracyTracker, List<NoteStruct>, int) Accuracy(Replay replay)
         {
             AccuracyTracker result = new AccuracyTracker();
             result.gridAcc = new List<float>(new float[12]);
@@ -202,12 +220,6 @@ namespace BeatLeader_Server.Utils
             foreach (var note in replay.notes)
             {
                 NoteParams param = new NoteParams(note.noteID);
-                if (note.noteID < 100000 && note.noteID > 0) {
-                    if (note.eventType == NoteEventType.good && param.colorType != note.noteCutInfo.saberType) {
-                        return ((null, null, null), "Wrong saber type on a good cut note");
-                    }
-                }
-
                 int scoreValue = ScoreForNote(note, param.scoringType);
 
                 if (scoreValue > 0)
@@ -400,7 +412,7 @@ namespace BeatLeader_Server.Utils
                 }
             }
 
-            return ((result, allStructs, maxCombo), null);
+            return (result, allStructs, maxCombo);
         }
 
         public static ScoreGraphTracker ScoreGraph(List<NoteStruct> structs, int replayLength)

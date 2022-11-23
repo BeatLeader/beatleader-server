@@ -659,6 +659,7 @@ namespace BeatLeader_Server.Controllers
                 resultScore.Replay = replayLink;
                 resultScore.AccLeft = statistic.accuracyTracker.accLeft;
                 resultScore.AccRight = statistic.accuracyTracker.accRight;
+                resultScore.MaxCombo = statistic.hitTracker.maxCombo;
                 var ip = context.Request.HttpContext.Connection.RemoteIpAddress;
                 if (ip != null)
                 {
@@ -678,7 +679,7 @@ namespace BeatLeader_Server.Controllers
                     });
                 }
 
-                if (_context.VRControllers.FirstOrDefault(h => h.Name == replay.info.controller) == null) {
+                if (resultScore.Controller == ControllerEnum.unknown && _context.VRControllers.FirstOrDefault(h => h.Name == replay.info.controller) == null) {
                     _context.VRControllers.Add(new VRController {
                         Name = replay.info.controller,
                         Player = replay.info.playerID,

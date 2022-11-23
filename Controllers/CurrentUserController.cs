@@ -26,6 +26,7 @@ namespace BeatLeader_Server.Controllers
 
         BlobContainerClient _assetsContainerClient;
         PlayerController _playerController;
+        PlayerRefreshController _playerRefreshController;
         ReplayController _replayController;
         IWebHostEnvironment _environment;
         IConfiguration _configuration;
@@ -37,6 +38,7 @@ namespace BeatLeader_Server.Controllers
             IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env,
             PlayerController playerController,
+            PlayerRefreshController playerRefreshController,
             ReplayController replayController,
             ScoreController scoreController,
             IConfiguration configuration)
@@ -45,6 +47,7 @@ namespace BeatLeader_Server.Controllers
             _readContext = readContext;
 
             _playerController = playerController;
+            _playerRefreshController = playerRefreshController;
             _replayController = replayController;
             _scoreController = scoreController;
             _configuration = configuration;
@@ -1073,8 +1076,8 @@ namespace BeatLeader_Server.Controllers
             _context.Players.Remove(currentPlayer);
 
             await _context.SaveChangesAsync();
-            await _playerController.RefreshPlayer(migratedToPlayer);
-            await _playerController.RefreshRanks();
+            await _playerRefreshController.RefreshPlayer(migratedToPlayer);
+            await _playerRefreshController.RefreshRanks();
             await _context.SaveChangesAsync();
 
             return Ok();
@@ -1140,7 +1143,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpPost("~/user/failedscore/retry")]
-        public async Task<ActionResult> RetryFailedScore([FromQuery] int id)
+        public async Task<ActionResult<ScoreResponse>> RetryFailedScore([FromQuery] int id)
         {
             string? playerId = GetId();
             if (playerId == null)
@@ -1166,9 +1169,13 @@ namespace BeatLeader_Server.Controllers
                 return Ok();
             }
 
-            await _replayController.PostReplayFromCDN(score.PlayerId, name, HttpContext);
+            var result = await _replayController.PostReplayFromCDN(score.PlayerId, name, HttpContext);
+            if (result.Value != null) {
+                _context.FailedScores.Remove(score);
+                _context.SaveChanges();
+            }
 
-            return Ok();
+            return result;
         }
 
         [HttpGet("~/players/avatarsrefresh")]
@@ -1265,7 +1272,7 @@ namespace BeatLeader_Server.Controllers
                     await _scoreController.RefreshScores(item);
                 }
 
-                await _playerController.RefreshRanks();
+                await _playerRefreshController.RefreshRanks();
             });
 
             return Ok();
@@ -1320,8 +1327,8 @@ namespace BeatLeader_Server.Controllers
                 {
                     await _scoreController.RefreshScores(item);
                 }
-                await _playerController.RefreshPlayer(player);
-                await _playerController.RefreshRanks();
+                await _playerRefreshController.RefreshPlayer(player);
+                await _playerRefreshController.RefreshRanks();
             });
 
             return Ok();

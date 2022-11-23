@@ -194,8 +194,8 @@ namespace BeatLeader_Server.Controllers
             {
                 return BadRequest("You already have a clan");
             }
-            if (upperTag.Length > 5 || upperTag.Length < 2 || !Regex.IsMatch(upperTag, @"^[A-Z0-9]+$")) {
-                return BadRequest("Clan tag should be from 2 to 5 capital latin letters or numbers");
+            if (upperTag.Length > 4 || upperTag.Length < 2 || !Regex.IsMatch(upperTag, @"^[A-Z0-9]+$")) {
+                return BadRequest("Clan tag should be from 2 to 4 capital latin letters or numbers");
             }
             if (name.Length > 25 || name.Length < 2)
             {
@@ -369,7 +369,7 @@ namespace BeatLeader_Server.Controllers
                 clan.Color = color;
             }
 
-            string fileName = clan.Id.ToString();
+            string fileName = clan.Tag;
             try
             {
                 await _assetsContainerClient.CreateIfNotExistsAsync();

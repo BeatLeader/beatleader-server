@@ -99,7 +99,7 @@ namespace BeatLeader_Server.Services
             {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
 
-                var _playerController = scope.ServiceProvider.GetRequiredService<PlayerController>();
+                var _playerController = scope.ServiceProvider.GetRequiredService<PlayerRefreshController>();
                 await _playerController.RefreshPlayersStats();
             }
         }

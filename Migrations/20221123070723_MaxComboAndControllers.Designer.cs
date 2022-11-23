@@ -4,16 +4,19 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace BeatLeader_Server.Migrations.ReadApp
+namespace BeatLeader_Server.Migrations
 {
-    [DbContext(typeof(ReadAppContext))]
-    partial class ReadAppContextModelSnapshot : ModelSnapshot
+    [DbContext(typeof(AppContext))]
+    [Migration("20221123070723_MaxComboAndControllers")]
+    partial class MaxComboAndControllers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1817,6 +1820,7 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .HasColumnType("int");
 
                     b.Property<string>("LeaderboardId")
+                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("MaxCombo")
@@ -1832,6 +1836,7 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .HasColumnType("int");
 
                     b.Property<string>("Modifiers")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Pauses")
@@ -1842,6 +1847,7 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PlayerId")
+                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<float>("Pp")
@@ -1854,6 +1860,7 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .HasColumnType("int");
 
                     b.Property<string>("Replay")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("ReplayOffsetsId")
@@ -1866,10 +1873,8 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .HasColumnType("int");
 
                     b.Property<string>("Timeset")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("TimesetMig")
-                        .HasColumnType("int");
 
                     b.Property<int>("WallsHit")
                         .HasColumnType("int");
@@ -1890,8 +1895,7 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.HasIndex("ScoreImprovementId");
 
                     b.HasIndex("PlayerId", "LeaderboardId")
-                        .IsUnique()
-                        .HasFilter("[PlayerId] IS NOT NULL AND [LeaderboardId] IS NOT NULL");
+                        .IsUnique();
 
                     b.ToTable("Scores");
                 });
@@ -2544,7 +2548,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
                 {
                     b.HasOne("BeatLeader_Server.Models.Leaderboard", "Leaderboard")
                         .WithMany("Scores")
-                        .HasForeignKey("LeaderboardId");
+                        .HasForeignKey("LeaderboardId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("BeatLeader_Server.Models.ScoreMetadata", "Metadata")
                         .WithMany()
@@ -2552,7 +2558,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
 
                     b.HasOne("BeatLeader_Server.Models.Player", "Player")
                         .WithMany()
-                        .HasForeignKey("PlayerId");
+                        .HasForeignKey("PlayerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("BeatLeader_Server.Models.ReplayOffsets", "ReplayOffsets")
                         .WithMany()

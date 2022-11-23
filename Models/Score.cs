@@ -54,7 +54,9 @@ namespace BeatLeader_Server.Models
         public int WallsHit { get; set; }
         public int Pauses { get; set; }
         public bool FullCombo { get; set; }
+        public int MaxCombo { get; set; }
         public HMD Hmd { get; set; }
+        public ControllerEnum Controller { get; set; }
         public float AccRight { get; set; }
         public float AccLeft { get; set; }
         public string? Timeset { get; set; }

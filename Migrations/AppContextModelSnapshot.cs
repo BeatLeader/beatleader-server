@@ -1801,6 +1801,9 @@ namespace BeatLeader_Server.Migrations
                     b.Property<float>("BonusPp")
                         .HasColumnType("real");
 
+                    b.Property<int>("Controller")
+                        .HasColumnType("int");
+
                     b.Property<string>("Country")
                         .HasColumnType("nvarchar(max)");
 
@@ -1815,6 +1818,9 @@ namespace BeatLeader_Server.Migrations
 
                     b.Property<string>("LeaderboardId")
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("MaxCombo")
+                        .HasColumnType("int");
 
                     b.Property<int?>("MetadataId")
                         .HasColumnType("int");

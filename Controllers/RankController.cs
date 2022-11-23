@@ -19,6 +19,7 @@ namespace BeatLeader_Server.Controllers
         private readonly IConfiguration _configuration;
         private readonly ScoreController _scoreController;
         private readonly PlayerController _playerController;
+        private readonly PlayerRefreshController _playerRefreshController;
         private readonly PlaylistController _playlistController;
 
         public RankController(
@@ -29,6 +30,7 @@ namespace BeatLeader_Server.Controllers
             IConfiguration configuration,
             ScoreController scoreController,
             PlayerController playerController,
+            PlayerRefreshController playerRefreshController,
             PlaylistController playlistController)
         {
             _context = context;
@@ -38,6 +40,7 @@ namespace BeatLeader_Server.Controllers
             _configuration = configuration;
             _scoreController = scoreController;
             _playerController = playerController;
+            _playerRefreshController = playerRefreshController;
             _playlistController = playlistController;
         }
 
@@ -835,7 +838,7 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 await _scoreController.RefreshScores(leaderboard.Id);
-                await _playerController.RefreshLeaderboardPlayers(leaderboard.Id);
+                await _playerRefreshController.RefreshLeaderboardPlayers(leaderboard.Id);
             }
 
             return Ok();
@@ -960,7 +963,7 @@ namespace BeatLeader_Server.Controllers
                 await _scoreController.RefreshScores(leaderboard.Id);
 
                 HttpContext.Response.OnCompleted(async () => {
-                    await _playerController.RefreshLeaderboardPlayers(leaderboard.Id);
+                    await _playerRefreshController.RefreshLeaderboardPlayers(leaderboard.Id);
                 });
             }
 
