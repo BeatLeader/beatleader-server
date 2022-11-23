@@ -96,7 +96,7 @@ namespace BeatLeader_Server.Controllers
                         .Include(p => p.Changes)
                         .FirstOrDefault();
                 } else {
-                    player = _readContext.Players.Find(userId);
+                    player = await _readContext.Players.FindAsync(userId);
                 }
                 
             }
@@ -125,7 +125,7 @@ namespace BeatLeader_Server.Controllers
                 .FirstOrDefault(p => p.Id == id);
 
             if (player == null) {
-                Int64 userId = Int64.Parse(id);
+                Int64 userId = long.Parse(id);
                 if (userId > 70000000000000000) {
                     player = await PlayerUtils.GetPlayerFromSteam(id, _configuration.GetValue<string>("SteamKey"));
                     if (player == null) {
@@ -140,7 +140,7 @@ namespace BeatLeader_Server.Controllers
                     if (addToBase) {
                         var net = new System.Net.WebClient();
                         var data = net.DownloadData(player.Avatar);
-                        var readStream = new System.IO.MemoryStream(data);
+                        var readStream = new MemoryStream(data);
                         string fileName = player.Id;
 
                         (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(readStream);
@@ -174,17 +174,17 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> DeletePlayer(string id)
         {
             string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = _context.Players.Find(currentId);
+            Player? currentPlayer = await _context.Players.FindAsync(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
             }
-            var bslink = _context.BeatSaverLinks.Where(link => link.Id == id).FirstOrDefault();
+            var bslink = _context.BeatSaverLinks.FirstOrDefault(link => link.Id == id);
             if (bslink != null) {
                 _context.BeatSaverLinks.Remove(bslink);
             }
 
-            var plink = _context.PatreonLinks.Where(l => l.Id == id).FirstOrDefault();
+            var plink = _context.PatreonLinks.FirstOrDefault(l => l.Id == id);
             if (plink != null) {
                 _context.PatreonLinks.Remove(plink);
             }
@@ -214,7 +214,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<AccountLink>> GetPlayerLink(string login)
         {
             string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = _context.Players.Find(currentId);
+            Player? currentPlayer = await _context.Players.FindAsync(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
@@ -238,7 +238,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> DeleteAuthInfo(string login)
         {
             string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = _context.Players.Find(currentId);
+            Player? currentPlayer = await _context.Players.FindAsync(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
@@ -259,7 +259,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> DeleteAuthIps()
         {
             string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = _context.Players.Find(currentId);
+            Player? currentPlayer = await _context.Players.FindAsync(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
@@ -280,7 +280,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> DeletePlayerLinked(string id)
         {
             string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = _context.Players.Find(currentId);
+            Player? currentPlayer = await _context.Players.FindAsync(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
@@ -409,7 +409,7 @@ namespace BeatLeader_Server.Controllers
             }
             if (friends) {
                 string userId = HttpContext.CurrentUserID(_readContext);
-                var player = _readContext.Players.Find(userId);
+                var player = await _readContext.Players.FindAsync(userId);
                 if (player == null)
                 {
                     return NotFound();
@@ -617,6 +617,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             var players = request.Where(p => p.EventsParticipating.FirstOrDefault(e => e.EventId == id) != null)
+                .AsEnumerable()
                 .Select(ResponseWithStatsFromPlayer)
                 .OrderByDescending(p => p.EventsParticipating.First(e => e.EventId == id).Pp);
 
@@ -705,7 +706,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<Player>> AddBadge(string playerId, int badgeId)
         {
             string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = _context.Players.Find(currentId);
+            Player? currentPlayer = await _context.Players.FindAsync(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
@@ -717,7 +718,7 @@ namespace BeatLeader_Server.Controllers
                 return NotFound("Player not found");
             }
 
-            Badge? badge = _context.Badges.Find(badgeId);
+            Badge? badge = await _context.Badges.FindAsync(badgeId);
             if (badge == null)
             {
                 return NotFound("Badge not found");
@@ -727,7 +728,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             player.Badges.Add(badge);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return player;
         }
@@ -741,12 +742,12 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            var link = _readContext.AccountLinks.Where(l => l.PCOculusID == id).FirstOrDefault();
+            var link = _readContext.AccountLinks.FirstOrDefault(l => l.PCOculusID == id);
             if (link != null)
             {
                 string playerId = link.SteamID.Length > 0 ? link.SteamID : id;
 
-                var player = _readContext.Players.Find(playerId);
+                var player = await _readContext.Players.FindAsync(playerId);
 
                 return new OculusUser
                 {

@@ -45,7 +45,7 @@ namespace BeatLeader_Server.Controllers
             {
                 return NotFound();
             }
-            Player? currentPlayer = _context.Players.Include(p => p.ProfileSettings).Where(p => p.Id == playerId).FirstOrDefault();
+            Player? currentPlayer = _context.Players.Include(p => p.ProfileSettings).FirstOrDefault(p => p.Id == playerId);
             if (currentPlayer != null)
             {
                 currentPlayer.Role += "," + role;
@@ -54,7 +54,7 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 currentPlayer.ProfileSettings.EffectName = "TheSun_Tier" + tier;
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
             }
             return Ok();
         }
@@ -67,11 +67,11 @@ namespace BeatLeader_Server.Controllers
             {
                 return NotFound();
             }
-            Player? currentPlayer = _context.Players.Find(playerId);
+            Player? currentPlayer = await _context.Players.FindAsync(playerId);
             if (currentPlayer != null)
             {
                 currentPlayer.Role = string.Join(",", currentPlayer.Role.Split(",").Where(r => r != "tipper" && r != "supporter" && r != "sponsor"));
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
             }
             return Ok();
         }
@@ -161,7 +161,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> RefreshPatreon()
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
@@ -187,7 +187,7 @@ namespace BeatLeader_Server.Controllers
                     }
 
                     if (tier != link.Tier) {
-                        var player = _context.Players.Where(p => p.Id == link.Id).FirstOrDefault();
+                        var player = _context.Players.FirstOrDefault(p => p.Id == link.Id);
                         if (tier != null) {
                             if (tier.Contains("tipper"))
                             {
@@ -221,7 +221,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }

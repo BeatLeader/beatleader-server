@@ -29,12 +29,12 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         public async Task<ActionResult> AddMapperRole(string playerId)
         {
-            Player? currentPlayer = _context.Players.Find(playerId);
+            Player? currentPlayer = await _context.Players.FindAsync(playerId);
             if (currentPlayer != null && !currentPlayer.Role.Contains("mapper"))
             {
                 currentPlayer.Role = string.Join(",", currentPlayer.Role.Split(",").Append("mapper"));
 
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
             }
             return Ok();
         }
@@ -51,7 +51,7 @@ namespace BeatLeader_Server.Controllers
                 .Include(lb => lb.Qualification)
                 .Include(lb => lb.Song)
                 .ToList();
-            var leaderboard = leaderboards.Where(lb => lb.Id == leaderboardId).FirstOrDefault();
+            var leaderboard = leaderboards.FirstOrDefault(lb => lb.Id == leaderboardId);
             var leaderboardsToApprove = leaderboard != null ? leaderboards.Where(lb => lb.Song.Id == leaderboard.Song.Id).ToList() : null;
 
             if (leaderboardsToApprove == null || leaderboardsToApprove.Count() == 0 || leaderboardsToApprove[0].Qualification == null)
@@ -88,7 +88,7 @@ namespace BeatLeader_Server.Controllers
         {
             string? currentID = HttpContext.CurrentUserID(_context);
 
-            return await ApproveWithMapper(leaderboardId, _context.Players.Find(currentID));
+            return await ApproveWithMapper(leaderboardId, await _context.Players.FindAsync(currentID));
         }
 
         [HttpGet("~/user/linkBeatSaver")]
@@ -110,11 +110,11 @@ namespace BeatLeader_Server.Controllers
                 return (null, "Need to login with BeatSaver first");  
             }
 
-            var bslink = _context.BeatSaverLinks.Where(link => link.BeatSaverId == beatSaverId).FirstOrDefault();
+            var bslink = _context.BeatSaverLinks.FirstOrDefault(link => link.BeatSaverId == beatSaverId);
             string? playerId = HttpContext.CurrentUserID(_context);
 
             if (playerId != null && bslink != null && bslink.Id != playerId) {
-                if (Int64.Parse(bslink.Id) > 30000000 && Int64.Parse(bslink.Id) < 1000000000000000) {
+                if (long.Parse(bslink.Id) > 30000000 && long.Parse(bslink.Id) < 1000000000000000) {
                     var lbs = _context.Leaderboards.Where(lb => lb.Qualification != null && lb.Qualification.MapperId == bslink.Id).Include(lb => lb.Qualification).ToList();
 
                     foreach (var lb in lbs)
@@ -165,7 +165,7 @@ namespace BeatLeader_Server.Controllers
                 var principal = new ClaimsPrincipal(identity);
                 var ticket = new AuthenticationTicket(principal, "Cookies");
 
-                await AuthenticationHttpContextExtensions.SignInAsync(HttpContext, CookieAuthenticationDefaults.AuthenticationScheme, principal);
+                await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
 
                 var result = AuthenticateResult.Success(ticket);
             }
@@ -188,14 +188,10 @@ namespace BeatLeader_Server.Controllers
 
                 await AddMapperRole(playerId);
 
-                if (player == null) {
-                    player = _context.Players.Include(p => p.Socials).Where(p => p.Id == playerId).FirstOrDefault();
-                }
+                player ??= _context.Players.Include(p => p.Socials).FirstOrDefault(p => p.Id == playerId);
                 if (player != null) {
                     player.MapperId = Int32.Parse(beatSaverId);
-                    if (player.Socials == null) {
-                        player.Socials = new List<PlayerSocial>();
-                    }
+                    player.Socials ??= new List<PlayerSocial>();
                     player.Socials.Add(new PlayerSocial {
                         Service = "BeatSaver",
                         UserId = beatSaverId,
@@ -204,9 +200,9 @@ namespace BeatLeader_Server.Controllers
                     });
                 }
             }
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
-            return (Int32.Parse(beatSaverId), null);
+            return (int.Parse(beatSaverId), null);
         }
 
         [HttpGet("~/beatsaver/refresh")]
@@ -237,7 +233,7 @@ namespace BeatLeader_Server.Controllers
                     Link = "https://beatsaver.com/profile/" + mapper.MapperId,
                 });
             }
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             return Ok();
         }
     }

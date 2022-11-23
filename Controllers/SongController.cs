@@ -52,7 +52,7 @@ namespace BeatLeader_Server.Controllers
                     }
                     song.MapperId = updatedSong.MapperId;
                     _context.Songs.Update(song);
-                    _context.SaveChanges();
+                    await _context.SaveChangesAsync();
                 }
             }
 
@@ -108,7 +108,7 @@ namespace BeatLeader_Server.Controllers
                 newLeaderboard.Difficulty.ModifierValues = diff.ModifierValues;
             }
 
-            var oldLeaderboardId = oldSong.Id + diff.Value.ToString() + diff.Mode.ToString();
+            var oldLeaderboardId = $"{oldSong.Id}{diff.Value}{diff.Mode}";
             var oldLeaderboard = await _context.Leaderboards.Where(lb => lb.Id == oldLeaderboardId).Include(lb => lb.Qualification).FirstOrDefaultAsync();
 
             if (oldLeaderboard != null) {

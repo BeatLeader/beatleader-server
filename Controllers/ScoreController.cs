@@ -107,7 +107,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> DeleteScore(int id)
         {
             string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = currentId != null ? _context.Players.Find(currentId) : null;
+            Player? currentPlayer = currentId != null ? await _context.Players.FindAsync(currentId) : null;
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
@@ -188,7 +188,7 @@ namespace BeatLeader_Server.Controllers
 
             leaderboard.Plays = rankedScores.Count;
 
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             _context.RecalculatePP(player);
 
             var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
@@ -215,7 +215,7 @@ namespace BeatLeader_Server.Controllers
             if (HttpContext != null)
             {
                 string currentId = HttpContext.CurrentUserID(_context);
-                Player? currentPlayer = _context.Players.Find(currentId);
+                Player? currentPlayer = await _context.Players.FindAsync(currentId);
                 if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
                 {
                     return Unauthorized();
@@ -230,7 +230,7 @@ namespace BeatLeader_Server.Controllers
                 var allLeaderboards = (leaderboardId != null ? query.Where(s => s.Id == leaderboardId) : query).Select(l => new { Scores = l.Scores, Difficulty = l.Difficulty }).ToList(); // .Skip(iii).Take(1000).ToList();
 
                 int counter = 0;
-                var transaction = _context.Database.BeginTransaction();
+                var transaction = await _context.Database.BeginTransactionAsync();
 
                 foreach (var leaderboard in allLeaderboards)
                 {
@@ -308,12 +308,12 @@ namespace BeatLeader_Server.Controllers
                         {
 
                             _context.RejectChanges();
-                            transaction.Rollback();
-                            transaction = _context.Database.BeginTransaction();
+                            await transaction.RollbackAsync();
+                            transaction = await _context.Database.BeginTransactionAsync();
                             continue;
                         }
-                        transaction.Commit();
-                        transaction = _context.Database.BeginTransaction();
+                        await transaction.CommitAsync();
+                        transaction = await _context.Database.BeginTransactionAsync();
                     }
                 }
 
@@ -325,7 +325,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     _context.RejectChanges();
                 }
-                transaction.Commit();
+                await transaction.CommitAsync();
             //}
 
             return Ok();
@@ -434,7 +434,7 @@ namespace BeatLeader_Server.Controllers
                 }
             } else if (scope.ToLower() == "country")
             {
-                currentPlayer = currentPlayer ?? ResponseFromPlayer(_context.Players.Find(player));
+                currentPlayer = currentPlayer ?? ResponseFromPlayer(await _context.Players.FindAsync(player));
                 if (currentPlayer == null)
                 {
                     return result;
@@ -453,7 +453,7 @@ namespace BeatLeader_Server.Controllers
                 var playerScore = query.Select(s => new { PlayerId = s.PlayerId, Rank = s.Rank }).FirstOrDefault(el => el.PlayerId == player);
                 if (playerScore != null)
                 {
-                    int rank = query.Where(s => s.Rank < playerScore.Rank).Count();
+                    int rank = query.Count(s => s.Rank < playerScore.Rank);
                     page += (int)Math.Floor((double)(rank) / (double)count);
                     result.Metadata.Page = page;
                 }
@@ -468,9 +468,9 @@ namespace BeatLeader_Server.Controllers
                 if (highlightedScore != null)
                 {
                     result.Selection = RemoveLeaderboard(highlightedScore, 0);
-                    result.Selection.Player = currentPlayer ?? ResponseFromPlayer(_context.Players.Find(player));
+                    result.Selection.Player = currentPlayer ?? ResponseFromPlayer(await _context.Players.FindAsync(player));
                     if (scope.ToLower() == "friends" || scope.ToLower() == "country") {
-                        result.Selection.Rank = query.Where(s => s.Rank < result.Selection.Rank).Count() + 1;
+                        result.Selection.Rank = query.Count(s => s.Rank < result.Selection.Rank) + 1;
                     }
                 }
             }
@@ -480,6 +480,7 @@ namespace BeatLeader_Server.Controllers
             List<ScoreResponse> resultList = query
                 .Skip((page - 1) * count)
                 .Take(count)
+                .AsEnumerable()
                 .Select(RemoveLeaderboard)
                 .ToList();
 
@@ -533,7 +534,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] float? stars_to = null)
         {
             string userId = HttpContext.CurrentUserID(_readContext);
-            var player = _readContext.Players.Find(userId);
+            var player = await _readContext.Players.FindAsync(userId);
             if (player == null) {
                 return NotFound();
             }
@@ -727,7 +728,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int? priority = null)
         {
             string? currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = _context.Players.Find(currentId);
+            Player? currentPlayer = await _context.Players.FindAsync(currentId);
             if (currentPlayer == null)
             {
                 return NotFound("Player not found");
@@ -755,14 +756,14 @@ namespace BeatLeader_Server.Controllers
 
             if (currentPlayer.Role.Contains("tipper") || currentPlayer.Role.Contains("supporter") || currentPlayer.Role.Contains("sponsor"))
             {
-                if (scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned).Count() > 9 && pin && (score.Metadata == null || score.Metadata.Status != ScoreStatus.pinned))
+                if (scores.Count(s => s.Metadata is { Status: ScoreStatus.pinned }) > 9 && pin && score.Metadata is not { Status: ScoreStatus.pinned })
                 {
                     return BadRequest("Too many scores pinned");
                 }
             }
             else
             {
-                if (scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned).Count() > 2 && pin && (score.Metadata == null || score.Metadata.Status != ScoreStatus.pinned))
+                if (scores.Count(s => s.Metadata is { Status: ScoreStatus.pinned }) > 2 && pin && score.Metadata is not { Status: ScoreStatus.pinned })
                 {
                     return BadRequest("Too many scores pinned");
                 }
@@ -772,7 +773,7 @@ namespace BeatLeader_Server.Controllers
             {
                 metadata = new ScoreMetadata
                 {
-                    Priority = scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned).Count() == 0 ? 1 : scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned).Max(s => s.Metadata.Priority) + 1
+                    Priority = scores.Count(s => s.Metadata is { Status: ScoreStatus.pinned }) == 0 ? 1 : scores.Where(s => s.Metadata is { Status: ScoreStatus.pinned }).Max(s => s.Metadata.Priority) + 1
                 };
                 score.Metadata = metadata;
             }
@@ -819,7 +820,7 @@ namespace BeatLeader_Server.Controllers
 
                 if (priorityValue <= metadata.Priority)
                 {
-                    var scoresLower = scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned && s.Metadata.Priority >= priorityValue).ToList();
+                    var scoresLower = scores.Where(s => s.Metadata is { Status: ScoreStatus.pinned } && s.Metadata.Priority >= priorityValue).ToList();
                     if (scoresLower.Count > 0)
                     {
                         foreach (var item in scoresLower)
@@ -830,7 +831,7 @@ namespace BeatLeader_Server.Controllers
                 }
                 else
                 {
-                    var scoresLower = scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned && s.Metadata.Priority <= priorityValue).ToList();
+                    var scoresLower = scores.Where(s => s.Metadata is { Status: ScoreStatus.pinned } && s.Metadata.Priority <= priorityValue).ToList();
                     if (scoresLower.Count > 0)
                     {
                         foreach (var item in scoresLower)
@@ -843,7 +844,7 @@ namespace BeatLeader_Server.Controllers
                 metadata.Priority = priorityValue;
             }
 
-            var scoresOrdered = scores.Where(s => s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned).OrderBy(s => s.Metadata.Priority).ToList();
+            var scoresOrdered = scores.Where(s => s.Metadata is { Status: ScoreStatus.pinned }).OrderBy(s => s.Metadata.Priority).ToList();
             if (scoresOrdered.Count > 0)
             {
                 foreach ((int i, Score p) in scoresOrdered.Select((value, i) => (i, value)))
@@ -852,7 +853,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return metadata;
         }

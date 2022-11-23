@@ -119,7 +119,7 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
                 dbContext.AuthIDs.Update(authID);
             }
 
-            dbContext.SaveChanges();
+            await dbContext.SaveChangesAsync();
         }
         else
         {
@@ -163,7 +163,7 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
                 Timestamp = timestamp
             });
 
-            dbContext.SaveChanges();
+            await dbContext.SaveChangesAsync();
 
             id = authInfo.Id.ToString();
         }

@@ -71,7 +71,7 @@ namespace BeatLeader_Server.Controllers
                 return VoteStatus.CantVote;
             }
 
-            var voting = _context.RankVotings.Find(score.Id);
+            var voting = await _context.RankVotings.FindAsync(score.Id);
             if (voting != null)
             {
                 return VoteStatus.Voted;
@@ -212,7 +212,7 @@ namespace BeatLeader_Server.Controllers
                     score.Leaderboard.StarVotes++;
                     score.Leaderboard.VoteStars = MathUtils.AddToAverage(score.Leaderboard.VoteStars, score.Leaderboard.StarVotes, stars);
                 }
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
 
                 return VoteStatus.Voted;
             }
@@ -227,7 +227,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> MakeVoteFeedback([FromQuery] int scoreId, [FromQuery] float value)
         {
             string userId = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(userId);
+            var currentPlayer = await _context.Players.FindAsync(userId);
 
             if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
             {
@@ -253,7 +253,7 @@ namespace BeatLeader_Server.Controllers
                 RTMember = userId,
                 Value = value
             });
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
 
             return Ok();
@@ -270,7 +270,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? modifiers = null)
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             Leaderboard? leaderboard = _context.Leaderboards.Include(l => l.Difficulty).Include(l => l.Song).FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
@@ -341,7 +341,7 @@ namespace BeatLeader_Server.Controllers
                 
                 difficulty.ModifierValues = modifierValues;
                 difficulty.Type = type;
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
                 await _scoreController.RefreshScores(leaderboard.Id);
                 await _playlistController.RefreshNominatedPlaylist();
 
@@ -367,7 +367,7 @@ namespace BeatLeader_Server.Controllers
                     message += "\n";
                     message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
 
-                    dsClient.SendMessageAsync(message);
+                    await dsClient.SendMessageAsync(message);
                 }
             }
 
@@ -389,7 +389,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? modifiers = null)
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             Leaderboard? leaderboard = _context.Leaderboards
                 .Include(l => l.Difficulty)
@@ -447,7 +447,7 @@ namespace BeatLeader_Server.Controllers
                             message += "\n";
                             message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
 
-                            dsClient.SendMessageAsync(message);
+                            await dsClient.SendMessageAsync(message);
                         }
                     }
 
@@ -576,12 +576,12 @@ namespace BeatLeader_Server.Controllers
                             }
                             message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
 
-                            dsClient.SendMessageAsync(message);
+                            await dsClient.SendMessageAsync(message);
                         }
                     }
                 }
 
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
                 await _scoreController.RefreshScores(leaderboard.Id);
                 await _playlistController.RefreshNominatedPlaylist();
                 await _playlistController.RefreshQualifiedPlaylist();
@@ -604,7 +604,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? modifiers)
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             Leaderboard? leaderboard = _context.Leaderboards
                 .Include(l => l.Difficulty)
@@ -657,7 +657,7 @@ namespace BeatLeader_Server.Controllers
                     }
                     message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
 
-                    dsClient.SendMessageAsync(message);
+                    await dsClient.SendMessageAsync(message);
                 }
 
             }
@@ -726,7 +726,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }   
@@ -739,14 +739,14 @@ namespace BeatLeader_Server.Controllers
             string mode)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null || currentPlayer.Role.Contains("juniorrankedteam") ||(!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
             {
                 return Unauthorized();
             }
 
-            var transaction = _context.Database.BeginTransaction();
+            var transaction = await _context.Database.BeginTransactionAsync();
             Leaderboard? leaderboard = _context.Leaderboards
                 .Include(l => l.Difficulty)
                 .ThenInclude(d => d.ModifierValues)
@@ -808,7 +808,7 @@ namespace BeatLeader_Server.Controllers
                     }
                     message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
 
-                    dsClient.SendMessageAsync(message);
+                    await dsClient.SendMessageAsync(message);
                 }
 
                 bool updatePlaylists = (difficulty.Status == DifficultyStatus.ranked) != reweight.Keep;
@@ -827,8 +827,8 @@ namespace BeatLeader_Server.Controllers
                 difficulty.Stars = reweight.Stars;
                 difficulty.Type = reweight.Type;
                 difficulty.ModifierValues = reweight.Modifiers;
-                _context.SaveChanges();
-                transaction.Commit();
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
 
                 if (updatePlaylists)
                 {
@@ -852,7 +852,7 @@ namespace BeatLeader_Server.Controllers
             string mode)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
             {
@@ -874,7 +874,7 @@ namespace BeatLeader_Server.Controllers
                     return Unauthorized("Can't cancel this reweight");
                 }
                 leaderboard.Reweight = null;
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
 
                 var dsClient = reweightDSClient();
 
@@ -883,7 +883,7 @@ namespace BeatLeader_Server.Controllers
                     string message = currentPlayer.Name + " canceled reweight for **" + leaderboard.Song.Name + "**\n";
                     message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
 
-                    dsClient.SendMessageAsync(message);
+                    await dsClient.SendMessageAsync(message);
                 }
             }
 
@@ -902,14 +902,14 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int type = 0)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
             }
 
-            var transaction = _context.Database.BeginTransaction();
+            var transaction = await _context.Database.BeginTransactionAsync();
             Leaderboard? leaderboard = _context.Leaderboards
                 .Include(l => l.Difficulty)
                 .ThenInclude(d => d.ModifierValues)
@@ -951,8 +951,8 @@ namespace BeatLeader_Server.Controllers
                 difficulty.Status = rankability > 0 ? DifficultyStatus.ranked : DifficultyStatus.unranked;
                 difficulty.Stars = stars;
                 difficulty.Type = type;
-                _context.SaveChanges();
-                transaction.Commit();
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
 
                 if (updatePlaylists) {
                     await _playlistController.RefreshNominatedPlaylist();
@@ -980,7 +980,7 @@ namespace BeatLeader_Server.Controllers
         {
             string? userId = HttpContext.CurrentUserID(_context);
 
-            if (_context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.nominated && lb.Song.Hash == hash).FirstOrDefault() != null) {
+            if (_context.Leaderboards.FirstOrDefault(lb => lb.Difficulty.Status == DifficultyStatus.nominated && lb.Song.Hash == hash) != null) {
                 return new PrevQualification
                 {
                     Time = 0
@@ -998,7 +998,7 @@ namespace BeatLeader_Server.Controllers
         [HttpPost("~/rankabunch/")]
         public async Task<ActionResult> SetStarValues([FromBody] Dictionary<string, float> values) {
             string? userId = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(userId);
+            var currentPlayer = await _context.Players.FindAsync(userId);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {

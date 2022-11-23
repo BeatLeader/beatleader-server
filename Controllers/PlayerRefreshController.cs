@@ -145,8 +145,8 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
-                player.ScoreStats.TopPlatform = platforms.OrderByDescending(s => s.Value).First().Key;
-                player.ScoreStats.TopHMD = hmds.OrderByDescending(s => s.Value).First().Key;
+                player.ScoreStats.TopPlatform = platforms.MaxBy(s => s.Value).Key;
+                player.ScoreStats.TopHMD = hmds.MaxBy(s => s.Value).Key;
             }
 
             player.ScoreStats.TotalPlayCount = allScores.Count();
@@ -161,7 +161,7 @@ namespace BeatLeader_Server.Controllers
                 player.ScoreStats.TopAccuracy = allScores.Max(s => s.Accuracy);
                 player.ScoreStats.MedianAccuracy = allScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
                 player.ScoreStats.AverageRank = allScores.Average(s => (float)s.Rank);
-                player.ScoreStats.LastScoreTime = allScores.OrderByDescending(s => s.Timeset).First().Timeset;
+                player.ScoreStats.LastScoreTime = allScores.MaxBy(s => s.Timeset).Timeset;
             } else {
                 player.ScoreStats.TotalScore = 0;
                 player.ScoreStats.AverageAccuracy = 0;
@@ -178,7 +178,7 @@ namespace BeatLeader_Server.Controllers
                 player.ScoreStats.AverageUnrankedAccuracy = unrankedScores.Average(s => s.Accuracy);
                 player.ScoreStats.TopUnrankedAccuracy = unrankedScores.Max(s => s.Accuracy);
                 player.ScoreStats.AverageUnrankedRank = unrankedScores.Average(s => (float)s.Rank);
-                player.ScoreStats.LastUnrankedScoreTime = unrankedScores.OrderByDescending(s => s.Timeset).First().Timeset;
+                player.ScoreStats.LastUnrankedScoreTime = unrankedScores.MaxBy(s => s.Timeset).Timeset;
             } else {
                 player.ScoreStats.TotalUnrankedScore = 0;
                 player.ScoreStats.AverageUnrankedAccuracy = 0;
@@ -232,13 +232,13 @@ namespace BeatLeader_Server.Controllers
                 player.ScoreStats.TopPp = rankedScores.Max(s => s.Pp);
                 player.ScoreStats.TopBonusPP = rankedScores.Max(s => s.BonusPp);
                 player.ScoreStats.AverageRankedRank = rankedScores.Average(s => (float)s.Rank);
-                player.ScoreStats.LastRankedScoreTime = rankedScores.OrderByDescending(s => s.Timeset).First().Timeset;
+                player.ScoreStats.LastRankedScoreTime = rankedScores.MaxBy(s => s.Timeset).Timeset;
 
-                player.ScoreStats.SSPPlays = rankedScores.Where(s => s.Accuracy > 0.95).Count();
-                player.ScoreStats.SSPlays = rankedScores.Where(s => 0.9 < s.Accuracy && s.Accuracy < 0.95).Count();
-                player.ScoreStats.SPPlays = rankedScores.Where(s => 0.85 < s.Accuracy && s.Accuracy < 0.9).Count();
-                player.ScoreStats.SPlays = rankedScores.Where(s => 0.8 < s.Accuracy && s.Accuracy < 0.85).Count();
-                player.ScoreStats.APlays = rankedScores.Where(s => s.Accuracy < 0.8).Count();
+                player.ScoreStats.SSPPlays = rankedScores.Count(s => s.Accuracy > 0.95);
+                player.ScoreStats.SSPlays = rankedScores.Count(s => 0.9 < s.Accuracy && s.Accuracy < 0.95);
+                player.ScoreStats.SPPlays = rankedScores.Count(s => 0.85 < s.Accuracy && s.Accuracy < 0.9);
+                player.ScoreStats.SPlays = rankedScores.Count(s => 0.8 < s.Accuracy && s.Accuracy < 0.85);
+                player.ScoreStats.APlays = rankedScores.Count(s => s.Accuracy < 0.8);
             } else {
                 player.ScoreStats.TotalRankedScore = 0;
                 player.ScoreStats.AverageRankedAccuracy = 0;
@@ -279,14 +279,14 @@ namespace BeatLeader_Server.Controllers
             }
             await RefreshStats(player);
 
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
         }
 
         [HttpGet("~/player/{id}/refresh")]
         public async Task<ActionResult> RefreshPlayerAction(string id, [FromQuery] bool refreshRank = true)
         {
             string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = _context.Players.Find(currentId);
+            Player? currentPlayer = await _context.Players.FindAsync(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
@@ -305,7 +305,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> RefreshLeaderboardPlayers(string id)
         {
             string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = _context.Players.Find(currentId);
+            Player? currentPlayer = await _context.Players.FindAsync(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
@@ -331,14 +331,14 @@ namespace BeatLeader_Server.Controllers
         {
             if (HttpContext != null) {
                 string currentId = HttpContext.CurrentUserID(_context);
-                Player? currentPlayer = _context.Players.Find(currentId);
+                Player? currentPlayer = await _context.Players.FindAsync(currentId);
                 if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
                 {
                     return Unauthorized();
                 }
             }
 
-            var playersCount = _context.Players.Where(p => !p.Banned).Count();
+            var playersCount = _context.Players.Count(p => !p.Banned);
             for (int i = 0; i < playersCount; i += 2000)
             {
                 var players = _context
@@ -348,7 +348,7 @@ namespace BeatLeader_Server.Controllers
                     .Include(p => p.ScoreStats)
                     .Where(s => s.Pp != 0)
                     .ToList();
-                var transaction = _context.Database.BeginTransaction();
+                var transaction = await _context.Database.BeginTransactionAsync();
 
                 foreach (Player p in players)
                 {
@@ -362,10 +362,10 @@ namespace BeatLeader_Server.Controllers
                 catch (Exception e)
                 {
                     _context.RejectChanges();
-                    transaction.Rollback();
-                    transaction = _context.Database.BeginTransaction();
+                    await transaction.RollbackAsync();
+                    transaction = await _context.Database.BeginTransactionAsync();
                 }
-                transaction.Commit();
+                await transaction.CommitAsync();
             }
 
             Dictionary<string, int> countries = new Dictionary<string, int>();
@@ -396,13 +396,13 @@ namespace BeatLeader_Server.Controllers
         {
             if (HttpContext != null) {
                 string currentId = HttpContext.CurrentUserID(_context);
-                Player? currentPlayer = _context.Players.Find(currentId);
+                Player? currentPlayer = await _context.Players.FindAsync(currentId);
                 if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
                 {
                     return Unauthorized();
                 }
             }
-            var playersCount = _context.Players.Where(p => !p.Banned).Count();
+            var playersCount = _context.Players.Count(p => !p.Banned);
             for (int i = 0; i < playersCount; i += 2000)
             {
                 var players = _context.Players.Where(p => !p.Banned).Include(p => p.ScoreStats).Skip(i).Take(2000).ToList();
@@ -410,7 +410,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     await RefreshStats(player);
                 }
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
             }
             
             return Ok();
@@ -422,7 +422,7 @@ namespace BeatLeader_Server.Controllers
         {
             if (HttpContext != null) {
                 string currentId = HttpContext.CurrentUserID(_context);
-                Player? currentPlayer = _context.Players.Find(currentId);
+                Player? currentPlayer = await _context.Players.FindAsync(currentId);
                 if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
                 {
                     return Unauthorized();

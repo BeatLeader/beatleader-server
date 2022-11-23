@@ -195,7 +195,7 @@ namespace BeatLeader_Server.Controllers
                 IP = currentID == null ? ipString : null,
                 Player = currentID
             });
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }

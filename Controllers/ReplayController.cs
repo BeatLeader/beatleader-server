@@ -32,9 +32,7 @@ namespace BeatLeader_Server.Controllers
         private readonly IServerTiming _serverTiming;
 
         private static BlobContainerClient ContainerWithName(IOptions<AzureStorageConfig> config, string name) {
-            string containerEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
-                                                        config.Value.AccountName,
-                                                       name);
+            string containerEndpoint = $"https://{config.Value.AccountName}.blob.core.windows.net/{name}";
 
             return new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
         }
@@ -83,7 +81,7 @@ namespace BeatLeader_Server.Controllers
             if (id == null && error != null) {
                 return Unauthorized(error);
             }
-            long intId = Int64.Parse(id);
+            long intId = long.Parse(id);
             if (intId < 70000000000000000)
             {
                 AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.PCOculusID == id);
@@ -254,7 +252,7 @@ namespace BeatLeader_Server.Controllers
             HttpContext context,
             int maxScore) {
 
-            var transaction = _context.Database.BeginTransaction();
+            var transaction = await _context.Database.BeginTransactionAsync();
             var info = replay.info; // replayDecoder.replay.info;
 
             Player? player;
@@ -361,7 +359,7 @@ namespace BeatLeader_Server.Controllers
                         }
                     }
 
-                    if (status1 == DifficultyStatus.ranked || status1 == DifficultyStatus.qualified || status1 == DifficultyStatus.nominated)
+                    if (status1 is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.nominated)
                     {
                         improvement.Pp = resultScore.Pp - currentScore.Pp;
                     }
@@ -384,7 +382,7 @@ namespace BeatLeader_Server.Controllers
                     currentScore.LeaderboardId = null;
 
                     int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-                    if ((timestamp - UInt32.Parse(currentScore.Timeset)) > 60 * 60 * 24)
+                    if ((timestamp - uint.Parse(currentScore.Timeset)) > 60 * 60 * 24)
                     {
                         player.ScoreStats.DailyImprovements++;
                     }
@@ -412,7 +410,7 @@ namespace BeatLeader_Server.Controllers
                 _scoreStatsClient.DeleteBlobIfExistsAsync(leaderboard.Id + "-leaderboard.json");
 
                 var status = leaderboard.Difficulty.Status;
-                var isRanked = status == DifficultyStatus.ranked || status == DifficultyStatus.qualified || status == DifficultyStatus.nominated || status == DifficultyStatus.inevent;
+                var isRanked = status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.nominated or DifficultyStatus.inevent;
 
                 var rankedScores = (isRanked 
                         ?
@@ -430,8 +428,7 @@ namespace BeatLeader_Server.Controllers
                 ).ToList();
 
                 int topRank = rankedScores.Count > 0 ? rankedScores[0].Rank : _readContext
-                        .Scores
-                        .Where(s => s.LeaderboardId == leaderboard.Id).Count() + 1;
+                    .Scores.Count(s => s.LeaderboardId == leaderboard.Id) + 1;
 
                 resultScore.Rank = topRank;
 
@@ -464,14 +461,14 @@ namespace BeatLeader_Server.Controllers
                 }
                 catch (DbUpdateConcurrencyException ex)
                 {
-                    ex.Entries.Single().Reload();
+                    await ex.Entries.Single().ReloadAsync();
                     await _context.BulkSaveChangesAsync();
                 }
 
-                transaction.Commit();
+                await transaction.CommitAsync();
             }
 
-            var transaction2 = _context.Database.BeginTransaction();
+            var transaction2 = await _context.Database.BeginTransactionAsync();
             float oldPp = player.Pp;
             int oldRank = player.Rank;
             using (_serverTiming.TimeAction("pp"))
@@ -599,13 +596,13 @@ namespace BeatLeader_Server.Controllers
             }
             catch (DbUpdateConcurrencyException ex)
             {
-                ex.Entries.Single().Reload();
+                await ex.Entries.Single().ReloadAsync();
                 await _context.BulkSaveChangesAsync();
             }
 
-            transaction2.Commit();
+            await transaction2.CommitAsync();
 
-            var transaction3 = _context.Database.BeginTransaction();
+            var transaction3 = await _context.Database.BeginTransactionAsync();
             try
             {
                 //if (currentScore != null && stats != null) {
@@ -653,7 +650,7 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
-                await _replaysClient.GetBlobClient(fileName).StartCopyFromUri(_replaysClient.GetBlobClient(tempName).Uri).WaitForCompletionAsync();
+                await (await _replaysClient.GetBlobClient(fileName).StartCopyFromUriAsync(_replaysClient.GetBlobClient(tempName).Uri)).WaitForCompletionAsync();
                 await _replaysClient.DeleteBlobIfExistsAsync(tempName);
 
                 resultScore.Replay = replayLink;
@@ -689,7 +686,7 @@ namespace BeatLeader_Server.Controllers
                 resultScore.ScoreImprovement = improvement;
 
                 await _context.SaveChangesAsync();
-                transaction3.Commit();
+                await transaction3.CommitAsync();
 
                 await ScoresSocketController.TryPublishNewScore(resultScore, _configuration, _context);
 
@@ -721,12 +718,12 @@ namespace BeatLeader_Server.Controllers
                         }
                         message += Math.Round(improvement.TotalPp, 2) + " to the personal pp and " + improvement.TotalRank + " to rank \n";
 
-                        dsClient.SendMessageAsync(message,
+                        await dsClient.SendMessageAsync(message,
                             embeds: new List<Embed> { new EmbedBuilder()
                                     .WithTitle("Leaderboard")
                                     .WithUrl("https://beatleader.xyz/leaderboard/global/" + leaderboard.Id)
                                     .Build(),
-                                    new EmbedBuilder()
+                                new EmbedBuilder()
                                     .WithTitle("Watch Replay")
                                     .WithUrl("https://replay.beatleader.xyz?scoreId=" + resultScore.Id)
                                     .WithImageUrl("https://api.beatleader.xyz/preview/replay?scoreId=" + resultScore.Id)
@@ -863,7 +860,7 @@ namespace BeatLeader_Server.Controllers
                 //}
 
                 leaderboard.PlayerStats.Add(stats);
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
             } catch { }
         }
 

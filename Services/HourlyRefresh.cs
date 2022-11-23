@@ -51,7 +51,7 @@ namespace BeatLeader_Server.Services
                     }
                 }
             
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
             }
         }
     }

@@ -137,7 +137,7 @@ namespace BeatLeader_Server.Services
                     }
 
                     difficulty.Status = DifficultyStatus.ranked;
-                    _context.SaveChanges();
+                    await _context.SaveChangesAsync();
 
                     await _scoreController.RefreshScores(leaderboard.Id);
                     (float totalpp, int totalRanks) = RefreshLeaderboardPlayers(leaderboard.Id, _context);
@@ -150,8 +150,8 @@ namespace BeatLeader_Server.Services
                         message += FormatUtils.DescribeType(leaderboard.Difficulty.Type);
                         message += "\n";
                         message += "Mapped by: **" + leaderboard.Song.Mapper
-                              + "** Nominated: **" + _context.Players.Find(leaderboard.Qualification.RTMember).Name
-                              + "** Criteria: **" + _context.Players.Find(leaderboard.Qualification.CriteriaChecker).Name + "**\n";
+                              + "** Nominated: **" + (await _context.Players.FindAsync(leaderboard.Qualification.RTMember)).Name
+                              + "** Criteria: **" + (await _context.Players.FindAsync(leaderboard.Qualification.CriteriaChecker)).Name + "**\n";
                         message += Math.Round(totalpp, 2) + "pp and " + totalRanks * -1 + " ranks were acquired \n";
 
                         await dsClient.SendMessageAsync(message, embeds: new List<Embed> { 

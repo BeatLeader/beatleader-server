@@ -362,7 +362,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> DeleteScore(string id, string leaderboardID)
         {
             string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = _context.Players.Find(currentId);
+            Player? currentPlayer = await _context.Players.FindAsync(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
@@ -371,7 +371,7 @@ namespace BeatLeader_Server.Controllers
             if (leaderboard == null) {
                 return NotFound();
             } 
-            Score? scoreToDelete = leaderboard.Scores.Where(t => t.PlayerId == id).FirstOrDefault();
+            Score? scoreToDelete = leaderboard.Scores.FirstOrDefault(t => t.PlayerId == id);
 
             if (scoreToDelete == null) {
                 return NotFound();
@@ -392,8 +392,7 @@ namespace BeatLeader_Server.Controllers
                 .ThenInclude(l => l.Song)
                 .Include(s => s.Leaderboard)
                 .ThenInclude(l => l.Difficulty)
-                .Where(s => s.PlayerId == id && s.Leaderboard.Song.Hash == hash && s.Leaderboard.Difficulty.DifficultyName == difficulty && s.Leaderboard.Difficulty.ModeName == mode)
-                .FirstOrDefault();
+                .FirstOrDefault(s => s.PlayerId == id && s.Leaderboard.Song.Hash == hash && s.Leaderboard.Difficulty.DifficultyName == difficulty && s.Leaderboard.Difficulty.ModeName == mode);
 
             if (score == null)
             {
