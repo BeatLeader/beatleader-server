@@ -225,6 +225,7 @@ namespace BeatLeader_Server.Controllers
 
             leaderboard.LeaderboardGroup = baseLeaderboard?.LeaderboardGroup ?? new LeaderboardGroup();
             leaderboard.LeaderboardGroup.Leaderboards.Add(leaderboard);
+            leaderboard.Timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
 
             _context.Leaderboards.Add(leaderboard);
             await _context.SaveChangesAsync();
