@@ -195,6 +195,7 @@ namespace BeatLeader_Server.Controllers
 
                 var lb = new Leaderboard() { Id = leaderboard.Id, Timestamp = firstScoreTimestamp };
                 _context.Leaderboards.Attach(lb);
+                _context.Entry(lb).Property(x => x.Timestamp).IsModified = true;
             }
 
             await _context.BulkSaveChangesAsync();
