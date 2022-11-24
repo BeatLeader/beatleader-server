@@ -166,6 +166,9 @@ namespace BeatLeader_Server.Controllers
                     .ThenInclude(ch => ch.OldModifiers)
                     .Include(lb => lb.Song)
                     .ThenInclude(s => s.Difficulties)
+                    .Include(lb => lb.LeaderboardGroup)
+                    .ThenInclude(g => g.Leaderboards)
+                    .ThenInclude(glb => glb.Difficulty)
                     .Select(ResponseFromLeaderboard)
                     .FirstOrDefault();
 
@@ -261,7 +264,7 @@ namespace BeatLeader_Server.Controllers
                 .FirstOrDefault(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff);
 
             if (leaderboard == null) {
-                Song? song = (await _songController.GetHash(hash)).Value;
+                (Song? song, Song? baseSong) = await _songController.GetOrAddSong(hash);
                 if (song == null)
                 {
                     return NotFound();
@@ -272,7 +275,7 @@ namespace BeatLeader_Server.Controllers
                 if (difficulty is { Status: DifficultyStatus.nominated }) {
                     return await GetByHash(hash, diff, mode);
                 } else {
-                    leaderboard = await _songController.NewLeaderboard(song, diff, mode);
+                    leaderboard = await _songController.NewLeaderboard(song, baseSong, diff, mode);
                 }
             }
 
