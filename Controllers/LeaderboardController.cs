@@ -166,6 +166,8 @@ namespace BeatLeader_Server.Controllers
                     .ThenInclude(ch => ch.OldModifiers)
                     .Include(lb => lb.Song)
                     .ThenInclude(s => s.Difficulties)
+                    .Include(lb => lb.LeaderboardGroup)
+                    .ThenInclude(g => g.Leaderboards)
                     .Select(ResponseFromLeaderboard)
                     .FirstOrDefault();
 

@@ -571,6 +571,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.Property<int>("DifficultyId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("LeaderboardGroupId")
+                        .HasColumnType("int");
+
                     b.Property<int>("NegativeVotes")
                         .HasColumnType("int");
 
@@ -592,12 +595,17 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.Property<int>("StarVotes")
                         .HasColumnType("int");
 
+                    b.Property<long>("Timestamp")
+                        .HasColumnType("bigint");
+
                     b.Property<float>("VoteStars")
                         .HasColumnType("real");
 
                     b.HasKey("Id");
 
                     b.HasIndex("DifficultyId");
+
+                    b.HasIndex("LeaderboardGroupId");
 
                     b.HasIndex("QualificationId");
 
@@ -665,6 +673,19 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.HasIndex("OldModifiersModifierId");
 
                     b.ToTable("LeaderboardChange");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.LeaderboardGroup", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.HasKey("Id");
+
+                    b.ToTable("LeaderboardGroup");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.LoginAttempt", b =>
@@ -2363,6 +2384,10 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("BeatLeader_Server.Models.LeaderboardGroup", "LeaderboardGroup")
+                        .WithMany("Leaderboards")
+                        .HasForeignKey("LeaderboardGroupId");
+
                     b.HasOne("BeatLeader_Server.Models.RankQualification", "Qualification")
                         .WithMany()
                         .HasForeignKey("QualificationId");
@@ -2376,6 +2401,8 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .HasForeignKey("SongId");
 
                     b.Navigation("Difficulty");
+
+                    b.Navigation("LeaderboardGroup");
 
                     b.Navigation("Qualification");
 
@@ -2678,6 +2705,11 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.Navigation("PlayerStats");
 
                     b.Navigation("Scores");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.LeaderboardGroup", b =>
+                {
+                    b.Navigation("Leaderboards");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Player", b =>

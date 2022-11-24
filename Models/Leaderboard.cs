@@ -34,7 +34,10 @@
         public ICollection<Score> Scores { get; set; }
         public RankQualification? Qualification { get; set; }
         public RankUpdate? Reweight { get; set; }
+        
+        public long Timestamp { get; set; }
 
+        public LeaderboardGroup? LeaderboardGroup { get; set; }
         public ICollection<LeaderboardChange>? Changes { get; set; }
         public ICollection<PlayerLeaderboardStats>? PlayerStats { get; set; }
 
@@ -64,5 +67,10 @@
         public ICollection<AltScore> Scores { get; set; }
         public Leaderboard Leaderboard { get; set; }
         public int Plays { get; set; }
+    }
+
+    public class LeaderboardGroup {
+        public int Id { get; set; }
+        public ICollection<Leaderboard> Leaderboards { get; set; }
     }
 }

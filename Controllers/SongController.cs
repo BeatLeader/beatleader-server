@@ -216,7 +216,15 @@ namespace BeatLeader_Server.Controllers
 
             leaderboard.Difficulty = difficulty;
             leaderboard.Scores = new List<Score>();
-            leaderboard.Id = song.Id + difficulty.Value.ToString() + difficulty.Mode.ToString();
+            leaderboard.Id = $"{song.Id}{difficulty.Value}{difficulty.Mode}";
+
+            var baseId = leaderboard.Id.Replace("x", "");
+            var baseLeaderboard = _context.Leaderboards
+                .Include(lb => lb.LeaderboardGroup)
+                .FirstOrDefault(lb => lb.Id == baseId);
+
+            leaderboard.LeaderboardGroup = baseLeaderboard?.LeaderboardGroup ?? new LeaderboardGroup();
+            leaderboard.LeaderboardGroup.Leaderboards.Add(leaderboard);
 
             _context.Leaderboards.Add(leaderboard);
             await _context.SaveChangesAsync();
