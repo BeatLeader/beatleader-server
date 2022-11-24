@@ -173,18 +173,18 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            var allLeaderboards = _context.Leaderboards
-                .Include(lb => lb.Scores)
-                .AsEnumerable();
+            _context.ChangeTracker.AutoDetectChangesEnabled = false;
+
+            var allLeaderboards = _context.Leaderboards.Select(l => new { Id = l.Id, ScoreTimesets = l.Scores.Select(s => s.Timeset).ToList() }).ToList();
+
 
             var result = new LeaderboardTimestampsRecalculationResult();
 
             foreach (var leaderboard in allLeaderboards) {
                 var firstScoreTimestamp = long.MaxValue;
-                foreach (var score in leaderboard.Scores) {
-                    if (!long.TryParse(score.Timeset, out var timestamp)) continue;
-                    if (timestamp == 0 || timestamp > firstScoreTimestamp) continue;
-                    firstScoreTimestamp = timestamp;
+                var timeset = leaderboard.ScoreTimesets.OrderBy(s => s).FirstOrDefault();
+                if (timeset != null) {
+                    long.TryParse(timeset, out firstScoreTimestamp);
                 }
 
                 result.Total += 1;
@@ -193,10 +193,11 @@ namespace BeatLeader_Server.Controllers
                     continue;
                 }
 
-                leaderboard.Timestamp = firstScoreTimestamp;
+                var lb = new Leaderboard() { Id = leaderboard.Id, Timestamp = firstScoreTimestamp };
+                _context.Leaderboards.Attach(lb);
             }
 
-            await _context.SaveChangesAsync();
+            await _context.BulkSaveChangesAsync();
 
             return result;
         }
@@ -244,7 +245,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            await _context.SaveChangesAsync();
+            await _context.BulkSaveChangesAsync();
             
             return new LeaderboardGroupsRecalculationResult {
                 Total = map.Count
