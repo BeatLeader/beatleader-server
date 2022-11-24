@@ -168,6 +168,7 @@ namespace BeatLeader_Server.Controllers
                     .ThenInclude(s => s.Difficulties)
                     .Include(lb => lb.LeaderboardGroup)
                     .ThenInclude(g => g.Leaderboards)
+                    .ThenInclude(glb => glb.Difficulty)
                     .Select(ResponseFromLeaderboard)
                     .FirstOrDefault();
 

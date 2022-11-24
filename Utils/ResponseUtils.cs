@@ -166,6 +166,7 @@ namespace BeatLeader_Server.Utils
 
         public class LeaderboardGroupEntry {
             public string Id { get; set; }
+            public DifficultyStatus Status { get; set; }
             public long Timestamp { get; set; }
         }
 
@@ -321,6 +322,7 @@ namespace BeatLeader_Server.Utils
             var leaderboardGroupArray = l.LeaderboardGroup?.Leaderboards?.Select(it =>
                 new LeaderboardGroupEntry {
                     Id = it.Id,
+                    Status = it.Difficulty.Status,
                     Timestamp = it.Timestamp
                 }
             )?.ToArray();
