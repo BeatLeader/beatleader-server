@@ -238,6 +238,8 @@ namespace BeatLeader_Server.Controllers
             }
 
             foreach (var (_, leaderboards) in map) {
+                if (leaderboards.Count == 1) continue;
+
                 var group = new LeaderboardGroup {
                     Leaderboards = leaderboards
                 };

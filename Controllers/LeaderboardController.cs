@@ -49,101 +49,11 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] bool friends = false,
             [FromQuery] bool voters = false)
         {
-            LeaderboardResponse? leaderboard;
             var currentContext = _readContext;
 
-            var query = currentContext
+            LeaderboardResponse? leaderboard = currentContext
                     .Leaderboards
-                    .Where(lb => lb.Id == id);
-
-            List<string>? friendsList = null;
-
-            if (friends)
-            {
-                string currentID = HttpContext.CurrentUserID(currentContext);
-                if (currentID == null)
-                {
-                    return NotFound();
-                }
-                var friendsContainer = currentContext.Friends.Where(f => f.Id == currentID).Include(f => f.Friends).FirstOrDefault();
-                if (friendsContainer != null)
-                {
-                    friendsList = friendsContainer.Friends.Select(f => f.Id).ToList();
-                    friendsList.Add(currentID);
-                }
-                else
-                {
-                    friendsList = new List<string> { currentID };
-                }
-            }
-
-            if (voters)
-            {
-                string currentID = HttpContext.CurrentUserID(currentContext);
-                var currentPlayer = await currentContext.Players.FindAsync(currentID);
-
-                if (currentPlayer != null && (currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("rankedteam")))
-                {
-                    query = query.Include(lb => lb.Scores).ThenInclude(s => s.RankVoting).ThenInclude(v => v.Feedbacks);
-                } else if (currentPlayer?.MapperId != 0) {
-                    int mapperId = currentPlayer.MapperId;
-                    query = query.Where(lb => lb.Song.MapperId == mapperId).Include(lb => lb.Scores).ThenInclude(s => s.RankVoting).ThenInclude(v => v.Feedbacks);
-                }
-            }
-
-            if (countries == null)
-            {
-                if (friendsList != null) {
-                    query = query.Include(lb => lb.Scores
-                            .Where(s => !s.Banned && s.LeaderboardId != null && friendsList.Contains(s.PlayerId))
-                            .OrderBy(s => s.Rank)
-                            .Skip((page - 1) * count)
-                            .Take(count))
-                        .ThenInclude(s => s.Player)
-                        .ThenInclude(s => s.Clans);
-                } else if (voters) {
-                    query = query.Include(lb => lb.Scores
-                            .Where(s => !s.Banned && s.LeaderboardId != null && s.RankVoting != null)
-                            .OrderBy(s => s.Rank)
-                            .Skip((page - 1) * count)
-                            .Take(count))
-                        .ThenInclude(s => s.Player)
-                        .ThenInclude(s => s.Clans);
-                }
-                else {
-                    query = query.Include(lb => lb.Scores
-                            .Where(s => !s.Banned && s.LeaderboardId != null)
-                            .OrderBy(s => s.Rank)
-                            .Skip((page - 1) * count)
-                            .Take(count))
-                        .ThenInclude(s => s.Player)
-                        .ThenInclude(s => s.Clans);
-                }
-            } else {
-                if (friendsList != null)
-                {
-                    query = query.Include(lb => lb.Scores
-                        .Where(s => !s.Banned && s.LeaderboardId != null && friendsList.Contains(s.PlayerId) && countries.ToLower().Contains(s.Player.Country.ToLower()))
-                        .OrderBy(s => s.Rank)
-                        .Skip((page - 1) * count)
-                        .Take(count))
-                    .ThenInclude(s => s.Player)
-                    .ThenInclude(s => s.Clans);
-                } else {
-                    query = query.Include(lb => lb.Scores
-                        .Where(s => !s.Banned && s.LeaderboardId != null && countries.ToLower().Contains(s.Player.Country.ToLower()))
-                        .OrderBy(s => s.Rank)
-                        .Skip((page - 1) * count)
-                        .Take(count))
-                    .ThenInclude(s => s.Player)
-                    .ThenInclude(s => s.Clans);
-                }
-            }
-
-            leaderboard = query
-                    .Include(lb => lb.Scores)
-                    .ThenInclude(sc => sc.Player)
-                    .ThenInclude(p => p.ProfileSettings)
+                    .Where(lb => lb.Id == id)
                     .Include(lb => lb.Difficulty)
                     .ThenInclude(d => d.ModifierValues)
                     .Include(lb => lb.Qualification)
@@ -169,8 +79,154 @@ namespace BeatLeader_Server.Controllers
                     .Include(lb => lb.LeaderboardGroup)
                     .ThenInclude(g => g.Leaderboards)
                     .ThenInclude(glb => glb.Difficulty)
-                    .Select(ResponseFromLeaderboard)
+                    .Select(l => new LeaderboardResponse {
+                        Id = l.Id,
+                        Song = l.Song,
+                        Difficulty = l.Difficulty,
+                        Plays = l.Plays,
+                        Qualification = l.Qualification,
+                        Reweight = l.Reweight,
+                        Changes = l.Changes,
+                        LeaderboardGroup = l.LeaderboardGroup.Leaderboards.Select(it =>
+                            new LeaderboardGroupEntry
+                            {
+                                Id = it.Id,
+                                Status = it.Difficulty.Status,
+                                Timestamp = it.Timestamp
+                            }
+                        ),
+                    })
                     .FirstOrDefault();
+
+            if (leaderboard != null) {
+
+                var scoreQuery = currentContext.Scores.Where(s => s.LeaderboardId == leaderboard.Id);
+
+                if (voters)
+                {
+                    string currentID = HttpContext.CurrentUserID(currentContext);
+                    var currentPlayer = currentContext.Players.Find(currentID);
+
+                    if (currentPlayer != null && (currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("rankedteam")))
+                    {
+                        scoreQuery = scoreQuery
+                            .Include(s => s.RankVoting)
+                            .ThenInclude(v => v.Feedbacks);
+                    } else if (currentPlayer?.MapperId != 0) {
+                        int mapperId = currentPlayer.MapperId;
+                        scoreQuery = scoreQuery
+                            .Where(lb => leaderboard.Song.MapperId == mapperId)
+                            .Include(s => s.RankVoting)
+                            .ThenInclude(v => v.Feedbacks);
+                    }
+                }
+
+                List<string>? friendsList = null;
+
+                if (friends)
+                {
+                    string? currentID = HttpContext.CurrentUserID(currentContext);
+                    if (currentID == null)
+                    {
+                        return NotFound();
+                    }
+                    var friendsContainer = currentContext
+                        .Friends
+                        .Where(f => f.Id == currentID)
+                        .Include(f => f.Friends)
+                        .Select(f => f.Friends.Select(fs => fs.Id))
+                        .FirstOrDefault();
+                    if (friendsContainer != null)
+                    {
+                        friendsList = friendsContainer.ToList();
+                        friendsList.Add(currentID);
+                    }
+                    else
+                    {
+                        friendsList = new List<string> { currentID };
+                    }
+                }
+
+                if (countries == null)
+                {
+                    if (friendsList != null) {
+                        scoreQuery = scoreQuery.Where(s => !s.Banned && friendsList.Contains(s.PlayerId));
+                    } else if (voters) {
+                        scoreQuery = scoreQuery.Where(s => !s.Banned && s.RankVoting != null);
+                    }
+                    else {
+                        scoreQuery = scoreQuery.Where(s => !s.Banned);
+                    }
+                } else {
+                    if (friendsList != null) {
+                        scoreQuery = scoreQuery.Where(s => !s.Banned && friendsList.Contains(s.PlayerId) && countries.ToLower().Contains(s.Player.Country.ToLower()));
+                    } else {
+                        scoreQuery = scoreQuery.Where(s => !s.Banned && countries.ToLower().Contains(s.Player.Country.ToLower()));
+                    }
+                }
+
+                leaderboard.Scores = scoreQuery
+                    .OrderBy(s => s.Rank)
+                    .Skip((page - 1) * count)
+                    .Take(count)
+                    .Include(sc => sc.Player)
+                    .ThenInclude(p => p.ProfileSettings)
+                    .Include(s => s.Player)
+                    .ThenInclude(s => s.Clans)
+                    .Select(s => new ScoreResponse
+                    {
+                        Id = s.Id,
+                        BaseScore = s.BaseScore,
+                        ModifiedScore = s.ModifiedScore,
+                        PlayerId = s.PlayerId,
+                        Accuracy = s.Accuracy,
+                        Pp = s.Pp,
+                        BonusPp = s.BonusPp,
+                        Rank = s.Rank,
+                        Replay = s.Replay,
+                        Modifiers = s.Modifiers,
+                        BadCuts = s.BadCuts,
+                        MissedNotes = s.MissedNotes,
+                        BombCuts = s.BombCuts,
+                        WallsHit = s.WallsHit,
+                        Pauses = s.Pauses,
+                        FullCombo = s.FullCombo,
+                        Hmd = s.Hmd,
+                        Controller = s.Controller,
+                        MaxCombo = s.MaxCombo,
+                        Timeset = s.Timeset,
+                        ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
+                        Timepost = s.Timepost,
+                        LeaderboardId = s.LeaderboardId,
+                        Platform = s.Platform,
+                        Player = new PlayerResponse
+                        {
+                            Id = s.Player.Id,
+                            Name = s.Player.Name,
+                            Platform = s.Player.Platform,
+                            Avatar = s.Player.Avatar,
+                            Country = s.Player.Country,
+
+                            Pp = s.Player.Pp,
+                            Rank = s.Player.Rank,
+                            CountryRank = s.Player.CountryRank,
+                            Role = s.Player.Role,
+                            Socials = s.Player.Socials,
+                            PatreonFeatures = s.Player.PatreonFeatures,
+                            ProfileSettings = s.Player.ProfileSettings,
+                            Clans = s.Player.Clans
+                                .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                        },
+                        ScoreImprovement = s.ScoreImprovement,
+                        RankVoting = s.RankVoting,
+                        Metadata = s.Metadata
+                    })
+                    .ToList();
+                foreach (var score in leaderboard.Scores)
+                {
+                    score.Player = PostProcessSettings(score.Player);
+                }
+            }
 
             if (leaderboard == null) {
                 Song? song = currentContext.Songs.Include(s => s.Difficulties).FirstOrDefault(s => s.Difficulties.FirstOrDefault(d => s.Id + d.Value + d.Mode == id) != null);

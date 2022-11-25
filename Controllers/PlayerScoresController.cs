@@ -194,6 +194,10 @@ namespace BeatLeader_Server.Controllers
         public class CompactScore {
             public int BaseScore { get; set; }
             public int ModifiedScore { get; set; }
+            public int MaxCombo { get; set; }
+            public int MissedNotes { get; set; }
+            public int BadCuts { get; set; }
+            public HMD Hmd { get; set; }
 
             public int EpochTime { get; set; }
         }
@@ -343,7 +347,11 @@ namespace BeatLeader_Server.Controllers
                             Score = new CompactScore {
                                 BaseScore = s.BaseScore,
                                 ModifiedScore = s.ModifiedScore,
-                                EpochTime = s.Timepost
+                                EpochTime = s.Timepost,
+                                MaxCombo = s.MaxCombo,
+                                Hmd = s.Hmd,
+                                MissedNotes = s.MissedNotes,
+                                BadCuts = s.BadCuts,
                             },
                             Leaderboard = new CompactLeaderboard {
                                 Difficulty = s.Leaderboard.Difficulty.Value,

@@ -226,10 +226,13 @@ namespace BeatLeader_Server.Controllers
                 var baseId = $"{baseSong.Id}{difficulty.Value}{difficulty.Mode}";
                 var baseLeaderboard = _context.Leaderboards
                     .Include(lb => lb.LeaderboardGroup)
+                    .ThenInclude(lbg => lbg.Leaderboards)
                     .FirstOrDefault(lb => lb.Id == baseId);
 
                 if (baseLeaderboard != null) {
-                    var group = baseLeaderboard.LeaderboardGroup ?? new LeaderboardGroup();
+                    var group = baseLeaderboard.LeaderboardGroup ?? new LeaderboardGroup {
+                        Leaderboards = new List<Leaderboard>()
+                    };
 
                     if (baseLeaderboard.LeaderboardGroup == null) {
                         group.Leaderboards.Add(baseLeaderboard);

@@ -160,7 +160,7 @@ namespace BeatLeader_Server.Utils
             public RankQualification? Qualification { get; set; }
             public RankUpdate? Reweight { get; set; }
             
-            public LeaderboardGroupEntry[]? LeaderboardGroup { get; set; }
+            public IEnumerable<LeaderboardGroupEntry>? LeaderboardGroup { get; set; }
             public int Plays { get; set; }
         }
 
@@ -319,14 +319,6 @@ namespace BeatLeader_Server.Utils
         }
 
         public static LeaderboardResponse ResponseFromLeaderboard(Leaderboard l) {
-            var leaderboardGroupArray = l.LeaderboardGroup?.Leaderboards?.Select(it =>
-                new LeaderboardGroupEntry {
-                    Id = it.Id,
-                    Status = it.Difficulty.Status,
-                    Timestamp = it.Timestamp
-                }
-            )?.ToArray();
-
             return new LeaderboardResponse {
                 Id = l.Id,
                 Song = l.Song,
@@ -336,7 +328,13 @@ namespace BeatLeader_Server.Utils
                 Qualification = l.Qualification,
                 Reweight = l.Reweight,
                 Changes = l.Changes,
-                LeaderboardGroup = leaderboardGroupArray,
+                LeaderboardGroup = l.LeaderboardGroup?.Leaderboards?.Select(it =>
+                    new LeaderboardGroupEntry {
+                        Id = it.Id,
+                        Status = it.Difficulty.Status,
+                        Timestamp = it.Timestamp
+                    }
+                )
             };
         }
 
