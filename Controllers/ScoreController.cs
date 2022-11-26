@@ -408,16 +408,7 @@ namespace BeatLeader_Server.Controllers
 
             IQueryable<Score> query = _context
                 .Scores
-                .Where(s => !s.Banned && s.LeaderboardId != null && s.LeaderboardId == leaderboardId)
-                .Include(s => s.Player)
-                    .ThenInclude(p => p.Clans)
-                .Include(s => s.Player)
-                    .ThenInclude(p => p.PatreonFeatures)
-                .Include(s => s.Player)
-                    .ThenInclude(p => p.ProfileSettings)
-                .Include(s => s.Player)
-                    .ThenInclude(p => p.Socials)
-                .Include(s => s.ScoreImprovement)
+                .Where(s => !s.Banned && s.LeaderboardId == leaderboardId)
                 .OrderBy(p => p.Rank);
 
             
@@ -464,11 +455,52 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
-                Score? highlightedScore = query.FirstOrDefault(el => el.PlayerId == player);
+                ScoreResponse? highlightedScore = query.Where(el => el.PlayerId == player).Select(s => new ScoreResponse
+                {
+                    Id = s.Id,
+                    PlayerId = s.PlayerId,
+                    BaseScore = s.BaseScore,
+                    ModifiedScore = s.ModifiedScore,
+                    Accuracy = s.Accuracy,
+                    Pp = s.Pp,
+                    Rank = s.Rank,
+                    Replay = s.Replay,
+                    Modifiers = s.Modifiers,
+                    BadCuts = s.BadCuts,
+                    MissedNotes = s.MissedNotes,
+                    BombCuts = s.BombCuts,
+                    WallsHit = s.WallsHit,
+                    Pauses = s.Pauses,
+                    FullCombo = s.FullCombo,
+                    Hmd = s.Hmd,
+                    Controller = s.Controller,
+                    MaxCombo = s.MaxCombo,
+                    Timeset = s.Timeset,
+                    Timepost = s.Timepost,
+                    Platform = s.Platform,
+                    Player = new PlayerResponse
+                    {
+                        Id = s.Player.Id,
+                        Name = s.Player.Name,
+                        Platform = s.Player.Platform,
+                        Avatar = s.Player.Avatar,
+                        Country = s.Player.Country,
+
+                        Pp = s.Player.Pp,
+                        Rank = s.Player.Rank,
+                        CountryRank = s.Player.CountryRank,
+                        Role = s.Player.Role,
+                        Socials = s.Player.Socials,
+                        ProfileSettings = s.Player.ProfileSettings,
+                        PatreonFeatures = s.Player.PatreonFeatures,
+                        Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                    },
+                    ScoreImprovement = s.ScoreImprovement
+                }).FirstOrDefault();
                 if (highlightedScore != null)
                 {
-                    result.Selection = RemoveLeaderboard(highlightedScore, 0);
-                    result.Selection.Player = currentPlayer ?? ResponseFromPlayer(await _context.Players.FindAsync(player));
+                    result.Selection = highlightedScore;
+                    result.Selection.Player = PostProcessSettings(result.Selection.Player);
                     if (scope.ToLower() == "friends" || scope.ToLower() == "country") {
                         result.Selection.Rank = query.Count(s => s.Rank < result.Selection.Rank) + 1;
                     }
@@ -480,8 +512,48 @@ namespace BeatLeader_Server.Controllers
             List<ScoreResponse> resultList = query
                 .Skip((page - 1) * count)
                 .Take(count)
-                .AsEnumerable()
-                .Select(RemoveLeaderboard)
+                .Select(s => new ScoreResponse
+                {
+                    Id = s.Id,
+                    PlayerId = s.PlayerId,
+                    BaseScore = s.BaseScore,
+                    ModifiedScore = s.ModifiedScore,
+                    Accuracy = s.Accuracy,
+                    Pp = s.Pp,
+                    Rank = s.Rank,
+                    Replay = s.Replay,
+                    Modifiers = s.Modifiers,
+                    BadCuts = s.BadCuts,
+                    MissedNotes = s.MissedNotes,
+                    BombCuts = s.BombCuts,
+                    WallsHit = s.WallsHit,
+                    Pauses = s.Pauses,
+                    FullCombo = s.FullCombo,
+                    Hmd = s.Hmd,
+                    Controller = s.Controller,
+                    MaxCombo = s.MaxCombo,
+                    Timeset = s.Timeset,
+                    Timepost = s.Timepost,
+                    Platform = s.Platform,
+                    Player = new PlayerResponse
+                    {
+                        Id = s.Player.Id,
+                        Name = s.Player.Name,
+                        Platform = s.Player.Platform,
+                        Avatar = s.Player.Avatar,
+                        Country = s.Player.Country,
+
+                        Pp = s.Player.Pp,
+                        Rank = s.Player.Rank,
+                        CountryRank = s.Player.CountryRank,
+                        Role = s.Player.Role,
+                        Socials = s.Player.Socials,
+                        ProfileSettings = s.Player.ProfileSettings,
+                        PatreonFeatures = s.Player.PatreonFeatures,
+                        Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                    },
+                    ScoreImprovement = s.ScoreImprovement
+                })
                 .ToList();
 
             foreach (var item in resultList)

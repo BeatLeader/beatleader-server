@@ -175,7 +175,7 @@ namespace BeatLeader_Server.Utils
                         break;
                 }
             }
-            string? error = CheckReplay(replay);
+            string? error = CheckReplay(replay, leaderboard);
             if (error != null) {
                 return (null, error);
             }
@@ -189,8 +189,12 @@ namespace BeatLeader_Server.Utils
             return (result, null);
         }
 
-        public static string? CheckReplay(Replay replay) {
+        public static string? CheckReplay(Replay replay, Leaderboard leaderboard) {
             float endTime = replay.notes.Count > 0 ? replay.notes.Last().eventTime : 0;
+
+            if (replay.notes.Count < leaderboard.Difficulty.Notes && (leaderboard.Difficulty.Duration - endTime) > 1) {
+                return "Too few notes in the replay";
+            }
 
             foreach (var note in replay.notes)
             {

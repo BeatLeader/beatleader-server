@@ -257,6 +257,27 @@ namespace BeatLeader_Server.Controllers
 
         #endregion
 
+        [HttpGet("~/admin/migrateDurations")]
+        public async Task<ActionResult> GetAllScores()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = _context.Players.Find(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var lbs = _context.Leaderboards.Include(l => l.Song).Include(l => l.Difficulty).ToList();
+            foreach (var lb in lbs)
+            {
+                lb.Difficulty.Duration = lb.Song.Duration;
+            }
+            await _context.BulkSaveChangesAsync();
+
+            return Ok();
+        }
+
         public static string GolovaID = "76561198059961776";
     }
 }

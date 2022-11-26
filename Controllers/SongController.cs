@@ -339,6 +339,7 @@ namespace BeatLeader_Server.Controllers
                         difficulty.Nps = (float)diff.nps;
                         difficulty.Walls = (int)diff.obstacles;
                         difficulty.MaxScore = (int)diff.maxScore;
+                        difficulty.Duration = result.Duration;
 
                         difficulties.Add(difficulty);
                     }

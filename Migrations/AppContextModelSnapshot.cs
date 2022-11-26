@@ -331,6 +331,9 @@ namespace BeatLeader_Server.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<double>("Duration")
+                        .HasColumnType("float");
+
                     b.Property<int>("MaxScore")
                         .HasColumnType("int");
 

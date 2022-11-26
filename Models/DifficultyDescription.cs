@@ -35,5 +35,6 @@ namespace BeatLeader_Server.Models
         public int Bombs { get; set; }
         public int Walls { get; set; }
         public int MaxScore { get; set; }
+        public double Duration { get; set; }
     }
 }

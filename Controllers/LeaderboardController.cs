@@ -101,6 +101,7 @@ namespace BeatLeader_Server.Controllers
             if (leaderboard != null) {
 
                 var scoreQuery = currentContext.Scores.Where(s => s.LeaderboardId == leaderboard.Id);
+                bool showVoters = false;
 
                 if (voters)
                 {
@@ -109,15 +110,9 @@ namespace BeatLeader_Server.Controllers
 
                     if (currentPlayer != null && (currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("rankedteam")))
                     {
-                        scoreQuery = scoreQuery
-                            .Include(s => s.RankVoting)
-                            .ThenInclude(v => v.Feedbacks);
-                    } else if (currentPlayer?.MapperId != 0) {
-                        int mapperId = currentPlayer.MapperId;
-                        scoreQuery = scoreQuery
-                            .Where(lb => leaderboard.Song.MapperId == mapperId)
-                            .Include(s => s.RankVoting)
-                            .ThenInclude(v => v.Feedbacks);
+                        showVoters = true;
+                    } else if (currentPlayer?.MapperId != 0 && leaderboard.Song.MapperId == currentPlayer.MapperId) {
+                        showVoters = true;
                     }
                 }
 
@@ -181,9 +176,7 @@ namespace BeatLeader_Server.Controllers
                         PlayerId = s.PlayerId,
                         Accuracy = s.Accuracy,
                         Pp = s.Pp,
-                        BonusPp = s.BonusPp,
                         Rank = s.Rank,
-                        Replay = s.Replay,
                         Modifiers = s.Modifiers,
                         BadCuts = s.BadCuts,
                         MissedNotes = s.MissedNotes,
@@ -191,19 +184,12 @@ namespace BeatLeader_Server.Controllers
                         WallsHit = s.WallsHit,
                         Pauses = s.Pauses,
                         FullCombo = s.FullCombo,
-                        Hmd = s.Hmd,
-                        Controller = s.Controller,
-                        MaxCombo = s.MaxCombo,
                         Timeset = s.Timeset,
-                        ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
                         Timepost = s.Timepost,
-                        LeaderboardId = s.LeaderboardId,
-                        Platform = s.Platform,
                         Player = new PlayerResponse
                         {
                             Id = s.Player.Id,
                             Name = s.Player.Name,
-                            Platform = s.Player.Platform,
                             Avatar = s.Player.Avatar,
                             Country = s.Player.Country,
 
@@ -211,15 +197,11 @@ namespace BeatLeader_Server.Controllers
                             Rank = s.Player.Rank,
                             CountryRank = s.Player.CountryRank,
                             Role = s.Player.Role,
-                            Socials = s.Player.Socials,
-                            PatreonFeatures = s.Player.PatreonFeatures,
                             ProfileSettings = s.Player.ProfileSettings,
                             Clans = s.Player.Clans
                                 .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                         },
-                        ScoreImprovement = s.ScoreImprovement,
-                        RankVoting = s.RankVoting,
-                        Metadata = s.Metadata
+                        RankVoting = showVoters ? s.RankVoting : null,
                     })
                     .ToList();
                 foreach (var score in leaderboard.Scores)
