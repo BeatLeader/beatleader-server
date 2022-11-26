@@ -478,6 +478,7 @@ namespace BeatLeader_Server.Controllers
                     Timeset = s.Timeset,
                     Timepost = s.Timepost,
                     Platform = s.Platform,
+                    LeaderboardId = s.LeaderboardId,
                     Player = new PlayerResponse
                     {
                         Id = s.Player.Id,
@@ -535,6 +536,7 @@ namespace BeatLeader_Server.Controllers
                     Timeset = s.Timeset,
                     Timepost = s.Timepost,
                     Platform = s.Platform,
+                    LeaderboardId = s.LeaderboardId,
                     Player = new PlayerResponse
                     {
                         Id = s.Player.Id,
