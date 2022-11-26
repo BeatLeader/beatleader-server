@@ -17,7 +17,7 @@ namespace BeatLeader_Server.Controllers
 
         private readonly IServerTiming _serverTiming;
         private readonly IConfiguration _configuration;
-        private readonly ScoreController _scoreController;
+        private readonly ScoreRefreshController _scoreRefreshController;
         private readonly PlayerController _playerController;
         private readonly PlayerRefreshController _playerRefreshController;
         private readonly PlaylistController _playlistController;
@@ -28,7 +28,7 @@ namespace BeatLeader_Server.Controllers
             IWebHostEnvironment env,
             IServerTiming serverTiming,
             IConfiguration configuration,
-            ScoreController scoreController,
+            ScoreRefreshController scoreRefreshController,
             PlayerController playerController,
             PlayerRefreshController playerRefreshController,
             PlaylistController playlistController)
@@ -38,7 +38,7 @@ namespace BeatLeader_Server.Controllers
 
             _serverTiming = serverTiming;
             _configuration = configuration;
-            _scoreController = scoreController;
+            _scoreRefreshController = scoreRefreshController;
             _playerController = playerController;
             _playerRefreshController = playerRefreshController;
             _playlistController = playlistController;
@@ -342,7 +342,7 @@ namespace BeatLeader_Server.Controllers
                 difficulty.ModifierValues = modifierValues;
                 difficulty.Type = type;
                 await _context.SaveChangesAsync();
-                await _scoreController.RefreshScores(leaderboard.Id);
+                await _scoreRefreshController.RefreshScores(leaderboard.Id);
                 await _playlistController.RefreshNominatedPlaylist();
 
                 var dsClient = nominationDSClient();
@@ -582,7 +582,7 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 await _context.SaveChangesAsync();
-                await _scoreController.RefreshScores(leaderboard.Id);
+                await _scoreRefreshController.RefreshScores(leaderboard.Id);
                 await _playlistController.RefreshNominatedPlaylist();
                 await _playlistController.RefreshQualifiedPlaylist();
             }
@@ -837,7 +837,7 @@ namespace BeatLeader_Server.Controllers
                     await _playlistController.RefreshRankedPlaylist();
                 }
 
-                await _scoreController.RefreshScores(leaderboard.Id);
+                await _scoreRefreshController.RefreshScores(leaderboard.Id);
                 await _playerRefreshController.RefreshLeaderboardPlayers(leaderboard.Id);
             }
 
@@ -960,7 +960,7 @@ namespace BeatLeader_Server.Controllers
                     await _playlistController.RefreshRankedPlaylist();
                 }
 
-                await _scoreController.RefreshScores(leaderboard.Id);
+                await _scoreRefreshController.RefreshScores(leaderboard.Id);
 
                 HttpContext.Response.OnCompleted(async () => {
                     await _playerRefreshController.RefreshLeaderboardPlayers(leaderboard.Id);

@@ -94,7 +94,7 @@ namespace BeatLeader_Server.Services
             using (var scope = _serviceScopeFactory.CreateScope())
             {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
-                var _scoreController = scope.ServiceProvider.GetRequiredService<ScoreController>();
+                var _scoreController = scope.ServiceProvider.GetRequiredService<ScoreRefreshController>();
 
                 int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - 60 * 60 * 24 * 7;
 

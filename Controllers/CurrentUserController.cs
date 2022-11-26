@@ -30,7 +30,7 @@ namespace BeatLeader_Server.Controllers
         ReplayController _replayController;
         IWebHostEnvironment _environment;
         IConfiguration _configuration;
-        ScoreController _scoreController;
+        ScoreRefreshController _scoreRefreshController;
 
         public CurrentUserController(
             AppContext context,
@@ -40,7 +40,7 @@ namespace BeatLeader_Server.Controllers
             PlayerController playerController,
             PlayerRefreshController playerRefreshController,
             ReplayController replayController,
-            ScoreController scoreController,
+            ScoreRefreshController scoreRefreshController,
             IConfiguration configuration)
         {
             _context = context;
@@ -49,7 +49,7 @@ namespace BeatLeader_Server.Controllers
             _playerController = playerController;
             _playerRefreshController = playerRefreshController;
             _replayController = replayController;
-            _scoreController = scoreController;
+            _scoreRefreshController = scoreRefreshController;
             _configuration = configuration;
             _environment = env;
             if (env.IsDevelopment())
@@ -1267,7 +1267,7 @@ namespace BeatLeader_Server.Controllers
             HttpContext.Response.OnCompleted(async () => {
                 foreach (var item in leaderboardsToUpdate)
                 {
-                    await _scoreController.RefreshScores(item);
+                    await _scoreRefreshController.RefreshScores(item);
                 }
 
                 await _playerRefreshController.RefreshRanks();
@@ -1323,7 +1323,7 @@ namespace BeatLeader_Server.Controllers
             HttpContext.Response.OnCompleted(async () => {
                 foreach (var item in leaderboardsToUpdate)
                 {
-                    await _scoreController.RefreshScores(item);
+                    await _scoreRefreshController.RefreshScores(item);
                 }
                 await _playerRefreshController.RefreshPlayer(player);
                 await _playerRefreshController.RefreshRanks();

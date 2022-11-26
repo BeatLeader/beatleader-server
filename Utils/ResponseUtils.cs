@@ -94,6 +94,20 @@ namespace BeatLeader_Server.Utils
             public ScoreMetadata? Metadata { get; set; }
         }
 
+        public class SaverScoreResponse {
+            public int Id { get; set; }
+            public int BaseScore { get; set; }
+            public int ModifiedScore { get; set; }
+            public float Accuracy { get; set; }
+            public float Pp { get; set; }
+            public int Rank { get; set; }
+            public string Modifiers { get; set; }
+            public string LeaderboardId { get; set; }
+            public string Timeset { get; set; }
+            public int Timepost { get; set; }
+            public string Player { get; set; }
+        }
+
         public class LeaderboardsResponse
         {
             public Song Song { get; set; }

@@ -208,127 +208,78 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
-        [HttpGet("~/scores/refresh")]
-        [Authorize]
-        public async Task<ActionResult> RefreshScores([FromQuery] string? leaderboardId = null)
+        [HttpGet("~/v4/scores/{hash}/{diff}/{mode}")]
+        public async Task<ActionResult<ResponseWithMetadata<SaverScoreResponse>>> GetByHash4(
+            string hash,
+            string diff,
+            string mode,
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10)
         {
-            if (HttpContext != null)
+            ResponseWithMetadata<SaverScoreResponse> result = new ResponseWithMetadata<SaverScoreResponse>
             {
-                string currentId = HttpContext.CurrentUserID(_context);
-                Player? currentPlayer = await _context.Players.FindAsync(currentId);
-                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-                {
-                    return Unauthorized();
+                Data = new List<SaverScoreResponse>(),
+                Metadata =
+                    {
+                        ItemsPerPage = count,
+                        Page = page,
+                        Total = 0
+                    }
+            };
+
+            if (hash.Length < 40) {
+                return BadRequest("Hash is to short");
+            } else {
+                hash = hash.Substring(0, 40);
+            }
+
+            var song = _context.Songs.Select(s => new { Id = s.Id, Hash = s.Hash }).FirstOrDefault(s => s.Hash == hash);
+            if (song == null) {
+                return result;
+            }
+
+            if (mode.EndsWith("OldDots")) {
+                mode = mode.Replace("OldDots", "");
+            }
+
+            int modeValue = SongUtils.ModeForModeName(mode);
+            if (modeValue == 0) {
+                var customMode = _context.CustomModes.FirstOrDefault(m => m.Name == mode);
+                if (customMode != null) {
+                    modeValue = customMode.Id + 10;
+                } else {
+                    return result;
                 }
             }
 
-            //var count = await _context.Leaderboards.CountAsync();
+            var leaderboardId = song.Id + SongUtils.DiffForDiffName(diff).ToString() + modeValue.ToString();
 
-            //for (int iii = 0; iii < count; iii += 1000) 
-            //{
-                var query = _context.Leaderboards.Include(s => s.Scores).Include(l => l.Difficulty).ThenInclude(d => d.ModifierValues);
-                var allLeaderboards = (leaderboardId != null ? query.Where(s => s.Id == leaderboardId) : query).Select(l => new { Scores = l.Scores, Difficulty = l.Difficulty }).ToList(); // .Skip(iii).Take(1000).ToList();
+            IQueryable<Score> query = _context
+                .Scores
+                .Where(s => !s.Banned && s.LeaderboardId == leaderboardId)
+                .OrderBy(p => p.Rank);
 
-                int counter = 0;
-                var transaction = await _context.Database.BeginTransactionAsync();
-
-                foreach (var leaderboard in allLeaderboards)
+            result.Metadata.Total = query.Count();
+            result.Data = query
+                .Skip((page - 1) * count)
+                .Take(count)
+                .Select(s => new SaverScoreResponse
                 {
-                    var allScores = leaderboard.Scores.Where(s => !s.Banned && s.LeaderboardId != null).ToList();
-                    var status = leaderboard.Difficulty.Status;
-                    var modifiers = leaderboard.Difficulty.ModifierValues;
-                    bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.nominated || status == DifficultyStatus.inevent;
-                    bool hasPp = status == DifficultyStatus.ranked || qualification;
+                    Id = s.Id,
+                    BaseScore = s.BaseScore,
+                    ModifiedScore = s.ModifiedScore,
+                    Accuracy = s.Accuracy,
+                    Pp = s.Pp,
+                    Rank = s.Rank,
+                    Modifiers = s.Modifiers,
+                    Timeset = s.Timeset,
+                    Timepost = s.Timepost,
+                    LeaderboardId = s.LeaderboardId,
+                    Player = s.Player.Name
+                })
+                .ToList();
 
-                    foreach (Score s in allScores)
-                    {
-                        if (hasPp)
-                        {
-                            s.ModifiedScore = (int)(s.BaseScore * modifiers.GetNegativeMultiplier(s.Modifiers));
-                        }
-                        else
-                        {
-                            s.ModifiedScore = (int)(s.BaseScore * modifiers.GetTotalMultiplier(s.Modifiers));
-                        }
-
-                        if (leaderboard.Difficulty.MaxScore > 0)
-                        {
-                            s.Accuracy = (float)s.BaseScore / (float)leaderboard.Difficulty.MaxScore;
-                        }
-                        else
-                        {
-                            s.Accuracy = (float)s.BaseScore / (float)ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
-                        }
-
-                        if (s.Accuracy > 1.29f)
-                        {
-                            s.Accuracy = 1.29f;
-                        }
-                        if (hasPp)
-                        {
-                            (s.Pp, s.BonusPp) = ReplayUtils.PpFromScore(s, leaderboard.Difficulty);
-                        }
-                        else
-                        {
-                            s.Pp = 0;
-                            s.BonusPp = 0;
-                        }
-
-                        s.Qualification = qualification;
-
-                        if (float.IsNaN(s.Pp))
-                        {
-                            s.Pp = 0.0f;
-                        }
-                        if (float.IsNaN(s.BonusPp))
-                        {
-                            s.BonusPp = 0.0f;
-                        }
-                        if (float.IsNaN(s.Accuracy))
-                        {
-                            s.Accuracy = 0.0f;
-                        }
-                        counter++;
-                    }
-
-                    var rankedScores = hasPp ? allScores.OrderByDescending(el => el.Pp).ToList() : allScores.OrderByDescending(el => el.ModifiedScore).ToList();
-                    foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
-                    {
-                        s.Rank = i + 1;
-                    }
-
-                    if (counter >= 5000)
-                    {
-                        counter = 0;
-                        try
-                        {
-                            await _context.SaveChangesAsync();
-                        }
-                        catch (Exception e)
-                        {
-
-                            _context.RejectChanges();
-                            await transaction.RollbackAsync();
-                            transaction = await _context.Database.BeginTransactionAsync();
-                            continue;
-                        }
-                        await transaction.CommitAsync();
-                        transaction = await _context.Database.BeginTransactionAsync();
-                    }
-                }
-
-                try
-                {
-                    await _context.SaveChangesAsync();
-                }
-                catch (Exception e)
-                {
-                    _context.RejectChanges();
-                }
-                await transaction.CommitAsync();
-            //}
-
-            return Ok();
+            return result;
         }
 
         private Score RemovePositiveModifiers(Score s, ModifiersMap? modifiersObject, float? stars)

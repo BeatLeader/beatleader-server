@@ -29,19 +29,19 @@ namespace BeatLeader_Server.Controllers
 
         BlobContainerClient _playlistContainerClient;
         BlobContainerClient _assetsContainerClient;
-        ScoreController _scoreController;
+        ScoreRefreshController _scoreRefreshController;
         IWebHostEnvironment _environment;
 
         public PlaylistController(
             AppContext context,
             ReadAppContext readAppContext,
-            ScoreController scoreController,
+            ScoreRefreshController scoreRefreshController,
             IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env)
         {
             _context = context;
             _readAppContext = readAppContext;
-            _scoreController = scoreController;
+            _scoreRefreshController = scoreRefreshController;
             if (env.IsDevelopment())
             {
                 _playlistContainerClient = new BlobContainerClient(config.Value.AccountName, config.Value.PlaylistContainerName);
@@ -638,7 +638,7 @@ namespace BeatLeader_Server.Controllers
                                 lb.Difficulty.Stars = stars;
                                 await _context.SaveChangesAsync();
 
-                                await _scoreController.RefreshScores(lb.Id);
+                                await _scoreRefreshController.RefreshScores(lb.Id);
                                 leaderboards.Add(lb);
                             } else { continue; }
                         } else {
