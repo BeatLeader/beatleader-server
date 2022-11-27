@@ -352,10 +352,8 @@ namespace BeatLeader_Server.Utils
             };
         }
 
-        public static PlayerResponseWithStats? ResponseWithStatsFromPlayer(Player? p)
+        public static PlayerResponseWithStats ResponseWithStatsFromPlayer(Player p)
         {
-            if (p == null) return null;
-
             return new PlayerResponseWithStats
             {
                 Id = p.Id,

@@ -130,7 +130,9 @@ namespace BeatLeader_Server.Utils
 
                 weights += weight;
             }
-            player.ScoreStats.AverageWeightedRankedAccuracy = sum / weights;
+            if (player.ScoreStats != null) {
+                player.ScoreStats.AverageWeightedRankedAccuracy = sum / weights;
+            }
 
             var scoresForWeightedRank = rankedScores.OrderBy(s => s.Rank).Take(100).ToList();
             sum = 0.0f;
@@ -149,7 +151,9 @@ namespace BeatLeader_Server.Utils
 
                 weights += weight;
             }
-            player.ScoreStats.AverageWeightedRankedRank = sum / weights;
+            if (player.ScoreStats != null) {
+                player.ScoreStats.AverageWeightedRankedRank = sum / weights;
+            }
         }
 
         public static void RecalculateEventsPP(this AppContext context, Player player, Leaderboard leaderboard)

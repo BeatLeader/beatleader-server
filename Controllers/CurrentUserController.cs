@@ -879,6 +879,7 @@ namespace BeatLeader_Server.Controllers
                 .Include(p => p.Changes)
                 .Include(p => p.History)
                 .Include(p => p.Badges)
+                .Include(p => p.ScoreStats)
                 .FirstOrDefault();
 
             if (currentPlayer == null || migratedToPlayer == null)
@@ -953,7 +954,7 @@ namespace BeatLeader_Server.Controllers
             }
             
 
-            if (migratedToPlayer.Country == "Not set" && currentPlayer.Country != "Not set")
+            if (migratedToPlayer.Country == "not set" && currentPlayer.Country != "not set")
             {
                 migratedToPlayer.Country = currentPlayer.Country;
             }
@@ -963,9 +964,15 @@ namespace BeatLeader_Server.Controllers
                 {
                     item.PlayerId = migrateToId;
                 }
+                if (migratedToPlayer.History != null) {
+                    foreach (var item in migratedToPlayer.History)
+                    {
+                       _context.PlayerScoreStatsHistory.Remove(item);
+                    }
+                }
             }
 
-            if (currentPlayer.Changes?.Count >= migratedToPlayer.Changes?.Count)
+            if (currentPlayer.Changes?.Count >= 0)
             {
                 foreach (var item in currentPlayer.Changes)
                 {

@@ -451,7 +451,27 @@ namespace BeatLeader_Server.Controllers
                     ItemsPerPage = count,
                     Total = request.Count()
                 },
-                Data = request.Skip((page - 1) * count).Take(count).Select(ResponseWithStatsFromPlayer).ToList().Select(PostProcessSettings)
+                Data = request.Skip((page - 1) * count).Take(count).Select(p => new PlayerResponseWithStats
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Platform = p.Platform,
+                    Avatar = p.Avatar,
+                    Country = p.Country,
+                    ScoreStats = p.ScoreStats,
+
+                    Pp = p.Pp,
+                    Rank = p.Rank,
+                    CountryRank = p.CountryRank,
+                    LastWeekPp = p.LastWeekPp,
+                    LastWeekRank = p.LastWeekRank,
+                    LastWeekCountryRank = p.LastWeekCountryRank,
+                    Role = p.Role,
+                    EventsParticipating = p.EventsParticipating,
+                    PatreonFeatures = p.PatreonFeatures,
+                    ProfileSettings = p.ProfileSettings,
+                    Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                }).ToList().Select(PostProcessSettings)
             };
         }
 
@@ -478,7 +498,7 @@ namespace BeatLeader_Server.Controllers
                             break;
                         case "weightedRank":
                             request = request
-                                .Where(p => p.ScoreStats.AverageRankedRank != 0)
+                                .Where(p => p.ScoreStats != null && p.ScoreStats.AverageWeightedRankedRank != 0)
                                 .Order(order == "desc" ? "asc" : "desc", p => p.ScoreStats.AverageWeightedRankedRank);
                             break;
                         case "topAcc":

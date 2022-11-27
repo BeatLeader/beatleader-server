@@ -129,16 +129,27 @@ namespace BeatLeader_Server.Controllers
                         }
                     }
 
-                    var oldplayer = _context.Players.Where(p => p.Id == bslink.Id).Include(p => p.Socials).FirstOrDefault();
+                    var oldplayer = _context.Players
+                        .Where(p => p.Id == bslink.Id)
+                        .Include(p => p.Socials)
+                        .Include(p => p.ProfileSettings)
+                        .Include(p => p.History)
+                        .FirstOrDefault();
                     if (oldplayer != null)
                     {
+                        var plink = _context.PatreonLinks.Where(l => l.Id == oldplayer.Id).FirstOrDefault();
+                        if (plink != null) {
+                            _context.PatreonLinks.Remove(plink);
+                        }
                         oldplayer.Socials = null;
+                        oldplayer.ProfileSettings = null;
+                        oldplayer.History = null;
                         _context.Players.Remove(oldplayer);
                     }
                     _context.BeatSaverLinks.Remove(bslink);
                     bslink = null;
                 } else {
-                    return (null, "Something went wrong while linking");
+                    return (null, "This account is already linked to another BL account");
                 }
             }
 
