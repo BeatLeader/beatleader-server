@@ -385,6 +385,8 @@ namespace BeatLeader_Server.Controllers
                         PlayerId = s.PlayerId,
                         Accuracy = s.Accuracy,
                         Pp = s.Pp,
+                        FcAccuracy = s.FcAccuracy,
+                        FcPp = s.FcPp,
                         BonusPp = s.BonusPp,
                         Rank = s.Rank,
                         Replay = s.Replay,

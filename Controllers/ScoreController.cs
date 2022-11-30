@@ -300,7 +300,7 @@ namespace BeatLeader_Server.Controllers
             
             if (result.Pp > 0) {
 
-                result.Pp = ReplayUtils.PpFromScore(s, modifiersObject, (float)stars).Item1;
+                result.Pp = ReplayUtils.PpFromScore(s.Accuracy, s.Modifiers, modifiersObject, (float)stars).Item1;
             }
 
             return result;
@@ -414,6 +414,8 @@ namespace BeatLeader_Server.Controllers
                     ModifiedScore = s.ModifiedScore,
                     Accuracy = s.Accuracy,
                     Pp = s.Pp,
+                    FcAccuracy = s.FcAccuracy,
+                    FcPp = s.FcPp,
                     Rank = s.Rank,
                     Replay = s.Replay,
                     Modifiers = s.Modifiers,
@@ -472,6 +474,8 @@ namespace BeatLeader_Server.Controllers
                     ModifiedScore = s.ModifiedScore,
                     Accuracy = s.Accuracy,
                     Pp = s.Pp,
+                    FcAccuracy = s.FcAccuracy,
+                    FcPp = s.FcPp,
                     Rank = s.Rank,
                     Replay = s.Replay,
                     Modifiers = s.Modifiers,
@@ -680,6 +684,7 @@ namespace BeatLeader_Server.Controllers
             string blobName = score.Replay.Split("/").Last();
 
             BlobClient blobClient = _replaysClient.GetBlobClient(blobName);
+            if (!await blobClient.ExistsAsync()) return NotFound();
             MemoryStream ms = new MemoryStream(5);
             await blobClient.DownloadToAsync(ms);
             Replay? replay;

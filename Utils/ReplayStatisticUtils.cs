@@ -367,6 +367,7 @@ namespace BeatLeader_Server.Utils
             int score = 0, noteIndex = 0;
             int combo = 0, maxCombo = 0;
             int maxScore = 0;
+            int fcScore = 0; float currentFcAcc = 0;
             MultiplierCounter maxCounter = new MultiplierCounter();
             MultiplierCounter normalCounter = new MultiplierCounter();
 
@@ -379,6 +380,7 @@ namespace BeatLeader_Server.Utils
                 } else if (note.scoringType == ScoringType.BurstSliderElement) {
                     scoreForMaxScore = 20;
                 }
+
                 maxCounter.Increase();
                 maxScore += maxCounter.Multiplier * scoreForMaxScore;
 
@@ -387,6 +389,9 @@ namespace BeatLeader_Server.Utils
                     normalCounter.Decrease();
                     multiplier = normalCounter.Multiplier;
                     combo = 0;
+                    if (note.isBlock) {
+                        fcScore += (int)MathF.Round((float)(maxCounter.Multiplier * scoreForMaxScore) * currentFcAcc);
+                    }
                 }
                 else
                 {
@@ -394,6 +399,7 @@ namespace BeatLeader_Server.Utils
                     combo++;
                     multiplier = normalCounter.Multiplier;
                     score += multiplier * note.score;
+                    fcScore += maxCounter.Multiplier * note.score;
                 }
 
                 if (combo > maxCombo)
@@ -414,7 +420,11 @@ namespace BeatLeader_Server.Utils
                 {
                     note.accuracy = i == 0 ? 0 : allStructs[i - 1].accuracy;
                 }
+
+                currentFcAcc = (float)fcScore / maxScore;
             }
+
+            result.fcAcc = currentFcAcc;
 
             return (result, allStructs, maxCombo);
         }

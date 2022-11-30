@@ -54,6 +54,8 @@ namespace BeatLeader_Server.Models
         public List<float> leftAverageCut { get; set; }
         public List<float> rightAverageCut { get; set; }
         public List<float> gridAcc { get; set; }
+
+        public float fcAcc { get; set; }
     }
 
     public class ScoreGraphTracker

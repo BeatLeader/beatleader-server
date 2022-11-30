@@ -55,6 +55,8 @@ namespace BeatLeader_Server.Models
         public int Pauses { get; set; }
         public bool FullCombo { get; set; }
         public int MaxCombo { get; set; }
+        public float FcAccuracy { get; set; }
+        public float FcPp { get; set; }
         public HMD Hmd { get; set; }
         public ControllerEnum Controller { get; set; }
         public float AccRight { get; set; }
@@ -75,6 +77,7 @@ namespace BeatLeader_Server.Models
 
         public ScoreImprovement? ScoreImprovement { get; set; }
         public bool Banned { get; set; } = false;
+        public bool Suspicious { get; set; } = false;
         public RankVoting? RankVoting { get; set; }
         public ScoreMetadata? Metadata { get; set; }
     }

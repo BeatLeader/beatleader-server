@@ -657,6 +657,14 @@ namespace BeatLeader_Server.Controllers
                 resultScore.AccLeft = statistic.accuracyTracker.accLeft;
                 resultScore.AccRight = statistic.accuracyTracker.accRight;
                 resultScore.MaxCombo = statistic.hitTracker.maxCombo;
+                resultScore.FcAccuracy = statistic.accuracyTracker.fcAcc;
+                if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
+                    resultScore.FcPp = ReplayUtils.PpFromScore(
+                        resultScore.FcAccuracy, 
+                        resultScore.Modifiers, 
+                        leaderboard.Difficulty.ModifierValues, 
+                        leaderboard.Difficulty.Stars ?? 0).Item1;
+                }
                 var ip = context.Request.HttpContext.Connection.RemoteIpAddress;
                 if (ip != null)
                 {

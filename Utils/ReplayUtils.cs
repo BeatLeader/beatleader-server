@@ -19,19 +19,18 @@ namespace BeatLeader_Server.Utils
             return MathF.Pow(MathF.Log10(l / (l - acc)) / MathF.Log10(l / (l - a)), f);
         }
 
-        public static (float, float) PpFromScore(Score s, ModifiersMap modifierValues, float stars)
+        public static (float, float) PpFromScore(float accuracy, string modifiers, ModifiersMap modifierValues, float stars)
         {
-            var accuracy = s.Accuracy;
             bool negativeAcc = float.IsNegative(accuracy);
             if (negativeAcc)
             {
                 accuracy *= -1;
             }
 
-            float mp = modifierValues.GetTotalMultiplier(s.Modifiers);
+            float mp = modifierValues.GetTotalMultiplier(modifiers);
 
             float rawPP = 0; float fullPP = 0;
-            if (!s.Modifiers.Contains("NF"))
+            if (!modifiers.Contains("NF"))
             {
                 rawPP = (float)(Curve(accuracy, (float)stars - 0.5f) * ((float)stars + 0.5f) * 42);
                 fullPP = (float)(Curve(accuracy, (float)stars * mp - 0.5f) * ((float)stars * mp + 0.5f) * 42);
@@ -60,7 +59,7 @@ namespace BeatLeader_Server.Utils
         }
 
         public static (float, float) PpFromScore(Score s, DifficultyDescription difficulty) {
-            return PpFromScore(s, difficulty.ModifierValues, difficulty.Stars ?? 0.0f);
+            return PpFromScore(s.Accuracy, s.Modifiers, difficulty.ModifierValues, difficulty.Stars ?? 0.0f);
         }
 
         public static (float, float) PpFromScoreResponse(ScoreResponse s, RankUpdate reweight)
@@ -137,7 +136,9 @@ namespace BeatLeader_Server.Utils
 
         public static void PostProcessReplay(Score score, Replay replay) {
             score.WallsHit = replay.walls.Count;
-            score.Pauses = replay.pauses.Count;
+            float firstNoteTime = replay.notes.FirstOrDefault()?.eventTime ?? 0.0f;
+            float lastNoteTime = replay.notes.LastOrDefault()?.eventTime ?? 0.0f;
+            score.Pauses = replay.pauses.Where(p => p.time >= firstNoteTime && p.time <= lastNoteTime).Count();
             foreach (var item in replay.notes)
             {
                 switch (item.eventType)

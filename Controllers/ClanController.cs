@@ -225,7 +225,7 @@ namespace BeatLeader_Server.Controllers
                 return NotFound("wHAT?");
             }
 
-            string fileName = tag;
+            string fileName = tag + "clan";
             string? icon;
             try
             {
@@ -369,7 +369,7 @@ namespace BeatLeader_Server.Controllers
                 clan.Color = color;
             }
 
-            string fileName = clan.Tag;
+            string fileName = clan.Tag + "clan";
             try
             {
                 await _assetsContainerClient.CreateIfNotExistsAsync();

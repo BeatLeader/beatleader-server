@@ -1834,6 +1834,12 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.Property<int>("CountryRank")
                         .HasColumnType("int");
 
+                    b.Property<float>("FcAccuracy")
+                        .HasColumnType("real");
+
+                    b.Property<float>("FcPp")
+                        .HasColumnType("real");
+
                     b.Property<bool>("FullCombo")
                         .HasColumnType("bit");
 
@@ -1885,6 +1891,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
 
                     b.Property<int?>("ScoreImprovementId")
                         .HasColumnType("int");
+
+                    b.Property<bool>("Suspicious")
+                        .HasColumnType("bit");
 
                     b.Property<int>("Timepost")
                         .HasColumnType("int");

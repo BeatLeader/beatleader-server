@@ -72,6 +72,9 @@ namespace BeatLeader_Server.Utils
             public float BonusPp { get; set; }
             public int Rank { get; set; }
             public int CountryRank { get; set; }
+
+            public float FcAccuracy { get; set; }
+            public float FcPp { get; set; }
             public string Replay { get; set; }
             public string Modifiers { get; set; }
             public int BadCuts { get; set; }
@@ -248,6 +251,8 @@ namespace BeatLeader_Server.Utils
                 PlayerId = s.PlayerId,
                 Accuracy = s.Accuracy,
                 Pp = s.Pp,
+                FcAccuracy = s.FcAccuracy,
+                FcPp = s.FcPp,
                 BonusPp = s.BonusPp,
                 Rank = s.Rank,
                 Replay = s.Replay,
