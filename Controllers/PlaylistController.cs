@@ -482,7 +482,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? search = null,
             [FromQuery] string? type = null,
             [FromQuery] int? mapType = null,
-            [FromQuery] bool allTypes = false,
+            [FromQuery] int allTypes = 0,
             [FromQuery] string? mytype = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,

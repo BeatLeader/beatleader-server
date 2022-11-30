@@ -17,7 +17,7 @@ namespace BeatLeader_Server.Utils
             string? search = null,
             string? type = null,
             int? mapType = null,
-            bool allTypes = false,
+            int allTypes = 0,
             string? mytype = null,
             float? stars_from = null,
             float? stars_to = null,
@@ -212,13 +212,17 @@ namespace BeatLeader_Server.Utils
             if (mapType != null)
             {
                 int maptype = (int)mapType;
-                if (allTypes)
+                switch (allTypes)
                 {
-                    sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.Type == maptype);
-                }
-                else
-                {
-                    sequence = sequence.Include(lb => lb.Difficulty).Where(p => (p.Difficulty.Type & maptype) != 0);
+                    case 0:
+                        sequence = sequence.Include(lb => lb.Difficulty).Where(p => (p.Difficulty.Type & maptype) != 0);
+                        break;
+                    case 1:
+                        sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.Type == maptype);
+                        break;
+                    case 2:
+                        sequence = sequence.Include(lb => lb.Difficulty).Where(p => (p.Difficulty.Type & maptype) == 0);
+                        break;
                 }
             }
 
