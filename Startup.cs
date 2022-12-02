@@ -9,6 +9,7 @@ using Azure.Core.Extensions;
 using System;
 using System.Text.Json.Serialization;
 using BeatLeader_Server.Services;
+using AspNetCoreRateLimit;
 
 namespace BeatLeader_Server {
     public class AzureStorageConfig {
@@ -89,6 +90,30 @@ namespace BeatLeader_Server {
                 options.ClientId = beatSaverId;
                 options.ClientSecret = beatSaverSecret;
             });
+
+            services.AddMemoryCache();
+            services.Configure<IpRateLimitOptions>(options =>
+            {
+                options.EnableEndpointRateLimiting = true;
+                options.StackBlockedRequests = false;
+                options.HttpStatusCode = 429;
+                options.RealIpHeader = "X-Real-IP";
+                options.ClientIdHeader = "X-ClientId";
+                options.GeneralRules = new List<RateLimitRule>
+                    {
+                        new RateLimitRule
+                        {
+                            Endpoint = "GET:/score/*",
+                            Period = "1s",
+                            Limit = 30,
+                        }
+                    };
+            });
+            services.AddSingleton<IIpPolicyStore, MemoryCacheIpPolicyStore>();
+            services.AddSingleton<IRateLimitCounterStore, MemoryCacheRateLimitCounterStore>();
+            services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
+            services.AddSingleton<IProcessingStrategy, AsyncKeyLockProcessingStrategy>();
+            services.AddInMemoryRateLimiting();
 
             if (!Environment.IsDevelopment()) {
 
@@ -208,6 +233,7 @@ namespace BeatLeader_Server {
             app.UseWebSockets(new WebSocketOptions {
                 KeepAliveInterval = TimeSpan.FromMinutes(2)
             });
+            app.UseIpRateLimiting();
 
             app.UseRouting ();
 
