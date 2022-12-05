@@ -471,7 +471,11 @@ namespace BeatLeader_Server.Controllers
                     PatreonFeatures = p.PatreonFeatures,
                     ProfileSettings = p.ProfileSettings,
                     Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                }).ToList().Select(PostProcessSettings)
+                }).ToList().Select(PostProcessSettings).Select((p, i) => {
+                    p.Rank = i + (page - 1) * count + 1;
+
+                    return p;
+                })
             };
         }
 

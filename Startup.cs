@@ -104,8 +104,8 @@ namespace BeatLeader_Server {
                         new RateLimitRule
                         {
                             Endpoint = "GET:/score/*",
-                            Period = "1s",
-                            Limit = 30,
+                            Period = "10s",
+                            Limit = 10,
                         }
                     };
             });

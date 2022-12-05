@@ -730,6 +730,12 @@ namespace BeatLeader_Server.Controllers
                 {
                     intId = link.OculusID;
                 }
+            } else if (intId > 1000000000000000) {
+                var link = _context.AccountLinks.FirstOrDefault(el => el.PCOculusID == userId);
+                if (link != null)
+                {
+                    intId = link.OculusID;
+                }
             }
 
             AuthInfo? authInfo = _context.Auths.FirstOrDefault(a => a.Id == intId);
