@@ -16,7 +16,7 @@ namespace BeatLeader_Server.Utils
                 .Where(s => 
                     s.PlayerId == player.Id && 
                     s.Pp != 0 && 
-                    !s.Banned && s.LeaderboardId != null && 
+                    !s.Banned && 
                     !s.Qualification)
                 .OrderByDescending(s => s.Pp)
                 .ToList();
@@ -43,7 +43,7 @@ namespace BeatLeader_Server.Utils
 
             var rankedScores = context
                 .Scores
-                .Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && s.LeaderboardId != null && !s.Qualification)
+                .Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification)
                 .OrderByDescending(s => s.Pp)
                 .Select(s => new { 
                     Id = s.Id, 
@@ -70,6 +70,7 @@ namespace BeatLeader_Server.Utils
                 resultPP += s.Pp * weight;
             }
             player.Pp = resultPP;
+            context.Entry(player).Property(x => x.Pp).IsModified = true;
 
             var rankedPlayers = context
                 .Players
@@ -88,9 +89,11 @@ namespace BeatLeader_Server.Utils
                 var country = player.Country;
                 int topRank = rankedPlayers.First().Rank; int? topCountryRank = rankedPlayers.Where(p => p.Country == country).FirstOrDefault()?.CountryRank;
                 player.Rank = topRank;
+                context.Entry(player).Property(x => x.Rank).IsModified = true;
                 if (topCountryRank != null)
                 {
                     player.CountryRank = (int)topCountryRank;
+                    context.Entry(player).Property(x => x.CountryRank).IsModified = true;
                     topCountryRank++;
                 }
 
@@ -132,6 +135,7 @@ namespace BeatLeader_Server.Utils
             }
             if (player.ScoreStats != null) {
                 player.ScoreStats.AverageWeightedRankedAccuracy = sum / weights;
+                context.Entry(player.ScoreStats).Property(x => x.AverageWeightedRankedAccuracy).IsModified = true;
             }
 
             var scoresForWeightedRank = rankedScores.OrderBy(s => s.Rank).Take(100).ToList();
@@ -153,6 +157,7 @@ namespace BeatLeader_Server.Utils
             }
             if (player.ScoreStats != null) {
                 player.ScoreStats.AverageWeightedRankedRank = sum / weights;
+                context.Entry(player.ScoreStats).Property(x => x.AverageWeightedRankedRank).IsModified = true;
             }
         }
 
@@ -173,10 +178,10 @@ namespace BeatLeader_Server.Utils
                     .Select(lb => new { Pp = lb.Scores.Where(s =>
                         s.PlayerId == player.Id &&
                         s.Pp != 0 &&
-                        !s.Banned && s.LeaderboardId != null).Count() > 0 ? lb.Scores.Where(s =>
+                        !s.Banned).Count() > 0 ? lb.Scores.Where(s =>
                         s.PlayerId == player.Id &&
                         s.Pp != 0 &&
-                        !s.Banned && s.LeaderboardId != null).First().Pp : 0 } )
+                        !s.Banned).First().Pp : 0 } )
                     .OrderByDescending(s => s.Pp).ToList();
                 if (eventRanking.Players == null)
                 {

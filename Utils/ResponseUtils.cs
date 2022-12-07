@@ -72,7 +72,7 @@ namespace BeatLeader_Server.Utils
             public float BonusPp { get; set; }
             public int Rank { get; set; }
             public int CountryRank { get; set; }
-
+            public string? Country { get; set; }
             public float FcAccuracy { get; set; }
             public float FcPp { get; set; }
             public string Replay { get; set; }
@@ -274,7 +274,8 @@ namespace BeatLeader_Server.Utils
                 Player = PostProcessSettings(ResponseFromPlayer(s.Player)),
                 ScoreImprovement = s.ScoreImprovement,
                 RankVoting = s.RankVoting,
-                Metadata = s.Metadata
+                Metadata = s.Metadata,
+                Country = s.Country
             };
         }
 

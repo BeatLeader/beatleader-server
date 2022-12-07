@@ -39,7 +39,7 @@ namespace BeatLeader_Server.Models
         public int BaseScore { get; set; }
         public int ModifiedScore { get; set; }
         public float Accuracy { get; set; }
-        public string? PlayerId { get; set; }
+        public string PlayerId { get; set; }
         public float Pp { get; set; }
         public float BonusPp { get; set; }
         public bool Qualification { get; set; }
@@ -65,9 +65,9 @@ namespace BeatLeader_Server.Models
         public int TimesetMig { get; set; }
         public int Timepost { get; set; }
         public string Platform { get; set; } = "";
-        public Player? Player { get; set; }
-        public string? LeaderboardId { get; set; }
-        public Leaderboard? Leaderboard { get; set; }
+        public Player Player { get; set; }
+        public string LeaderboardId { get; set; }
+        public Leaderboard Leaderboard { get; set; }
         public int AuthorizedReplayWatched { get; set; }
         public int AnonimusReplayWatched { get; set; }
         //public bool AltOnly { get; set; }

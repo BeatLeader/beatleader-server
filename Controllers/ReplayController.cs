@@ -276,7 +276,7 @@ namespace BeatLeader_Server.Controllers
                     var ip = context.Request.HttpContext.Connection.RemoteIpAddress;
                     if (ip != null)
                     {
-                        player.Country = WebUtils.GetCountryByIp(ip.ToString());
+                        player.Country = WebUtils.GetCountryByIp(ip.ToString()) ?? "not set";
                     }
                 }
             }
@@ -297,6 +297,8 @@ namespace BeatLeader_Server.Controllers
             resultScore.Timepost = timeset;
 
             ScoreImprovement improvement = new ScoreImprovement();
+            resultScore.ScoreImprovement = improvement;
+
             PlayerLeaderboardStats? stats = null;
 
             using (_serverTiming.TimeAction("score"))
@@ -380,6 +382,7 @@ namespace BeatLeader_Server.Controllers
                         };
                     }
                     currentScore.LeaderboardId = null;
+                    _context.Scores.Remove(currentScore);
 
                     int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                     if ((timestamp - uint.Parse(currentScore.Timeset)) > 60 * 60 * 24)
@@ -404,57 +407,64 @@ namespace BeatLeader_Server.Controllers
                     player.ScoreStats.LastUnrankedScoreTime = timeset;
                 }
                 player.ScoreStats.LastScoreTime = timeset;
+                leaderboard.Plays++;
+
+                using (_serverTiming.TimeAction("db"))
+                {
+                    try
+                    {
+                        await _context.SaveChangesAsync();
+                    }
+                    catch (DbUpdateConcurrencyException ex)
+                    {
+                        await ex.Entries.Single().ReloadAsync();
+                        await _context.SaveChangesAsync();
+                    }
+                }
+
                 resultScore.LeaderboardId = leaderboard.Id;
                 _context.Scores.Add(resultScore);
-
-                _scoreStatsClient.DeleteBlobIfExistsAsync(leaderboard.Id + "-leaderboard.json");
-
-                var status = leaderboard.Difficulty.Status;
-                var isRanked = status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.nominated or DifficultyStatus.inevent;
-
-                var rankedScores = (isRanked 
-                        ?
-                    _context
-                        .Scores
-                        .Where(s => s.LeaderboardId == leaderboard.Id && s.Pp <= resultScore.Pp)
-                        .OrderByDescending(el => el.Pp)
-                        .Select(s => new { Id = s.Id, Rank = s.Rank })
-                        :
-                    _context
-                        .Scores
-                        .Where(s => s.LeaderboardId == leaderboard.Id && s.ModifiedScore <= resultScore.ModifiedScore)
-                        .OrderByDescending(el => el.ModifiedScore)
-                        .Select(s => new { Id = s.Id, Rank = s.Rank })
-                ).ToList();
-
-                int topRank = rankedScores.Count > 0 ? rankedScores[0].Rank : _readContext
-                    .Scores.Count(s => s.LeaderboardId == leaderboard.Id) + 1;
-
-                resultScore.Rank = topRank;
-
-                foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
-                {
-                    var score = _context.Scores.Local.FirstOrDefault(ls => ls.Id == s.Id);
-                    if (score == null) {
-                        score = new Score() { Id = s.Id };
-                        _context.Scores.Attach(score);
-                    }
-                    score.Rank = i + topRank + 1;
-                    
-                    _context.Entry(score).Property(x => x.Rank).IsModified = true;
-                }
-
-                if (currentScore != null)
-                {
-                    improvement.Rank = resultScore.Rank - currentScore.Rank;
-                }
-
-                leaderboard.Plays++;
             }
 
+            _context.ChangeTracker.AutoDetectChangesEnabled = false;
 
-            using (_serverTiming.TimeAction("db"))
+            var status = leaderboard.Difficulty.Status;
+            var isRanked = status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.nominated or DifficultyStatus.inevent;
+
+            var rankedScores = (isRanked 
+                    ?
+                _context
+                    .Scores
+                    .Where(s => s.LeaderboardId == leaderboard.Id && s.Pp <= resultScore.Pp)
+                    .OrderByDescending(el => el.Pp)
+                    .Select(s => new { Id = s.Id, Rank = s.Rank })
+                    :
+                _context
+                    .Scores
+                    .Where(s => s.LeaderboardId == leaderboard.Id && s.ModifiedScore <= resultScore.ModifiedScore)
+                    .OrderByDescending(el => el.ModifiedScore)
+                    .Select(s => new { Id = s.Id, Rank = s.Rank })
+            ).ToList();
+
+            int topRank = rankedScores.Count > 0 ? rankedScores[0].Rank : _readContext
+                .Scores.Count(s => s.LeaderboardId == leaderboard.Id) + 1;
+
+            resultScore.Rank = topRank;
+            _context.Entry(resultScore).Property(x => x.Rank).IsModified = true;
+
+            foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
             {
+                var score = _context.Scores.Local.FirstOrDefault(ls => ls.Id == s.Id);
+                if (score == null) {
+                    score = new Score() { Id = s.Id };
+                    _context.Scores.Attach(score);
+                }
+                score.Rank = i + topRank + 1;
+                    
+                _context.Entry(score).Property(x => x.Rank).IsModified = true;
+            }
+
+            using (_serverTiming.TimeAction("db")) {
                 try
                 {
                     await _context.BulkSaveChangesAsync();
@@ -464,72 +474,8 @@ namespace BeatLeader_Server.Controllers
                     await ex.Entries.Single().ReloadAsync();
                     await _context.BulkSaveChangesAsync();
                 }
-
-                await transaction.CommitAsync();
             }
-
-            var transaction2 = await _context.Database.BeginTransactionAsync();
-            float oldPp = player.Pp;
-            int oldRank = player.Rank;
-            using (_serverTiming.TimeAction("pp"))
-            {
-                player.ScoreStats.TotalScore += resultScore.ModifiedScore;
-                player.ScoreStats.AverageAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, resultScore.Accuracy);
-                if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
-                {
-                    player.ScoreStats.AverageRankedAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, resultScore.Accuracy);
-                    if (resultScore.Accuracy > player.ScoreStats.TopAccuracy)
-                    {
-                        player.ScoreStats.TopAccuracy = resultScore.Accuracy;
-                    }
-                    if (resultScore.Pp > player.ScoreStats.TopPp)
-                    {
-                        player.ScoreStats.TopPp = resultScore.Pp;
-                    }
-
-                    if (resultScore.BonusPp > player.ScoreStats.TopBonusPP)
-                    {
-                        player.ScoreStats.TopBonusPP = resultScore.BonusPp;
-                    }
-
-                    switch (resultScore.Accuracy)
-                    {
-                        case > 0.95f:
-                            player.ScoreStats.SSPPlays++;
-                            break;
-                        case > 0.9f:
-                            player.ScoreStats.SSPlays++;
-                            break;
-                        case > 0.85f:
-                            player.ScoreStats.SPPlays++;
-                            break;
-                        case > 0.8f:
-                            player.ScoreStats.SPlays++;
-                            break;
-                        default:
-                            player.ScoreStats.APlays++;
-                            break;
-                    }
-                }
-
-                if (currentScore != null)
-                {
-                    _context.ScoreRedirects.Add(new ScoreRedirect
-                    {
-                        OldScoreId = currentScore.Id,
-                        NewScoreId = resultScore.Id,
-                    });
-                }
-
-                if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
-                {
-                    _context.RecalculatePPAndRankFast(player);
-                }
-
-                resultScore.ReplayOffsets = offsets;
-
-                //await continuing;
-            }
+            await transaction.CommitAsync();
 
             context.Response.OnCompleted(async () => {
                 await PostUploadAction(
@@ -540,12 +486,10 @@ namespace BeatLeader_Server.Controllers
                     player, 
                     improvement, 
                     resultScore, 
-                    currentScore, 
-                    oldPp, 
-                    oldRank, 
+                    currentScore,
                     context, 
-                    stats, 
-                    transaction2);
+                    offsets,
+                    stats);
             });
 
             return (RemoveLeaderboard(resultScore, resultScore.Rank), false);
@@ -561,11 +505,93 @@ namespace BeatLeader_Server.Controllers
             ScoreImprovement improvement,
             Score resultScore,
             Score? currentScore,
-            float oldPp,
-            int oldRank,
             HttpContext context,
-            PlayerLeaderboardStats? stats,
-            IDbContextTransaction transaction2) {
+            ReplayOffsets offsets,
+            PlayerLeaderboardStats? stats) {
+
+            _scoreStatsClient.DeleteBlobIfExistsAsync(leaderboard.Id + "-leaderboard.json");
+
+            float oldPp = player.Pp;
+            int oldRank = player.Rank;
+
+            var transaction2 = await _context.Database.BeginTransactionAsync();
+
+            if (currentScore != null)
+            {
+                _context.Entry(improvement).Property(x => x.Rank).IsModified = true;
+                improvement.Rank = resultScore.Rank - currentScore.Rank;
+            }
+
+            if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
+                _context.RecalculatePPAndRankFast(player);
+            }
+
+            try
+            {
+                await _context.BulkSaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                await ex.Entries.Single().ReloadAsync();
+                await _context.BulkSaveChangesAsync();
+            }
+
+            await transaction2.CommitAsync();
+
+            _context.ChangeTracker.AutoDetectChangesEnabled = true;
+            transaction2 = await _context.Database.BeginTransactionAsync();
+
+            player.ScoreStats.TotalScore += resultScore.ModifiedScore;
+            player.ScoreStats.AverageAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, resultScore.Accuracy);
+            if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
+            {
+                player.ScoreStats.AverageRankedAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, resultScore.Accuracy);
+                if (resultScore.Accuracy > player.ScoreStats.TopAccuracy)
+                {
+                    player.ScoreStats.TopAccuracy = resultScore.Accuracy;
+                }
+                if (resultScore.Pp > player.ScoreStats.TopPp)
+                {
+                    player.ScoreStats.TopPp = resultScore.Pp;
+                }
+
+                if (resultScore.BonusPp > player.ScoreStats.TopBonusPP)
+                {
+                    player.ScoreStats.TopBonusPP = resultScore.BonusPp;
+                }
+
+                switch (resultScore.Accuracy)
+                {
+                    case > 0.95f:
+                        player.ScoreStats.SSPPlays++;
+                        break;
+                    case > 0.9f:
+                        player.ScoreStats.SSPlays++;
+                        break;
+                    case > 0.85f:
+                        player.ScoreStats.SPPlays++;
+                        break;
+                    case > 0.8f:
+                        player.ScoreStats.SPlays++;
+                        break;
+                    default:
+                        player.ScoreStats.APlays++;
+                        break;
+                }
+            }
+
+            if (currentScore != null)
+            {
+                _context.ScoreRedirects.Add(new ScoreRedirect
+                {
+                    OldScoreId = currentScore.Id,
+                    NewScoreId = resultScore.Id,
+                });
+            }
+
+            resultScore.ReplayOffsets = offsets;
+
+            //await continuing;
 
             //resultScore.ReplayOffsets = replayDecoder.offsets;
             //var replay = replayDecoder.replay;
@@ -668,7 +694,7 @@ namespace BeatLeader_Server.Controllers
                 var ip = context.Request.HttpContext.Connection.RemoteIpAddress;
                 if (ip != null)
                 {
-                    resultScore.Country = WebUtils.GetCountryByIp(ip.ToString());
+                    resultScore.Country = WebUtils.GetCountryByIp(ip.ToString()) ?? "not set";
                 }
 
                 if (currentScore != null)
@@ -690,8 +716,6 @@ namespace BeatLeader_Server.Controllers
                         Player = replay.info.playerID,
                     });
                 }
-
-                resultScore.ScoreImprovement = improvement;
 
                 await _context.SaveChangesAsync();
                 await transaction3.CommitAsync();
@@ -897,7 +921,7 @@ namespace BeatLeader_Server.Controllers
                 Type = EndType.Clear,
                 PlayerId = oldScore.PlayerId,
                 Replay = "",
-                OldScore = oldScore
+                //OldScore = oldScore
             };
 
             leaderboard.PlayerStats.Add(stats);

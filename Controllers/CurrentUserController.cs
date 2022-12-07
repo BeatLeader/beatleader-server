@@ -1033,7 +1033,7 @@ namespace BeatLeader_Server.Controllers
 
             List<Score> scores = _context.Scores
                 .Include(el => el.Player)
-                .Where(el => el.Player.Id == currentPlayer.Id && el.LeaderboardId != null)
+                .Where(el => el.Player.Id == currentPlayer.Id)
                 .Include(el => el.Leaderboard)
                 .ThenInclude(el => el.Scores).ToList();
             if (scores.Count() > 0) {
@@ -1320,7 +1320,7 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("You will can unban yourself after: " + (24 * 7 - (timeset - ban.Timeset) / (60 * 60)) + "hours");
             }
 
-            var scores = _context.Scores.Where(s => s.PlayerId == player.Id && s.LeaderboardId != null).ToList();
+            var scores = _context.Scores.Where(s => s.PlayerId == player.Id).ToList();
             var leaderboardsToUpdate = new List<string>();
             foreach (var score in scores)
             {

@@ -8,9 +8,9 @@ namespace BeatLeader_Server.Utils
 {
     public class WebUtils
     {
-        public static string GetCountryByIp(string ip)
+        public static string? GetCountryByIp(string ip)
         {
-            string result = "not set";
+            string? result = null;
             try
             {
                 string jsonResult = new WebClient().DownloadString("http://ipinfo.io/" + ip);
@@ -21,6 +21,20 @@ namespace BeatLeader_Server.Utils
                 }
             }
             catch { }
+
+            if (result == null) {
+                try
+                {
+                    string jsonResult = new WebClient().DownloadString("https://api.iplocation.net/?ip=" + ip);
+                    dynamic? info = JsonConvert.DeserializeObject<ExpandoObject>(jsonResult, new ExpandoObjectConverter());
+                    if (info != null)
+                    {
+                        result = info.country_code2;
+                    }
+                
+                }
+                catch{ }
+            }
 
             return result;
         }

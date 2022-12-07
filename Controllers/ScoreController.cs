@@ -577,11 +577,11 @@ namespace BeatLeader_Server.Controllers
                 if (friends != null)
                 {
                     var friendsList = friends.Friends.Select(f => f.Id).ToList();
-                    sequence = _readContext.Scores.Where(s => s.LeaderboardId != null && (s.PlayerId == player.Id || friendsList.Contains(s.PlayerId)));
+                    sequence = _readContext.Scores.Where(s => s.PlayerId == player.Id || friendsList.Contains(s.PlayerId));
                 }
                 else
                 {
-                    sequence = _readContext.Scores.Where(s => s.LeaderboardId != null && s.PlayerId == player.Id);
+                    sequence = _readContext.Scores.Where(s => s.PlayerId == player.Id);
                 }
                 switch (sortBy)
                 {

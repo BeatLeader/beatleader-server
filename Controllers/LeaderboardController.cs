@@ -413,7 +413,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/leaderboards/refresh")]
-        public async Task<ActionResult> RefreshLeaderboards()
+        public async Task<ActionResult> RefreshLeaderboards([FromQuery] string? id = null)
         {
             string currentId = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = await _context.Players.FindAsync(currentId);
@@ -421,7 +421,7 @@ namespace BeatLeader_Server.Controllers
             {
                 return Unauthorized();
             }
-            var leaderboards = _context.Leaderboards.Include(lb => lb.Scores.Where(s => !s.Banned && s.LeaderboardId != null)).Include(l => l.Difficulty).ToArray();
+            var leaderboards = _context.Leaderboards.Where(lb => id == null || lb.Id == id).Include(lb => lb.Scores.Where(s => !s.Banned)).Include(l => l.Difficulty).ToArray();
             int counter = 0;
             var transaction = await _context.Database.BeginTransactionAsync();
             foreach (var leaderboard in leaderboards)
@@ -551,7 +551,7 @@ namespace BeatLeader_Server.Controllers
             }
             
             var leaderboard = _context.Leaderboards.Where(lb => lb.Id == id).Include(lb => lb.Scores.Where(s =>
-                !s.Banned && s.LeaderboardId != null
+                !s.Banned
                 && !s.Modifiers.Contains("SS")
                 && !s.Modifiers.Contains("NA")
                 && !s.Modifiers.Contains("NB")

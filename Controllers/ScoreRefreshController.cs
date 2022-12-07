@@ -43,7 +43,7 @@ namespace BeatLeader_Server.Controllers
 
                 foreach (var leaderboard in allLeaderboards)
                 {
-                    var allScores = leaderboard.Scores.Where(s => !s.Banned && s.LeaderboardId != null).ToList();
+                    var allScores = leaderboard.Scores.Where(s => !s.Banned).ToList();
                     var status = leaderboard.Difficulty.Status;
                     var modifiers = leaderboard.Difficulty.ModifierValues;
                     bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.nominated || status == DifficultyStatus.inevent;
