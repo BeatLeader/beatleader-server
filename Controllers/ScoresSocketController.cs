@@ -90,6 +90,7 @@ namespace BeatLeader_Server.Controllers
 
         [NonAction]
         public static async Task TryPublishNewScore(Score score, IConfiguration configuration, AppContext context) {
+            try {
 
             string serverName = configuration.GetValue<string?>("ServerName");
             string socketHost = configuration.GetValue<string?>("SocketHost");
@@ -102,6 +103,7 @@ namespace BeatLeader_Server.Controllers
                 }
                 await PublishNewScore(scoreToPublish);
             }
+            } catch { }
         }
 
         [HttpGet("~/newscore")]

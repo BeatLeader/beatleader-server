@@ -204,6 +204,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             (Score resultScore, int maxScore) = ReplayUtils.ProcessReplayInfo(info, leaderboard.Difficulty);
+            ReplayUtils.PostProcessReplay(resultScore, replay);
 
             Score? currentScore;
             using (_serverTiming.TimeAction("currS"))
@@ -601,8 +602,6 @@ namespace BeatLeader_Server.Controllers
 
                 return;
             }
-
-            ReplayUtils.PostProcessReplay(resultScore, replay);
 
             if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
             {
