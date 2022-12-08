@@ -421,14 +421,13 @@ namespace BeatLeader_Server.Controllers
                         await ex.Entries.Single().ReloadAsync();
                         await _context.SaveChangesAsync();
                     }
-                }
 
-                resultScore.LeaderboardId = leaderboard.Id;
-                _context.Scores.Add(resultScore);
+                    resultScore.LeaderboardId = leaderboard.Id;
+                    _context.Scores.Add(resultScore);
+                }
             }
 
             _context.ChangeTracker.AutoDetectChangesEnabled = false;
-
             var status = leaderboard.Difficulty.Status;
             var isRanked = status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.nominated or DifficultyStatus.inevent;
 
@@ -436,19 +435,23 @@ namespace BeatLeader_Server.Controllers
                     ?
                 _context
                     .Scores
-                    .Where(s => s.LeaderboardId == leaderboard.Id && s.Pp <= resultScore.Pp)
+                    .Where(s => s.LeaderboardId == leaderboard.Id && s.Pp <= resultScore.Pp && !s.Banned)
                     .OrderByDescending(el => el.Pp)
                     .Select(s => new { Id = s.Id, Rank = s.Rank })
                     :
                 _context
                     .Scores
-                    .Where(s => s.LeaderboardId == leaderboard.Id && s.ModifiedScore <= resultScore.ModifiedScore)
+                    .Where(s => s.LeaderboardId == leaderboard.Id && s.ModifiedScore <= resultScore.ModifiedScore && !s.Banned)
                     .OrderByDescending(el => el.ModifiedScore)
                     .Select(s => new { Id = s.Id, Rank = s.Rank })
             ).ToList();
 
-            int topRank = rankedScores.Count > 0 ? rankedScores[0].Rank : _readContext
+            int topRank = rankedScores.Count > 0 ? rankedScores[0].Rank : _context
                 .Scores.Count(s => s.LeaderboardId == leaderboard.Id) + 1;
+
+            if (currentScore?.Rank < topRank) {
+                topRank--;
+            }
 
             resultScore.Rank = topRank;
             _context.Entry(resultScore).Property(x => x.Rank).IsModified = true;
@@ -475,8 +478,9 @@ namespace BeatLeader_Server.Controllers
                     await ex.Entries.Single().ReloadAsync();
                     await _context.BulkSaveChangesAsync();
                 }
+
+                await transaction.CommitAsync();
             }
-            await transaction.CommitAsync();
 
             context.Response.OnCompleted(async () => {
                 await PostUploadAction(
