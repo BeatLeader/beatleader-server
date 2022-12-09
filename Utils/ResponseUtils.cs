@@ -50,6 +50,7 @@ namespace BeatLeader_Server.Utils
 
             public bool Banned { get; set; }
             public bool Inactive { get; set; }
+            public Ban? BanDescription { get; set; }
 
             public string ExternalProfileUrl { get; set; } = "";
             

@@ -278,6 +278,27 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpDelete("~/admin/playerHistory/{id}")]
+        public async Task<ActionResult> DeleteHistory(int id)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = _context.Players.Find(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var history = _context.PlayerScoreStatsHistory.FirstOrDefault(h => h.Id == id);
+            if (history == null) {
+                return NotFound();
+            }
+            _context.PlayerScoreStatsHistory.Remove(history);
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
         public static string GolovaID = "76561198059961776";
     }
 }

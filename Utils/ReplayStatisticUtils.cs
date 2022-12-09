@@ -180,8 +180,9 @@ namespace BeatLeader_Server.Utils
                 return (null, error);
             }
 
-            (AccuracyTracker accuracy, List<NoteStruct> structs, int maxCombo) = Accuracy(replay);
+            (AccuracyTracker accuracy, List<NoteStruct> structs, int maxCombo, int maxStreak) = Accuracy(replay);
             result.hitTracker.maxCombo = maxCombo;
+            result.hitTracker.maxStreak = maxStreak;
             result.winTracker.totalScore = structs.Last().totalScore;
             result.accuracyTracker = accuracy;
             result.scoreGraphTracker = ScoreGraph(structs, (int)replay.frames.Last().time);
@@ -209,7 +210,7 @@ namespace BeatLeader_Server.Utils
             return null;
         }
 
-        public static (AccuracyTracker, List<NoteStruct>, int) Accuracy(Replay replay)
+        public static (AccuracyTracker, List<NoteStruct>, int, int) Accuracy(Replay replay)
         {
             AccuracyTracker result = new AccuracyTracker();
             result.gridAcc = new List<float>(new float[12]);
@@ -368,6 +369,7 @@ namespace BeatLeader_Server.Utils
             int combo = 0, maxCombo = 0;
             int maxScore = 0;
             int fcScore = 0; float currentFcAcc = 0;
+            int streak = 0, maxStreak = 0; 
             MultiplierCounter maxCounter = new MultiplierCounter();
             MultiplierCounter normalCounter = new MultiplierCounter();
 
@@ -402,6 +404,15 @@ namespace BeatLeader_Server.Utils
                     fcScore += maxCounter.Multiplier * note.score;
                 }
 
+                if (note.score == 115) {
+                    streak++;
+                } else if (note.isBlock) {
+                    if (streak > maxStreak) {
+                        maxStreak = streak; 
+                    }
+                    streak = 0;
+                }
+
                 if (combo > maxCombo)
                 {
                     maxCombo = combo;
@@ -426,7 +437,7 @@ namespace BeatLeader_Server.Utils
 
             result.fcAcc = currentFcAcc;
 
-            return (result, allStructs, maxCombo);
+            return (result, allStructs, maxCombo, maxStreak);
         }
 
         public static ScoreGraphTracker ScoreGraph(List<NoteStruct> structs, int replayLength)

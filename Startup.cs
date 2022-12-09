@@ -195,6 +195,7 @@ namespace BeatLeader_Server {
                 services.AddHostedService<DailyRefresh>();
                 services.AddHostedService<HistoryService>();
                 services.AddHostedService<RankingService>();
+                services.AddHostedService<_10MinRefresh>();
             }
             services.AddMvc ().AddControllersAsServices ().AddJsonOptions (options => {
                 options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;

@@ -421,54 +421,62 @@ namespace BeatLeader_Server.Controllers
             {
                 return Unauthorized();
             }
-            var leaderboards = _context.Leaderboards.Where(lb => id == null || lb.Id == id).Include(lb => lb.Scores.Where(s => !s.Banned)).Include(l => l.Difficulty).ToArray();
-            int counter = 0;
-            var transaction = await _context.Database.BeginTransactionAsync();
-            foreach (var leaderboard in leaderboards)
-            {
-                List<Score>? rankedScores;
-                var status = leaderboard.Difficulty.Status;
-                if (status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.nominated) {
-                    rankedScores = leaderboard.Scores.OrderByDescending(el => el.Pp).ToList();
-                } else {
-                    rankedScores = leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();
-                }
-                if (rankedScores.Count > 0) {
-                    foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
-                    {
-                        s.Rank = i + 1;
-                    }
-                }
-                counter++;
-                if (counter == 100) {
-                    counter = 0;
-                    try
-                    {
-                        await _context.SaveChangesAsync();
-                    }
-                    catch (Exception e)
-                    {
+            var query = _context
+                .Leaderboards.Where(lb => true);
 
-                        _context.RejectChanges();
-                        await transaction.RollbackAsync();
-                        transaction = await _context.Database.BeginTransactionAsync();
-                        continue;
-                    }
-                    await transaction.CommitAsync();
-                    transaction = await _context.Database.BeginTransactionAsync();
-                }
+            if (id != null) {
+                query = query.Where(lb => lb.Id == id);
             }
 
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (Exception e)
-            {
-                _context.RejectChanges();
-            }
-            await transaction.CommitAsync();
+            int count = query.Count();
 
+            for (int i = 0; i < count; i += 1000)
+            {
+                var leaderboards = 
+                query
+                .OrderBy(lb => lb.Id)
+                .Skip(i)
+                .Take(1000)
+                .Select(lb => new {
+                    Status = lb.Difficulty.Status,
+                    Scores = lb.Scores.Where(s => !s.Banned).Select(s => new {
+                        Id = s.Id,
+                        Pp = s.Pp,
+                        ModifiedScore = s.ModifiedScore
+                    })
+                })
+                
+                .ToArray();
+
+
+                foreach (var leaderboard in leaderboards)
+                {
+                    var status = leaderboard.Status;
+
+                    var rankedScores = status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.nominated 
+                        ? leaderboard.Scores.OrderByDescending(el => el.Pp).ToList()
+                        : leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();
+                    if (rankedScores.Count > 0) {
+                        foreach ((int ii, var s) in rankedScores.Select((value, ii) => (ii, value)))
+                        {
+                            Score score = new Score() { Id = s.Id };
+                            _context.Scores.Attach(score);
+                            score.Rank = ii + 1;
+                    
+                            _context.Entry(score).Property(x => x.Rank).IsModified = true;
+                        }
+                    }
+                }
+
+                try
+                {
+                    await _context.BulkSaveChangesAsync();
+                }
+                catch (Exception e)
+                {
+                    _context.RejectChanges();
+                }
+            }
 
             return Ok();
         }

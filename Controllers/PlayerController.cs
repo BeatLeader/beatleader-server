@@ -108,7 +108,12 @@ namespace BeatLeader_Server.Controllers
                 }
             }
             if (player != null) {
-                return PostProcessSettings(ResponseFullFromPlayer(player));
+                var result = ResponseFullFromPlayer(player);
+                if (result.Banned) {
+                    result.BanDescription = _context.Bans.OrderByDescending(b => b.Timeset).FirstOrDefault(b => b.PlayerId == player.Id);
+                }
+
+                return PostProcessSettings(result);
             } else {
                 return NotFound();
             }
