@@ -161,6 +161,43 @@ namespace BeatLeader_Server.Utils
             }
         }
 
+        public static void RecalculatePPAndRankFaster(this AppContext context, Player player)
+        {
+            float oldPp = player.Pp;
+
+            var rankedScores = context
+                .Scores
+                .Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification)
+                .OrderByDescending(s => s.Pp)
+                .Select(s => new { Pp = s.Pp })
+                .ToList();
+            float resultPP = 0f;
+            foreach ((int i, float pp) in rankedScores.Select((value, i) => (i, value.Pp)))
+            {
+                float weight = MathF.Pow(0.965f, i);
+                resultPP += pp * weight;
+            }
+            player.Pp = resultPP;
+
+            var rankedPlayers = context
+                .Players
+                .Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id)
+                .OrderByDescending(t => t.Pp)
+                .Select(p => new { Pp = p.Pp, Country = p.Country, Rank = p.Rank, CountryRank = p.CountryRank })
+                .ToList();
+
+            if (rankedPlayers.Count() > 0)
+            {
+                player.Rank = rankedPlayers[0].Rank;
+
+                var topCountryPlayer = rankedPlayers.FirstOrDefault(p => p.Country == player.Country);
+                if (topCountryPlayer != null)
+                {
+                    player.CountryRank = topCountryPlayer.CountryRank;
+                }
+            }
+        }
+
         public static void RecalculateEventsPP(this AppContext context, Player player, Leaderboard leaderboard)
         {
             int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;

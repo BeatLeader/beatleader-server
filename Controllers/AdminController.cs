@@ -278,6 +278,41 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpGet("~/admin/migrateMappers")]
+        public async Task<ActionResult> MigrateMappers()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = _context.Players.Find(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var lbs = _context.Leaderboards.Where(l => l.Qualification != null).Include(l => l.Qualification).ToList();
+            foreach (var lb in lbs)
+            {
+                if (lb.Qualification.MapperId != null) {
+                    var player = _context.Players.FirstOrDefault(p => p.Id == lb.Qualification.MapperId);
+                    if (player == null) {
+                        string beatSaverId = lb.Qualification.MapperId.Substring(1);
+
+                        var link = _context.BeatSaverLinks.FirstOrDefault(p => p.BeatSaverId == beatSaverId);
+
+                        if (link != null) {
+                            player = _context.Players.FirstOrDefault(p => p.Id == link.Id);
+                            if (player != null) {
+                                lb.Qualification.MapperId = player.Id;
+                            }
+                        }
+                    }
+                }
+            }
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
         [HttpDelete("~/admin/playerHistory/{id}")]
         public async Task<ActionResult> DeleteHistory(int id)
         {

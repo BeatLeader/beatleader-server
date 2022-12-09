@@ -96,6 +96,7 @@ namespace BeatLeader_Server.Utils
             public ScoreImprovement? ScoreImprovement { get; set; }
             public RankVoting? RankVoting { get; set; }
             public ScoreMetadata? Metadata { get; set; }
+            public ReplayOffsets? Offsets { get; set; }
         }
 
         public class SaverScoreResponse {
@@ -276,7 +277,8 @@ namespace BeatLeader_Server.Utils
                 ScoreImprovement = s.ScoreImprovement,
                 RankVoting = s.RankVoting,
                 Metadata = s.Metadata,
-                Country = s.Country
+                Country = s.Country,
+                Offsets = s.ReplayOffsets
             };
         }
 

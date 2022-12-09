@@ -172,6 +172,7 @@ namespace BeatLeader_Server.Controllers
                                 .ThenInclude(lb => lb.Difficulty)
                                 .ThenInclude(d => d.ModifierValues)
                             .Include(sc => sc.ScoreImprovement)
+                            .Include(sc => sc.ReplayOffsets)
                             .Select(ScoreWithMyScore)
                             .ToList()
                 };

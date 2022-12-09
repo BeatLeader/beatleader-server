@@ -434,7 +434,9 @@ namespace BeatLeader_Server.Utils
 
                 currentFcAcc = (float)fcScore / maxScore;
             }
-
+            if (streak > maxStreak) {
+                maxStreak = streak; 
+            }
             result.fcAcc = currentFcAcc;
 
             return (result, allStructs, maxCombo, maxStreak);
