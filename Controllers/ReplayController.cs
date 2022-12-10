@@ -482,6 +482,8 @@ namespace BeatLeader_Server.Controllers
                 await transaction.CommitAsync();
             }
 
+            _context.RecalculatePPAndRankFaster(player);
+
             context.Response.OnCompleted(async () => {
                 await PostUploadAction(
                     replay,
