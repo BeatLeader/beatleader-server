@@ -482,7 +482,7 @@ namespace BeatLeader_Server.Controllers
                 await transaction.CommitAsync();
             }
 
-            _context.RecalculatePPAndRankFaster(player);
+            (float pp, int rank, int countryRank) = _context.RecalculatePPAndRankFaster(player);
 
             context.Response.OnCompleted(async () => {
                 await PostUploadAction(
@@ -499,7 +499,12 @@ namespace BeatLeader_Server.Controllers
                     stats);
             });
 
-            return (RemoveLeaderboard(resultScore, resultScore.Rank), false);
+            var result = RemoveLeaderboard(resultScore, resultScore.Rank);
+            result.Player.Rank = rank;
+            result.Player.CountryRank = countryRank;
+            result.Player.Pp = pp;
+
+            return (result, false);
         }
 
         [NonAction]
@@ -642,7 +647,7 @@ namespace BeatLeader_Server.Controllers
 
                 await _replaysClient.CreateIfNotExistsAsync();
                 string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
-                resultScore.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/replays/" : "https://cdn.beatleader.xyz/replays/") + fileName;
+                resultScore.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/replays/" : "https://beatleadercdn.blob.core.windows.net/replays/") + fileName;
                 string tempName = fileName + "temp";
                 string replayLink = resultScore.Replay;
                 resultScore.Replay += "temp";
@@ -891,7 +896,7 @@ namespace BeatLeader_Server.Controllers
                 //{
                 //    await _otherReplaysClient.CreateIfNotExistsAsync();
                 //    string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + "-" + timeset + ".bsor";
-                //    stats.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/otherreplays/" : "https://cdn.beatleader.xyz/otherreplays/") + fileName;
+                //    stats.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/otherreplays/" : "https://beatleadercdn.blob.core.windows.net/otherreplays/") + fileName;
                 //    await _otherReplaysClient.DeleteBlobIfExistsAsync(fileName);
                 //    await _otherReplaysClient.UploadBlobAsync(fileName, new BinaryData(replayData));
                 //}
@@ -986,7 +991,7 @@ namespace BeatLeader_Server.Controllers
         //            string oldFileName = oldScore.Replay.Split("/").Last();
         //            string newFileName = oldFileName.Split(".").First() + "-" + timeset + ".bsor";
         //            await _otherReplaysClient.GetBlobClient(newFileName).StartCopyFromUri(_replaysClient.GetBlobClient(oldFileName).Uri).WaitForCompletionAsync();
-        //            stats.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/otherreplays/" : "https://cdn.beatleader.xyz/otherreplays/") + newFileName;
+        //            stats.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/otherreplays/" : "https://beatleadercdn.blob.core.windows.net/otherreplays/") + newFileName;
         //        }
         //    }
         //    catch { }

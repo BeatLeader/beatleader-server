@@ -241,7 +241,7 @@ namespace BeatLeader_Server.Controllers
                 await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
                 await _assetsContainerClient.UploadBlobAsync(fileName, stream);
 
-                icon = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://cdn.beatleader.xyz/assets/") + fileName;
+                icon = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://beatleadercdn.blob.core.windows.net/assets/") + fileName;
             }
             catch (Exception e)
             {
@@ -254,7 +254,7 @@ namespace BeatLeader_Server.Controllers
                 Tag = upperTag,
                 Color = color,
                 LeaderID = currentID,
-                Icon = icon ?? "https://cdn.beatleader.xyz/assets/clan.png",
+                Icon = icon ?? "https://beatleadercdn.blob.core.windows.net/assets/clan.png",
                 Description = description,
                 Bio = bio,
                 PlayersCount = 1,
@@ -385,7 +385,7 @@ namespace BeatLeader_Server.Controllers
                     await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
                     await _assetsContainerClient.UploadBlobAsync(fileName, stream);
 
-                    clan.Icon = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://cdn.beatleader.xyz/assets/") + fileName;
+                    clan.Icon = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://beatleadercdn.blob.core.windows.net/assets/") + fileName;
                 }
             }
             catch (Exception)

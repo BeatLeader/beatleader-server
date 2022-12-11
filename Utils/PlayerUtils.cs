@@ -161,7 +161,7 @@ namespace BeatLeader_Server.Utils
             }
         }
 
-        public static void RecalculatePPAndRankFaster(this AppContext context, Player player)
+        public static (float, int, int) RecalculatePPAndRankFaster(this AppContext context, Player player)
         {
             float oldPp = player.Pp;
 
@@ -177,7 +177,6 @@ namespace BeatLeader_Server.Utils
                 float weight = MathF.Pow(0.965f, i);
                 resultPP += pp * weight;
             }
-            player.Pp = resultPP;
 
             var rankedPlayers = context
                 .Players
@@ -186,16 +185,21 @@ namespace BeatLeader_Server.Utils
                 .Select(p => new { Pp = p.Pp, Country = p.Country, Rank = p.Rank, CountryRank = p.CountryRank })
                 .ToList();
 
+            int rank = player.Rank;
+            int countryRank = player.CountryRank;
+
             if (rankedPlayers.Count() > 0)
             {
-                player.Rank = rankedPlayers[0].Rank;
+                rank = rankedPlayers[0].Rank;
 
                 var topCountryPlayer = rankedPlayers.FirstOrDefault(p => p.Country == player.Country);
                 if (topCountryPlayer != null)
                 {
-                    player.CountryRank = topCountryPlayer.CountryRank;
+                    countryRank = topCountryPlayer.CountryRank;
                 }
             }
+
+            return (resultPP, rank, countryRank);
         }
 
         public static void RecalculateEventsPP(this AppContext context, Player player, Leaderboard leaderboard)

@@ -238,7 +238,7 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Can't decode songs");
             }
             playlist.customData = new CustomData { 
-                syncURL = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/playlists/" : "https://cdn.beatleader.xyz/playlists/") + id + ".bplist",
+                syncURL = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/playlists/" : "https://beatleadercdn.blob.core.windows.net/playlists/") + id + ".bplist",
                 owner = currentID,
                 id = id.ToString()
             };
@@ -352,7 +352,7 @@ namespace BeatLeader_Server.Controllers
 
             playlist.songs = songs.DistinctBy(s => s.hash).ToList();
             playlist.customData = new CustomData { 
-                syncURL = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/playlists/" : "https://cdn.beatleader.xyz/playlists/") + "ranked.bplist",
+                syncURL = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/playlists/" : "https://beatleadercdn.blob.core.windows.net/playlists/") + "ranked.bplist",
                 owner = "BeatLeader",
                 id = "ranked"
             };
@@ -406,7 +406,7 @@ namespace BeatLeader_Server.Controllers
             playlist.songs = songs.DistinctBy(s => s.hash).ToList();
             playlist.customData = new CustomData
             {
-                syncURL = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/playlists/" : "https://cdn.beatleader.xyz/playlists/") + "nominated.bplist",
+                syncURL = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/playlists/" : "https://beatleadercdn.blob.core.windows.net/playlists/") + "nominated.bplist",
                 owner = "BeatLeader",
                 id = "nominated"
             };
@@ -458,7 +458,7 @@ namespace BeatLeader_Server.Controllers
 
             playlist.songs = songs.DistinctBy(s => s.hash).ToList();
             playlist.customData = new CustomData { 
-                syncURL = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/playlists/" : "https://cdn.beatleader.xyz/playlists/") + "qualified.bplist",
+                syncURL = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/playlists/" : "https://beatleadercdn.blob.core.windows.net/playlists/") + "qualified.bplist",
                 owner = "BeatLeader",
                 id = "qualified"
             };
@@ -700,7 +700,7 @@ namespace BeatLeader_Server.Controllers
                 Players = players,
                 EndDate = endDate,
                 PlaylistId = id,
-                Image = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://cdn.beatleader.xyz/assets/") + fileName
+                Image = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://beatleadercdn.blob.core.windows.net/assets/") + fileName
             };
 
             _context.EventRankings.Add(eventRanking);

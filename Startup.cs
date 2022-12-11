@@ -167,7 +167,7 @@ namespace BeatLeader_Server {
             string readWriteConnection;
             if (Environment.IsDevelopment())
             {
-                readWriteConnection = "Data Source = tcp:localhost,1433; Initial Catalog = BeatLeader; User Id = sa; Password = SuperStrong!";
+                readWriteConnection = "Data Source = tcp:localhost,1433; Initial Catalog = BeatLeader; User Id = sa; Password = SuperStrong!; encrypt=fals";
             }
             else
             {
@@ -176,7 +176,7 @@ namespace BeatLeader_Server {
             string readConnection;
             if (Environment.IsDevelopment())
             {
-                readConnection = "Data Source = tcp:localhost,1433; Initial Catalog = BeatLeader; ApplicationIntent=ReadOnly; User Id = sa; Password = SuperStrong!";
+                readConnection = "Data Source = tcp:localhost,1433; Initial Catalog = BeatLeader; ApplicationIntent=ReadOnly; User Id = sa; Password = SuperStrong!; encrypt=fals";
             }
             else
             {

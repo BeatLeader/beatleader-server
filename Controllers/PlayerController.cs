@@ -154,7 +154,7 @@ namespace BeatLeader_Server.Controllers
                         await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
                         await _assetsContainerClient.UploadBlobAsync(fileName, stream);
 
-                        player.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://cdn.beatleader.xyz/assets/") + fileName;
+                        player.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://beatleadercdn.blob.core.windows.net/assets/") + fileName;
                     }
                 } else {
                     player = await GetPlayerFromBL(id);

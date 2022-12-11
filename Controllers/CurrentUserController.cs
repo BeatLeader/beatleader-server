@@ -400,7 +400,7 @@ namespace BeatLeader_Server.Controllers
             catch {}
 
             if (fileName != null) {
-                player.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://cdn.beatleader.xyz/assets/") + fileName;
+                player.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://beatleadercdn.blob.core.windows.net/assets/") + fileName;
             }
 
             PatreonFeatures? features = player.PatreonFeatures;
@@ -528,7 +528,7 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Error saving avatar");
             }
 
-            player.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://cdn.beatleader.xyz/assets/") + fileName;
+            player.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://beatleadercdn.blob.core.windows.net/assets/") + fileName;
 
             await _context.SaveChangesAsync();
 
@@ -1223,7 +1223,7 @@ namespace BeatLeader_Server.Controllers
                     return BadRequest("Error saving avatar");
                 }
 
-                p.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://cdn.beatleader.xyz/assets/") + fileName;
+                p.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://beatleadercdn.blob.core.windows.net/assets/") + fileName;
                 _context.Players.Update(p);
             }
 
