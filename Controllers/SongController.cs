@@ -27,6 +27,11 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/map/hash/{hash}")]
         public async Task<ActionResult<Song>> GetHash(string hash)
         {
+            if (hash.Length < 40) {
+                return BadRequest("Hash is to short");
+            } else {
+                hash = hash.Substring(0, 40);
+            }
             (Song? song, _) = await GetOrAddSong(hash);
             if (song is null)
             {

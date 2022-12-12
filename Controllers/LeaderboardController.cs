@@ -257,6 +257,11 @@ namespace BeatLeader_Server.Controllers
 
         [HttpGet("~/leaderboards/hash/{hash}")]
         public ActionResult<LeaderboardsResponse> GetLeaderboardsByHash(string hash) {
+            if (hash.Length < 40) {
+                return BadRequest("Hash is to short");
+            } else {
+                hash = hash.Substring(0, 40);
+            }
            var leaderboards = _readContext.Leaderboards
                 .Where(lb => lb.Song.Hash == hash)
                 .Include(lb => lb.Song)

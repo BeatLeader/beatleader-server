@@ -58,6 +58,12 @@ namespace BeatLeader_Server.Controllers
             string mode,
             [FromQuery] string? player = null)
         {
+            if (hash.Length < 40) {
+                return BadRequest("Hash is to short");
+            } else {
+                hash = hash.Substring(0, 40);
+            }
+
             string? userId = player ?? HttpContext.CurrentUserID(_context);
             if (userId == null) {
                 return BadRequest("Provide player or authenticate");
@@ -97,7 +103,11 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string stars = "",
             [FromQuery] int type = 0)
         {
-
+            if (hash.Length < 40) {
+                return BadRequest("Hash is to short");
+            } else {
+                hash = hash.Substring(0, 40);
+            }
             string? currentID = HttpContext.CurrentUserID(_context);
             if (currentID == null) {
                 return VoteStatus.CantVote;
@@ -129,6 +139,11 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string stars = "",
             [FromQuery] int type = 0)
         {
+            if (hash.Length < 40) {
+                return BadRequest("Hash is to short");
+            } else {
+                hash = hash.Substring(0, 40);
+            }
             (string? id, string? error) = await SteamHelper.GetPlayerIDFromTicket(ticket, _configuration);
             if (id == null && error != null)
             {
@@ -269,6 +284,11 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int type = 0,
             [FromQuery] string? modifiers = null)
         {
+            if (hash.Length < 40) {
+                return BadRequest("Hash is to short");
+            } else {
+                hash = hash.Substring(0, 40);
+            }
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
@@ -388,6 +408,11 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? criteriaCommentary,
             [FromQuery] string? modifiers = null)
         {
+            if (hash.Length < 40) {
+                return BadRequest("Hash is to short");
+            } else {
+                hash = hash.Substring(0, 40);
+            }
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
@@ -603,6 +628,11 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? criteriaCommentary,
             [FromQuery] string? modifiers)
         {
+            if (hash.Length < 40) {
+                return BadRequest("Hash is to short");
+            } else {
+                hash = hash.Substring(0, 40);
+            }
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
@@ -738,6 +768,11 @@ namespace BeatLeader_Server.Controllers
             string diff,
             string mode)
         {
+            if (hash.Length < 40) {
+                return BadRequest("Hash is to short");
+            } else {
+                hash = hash.Substring(0, 40);
+            }
             string? currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
@@ -851,6 +886,11 @@ namespace BeatLeader_Server.Controllers
             string diff,
             string mode)
         {
+            if (hash.Length < 40) {
+                return BadRequest("Hash is to short");
+            } else {
+                hash = hash.Substring(0, 40);
+            }
             string? currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
@@ -901,6 +941,11 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] float stars = 0,
             [FromQuery] int type = 0)
         {
+            if (hash.Length < 40) {
+                return BadRequest("Hash is to short");
+            } else {
+                hash = hash.Substring(0, 40);
+            }
             string? currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
