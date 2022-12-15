@@ -336,7 +336,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             PlayerResponse? currentPlayer = null;
-            var song = _context.Songs.Select(s => new { Id = s.Id, Hash = s.Hash }).FirstOrDefault(s => s.Hash == hash);
+            var song = _readContext.Songs.Select(s => new { Id = s.Id, Hash = s.Hash }).FirstOrDefault(s => s.Hash == hash);
             if (song == null) {
                 return result;
             }
@@ -347,7 +347,7 @@ namespace BeatLeader_Server.Controllers
 
             int modeValue = SongUtils.ModeForModeName(mode);
             if (modeValue == 0) {
-                var customMode = _context.CustomModes.FirstOrDefault(m => m.Name == mode);
+                var customMode = _readContext.CustomModes.FirstOrDefault(m => m.Name == mode);
                 if (customMode != null) {
                     modeValue = customMode.Id + 10;
                 } else {
@@ -357,7 +357,7 @@ namespace BeatLeader_Server.Controllers
 
             var leaderboardId = song.Id + SongUtils.DiffForDiffName(diff).ToString() + modeValue.ToString();
 
-            IQueryable<Score> query = _context
+            IQueryable<Score> query = _readContext
                 .Scores
                 .Where(s => !s.Banned && s.LeaderboardId == leaderboardId)
                 .OrderBy(p => p.Rank);
@@ -366,7 +366,7 @@ namespace BeatLeader_Server.Controllers
 
             if (scope.ToLower() == "friends")
             {
-                PlayerFriends? friends = _context.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == player);
+                PlayerFriends? friends = _readContext.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == player);
 
                 if (friends != null) {
                     var idList = friends.Friends.Select(f => f.Id).ToArray();
@@ -376,7 +376,7 @@ namespace BeatLeader_Server.Controllers
                 }
             } else if (scope.ToLower() == "country")
             {
-                currentPlayer = currentPlayer ?? ResponseFromPlayer(await _context.Players.FindAsync(player));
+                currentPlayer = currentPlayer ?? ResponseFromPlayer(await _readContext.Players.FindAsync(player));
                 if (currentPlayer == null)
                 {
                     return result;

@@ -124,12 +124,6 @@ namespace BeatLeader_Server.Extensions
                 return source.ThenBy(keySelector);
             }
         }
-        public static void SetPublicContainerPermissions(this BlobContainerClient container)
-        {
-            try {
-                container.SetAccessPolicy(accessType: Azure.Storage.Blobs.Models.PublicAccessType.BlobContainer);
-            } catch { }
-        }
     }
 
     public static class StringExtensions

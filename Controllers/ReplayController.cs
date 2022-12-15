@@ -61,7 +61,6 @@ namespace BeatLeader_Server.Controllers
             if (env.IsDevelopment())
 			{
 				_replaysClient = new BlobContainerClient(config.Value.AccountName, config.Value.ReplaysContainerName);
-                _replaysClient.SetPublicContainerPermissions();
                 _otherReplaysClient = new BlobContainerClient(config.Value.AccountName, config.Value.OtherReplaysContainerName);
 
                 _scoreStatsClient = new BlobContainerClient(config.Value.AccountName, config.Value.ScoreStatsContainerName);
@@ -647,7 +646,7 @@ namespace BeatLeader_Server.Controllers
 
                 await _replaysClient.CreateIfNotExistsAsync();
                 string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
-                resultScore.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/replays/" : "https://beatleadercdn.blob.core.windows.net/replays/") + fileName;
+                resultScore.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/replays/" : "https://api.beatleader.xyz/replay/") + fileName;
                 string tempName = fileName + "temp";
                 string replayLink = resultScore.Replay;
                 resultScore.Replay += "temp";
@@ -976,6 +975,19 @@ namespace BeatLeader_Server.Controllers
             }
             
             return null;
+        }
+
+        [HttpGet("~/replay/{name}")]
+        public async Task<ActionResult> DownloadReplay(
+            string name,
+            CancellationToken ct)
+        {
+            var blob = _replaysClient.GetBlobClient(name);
+            return (await blob.ExistsAsync()) 
+                ? new FileStreamResult(await blob.OpenReadAsync(cancellationToken: ct), "application/octet-stream") {
+                    EnableRangeProcessing = true,
+                }
+                : NotFound();
         }
 
         //[NonAction]

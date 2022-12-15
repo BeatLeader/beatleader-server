@@ -35,7 +35,6 @@ namespace BeatLeader_Server.Controllers
             if (env.IsDevelopment())
             {
                 _assetsContainerClient = new BlobContainerClient(config.Value.AccountName, config.Value.AssetsContainerName);
-                _assetsContainerClient.SetPublicContainerPermissions();
             }
             else
             {

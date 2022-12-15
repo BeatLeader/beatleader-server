@@ -19,6 +19,7 @@ namespace BeatLeader_Server {
         public string AssetsContainerName { get; set; }
         public string PlaylistContainerName { get; set; }
         public string ScoreStatsContainerName { get; set; }
+        public string UnicodeContainerName { get; set; }
     }
 
     public class Startup {
@@ -106,6 +107,12 @@ namespace BeatLeader_Server {
                             Endpoint = "GET:/score/*",
                             Period = "10s",
                             Limit = 10,
+                        },
+                        new RateLimitRule
+                        {
+                            Endpoint = "GET:/replay/*",
+                            Period = "10s",
+                            Limit = 3,
                         }
                     };
             });
