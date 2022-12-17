@@ -351,6 +351,11 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? mode = null)
         {
 
+            if (!OperatingSystem.IsWindows())
+            {
+                return Redirect("https://freedm.azurewebsites.net/preview/royale" + Request.QueryString);
+            }
+
             List<Player> playersList = new List<Player>();
             SongSelect? song = null;
 

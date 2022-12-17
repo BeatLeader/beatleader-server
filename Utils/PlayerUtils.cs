@@ -37,6 +37,40 @@ namespace BeatLeader_Server.Utils
             
         }
 
+        public static void RecalculatePPFast(this AppContext context, Player player)
+        {
+            var rankedScores = context
+                .Scores
+                .Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification)
+                .OrderByDescending(s => s.Pp)
+                .Select(s => new { 
+                    Id = s.Id, 
+                    Accuracy = s.Accuracy, 
+                    Rank = s.Rank, 
+                    Pp = s.Pp,
+                    Weight = s.Weight
+                })
+                .ToList();
+            float resultPP = 0f;
+            foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
+            {
+                float weight = MathF.Pow(0.965f, i);
+                if (s.Weight != weight)
+                {
+                    var score = context.Scores.Local.FirstOrDefault(ls => ls.Id == s.Id);
+                    if (score == null) {
+                        score = new Score() { Id = s.Id };
+                        context.Scores.Attach(score);
+                    }
+                    score.Weight = weight;
+                    context.Entry(score).Property(x => x.Weight).IsModified = true;
+                }
+                resultPP += s.Pp * weight;
+            }
+            player.Pp = resultPP;
+            context.Entry(player).Property(x => x.Pp).IsModified = true;
+        }
+
         public static void RecalculatePPAndRankFast(this AppContext context, Player player)
         {
             float oldPp = player.Pp;
@@ -87,7 +121,8 @@ namespace BeatLeader_Server.Utils
             if (rankedPlayers.Count() > 0)
             {
                 var country = player.Country;
-                int topRank = rankedPlayers.First().Rank; int? topCountryRank = rankedPlayers.Where(p => p.Country == country).FirstOrDefault()?.CountryRank;
+                int topRank = rankedPlayers.First().Rank; 
+                int? topCountryRank = rankedPlayers.Where(p => p.Country == country).FirstOrDefault()?.CountryRank;
                 player.Rank = topRank;
                 context.Entry(player).Property(x => x.Rank).IsModified = true;
                 if (topCountryRank != null)

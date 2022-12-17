@@ -197,6 +197,28 @@ namespace BeatLeader_Server.Controllers
             return File(stream, "application/json");
         }
 
+        [HttpGet("~/playlist/image/{id}")]
+        public async Task<ActionResult> GetImageById(string id)
+        {
+            BlobClient blobClient = _playlistContainerClient.GetBlobClient(id.Split(".").First() + ".bplist");
+            MemoryStream stream = new MemoryStream(5);
+
+            await blobClient.DownloadToAsync(stream);
+            stream.Position = 0;
+
+            dynamic? playlist = stream.ObjectFromStream();
+
+            if (playlist == null)
+            {
+                return NotFound();
+            }
+
+            string image = playlist.image;
+            image = image.Replace("data:image/png;base64,", "");
+
+            return File(new MemoryStream(Convert.FromBase64String(image)), "image/png");
+        }
+
         [HttpGet("~/user/playlists")]
         public ActionResult<IEnumerable<Playlist>> GetAllPlaylists()
         {

@@ -40,30 +40,6 @@ namespace BeatLeader_Server.Controllers
             return song;
         }
 
-        [HttpGet("~/map/refresh/{hash}")]
-        public async Task<ActionResult<Song>> RefreshHash(string hash)
-        {
-            Song? song = GetSongWithDiffsFromHash(hash);
-
-            if (song != null)
-            {
-                Song? updatedSong = await GetSongFromBeatSaver("https://api.beatsaver.com/maps/hash/" + hash);
-
-                if (updatedSong != null)
-                {
-                    for (int i = 0; i < song.Difficulties.Count; i++)
-                    {
-                        song.Difficulties.ElementAt(i).MaxScore = updatedSong.Difficulties.ElementAt(i).MaxScore;
-                    }
-                    song.MapperId = updatedSong.MapperId;
-                    _context.Songs.Update(song);
-                    await _context.SaveChangesAsync();
-                }
-            }
-
-            return song;
-        }
-
         [HttpGet("~/map/modinterface/{hash}")]
         public async Task<ActionResult<IEnumerable<DiffModResponse>>> GetModSongInfos(string hash)
         {
@@ -131,7 +107,7 @@ namespace BeatLeader_Server.Controllers
 
             if (song == null)
             {
-                song = await GetSongFromBeatSaver("https://api.beatsaver.com/maps/hash/" + hash);
+                song = await SongUtils.GetSongFromBeatSaver("https://api.beatsaver.com/maps/hash/" + hash);
 
                 if (song == null)
                 {
@@ -260,101 +236,6 @@ namespace BeatLeader_Server.Controllers
         private Song? GetSongWithDiffsFromHash(string hash)
         {
             return _context.Songs.Where(el => el.Hash == hash).Include(song => song.Difficulties).FirstOrDefault();
-        }
-
-        [NonAction]
-        public Task<Song?> GetSongFromBeatSaver(string url)
-        {
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-            request.Method = "GET";
-            request.Proxy = null;
-
-            WebResponse? response = null;
-            Song? song = null;
-            var stream = 
-            Task<(WebResponse?, Song?)>.Factory.FromAsync(request.BeginGetResponse, result =>
-            {
-                try
-                {
-                    response = request.EndGetResponse(result);
-                }
-                catch (Exception e)
-                {
-                    song = null;
-                }
-            
-                return (response, song);
-            }, request);
-
-            return stream.ContinueWith(t => ReadSongFromResponse(t.Result));
-        }
-
-        [NonAction]
-        private Song? ReadSongFromResponse((WebResponse?, Song?) response)
-        {
-            if (response.Item1 != null) {
-                using (Stream responseStream = response.Item1.GetResponseStream())
-                using (StreamReader reader = new StreamReader(responseStream))
-                {
-                    string results = reader.ReadToEnd();
-                    if (string.IsNullOrEmpty(results))
-                    {
-                        return null;
-                    }
-
-                    dynamic? info = JsonConvert.DeserializeObject<ExpandoObject>(results, new ExpandoObjectConverter());
-                    if (info == null) return null;
-                    Song result = new Song();
-                    result.Author = info.metadata.songAuthorName;
-                    result.Mapper = info.metadata.levelAuthorName;
-                    result.Name = info.metadata.songName;
-                    result.SubName = info.metadata.songSubName;
-                    result.Duration = info.metadata.duration;
-                    result.Bpm = info.metadata.bpm;
-                    result.MapperId = (int)info.uploader.id;
-                    result.UploadTime = (int)info.uploaded.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-                    if (ExpandantoObject.HasProperty(info, "tags")) {
-                        result.Tags = string.Join(",", info.tags);
-                    }
-
-                    dynamic currentVersion = info.versions[0];
-                    result.CoverImage = currentVersion.coverURL;
-                    result.DownloadUrl = currentVersion.downloadURL;
-                    result.Hash = currentVersion.hash;
-                    if (ExpandantoObject.HasProperty(info, "id"))
-                    {
-                        result.Id = info.id;
-                    } else
-                    {
-                        result.Id = currentVersion.key;
-                    }
-
-                    List<DifficultyDescription> difficulties = new List<DifficultyDescription>();
-                    dynamic diffs = currentVersion.diffs;
-                    foreach (dynamic diff in diffs) {
-                        DifficultyDescription difficulty = new DifficultyDescription();
-                        difficulty.ModeName = diff.characteristic;
-                        difficulty.Mode = SongUtils.ModeForModeName(diff.characteristic);
-                        difficulty.DifficultyName = diff.difficulty;
-                        difficulty.Value = SongUtils.DiffForDiffName(diff.difficulty);
-                        
-                        difficulty.Njs = (float)diff.njs;
-                        difficulty.Notes = (int)diff.notes;
-                        difficulty.Bombs = (int)diff.bombs;
-                        difficulty.Nps = (float)diff.nps;
-                        difficulty.Walls = (int)diff.obstacles;
-                        difficulty.MaxScore = (int)diff.maxScore;
-                        difficulty.Duration = result.Duration;
-
-                        difficulties.Add(difficulty);
-                    }
-                    result.Difficulties = difficulties;
-
-                    return result;
-                }
-            } else {
-                return response.Item2;
-            }   
         }
     }
 }

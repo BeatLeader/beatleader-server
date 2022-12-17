@@ -7,10 +7,10 @@ namespace BeatLeader_Server.Models
         [Key]
         public int ModifierId { get; set; }
 
-        public float DA { get; set; } = 0.005f;
-        public float FS { get; set; } = 0.11f;
+        public float DA { get; set; } = 0.0f;
+        public float FS { get; set; } = 0.20f;
         public float SS { get; set; } = -0.3f;
-        public float SF { get; set; } = 0.25f;
+        public float SF { get; set; } = 0.36f;
         public float GN { get; set; } = 0.04f;
         public float NA { get; set; } = -0.3f;
         public float NB { get; set; } = -0.2f;

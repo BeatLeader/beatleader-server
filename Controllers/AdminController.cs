@@ -278,6 +278,41 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpGet("~/admin/migrateCDN")]
+        public async Task<ActionResult> migrateCDN()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = _context.Players.Find(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            _context.ChangeTracker.AutoDetectChangesEnabled = false;
+            var scount = await _context.Scores.CountAsync();
+            for (int i = 440000; i < scount; i += 50000)
+            {
+                var scores = _context.Scores.OrderByDescending(s => s.Id).Skip(i).Take(50000).Select(s => new { Id = s.Id, Replay = s.Replay }).ToList();
+                foreach (var item in scores)
+                {
+                    if (item.Replay.StartsWith("https://beatleadercdn.blob.core.windows.net"))
+                    {
+                        Score score = new Score { Id = item.Id };
+                        score.Replay = item.Replay.Replace("https://beatleadercdn.blob.core.windows.net/replays/", "https://api.beatleader.xyz/replay/");
+
+                        _context.Scores.Attach(score);
+                        _context.Entry(score).Property(x => x.Replay).IsModified = true;
+                    }
+                }
+
+                await _context.BulkSaveChangesAsync();
+            }
+
+
+            return Ok();
+        }
+
         [HttpGet("~/admin/migrateMappers")]
         public async Task<ActionResult> MigrateMappers()
         {
@@ -330,6 +365,78 @@ namespace BeatLeader_Server.Controllers
             }
             _context.PlayerScoreStatsHistory.Remove(history);
             await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpDelete("~/admin/unlinkbeatsaver")]
+        public async Task<ActionResult> unlinkbeatsaver([FromQuery] string beatSaverId)
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = _context.Players.Find(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var link = _context.BeatSaverLinks.FirstOrDefault(link => link.BeatSaverId == beatSaverId);
+            if (link == null) {
+                return NotFound();
+            }
+            _context.BeatSaverLinks.Remove(link);
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
+
+        [HttpDelete("~/admin/playerHistory/time/{time}")]
+        public async Task<ActionResult> DeleteHistoryTime(int time)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = _context.Players.Find(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var history = _context.PlayerScoreStatsHistory.Where(h => h.Timestamp == time).ToList();
+            foreach (var item in history)
+            {
+                _context.PlayerScoreStatsHistory.Remove(item);
+            }
+            
+            await _context.BulkSaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpGet("~/admin/map/refresh")]
+        public async Task<ActionResult> RefreshHash()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = _context.Players.Find(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var songs = _context.Songs.Where(el => el.MapperId == 0).Include(song => song.Difficulties).ToList();
+
+            foreach (var song in songs)
+            {
+                Song? updatedSong = await SongUtils.GetSongFromBeatSaver("https://api.beatsaver.com/maps/hash/" + song.Hash);
+
+                if (updatedSong != null)
+                {
+                    song.MapperId = updatedSong.MapperId;   
+                }
+            }
+
+            _context.BulkSaveChanges();
 
             return Ok();
         }

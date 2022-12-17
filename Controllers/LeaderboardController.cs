@@ -295,6 +295,36 @@ namespace BeatLeader_Server.Controllers
             };
         }
 
+        
+        //[HttpDelete("~/leaderboard/{id}")]
+        //public async Task<ActionResult> Delete(
+        //    string id)
+        //{
+        //    string currentID = HttpContext.CurrentUserID(_context);
+        //    var currentPlayer = await _context.Players.FindAsync(currentID);
+
+        //    if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+        //    {
+        //        return Unauthorized();
+        //    }
+
+        //    var stats = _context.PlayerLeaderboardStats.FirstOrDefault(lb => lb.LeaderboardId == id);
+        //    if (stats != null) {
+        //        _context.PlayerLeaderboardStats.Remove(stats);
+        //        _context.SaveChanges();
+        //    }
+
+        //    var lb = _context.Leaderboards.FirstOrDefault(lb => lb.Id == id);
+
+        //    if (lb != null) {
+        //        _context.Leaderboards.Remove(lb);
+        //        _context.SaveChanges();
+        //    } else {
+        //        return NotFound();
+        //    }
+
+        //    return Ok();
+        //}
 
         [NonAction]
         public async Task<ActionResult<Leaderboard>> GetByHash(string hash, string diff, string mode) {

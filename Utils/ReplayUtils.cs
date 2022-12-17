@@ -112,14 +112,15 @@ namespace BeatLeader_Server.Utils
             bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent || status == DifficultyStatus.nominated;
             bool hasPp = status == DifficultyStatus.ranked || qualification;
 
+            int maxScore = difficulty.MaxScore > 0 ? difficulty.MaxScore : MaxScoreForNote(difficulty.Notes);
             if (hasPp)
             {
                 score.ModifiedScore = (int)(score.BaseScore * modifers.GetNegativeMultiplier(info.modifiers));
             } else
             {
-                score.ModifiedScore = (int)(score.BaseScore * modifers.GetTotalMultiplier(info.modifiers));
+                score.ModifiedScore = (int)((score.BaseScore + (int)((float)(maxScore - score.BaseScore) * (modifers.GetPositiveMultiplier(info.modifiers) - 1))) * modifers.GetNegativeMultiplier(info.modifiers));
             }
-            int maxScore = difficulty.MaxScore > 0 ? difficulty.MaxScore : MaxScoreForNote(difficulty.Notes);
+            
             score.Accuracy = (float)score.BaseScore / (float)maxScore;
             score.Modifiers = info.modifiers;
 

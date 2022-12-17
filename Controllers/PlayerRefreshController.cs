@@ -85,15 +85,10 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task RefreshStats(Player player, List<SubScore>? scores = null)
+        public async Task RefreshStats(PlayerScoreStats scoreStats, string playerId, List<SubScore>? scores = null)
         {
-            if (player.ScoreStats == null)
-            {
-                player.ScoreStats = new PlayerScoreStats();
-                _context.Stats.Add(player.ScoreStats);
-            }
             var allScores = scores ??
-                _context.Scores.Where(s => s.PlayerId == player.Id).Select(s => new SubScore
+                _context.Scores.Where(s => s.PlayerId == playerId).Select(s => new SubScore
                 {
                     PlayerId = s.PlayerId,
                     Platform = s.Platform,
@@ -145,53 +140,53 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
-                player.ScoreStats.TopPlatform = platforms.MaxBy(s => s.Value).Key;
-                player.ScoreStats.TopHMD = hmds.MaxBy(s => s.Value).Key;
+                scoreStats.TopPlatform = platforms.MaxBy(s => s.Value).Key;
+                scoreStats.TopHMD = hmds.MaxBy(s => s.Value).Key;
             }
 
-            player.ScoreStats.TotalPlayCount = allScores.Count();
-            player.ScoreStats.UnrankedPlayCount = unrankedScores.Count();
-            player.ScoreStats.RankedPlayCount = rankedScores.Count();
+            scoreStats.TotalPlayCount = allScores.Count();
+            scoreStats.UnrankedPlayCount = unrankedScores.Count();
+            scoreStats.RankedPlayCount = rankedScores.Count();
 
-            if (player.ScoreStats.TotalPlayCount > 0)
+            if (scoreStats.TotalPlayCount > 0)
             {
                 int count = allScores.Count() / 2;
-                player.ScoreStats.TotalScore = allScores.Sum(s => (long)s.ModifiedScore);
-                player.ScoreStats.AverageAccuracy = allScores.Average(s => s.Accuracy);
-                player.ScoreStats.TopAccuracy = allScores.Max(s => s.Accuracy);
-                player.ScoreStats.MedianAccuracy = allScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
-                player.ScoreStats.AverageRank = allScores.Average(s => (float)s.Rank);
-                player.ScoreStats.LastScoreTime = allScores.MaxBy(s => s.Timeset).Timeset;
+                scoreStats.TotalScore = allScores.Sum(s => (long)s.ModifiedScore);
+                scoreStats.AverageAccuracy = allScores.Average(s => s.Accuracy);
+                scoreStats.TopAccuracy = allScores.Max(s => s.Accuracy);
+                scoreStats.MedianAccuracy = allScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
+                scoreStats.AverageRank = allScores.Average(s => (float)s.Rank);
+                scoreStats.LastScoreTime = allScores.MaxBy(s => s.Timeset).Timeset;
             } else {
-                player.ScoreStats.TotalScore = 0;
-                player.ScoreStats.AverageAccuracy = 0;
-                player.ScoreStats.TopAccuracy = 0;
-                player.ScoreStats.MedianAccuracy = 0;
-                player.ScoreStats.AverageRank = 0;
-                player.ScoreStats.LastScoreTime = 0;
+                scoreStats.TotalScore = 0;
+                scoreStats.AverageAccuracy = 0;
+                scoreStats.TopAccuracy = 0;
+                scoreStats.MedianAccuracy = 0;
+                scoreStats.AverageRank = 0;
+                scoreStats.LastScoreTime = 0;
             }
 
-            if (player.ScoreStats.UnrankedPlayCount > 0)
+            if (scoreStats.UnrankedPlayCount > 0)
             {
                 int count = unrankedScores.Count() / 2;
-                player.ScoreStats.TotalUnrankedScore = unrankedScores.Sum(s => (long)s.ModifiedScore);
-                player.ScoreStats.AverageUnrankedAccuracy = unrankedScores.Average(s => s.Accuracy);
-                player.ScoreStats.TopUnrankedAccuracy = unrankedScores.Max(s => s.Accuracy);
-                player.ScoreStats.AverageUnrankedRank = unrankedScores.Average(s => (float)s.Rank);
-                player.ScoreStats.LastUnrankedScoreTime = unrankedScores.MaxBy(s => s.Timeset).Timeset;
+                scoreStats.TotalUnrankedScore = unrankedScores.Sum(s => (long)s.ModifiedScore);
+                scoreStats.AverageUnrankedAccuracy = unrankedScores.Average(s => s.Accuracy);
+                scoreStats.TopUnrankedAccuracy = unrankedScores.Max(s => s.Accuracy);
+                scoreStats.AverageUnrankedRank = unrankedScores.Average(s => (float)s.Rank);
+                scoreStats.LastUnrankedScoreTime = unrankedScores.MaxBy(s => s.Timeset).Timeset;
             } else {
-                player.ScoreStats.TotalUnrankedScore = 0;
-                player.ScoreStats.AverageUnrankedAccuracy = 0;
-                player.ScoreStats.TopUnrankedAccuracy = 0;
-                player.ScoreStats.AverageUnrankedRank = 0;
-                player.ScoreStats.LastUnrankedScoreTime = 0;
+                scoreStats.TotalUnrankedScore = 0;
+                scoreStats.AverageUnrankedAccuracy = 0;
+                scoreStats.TopUnrankedAccuracy = 0;
+                scoreStats.AverageUnrankedRank = 0;
+                scoreStats.LastUnrankedScoreTime = 0;
             }
 
-            if (player.ScoreStats.RankedPlayCount > 0)
+            if (scoreStats.RankedPlayCount > 0)
             {
                 int count = rankedScores.Count() / 2;
-                player.ScoreStats.TotalRankedScore = rankedScores.Sum(s => (long)s.ModifiedScore);
-                player.ScoreStats.AverageRankedAccuracy = rankedScores.Average(s => s.Accuracy);
+                scoreStats.TotalRankedScore = rankedScores.Sum(s => (long)s.ModifiedScore);
+                scoreStats.AverageRankedAccuracy = rankedScores.Average(s => s.Accuracy);
 
 
                 var scoresForWeightedAcc = rankedScores.OrderByDescending(s => s.Accuracy).Take(100).ToList();
@@ -208,7 +203,7 @@ namespace BeatLeader_Server.Controllers
                     weights += weight;
                 }
 
-                player.ScoreStats.AverageWeightedRankedAccuracy = sum / weights;
+                scoreStats.AverageWeightedRankedAccuracy = sum / weights;
                 var scoresForWeightedRank = rankedScores.OrderBy(s => s.Rank).Take(100).ToList();
                 sum = 0.0f;
                 weights = 0.0f;
@@ -225,37 +220,37 @@ namespace BeatLeader_Server.Controllers
 
                     weights += weight;
                 }
-                player.ScoreStats.AverageWeightedRankedRank = sum / weights;
+                scoreStats.AverageWeightedRankedRank = sum / weights;
 
-                player.ScoreStats.MedianRankedAccuracy = rankedScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
-                player.ScoreStats.TopRankedAccuracy = rankedScores.Max(s => s.Accuracy);
-                player.ScoreStats.TopPp = rankedScores.Max(s => s.Pp);
-                player.ScoreStats.TopBonusPP = rankedScores.Max(s => s.BonusPp);
-                player.ScoreStats.AverageRankedRank = rankedScores.Average(s => (float)s.Rank);
-                player.ScoreStats.LastRankedScoreTime = rankedScores.MaxBy(s => s.Timeset).Timeset;
+                scoreStats.MedianRankedAccuracy = rankedScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
+                scoreStats.TopRankedAccuracy = rankedScores.Max(s => s.Accuracy);
+                scoreStats.TopPp = rankedScores.Max(s => s.Pp);
+                scoreStats.TopBonusPP = rankedScores.Max(s => s.BonusPp);
+                scoreStats.AverageRankedRank = rankedScores.Average(s => (float)s.Rank);
+                scoreStats.LastRankedScoreTime = rankedScores.MaxBy(s => s.Timeset).Timeset;
 
-                player.ScoreStats.SSPPlays = rankedScores.Count(s => s.Accuracy > 0.95);
-                player.ScoreStats.SSPlays = rankedScores.Count(s => 0.9 < s.Accuracy && s.Accuracy < 0.95);
-                player.ScoreStats.SPPlays = rankedScores.Count(s => 0.85 < s.Accuracy && s.Accuracy < 0.9);
-                player.ScoreStats.SPlays = rankedScores.Count(s => 0.8 < s.Accuracy && s.Accuracy < 0.85);
-                player.ScoreStats.APlays = rankedScores.Count(s => s.Accuracy < 0.8);
+                scoreStats.SSPPlays = rankedScores.Count(s => s.Accuracy > 0.95);
+                scoreStats.SSPlays = rankedScores.Count(s => 0.9 < s.Accuracy && s.Accuracy < 0.95);
+                scoreStats.SPPlays = rankedScores.Count(s => 0.85 < s.Accuracy && s.Accuracy < 0.9);
+                scoreStats.SPlays = rankedScores.Count(s => 0.8 < s.Accuracy && s.Accuracy < 0.85);
+                scoreStats.APlays = rankedScores.Count(s => s.Accuracy < 0.8);
             } else {
-                player.ScoreStats.TotalRankedScore = 0;
-                player.ScoreStats.AverageRankedAccuracy = 0;
-                player.ScoreStats.AverageWeightedRankedAccuracy = 0;
-                player.ScoreStats.AverageWeightedRankedRank = 0;
-                player.ScoreStats.MedianRankedAccuracy = 0;
-                player.ScoreStats.TopRankedAccuracy = 0;
-                player.ScoreStats.TopPp = 0;
-                player.ScoreStats.TopBonusPP = 0;
-                player.ScoreStats.AverageRankedRank = 0;
-                player.ScoreStats.LastRankedScoreTime = 0;
-
-                player.ScoreStats.SSPPlays = 0;
-                player.ScoreStats.SSPlays = 0;
-                player.ScoreStats.SPPlays = 0;
-                player.ScoreStats.SPlays = 0;
-                player.ScoreStats.APlays = 0;
+                scoreStats.TotalRankedScore = 0;
+                scoreStats.AverageRankedAccuracy = 0;
+                scoreStats.AverageWeightedRankedAccuracy = 0;
+                scoreStats.AverageWeightedRankedRank = 0;
+                scoreStats.MedianRankedAccuracy = 0;
+                scoreStats.TopRankedAccuracy = 0;
+                scoreStats.TopPp = 0;
+                scoreStats.TopBonusPP = 0;
+                scoreStats.AverageRankedRank = 0;
+                scoreStats.LastRankedScoreTime = 0;
+                
+                scoreStats.SSPPlays = 0;
+                scoreStats.SSPlays = 0;
+                scoreStats.SPPlays = 0;
+                scoreStats.SPlays = 0;
+                scoreStats.APlays = 0;
             }
         }
 
@@ -277,7 +272,7 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
             }
-            await RefreshStats(player);
+            await RefreshStats(player.ScoreStats, player.Id);
 
             await _context.SaveChangesAsync();
         }
@@ -329,7 +324,8 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> RefreshPlayers()
         {
-            if (HttpContext != null) {
+            if (HttpContext != null)
+            {
                 string currentId = HttpContext.CurrentUserID(_context);
                 Player? currentPlayer = await _context.Players.FindAsync(currentId);
                 if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
@@ -338,54 +334,62 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            var playersCount = _context.Players.Count(p => !p.Banned);
-            for (int i = 0; i < playersCount; i += 2000)
+            _context.ChangeTracker.AutoDetectChangesEnabled = false;
+            var query = _context.Players.Where(p => p.Pp != 0 && !p.Banned);
+            var playersCount = query.Count();
+            var allPlayers = new List<Player>();
+            for (int i = 0; i < playersCount; i += 500)
             {
-                var players = _context
-                    .Players
+                var players = query
+                    .OrderByDescending(p => p.Pp)
                     .Skip(i)
-                    .Take(2000)
-                    .Include(p => p.ScoreStats)
-                    .Where(s => s.Pp != 0)
+                    .Take(500)
+                    .Select(p => new { Id = p.Id, Country = p.Country })
                     .ToList();
-                var transaction = await _context.Database.BeginTransactionAsync();
 
-                foreach (Player p in players)
+                foreach (var p in players)
                 {
-                    _context.RecalculatePP(p);
+                    try {
+                        if (allPlayers.FirstOrDefault(pp => pp.Id == p.Id) != null) continue;
+                        Player player = new Player { Id = p.Id, Country = p.Country };
+                        _context.Players.Attach(player);
+                        allPlayers.Add(player);
+                        _context.RecalculatePPFast(player);
+                    } catch (Exception e) {
+                    }
                 }
 
                 try
                 {
-                    await _context.SaveChangesAsync();
+                    await _context.BulkSaveChangesAsync();
                 }
                 catch (Exception e)
                 {
                     _context.RejectChanges();
-                    await transaction.RollbackAsync();
-                    transaction = await _context.Database.BeginTransactionAsync();
                 }
-                await transaction.CommitAsync();
             }
 
             Dictionary<string, int> countries = new Dictionary<string, int>();
-            var ranked = _context
-                .Players
+            var ranked = allPlayers
                 .Where(p => p.Pp > 0)
                 .OrderByDescending(t => t.Pp)
                 .ToList();
             foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
             {
                 p.Rank = i + 1;
+                _context.Entry(p).Property(x => x.Rank).IsModified = true;
                 if (!countries.ContainsKey(p.Country))
                 {
                     countries[p.Country] = 1;
                 }
 
                 p.CountryRank = countries[p.Country];
+                _context.Entry(p).Property(x => x.CountryRank).IsModified = true;
                 countries[p.Country]++;
             }
-            await _context.SaveChangesAsync();
+            await _context.BulkSaveChangesAsync();
+
+            _context.ChangeTracker.AutoDetectChangesEnabled = true;
 
             return Ok();
         }
@@ -405,14 +409,19 @@ namespace BeatLeader_Server.Controllers
             var playersCount = _context.Players.Count(p => !p.Banned);
             for (int i = 0; i < playersCount; i += 2000)
             {
-                var players = _context.Players.Where(p => !p.Banned).Include(p => p.ScoreStats).Skip(i).Take(2000).ToList();
+                var players = _context
+                    .Players
+                    .Where(p => !p.Banned && p.ScoreStats != null)
+                    .OrderBy(p => p.Rank)
+                    .Skip(i).Take(2000)
+                    .Select(p => new { Id = p.Id, ScoreStats = p.ScoreStats }).ToList();
                 foreach (var player in players)
                 {
-                    await RefreshStats(player);
+                    await RefreshStats(player.ScoreStats, player.Id);
                 }
-                await _context.SaveChangesAsync();
+                await _context.BulkSaveChangesAsync();
             }
-            
+
             return Ok();
         }
 

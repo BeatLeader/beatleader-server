@@ -392,7 +392,8 @@ namespace BeatLeader_Server.Controllers
                 ms.Position = 0;
 
                 (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(ms);
-                fileName = userId + extension;
+                Random rnd = new Random();
+                fileName = userId + "R" + rnd.Next(1, 50) + extension;
 
                 await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
                 await _assetsContainerClient.UploadBlobAsync(fileName, stream);
