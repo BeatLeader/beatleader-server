@@ -440,6 +440,17 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 features.Message = message ?? "";
+
+                var parts = features.Message.Split(new char[] {'<', '>', '=', '%'});
+                for (int i = 0; i < parts.Length - 1; i++)
+                {
+                    if (parts[i] == "size") {
+                        if (float.TryParse(parts[i + 1], out float size) && size > 120) {
+                            return BadRequest("Size tags bigger than 120% are forbidden");
+                        }
+                    }
+                }
+                
                 settings.Message = message;
             }
 
@@ -481,140 +492,6 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
                 settings.RightSaberColor = rightSaberColor;
-            }
-
-            await _context.SaveChangesAsync();
-
-            return Ok();
-        }
-
-        [HttpPatch("~/user/avatar")]
-        public async Task<ActionResult> ChangeAvatar([FromQuery] string? id = null)
-        {
-            string userId = GetId();
-            var player = await _context.Players.FindAsync(userId);
-
-            if (id != null && player != null && player.Role.Contains("admin"))
-            {
-                player = await _context.Players.FindAsync(id);
-            }
-
-            if (player == null)
-            {
-                return NotFound();
-            }
-
-            if (player.Banned)
-            {
-                return BadRequest("You are banned!");
-            }
-
-            string fileName = userId;
-            try
-            {
-                await _assetsContainerClient.CreateIfNotExistsAsync();
-
-                var ms = new MemoryStream(5);
-                await Request.Body.CopyToAsync(ms);
-                ms.Position = 0;
-
-                (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(ms);
-                fileName += extension;
-
-                await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
-                await _assetsContainerClient.UploadBlobAsync(fileName, stream);
-            }
-            catch (Exception)
-            {
-                return BadRequest("Error saving avatar");
-            }
-
-            player.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://beatleadercdn.blob.core.windows.net/assets/") + fileName;
-
-            await _context.SaveChangesAsync();
-
-            return Ok();
-        }
-
-        [HttpPatch("~/user/name")]
-        public async Task<ActionResult> ChangeName([FromQuery] string newName, [FromQuery] string? id = null)
-        {
-            string userId = GetId();
-            var player = await _context.Players.FindAsync(userId);
-
-            if (id != null && player != null && player.Role.Contains("admin"))
-            {
-                player = await _context.Players.FindAsync(id);
-            }
-
-            if (player == null)
-            {
-                return NotFound();
-            }
-            if (player.Banned)
-            {
-                return BadRequest("You are banned!");
-            }
-            if (newName.Length is < 3 or > 30)
-            {
-                return BadRequest("Use name between the 3 and 30 symbols");
-            }
-
-            player.Name = newName;
-
-            await _context.SaveChangesAsync();
-
-            return Ok();
-        }
-
-        [HttpPatch("~/user/country")]
-        public async Task<ActionResult> ChangeCountry([FromQuery] string newCountry, [FromQuery] string? id = null)
-        {
-            string userId = GetId();
-            var player = await _context.Players.FindAsync(userId);
-            bool adminChange = false;
-
-            if (id != null && player != null && player.Role.Contains("admin"))
-            {
-                player = await _context.Players.FindAsync(id);
-                adminChange = true;
-            }
-
-            if (player == null)
-            {
-                return NotFound();
-            }
-            if (!PlayerUtils.AllowedCountries().Contains(newCountry))
-            {
-                return BadRequest("This country code is not allowed.");
-            }
-            
-            int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-            var lastCountryChange = _context.CountryChanges.FirstOrDefault(el => el.Id == player.Id);
-            if (lastCountryChange != null && !adminChange && (timestamp - lastCountryChange.Timestamp) < 60 * 60 * 24 * 30)
-            {
-                return BadRequest("Error. You can change country after " + (int)(30 - (timestamp - lastCountryChange.Timestamp) / (60 * 60 * 24)) + " day(s)");
-            }
-            if (lastCountryChange == null) {
-                lastCountryChange = new CountryChange { Id = player.Id };
-                _context.CountryChanges.Add(lastCountryChange);
-            }
-            lastCountryChange.OldCountry = player.Country;
-            lastCountryChange.NewCountry = newCountry;
-            lastCountryChange.Timestamp = timestamp;
-
-            var oldCountryList = _context.Players.Where(p => p.Country == player.Country && p.Id != player.Id).OrderByDescending(p => p.Pp).ToList();
-            foreach ((int i, Player p) in oldCountryList.Select((value, i) => (i, value)))
-            {
-                p.CountryRank = i + 1;
-            }
-
-            player.Country = newCountry;
-
-            var newCountryList = _context.Players.Where(p => p.Country == newCountry || p.Id == player.Id).OrderByDescending(p => p.Pp).ToList();
-            foreach ((int i, Player p) in newCountryList.Select((value, i) => (i, value)))
-            {
-                p.CountryRank = i + 1;
             }
 
             await _context.SaveChangesAsync();
@@ -1089,7 +966,6 @@ namespace BeatLeader_Server.Controllers
 
             await _context.SaveChangesAsync();
             await _playerRefreshController.RefreshPlayer(migratedToPlayer);
-            await _playerRefreshController.RefreshRanks();
             await _context.SaveChangesAsync();
 
             return Ok();
@@ -1188,49 +1064,6 @@ namespace BeatLeader_Server.Controllers
             }
 
             return result;
-        }
-
-        [HttpGet("~/players/avatarsrefresh")]
-        public async Task<ActionResult> ResizeAvatars([FromQuery] int hundred)
-        {
-            string userId = GetId();
-            var player = await _context.Players.FindAsync(userId);
-
-            if (player == null || !player.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
-
-            var players = _context.Players.Where(p => p.Avatar.Contains("cdn.beatleader.xyz") && !p.Avatar.Contains("avatar.png")).Skip(hundred * 100).Take(100).ToList();
-
-            foreach (var p in players)
-            {
-                string fileName = p.Id;
-                try
-                {
-                    var ms = new MemoryStream(5);
-                    await _assetsContainerClient.GetBlobClient(p.Avatar.Split("/").Last()).DownloadToAsync(ms);
-
-                    ms.Position = 0;
-
-                    (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(ms);
-                    fileName += extension;
-
-                    await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
-                    await _assetsContainerClient.UploadBlobAsync(fileName, stream);
-                }
-                catch (Exception)
-                {
-                    return BadRequest("Error saving avatar");
-                }
-
-                p.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://beatleadercdn.blob.core.windows.net/assets/") + fileName;
-                _context.Players.Update(p);
-            }
-
-            await _context.SaveChangesAsync();
-
-            return Ok();
         }
 
         [HttpPost("~/user/ban")]

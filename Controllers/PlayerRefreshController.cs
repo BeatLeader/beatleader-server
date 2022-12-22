@@ -257,20 +257,44 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         public async Task RefreshPlayer(Player player, bool refreshRank = true) {
             _context.RecalculatePP(player);
+            await _context.SaveChangesAsync();
 
             if (refreshRank)
             {
-                var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
-                var country = player.Country; var countryRank = 1;
-                foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
+                _context.ChangeTracker.AutoDetectChangesEnabled = false;
+                Dictionary<string, int> countries = new Dictionary<string, int>();
+                var ranked = _context.Players
+                    .Where(p => p.Pp > 0)
+                    .OrderByDescending(t => t.Pp)
+                    .Select(p => new { Id = p.Id, Country = p.Country })
+                    .ToList();
+                foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
                 {
-                    p.Rank = i + 1;
-                    if (p.Country == country)
-                    {
-                        p.CountryRank = countryRank;
-                        countryRank++;
+                    Player p = player;
+                    if (pp.Id != player.Id) {
+                        try {
+                            p = new Player { Id = pp.Id, Country = pp.Country };
+                            _context.Players.Attach(p);
+                        } catch (Exception e) {
+                            continue;
+                        }
                     }
+
+                    p.Rank = i + 1;
+                    _context.Entry(p).Property(x => x.Rank).IsModified = true;
+                    if (!countries.ContainsKey(p.Country))
+                    {
+                        countries[p.Country] = 1;
+                    }
+
+                    p.CountryRank = countries[p.Country];
+                    _context.Entry(p).Property(x => x.CountryRank).IsModified = true;
+
+                    countries[p.Country]++;
                 }
+                await _context.BulkSaveChangesAsync();
+
+                _context.ChangeTracker.AutoDetectChangesEnabled = true;
             }
             await RefreshStats(player.ScoreStats, player.Id);
 
@@ -281,7 +305,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> RefreshPlayerAction(string id, [FromQuery] bool refreshRank = true)
         {
             string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = await _context.Players.FindAsync(currentId);
+            Player? currentPlayer = await _readContext.Players.FindAsync(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();

@@ -441,6 +441,49 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpGet("~/admin/avatarsrefresh")]
+        public async Task<ActionResult> ResizeAvatars([FromQuery] int hundred)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = _context.Players.Find(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var players = _context.Players.Where(p => p.Avatar.Contains("cdn.beatleader.xyz") && !p.Avatar.Contains("avatar.png")).Skip(hundred * 100).Take(100).ToList();
+
+            foreach (var p in players)
+            {
+                string fileName = p.Id;
+                try
+                {
+                    var ms = new MemoryStream(5);
+                    await _assetsContainerClient.GetBlobClient(p.Avatar.Split("/").Last()).DownloadToAsync(ms);
+
+                    ms.Position = 0;
+
+                    (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(ms);
+                    fileName += extension;
+
+                    await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
+                    await _assetsContainerClient.UploadBlobAsync(fileName, stream);
+                }
+                catch (Exception)
+                {
+                    return BadRequest("Error saving avatar");
+                }
+
+                p.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://beatleadercdn.blob.core.windows.net/assets/") + fileName;
+                _context.Players.Update(p);
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
         public static string GolovaID = "76561198059961776";
     }
 }

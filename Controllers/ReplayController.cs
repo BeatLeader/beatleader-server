@@ -1,4 +1,7 @@
-﻿using Azure.Identity;
+﻿using Amazon.Runtime;
+using Amazon.S3;
+using Amazon.S3.Model;
+using Azure.Identity;
 using Azure.Storage.Blobs;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
@@ -20,6 +23,8 @@ namespace BeatLeader_Server.Controllers
         private readonly BlobContainerClient _replaysClient;
         private readonly BlobContainerClient _otherReplaysClient;
         private readonly BlobContainerClient _scoreStatsClient;
+
+        private static IAmazonS3 _replaysS3Client;
 
         private readonly AppContext _context;
         private readonly ReadAppContext _readContext;
@@ -57,6 +62,14 @@ namespace BeatLeader_Server.Controllers
             _environment = env;
             _configuration = configuration;
             _serverTiming = serverTiming;
+
+	        var credentials = new BasicAWSCredentials(
+                _configuration.GetValue<string>("S3AccessKey"), 
+                _configuration.GetValue<string>("S3AccessSecret"));
+	        _replaysS3Client = new AmazonS3Client(credentials, new AmazonS3Config
+		    {
+			    ServiceURL = "https://" + _configuration.GetValue<string>("S3AccountID") + ".r2.cloudflarestorage.com",
+		    });
 
             if (env.IsDevelopment())
 			{
@@ -644,14 +657,11 @@ namespace BeatLeader_Server.Controllers
                 //    await MigrateOldReplay(currentScore, stats);
                 //}
 
-                await _replaysClient.CreateIfNotExistsAsync();
                 string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
-                resultScore.Replay = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/replays/" : "https://api.beatleader.xyz/replay/") + fileName;
-                string tempName = fileName + "temp";
+                resultScore.Replay = "https://cdn.replays.beatleader.xyz/" + fileName;
+                
                 string replayLink = resultScore.Replay;
-                resultScore.Replay += "temp";
-                await _replaysClient.DeleteBlobIfExistsAsync(tempName);
-                await _replaysClient.UploadBlobAsync(tempName, new BinaryData(replayData));
+                await UploadReplay(fileName, replayData);
                 (ScoreStatistic? statistic, string? error) = _scoreController.CalculateAndSaveStatistic(replay, resultScore);
                 if (statistic == null)
                 {
@@ -684,9 +694,6 @@ namespace BeatLeader_Server.Controllers
                         return;
                     }
                 }
-
-                await (await _replaysClient.GetBlobClient(fileName).StartCopyFromUriAsync(_replaysClient.GetBlobClient(tempName).Uri)).WaitForCompletionAsync();
-                await _replaysClient.DeleteBlobIfExistsAsync(tempName);
 
                 resultScore.Replay = replayLink;
                 resultScore.AccLeft = statistic.accuracyTracker.accLeft;
@@ -1026,6 +1033,21 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         private async Task PrecisionScore()
         {
+        }
+
+        static async Task UploadReplay(string filename, byte[] data)
+        {
+	        var request = new PutObjectRequest
+	        {
+                InputStream = new BinaryData(data).ToStream(),
+		        Key = filename,
+		        BucketName = "replays",
+		        DisablePayloadSigning = true
+	        };
+            
+	        var response = await _replaysS3Client.PutObjectAsync(request);
+            
+	        Console.WriteLine("ETag: {0}", response.ETag);
         }
 
         [NonAction]
