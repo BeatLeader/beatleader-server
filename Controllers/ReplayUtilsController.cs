@@ -112,47 +112,5 @@ namespace BeatLeader_Server.Controllers
             }
             return Ok(result + "\nMigrated " + migrated + " out of " + _context.Scores.Count());
         }
-
-        [HttpGet("~/player/{id}/restore")]
-        [Authorize]
-        public async Task<ActionResult> RestorePlayer(string id)
-        {
-
-            Player? player = await _context.Players.FindAsync(id);
-            if (player == null)
-            {
-                return NotFound();
-            }
-
-            var resultSegment = _containerClient.GetBlobsAsync();
-            await foreach (var file in resultSegment)
-            {
-                var parsedName = file.Name.Split("-");
-                if (parsedName.Length == 4 && parsedName[0] == id)
-                {
-                    string playerId = parsedName[0];
-                    string difficultyName = parsedName[1];
-                    string modeName = parsedName[2];
-                    string hash = parsedName[3].Split(".").First();
-
-                    Score? score = _context
-                            .Scores
-                            .Include(s => s.Leaderboard)
-                            .ThenInclude(l => l.Song)
-                            .Include(s => s.Leaderboard)
-                            .ThenInclude(l => l.Difficulty)
-                            .FirstOrDefault(s => s.PlayerId == playerId
-                            && s.Leaderboard.Song.Hash == hash
-                            && s.Leaderboard.Difficulty.DifficultyName == difficultyName
-                            && s.Leaderboard.Difficulty.ModeName == modeName);
-
-                    if (score != null) { continue; }
-
-                    await _replayController.PostReplayFromCDN(playerId, file.Name, HttpContext);
-                }
-            }
-
-            return Ok();
-        }
     }
 }

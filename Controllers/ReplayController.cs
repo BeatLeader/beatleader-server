@@ -658,7 +658,7 @@ namespace BeatLeader_Server.Controllers
                 //}
 
                 string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
-                resultScore.Replay = "https://cdn.replays.beatleader.xyz/" + fileName;
+                resultScore.Replay = (_environment.IsDevelopment() ? "https://localhost:9191/replays/" : "https://cdn.replays.beatleader.xyz/") + fileName;
                 
                 string replayLink = resultScore.Replay;
                 await UploadReplay(fileName, replayData);
@@ -679,17 +679,20 @@ namespace BeatLeader_Server.Controllers
 
                 if (leaderboard.Difficulty.Notes > 30)
                 {
-                    var sameAccScore = leaderboard
+                    var sameAccScore = _context
                         .Scores
-                        .FirstOrDefault(s => s.PlayerId != resultScore.PlayerId && 
+                        .Where(s => s.LeaderboardId == leaderboard.Id &&
+                                             s.PlayerId != resultScore.PlayerId && 
                                              s.AccLeft != 0 && 
                                              s.AccRight != 0 && 
                                              s.AccLeft == statistic.accuracyTracker.accLeft && 
                                              s.AccRight == statistic.accuracyTracker.accRight &&
-                                             s.BaseScore == resultScore.BaseScore);
+                                             s.BaseScore == resultScore.BaseScore)
+                        .Select(s => s.PlayerId)
+                        .FirstOrDefault();
                     if (sameAccScore != null)
                     {
-                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Acc is suspiciously exact same as: " + sameAccScore.PlayerId + "'s score");
+                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Acc is suspiciously exact same as: " + sameAccScore + "'s score");
 
                         return;
                     }
@@ -1045,9 +1048,7 @@ namespace BeatLeader_Server.Controllers
 		        DisablePayloadSigning = true
 	        };
             
-	        var response = await _replaysS3Client.PutObjectAsync(request);
-            
-	        Console.WriteLine("ETag: {0}", response.ETag);
+	        await _replaysS3Client.PutObjectAsync(request);
         }
 
         [NonAction]
