@@ -51,23 +51,17 @@ namespace BeatLeader_Server.Controllers
 
                     foreach (Score s in allScores)
                     {
+                        int maxScore = leaderboard.Difficulty.MaxScore > 0 ? leaderboard.Difficulty.MaxScore : ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
                         if (hasPp)
                         {
                             s.ModifiedScore = (int)(s.BaseScore * modifiers.GetNegativeMultiplier(s.Modifiers));
                         }
                         else
                         {
-                            s.ModifiedScore = (int)(s.BaseScore * modifiers.GetTotalMultiplier(s.Modifiers));
+                            s.ModifiedScore = (int)((s.BaseScore + (int)((float)(maxScore - s.BaseScore) * (modifiers.GetPositiveMultiplier(s.Modifiers) - 1))) * modifiers.GetNegativeMultiplier(s.Modifiers));
                         }
 
-                        if (leaderboard.Difficulty.MaxScore > 0)
-                        {
-                            s.Accuracy = (float)s.BaseScore / (float)leaderboard.Difficulty.MaxScore;
-                        }
-                        else
-                        {
-                            s.Accuracy = (float)s.BaseScore / (float)ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
-                        }
+                        s.Accuracy = (float)s.BaseScore / (float)maxScore;
 
                         if (s.Accuracy > 1.29f)
                         {
@@ -204,9 +198,19 @@ namespace BeatLeader_Server.Controllers
 
                         score.Accuracy = (float)s.BaseScore / (float)maxScore;
 
-                        if (score.Accuracy > 1.29f)
+                        if (score.Accuracy > 1f)
                         {
-                            score.Accuracy = 1.29f;
+                            maxScore = ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
+                            if (hasPp)
+                            {
+                                score.ModifiedScore = (int)(s.BaseScore * modifiers.GetNegativeMultiplier(s.Modifiers));
+                            }
+                            else
+                            {
+                                score.ModifiedScore = (int)((s.BaseScore + (int)((float)(maxScore - s.BaseScore) * (modifiers.GetPositiveMultiplier(s.Modifiers) - 1))) * modifiers.GetNegativeMultiplier(s.Modifiers));
+                            }
+
+                            score.Accuracy = (float)s.BaseScore / (float)maxScore;
                         }
                         if (hasPp)
                         {

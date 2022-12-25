@@ -25,7 +25,6 @@ namespace BeatLeader_Server.Models
         public string Platform { get; set; } = "";
         public string Avatar { get; set; } = "";
         public string Country { get; set; } = "not set";
-        public string Histories { get; set; } = "";
 
         public string Role { get; set; } = "";
         public int MapperId { get; set; }
@@ -44,7 +43,6 @@ namespace BeatLeader_Server.Models
         public string ExternalProfileUrl { get; set; } = "";
 
         public PlayerScoreStats? ScoreStats { get; set; }
-        public PlayerStatsHistory? StatsHistory { get; set; }
         public ICollection<Clan>? Clans { get; set; }
         public ICollection<PlayerFriends>? Friends { get; set; }
 

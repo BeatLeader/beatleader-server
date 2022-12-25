@@ -370,7 +370,6 @@ namespace BeatLeader_Server.Utils
                 Platform = p.Platform,
                 Avatar = p.Avatar,
                 Country = p.Country,
-                Histories = p.Histories,
                 ScoreStats = p.ScoreStats,
 
                 Pp = p.Pp,
@@ -403,7 +402,6 @@ namespace BeatLeader_Server.Utils
                 Platform = p.Platform,
                 Avatar = p.Avatar,
                 Country = p.Country,
-                Histories = p.Histories,
                 ScoreStats = p.ScoreStats,
 
                 MapperId = p.MapperId,
