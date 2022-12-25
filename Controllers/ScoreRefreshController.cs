@@ -210,7 +210,7 @@ namespace BeatLeader_Server.Controllers
                         }
                         if (hasPp)
                         {
-                            (score.Pp, score.BonusPp) = ReplayUtils.PpFromScore(score.Accuracy, s.Modifiers, leaderboard.Difficulty.ModifierValues, leaderboard.Difficulty.Stars ?? 0);
+                            (score.Pp, score.BonusPp) = ReplayUtils.PpFromScore(score.Accuracy, s.Modifiers, leaderboard.Difficulty.ModifierValues, leaderboard.Difficulty.Stars ?? 0, leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard");
                         }
                         else
                         {

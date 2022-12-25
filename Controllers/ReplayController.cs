@@ -708,7 +708,7 @@ namespace BeatLeader_Server.Controllers
                         resultScore.FcAccuracy, 
                         resultScore.Modifiers, 
                         leaderboard.Difficulty.ModifierValues, 
-                        leaderboard.Difficulty.Stars ?? 0).Item1;
+                        leaderboard.Difficulty.Stars ?? 0, leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
                 }
                 var ip = context.Request.HttpContext.Connection.RemoteIpAddress;
                 if (ip != null)
@@ -793,6 +793,7 @@ namespace BeatLeader_Server.Controllers
         private void SaveFailedScore(IDbContextTransaction transaction, Score? previousScore, Score score, Leaderboard leaderboard, string failReason) {
             //try {
             RollbackScore(score, previousScore, leaderboard);
+            Player player = score.Player;
 
             FailedScore failedScore = new FailedScore {
                 Error = failReason,
@@ -820,6 +821,75 @@ namespace BeatLeader_Server.Controllers
             _context.SaveChanges();
 
             transaction.Commit();
+
+            transaction = _context.Database.BeginTransaction();
+
+            _context.ChangeTracker.AutoDetectChangesEnabled = false;
+            var status = leaderboard.Difficulty.Status;
+            var isRanked = status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.nominated or DifficultyStatus.inevent;
+
+            var rankedScores = (isRanked 
+                    ?
+                _context
+                    .Scores
+                    .Where(s => s.LeaderboardId == leaderboard.Id && !s.Banned)
+                    .OrderByDescending(el => el.Pp)
+                    .Select(s => new { Id = s.Id, Rank = s.Rank })
+                    :
+                _context
+                    .Scores
+                    .Where(s => s.LeaderboardId == leaderboard.Id && !s.Banned)
+                    .OrderByDescending(el => el.ModifiedScore)
+                    .Select(s => new { Id = s.Id, Rank = s.Rank })
+            ).ToList();
+
+            foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
+            {
+                var score1 = _context.Scores.Local.FirstOrDefault(ls => ls.Id == s.Id);
+                if (score1 == null) {
+                    score1 = new Score() { Id = s.Id };
+                    _context.Scores.Attach(score);
+                }
+                score1.Rank = i + 1;
+                    
+                _context.Entry(score1).Property(x => x.Rank).IsModified = true;
+            }
+
+            if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
+                _context.RecalculatePPFast(player);
+                _context.BulkSaveChanges();
+
+                Dictionary<string, int> countries = new Dictionary<string, int>();
+                var ranked = _context.Players
+                    .Where(p => p.Pp > 0)
+                    .OrderByDescending(t => t.Pp)
+                    .Select(p => new { Id = p.Id, Country = p.Country })
+                    .ToList();
+                foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
+                {
+                    var p = _context.Players.Local.FirstOrDefault(lp => lp.Id == pp.Id);
+                    if (p == null) {
+                        p = new Player { Id = pp.Id, Country = pp.Country };
+                        _context.Players.Attach(p);
+                    }
+
+                    p.Rank = i + 1;
+                    _context.Entry(p).Property(x => x.Rank).IsModified = true;
+                    if (!countries.ContainsKey(p.Country))
+                    {
+                        countries[p.Country] = 1;
+                    }
+
+                    p.CountryRank = countries[p.Country];
+                    _context.Entry(p).Property(x => x.CountryRank).IsModified = true;
+
+                    countries[p.Country]++;
+                }
+            }
+
+            _context.BulkSaveChanges();
+            transaction.Commit();
+            
             //} catch { }
         }
 

@@ -424,15 +424,20 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            var songs = _context.Songs.Where(el => el.MapperId == 0).Include(song => song.Difficulties).ToList();
+            var songs = _context.Songs.Where(el => el.Difficulties.FirstOrDefault(d => d.Status == DifficultyStatus.outdated) != null).Include(song => song.Difficulties).ToList();
 
             foreach (var song in songs)
             {
                 Song? updatedSong = await SongUtils.GetSongFromBeatSaver("https://api.beatsaver.com/maps/hash/" + song.Hash);
 
-                if (updatedSong != null)
+                if (updatedSong != null && updatedSong.Hash == song.Hash)
                 {
-                    song.MapperId = updatedSong.MapperId;   
+                    foreach (var diff in song.Difficulties)
+                    {
+                        if (diff.Status == DifficultyStatus.outdated) {
+                            diff.Status = DifficultyStatus.unranked;
+                        }
+                    }
                 }
             }
 

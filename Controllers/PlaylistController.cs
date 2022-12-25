@@ -782,6 +782,11 @@ namespace BeatLeader_Server.Controllers
                 .ThenInclude(s => s.Player)
                 .ThenInclude(pl => pl.EventsParticipating).FirstOrDefault();
 
+            foreach (var lb in eventRanking.Leaderboards)
+            {
+                await _scoreRefreshController.RefreshScores(lb.Id);
+            }
+
             List<Player> players = new List<Player>();
 
             foreach (var lb in eventRanking.Leaderboards)

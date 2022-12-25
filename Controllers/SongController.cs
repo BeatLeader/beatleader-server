@@ -158,8 +158,8 @@ namespace BeatLeader_Server.Controllers
         {
             var leaderboard = new Leaderboard();
             leaderboard.SongId = song.Id;
-            IEnumerable<DifficultyDescription> difficulties = song.Difficulties.Where(el => el.DifficultyName == diff);
-            DifficultyDescription? difficulty = difficulties.FirstOrDefault(x => x.ModeName == mode);
+            IEnumerable<DifficultyDescription> difficulties = song.Difficulties.Where(el => el.DifficultyName.ToLower() == diff.ToLower());
+            DifficultyDescription? difficulty = difficulties.FirstOrDefault(x => x.ModeName.ToLower() == mode.ToLower());
             if (difficulty == null)
             {
                 difficulty = difficulties.FirstOrDefault(x => x.ModeName == "Standard");

@@ -19,7 +19,7 @@ namespace BeatLeader_Server.Utils
             return MathF.Pow(MathF.Log10(l / (l - acc)) / MathF.Log10(l / (l - a)), f);
         }
 
-        public static (float, float) PpFromScore(float accuracy, string modifiers, ModifiersMap modifierValues, float stars)
+        public static (float, float) PpFromScore(float accuracy, string modifiers, ModifiersMap modifierValues, float stars, bool timing)
         {
             bool negativeAcc = float.IsNegative(accuracy);
             if (negativeAcc)
@@ -30,10 +30,15 @@ namespace BeatLeader_Server.Utils
             float mp = modifierValues.GetTotalMultiplier(modifiers);
 
             float rawPP = 0; float fullPP = 0;
+            if (!timing) {
             if (!modifiers.Contains("NF"))
             {
                 rawPP = (float)(Curve(accuracy, (float)stars - 0.5f) * ((float)stars + 0.5f) * 42);
                 fullPP = (float)(Curve(accuracy, (float)stars * mp - 0.5f) * ((float)stars * mp + 0.5f) * 42);
+            }
+            } else {
+                rawPP = (float)((accuracy * (float)stars - 0.5f) * ((float)stars + 0.5f) * 5);
+                fullPP = (float)((accuracy * (float)stars * mp - 0.5f) * ((float)stars * mp + 0.5f) * 5);
             }
 
             if (float.IsInfinity(rawPP) || float.IsNaN(rawPP) || float.IsNegativeInfinity(rawPP))
@@ -59,7 +64,7 @@ namespace BeatLeader_Server.Utils
         }
 
         public static (float, float) PpFromScore(Score s, DifficultyDescription difficulty) {
-            return PpFromScore(s.Accuracy, s.Modifiers, difficulty.ModifierValues, difficulty.Stars ?? 0.0f);
+            return PpFromScore(s.Accuracy, s.Modifiers, difficulty.ModifierValues, difficulty.Stars ?? 0.0f, difficulty.ModeName.ToLower() == "rhythmgamestandard");
         }
 
         public static (float, float) PpFromScoreResponse(ScoreResponse s, RankUpdate reweight)

@@ -461,21 +461,38 @@ namespace BeatLeader_Server.Controllers
                     return Unauthorized();
                 }
             }
+            _context.ChangeTracker.AutoDetectChangesEnabled = false;
             Dictionary<string, int> countries = new Dictionary<string, int>();
-            
-            var ranked = _context.Players.Where(p => !p.Banned).OrderByDescending(t => t.Pp).ToList();
-            foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
+            var ranked = _context.Players
+                .Where(p => p.Pp > 0)
+                .OrderByDescending(t => t.Pp)
+                .Select(p => new { Id = p.Id, Country = p.Country })
+                .ToList();
+            foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
             {
+                Player p;
+                    try {
+                        p = new Player { Id = pp.Id, Country = pp.Country };
+                        _context.Players.Attach(p);
+                    } catch (Exception e) {
+                        continue;
+                    }
+
                 p.Rank = i + 1;
+                _context.Entry(p).Property(x => x.Rank).IsModified = true;
                 if (!countries.ContainsKey(p.Country))
                 {
                     countries[p.Country] = 1;
                 }
 
                 p.CountryRank = countries[p.Country];
+                _context.Entry(p).Property(x => x.CountryRank).IsModified = true;
+
                 countries[p.Country]++;
             }
-            await _context.SaveChangesAsync();
+            await _context.BulkSaveChangesAsync();
+
+            _context.ChangeTracker.AutoDetectChangesEnabled = true;
 
             return Ok();
         }

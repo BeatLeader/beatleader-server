@@ -282,30 +282,6 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
-        private Score RemovePositiveModifiers(Score s, ModifiersMap? modifiersObject, float? stars)
-        {
-            Score result = s;
-
-            if (modifiersObject == null) {
-                modifiersObject = new ModifiersMap();
-            }
-
-            int maxScore = (int)(result.ModifiedScore / result.Accuracy);
-
-            (string modifiers, float value) = modifiersObject.GetNegativeMultipliers(s.Modifiers);
-
-            result.ModifiedScore = (int)(result.BaseScore * value);
-            result.Accuracy = (float)result.ModifiedScore / (float)maxScore;
-            result.Modifiers = modifiers;
-            
-            if (result.Pp > 0) {
-
-                result.Pp = ReplayUtils.PpFromScore(s.Accuracy, s.Modifiers, modifiersObject, (float)stars).Item1;
-            }
-
-            return result;
-        }
-
         [HttpGet("~/v3/scores/{hash}/{diff}/{mode}/{context}/{scope}/{method}")]
         public async Task<ActionResult<ResponseWithMetadataAndSelection<ScoreResponse>>> GetByHash3(
             string hash,
