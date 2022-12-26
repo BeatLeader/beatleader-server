@@ -872,10 +872,6 @@ namespace BeatLeader_Server.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Histories")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<bool>("Inactive")
                         .HasColumnType("bit");
 
@@ -918,9 +914,6 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int?>("ScoreStatsId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("StatsHistoryId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
                     b.HasIndex("PatreonFeaturesId");
@@ -928,8 +921,6 @@ namespace BeatLeader_Server.Migrations
                     b.HasIndex("ProfileSettingsId");
 
                     b.HasIndex("ScoreStatsId");
-
-                    b.HasIndex("StatsHistoryId");
 
                     b.ToTable("Players");
                 });
@@ -1313,79 +1304,6 @@ namespace BeatLeader_Server.Migrations
                     b.HasIndex("PlayerId");
 
                     b.ToTable("PlayerSocial");
-                });
-
-            modelBuilder.Entity("BeatLeader_Server.Models.PlayerStatsHistory", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AverageAccuracy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AverageRankedAccuracy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AverageWeightedRankedAccuracy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AverageWeightedRankedRank")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("CountryRank")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("MedianAccuracy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("MedianRankedAccuracy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Pp")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Rank")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RankedPlayCount")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ReplaysWatched")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("TopAccuracy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("TopPp")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("TotalPlayCount")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("TotalScore")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("StatsHistory");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Playlist", b =>
@@ -2457,17 +2375,11 @@ namespace BeatLeader_Server.Migrations
                         .WithMany()
                         .HasForeignKey("ScoreStatsId");
 
-                    b.HasOne("BeatLeader_Server.Models.PlayerStatsHistory", "StatsHistory")
-                        .WithMany()
-                        .HasForeignKey("StatsHistoryId");
-
                     b.Navigation("PatreonFeatures");
 
                     b.Navigation("ProfileSettings");
 
                     b.Navigation("ScoreStats");
-
-                    b.Navigation("StatsHistory");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.PlayerChange", b =>
