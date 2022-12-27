@@ -331,49 +331,53 @@ namespace BeatLeader_Server.Controllers
                     improvement.BombCuts = resultScore.BombCuts - currentScore.BombCuts;
                     improvement.MissedNotes = resultScore.MissedNotes - currentScore.MissedNotes;
                     improvement.WallsHit = resultScore.WallsHit - currentScore.WallsHit;
-
-                    player.ScoreStats.TotalScore -= currentScore.ModifiedScore;
-                    if (player.ScoreStats.TotalPlayCount == 1)
-                    {
-                        player.ScoreStats.AverageAccuracy = 0.0f;
-                    }
-                    else
-                    {
-                        player.ScoreStats.AverageAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, currentScore.Accuracy);
-                    }
-
                     var status1 = leaderboard.Difficulty.Status;
-                    if (status1 == DifficultyStatus.ranked)
-                    {
-                        float oldAverageAcc = player.ScoreStats.AverageRankedAccuracy;
-                        if (player.ScoreStats.RankedPlayCount == 1)
+
+                    if (!resultScore.IgnoreForStats) {
+                        player.ScoreStats.TotalScore -= currentScore.ModifiedScore;
+
+                        if (player.ScoreStats.TotalPlayCount == 1)
                         {
-                            player.ScoreStats.AverageRankedAccuracy = 0.0f;
+                            player.ScoreStats.AverageAccuracy = 0.0f;
                         }
                         else
                         {
-                            player.ScoreStats.AverageRankedAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, currentScore.Accuracy);
+                            player.ScoreStats.AverageAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, currentScore.Accuracy);
                         }
 
-                        improvement.AverageRankedAccuracy = player.ScoreStats.AverageRankedAccuracy - oldAverageAcc;
-
-                        switch (currentScore.Accuracy)
+                        
+                        if (status1 == DifficultyStatus.ranked)
                         {
-                            case > 0.95f:
-                                player.ScoreStats.SSPPlays--;
-                                break;
-                            case > 0.9f:
-                                player.ScoreStats.SSPlays--;
-                                break;
-                            case > 0.85f:
-                                player.ScoreStats.SPPlays--;
-                                break;
-                            case > 0.8f:
-                                player.ScoreStats.SPlays--;
-                                break;
-                            default:
-                                player.ScoreStats.APlays--;
-                                break;
+                            float oldAverageAcc = player.ScoreStats.AverageRankedAccuracy;
+                            if (player.ScoreStats.RankedPlayCount == 1)
+                            {
+                                player.ScoreStats.AverageRankedAccuracy = 0.0f;
+                            }
+                            else
+                            {
+                                player.ScoreStats.AverageRankedAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, currentScore.Accuracy);
+                            }
+
+                            improvement.AverageRankedAccuracy = player.ScoreStats.AverageRankedAccuracy - oldAverageAcc;
+
+                            switch (currentScore.Accuracy)
+                            {
+                                case > 0.95f:
+                                    player.ScoreStats.SSPPlays--;
+                                    break;
+                                case > 0.9f:
+                                    player.ScoreStats.SSPlays--;
+                                    break;
+                                case > 0.85f:
+                                    player.ScoreStats.SPPlays--;
+                                    break;
+                                case > 0.8f:
+                                    player.ScoreStats.SPlays--;
+                                    break;
+                                default:
+                                    player.ScoreStats.APlays--;
+                                    break;
+                            }
                         }
                     }
 
@@ -399,12 +403,6 @@ namespace BeatLeader_Server.Controllers
                     }
                     currentScore.LeaderboardId = null;
                     _context.Scores.Remove(currentScore);
-
-                    int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-                    if ((timestamp - uint.Parse(currentScore.Timeset)) > 60 * 60 * 24)
-                    {
-                        player.ScoreStats.DailyImprovements++;
-                    }
                 }
                 else
                 {
@@ -568,42 +566,44 @@ namespace BeatLeader_Server.Controllers
             _context.ChangeTracker.AutoDetectChangesEnabled = true;
             transaction2 = await _context.Database.BeginTransactionAsync();
 
-            player.ScoreStats.TotalScore += resultScore.ModifiedScore;
-            player.ScoreStats.AverageAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, resultScore.Accuracy);
-            if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
-            {
-                player.ScoreStats.AverageRankedAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, resultScore.Accuracy);
-                if (resultScore.Accuracy > player.ScoreStats.TopAccuracy)
+            if (!resultScore.IgnoreForStats) {
+                player.ScoreStats.TotalScore += resultScore.ModifiedScore;
+                player.ScoreStats.AverageAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, resultScore.Accuracy);
+                if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
                 {
-                    player.ScoreStats.TopAccuracy = resultScore.Accuracy;
-                }
-                if (resultScore.Pp > player.ScoreStats.TopPp)
-                {
-                    player.ScoreStats.TopPp = resultScore.Pp;
-                }
+                    player.ScoreStats.AverageRankedAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, resultScore.Accuracy);
+                    if (resultScore.Accuracy > player.ScoreStats.TopAccuracy)
+                    {
+                        player.ScoreStats.TopAccuracy = resultScore.Accuracy;
+                    }
+                    if (resultScore.Pp > player.ScoreStats.TopPp)
+                    {
+                        player.ScoreStats.TopPp = resultScore.Pp;
+                    }
 
-                if (resultScore.BonusPp > player.ScoreStats.TopBonusPP)
-                {
-                    player.ScoreStats.TopBonusPP = resultScore.BonusPp;
-                }
+                    if (resultScore.BonusPp > player.ScoreStats.TopBonusPP)
+                    {
+                        player.ScoreStats.TopBonusPP = resultScore.BonusPp;
+                    }
 
-                switch (resultScore.Accuracy)
-                {
-                    case > 0.95f:
-                        player.ScoreStats.SSPPlays++;
-                        break;
-                    case > 0.9f:
-                        player.ScoreStats.SSPlays++;
-                        break;
-                    case > 0.85f:
-                        player.ScoreStats.SPPlays++;
-                        break;
-                    case > 0.8f:
-                        player.ScoreStats.SPlays++;
-                        break;
-                    default:
-                        player.ScoreStats.APlays++;
-                        break;
+                    switch (resultScore.Accuracy)
+                    {
+                        case > 0.95f:
+                            player.ScoreStats.SSPPlays++;
+                            break;
+                        case > 0.9f:
+                            player.ScoreStats.SSPlays++;
+                            break;
+                        case > 0.85f:
+                            player.ScoreStats.SPPlays++;
+                            break;
+                        case > 0.8f:
+                            player.ScoreStats.SPlays++;
+                            break;
+                        default:
+                            player.ScoreStats.APlays++;
+                            break;
+                    }
                 }
             }
 
@@ -624,7 +624,7 @@ namespace BeatLeader_Server.Controllers
             //var replay = replayDecoder.replay;
 
             if (replay.notes.Count == 0 || replay.frames.Count == 0) {
-                SaveFailedScore(transaction2, currentScore, resultScore, leaderboard, "Replay is broken, update your mode please.");
+                SaveFailedScore(transaction2, currentScore, resultScore, leaderboard, "Replay is broken, update your mod please.");
 
                 return;
             }

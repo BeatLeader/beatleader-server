@@ -1782,6 +1782,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.Property<int>("Hmd")
                         .HasColumnType("int");
 
+                    b.Property<bool>("IgnoreForStats")
+                        .HasColumnType("bit");
+
                     b.Property<string>("LeaderboardId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");

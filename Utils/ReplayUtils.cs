@@ -31,14 +31,14 @@ namespace BeatLeader_Server.Utils
 
             float rawPP = 0; float fullPP = 0;
             if (!timing) {
-            if (!modifiers.Contains("NF"))
-            {
-                rawPP = (float)(Curve(accuracy, (float)stars - 0.5f) * ((float)stars + 0.5f) * 42);
-                fullPP = (float)(Curve(accuracy, (float)stars * mp - 0.5f) * ((float)stars * mp + 0.5f) * 42);
-            }
+                if (!modifiers.Contains("NF"))
+                {
+                    rawPP = (float)(Curve(accuracy, (float)stars - 0.5f) * ((float)stars + 0.5f) * 42);
+                    fullPP = (float)(Curve(accuracy, (float)stars * mp - 0.5f) * ((float)stars * mp + 0.5f) * 42);
+                }
             } else {
-                rawPP = (float)((accuracy * (float)stars - 0.5f) * ((float)stars + 0.5f) * 5);
-                fullPP = (float)((accuracy * (float)stars * mp - 0.5f) * ((float)stars * mp + 0.5f) * 5);
+                rawPP = accuracy * stars * 55f;
+                fullPP = accuracy * stars * mp * 55f;
             }
 
             if (float.IsInfinity(rawPP) || float.IsNaN(rawPP) || float.IsNegativeInfinity(rawPP))
@@ -136,6 +136,7 @@ namespace BeatLeader_Server.Utils
             score.Qualification = qualification;
             score.Platform = info.platform + "," + info.gameVersion + "," + info.version;
             score.Timeset = info.timestamp;
+            score.IgnoreForStats = difficulty.ModeName.ToLower() == "rhythmgamestandard";
             
             return (score, maxScore);
         }

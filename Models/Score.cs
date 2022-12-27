@@ -81,6 +81,7 @@ namespace BeatLeader_Server.Models
         public ScoreImprovement? ScoreImprovement { get; set; }
         public bool Banned { get; set; } = false;
         public bool Suspicious { get; set; } = false;
+        public bool IgnoreForStats { get; set; } = false;
         public RankVoting? RankVoting { get; set; }
         public ScoreMetadata? Metadata { get; set; }
     }
