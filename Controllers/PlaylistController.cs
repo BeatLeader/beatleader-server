@@ -1,20 +1,12 @@
-﻿using Azure.Identity;
-using Azure.Storage.Blobs;
+﻿using Amazon.S3;
 using BeatLeader_Server.Extensions;
-using BeatLeader_Server.Migrations.ReadApp;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using Newtonsoft.Json.Linq;
-using System.Dynamic;
-using System.IO;
-using System.Linq;
 using System.Net;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
@@ -27,8 +19,7 @@ namespace BeatLeader_Server.Controllers
         private readonly AppContext _context;
         private readonly ReadAppContext _readAppContext;
 
-        BlobContainerClient _playlistContainerClient;
-        BlobContainerClient _assetsContainerClient;
+        IAmazonS3 _s3Client;
         ScoreRefreshController _scoreRefreshController;
         IWebHostEnvironment _environment;
 
@@ -36,36 +27,13 @@ namespace BeatLeader_Server.Controllers
             AppContext context,
             ReadAppContext readAppContext,
             ScoreRefreshController scoreRefreshController,
-            IOptions<AzureStorageConfig> config,
-            IWebHostEnvironment env)
+            IWebHostEnvironment env,
+            IConfiguration configuration)
         {
             _context = context;
             _readAppContext = readAppContext;
             _scoreRefreshController = scoreRefreshController;
-            if (env.IsDevelopment())
-            {
-                _playlistContainerClient = new BlobContainerClient(config.Value.AccountName, config.Value.PlaylistContainerName);
-            }
-            else
-            {
-                string containerEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
-                                                        config.Value.AccountName,
-                                                       config.Value.PlaylistContainerName);
-
-                _playlistContainerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
-            }
-            if (env.IsDevelopment())
-            {
-                _assetsContainerClient = new BlobContainerClient(config.Value.AccountName, config.Value.AssetsContainerName);
-            }
-            else
-            {
-                string containerEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
-                                                        config.Value.AccountName,
-                                                       config.Value.AssetsContainerName);
-
-                _assetsContainerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
-            }
+            _s3Client = configuration.GetS3Client();
             _environment = env;
         }
 
@@ -76,16 +44,17 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_readAppContext);
             if (currentID == null) return Unauthorized();
 
-            BlobClient blobClient = _playlistContainerClient.GetBlobClient(currentID + "oneclick.bplist");
-            MemoryStream stream = new MemoryStream(5);
-            if (!(await blobClient.ExistsAsync())) {
-                blobClient = _playlistContainerClient.GetBlobClient("oneclick.bplist");
+            var stream = await _s3Client.DownloadPlaylist(currentID + "oneclick.bplist");
+            if (stream != null) {
+                return File(stream, "application/json");
+            } else {
+                stream = await _s3Client.DownloadPlaylist("oneclick.bplist");
+                if (stream != null) {
+                    return File(stream, "application/json");
+                } else {
+                    return NotFound();
+                }
             }
-
-            await blobClient.DownloadToAsync(stream);
-            stream.Position = 0;
-
-            return File(stream, "application/json"); ;
         }
 
         public class CustomData
@@ -111,22 +80,18 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Can't decode songs");
             }
 
-            BlobClient blobClient = _playlistContainerClient.GetBlobClient(currentID + "oneclick.bplist");
-            MemoryStream stream = new MemoryStream(5);
-            if (!(await blobClient.ExistsAsync()))
-            {
-                blobClient = _playlistContainerClient.GetBlobClient("oneclick.bplist");
-            }
-            await blobClient.DownloadToAsync(stream);
-            stream.Position = 0;
+            dynamic? playlist = null;
 
-            dynamic? playlist = stream.ObjectFromStream();
-            if (playlist == null)
-            {
-                stream.Position = 0;
-                blobClient = _playlistContainerClient.GetBlobClient("oneclick.bplist");
-                await blobClient.DownloadToAsync(stream);
-                playlist = stream.ObjectFromStream();
+            using (var stream = await _s3Client.DownloadPlaylist(currentID + "oneclick.bplist")) {
+                if (stream != null) {
+                    playlist = stream.ObjectFromStream();
+                } else {
+                    playlist = (await _s3Client.DownloadPlaylist("oneclick.bplist"))?.ObjectFromStream();
+                }
+            }
+
+            if (playlist == null) {
+                playlist = (await _s3Client.DownloadPlaylist("oneclick.bplist"))?.ObjectFromStream();
             }
 
             if (playlist == null) {
@@ -135,8 +100,7 @@ namespace BeatLeader_Server.Controllers
 
             playlist.songs = mapscontainer.songs;
 
-            await _playlistContainerClient.DeleteBlobIfExistsAsync(currentID + "oneclick.bplist");
-            await _playlistContainerClient.UploadBlobAsync(currentID + "oneclick.bplist", new BinaryData(JsonConvert.SerializeObject(playlist)));
+            await S3Helper.UploadPlaylist(_s3Client, currentID + "oneclick.bplist", playlist);
 
             return Ok();
         }
@@ -148,33 +112,27 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             if (currentID == null) return Unauthorized();
 
-            BlobClient blobClient = _playlistContainerClient.GetBlobClient(currentID + "oneclick.bplist");
-            MemoryStream stream = new MemoryStream(5);
-            if (!(await blobClient.ExistsAsync()))
-            {
-                blobClient = _playlistContainerClient.GetBlobClient("oneclick.bplist");
-            }
-            await blobClient.DownloadToAsync(stream);
-            stream.Position = 0;
+            dynamic? playlist = null;
 
-            dynamic? playlist = stream.ObjectFromStream();
-            if (playlist == null)
-            {
-                stream.Position = 0;
-                blobClient = _playlistContainerClient.GetBlobClient("oneclick.bplist");
-                await blobClient.DownloadToAsync(stream);
-                playlist = stream.ObjectFromStream();
+            using (var stream = await _s3Client.DownloadPlaylist(currentID + "oneclick.bplist")) {
+                if (stream != null) {
+                    playlist = stream.ObjectFromStream();
+                } else {
+                    playlist = (await _s3Client.DownloadPlaylist("oneclick.bplist"))?.ObjectFromStream();
+                }
             }
 
-            if (playlist == null)
-            {
+            if (playlist == null) {
+                playlist = (await _s3Client.DownloadPlaylist("oneclick.bplist"))?.ObjectFromStream();
+            }
+
+            if (playlist == null) {
                 return BadRequest("Original plist dead. Wake up NSGolova");
             }
 
             playlist.songs = new List<string>();
 
-            await _playlistContainerClient.DeleteBlobIfExistsAsync(currentID + "oneclick.bplist");
-            await _playlistContainerClient.UploadBlobAsync(currentID + "oneclick.bplist", new BinaryData(JsonConvert.SerializeObject(playlist)));
+            await S3Helper.UploadPlaylist(_s3Client, currentID + "oneclick.bplist", playlist);
 
             return Ok();
         }
@@ -188,35 +146,34 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/playlist/{id}")]
         public async Task<ActionResult> GetById(string id)
         {
-            BlobClient blobClient = _playlistContainerClient.GetBlobClient(id + ".bplist");
-            MemoryStream stream = new MemoryStream(5);
-
-            await blobClient.DownloadToAsync(stream);
-            stream.Position = 0;
-
-            return File(stream, "application/json");
+            var stream = await _s3Client.DownloadPlaylist(id + ".bplist");
+            if (stream != null) {
+                return File(stream, "application/json");
+            } else {
+                return NotFound();
+            }
         }
 
         [HttpGet("~/playlist/image/{id}")]
         public async Task<ActionResult> GetImageById(string id)
         {
-            BlobClient blobClient = _playlistContainerClient.GetBlobClient(id.Split(".").First() + ".bplist");
-            MemoryStream stream = new MemoryStream(5);
+            using (var stream = await _s3Client.DownloadPlaylist(id.Split(".").First() + ".bplist")) {
+                if (stream == null) {
+                    return NotFound();
+                }
 
-            await blobClient.DownloadToAsync(stream);
-            stream.Position = 0;
+                dynamic? playlist = stream.ObjectFromStream();
 
-            dynamic? playlist = stream.ObjectFromStream();
+                if (playlist == null)
+                {
+                    return NotFound();
+                }
 
-            if (playlist == null)
-            {
-                return NotFound();
+                string image = playlist.image;
+                image = image.Replace("data:image/png;base64,", "");
+
+                return File(new MemoryStream(Convert.FromBase64String(image)), "image/png");
             }
-
-            string image = playlist.image;
-            image = image.Replace("data:image/png;base64,", "");
-
-            return File(new MemoryStream(Convert.FromBase64String(image)), "image/png");
         }
 
         [HttpGet("~/user/playlists")]
@@ -260,13 +217,12 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Can't decode songs");
             }
             playlist.customData = new CustomData { 
-                syncURL = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/playlists/" : "https://beatleadercdn.blob.core.windows.net/playlists/") + id + ".bplist",
+                syncURL = "https://api.beatleader.xyz/playlist/" + id,
                 owner = currentID,
                 id = id.ToString()
             };
 
-            await _playlistContainerClient.DeleteBlobIfExistsAsync(id + ".bplist");
-            await _playlistContainerClient.UploadBlobAsync(id + ".bplist", new BinaryData(JsonConvert.SerializeObject(playlist)));
+            await S3Helper.UploadPlaylist(_s3Client, id + ".bplist", playlist);
 
             return id;
         }
@@ -284,7 +240,7 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            await _playlistContainerClient.DeleteBlobIfExistsAsync(id + ".bplist");
+            //await _playlistContainerClient.DeleteBlobIfExistsAsync(id + ".bplist");
             _context.Playlists.Remove(playlistRecord);
             await _context.SaveChangesAsync();
 
@@ -347,18 +303,18 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            BlobClient blobClient = _playlistContainerClient.GetBlobClient("ranked.bplist");
-            MemoryStream stream = new MemoryStream(5);
-            await blobClient.DownloadToAsync(stream);
-            stream.Position = 0;
+            dynamic? playlist = null;
 
-            dynamic? playlist = stream.ObjectFromStream();
+            using (var stream = await _s3Client.DownloadPlaylist("ranked.bplist")) {
+                if (stream != null) {
+                    playlist = stream.ObjectFromStream();
+                }
+            }
 
             if (playlist == null)
             {
                 return BadRequest("Original plist dead. Wake up NSGolova!");
             }
-
 
             var deleted = DeletedSongs();
 
@@ -379,8 +335,7 @@ namespace BeatLeader_Server.Controllers
                 id = "ranked"
             };
 
-            await _playlistContainerClient.DeleteBlobIfExistsAsync("ranked.bplist");
-            await _playlistContainerClient.UploadBlobAsync("ranked.bplist", new BinaryData(JsonConvert.SerializeObject(playlist)));
+            await S3Helper.UploadPlaylist(_s3Client, "ranked.bplist", playlist);
 
             return Ok();
         }
@@ -400,12 +355,13 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            BlobClient blobClient = _playlistContainerClient.GetBlobClient("nominated.bplist");
-            MemoryStream stream = new MemoryStream(5);
-            await blobClient.DownloadToAsync(stream);
-            stream.Position = 0;
+            dynamic? playlist = null;
 
-            dynamic? playlist = stream.ObjectFromStream();
+            using (var stream = await _s3Client.DownloadPlaylist("nominated.bplist")) {
+                if (stream != null) {
+                    playlist = stream.ObjectFromStream();
+                }
+            }
 
             if (playlist == null)
             {
@@ -415,11 +371,13 @@ namespace BeatLeader_Server.Controllers
 
             var deleted = DeletedSongs();
 
-            var songs = _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.nominated).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).Where(lb => !deleted.Contains(lb.Song.Hash.ToLower())).Select(lb => new {
+            var songs = _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.nominated).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).Where(lb => !deleted.Contains(lb.Song.Hash.ToLower())).Select(lb => new
+            {
                 hash = lb.Song.Hash,
                 songName = lb.Song.Name,
                 levelAuthorName = lb.Song.Mapper,
-                difficulties = lb.Song.Difficulties.Where(d => d.Status == DifficultyStatus.nominated).Select(d => new {
+                difficulties = lb.Song.Difficulties.Where(d => d.Status == DifficultyStatus.nominated).Select(d => new
+                {
                     name = d.DifficultyName.FirstCharToLower(),
                     characteristic = d.ModeName
                 })
@@ -433,8 +391,7 @@ namespace BeatLeader_Server.Controllers
                 id = "nominated"
             };
 
-            await _playlistContainerClient.DeleteBlobIfExistsAsync("nominated.bplist");
-            await _playlistContainerClient.UploadBlobAsync("nominated.bplist", new BinaryData(JsonConvert.SerializeObject(playlist)));
+            await S3Helper.UploadPlaylist(_s3Client, "nominated.bplist", playlist);
 
             return Ok();
         }
@@ -454,12 +411,13 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            BlobClient blobClient = _playlistContainerClient.GetBlobClient("qualified.bplist");
-            MemoryStream stream = new MemoryStream(5);
-            await blobClient.DownloadToAsync(stream);
-            stream.Position = 0;
+            dynamic? playlist = null;
 
-            dynamic? playlist = stream.ObjectFromStream();
+            using (var stream = await _s3Client.DownloadPlaylist("qualified.bplist")) {
+                if (stream != null) {
+                    playlist = stream.ObjectFromStream();
+                }
+            }
 
             if (playlist == null)
             {
@@ -468,25 +426,27 @@ namespace BeatLeader_Server.Controllers
 
             var deleted = DeletedSongs();
 
-            var songs = _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.qualified).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).Where(lb => !deleted.Contains(lb.Song.Hash.ToLower())).Select(lb => new {
+            var songs = _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.qualified).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).Where(lb => !deleted.Contains(lb.Song.Hash.ToLower())).Select(lb => new
+            {
                 hash = lb.Song.Hash,
                 songName = lb.Song.Name,
                 levelAuthorName = lb.Song.Mapper,
-                difficulties = lb.Song.Difficulties.Where(d => d.Status == DifficultyStatus.qualified).Select(d => new {
+                difficulties = lb.Song.Difficulties.Where(d => d.Status == DifficultyStatus.qualified).Select(d => new
+                {
                     name = d.DifficultyName.FirstCharToLower(),
                     characteristic = d.ModeName
                 })
             }).ToList();
 
             playlist.songs = songs.DistinctBy(s => s.hash).ToList();
-            playlist.customData = new CustomData { 
-                syncURL = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/playlists/" : "https://beatleadercdn.blob.core.windows.net/playlists/") + "qualified.bplist",
+            playlist.customData = new CustomData
+            {
+                syncURL = "https://api.beatleader.xyz/playlist/qualified",
                 owner = "BeatLeader",
                 id = "qualified"
             };
 
-            await _playlistContainerClient.DeleteBlobIfExistsAsync("qualified.bplist");
-            await _playlistContainerClient.UploadBlobAsync("qualified.bplist", new BinaryData(JsonConvert.SerializeObject(playlist)));
+            await S3Helper.UploadPlaylist(_s3Client, "qualified.bplist", playlist);
 
             return Ok();
         }
@@ -541,12 +501,13 @@ namespace BeatLeader_Server.Controllers
                 }
             }).ToList();
 
-            BlobClient blobClient = _playlistContainerClient.GetBlobClient("searchresult.bplist");
-            MemoryStream stream = new MemoryStream(5);
-            await blobClient.DownloadToAsync(stream);
-            stream.Position = 0;
+            dynamic? playlist = null;
 
-            dynamic? playlist = stream.ObjectFromStream();
+            using (var stream = await _s3Client.DownloadPlaylist("searchresult.bplist")) {
+                if (stream != null) {
+                    playlist = stream.ObjectFromStream();
+                }
+            }
 
             if (playlist == null)
             {
@@ -599,13 +560,13 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            BlobClient blobClient = _playlistContainerClient.GetBlobClient(id + ".bplist");
-            MemoryStream stream = new MemoryStream(5);
+            dynamic? playlist = null;
 
-            await blobClient.DownloadToAsync(stream);
-            stream.Position = 0;
-
-            dynamic? playlist = stream.ObjectFromStream();
+            using (var stream = await _s3Client.DownloadPlaylist(id + ".bplist")) {
+                if (stream != null) {
+                    playlist = stream.ObjectFromStream();
+                }
+            }
 
             if (playlist == null)
             {
@@ -615,7 +576,6 @@ namespace BeatLeader_Server.Controllers
             string fileName = id + "-event";
             try
             {
-                await _assetsContainerClient.CreateIfNotExistsAsync();
 
                 var ms = new MemoryStream(5);
                 await Request.Body.CopyToAsync(ms);
@@ -624,8 +584,7 @@ namespace BeatLeader_Server.Controllers
                 (string extension, MemoryStream stream2) = ImageUtils.GetFormatAndResize(ms);
                 fileName += extension;
 
-                await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
-                await _assetsContainerClient.UploadBlobAsync(fileName, stream2);
+                await _s3Client.UploadAsset(fileName, stream2);
             }
             catch (Exception)
             {
@@ -722,7 +681,7 @@ namespace BeatLeader_Server.Controllers
                 Players = players,
                 EndDate = endDate,
                 PlaylistId = id,
-                Image = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://beatleadercdn.blob.core.windows.net/assets/") + fileName
+                Image = "https://cdn.assets.beatleader.xyz/" + fileName
             };
 
             _context.EventRankings.Add(eventRanking);

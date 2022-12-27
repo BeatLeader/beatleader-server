@@ -99,6 +99,12 @@ namespace BeatLeader_Server.Controllers
                     case "rank":
                         sequence = sequence.Order(order, t => t.Rank);
                         break;
+                    case "maxStreak":
+                        sequence = sequence.Order(order, t => t.MaxStreak);
+                        break;
+                    case "timing":
+                        sequence = sequence.Order(order, t => (t.LeftTiming + t.RightTiming) / 2);
+                        break;
                     case "stars":
                         sequence = sequence
                                     .Include(lb => lb.Leaderboard)

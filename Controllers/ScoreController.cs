@@ -1,5 +1,4 @@
-﻿using System;
-using System.Linq;
+﻿using Amazon.S3;
 using Azure.Identity;
 using Azure.Storage.Blobs;
 using BeatLeader_Server.Extensions;
@@ -22,6 +21,7 @@ namespace BeatLeader_Server.Controllers
 
         private readonly BlobContainerClient _replaysClient;
         private readonly BlobContainerClient _scoreStatsClient;
+        private readonly IAmazonS3 _s3Client;
 
         private readonly IServerTiming _serverTiming;
 
@@ -30,11 +30,14 @@ namespace BeatLeader_Server.Controllers
             ReadAppContext readContext,
             IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env,
-            IServerTiming serverTiming)
+            IServerTiming serverTiming,
+            IConfiguration configuration)
         {
             _context = context;
             _readContext = readContext;
             _serverTiming = serverTiming;
+            _s3Client = configuration.GetS3Client();
+
             if (env.IsDevelopment())
             {
                 _replaysClient = new BlobContainerClient(config.Value.AccountName, config.Value.ReplaysContainerName);
@@ -673,7 +676,7 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Error decoding replay");
             }
 
-            (ScoreStatistic? statistic, string? error) = CalculateAndSaveStatistic(replay, score);
+            (ScoreStatistic? statistic, string? error) = await CalculateAndSaveStatistic(replay, score);
             if (statistic == null) {
                 return BadRequest(error);
             }
@@ -710,7 +713,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public (ScoreStatistic?, string?) CalculateAndSaveStatistic(Replay? replay, Score score)
+        public async Task<(ScoreStatistic?, string?)> CalculateAndSaveStatistic(Replay? replay, Score score)
         {
             (ScoreStatistic? statistic, string? error) = CalculateStatisticFromReplay(replay, score.Leaderboard);
 
@@ -721,6 +724,8 @@ namespace BeatLeader_Server.Controllers
 
             _scoreStatsClient.DeleteBlobIfExists(score.Id + ".json");
             _scoreStatsClient.UploadBlob(score.Id + ".json", new BinaryData(JsonConvert.SerializeObject(statistic)));
+
+            await _s3Client.UploadScoreStats(score.Id + ".json", statistic);
 
             return (statistic, null);
         }

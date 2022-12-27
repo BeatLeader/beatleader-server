@@ -1,5 +1,4 @@
-﻿using Azure.Identity;
-using Azure.Storage.Blobs;
+﻿using Amazon.S3;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Lib.AspNetCore.ServerTiming;
@@ -23,7 +22,7 @@ namespace BeatLeader_Server.Controllers
         private readonly ReadAppContext _readContext;
 
         private readonly IWebHostEnvironment _webHostEnvironment;
-        BlobContainerClient _previewContainerClient;
+        private readonly IAmazonS3 _s3Client;
         private readonly IServerTiming _serverTiming;
 
         private Image StarImage;
@@ -40,30 +39,17 @@ namespace BeatLeader_Server.Controllers
             AppContext context,
             ReadAppContext readContext,
             IWebHostEnvironment webHostEnvironment, 
-            IOptions<AzureStorageConfig> config,
-            IServerTiming serverTiming) {
+            IServerTiming serverTiming,
+            IConfiguration configuration) {
             _client = new HttpClient();
             _context = context;
             _readContext = readContext;
             _webHostEnvironment = webHostEnvironment;
             _serverTiming = serverTiming;
-
-            if (webHostEnvironment.IsDevelopment())
-            {
-                _previewContainerClient = new BlobContainerClient(config.Value.AccountName, config.Value.AssetsContainerName);
-            }
-            else
-            {
-                string containerEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
-                                                        config.Value.AccountName,
-                                                       config.Value.AssetsContainerName);
-
-                _previewContainerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
-            }
+            _s3Client = configuration.GetS3Client();
 
             if (OperatingSystem.IsWindows())
             {
-
                 StarImage = LoadImage("Star.png");
                 AvatarMask = LoadImage("AvatarMask.png");
                 AvatarShadow = LoadImage("AvatarShadow.png");
@@ -140,13 +126,14 @@ namespace BeatLeader_Server.Controllers
             ResponseUtils.PostProcessSettings(score.PlayerRole, score.ProfileSettings, score.PatreonFeatures);
             if (score.ProfileSettings?.EffectName == null || score.ProfileSettings.EffectName.Length == 0) return null;
 
-            BlobClient blobClient = _previewContainerClient.GetBlobClient(score.ProfileSettings.EffectName + "_Effect.png");
-
-            if (await blobClient.ExistsAsync())
+            using (var stream = await _s3Client.DownloadAsset(score.ProfileSettings.EffectName + "_Effect.png"))
             {
-                return new Bitmap(await blobClient.OpenReadAsync());
+                if (stream != null) {
+                    return new Bitmap(stream);
+                } else {
+                    return null;
+                }
             } 
-            return null;
         }
 
         [HttpGet("~/preview/replay")]
@@ -159,10 +146,9 @@ namespace BeatLeader_Server.Controllers
 
             if (scoreId != null)
             {
-                BlobClient blobClient = _previewContainerClient.GetBlobClient(scoreId + "-preview.png");
-                if (await blobClient.ExistsAsync())
-                {
-                    return File(await blobClient.OpenReadAsync(), "image/png");
+                var stream = await _s3Client.DownloadPreview(scoreId + "-preview.png");
+                if (stream != null) {
+                    return File(stream, "image/png");
                 }
             }
             else {
@@ -265,7 +251,7 @@ namespace BeatLeader_Server.Controllers
             if (scoreId != null)
             {
                 try {
-                    await _previewContainerClient.UploadBlobAsync(scoreId + "-preview.png", ms);
+                    await _s3Client.UploadPreview(scoreId + "-preview.png", ms);
                 } catch { }
             }
             ms.Position = 0;

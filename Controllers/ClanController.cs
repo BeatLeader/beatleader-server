@@ -1,12 +1,10 @@
-﻿using Azure.Identity;
-using Azure.Storage.Blobs;
+﻿using Amazon.S3;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using System.Text.RegularExpressions;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
@@ -17,33 +15,22 @@ namespace BeatLeader_Server.Controllers
         private readonly AppContext _context;
         private readonly ReadAppContext _readContext;
 
-        BlobContainerClient _assetsContainerClient;
+        IAmazonS3 _assetsS3Client;
         CurrentUserController _userController;
         IWebHostEnvironment _environment;
 
         public ClanController(
             AppContext context,
-            IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env,
             CurrentUserController userController,
-            ReadAppContext readContext)
+            ReadAppContext readContext,
+            IConfiguration configuration)
         {
             _context = context;
             _userController = userController;
             _environment = env;
             _readContext = readContext;
-            if (env.IsDevelopment())
-            {
-                _assetsContainerClient = new BlobContainerClient(config.Value.AccountName, config.Value.AssetsContainerName);
-            }
-            else
-            {
-                string containerEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
-                                                        config.Value.AccountName,
-                                                       config.Value.AssetsContainerName);
-
-                _assetsContainerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
-            }
+            _assetsS3Client = configuration.GetS3Client();
         }
 
         [HttpGet("~/clans/")]
@@ -228,8 +215,6 @@ namespace BeatLeader_Server.Controllers
             string? icon;
             try
             {
-                await _assetsContainerClient.CreateIfNotExistsAsync();
-
                 var ms = new MemoryStream(5);
                 await Request.Body.CopyToAsync(ms);
                 ms.Position = 0;
@@ -237,10 +222,9 @@ namespace BeatLeader_Server.Controllers
                 (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(ms);
                 fileName += extension;
 
-                await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
-                await _assetsContainerClient.UploadBlobAsync(fileName, stream);
+                await _assetsS3Client.UploadAsset(fileName, stream);
 
-                icon = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://beatleadercdn.blob.core.windows.net/assets/") + fileName;
+                icon = (_environment.IsDevelopment() ? "https://localhost:9191/assets/" : "https://cdn.assets.beatleader.xyz/") + fileName;
             }
             catch (Exception e)
             {
@@ -253,7 +237,7 @@ namespace BeatLeader_Server.Controllers
                 Tag = upperTag,
                 Color = color,
                 LeaderID = currentID,
-                Icon = icon ?? "https://beatleadercdn.blob.core.windows.net/assets/clan.png",
+                Icon = icon ?? "https://cdn.assets.beatleader.xyz/clan.png",
                 Description = description,
                 Bio = bio,
                 PlayersCount = 1,
@@ -371,8 +355,6 @@ namespace BeatLeader_Server.Controllers
             string fileName = clan.Tag + "clan";
             try
             {
-                await _assetsContainerClient.CreateIfNotExistsAsync();
-
                 var ms = new MemoryStream(5);
                 await Request.Body.CopyToAsync(ms);
                 if (ms.Length > 0) {
@@ -381,10 +363,9 @@ namespace BeatLeader_Server.Controllers
                     (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(ms);
                     fileName += extension;
 
-                    await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
-                    await _assetsContainerClient.UploadBlobAsync(fileName, stream);
+                    await _assetsS3Client.UploadAsset(fileName, stream);
 
-                    clan.Icon = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://beatleadercdn.blob.core.windows.net/assets/") + fileName;
+                    clan.Icon = (_environment.IsDevelopment() ? "https://localhost:9191/assets/" : "https://cdn.assets.beatleader.xyz/") + fileName;
                 }
             }
             catch (Exception)

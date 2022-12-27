@@ -1034,6 +1034,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.Property<float>("AverageAccuracy")
                         .HasColumnType("real");
 
+                    b.Property<float>("AverageLeftTiming")
+                        .HasColumnType("real");
+
                     b.Property<float>("AverageRank")
                         .HasColumnType("real");
 
@@ -1041,6 +1044,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .HasColumnType("real");
 
                     b.Property<float>("AverageRankedRank")
+                        .HasColumnType("real");
+
+                    b.Property<float>("AverageRightTiming")
                         .HasColumnType("real");
 
                     b.Property<float>("AverageUnrankedAccuracy")
@@ -1065,6 +1071,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .HasColumnType("int");
 
                     b.Property<int>("LastUnrankedScoreTime")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxStreak")
                         .HasColumnType("int");
 
                     b.Property<float>("MedianAccuracy")
@@ -1150,6 +1159,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.Property<float>("AverageAccuracy")
                         .HasColumnType("real");
 
+                    b.Property<float>("AverageLeftTiming")
+                        .HasColumnType("real");
+
                     b.Property<float>("AverageRank")
                         .HasColumnType("real");
 
@@ -1157,6 +1169,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .HasColumnType("real");
 
                     b.Property<float>("AverageRankedRank")
+                        .HasColumnType("real");
+
+                    b.Property<float>("AverageRightTiming")
                         .HasColumnType("real");
 
                     b.Property<float>("AverageUnrankedAccuracy")
@@ -1184,6 +1199,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .HasColumnType("int");
 
                     b.Property<int>("LastUnrankedScoreTime")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxStreak")
                         .HasColumnType("int");
 
                     b.Property<float>("MedianAccuracy")
@@ -1768,7 +1786,13 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<float>("LeftTiming")
+                        .HasColumnType("real");
+
                     b.Property<int>("MaxCombo")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxStreak")
                         .HasColumnType("int");
 
                     b.Property<int?>("MetadataId")
@@ -1808,6 +1832,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
 
                     b.Property<int?>("ReplayOffsetsId")
                         .HasColumnType("int");
+
+                    b.Property<float>("RightTiming")
+                        .HasColumnType("real");
 
                     b.Property<int?>("ScoreImprovementId")
                         .HasColumnType("int");

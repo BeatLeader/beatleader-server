@@ -59,7 +59,7 @@ namespace BeatLeader_Server.Models
 
         public void SetDefaultAvatar()
         {
-            this.Avatar = "https://beatleadercdn.blob.core.windows.net/assets/" + this.Platform + "avatar.png";
+            this.Avatar = "https://cdn.assets.beatleader.xyz/" + this.Platform + "avatar.png";
         }
     }
 }

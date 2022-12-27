@@ -82,6 +82,9 @@ namespace BeatLeader_Server.Controllers
             public int Timeset;
             public float Weight;
             public bool Qualification;
+            public int MaxStreak;
+            public float LeftTiming { get; set; }
+            public float RightTiming { get; set; }
         }
 
         [NonAction]
@@ -100,7 +103,10 @@ namespace BeatLeader_Server.Controllers
                     Rank = s.Rank,
                     Timeset = s.Timepost,
                     Weight = s.Weight,
-                    Qualification = s.Qualification
+                    Qualification = s.Qualification,
+                    MaxStreak = s.MaxStreak,
+                    RightTiming = s.RightTiming,
+                    LeftTiming = s.LeftTiming,
                 }).ToList();
 
             List<SubScore> rankedScores = new();
@@ -157,6 +163,10 @@ namespace BeatLeader_Server.Controllers
                 scoreStats.MedianAccuracy = allScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
                 scoreStats.AverageRank = allScores.Average(s => (float)s.Rank);
                 scoreStats.LastScoreTime = allScores.MaxBy(s => s.Timeset).Timeset;
+
+                scoreStats.MaxStreak = allScores.Max(s => s.MaxStreak);
+                scoreStats.AverageLeftTiming = allScores.Average(s => s.LeftTiming);
+                scoreStats.AverageRightTiming = allScores.Average(s => s.RightTiming);
             } else {
                 scoreStats.TotalScore = 0;
                 scoreStats.AverageAccuracy = 0;

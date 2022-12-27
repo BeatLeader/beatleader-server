@@ -136,6 +136,9 @@ namespace BeatLeader_Server.Utils
             HitTracker hitTracker = new HitTracker();
             result.hitTracker = hitTracker;
 
+            int leftGoodCuts = 0, rightGoodCuts = 0;
+            float leftTiming = 0, rightTiming = 0;
+
             foreach (var item in replay.notes)
             {
                 NoteParams param = new NoteParams(item.noteID);
@@ -171,10 +174,29 @@ namespace BeatLeader_Server.Utils
                             hitTracker.rightBombs++;
                         }
                         break;
+                    case NoteEventType.good:
+                        if (param.colorType == 0)
+                        {
+                            leftGoodCuts++;
+                            leftTiming += item.noteCutInfo.timeDeviation;
+                        }
+                        else
+                        {
+                            rightGoodCuts++;
+                            rightTiming += item.noteCutInfo.timeDeviation;
+                        }
+                        break;
                     default:
                         break;
                 }
             }
+            if (leftGoodCuts > 0) {
+                hitTracker.leftTiming = leftTiming / leftGoodCuts;
+            }
+            if (rightGoodCuts > 0) {
+                hitTracker.rightTiming = rightTiming / rightGoodCuts;
+            }
+
             string? error = CheckReplay(replay, leaderboard);
             if (error != null) {
                 return (null, error);

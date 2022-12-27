@@ -92,6 +92,9 @@ namespace BeatLeader_Server.Services
                             TopBonusPP = p.ScoreStats.TopBonusPP,
 
                             PeakRank = p.ScoreStats.PeakRank,
+                            MaxStreak = p.ScoreStats.MaxStreak,
+                            AverageLeftTiming = p.ScoreStats.AverageLeftTiming,
+                            AverageRightTiming = p.ScoreStats.AverageRightTiming,
 
                             RankedPlayCount = p.ScoreStats.RankedPlayCount,
                             UnrankedPlayCount = p.ScoreStats.UnrankedPlayCount,

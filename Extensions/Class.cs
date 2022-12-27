@@ -186,7 +186,7 @@ namespace BeatLeader_Server.Extensions
 
     public static class StreamExtentions
         {
-        public static ExpandoObject? ObjectFromStream(this MemoryStream ms)
+        public static ExpandoObject? ObjectFromStream(this Stream ms)
         {
             using (StreamReader reader = new StreamReader(ms))
             {
@@ -200,7 +200,7 @@ namespace BeatLeader_Server.Extensions
             }
         }
 
-        public static T? ObjectFromStream<T>(this MemoryStream ms)
+        public static T? ObjectFromStream<T>(this Stream ms)
         {
             using (StreamReader reader = new StreamReader(ms))
             {

@@ -74,6 +74,9 @@ namespace BeatLeader_Server.Models
         //public ICollection<AltScore>? AltScores { get; set; }
         public ReplayOffsets? ReplayOffsets { get; set; }
         public string? Country { get; set; }
+        public int MaxStreak { get; set; }
+        public float LeftTiming { get; set; }
+        public float RightTiming { get; set; }
 
         public ScoreImprovement? ScoreImprovement { get; set; }
         public bool Banned { get; set; } = false;

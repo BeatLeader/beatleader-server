@@ -1,6 +1,4 @@
-﻿using Amazon.Runtime;
-using Amazon.S3;
-using Amazon.S3.Model;
+﻿using Amazon.S3;
 using Azure.Identity;
 using Azure.Storage.Blobs;
 using BeatLeader_Server.Extensions;
@@ -14,6 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -21,10 +20,9 @@ namespace BeatLeader_Server.Controllers
     public class ReplayController : Controller
     {
         private readonly BlobContainerClient _replaysClient;
-        private readonly BlobContainerClient _otherReplaysClient;
         private readonly BlobContainerClient _scoreStatsClient;
 
-        private static IAmazonS3 _replaysS3Client;
+        private readonly IAmazonS3 _replaysS3Client;
 
         private readonly AppContext _context;
         private readonly ReadAppContext _readContext;
@@ -62,26 +60,22 @@ namespace BeatLeader_Server.Controllers
             _environment = env;
             _configuration = configuration;
             _serverTiming = serverTiming;
-
-	        var credentials = new BasicAWSCredentials(
-                _configuration.GetValue<string>("S3AccessKey"), 
-                _configuration.GetValue<string>("S3AccessSecret"));
-	        _replaysS3Client = new AmazonS3Client(credentials, new AmazonS3Config
-		    {
-			    ServiceURL = "https://" + _configuration.GetValue<string>("S3AccountID") + ".r2.cloudflarestorage.com",
-		    });
-
+            _replaysS3Client = configuration.GetS3Client();
+	        
             if (env.IsDevelopment())
 			{
+          //      _replaysS3Client = new AmazonS3Client(credentials, new AmazonS3Config
+		        //{
+			       // ServiceURL = "https://localhost:9191",
+		        //});
 				_replaysClient = new BlobContainerClient(config.Value.AccountName, config.Value.ReplaysContainerName);
-                _otherReplaysClient = new BlobContainerClient(config.Value.AccountName, config.Value.OtherReplaysContainerName);
 
                 _scoreStatsClient = new BlobContainerClient(config.Value.AccountName, config.Value.ScoreStatsContainerName);
             }
 			else
 			{
+                
 				_replaysClient = ContainerWithName(config, config.Value.ReplaysContainerName);
-                _otherReplaysClient = ContainerWithName(config, config.Value.OtherReplaysContainerName);
                 _scoreStatsClient = ContainerWithName(config, config.Value.ScoreStatsContainerName);
             }
         }
@@ -286,10 +280,19 @@ namespace BeatLeader_Server.Controllers
 
                 if (player.Country == "not set")
                 {
+                    string? country = null;
+
+                    if (Request.Headers["cf-ipcountry"] != StringValues.Empty) {
+                       country = Request.Headers["cf-ipcountry"].ToString();
+                    }
+
                     var ip = context.Request.HttpContext.Connection.RemoteIpAddress;
-                    if (ip != null)
+                    if (country == null && ip != null)
                     {
-                        player.Country = WebUtils.GetCountryByIp(ip.ToString()) ?? "not set";
+                        country = WebUtils.GetCountryByIp(ip.ToString());
+                    }
+                    if (country != null) {
+                        player.Country = country;
                     }
                 }
             }
@@ -661,8 +664,8 @@ namespace BeatLeader_Server.Controllers
                 resultScore.Replay = (_environment.IsDevelopment() ? "https://localhost:9191/replays/" : "https://cdn.replays.beatleader.xyz/") + fileName;
                 
                 string replayLink = resultScore.Replay;
-                await UploadReplay(fileName, replayData);
-                (ScoreStatistic? statistic, string? error) = _scoreController.CalculateAndSaveStatistic(replay, resultScore);
+                await _replaysS3Client.UploadReplay(fileName, replayData);
+                (ScoreStatistic? statistic, string? error) = await _scoreController.CalculateAndSaveStatistic(replay, resultScore);
                 if (statistic == null)
                 {
                     SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Could not recalculate score from replay. Error: " + error);
@@ -703,6 +706,13 @@ namespace BeatLeader_Server.Controllers
                 resultScore.AccRight = statistic.accuracyTracker.accRight;
                 resultScore.MaxCombo = statistic.hitTracker.maxCombo;
                 resultScore.FcAccuracy = statistic.accuracyTracker.fcAcc;
+                resultScore.MaxStreak = statistic.hitTracker.maxStreak;
+                if (resultScore.MaxStreak > player.ScoreStats.MaxStreak) {
+                    player.ScoreStats.MaxStreak = resultScore.MaxStreak;
+                }
+
+                resultScore.LeftTiming = statistic.hitTracker.leftTiming;
+                resultScore.RightTiming = statistic.hitTracker.rightTiming;
                 if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
                     resultScore.FcPp = ReplayUtils.PpFromScore(
                         resultScore.FcAccuracy, 
@@ -710,11 +720,7 @@ namespace BeatLeader_Server.Controllers
                         leaderboard.Difficulty.ModifierValues, 
                         leaderboard.Difficulty.Stars ?? 0, leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
                 }
-                var ip = context.Request.HttpContext.Connection.RemoteIpAddress;
-                if (ip != null)
-                {
-                    resultScore.Country = WebUtils.GetCountryByIp(ip.ToString()) ?? "not set";
-                }
+                resultScore.Country = Request.Headers["cf-ipcountry"] == StringValues.Empty ? "not set" : Request.Headers["cf-ipcountry"].ToString();
 
                 if (currentScore != null)
                 {
@@ -1108,18 +1114,6 @@ namespace BeatLeader_Server.Controllers
         {
         }
 
-        static async Task UploadReplay(string filename, byte[] data)
-        {
-	        var request = new PutObjectRequest
-	        {
-                InputStream = new BinaryData(data).ToStream(),
-		        Key = filename,
-		        BucketName = "replays",
-		        DisablePayloadSigning = true
-	        };
-            
-	        await _replaysS3Client.PutObjectAsync(request);
-        }
 
         [NonAction]
         public DiscordWebhookClient? top1DSClient()

@@ -1,5 +1,4 @@
-﻿using Azure.Identity;
-using Azure.Storage.Blobs;
+﻿using Amazon.S3;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
@@ -19,7 +18,7 @@ namespace BeatLeader_Server.Controllers
         private readonly ReadAppContext _readContext;
 
         private readonly IConfiguration _configuration;
-        BlobContainerClient _assetsContainerClient;
+        IAmazonS3 _assetsS3Client;
         IWebHostEnvironment _environment;
 
         private readonly IServerTiming _serverTiming;
@@ -38,18 +37,7 @@ namespace BeatLeader_Server.Controllers
             _configuration = configuration;
             _serverTiming = serverTiming;
             _environment = env;
-            if (env.IsDevelopment())
-            {
-                _assetsContainerClient = new BlobContainerClient(config.Value.AccountName, config.Value.AssetsContainerName);
-            }
-            else
-            {
-                string containerEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
-                                                        config.Value.AccountName,
-                                                       config.Value.AssetsContainerName);
-
-                _assetsContainerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
-            }
+            _assetsS3Client = configuration.GetS3Client();
         }
 
         [HttpGet("~/player/{id}")]
@@ -151,10 +139,9 @@ namespace BeatLeader_Server.Controllers
                         (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(readStream);
                         fileName += extension;
 
-                        await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
-                        await _assetsContainerClient.UploadBlobAsync(fileName, stream);
+                        await _assetsS3Client.UploadAsset(fileName, stream);
 
-                        player.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://beatleadercdn.blob.core.windows.net/assets/") + fileName;
+                        player.Avatar = (_environment.IsDevelopment() ? "https://localhost:9191/assets/" : "https://cdn.assets.beatleader.xyz/") + fileName;
                     }
                 } else {
                     player = await GetPlayerFromBL(id);
@@ -591,6 +578,12 @@ namespace BeatLeader_Server.Controllers
                             break;
                         case "lastplay":
                             request = request.Order(order, p => p.ScoreStats.LastScoreTime);
+                            break;
+                        case "maxStreak":
+                            request = request.Order(order == "desc" ? "asc" : "desc", p => p.ScoreStats.MaxStreak);
+                            break;
+                        case "timing":
+                            request = request.Order(order, p => (p.ScoreStats.AverageLeftTiming + p.ScoreStats.AverageRightTiming) / 2);
                             break;
                         default:
                             break;

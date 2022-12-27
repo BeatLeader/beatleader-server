@@ -1,16 +1,10 @@
-using Azure.Identity;
-using Azure.Storage.Blobs;
+using Amazon.S3;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using System.Dynamic;
 using System.Net;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
@@ -24,18 +18,17 @@ namespace BeatLeader_Server.Controllers
         private readonly AppContext _context;
         private readonly ReadAppContext _readContext;
 
-        BlobContainerClient _assetsContainerClient;
         PlayerController _playerController;
         PlayerRefreshController _playerRefreshController;
         ReplayController _replayController;
         IWebHostEnvironment _environment;
         IConfiguration _configuration;
         ScoreRefreshController _scoreRefreshController;
+        IAmazonS3 _s3Client;
 
         public CurrentUserController(
             AppContext context,
             ReadAppContext readContext,
-            IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env,
             PlayerController playerController,
             PlayerRefreshController playerRefreshController,
@@ -52,16 +45,7 @@ namespace BeatLeader_Server.Controllers
             _scoreRefreshController = scoreRefreshController;
             _configuration = configuration;
             _environment = env;
-            if (env.IsDevelopment())
-            {
-                _assetsContainerClient = new BlobContainerClient(config.Value.AccountName, config.Value.AssetsContainerName);
-            }
-            else
-            {
-                string containerEndpoint = $"https://{config.Value.AccountName}.blob.core.windows.net/{config.Value.AssetsContainerName}";
-
-                _assetsContainerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
-            }
+            _s3Client = configuration.GetS3Client();
         }
 
         [HttpGet("~/user/id")]
@@ -329,7 +313,7 @@ namespace BeatLeader_Server.Controllers
                 if (changes == null) {
                    changes = player.Changes = new List<PlayerChange>();
                 }
-                PlayerChange? lastChange = changes.Count > 0 ? changes.MaxBy(ch => ch.Timestamp) : null;
+                PlayerChange? lastChange = changes.Count > 0 ? changes.Where(ch => ch.NewCountry != null).MaxBy(ch => ch.Timestamp) : null;
                 int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                 PlayerChange newChange = new PlayerChange {
                     OldName = player.Name,
@@ -385,8 +369,6 @@ namespace BeatLeader_Server.Controllers
             string? fileName = null;
             try
             {
-                await _assetsContainerClient.CreateIfNotExistsAsync();
-
                 var ms = new MemoryStream(5);
                 await Request.Body.CopyToAsync(ms);
                 ms.Position = 0;
@@ -395,13 +377,12 @@ namespace BeatLeader_Server.Controllers
                 Random rnd = new Random();
                 fileName = userId + "R" + rnd.Next(1, 50) + extension;
 
-                await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
-                await _assetsContainerClient.UploadBlobAsync(fileName, stream);
+                await _s3Client.UploadAsset(fileName, stream);
             }
             catch {}
 
             if (fileName != null) {
-                player.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://beatleadercdn.blob.core.windows.net/assets/") + fileName;
+                player.Avatar = (_environment.IsDevelopment() ? "https://localhost:9191/assets/" : "https://cdn.assets.beatleader.xyz/") + fileName;
             }
 
             PatreonFeatures? features = player.PatreonFeatures;
