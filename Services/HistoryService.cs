@@ -114,7 +114,6 @@ namespace BeatLeader_Server.Services
                             TopPlatform = p.ScoreStats.TopPlatform,
                             TopHMD = p.ScoreStats.TopHMD,
 
-                            DailyImprovements = p.ScoreStats.DailyImprovements,
                             ReplaysWatched = p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched,
                             WatchedReplays = p.ScoreStats.WatchedReplays,
                         });

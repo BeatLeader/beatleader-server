@@ -3,6 +3,8 @@
     public class ScoreImprovement
     {
         public int Id { get; set; }
+
+        public int TimesetMig { get; set; }
         public string Timeset { get; set; } = "";
         public int Score { get; set; }
         public float Accuracy { get; set; }

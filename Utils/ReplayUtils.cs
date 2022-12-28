@@ -135,8 +135,9 @@ namespace BeatLeader_Server.Utils
 
             score.Qualification = qualification;
             score.Platform = info.platform + "," + info.gameVersion + "," + info.version;
-            score.Timeset = info.timestamp;
+            score.TimesetMig = int.TryParse(info.timestamp, out int timeset) ? timeset : 0;
             score.IgnoreForStats = difficulty.ModeName.ToLower() == "rhythmgamestandard" || info.modifiers.Contains("NF");
+            score.Migrated = true;
             
             return (score, maxScore);
         }

@@ -48,7 +48,7 @@ namespace BeatLeader_Server.Utils
 
 		public static async Task UploadScoreStats(this IAmazonS3 client, string filename, ScoreStatistic scoreStats)
         {
-            await client.UploadStream(filename, "previews", new BinaryData(JsonConvert.SerializeObject(scoreStats)).ToStream());
+            await client.UploadStream(filename, "scorestats", new BinaryData(JsonConvert.SerializeObject(scoreStats)).ToStream());
         }
 
         public static async Task UploadPlaylist(IAmazonS3 client, string filename, dynamic playlist)

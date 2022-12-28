@@ -323,7 +323,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     stats = CollectStatsFromOldScore(currentScore, leaderboard);
 
-                    improvement.Timeset = currentScore.Timeset;
+                    improvement.TimesetMig = currentScore.TimesetMig;
                     improvement.Score = resultScore.ModifiedScore - currentScore.ModifiedScore;
                     improvement.Accuracy = resultScore.Accuracy - currentScore.Accuracy;
 
@@ -808,7 +808,7 @@ namespace BeatLeader_Server.Controllers
                 Modifiers = score.Modifiers,
                 Replay = score.Replay,
                 Accuracy = score.Accuracy,
-                Timeset = score.Timeset,
+                TimesetMig = score.TimesetMig,
                 BaseScore = score.BaseScore,
                 ModifiedScore = score.ModifiedScore,
                 Pp = score.Pp,

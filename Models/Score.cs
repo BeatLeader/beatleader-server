@@ -82,6 +82,7 @@ namespace BeatLeader_Server.Models
         public bool Banned { get; set; } = false;
         public bool Suspicious { get; set; } = false;
         public bool IgnoreForStats { get; set; } = false;
+        public bool Migrated { get; set; } = false;
         public RankVoting? RankVoting { get; set; }
         public ScoreMetadata? Metadata { get; set; }
     }
@@ -130,6 +131,8 @@ namespace BeatLeader_Server.Models
         public int Pauses { get; set; }
         public bool FullCombo { get; set; }
         public HMD Hmd { get; set; }
+
+        public int TimesetMig { get; set; }
         public string Timeset { get; set; }
         public Player Player { get; set; }
         public Leaderboard Leaderboard { get; set; }

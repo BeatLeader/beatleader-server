@@ -530,6 +530,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("TimesetMig")
+                        .HasColumnType("int");
+
                     b.Property<int>("WallsHit")
                         .HasColumnType("int");
 
@@ -1801,6 +1804,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.Property<int?>("MetadataId")
                         .HasColumnType("int");
 
+                    b.Property<bool>("Migrated")
+                        .HasColumnType("bit");
+
                     b.Property<int>("MissedNotes")
                         .HasColumnType("int");
 
@@ -1925,6 +1931,9 @@ namespace BeatLeader_Server.Migrations.ReadApp
                     b.Property<string>("Timeset")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("TimesetMig")
+                        .HasColumnType("int");
 
                     b.Property<float>("TotalPp")
                         .HasColumnType("real");
