@@ -22,6 +22,7 @@
     <PackageReference Include="AspNet.Security.OAuth.Twitter" Version="7.0.0" />
     <PackageReference Include="AspNet.Security.OpenId.Steam" Version="7.0.0" />
     <PackageReference Include="AspNetCoreRateLimit" Version="5.0.0" />
+    <PackageReference Include="AsyncEnumerator" Version="4.0.2" />
     <PackageReference Include="AWSSDK.S3" Version="3.7.101.42" />
     <PackageReference Include="Azure.Identity" Version="1.9.0-beta.1" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.14.1" />

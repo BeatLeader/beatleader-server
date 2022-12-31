@@ -50,7 +50,7 @@ namespace BeatLeader_Server.Services
             var oldPp = player.Pp;
             var oldRank = player.Rank;
 
-            _context.RecalculatePPAndRankFaster(player);
+            (var newPp, var newRank, var newCountryRank) = _context.RecalculatePPAndRankFaster(player);
 
             if (score != null && score.ScoreImprovement != null) {
                 score.ScoreImprovement.TotalRank = player.Rank - oldRank;
@@ -59,7 +59,7 @@ namespace BeatLeader_Server.Services
 
             _context.SaveChanges();
 
-            return (player.Pp - oldPp, player.Rank - oldRank);
+            return (newPp - oldPp, newRank - oldRank);
         }
 
         private (float, int) RefreshLeaderboardPlayers(string id, AppContext _context)

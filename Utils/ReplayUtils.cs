@@ -1,6 +1,5 @@
 ﻿using AngleSharp.Common;
 using BeatLeader_Server.Extensions;
-using BeatLeader_Server.Migrations;
 using BeatLeader_Server.Models;
 using System.Runtime.ConstrainedExecution;
 using static BeatLeader_Server.Utils.ResponseUtils;
@@ -135,7 +134,7 @@ namespace BeatLeader_Server.Utils
 
             score.Qualification = qualification;
             score.Platform = info.platform + "," + info.gameVersion + "," + info.version;
-            score.TimesetMig = int.TryParse(info.timestamp, out int timeset) ? timeset : 0;
+            score.Timeset = info.timestamp;
             score.IgnoreForStats = difficulty.ModeName.ToLower() == "rhythmgamestandard" || info.modifiers.Contains("NF");
             score.Migrated = true;
             
@@ -167,7 +166,7 @@ namespace BeatLeader_Server.Utils
             score.FullCombo = score.BombCuts == 0 && score.MissedNotes == 0 && score.WallsHit == 0 && score.BadCuts == 0;
         }
 
-        private static HMD HMDFromName(string hmdName) {
+        public static HMD HMDFromName(string hmdName) {
             string lowerHmd = hmdName.ToLower();
 
             if (lowerHmd.Contains("pico") && lowerHmd.Contains("4")) return HMD.picoNeo4;
@@ -220,7 +219,7 @@ namespace BeatLeader_Server.Utils
             return HMD.unknown;
         }
 
-        private static ControllerEnum ControllerFromName(string controllerName) {
+        public static ControllerEnum ControllerFromName(string controllerName) {
             string lowerHmd = controllerName.ToLower();
 
             if (lowerHmd.Contains("vive tracker") && lowerHmd.Contains("3")) return ControllerEnum.viveTracker3;
@@ -339,6 +338,53 @@ namespace BeatLeader_Server.Utils
                 ["PM"] = 0.0f,
                 ["SC"] = 0.0f
             };
+        }
+
+        public static string? RemoveDuplicates(Replay replay, Leaderboard leaderboard) {
+            var groups = replay.notes.GroupBy(n => n.noteID + n.spawnTime).Where(g => g.Count() > 1).ToList();
+
+            if (groups.Count > 0) {
+                int sliderCount = 0;
+                foreach (var group in groups)
+                {
+                    bool slider = false;
+
+                    var toRemove = group.OrderByDescending(n => {
+                        NoteParams param = new NoteParams(n.noteID);
+                        if (param.scoringType != ScoringType.Default || param.scoringType != ScoringType.Normal) {
+                            slider = true;
+                        }
+                        return ReplayStatisticUtils.ScoreForNote(n, param.scoringType);
+                    }).Skip(1).ToList();
+
+                    if (slider) {
+                        sliderCount++;
+                        continue;
+                    }
+
+                    foreach (var removal in toRemove)
+                    {
+                        replay.notes.Remove(removal);
+                    }
+                }
+                if (sliderCount == groups.Count) return null;
+                string? error = null;
+                ScoreStatistic? statistic = null;
+                try
+                {
+                    (statistic, error) = ReplayStatisticUtils.ProcessReplay(replay, leaderboard);
+                } catch (Exception e) {
+                    return error = e.ToString();
+                }
+
+                if (statistic != null) {
+                    replay.info.score = statistic.winTracker.totalScore;
+                } else {
+                    return error;
+                }
+            }
+            
+            return null;
         }
     }
 }

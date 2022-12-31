@@ -203,7 +203,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (leaderboard.Difficulty.Notes != 0 && replay.notes.Count > leaderboard.Difficulty.Notes) {
-                string? error = RemoveDuplicates(replay, leaderboard);
+                string? error = ReplayUtils.RemoveDuplicates(replay, leaderboard);
                 if (error != null) {
                     return BadRequest("Failed to delete duplicate note: " + error);
                 }
@@ -323,7 +323,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     stats = CollectStatsFromOldScore(currentScore, leaderboard);
 
-                    improvement.TimesetMig = currentScore.TimesetMig;
+                    improvement.Timeset = currentScore.Timeset;
                     improvement.Score = resultScore.ModifiedScore - currentScore.ModifiedScore;
                     improvement.Accuracy = resultScore.Accuracy - currentScore.Accuracy;
 
@@ -412,6 +412,7 @@ namespace BeatLeader_Server.Controllers
                     }
                     player.ScoreStats.TotalPlayCount++;
                 }
+
                 if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
                 {
                     player.ScoreStats.LastRankedScoreTime = timeset;
@@ -808,7 +809,7 @@ namespace BeatLeader_Server.Controllers
                 Modifiers = score.Modifiers,
                 Replay = score.Replay,
                 Accuracy = score.Accuracy,
-                TimesetMig = score.TimesetMig,
+                Timeset = score.Timeset,
                 BaseScore = score.BaseScore,
                 ModifiedScore = score.ModifiedScore,
                 Pp = score.Pp,
@@ -1021,46 +1022,6 @@ namespace BeatLeader_Server.Controllers
 
             leaderboard.PlayerStats.Add(stats);
             return stats;
-        }
-
-        public string? RemoveDuplicates(Replay replay, Leaderboard leaderboard) {
-            var groups = replay.notes.GroupBy(n => n.noteID + n.spawnTime).Where(g => g.Count() > 1).ToList();
-
-            if (groups.Count > 0) {
-                int sliderCount = 0;
-                foreach (var group in groups)
-                {
-                    bool slider = false;
-
-                    var toRemove = group.OrderByDescending(n => {
-                        NoteParams param = new NoteParams(n.noteID);
-                        if (param.scoringType != ScoringType.Default || param.scoringType != ScoringType.Normal) {
-                            slider = true;
-                        }
-                        return ReplayStatisticUtils.ScoreForNote(n, param.scoringType);
-                    }).Skip(1).ToList();
-
-                    if (slider) {
-                        sliderCount++;
-                        continue;
-                    }
-
-                    foreach (var removal in toRemove)
-                    {
-                        replay.notes.Remove(removal);
-                    }
-                }
-                if (sliderCount == groups.Count) return null;
-
-                (ScoreStatistic? statistic, string? error) = _scoreController.CalculateStatisticFromReplay(replay, leaderboard);
-                if (statistic != null) {
-                    replay.info.score = statistic.winTracker.totalScore;
-                } else {
-                    return error;
-                }
-            }
-            
-            return null;
         }
 
         [HttpGet("~/replay/{name}")]

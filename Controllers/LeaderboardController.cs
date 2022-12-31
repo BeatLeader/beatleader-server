@@ -184,7 +184,7 @@ namespace BeatLeader_Server.Controllers
                         WallsHit = s.WallsHit,
                         Pauses = s.Pauses,
                         FullCombo = s.FullCombo,
-                        Timeset = s.TimesetMig,
+                        Timeset = s.Timeset,
                         Timepost = s.Timepost,
                         Player = new PlayerResponse
                         {
@@ -433,7 +433,7 @@ namespace BeatLeader_Server.Controllers
                         Pauses = s.Pauses,
                         FullCombo = s.FullCombo,
                         Hmd = s.Hmd,
-                        Timeset = s.TimesetMig,
+                        Timeset = s.Timeset,
                         Timepost = s.Timepost,
                         ReplaysWatched = s.AuthorizedReplayWatched + s.AnonimusReplayWatched,
                         LeaderboardId = s.LeaderboardId,

@@ -89,7 +89,7 @@ namespace BeatLeader_Server.Utils
             public HMD Hmd { get; set; }
             public ControllerEnum Controller { get; set; }
             public string LeaderboardId { get; set; }
-            public int Timeset { get; set; }
+            public string Timeset { get; set; }
             public int Timepost { get; set; }
             public int ReplaysWatched { get; set; }
             public PlayerResponse Player { get; set; }
@@ -108,7 +108,7 @@ namespace BeatLeader_Server.Utils
             public int Rank { get; set; }
             public string Modifiers { get; set; }
             public string LeaderboardId { get; set; }
-            public int Timeset { get; set; }
+            public string Timeset { get; set; }
             public int Timepost { get; set; }
             public string Player { get; set; }
         }
@@ -268,7 +268,7 @@ namespace BeatLeader_Server.Utils
                 Hmd = s.Hmd,
                 Controller = s.Controller,
                 MaxCombo = s.MaxCombo,
-                Timeset = s.TimesetMig,
+                Timeset = s.Timeset,
                 ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
                 Timepost = s.Timepost,
                 LeaderboardId = s.LeaderboardId,

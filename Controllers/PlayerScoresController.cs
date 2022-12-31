@@ -85,7 +85,7 @@ namespace BeatLeader_Server.Controllers
                 switch (sortBy)
                 {
                     case "date":
-                        sequence = sequence.Order(order, t => t.TimesetMig);
+                        sequence = sequence.Order(order, t => t.Timeset);
                         break;
                     case "pp":
                         sequence = sequence.Order(order, t => t.Pp);
@@ -462,7 +462,7 @@ namespace BeatLeader_Server.Controllers
                 switch (sortBy)
                 {
                     case "date":
-                        sequence = sequence.Order(order, t => t.TimesetMig);
+                        sequence = sequence.Order(order, t => t.Timeset);
                         break;
                     case "pp":
                         sequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.Pp);
@@ -517,7 +517,7 @@ namespace BeatLeader_Server.Controllers
             switch (sortBy)
             {
                 case "date":
-                    return HistogrammValuee(order, sequence.Select(s => s.TimesetMig).ToList(), (int)(batch ?? 60 * 60 * 24), count);
+                    return HistogrammValuee(order, sequence.Select(s => int.Parse(s.Timeset)).ToList(), (int)(batch ?? 60 * 60 * 24), count);
                 case "pp":
                     return HistogrammValuee(order, sequence.Select(s => s.Pp).ToList(), batch ?? 5, count);
                 case "acc":
@@ -602,7 +602,7 @@ namespace BeatLeader_Server.Controllers
             public string SongName { get; set; }
             public string Mapper { get; set; }
             public float Acc { get; set; }
-            public int Timeset { get; set; }
+            public string Timeset { get; set; }
             public float Stars { get; set; }
         }
 
@@ -625,7 +625,7 @@ namespace BeatLeader_Server.Controllers
                     Mode = s.Leaderboard.Difficulty.ModeName,
                     Stars = (float)s.Leaderboard.Difficulty.Stars,
                     Acc = s.Accuracy,
-                    Timeset = s.TimesetMig,
+                    Timeset = s.Timeset,
                     Modifiers = s.Modifiers
                 })
                 .ToList();

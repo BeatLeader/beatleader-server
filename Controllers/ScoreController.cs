@@ -275,7 +275,7 @@ namespace BeatLeader_Server.Controllers
                     Pp = s.Pp,
                     Rank = s.Rank,
                     Modifiers = s.Modifiers,
-                    Timeset = s.TimesetMig,
+                    Timeset = s.Timeset,
                     Timepost = s.Timepost,
                     LeaderboardId = s.LeaderboardId,
                     Player = s.Player.Name
@@ -407,7 +407,7 @@ namespace BeatLeader_Server.Controllers
                     Hmd = s.Hmd,
                     Controller = s.Controller,
                     MaxCombo = s.MaxCombo,
-                    Timeset = s.TimesetMig,
+                    Timeset = s.Timeset,
                     Timepost = s.Timepost,
                     Platform = s.Platform,
                     LeaderboardId = s.LeaderboardId,
@@ -467,7 +467,7 @@ namespace BeatLeader_Server.Controllers
                     Hmd = s.Hmd,
                     Controller = s.Controller,
                     MaxCombo = s.MaxCombo,
-                    Timeset = s.TimesetMig,
+                    Timeset = s.Timeset,
                     Timepost = s.Timepost,
                     Platform = s.Platform,
                     LeaderboardId = s.LeaderboardId,
@@ -565,7 +565,7 @@ namespace BeatLeader_Server.Controllers
                 switch (sortBy)
                 {
                     case "date":
-                        sequence = sequence.Order(order, t => t.TimesetMig);
+                        sequence = sequence.Order(order, t => t.Timeset);
                         break;
                     case "pp":
                         sequence = sequence.Order(order, t => t.Pp);

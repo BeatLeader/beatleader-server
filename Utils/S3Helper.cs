@@ -18,14 +18,15 @@ namespace BeatLeader_Server.Utils
 		    });
 		}
 
-		public static async Task UploadStream(this IAmazonS3 client, string filename, string container, Stream data)
+		public static async Task UploadStream(this IAmazonS3 client, string filename, string container, Stream data, bool closeStream = true)
         {
 	        var request = new PutObjectRequest
 	        {
                 InputStream = data,
 		        Key = filename,
 		        BucketName = container,
-		        DisablePayloadSigning = true
+		        DisablePayloadSigning = true,
+                AutoCloseStream = closeStream
 	        };
             
 	        await client.PutObjectAsync(request);
@@ -43,7 +44,7 @@ namespace BeatLeader_Server.Utils
 
 		public static async Task UploadPreview(this IAmazonS3 client, string filename, Stream data)
         {
-			await client.UploadStream(filename, "previews", data);
+			await client.UploadStream(filename, "previews", data, false);
         }
 
 		public static async Task UploadScoreStats(this IAmazonS3 client, string filename, ScoreStatistic scoreStats)
@@ -66,7 +67,12 @@ namespace BeatLeader_Server.Utils
             } catch (Exception ex) {
                 return null;
             }
-}
+        }
+
+        public static async Task<Stream?> DownloadReplay(this IAmazonS3 client, string filename)
+        {
+            return await client.DownloadStream(filename, "replays");
+        }
 
 		public static async Task<Stream?> DownloadAsset(this IAmazonS3 client, string filename)
         {

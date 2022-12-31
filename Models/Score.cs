@@ -62,7 +62,6 @@ namespace BeatLeader_Server.Models
         public float AccRight { get; set; }
         public float AccLeft { get; set; }
         public string? Timeset { get; set; }
-        public int TimesetMig { get; set; }
         public int Timepost { get; set; }
         public string Platform { get; set; } = "";
         public Player Player { get; set; }
@@ -131,8 +130,6 @@ namespace BeatLeader_Server.Models
         public int Pauses { get; set; }
         public bool FullCombo { get; set; }
         public HMD Hmd { get; set; }
-
-        public int TimesetMig { get; set; }
         public string Timeset { get; set; }
         public Player Player { get; set; }
         public Leaderboard Leaderboard { get; set; }

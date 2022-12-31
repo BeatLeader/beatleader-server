@@ -116,6 +116,7 @@ namespace BeatLeader_Server.Utils
     {
         public static (ScoreStatistic?, string?) ProcessReplay(Replay replay, Leaderboard leaderboard)
         {
+            try {
             ScoreStatistic result = new ScoreStatistic();
             float firstNoteTime = replay.notes.FirstOrDefault()?.eventTime ?? 0.0f;
             float lastNoteTime = replay.notes.LastOrDefault()?.eventTime ?? 0.0f;
@@ -210,6 +211,9 @@ namespace BeatLeader_Server.Utils
             result.scoreGraphTracker = ScoreGraph(structs, (int)replay.frames.Last().time);
 
             return (result, null);
+            } catch (Exception e) {
+                return (null, e.Message);
+            }
         }
 
         public static string? CheckReplay(Replay replay, Leaderboard leaderboard) {

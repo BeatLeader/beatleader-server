@@ -204,6 +204,7 @@ namespace BeatLeader_Server {
                 services.AddHostedService<RankingService>();
                 services.AddHostedService<_10MinRefresh>();
             }
+            //services.AddHostedService<MigrateReplays>();
             services.AddMvc ().AddControllersAsServices ().AddJsonOptions (options => {
                 options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
             });
