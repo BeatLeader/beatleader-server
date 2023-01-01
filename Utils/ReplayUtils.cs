@@ -341,7 +341,7 @@ namespace BeatLeader_Server.Utils
         }
 
         public static string? RemoveDuplicates(Replay replay, Leaderboard leaderboard) {
-            var groups = replay.notes.GroupBy(n => n.noteID + n.spawnTime).Where(g => g.Count() > 1).ToList();
+            var groups = replay.notes.GroupBy(n => n.noteID + "_" + n.spawnTime).Where(g => g.Count() > 1).ToList();
 
             if (groups.Count > 0) {
                 int sliderCount = 0;
@@ -351,7 +351,7 @@ namespace BeatLeader_Server.Utils
 
                     var toRemove = group.OrderByDescending(n => {
                         NoteParams param = new NoteParams(n.noteID);
-                        if (param.scoringType != ScoringType.Default || param.scoringType != ScoringType.Normal) {
+                        if (param.scoringType != ScoringType.Default && param.scoringType != ScoringType.Normal) {
                             slider = true;
                         }
                         return ReplayStatisticUtils.ScoreForNote(n, param.scoringType);

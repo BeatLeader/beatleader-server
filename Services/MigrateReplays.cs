@@ -106,6 +106,17 @@ namespace BeatLeader_Server.Services
                 if (error2 != null) {
                     return;
                 }
+                (Score resultScore, int maxScore) = ReplayUtils.ProcessReplayInfo(replay.info, score.Leaderboard.Difficulty);
+                ReplayUtils.PostProcessReplay(resultScore, replay);
+
+                score.BaseScore = resultScore.BaseScore;
+                score.ModifiedScore = resultScore.ModifiedScore;
+                score.Accuracy = resultScore.Accuracy;
+                score.FullCombo = resultScore.FullCombo;
+                score.BombCuts = resultScore.BombCuts;
+                score.MissedNotes = resultScore.MissedNotes;
+                score.WallsHit = resultScore.WallsHit;
+                score.BadCuts = resultScore.BadCuts;
             }
 
             if (memoryStream != null) {

@@ -451,12 +451,16 @@ namespace BeatLeader_Server.Controllers
                     .Scores
                     .Where(s => s.LeaderboardId == leaderboard.Id && s.Pp <= resultScore.Pp && !s.Banned)
                     .OrderByDescending(el => el.Pp)
+                    .ThenByDescending(el => el.Accuracy)
+                    .ThenBy(el => el.Timeset)
                     .Select(s => new { Id = s.Id, Rank = s.Rank })
                     :
                 _context
                     .Scores
                     .Where(s => s.LeaderboardId == leaderboard.Id && s.ModifiedScore <= resultScore.ModifiedScore && !s.Banned)
                     .OrderByDescending(el => el.ModifiedScore)
+                    .ThenByDescending(el => el.Accuracy)
+                    .ThenBy(el => el.Timeset)
                     .Select(s => new { Id = s.Id, Rank = s.Rank })
             ).ToList();
 

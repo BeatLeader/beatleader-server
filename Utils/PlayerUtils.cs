@@ -215,7 +215,7 @@ namespace BeatLeader_Server.Utils
 
             var rankedPlayers = context
                 .Players
-                .Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id)
+                .Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned)
                 .OrderByDescending(t => t.Pp)
                 .Select(p => new { Pp = p.Pp, Country = p.Country, Rank = p.Rank, CountryRank = p.CountryRank })
                 .ToList();

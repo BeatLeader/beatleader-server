@@ -473,24 +473,28 @@ namespace BeatLeader_Server.Controllers
                 .Skip(i)
                 .Take(1000)
                 .Select(lb => new {
-                    Status = lb.Difficulty.Status,
-                    Scores = lb.Scores.Where(s => !s.Banned).Select(s => new {
-                        Id = s.Id,
-                        Pp = s.Pp,
-                        ModifiedScore = s.ModifiedScore
-                    })
+                    lb.Difficulty.Status,
+                    Scores = lb.Scores.Where(s => !s.Banned).Select(s => new { s.Id, s.Pp,  s.Accuracy, s.ModifiedScore, s.Timeset })
                 })
-                
                 .ToArray();
-
 
                 foreach (var leaderboard in leaderboards)
                 {
                     var status = leaderboard.Status;
 
                     var rankedScores = status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.nominated 
-                        ? leaderboard.Scores.OrderByDescending(el => el.Pp).ToList()
-                        : leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();
+                        ? leaderboard
+                            .Scores
+                            .OrderByDescending(el => el.Pp)
+                            .ThenByDescending(el => el.Accuracy)
+                            .ThenBy(el => el.Timeset)
+                            .ToList()
+                        : leaderboard
+                            .Scores
+                            .OrderByDescending(el => el.ModifiedScore)
+                            .ThenByDescending(el => el.Accuracy)
+                            .ThenBy(el => el.Timeset)
+                            .ToList();
                     if (rankedScores.Count > 0) {
                         foreach ((int ii, var s) in rankedScores.Select((value, ii) => (ii, value)))
                         {

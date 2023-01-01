@@ -474,7 +474,7 @@ namespace BeatLeader_Server.Controllers
             _context.ChangeTracker.AutoDetectChangesEnabled = false;
             Dictionary<string, int> countries = new Dictionary<string, int>();
             var ranked = _context.Players
-                .Where(p => p.Pp > 0)
+                .Where(p => p.Pp > 0 && !p.Banned)
                 .OrderByDescending(t => t.Pp)
                 .Select(p => new { Id = p.Id, Country = p.Country })
                 .ToList();
