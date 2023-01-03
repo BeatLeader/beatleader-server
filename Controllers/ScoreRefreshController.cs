@@ -46,7 +46,7 @@ namespace BeatLeader_Server.Controllers
                     var allScores = leaderboard.Scores.Where(s => !s.Banned).ToList();
                     var status = leaderboard.Difficulty.Status;
                     var modifiers = leaderboard.Difficulty.ModifierValues;
-                    bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.nominated || status == DifficultyStatus.inevent;
+                    bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
                     bool hasPp = status == DifficultyStatus.ranked || qualification;
 
                     foreach (Score s in allScores)
@@ -178,7 +178,7 @@ namespace BeatLeader_Server.Controllers
 
                     var status = leaderboard.Difficulty.Status;
                     var modifiers = leaderboard.Difficulty.ModifierValues;
-                    bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.nominated || status == DifficultyStatus.inevent;
+                    bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
                     bool hasPp = status == DifficultyStatus.ranked || qualification;
                     var newScores = new List<Score>();
 

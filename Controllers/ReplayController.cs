@@ -381,7 +381,7 @@ namespace BeatLeader_Server.Controllers
                         }
                     }
 
-                    if (status1 is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.nominated)
+                    if (status1 is DifficultyStatus.ranked or DifficultyStatus.qualified)
                     {
                         improvement.Pp = resultScore.Pp - currentScore.Pp;
                     }
@@ -443,7 +443,7 @@ namespace BeatLeader_Server.Controllers
 
             _context.ChangeTracker.AutoDetectChangesEnabled = false;
             var status = leaderboard.Difficulty.Status;
-            var isRanked = status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.nominated or DifficultyStatus.inevent;
+            var isRanked = status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.inevent;
 
             var rankedScores = (isRanked 
                     ?
@@ -837,7 +837,7 @@ namespace BeatLeader_Server.Controllers
 
             _context.ChangeTracker.AutoDetectChangesEnabled = false;
             var status = leaderboard.Difficulty.Status;
-            var isRanked = status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.nominated or DifficultyStatus.inevent;
+            var isRanked = status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.inevent;
 
             var rankedScores = (isRanked 
                     ?

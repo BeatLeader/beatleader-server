@@ -66,7 +66,7 @@ namespace BeatLeader_Server.Utils
             return PpFromScore(s.Accuracy, s.Modifiers, difficulty.ModifierValues, difficulty.Stars ?? 0.0f, difficulty.ModeName.ToLower() == "rhythmgamestandard");
         }
 
-        public static (float, float) PpFromScoreResponse(ScoreResponse s, RankUpdate reweight)
+        public static (float, float) PpFromScoreResponse(ScoreResponse s, float stars, ModifiersMap modifiers)
         {
             var accuracy = s.Accuracy;
             bool negativeAcc = float.IsNegative(accuracy);
@@ -75,12 +75,12 @@ namespace BeatLeader_Server.Utils
                 accuracy *= -1;
             }
 
-            float mp = reweight.Modifiers.GetPositiveMultiplier(s.Modifiers);
+            float mp = modifiers.GetPositiveMultiplier(s.Modifiers);
 
             float rawPP = 0; float fullPP = 0;
             if (!s.Modifiers.Contains("NF")) {
-                rawPP = (float)(Curve(accuracy, (float)reweight.Stars - 0.5f) * ((float)reweight.Stars + 0.5f) * 42);
-                fullPP = (float)(Curve(accuracy, (float)reweight.Stars * mp - 0.5f) * ((float)reweight.Stars * mp + 0.5f) * 42);
+                rawPP = (float)(Curve(accuracy, (float)stars - 0.5f) * ((float)stars + 0.5f) * 42);
+                fullPP = (float)(Curve(accuracy, (float)stars * mp - 0.5f) * ((float)stars * mp + 0.5f) * 42);
             }
 
             if (float.IsInfinity(rawPP) || float.IsNaN(rawPP) || float.IsNegativeInfinity(rawPP))
@@ -113,7 +113,7 @@ namespace BeatLeader_Server.Utils
 
             var status = difficulty.Status;
             var modifers = difficulty.ModifierValues ?? new ModifiersMap();
-            bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent || status == DifficultyStatus.nominated;
+            bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
             bool hasPp = status == DifficultyStatus.ranked || qualification;
 
             int maxScore = difficulty.MaxScore > 0 ? difficulty.MaxScore : MaxScoreForNote(difficulty.Notes);

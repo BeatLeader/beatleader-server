@@ -237,7 +237,39 @@ namespace BeatLeader_Server.Controllers
                         {
                             s.Accuracy = (float)s.BaseScore / (float)ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
                         }
-                        (s.Pp, s.BonusPp) = ReplayUtils.PpFromScoreResponse(s, reweight);
+                        (s.Pp, s.BonusPp) = ReplayUtils.PpFromScoreResponse(s, reweight.Stars, reweight.Modifiers);
+
+                        return s;
+                    });
+
+                    var rankedScores = recalculated.OrderByDescending(el => el.Pp).ToList();
+                    foreach ((int i, ScoreResponse s) in rankedScores.Select((value, i) => (i, value)))
+                    {
+                        s.Rank = i + 1 + ((page - 1) * count);
+                    }
+
+                    leaderboard.Scores = recalculated;
+                }
+            } else if (leaderboard.Difficulty.Status == DifficultyStatus.nominated) {
+                string currentID = HttpContext.CurrentUserID(currentContext);
+                var currentPlayer = await currentContext.Players.FindAsync(currentID);
+
+                if (currentPlayer != null && (currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("rankedteam")))
+                {
+                    var qualification = leaderboard.Qualification;
+                    var recalculated = leaderboard.Scores.Select(s => {
+
+                        s.ModifiedScore = (int)(s.BaseScore * qualification.Modifiers.GetNegativeMultiplier(s.Modifiers));
+
+                        if (leaderboard.Difficulty.MaxScore > 0)
+                        {
+                            s.Accuracy = (float)s.BaseScore / (float)leaderboard.Difficulty.MaxScore;
+                        }
+                        else
+                        {
+                            s.Accuracy = (float)s.BaseScore / (float)ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
+                        }
+                        (s.Pp, s.BonusPp) = ReplayUtils.PpFromScoreResponse(s, leaderboard.Difficulty.Stars ?? 0, qualification.Modifiers);
 
                         return s;
                     });
@@ -473,6 +505,7 @@ namespace BeatLeader_Server.Controllers
                 .Skip(i)
                 .Take(1000)
                 .Select(lb => new {
+                    lb.Id,
                     lb.Difficulty.Status,
                     Scores = lb.Scores.Where(s => !s.Banned).Select(s => new { s.Id, s.Pp,  s.Accuracy, s.ModifiedScore, s.Timeset })
                 })
@@ -482,7 +515,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     var status = leaderboard.Status;
 
-                    var rankedScores = status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.nominated 
+                    var rankedScores = status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.inevent 
                         ? leaderboard
                             .Scores
                             .OrderByDescending(el => el.Pp)
@@ -498,13 +531,22 @@ namespace BeatLeader_Server.Controllers
                     if (rankedScores.Count > 0) {
                         foreach ((int ii, var s) in rankedScores.Select((value, ii) => (ii, value)))
                         {
-                            Score score = new Score() { Id = s.Id };
-                            _context.Scores.Attach(score);
+                            var score = _context.Scores.Local.FirstOrDefault(ls => ls.Id == s.Id);
+                            if (score == null) {
+                                score = new Score() { Id = s.Id };
+                                _context.Scores.Attach(score);
+                            }
                             score.Rank = ii + 1;
                     
                             _context.Entry(score).Property(x => x.Rank).IsModified = true;
                         }
                     }
+
+                    Leaderboard lb = new Leaderboard() { Id = leaderboard.Id };
+                    _context.Leaderboards.Attach(lb);
+                    lb.Plays = rankedScores.Count;
+                    
+                    _context.Entry(lb).Property(x => x.Plays).IsModified = true;
                 }
 
                 try

@@ -549,7 +549,11 @@ namespace BeatLeader_Server.Controllers
                     qualificationChange.NewType = (int)leaderboard.Difficulty.Type;
                     qualificationChange.NewCriteriaMet = qualification.CriteriaMet;
                     qualificationChange.NewCriteriaCommentary = qualification.CriteriaCommentary;
-                    qualificationChange.NewModifiers = qualification.Modifiers;
+                    if (qualificationChange.NewRankability <= 0) {
+                        qualificationChange.NewModifiers = null;
+                    } else {
+                        qualificationChange.NewModifiers = qualification.Modifiers;
+                    }
 
                     if (qualificationChange.NewRankability != qualificationChange.OldRankability
                         || qualificationChange.NewStars != qualificationChange.OldStars
@@ -859,9 +863,13 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 difficulty.Status = reweight.Keep ? DifficultyStatus.ranked : DifficultyStatus.unranked;
+                if (!reweight.Keep) {
+                    difficulty.ModifierValues = null;
+                } else {
+                     difficulty.ModifierValues = reweight.Modifiers;
+                }
                 difficulty.Stars = reweight.Stars;
                 difficulty.Type = reweight.Type;
-                difficulty.ModifierValues = reweight.Modifiers;
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
@@ -988,9 +996,8 @@ namespace BeatLeader_Server.Controllers
                     difficulty.RankedTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                 }
 
-                if (difficulty.Status == DifficultyStatus.ranked && rankability <= 0) {
-                    var modifiers = difficulty.ModifierValues;
-                    modifiers.FS /= 2; modifiers.SF /= 2; modifiers.DA /= 2; modifiers.GN /= 2; modifiers.NF = 0.5f;
+                if (rankability <= 0) {
+                    difficulty.ModifierValues = null;
                 }
 
                 difficulty.Status = rankability > 0 ? DifficultyStatus.ranked : DifficultyStatus.unranked;

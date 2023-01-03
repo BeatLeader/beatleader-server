@@ -333,11 +333,14 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/players/leaderboard/{id}/refresh")]
         public async Task<ActionResult> RefreshLeaderboardPlayers(string id)
         {
-            string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = await _context.Players.FindAsync(currentId);
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            if (HttpContext != null)
             {
-                return Unauthorized();
+                string currentId = HttpContext.CurrentUserID(_context);
+                Player? currentPlayer = await _context.Players.FindAsync(currentId);
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
             }
             Leaderboard? leaderboard = _context.Leaderboards.Where(p => p.Id == id).Include(l => l.Scores).ThenInclude(s => s.Player).ThenInclude(s => s.ScoreStats).FirstOrDefault();
 
