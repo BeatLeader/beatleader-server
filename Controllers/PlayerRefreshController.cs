@@ -265,7 +265,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task RefreshPlayer(Player player, bool refreshRank = true) {
+        public async Task RefreshPlayer(Player player, bool refreshRank = true, bool refreshStats = true) {
             _context.RecalculatePP(player);
             await _context.SaveChangesAsync();
 
@@ -274,14 +274,14 @@ namespace BeatLeader_Server.Controllers
                 _context.ChangeTracker.AutoDetectChangesEnabled = false;
                 Dictionary<string, int> countries = new Dictionary<string, int>();
                 var ranked = _context.Players
-                    .Where(p => p.Pp > 0)
+                    .Where(p => p.Pp > 0 && !p.Banned)
                     .OrderByDescending(t => t.Pp)
                     .Select(p => new { Id = p.Id, Country = p.Country })
                     .ToList();
                 foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
                 {
-                    Player p = player;
-                    if (pp.Id != player.Id) {
+                    Player? p = _context.Players.Local.FirstOrDefault(ls => ls.Id == pp.Id);
+                    if (p == null) {
                         try {
                             p = new Player { Id = pp.Id, Country = pp.Country };
                             _context.Players.Attach(p);
@@ -306,7 +306,9 @@ namespace BeatLeader_Server.Controllers
 
                 _context.ChangeTracker.AutoDetectChangesEnabled = true;
             }
-            await RefreshStats(player.ScoreStats, player.Id);
+            if (refreshStats) {
+                await RefreshStats(player.ScoreStats, player.Id);
+            }
 
             await _context.SaveChangesAsync();
         }
@@ -351,7 +353,7 @@ namespace BeatLeader_Server.Controllers
 
             foreach (var score in leaderboard.Scores)
             {
-                await RefreshPlayer(score.Player, true);
+                await RefreshPlayer(score.Player, false, false);
             }
 
             return Ok();
@@ -483,13 +485,15 @@ namespace BeatLeader_Server.Controllers
                 .ToList();
             foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
             {
-                Player p;
+                Player? p = _context.Players.Local.FirstOrDefault(ls => ls.Id == pp.Id);
+                if (p == null) {
                     try {
                         p = new Player { Id = pp.Id, Country = pp.Country };
                         _context.Players.Attach(p);
                     } catch (Exception e) {
                         continue;
                     }
+                }
 
                 p.Rank = i + 1;
                 _context.Entry(p).Property(x => x.Rank).IsModified = true;

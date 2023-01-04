@@ -880,8 +880,11 @@ namespace BeatLeader_Server.Controllers
                     await _playlistController.RefreshRankedPlaylist();
                 }
 
-                await _scoreRefreshController.RefreshScores(leaderboard.Id);
-                await _playerRefreshController.RefreshLeaderboardPlayers(leaderboard.Id);
+                HttpContext.Response.OnCompleted(async () => {
+                    await _scoreRefreshController.RefreshScores(leaderboard.Id);
+                    await _playerRefreshController.RefreshLeaderboardPlayers(leaderboard.Id);
+                    await _playerRefreshController.RefreshRanks();
+                });
             }
 
             return Ok();
