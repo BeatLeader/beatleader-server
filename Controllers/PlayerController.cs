@@ -28,7 +28,6 @@ namespace BeatLeader_Server.Controllers
             ReadAppContext readContext,
             IConfiguration configuration, 
             IServerTiming serverTiming,
-            IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env)
         {
             _context = context;
@@ -41,7 +40,22 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/player/{id}")]
-        public async Task<ActionResult<PlayerResponseFull>> Get(string id, bool stats = true)
+        public async Task<ActionResult<PlayerResponseFull>> Get(
+            string id, 
+            bool stats = true,
+            LeaderboardType leaderboardType = LeaderboardType.standard)
+        {
+            if (leaderboardType == LeaderboardType.standard) {
+                return await GetStandard(id, stats);
+            } else {
+                return await GetAlt(id, stats, leaderboardType);
+            }
+        }
+
+        [NonAction]
+        public async Task<ActionResult<PlayerResponseFull>> GetStandard(
+            string id, 
+            bool stats = true)
         {
             Int64 oculusId = 0;
             try
@@ -99,6 +113,140 @@ namespace BeatLeader_Server.Controllers
                 var result = ResponseFullFromPlayer(player);
                 if (result.Banned) {
                     result.BanDescription = _context.Bans.OrderByDescending(b => b.Timeset).FirstOrDefault(b => b.PlayerId == player.Id);
+                }
+
+                return PostProcessSettings(result);
+            } else {
+                return NotFound();
+            }
+        }
+
+        [NonAction]
+        public async Task<ActionResult<PlayerResponseFull>> GetAlt(
+            string id, 
+            bool stats = true,
+            LeaderboardType leaderboardType = LeaderboardType.standard)
+        {
+            Int64 oculusId = 0;
+            try
+            {
+                oculusId = Int64.Parse(id);
+            }
+            catch { 
+                return BadRequest("Id should be a number");
+            }
+            AccountLink? link = null;
+            if (oculusId < 1000000000000000)
+            {
+                using (_serverTiming.TimeAction("link"))
+                {
+                    link = _readContext.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
+                }
+            }
+            if (link == null && oculusId < 70000000000000000)
+            {
+                using (_serverTiming.TimeAction("link"))
+                {
+                    link = _readContext.AccountLinks.FirstOrDefault(el => el.PCOculusID == id);
+                }
+            }
+            string userId = (link != null ? (link.SteamID.Length > 0 ? link.SteamID : link.PCOculusID) : id);
+            PlayerResponseFull? result;
+            using (_serverTiming.TimeAction("player"))
+            {
+                if (stats) {
+                    result = await
+                        _readContext
+                        .AltPlayers
+                        .Where(p => p.PlayerId == userId && p.LeaderboardType == leaderboardType)
+                        .Select(p => new PlayerResponseFull
+                        {
+                            Id = p.Player.Id,
+                            Name = p.Player.Name,
+                            Platform = p.Player.Platform,
+                            Avatar = p.Player.Avatar,
+                            Country = p.Player.Country,
+                            ScoreStats = p.ScoreStats,
+
+                            MapperId = p.Player.MapperId,
+
+                            Banned = p.Player.Banned,
+                            Inactive = p.Player.Inactive,
+
+                            ExternalProfileUrl = p.Player.ExternalProfileUrl,
+
+                            History = p.History,
+
+                            Badges = p.Player.Badges,
+                            Changes = p.Player.Changes,
+
+                            Pp = p.Pp,
+                            Rank = p.Rank,
+                            CountryRank = p.CountryRank,
+                            LastWeekPp = p.LastWeekPp,
+                            LastWeekRank = p.LastWeekRank,
+                            LastWeekCountryRank = p.LastWeekCountryRank,
+                            Role = p.Player.Role,
+                            Socials = p.Player.Socials,
+                            EventsParticipating = p.Player.EventsParticipating,
+                            PatreonFeatures = p.Player.PatreonFeatures,
+                            ProfileSettings = p.Player.ProfileSettings,
+                            Clans = p.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                        })
+                        .FirstOrDefaultAsync();
+                } else {
+                    result = await 
+                        _readContext
+                        .AltPlayers
+                        .Where(p => p.PlayerId == userId && p.LeaderboardType == leaderboardType)
+                        .Select(p => new PlayerResponseFull
+                        {
+                            Id = p.Player.Id,
+                            Name = p.Player.Name,
+                            Platform = p.Player.Platform,
+                            Avatar = p.Player.Avatar,
+                            Country = p.Player.Country,
+                            ScoreStats = p.ScoreStats,
+
+                            MapperId = p.Player.MapperId,
+
+                            Banned = p.Player.Banned,
+                            Inactive = p.Player.Inactive,
+
+                            ExternalProfileUrl = p.Player.ExternalProfileUrl,
+
+                            History = p.History,
+
+                            Badges = p.Player.Badges,
+                            Changes = p.Player.Changes,
+
+                            Pp = p.Pp,
+                            Rank = p.Rank,
+                            CountryRank = p.CountryRank,
+                            LastWeekPp = p.LastWeekPp,
+                            LastWeekRank = p.LastWeekRank,
+                            LastWeekCountryRank = p.LastWeekCountryRank,
+                            Role = p.Player.Role,
+                            Socials = p.Player.Socials,
+                            EventsParticipating = p.Player.EventsParticipating,
+                            PatreonFeatures = p.Player.PatreonFeatures,
+                            ProfileSettings = p.Player.ProfileSettings,
+                            Clans = p.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                        })
+                        .FirstOrDefaultAsync();
+                }
+                
+            }
+            if (result == null)
+            {
+                using (_serverTiming.TimeAction("lazy"))
+                {
+                    result = ResponseFullFromPlayer((await GetLazy(id, false)).Value);
+                }
+            }
+            if (result != null) {
+                if (result.Banned) {
+                    result.BanDescription = _context.Bans.OrderByDescending(b => b.Timeset).FirstOrDefault(b => b.PlayerId == userId);
                 }
 
                 return PostProcessSettings(result);

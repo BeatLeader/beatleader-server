@@ -196,6 +196,130 @@ namespace BeatLeader_Server.Utils
             }
         }
 
+        public static void RecalculatePPAndRankFast(this AppContext context, AltPlayer player, string country)
+        {
+            float oldPp = player.Pp;
+
+            var rankedScores = context
+                .AltScores
+                .Where(s => s.PlayerId == player.PlayerId && s.Pp != 0 && !s.Score.Banned && !s.Score.Qualification)
+                .OrderByDescending(s => s.Pp)
+                .Select(s => new { 
+                    Id = s.Id, 
+                    Accuracy = s.Accuracy, 
+                    Rank = s.Rank, 
+                    Pp = s.Pp,
+                    Weight = s.Weight
+                })
+                .ToList();
+            float resultPP = 0f;
+            foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
+            {
+                float weight = MathF.Pow(0.965f, i);
+                if (s.Weight != weight)
+                {
+                    var score = context.AltScores.Local.FirstOrDefault(ls => ls.Id == s.Id);
+                    if (score == null) {
+                        score = new AltScore() { Id = s.Id };
+                        context.AltScores.Attach(score);
+                    }
+                    score.Weight = weight;
+                    context.Entry(score).Property(x => x.Weight).IsModified = true;
+                }
+                resultPP += s.Pp * weight;
+            }
+            player.Pp = resultPP;
+            context.Entry(player).Property(x => x.Pp).IsModified = true;
+
+            var rankedPlayers = context
+                .AltPlayers
+                .Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Player.Banned)
+                .OrderByDescending(t => t.Pp)
+                .Select(p => new {
+                    Id = p.Id,
+                    Rank = p.Rank,
+                    Country = p.Player.Country,
+                    CountryRank = p.CountryRank
+                })
+                .ToList();
+
+            if (rankedPlayers.Count() > 0)
+            {
+                int topRank = rankedPlayers.First().Rank; 
+                int? topCountryRank = rankedPlayers.Where(p => p.Country == country).FirstOrDefault()?.CountryRank;
+                player.Rank = topRank;
+                context.Entry(player).Property(x => x.Rank).IsModified = true;
+                if (topCountryRank != null)
+                {
+                    player.CountryRank = (int)topCountryRank;
+                    context.Entry(player).Property(x => x.CountryRank).IsModified = true;
+                    topCountryRank++;
+                }
+
+                topRank++;
+
+                foreach ((int i, var p) in rankedPlayers.Select((value, i) => (i, value)))
+                {
+                    var newPlayer = context.AltPlayers.Local.FirstOrDefault(lp => lp.Id == p.Id);
+
+                    if (newPlayer == null) {
+                        newPlayer = new AltPlayer() { Id = p.Id };
+                        context.AltPlayers.Attach(newPlayer);
+                    }
+                    newPlayer.Rank = i + topRank;
+                    context.Entry(newPlayer).Property(x => x.Rank).IsModified = true;
+
+                    if (p.Country == country && topCountryRank != null)
+                    {
+                        newPlayer.CountryRank = (int)topCountryRank;
+                        context.Entry(newPlayer).Property(x => x.CountryRank).IsModified = true;
+                        topCountryRank++;
+                    }
+                }
+            }
+
+            var scoresForWeightedAcc = rankedScores.OrderByDescending(s => s.Accuracy).Take(100).ToList();
+            var sum = 0.0f;
+            var weights = 0.0f;
+
+            for (int i = 0; i < 100; i++)
+            {
+                float weight = MathF.Pow(0.95f, i);
+                if (i < scoresForWeightedAcc.Count)
+                {
+                    sum += scoresForWeightedAcc[i].Accuracy * weight;
+                }
+
+                weights += weight;
+            }
+            if (player.ScoreStats != null) {
+                player.ScoreStats.AverageWeightedRankedAccuracy = sum / weights;
+                context.Entry(player.ScoreStats).Property(x => x.AverageWeightedRankedAccuracy).IsModified = true;
+            }
+
+            var scoresForWeightedRank = rankedScores.OrderBy(s => s.Rank).Take(100).ToList();
+            sum = 0.0f;
+            weights = 0.0f;
+
+            for (int i = 0; i < 100; i++)
+            {
+                float weight = MathF.Pow(1.05f, i);
+                if (i < scoresForWeightedRank.Count)
+                {
+                    sum += scoresForWeightedRank[i].Rank * weight;
+                }
+                else {
+                    sum += i * 10 * weight;
+                }
+
+                weights += weight;
+            }
+            if (player.ScoreStats != null) {
+                player.ScoreStats.AverageWeightedRankedRank = sum / weights;
+                context.Entry(player.ScoreStats).Property(x => x.AverageWeightedRankedRank).IsModified = true;
+            }
+        }
+
         public static (float, int, int) RecalculatePPAndRankFaster(this AppContext context, Player player)
         {
             float oldPp = player.Pp;

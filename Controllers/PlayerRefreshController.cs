@@ -1,6 +1,4 @@
-﻿using Azure.Identity;
-using Azure.Storage.Blobs;
-using BeatLeader_Server.Extensions;
+﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Lib.AspNetCore.ServerTiming;
@@ -28,7 +26,6 @@ namespace BeatLeader_Server.Controllers
             ReadAppContext readContext,
             IConfiguration configuration, 
             IServerTiming serverTiming,
-            IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env)
         {
             _context = context;

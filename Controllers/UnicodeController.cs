@@ -17,7 +17,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/unicode/{name}")]
         public async Task<ActionResult> GetUnicode(string name)
         {
-            var stream = await _s3Client.DownloadStream(name, "unicode");
+            var stream = await _s3Client.DownloadStream(name, S3Container.unicode);
             if (stream != null) {
                 return File(stream, "image/png");
             } else {

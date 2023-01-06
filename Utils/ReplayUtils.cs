@@ -141,6 +141,70 @@ namespace BeatLeader_Server.Utils
             return (score, maxScore);
         }
 
+        public static AltScore? MakeAltScore(LeaderboardType leaderboardType, SecondaryScore mainScore, DifficultyDescription difficulty) {
+            switch (leaderboardType)
+            {
+                case LeaderboardType.nomodifiers: return NoModifiersAltScore(mainScore, difficulty);
+                case LeaderboardType.nopause: return GolfAltScore(mainScore, difficulty);
+                    break;
+                case LeaderboardType.golf:
+                    break;
+                case LeaderboardType.precision:
+                    break;
+            }
+
+            return null;
+        }
+
+        public static AltScore? NoModifiersAltScore(SecondaryScore mainScore, DifficultyDescription difficulty) {
+            var modifers = difficulty.ModifierValues ?? new ModifiersMap();
+            if (modifers.GetNegativeMultiplier(mainScore.Modifiers) < 1) {
+                return null;
+            }
+
+            AltScore score = new AltScore { ScoreImprovement = new ScoreImprovement() };
+            
+            score.BaseScore = mainScore.BaseScore;
+            score.ModifiedScore = mainScore.BaseScore;
+            score.Accuracy = mainScore.Accuracy;
+
+            var status = difficulty.Status;
+            
+            bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent || status == DifficultyStatus.nominated;
+            bool hasPp = status == DifficultyStatus.ranked || qualification;
+
+            if (hasPp) {
+                (score.Pp, score.BonusPp) = PpFromScore(score.Accuracy, "", modifers, difficulty.Stars ?? 0.0f, false);
+            }
+            
+            return score;
+        }
+
+        public static AltScore? GolfAltScore(SecondaryScore mainScore, DifficultyDescription difficulty) {
+
+            var modifers = difficulty.ModifierValues ?? new ModifiersMap();
+            if (modifers.GetNegativeMultiplier(mainScore.Modifiers) < 1) {
+                return null;
+            }
+
+            AltScore score = new AltScore { ScoreImprovement = new ScoreImprovement() };
+            
+            score.BaseScore = mainScore.BaseScore;
+            score.ModifiedScore = difficulty.MaxScore - mainScore.ModifiedScore;
+            score.Accuracy = mainScore.Accuracy;
+
+            var status = difficulty.Status;
+            
+            bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent || status == DifficultyStatus.nominated;
+            bool hasPp = status == DifficultyStatus.ranked || qualification;
+
+            if (hasPp) {
+                (score.Pp, score.BonusPp) = PpFromScore(1 - score.Accuracy, score.Modifiers, modifers, difficulty.Stars ?? 0.0f, false);
+            }
+            
+            return score;
+        }
+
         public static void PostProcessReplay(Score score, Replay replay) {
             score.WallsHit = replay.walls.Count;
             float firstNoteTime = replay.notes.FirstOrDefault()?.eventTime ?? 0.0f;

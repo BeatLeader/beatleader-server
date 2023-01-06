@@ -47,6 +47,10 @@ namespace BeatLeader_Server
         public DbSet<Headset> Headsets { get; set; }
         public DbSet<VRController> VRControllers { get; set; }
         public DbSet<PlayerScoreStatsHistory> PlayerScoreStatsHistory { get; set; }
+        public DbSet<AltBoard> AltBoards { get; set; }
+        public DbSet<AltScore> AltScores { get; set; }
+        public DbSet<AltPlayer> AltPlayers { get; set; }
+        public DbSet<SecondaryScore> SecondaryScores { get; set; }
 
         public DbSet<EventRanking> EventRankings { get; set; }
 
@@ -113,6 +117,10 @@ namespace BeatLeader_Server
         public DbSet<Headset> Headsets { get; set; }
         public DbSet<VRController> VRControllers { get; set; }
         public DbSet<PlayerScoreStatsHistory> PlayerScoreStatsHistory { get; set; }
+        public DbSet<AltBoard> AltBoards { get; set; }
+        public DbSet<AltScore> AltScores { get; set; }
+        public DbSet<AltPlayer> AltPlayers { get; set; }
+        public DbSet<SecondaryScore> SecondaryScores { get; set; }
 
         public DbSet<EventRanking> EventRankings { get; set; }
 

@@ -1,26 +1,10 @@
-﻿using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Authentication.Cookies;
+﻿using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Azure;
-using Azure.Storage.Queues;
-using Azure.Storage.Blobs;
-using Azure.Core.Extensions;
-using System;
 using System.Text.Json.Serialization;
 using BeatLeader_Server.Services;
 using AspNetCoreRateLimit;
 
 namespace BeatLeader_Server {
-    public class AzureStorageConfig {
-        public string AccountName { get; set; }
-        public string ReplaysContainerName { get; set; }
-        public string OtherReplaysContainerName { get; set; }
-        public string AssetsContainerName { get; set; }
-        public string PlaylistContainerName { get; set; }
-        public string ScoreStatsContainerName { get; set; }
-        public string UnicodeContainerName { get; set; }
-    }
 
     public class Startup {
         static string MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
@@ -194,7 +178,6 @@ namespace BeatLeader_Server {
             services.AddDbContext<AppContext>(options => options.UseSqlServer(readWriteConnection));
             services.AddDbContext<ReadAppContext>(options => options.UseSqlServer(readConnection));
 
-            services.Configure<AzureStorageConfig> (Configuration.GetSection ("AzureStorageConfig"));
 
             if (Configuration.GetValue<string>("ServicesHost") == "YES")
             {
@@ -204,13 +187,8 @@ namespace BeatLeader_Server {
                 services.AddHostedService<RankingService>();
                 services.AddHostedService<_10MinRefresh>();
             }
-            //services.AddHostedService<MigrateReplays>();
             services.AddMvc ().AddControllersAsServices ().AddJsonOptions (options => {
                 options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-            });
-            services.AddAzureClients (builder => {
-                builder.AddBlobServiceClient (Configuration ["CDN:blob"], preferMsi: true);
-                builder.AddQueueServiceClient (Configuration ["CDN:queue"], preferMsi: true);
             });
             if (!Environment.IsDevelopment())
             {
@@ -260,24 +238,6 @@ namespace BeatLeader_Server {
 
             app.UseSwagger();
             app.UseSwaggerUI();
-        }
-    }
-    internal static class StartupExtensions {
-        public static IAzureClientBuilder<BlobServiceClient, BlobClientOptions> AddBlobServiceClient (this AzureClientFactoryBuilder builder, string serviceUriOrConnectionString, bool preferMsi)
-        {
-            if (preferMsi && Uri.TryCreate (serviceUriOrConnectionString, UriKind.Absolute, out Uri serviceUri)) {
-                return builder.AddBlobServiceClient (serviceUri);
-            } else {
-                return builder.AddBlobServiceClient (serviceUriOrConnectionString);
-            }
-        }
-        public static IAzureClientBuilder<QueueServiceClient, QueueClientOptions> AddQueueServiceClient (this AzureClientFactoryBuilder builder, string serviceUriOrConnectionString, bool preferMsi)
-        {
-            if (preferMsi && Uri.TryCreate (serviceUriOrConnectionString, UriKind.Absolute, out Uri serviceUri)) {
-                return builder.AddQueueServiceClient (serviceUri);
-            } else {
-                return builder.AddQueueServiceClient (serviceUriOrConnectionString);
-            }
         }
     }
 }

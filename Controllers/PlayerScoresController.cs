@@ -4,7 +4,6 @@ using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
@@ -25,7 +24,6 @@ namespace BeatLeader_Server.Controllers
             ReadAppContext readContext,
             IConfiguration configuration, 
             IServerTiming serverTiming,
-            IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env)
         {
             _context = context;
@@ -38,6 +36,30 @@ namespace BeatLeader_Server.Controllers
 
         [HttpGet("~/player/{id}/scores")]
         public async Task<ActionResult<ResponseWithMetadata<ScoreResponseWithMyScore>>> GetScores(
+            string id,
+            [FromQuery] string sortBy = "date",
+            [FromQuery] string order = "desc",
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 8,
+            [FromQuery] string? search = null,
+            [FromQuery] string? diff = null,
+            [FromQuery] string? type = null,
+            [FromQuery] float? stars_from = null,
+            [FromQuery] float? stars_to = null,
+            [FromQuery] int? time_from = null,
+            [FromQuery] int? time_to = null,
+            [FromQuery] int? eventId = null,
+            [FromQuery] LeaderboardType? leaderboardType = LeaderboardType.standard)
+        {
+            if (leaderboardType == LeaderboardType.standard) {
+                return await GetScoresStandard(id, sortBy, order, page, count, search, diff, type, stars_from, stars_to, time_from, time_to, eventId);
+            } else {
+                return await GetScoresAlt(id, sortBy, order, page, count, search, diff, type, stars_from, stars_to, time_from, time_to, eventId, leaderboardType);
+            }
+        }
+
+        [NonAction]
+        public async Task<ActionResult<ResponseWithMetadata<ScoreResponseWithMyScore>>> GetScoresStandard(
             string id,
             [FromQuery] string sortBy = "date",
             [FromQuery] string order = "desc",
@@ -169,17 +191,278 @@ namespace BeatLeader_Server.Controllers
                         Total = sequence.Count()
                     },
                     Data = sequence
+                        .Skip((page - 1) * count)
+                        .Take(count)
+                        .Select(s => new ScoreResponseWithMyScore
+                        {
+                            Id = s.Id,
+                            BaseScore = s.BaseScore,
+                            ModifiedScore = s.ModifiedScore,
+                            PlayerId = s.PlayerId,
+                            Accuracy = s.Accuracy,
+                            Pp = s.Pp,
+                            FcAccuracy = s.FcAccuracy,
+                            FcPp = s.FcPp,
+                            BonusPp = s.BonusPp,
+                            Rank = s.Rank,
+                            Replay = s.Replay,
+                            Modifiers = s.Modifiers,
+                            BadCuts = s.BadCuts,
+                            MissedNotes = s.MissedNotes,
+                            BombCuts = s.BombCuts,
+                            WallsHit = s.WallsHit,
+                            Pauses = s.Pauses,
+                            FullCombo = s.FullCombo,
+                            Hmd = s.Hmd,
+                            Controller = s.Controller,
+                            MaxCombo = s.MaxCombo,
+                            Timeset = s.Timeset,
+                            ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
+                            Timepost = s.Timepost,
+                            LeaderboardId = s.LeaderboardId,
+                            Platform = s.Platform,
+                            Player = new PlayerResponse
+                            {
+                                Id = s.Player.Id,
+                                Name = s.Player.Name,
+                                Platform = s.Player.Platform,
+                                Avatar = s.Player.Avatar,
+                                Country = s.Player.Country,
+
+                                Pp = s.Player.Pp,
+                                Rank = s.Player.Rank,
+                                CountryRank = s.Player.CountryRank,
+                                Role = s.Player.Role,
+                                Socials = s.Player.Socials,
+                                PatreonFeatures = s.Player.PatreonFeatures,
+                                ProfileSettings = s.Player.ProfileSettings,
+                                Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                            },
+                            ScoreImprovement = s.ScoreImprovement,
+                            RankVoting = s.RankVoting,
+                            Metadata = s.Metadata,
+                            Country = s.Country,
+                            Offsets = s.ReplayOffsets,
+                            Leaderboard = new LeaderboardResponse
+                            {
+                                Id = s.LeaderboardId,
+                                Song = s.Leaderboard.Song,
+                                Difficulty = s.Leaderboard.Difficulty
+                            },
+                            Weight = s.Weight,
+                            AccLeft = s.AccLeft,
+                            AccRight = s.AccRight,
+                        })
+                        .ToList()
+                };
+            }
+
+            string? currentID = HttpContext.CurrentUserID(_readContext);
+            if (currentID != null && currentID != userId) {
+                var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
+
+                var myScores = _readContext.Scores.Where(s => s.PlayerId == currentID && leaderboards.Contains(s.LeaderboardId)).Select(RemoveLeaderboard).ToList();
+                foreach (var score in result.Data)
+                {
+                    score.MyScore = myScores.FirstOrDefault(s => s.LeaderboardId == score.LeaderboardId);
+                }
+            }
+
+            return result;
+        }
+
+        [NonAction]
+        public async Task<ActionResult<ResponseWithMetadata<ScoreResponseWithMyScore>>> GetScoresAlt(
+            string id,
+            [FromQuery] string sortBy = "date",
+            [FromQuery] string order = "desc",
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 8,
+            [FromQuery] string? search = null,
+            [FromQuery] string? diff = null,
+            [FromQuery] string? type = null,
+            [FromQuery] float? stars_from = null,
+            [FromQuery] float? stars_to = null,
+            [FromQuery] int? time_from = null,
+            [FromQuery] int? time_to = null,
+            [FromQuery] int? eventId = null,
+            [FromQuery] LeaderboardType? leaderboardType = LeaderboardType.standard)
+        {
+            IQueryable<AltScore> sequence;
+
+            Int64 oculusId = 0;
+            try
+            {
+                oculusId = Int64.Parse(id);
+            }
+            catch { 
+                return BadRequest("Id should be a number");
+            }
+            AccountLink? link = null;
+            if (oculusId < 1000000000000000)
+            {
+                using (_serverTiming.TimeAction("link"))
+                {
+                    link = _readContext.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
+                }
+            }
+            if (link == null && oculusId < 70000000000000000)
+            {
+                using (_serverTiming.TimeAction("link"))
+                {
+                    link = _readContext.AccountLinks.FirstOrDefault(el => el.PCOculusID == id);
+                }
+            }
+            string userId = (link != null ? (link.SteamID.Length > 0 ? link.SteamID : link.PCOculusID) : id);
+
+            using (_serverTiming.TimeAction("sequence"))
+            {
+                sequence = _readContext.AltScores.Where(s => s.PlayerId == userId && s.LeaderboardType == leaderboardType);
+                switch (sortBy)
+                {
+                    case "date":
+                        sequence = sequence.Order(order, t => t.Timeset);
+                        break;
+                    case "pp":
+                        sequence = sequence.Order(order, t => t.Pp);
+                        break;
+                    case "acc":
+                        sequence = sequence.Order(order, t => t.Accuracy);
+                        break;
+                    case "pauses":
+                        sequence = sequence.Order(order, t => t.Score.Pauses);
+                        break;
+                    case "rank":
+                        sequence = sequence.Order(order, t => t.Rank);
+                        break;
+                    case "maxStreak":
+                        sequence = sequence.Order(order, t => t.Score.MaxStreak);
+                        break;
+                    case "timing":
+                        sequence = sequence.Order(order, t => (t.Score.LeftTiming + t.Score.RightTiming) / 2);
+                        break;
+                    case "stars":
+                        sequence = sequence
+                                    .Order(order, s => s.Score.Leaderboard.Difficulty.Stars)
+                                    .Where(s => s.Score.Leaderboard.Difficulty.Status == DifficultyStatus.ranked);
+                        break;
+                    default:
+                        break;
+                }
+                if (search != null)
+                {
+                    string lowSearch = search.ToLower();
+                    sequence = sequence
+                        .Where(p => p.Score.Leaderboard.Song.Author.ToLower().Contains(lowSearch) ||
+                                    p.Score.Leaderboard.Song.Mapper.ToLower().Contains(lowSearch) ||
+                                    p.Score.Leaderboard.Song.Name.ToLower().Contains(lowSearch));
+                }
+                if (eventId != null) {
+                    var leaderboardIds = _context.EventRankings.Where(e => e.Id == eventId).Include(e => e.Leaderboards).Select(e => e.Leaderboards.Select(lb => lb.Id)).FirstOrDefault();
+                    if (leaderboardIds?.Count() != 0) {
+                        sequence = sequence.Where(s => leaderboardIds.Contains(s.LeaderboardId));
+                    }
+                }
+                if (diff != null)
+                {
+                    sequence = sequence.Where(p => p.Score.Leaderboard.Difficulty.DifficultyName.ToLower().Contains(diff.ToLower()));
+                }
+                if (type != null)
+                {
+                    sequence = sequence.Where(p => type == "ranked" ? p.Score.Leaderboard.Difficulty.Status == DifficultyStatus.ranked : p.Score.Leaderboard.Difficulty.Status != DifficultyStatus.ranked);
+                }
+                if (stars_from != null)
+                {
+                    sequence = sequence.Where(p => p.Score.Leaderboard.Difficulty.Stars >= stars_from);
+                }
+                if (stars_to != null)
+                {
+                    sequence = sequence.Where(p => p.Score.Leaderboard.Difficulty.Stars <= stars_to);
+                }
+                if (time_from != null)
+                {
+                    sequence = sequence.Where(s => s.Score.Timepost >= time_from);
+                }
+                if (time_to != null)
+                {
+                    sequence = sequence.Where(s => s.Score.Timepost <= time_to);
+                }
+            }
+
+            ResponseWithMetadata<ScoreResponseWithMyScore> result; 
+            using (_serverTiming.TimeAction("db"))
+            {
+                result = new ResponseWithMetadata<ScoreResponseWithMyScore>()
+                {
+                    Metadata = new Metadata()
+                    {
+                        Page = page,
+                        ItemsPerPage = count,
+                        Total = sequence.Count()
+                    },
+                    Data = sequence
                             .Skip((page - 1) * count)
                             .Take(count)
-                            .Include(lb => lb.Leaderboard)
-                                .ThenInclude(lb => lb.Song)
-                                .ThenInclude(lb => lb.Difficulties)
-                            .Include(lb => lb.Leaderboard)
-                                .ThenInclude(lb => lb.Difficulty)
-                                .ThenInclude(d => d.ModifierValues)
-                            .Include(sc => sc.ScoreImprovement)
-                            .Include(sc => sc.ReplayOffsets)
-                            .Select(ScoreWithMyScore)
+                            .Select(s => new ScoreResponseWithMyScore
+                            {
+                                Id = s.Id,
+                                BaseScore = s.BaseScore,
+                                ModifiedScore = s.ModifiedScore,
+                                PlayerId = s.PlayerId,
+                                Accuracy = s.Accuracy,
+                                Pp = s.Pp,
+                                FcAccuracy = s.Score.FcAccuracy,
+                                FcPp = s.Score.FcPp,
+                                BonusPp = s.BonusPp,
+                                Rank = s.Rank,
+                                Replay = s.Score.Replay,
+                                Modifiers = s.Score.Modifiers,
+                                BadCuts = s.Score.BadCuts,
+                                MissedNotes = s.Score.MissedNotes,
+                                BombCuts = s.Score.BombCuts,
+                                WallsHit = s.Score.WallsHit,
+                                Pauses = s.Score.Pauses,
+                                FullCombo = s.Score.FullCombo,
+                                Hmd = s.Score.Hmd,
+                                Controller = s.Score.Controller,
+                                MaxCombo = s.Score.MaxCombo,
+                                Timeset = s.Timeset,
+                                ReplaysWatched = s.Score.AnonimusReplayWatched + s.Score.AuthorizedReplayWatched,
+                                Timepost = s.Score.Timepost,
+                                LeaderboardId = s.LeaderboardId,
+                                Platform = s.Score.Platform,
+                                Player = new PlayerResponse
+                                {
+                                    Id = s.Player.Id,
+                                    Name = s.Player.Name,
+                                    Platform = s.Player.Platform,
+                                    Avatar = s.Player.Avatar,
+                                    Country = s.Player.Country,
+
+                                    Pp = s.Player.Pp,
+                                    Rank = s.Player.Rank,
+                                    CountryRank = s.Player.CountryRank,
+                                    Role = s.Player.Role,
+                                    Socials = s.Player.Socials,
+                                    PatreonFeatures = s.Player.PatreonFeatures,
+                                    ProfileSettings = s.Player.ProfileSettings,
+                                    Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                                },
+                                ScoreImprovement = s.ScoreImprovement,
+                                RankVoting = s.Score.RankVoting,
+                                Metadata = s.Score.Metadata,
+                                Country = s.Score.Country,
+                                Offsets = s.Score.ReplayOffsets,
+                                Leaderboard = new LeaderboardResponse
+                                {
+                                    Id = s.LeaderboardId,
+                                    Song = s.Score.Leaderboard.Song,
+                                    Difficulty = s.Score.Leaderboard.Difficulty
+                                },
+                                Weight = s.Weight,
+                                AccLeft = s.Score.AccLeft,
+                                AccRight = s.Score.AccRight,
+                            })
                             .ToList()
                 };
             }
@@ -648,14 +931,68 @@ namespace BeatLeader_Server.Controllers
         {
             return _readContext
                     .Scores
-                    .Include(s => s.Metadata)
-                    .Include(s => s.Leaderboard)
-                    .ThenInclude(s => s.Song)
-                    .Include(s => s.Leaderboard)
-                    .ThenInclude(s => s.Difficulty)
                     .Where(s => s.PlayerId == id && s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned)
                     .OrderBy(s => s.Metadata.Priority)
-                    .Select(ScoreWithMyScore)
+                    .Select(s => new ScoreResponseWithMyScore
+                    {
+                        Id = s.Id,
+                        BaseScore = s.BaseScore,
+                        ModifiedScore = s.ModifiedScore,
+                        PlayerId = s.PlayerId,
+                        Accuracy = s.Accuracy,
+                        Pp = s.Pp,
+                        FcAccuracy = s.FcAccuracy,
+                        FcPp = s.FcPp,
+                        BonusPp = s.BonusPp,
+                        Rank = s.Rank,
+                        Replay = s.Replay,
+                        Modifiers = s.Modifiers,
+                        BadCuts = s.BadCuts,
+                        MissedNotes = s.MissedNotes,
+                        BombCuts = s.BombCuts,
+                        WallsHit = s.WallsHit,
+                        Pauses = s.Pauses,
+                        FullCombo = s.FullCombo,
+                        Hmd = s.Hmd,
+                        Controller = s.Controller,
+                        MaxCombo = s.MaxCombo,
+                        Timeset = s.Timeset,
+                        ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
+                        Timepost = s.Timepost,
+                        LeaderboardId = s.LeaderboardId,
+                        Platform = s.Platform,
+                        Player = new PlayerResponse
+                        {
+                            Id = s.Player.Id,
+                            Name = s.Player.Name,
+                            Platform = s.Player.Platform,
+                            Avatar = s.Player.Avatar,
+                            Country = s.Player.Country,
+
+                            Pp = s.Player.Pp,
+                            Rank = s.Player.Rank,
+                            CountryRank = s.Player.CountryRank,
+                            Role = s.Player.Role,
+                            Socials = s.Player.Socials,
+                            PatreonFeatures = s.Player.PatreonFeatures,
+                            ProfileSettings = s.Player.ProfileSettings,
+                            Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                        },
+                        ScoreImprovement = s.ScoreImprovement,
+                        RankVoting = s.RankVoting,
+                        Metadata = s.Metadata,
+                        Country = s.Country,
+                        Offsets = s.ReplayOffsets,
+                        Leaderboard = new LeaderboardResponse
+                        {
+                            Id = s.LeaderboardId,
+                            Song = s.Leaderboard.Song,
+                            Difficulty = s.Leaderboard.Difficulty
+                        },
+                        Weight = s.Weight,
+                        AccLeft = s.AccLeft,
+                        AccRight = s.AccRight,
+                    })
                     .ToList();
         }
     }

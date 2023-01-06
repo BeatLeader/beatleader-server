@@ -1,6 +1,4 @@
-﻿using Azure.Identity;
-using Azure.Storage.Blobs;
-using BeatLeader_Server.Extensions;
+﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authorization;
@@ -14,14 +12,12 @@ namespace BeatLeader_Server.Controllers
     public class AdminController : Controller
     {
         private readonly AppContext _context;
-        BlobContainerClient _assetsContainerClient;
         CurrentUserController _currentUserController;
         ReplayController _replayController;
         IWebHostEnvironment _environment;
 
         public AdminController(
             AppContext context,
-            IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env,
             CurrentUserController currentUserController,
             ReplayController replayController)
@@ -30,16 +26,215 @@ namespace BeatLeader_Server.Controllers
             _currentUserController = currentUserController;
             _replayController = replayController;
             _environment = env;
-            if (env.IsDevelopment())
-            {
-                _assetsContainerClient = new BlobContainerClient(config.Value.AccountName, config.Value.AssetsContainerName);
-            }
-            else
-            {
-                string containerEndpoint = $"https://{config.Value.AccountName}.blob.core.windows.net/{config.Value.AssetsContainerName}";
+        }
 
-                _assetsContainerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
+        [HttpGet("~/admin/migrationProgress")]
+        public async Task<ActionResult<string>> MigrationProgress()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
             }
+
+            return _context.Scores.Where(s => s.Migrated).Count() + " out of " + _context.Scores.Count();
+        }
+
+        [HttpGet("~/admin/deletesecondary")]
+        public async Task<ActionResult> deletesecondary()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var scores = _context.SecondaryScores.Include(s => s.AltScores).ToList();
+            foreach (var score in scores)
+            {
+                foreach (var altscore in score.AltScores)
+                {
+                    _context.AltScores.Remove(altscore);
+                }
+                _context.SecondaryScores.Remove(score);
+            }
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
+        [HttpGet("~/admin/makealtboards")]
+        public async Task<ActionResult> altboards()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+
+            int count = _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked).Count();
+            for (int i = 742; i < count; i++)
+            {
+                var leaderboard = _context
+                    .Leaderboards
+                    .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
+                    .OrderBy(s => s.Id)
+                    .Skip(i)
+                    .Include(lb => lb.Difficulty)
+                    .Include(lb => lb.AltBoards)
+                    .ThenInclude(alb => alb.Scores)
+                    .Include(lb => lb.Scores)
+                    .ThenInclude(s => s.Player)
+                    .ThenInclude(p => p.AltPlayers)
+                    .Include(lb => lb.Scores)
+                    .ThenInclude(s => s.ReplayOffsets)
+                    .Include(lb => lb.Scores)
+                    .ThenInclude(s => s.ScoreImprovement)
+                    .Include(lb => lb.Scores)
+                    .ThenInclude(s => s.Metadata)
+                    .FirstOrDefault();
+                var difficulty = leaderboard.Difficulty;
+
+                var nomodsboard = leaderboard.AltBoards?.FirstOrDefault(ab => ab.LeaderboardType == LeaderboardType.nomodifiers);
+                var golfboard = leaderboard.AltBoards?.FirstOrDefault(ab => ab.LeaderboardType == LeaderboardType.golf);
+
+                if (nomodsboard == null) {
+
+                    nomodsboard = new AltBoard { LeaderboardType = LeaderboardType.nomodifiers, Leaderboard = leaderboard, Scores = new List<AltScore>() };
+                    golfboard = new AltBoard { LeaderboardType = LeaderboardType.golf, Leaderboard = leaderboard, Scores = new List<AltScore>() };
+                    _context.AltBoards.Add(nomodsboard);
+                    _context.AltBoards.Add(golfboard);
+
+                    _context.SaveChanges();
+                }
+
+                var status = difficulty.Status;
+                bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
+                bool hasPp = status == DifficultyStatus.ranked || qualification;
+
+                List<SecondaryScore> scoreList = new List<SecondaryScore>();
+                var modifers = difficulty.ModifierValues ?? new ModifiersMap();
+
+                foreach (var score in leaderboard.Scores)
+                {
+                    var secondary = score.ToSecondary();
+                    secondary.AltScores = new List<AltScore>();
+
+                    if (secondary.Player.AltPlayers.Count() == 0) {
+                        secondary.Player.AltPlayers = new List<AltPlayer> {
+                            new AltPlayer { Player = score.Player, LeaderboardType = LeaderboardType.nomodifiers, ScoreStats = new PlayerScoreStats() },
+                            new AltPlayer { Player = score.Player, LeaderboardType = LeaderboardType.golf, ScoreStats = new PlayerScoreStats() }
+                            };
+                    }
+
+                    if (modifers.GetNegativeMultiplier(score.Modifiers) >= 1)
+                    {
+                        _context.SecondaryScores.Add(secondary);
+                        scoreList.Add(secondary);
+                    }
+                }
+
+                _context.SaveChanges();
+
+                foreach (var secondary in scoreList)
+                {
+                    AltScore nomodsScore = new AltScore { 
+                        Score = secondary, 
+                        Player = secondary.Player, 
+                        Timeset = secondary.Timeset,
+                        AltPlayer = secondary.Player.AltPlayers.First(p => p.LeaderboardType == LeaderboardType.nomodifiers),
+                        LeaderboardId = leaderboard.Id,
+                        LeaderboardType = LeaderboardType.nomodifiers
+                    };
+
+                    nomodsScore.BaseScore = secondary.BaseScore;
+                    nomodsScore.ModifiedScore = secondary.BaseScore;
+                    nomodsScore.Accuracy = secondary.Accuracy;
+
+                    if (hasPp)
+                    {
+                        (nomodsScore.Pp, nomodsScore.BonusPp) = ReplayUtils.PpFromScore(nomodsScore.Accuracy, "", modifers, difficulty.Stars ?? 0.0f, false);
+                    }
+                    nomodsboard.Scores.Add(nomodsScore);
+                    secondary.AltScores.Add(nomodsScore);
+                    //_context.AltScores.Add(nomodsScore);
+
+                    AltScore golfScore = new AltScore { 
+                        Score = secondary, 
+                        Player = secondary.Player, 
+                        Timeset = secondary.Timeset,
+                        AltPlayer = secondary.Player.AltPlayers.First(p => p.LeaderboardType == LeaderboardType.nomodifiers),
+                        LeaderboardId = leaderboard.Id,
+                        
+                        LeaderboardType = LeaderboardType.golf
+                    };
+
+                    golfScore.BaseScore = secondary.BaseScore;
+                    golfScore.ModifiedScore = leaderboard.Difficulty.MaxScore - secondary.ModifiedScore;
+                    golfScore.Accuracy = secondary.Accuracy;
+
+                    if (hasPp)
+                    {
+                        (golfScore.Pp, golfScore.BonusPp) = ReplayUtils.PpFromScore(1 - golfScore.Accuracy, secondary.Modifiers, modifers, difficulty.Stars ?? 0.0f, false);
+                    }
+                    golfboard.Scores.Add(golfScore);
+                    secondary.AltScores.Add(golfScore);
+                    //_context.AltScores.Add(golfScore);
+                }
+
+                var rankedScores = status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.inevent
+                    ? golfboard
+                        .Scores
+                        .OrderByDescending(el => el.Pp)
+                        .ThenByDescending(el => el.Accuracy)
+                        .ThenBy(el => el.Timeset)
+                        .ToList()
+                    : golfboard
+                        .Scores
+                        .OrderByDescending(el => el.ModifiedScore)
+                        .ThenByDescending(el => el.Accuracy)
+                        .ThenBy(el => el.Timeset)
+                        .ToList();
+                if (rankedScores.Count > 0)
+                {
+                    foreach ((int ii, var s) in rankedScores.Select((value, ii) => (ii, value)))
+                    {
+                        s.Rank = ii + 1;
+                    }
+                }
+
+                rankedScores = status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.inevent
+                    ? nomodsboard
+                        .Scores
+                        .OrderByDescending(el => el.Pp)
+                        .ThenByDescending(el => el.Accuracy)
+                        .ThenBy(el => el.Timeset)
+                        .ToList()
+                    : nomodsboard
+                        .Scores
+                        .OrderByDescending(el => el.ModifiedScore)
+                        .ThenByDescending(el => el.Accuracy)
+                        .ThenBy(el => el.Timeset)
+                        .ToList();
+                if (rankedScores.Count > 0)
+                {
+                    foreach ((int ii, var s) in rankedScores.Select((value, ii) => (ii, value)))
+                    {
+                        s.Rank = ii + 1;
+                    }
+                }
+
+                _context.SaveChanges();
+            }
+
+            return Ok();
         }
 
         [HttpPost("~/admin/role")]
@@ -442,49 +637,6 @@ namespace BeatLeader_Server.Controllers
             }
 
             _context.BulkSaveChanges();
-
-            return Ok();
-        }
-
-        [HttpGet("~/admin/avatarsrefresh")]
-        public async Task<ActionResult> ResizeAvatars([FromQuery] int hundred)
-        {
-            string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
-
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
-
-            var players = _context.Players.Where(p => p.Avatar.Contains("cdn.beatleader.xyz") && !p.Avatar.Contains("avatar.png")).Skip(hundred * 100).Take(100).ToList();
-
-            foreach (var p in players)
-            {
-                string fileName = p.Id;
-                try
-                {
-                    var ms = new MemoryStream(5);
-                    await _assetsContainerClient.GetBlobClient(p.Avatar.Split("/").Last()).DownloadToAsync(ms);
-
-                    ms.Position = 0;
-
-                    (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(ms);
-                    fileName += extension;
-
-                    await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
-                    await _assetsContainerClient.UploadBlobAsync(fileName, stream);
-                }
-                catch (Exception)
-                {
-                    return BadRequest("Error saving avatar");
-                }
-
-                p.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://beatleadercdn.blob.core.windows.net/assets/") + fileName;
-                _context.Players.Update(p);
-            }
-
-            await _context.SaveChangesAsync();
 
             return Ok();
         }

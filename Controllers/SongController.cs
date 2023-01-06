@@ -156,7 +156,12 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         public async Task<Leaderboard?> NewLeaderboard(Song song, Song? baseSong, string diff, string mode)
         {
-            var leaderboard = new Leaderboard();
+            var leaderboard = new Leaderboard { AltBoards = new List<AltBoard> 
+                { 
+                    new AltBoard { LeaderboardType = LeaderboardType.nomodifiers }, 
+                    new AltBoard { LeaderboardType = LeaderboardType.golf }, 
+                } 
+            };
             leaderboard.SongId = song.Id;
             IEnumerable<DifficultyDescription> difficulties = song.Difficulties.Where(el => el.DifficultyName.ToLower() == diff.ToLower());
             DifficultyDescription? difficulty = difficulties.FirstOrDefault(x => x.ModeName.ToLower() == mode.ToLower());

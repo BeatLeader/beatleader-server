@@ -42,7 +42,7 @@
         public ICollection<PlayerLeaderboardStats>? PlayerStats { get; set; }
 
         public ICollection<EventRanking>? Events { get; set; }
-        //public ICollection<AltBoard>? AltBoards { get; set; }
+        public ICollection<AltBoard>? AltBoards { get; set; }
         public int Plays { get; set; }
 
         public int PositiveVotes { get; set; }
@@ -65,7 +65,8 @@
         public int Id { get; set; }
         public LeaderboardType LeaderboardType { get; set; } = LeaderboardType.standard;
         public ICollection<AltScore> Scores { get; set; }
-        public Leaderboard Leaderboard { get; set; }
+        public Leaderboard? Leaderboard { get; set; }
+        public string? LeaderboardId { get; set; }
         public int Plays { get; set; }
     }
 

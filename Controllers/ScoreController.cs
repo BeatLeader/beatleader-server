@@ -1,6 +1,4 @@
 ﻿using Amazon.S3;
-using Azure.Identity;
-using Azure.Storage.Blobs;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
@@ -8,8 +6,6 @@ using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -19,8 +15,6 @@ namespace BeatLeader_Server.Controllers
         private readonly AppContext _context;
         private readonly ReadAppContext _readContext;
 
-        private readonly BlobContainerClient _replaysClient;
-        private readonly BlobContainerClient _scoreStatsClient;
         private readonly IAmazonS3 _s3Client;
 
         private readonly IServerTiming _serverTiming;
@@ -28,7 +22,6 @@ namespace BeatLeader_Server.Controllers
         public ScoreController(
             AppContext context,
             ReadAppContext readContext,
-            IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env,
             IServerTiming serverTiming,
             IConfiguration configuration)
@@ -37,26 +30,6 @@ namespace BeatLeader_Server.Controllers
             _readContext = readContext;
             _serverTiming = serverTiming;
             _s3Client = configuration.GetS3Client();
-
-            if (env.IsDevelopment())
-            {
-                _replaysClient = new BlobContainerClient(config.Value.AccountName, config.Value.ReplaysContainerName);
-                _scoreStatsClient = new BlobContainerClient(config.Value.AccountName, config.Value.ScoreStatsContainerName);
-            }
-            else
-            {
-                string containerEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
-                                                        config.Value.AccountName,
-                                                       config.Value.ReplaysContainerName);
-
-                _replaysClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
-
-                string statsEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
-                                                        config.Value.AccountName,
-                                                       config.Value.ScoreStatsContainerName);
-
-                _scoreStatsClient = new BlobContainerClient(new Uri(statsEndpoint), new DefaultAzureCredential());
-            }
         }
 
         [HttpGet("~/score/{id}")]
@@ -285,12 +258,9 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
-        [HttpGet("~/v3/scores/{hash}/{diff}/{mode}/{context}/{scope}/{method}")]
-        public async Task<ActionResult<ResponseWithMetadataAndSelection<ScoreResponse>>> GetByHash3(
-            string hash,
-            string diff,
-            string mode,
-            string context,
+        [NonAction]
+        public async Task<ActionResult<ResponseWithMetadataAndSelection<ScoreResponse>>> GetModifiersByHash3(
+            string leaderboardId,
             string scope,
             string method,
             [FromQuery] string player,
@@ -308,33 +278,7 @@ namespace BeatLeader_Server.Controllers
                     }
             };
 
-            if (hash.Length < 40) {
-                return BadRequest("Hash is to short");
-            } else {
-                hash = hash.Substring(0, 40);
-            }
-
             PlayerResponse? currentPlayer = null;
-            var song = _readContext.Songs.Select(s => new { Id = s.Id, Hash = s.Hash }).FirstOrDefault(s => s.Hash == hash);
-            if (song == null) {
-                return result;
-            }
-
-            if (mode.EndsWith("OldDots")) {
-                mode = mode.Replace("OldDots", "");
-            }
-
-            int modeValue = SongUtils.ModeForModeName(mode);
-            if (modeValue == 0) {
-                var customMode = _readContext.CustomModes.FirstOrDefault(m => m.Name == mode);
-                if (customMode != null) {
-                    modeValue = customMode.Id + 10;
-                } else {
-                    return result;
-                }
-            }
-
-            var leaderboardId = song.Id + SongUtils.DiffForDiffName(diff).ToString() + modeValue.ToString();
 
             IQueryable<Score> query = _readContext
                 .Scores
@@ -362,12 +306,6 @@ namespace BeatLeader_Server.Controllers
                 }
                 query = query.Where(s => s.Player.Country == currentPlayer.Country);
             }
-
-            //if (context.ToLower() == "standard")
-            //{
-            //    var modifiers = _context.Leaderboards.Where(lb => lb.Id == leaderboardId).Include(lb => lb.Difficulty).ThenInclude(d => d.ModifierValues).Select(lb => new { ModifierValues = lb.Difficulty.ModifierValues, Stars = lb.Difficulty.Stars }).FirstOrDefault();
-            //    query = query.ToList().AsQueryable().Select(s => RemovePositiveModifiers(s, modifiers.ModifierValues, modifiers.Stars)).OrderByDescending(p => p.Accuracy);
-            //}
 
             if (method.ToLower() == "around")
             {
@@ -470,6 +408,236 @@ namespace BeatLeader_Server.Controllers
                     Timeset = s.Timeset,
                     Timepost = s.Timepost,
                     Platform = s.Platform,
+                    LeaderboardId = s.LeaderboardId,
+                    Player = new PlayerResponse
+                    {
+                        Id = s.Player.Id,
+                        Name = s.Player.Name,
+                        Platform = s.Player.Platform,
+                        Avatar = s.Player.Avatar,
+                        Country = s.Player.Country,
+
+                        Pp = s.Player.Pp,
+                        Rank = s.Player.Rank,
+                        CountryRank = s.Player.CountryRank,
+                        Role = s.Player.Role,
+                        Socials = s.Player.Socials,
+                        ProfileSettings = s.Player.ProfileSettings,
+                        PatreonFeatures = s.Player.PatreonFeatures,
+                        Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                    },
+                    ScoreImprovement = s.ScoreImprovement
+                })
+                .ToList();
+
+            foreach (var item in resultList)
+            {
+                item.Player = PostProcessSettings(item.Player);
+            }
+
+            for (int i = 0; i < resultList.Count; i++)
+            {
+                resultList[i].Rank = i + (page - 1) * count + 1;
+            }
+            result.Data = resultList;
+
+            return result;
+        }
+
+        [HttpGet("~/v3/scores/{hash}/{diff}/{mode}/{context}/{scope}/{method}")]
+        public async Task<ActionResult<ResponseWithMetadataAndSelection<ScoreResponse>>> GetByHash3(
+            string hash,
+            string diff,
+            string mode,
+            string context,
+            string scope,
+            string method,
+            [FromQuery] string player,
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10)
+        {
+            ResponseWithMetadataAndSelection<ScoreResponse> result = new ResponseWithMetadataAndSelection<ScoreResponse>
+            {
+                Data = new List<ScoreResponse>(),
+                Metadata =
+                    {
+                        ItemsPerPage = count,
+                        Page = page,
+                        Total = 0
+                    }
+            };
+
+            if (hash.Length < 40) {
+                return BadRequest("Hash is to short");
+            } else {
+                hash = hash.Substring(0, 40);
+            }
+
+            if (mode.EndsWith("OldDots")) {
+                mode = mode.Replace("OldDots", "");
+            }
+
+            
+            var songId = _readContext.Songs.Where(s => s.Hash == hash).Select(s => s.Id).FirstOrDefault();
+            if (songId == null) {
+                return result;
+            }
+
+            int modeValue = SongUtils.ModeForModeName(mode);
+            if (modeValue == 0) {
+                var customMode = _readContext.CustomModes.FirstOrDefault(m => m.Name == mode);
+                if (customMode != null) {
+                    modeValue = customMode.Id + 10;
+                } else {
+                    return result;
+                }
+            }
+
+            var leaderboardId = songId + SongUtils.DiffForDiffName(diff).ToString() + modeValue.ToString();
+
+            LeaderboardType leaderboardType = LeaderboardType.standard;
+            switch (context)
+            {
+                case "standard":
+                    leaderboardType = LeaderboardType.nomodifiers;
+                    break;
+                case "golf":
+                    leaderboardType = LeaderboardType.golf;
+                    break;
+                default: return await GetModifiersByHash3(leaderboardId, scope, method, player, page, count);
+            }
+
+            PlayerResponse? currentPlayer = null;
+
+            IQueryable<AltScore> query = _readContext
+                .AltScores
+                .Where(s => s.LeaderboardType == leaderboardType && s.LeaderboardId == leaderboardId)
+                .OrderBy(p => p.Rank);
+
+            if (scope.ToLower() == "friends")
+            {
+                PlayerFriends? friends = _readContext.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == player);
+
+                if (friends != null) {
+                    var idList = friends.Friends.Select(f => f.Id).ToArray();
+                    query = query.Where(s => s.PlayerId == player || idList.Contains(s.PlayerId));
+                } else {
+                    query = query.Where(s => s.PlayerId == player);
+                }
+            } else if (scope.ToLower() == "country")
+            {
+                currentPlayer = currentPlayer ?? ResponseFromPlayer(await _readContext.Players.FindAsync(player));
+                if (currentPlayer == null)
+                {
+                    return result;
+                }
+                query = query.Where(s => s.Player.Country == currentPlayer.Country);
+            }
+
+            if (method.ToLower() == "around")
+            {
+                var playerScore = query.Select(s => new { PlayerId = s.PlayerId, Rank = s.Rank }).FirstOrDefault(el => el.PlayerId == player);
+                if (playerScore != null)
+                {
+                    int rank = query.Count(s => s.Rank < playerScore.Rank);
+                    page += (int)Math.Floor((double)(rank) / (double)count);
+                    result.Metadata.Page = page;
+                }
+                else
+                {
+                    return result;
+                }
+            }
+            else
+            {
+                ScoreResponse? highlightedScore = query
+                    .Where(el => el.PlayerId == player)
+                    .Select(s => 
+                    new ScoreResponse
+                {
+                    Id = s.Id,
+                    PlayerId = s.PlayerId,
+                    BaseScore = s.BaseScore,
+                    ModifiedScore = s.ModifiedScore,
+                    Accuracy = s.Accuracy,
+                    Pp = s.Pp,
+                    FcAccuracy = s.Score.FcAccuracy,
+                    FcPp = s.Score.FcPp,
+                    Rank = s.Rank,
+                    Replay = s.Score.Replay,
+                    Modifiers = s.Modifiers,
+                    BadCuts = s.Score.BadCuts,
+                    MissedNotes = s.Score.MissedNotes,
+                    BombCuts = s.Score.BombCuts,
+                    WallsHit = s.Score.WallsHit,
+                    Pauses = s.Score.Pauses,
+                    FullCombo = s.Score.FullCombo,
+                    Hmd = s.Score.Hmd,
+                    Controller = s.Score.Controller,
+                    MaxCombo = s.Score.MaxCombo,
+                    Timeset = s.Score.Timeset,
+                    Timepost = s.Score.Timepost,
+                    Platform = s.Score.Platform,
+                    LeaderboardId = s.LeaderboardId,
+                    Player = new PlayerResponse
+                    {
+                        Id = s.Player.Id,
+                        Name = s.Player.Name,
+                        Platform = s.Player.Platform,
+                        Avatar = s.Player.Avatar,
+                        Country = s.Player.Country,
+
+                        Pp = s.Player.Pp,
+                        Rank = s.Player.Rank,
+                        CountryRank = s.Player.CountryRank,
+                        Role = s.Player.Role,
+                        Socials = s.Player.Socials,
+                        ProfileSettings = s.Player.ProfileSettings,
+                        PatreonFeatures = s.Player.PatreonFeatures,
+                        Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                    },
+                    ScoreImprovement = s.ScoreImprovement
+                }).FirstOrDefault();
+                if (highlightedScore != null)
+                {
+                    result.Selection = highlightedScore;
+                    result.Selection.Player = PostProcessSettings(result.Selection.Player);
+                    if (scope.ToLower() == "friends" || scope.ToLower() == "country") {
+                        result.Selection.Rank = query.Count(s => s.Rank < result.Selection.Rank) + 1;
+                    }
+                }
+            }
+
+            result.Metadata.Total = query.Count();
+
+            List<ScoreResponse> resultList = query
+                .Skip((page - 1) * count)
+                .Take(count)
+                .Select(s => new ScoreResponse
+                {
+                    Id = s.Id,
+                    PlayerId = s.PlayerId,
+                    BaseScore = s.BaseScore,
+                    ModifiedScore = s.ModifiedScore,
+                    Accuracy = s.Accuracy,
+                    Pp = s.Pp,
+                    FcAccuracy = s.Score.FcAccuracy,
+                    FcPp = s.Score.FcPp,
+                    Rank = s.Rank,
+                    Replay = s.Score.Replay,
+                    Modifiers = s.Modifiers,
+                    BadCuts = s.Score.BadCuts,
+                    MissedNotes = s.Score.MissedNotes,
+                    BombCuts = s.Score.BombCuts,
+                    WallsHit = s.Score.WallsHit,
+                    Pauses = s.Score.Pauses,
+                    FullCombo = s.Score.FullCombo,
+                    Hmd = s.Score.Hmd,
+                    Controller = s.Score.Controller,
+                    MaxCombo = s.Score.MaxCombo,
+                    Timeset = s.Score.Timeset,
+                    Timepost = s.Score.Timepost,
+                    Platform = s.Score.Platform,
                     LeaderboardId = s.LeaderboardId,
                     Player = new PlayerResponse
                     {
@@ -627,12 +795,66 @@ namespace BeatLeader_Server.Controllers
                     Data = sequence
                         .Skip((page - 1) * count)
                         .Take(count)
-                        .Include(lb => lb.Leaderboard)
-                        .ThenInclude(lb => lb.Song)
-                        .ThenInclude(lb => lb.Difficulties)
-                        .Include(lb => lb.Leaderboard)
-                        .ThenInclude(lb => lb.Difficulty)
-                        .Select(ScoreWithMyScore)
+                        .Select(s => new ScoreResponseWithMyScore
+                        {
+                            Id = s.Id,
+                            BaseScore = s.BaseScore,
+                            ModifiedScore = s.ModifiedScore,
+                            PlayerId = s.PlayerId,
+                            Accuracy = s.Accuracy,
+                            Pp = s.Pp,
+                            FcAccuracy = s.FcAccuracy,
+                            FcPp = s.FcPp,
+                            BonusPp = s.BonusPp,
+                            Rank = s.Rank,
+                            Replay = s.Replay,
+                            Modifiers = s.Modifiers,
+                            BadCuts = s.BadCuts,
+                            MissedNotes = s.MissedNotes,
+                            BombCuts = s.BombCuts,
+                            WallsHit = s.WallsHit,
+                            Pauses = s.Pauses,
+                            FullCombo = s.FullCombo,
+                            Hmd = s.Hmd,
+                            Controller = s.Controller,
+                            MaxCombo = s.MaxCombo,
+                            Timeset = s.Timeset,
+                            ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
+                            Timepost = s.Timepost,
+                            LeaderboardId = s.LeaderboardId,
+                            Platform = s.Platform,
+                            Player = new PlayerResponse
+                            {
+                                Id = s.Player.Id,
+                                Name = s.Player.Name,
+                                Platform = s.Player.Platform,
+                                Avatar = s.Player.Avatar,
+                                Country = s.Player.Country,
+
+                                Pp = s.Player.Pp,
+                                Rank = s.Player.Rank,
+                                CountryRank = s.Player.CountryRank,
+                                Role = s.Player.Role,
+                                Socials = s.Player.Socials,
+                                PatreonFeatures = s.Player.PatreonFeatures,
+                                ProfileSettings = s.Player.ProfileSettings,
+                                Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                            },
+                            ScoreImprovement = s.ScoreImprovement,
+                            RankVoting = s.RankVoting,
+                            Metadata = s.Metadata,
+                            Country = s.Country,
+                            Offsets = s.ReplayOffsets,
+                            Leaderboard = new LeaderboardResponse
+                            {
+                                Id = s.LeaderboardId,
+                                Song = s.Leaderboard.Song,
+                                Difficulty = s.Leaderboard.Difficulty
+                            },
+                            Weight = s.Weight,
+                            AccLeft = s.AccLeft,
+                            AccRight = s.AccRight
+                        })
                         .ToList()
                 };
             }
@@ -642,8 +864,11 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/score/statistic/{id}")]
         public async Task<ActionResult> GetStatistic(int id)
         {
-            var blob = _scoreStatsClient.GetBlobClient(id + ".json");
-            return (await blob.ExistsAsync()) ? File(await blob.OpenReadAsync(), "application/json") : NotFound();
+            var replayStream = await _s3Client.DownloadStats(id + ".json");
+            if (replayStream == null) {
+                return NotFound();
+            }
+            return File(replayStream, "application/json");
         }
 
         [HttpGet("~/score/calculatestatistic/{id}")]
@@ -660,20 +885,26 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         public async Task<ActionResult<ScoreStatistic?>> CalculateStatisticScore(Score score)
         {
-            string blobName = score.Replay.Split("/").Last();
-
-            BlobClient blobClient = _replaysClient.GetBlobClient(blobName);
-            if (!await blobClient.ExistsAsync()) return NotFound();
-            MemoryStream ms = new MemoryStream(5);
-            await blobClient.DownloadToAsync(ms);
+            string fileName = score.Replay.Split("/").Last();
             Replay? replay;
-            try
+
+            using (var replayStream = await _s3Client.DownloadReplay(fileName))
             {
-                (replay, ReplayOffsets _) = ReplayDecoder.Decode(ms.ToArray());
-            }
-            catch (Exception)
-            {
-                return BadRequest("Error decoding replay");
+                if (replayStream == null) return NotFound();
+
+                using (var ms = new MemoryStream(5))
+                {
+                    await replayStream.CopyToAsync(ms);
+                    long length = ms.Length;
+                    try
+                    {
+                        (replay, _) = ReplayDecoder.Decode(ms.ToArray());
+                    }
+                    catch (Exception)
+                    {
+                        return BadRequest("Error decoding replay");
+                    }
+                }
             }
 
             (ScoreStatistic? statistic, string? error) = await CalculateAndSaveStatistic(replay, score);
@@ -722,8 +953,20 @@ namespace BeatLeader_Server.Controllers
                 return (null, error);
             }
 
-            _scoreStatsClient.DeleteBlobIfExists(score.Id + ".json");
-            _scoreStatsClient.UploadBlob(score.Id + ".json", new BinaryData(JsonConvert.SerializeObject(statistic)));
+            await _s3Client.UploadScoreStats(score.Id + ".json", statistic);
+
+            return (statistic, null);
+        }
+
+        [NonAction]
+        public async Task<(ScoreStatistic?, string?)> CalculateAndSaveStatistic(Replay? replay, SecondaryScore score)
+        {
+            (ScoreStatistic? statistic, string? error) = CalculateStatisticFromReplay(replay, score.Leaderboard);
+
+            if (statistic == null)
+            {
+                return (null, error);
+            }
 
             await _s3Client.UploadScoreStats(score.Id + ".json", statistic);
 

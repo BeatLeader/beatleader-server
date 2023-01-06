@@ -56,10 +56,34 @@ namespace BeatLeader_Server.Models
 
         public ICollection<EventPlayer>? EventsParticipating { get; set; }
         public ICollection<PlayerSocial>? Socials { get; set; }
+        public ICollection<AltPlayer>? AltPlayers { get; set; }
 
         public void SetDefaultAvatar()
         {
             this.Avatar = "https://cdn.assets.beatleader.xyz/" + this.Platform + "avatar.png";
         }
+    }
+
+    public class AltPlayer
+    {
+        [Key]
+        public int Id { get; set; }
+
+        public string? PlayerId { get; set; }
+        public Player? Player { get; set; }
+
+        public LeaderboardType LeaderboardType { get; set; } = LeaderboardType.standard;
+
+        public float Pp { get; set; }
+        public int Rank { get; set; }
+        public int CountryRank { get; set; }
+
+        public float LastWeekPp { get; set; }
+        public int LastWeekRank { get; set; }
+        public int LastWeekCountryRank { get; set; }
+
+        public PlayerScoreStats? ScoreStats { get; set; }
+
+        public ICollection<PlayerScoreStatsHistory>? History { get; set; }
     }
 }
