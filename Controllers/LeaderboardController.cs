@@ -642,7 +642,7 @@ namespace BeatLeader_Server.Controllers
 
             var statistics = scoreIds.Select(async id =>
             {
-                using (var stream = await _s3Client.DownloadStats(id + "-leaderboard.json")) {
+                using (var stream = await _s3Client.DownloadStats(id + ".json")) {
                     if (stream == null)
                     {
                         return null;
