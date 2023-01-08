@@ -1,6 +1,4 @@
-﻿using Azure.Identity;
-using Azure.Storage.Blobs;
-using BeatLeader_Server.Extensions;
+﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authorization;
@@ -14,14 +12,12 @@ namespace BeatLeader_Server.Controllers
     public class AdminController : Controller
     {
         private readonly AppContext _context;
-        BlobContainerClient _assetsContainerClient;
         CurrentUserController _currentUserController;
         ReplayController _replayController;
         IWebHostEnvironment _environment;
 
         public AdminController(
             AppContext context,
-            IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env,
             CurrentUserController currentUserController,
             ReplayController replayController)
@@ -30,16 +26,6 @@ namespace BeatLeader_Server.Controllers
             _currentUserController = currentUserController;
             _replayController = replayController;
             _environment = env;
-            if (env.IsDevelopment())
-            {
-                _assetsContainerClient = new BlobContainerClient(config.Value.AccountName, config.Value.AssetsContainerName);
-            }
-            else
-            {
-                string containerEndpoint = $"https://{config.Value.AccountName}.blob.core.windows.net/{config.Value.AssetsContainerName}";
-
-                _assetsContainerClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
-            }
         }
 
         [HttpPost("~/admin/role")]
@@ -442,49 +428,6 @@ namespace BeatLeader_Server.Controllers
             }
 
             _context.BulkSaveChanges();
-
-            return Ok();
-        }
-
-        [HttpGet("~/admin/avatarsrefresh")]
-        public async Task<ActionResult> ResizeAvatars([FromQuery] int hundred)
-        {
-            string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
-
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
-
-            var players = _context.Players.Where(p => p.Avatar.Contains("cdn.beatleader.xyz") && !p.Avatar.Contains("avatar.png")).Skip(hundred * 100).Take(100).ToList();
-
-            foreach (var p in players)
-            {
-                string fileName = p.Id;
-                try
-                {
-                    var ms = new MemoryStream(5);
-                    await _assetsContainerClient.GetBlobClient(p.Avatar.Split("/").Last()).DownloadToAsync(ms);
-
-                    ms.Position = 0;
-
-                    (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(ms);
-                    fileName += extension;
-
-                    await _assetsContainerClient.DeleteBlobIfExistsAsync(fileName);
-                    await _assetsContainerClient.UploadBlobAsync(fileName, stream);
-                }
-                catch (Exception)
-                {
-                    return BadRequest("Error saving avatar");
-                }
-
-                p.Avatar = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/assets/" : "https://beatleadercdn.blob.core.windows.net/assets/") + fileName;
-                _context.Players.Update(p);
-            }
-
-            await _context.SaveChangesAsync();
 
             return Ok();
         }

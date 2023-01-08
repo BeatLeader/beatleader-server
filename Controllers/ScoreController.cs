@@ -1,6 +1,4 @@
 ﻿using Amazon.S3;
-using Azure.Identity;
-using Azure.Storage.Blobs;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
@@ -8,8 +6,6 @@ using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -19,8 +15,6 @@ namespace BeatLeader_Server.Controllers
         private readonly AppContext _context;
         private readonly ReadAppContext _readContext;
 
-        private readonly BlobContainerClient _replaysClient;
-        private readonly BlobContainerClient _scoreStatsClient;
         private readonly IAmazonS3 _s3Client;
 
         private readonly IServerTiming _serverTiming;
@@ -28,7 +22,6 @@ namespace BeatLeader_Server.Controllers
         public ScoreController(
             AppContext context,
             ReadAppContext readContext,
-            IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env,
             IServerTiming serverTiming,
             IConfiguration configuration)
@@ -37,26 +30,6 @@ namespace BeatLeader_Server.Controllers
             _readContext = readContext;
             _serverTiming = serverTiming;
             _s3Client = configuration.GetS3Client();
-
-            if (env.IsDevelopment())
-            {
-                _replaysClient = new BlobContainerClient(config.Value.AccountName, config.Value.ReplaysContainerName);
-                _scoreStatsClient = new BlobContainerClient(config.Value.AccountName, config.Value.ScoreStatsContainerName);
-            }
-            else
-            {
-                string containerEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
-                                                        config.Value.AccountName,
-                                                       config.Value.ReplaysContainerName);
-
-                _replaysClient = new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
-
-                string statsEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}",
-                                                        config.Value.AccountName,
-                                                       config.Value.ScoreStatsContainerName);
-
-                _scoreStatsClient = new BlobContainerClient(new Uri(statsEndpoint), new DefaultAzureCredential());
-            }
         }
 
         [HttpGet("~/score/{id}")]
@@ -642,8 +615,11 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/score/statistic/{id}")]
         public async Task<ActionResult> GetStatistic(int id)
         {
-            var blob = _scoreStatsClient.GetBlobClient(id + ".json");
-            return (await blob.ExistsAsync()) ? File(await blob.OpenReadAsync(), "application/json") : NotFound();
+            var replayStream = await _s3Client.DownloadStats(id + ".json");
+            if (replayStream == null) {
+                return NotFound();
+            }
+            return File(replayStream, "application/json");
         }
 
         [HttpGet("~/score/calculatestatistic/{id}")]
@@ -660,20 +636,26 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         public async Task<ActionResult<ScoreStatistic?>> CalculateStatisticScore(Score score)
         {
-            string blobName = score.Replay.Split("/").Last();
-
-            BlobClient blobClient = _replaysClient.GetBlobClient(blobName);
-            if (!await blobClient.ExistsAsync()) return NotFound();
-            MemoryStream ms = new MemoryStream(5);
-            await blobClient.DownloadToAsync(ms);
+            string fileName = score.Replay.Split("/").Last();
             Replay? replay;
-            try
+
+            using (var replayStream = await _s3Client.DownloadReplay(fileName))
             {
-                (replay, ReplayOffsets _) = ReplayDecoder.Decode(ms.ToArray());
-            }
-            catch (Exception)
-            {
-                return BadRequest("Error decoding replay");
+                if (replayStream == null) return NotFound();
+
+                using (var ms = new MemoryStream(5))
+                {
+                    await replayStream.CopyToAsync(ms);
+                    long length = ms.Length;
+                    try
+                    {
+                        (replay, _) = ReplayDecoder.Decode(ms.ToArray());
+                    }
+                    catch (Exception)
+                    {
+                        return BadRequest("Error decoding replay");
+                    }
+                }
             }
 
             (ScoreStatistic? statistic, string? error) = await CalculateAndSaveStatistic(replay, score);
@@ -721,9 +703,6 @@ namespace BeatLeader_Server.Controllers
             {
                 return (null, error);
             }
-
-            _scoreStatsClient.DeleteBlobIfExists(score.Id + ".json");
-            _scoreStatsClient.UploadBlob(score.Id + ".json", new BinaryData(JsonConvert.SerializeObject(statistic)));
 
             await _s3Client.UploadScoreStats(score.Id + ".json", statistic);
 

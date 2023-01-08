@@ -28,7 +28,6 @@ namespace BeatLeader_Server.Controllers
             ReadAppContext readContext,
             IConfiguration configuration, 
             IServerTiming serverTiming,
-            IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env)
         {
             _context = context;

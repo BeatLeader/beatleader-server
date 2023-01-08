@@ -1,6 +1,4 @@
 ﻿using Amazon.S3;
-using Azure.Identity;
-using Azure.Storage.Blobs;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
@@ -19,31 +17,18 @@ namespace BeatLeader_Server.Controllers
 {
     public class ReplayController : Controller
     {
-        private readonly BlobContainerClient _replaysClient;
-        private readonly BlobContainerClient _scoreStatsClient;
-
-        private readonly IAmazonS3 _replaysS3Client;
-
+        private readonly IAmazonS3 _s3Client;
         private readonly AppContext _context;
-        private readonly ReadAppContext _readContext;
 
-        LeaderboardController _leaderboardController;
-        PlayerController _playerController;
-        ScoreController _scoreController;
-        IWebHostEnvironment _environment;
-        IConfiguration _configuration;
+        private readonly LeaderboardController _leaderboardController;
+        private readonly PlayerController _playerController;
+        private readonly ScoreController _scoreController;
+        private readonly IWebHostEnvironment _environment;
+        private readonly IConfiguration _configuration;
         private readonly IServerTiming _serverTiming;
-
-        private static BlobContainerClient ContainerWithName(IOptions<AzureStorageConfig> config, string name) {
-            string containerEndpoint = $"https://{config.Value.AccountName}.blob.core.windows.net/{name}";
-
-            return new BlobContainerClient(new Uri(containerEndpoint), new DefaultAzureCredential());
-        }
 
         public ReplayController(
             AppContext context,
-            ReadAppContext readContext,
-            IOptions<AzureStorageConfig> config, 
             IWebHostEnvironment env,
             IConfiguration configuration,
             LeaderboardController leaderboardController, 
@@ -56,28 +41,10 @@ namespace BeatLeader_Server.Controllers
             _playerController = playerController;
             _scoreController = scoreController;
             _context = context;
-            _readContext = readContext;
             _environment = env;
             _configuration = configuration;
             _serverTiming = serverTiming;
-            _replaysS3Client = configuration.GetS3Client();
-	        
-            if (env.IsDevelopment())
-			{
-          //      _replaysS3Client = new AmazonS3Client(credentials, new AmazonS3Config
-		        //{
-			       // ServiceURL = "https://localhost:9191",
-		        //});
-				_replaysClient = new BlobContainerClient(config.Value.AccountName, config.Value.ReplaysContainerName);
-
-                _scoreStatsClient = new BlobContainerClient(config.Value.AccountName, config.Value.ScoreStatsContainerName);
-            }
-			else
-			{
-                
-				_replaysClient = ContainerWithName(config, config.Value.ReplaysContainerName);
-                _scoreStatsClient = ContainerWithName(config, config.Value.ScoreStatsContainerName);
-            }
+            _s3Client = configuration.GetS3Client();
         }
 
         [HttpPost("~/replay"), DisableRequestSizeLimit]
@@ -127,11 +94,16 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         public async Task<ActionResult<ScoreResponse>> PostReplayFromCDN(string authenticatedPlayerID, string name, HttpContext context)
         {
-            BlobClient blobClient = _replaysClient.GetBlobClient(name);
-            MemoryStream ms = new MemoryStream(5);
-            await blobClient.DownloadToAsync(ms);
+            using (var stream = await _s3Client.DownloadReplay(name)) {
+                if (stream != null) {
+                    MemoryStream ms = new MemoryStream(5);
+                    await stream.CopyToAsync(ms);
 
-            return await PostReplay(authenticatedPlayerID, ms, context);
+                    return await PostReplay(authenticatedPlayerID, ms, context);
+                } else {
+                    return NotFound();
+                }
+            }
         }
 
         [NonAction]
@@ -539,7 +511,7 @@ namespace BeatLeader_Server.Controllers
             ReplayOffsets offsets,
             PlayerLeaderboardStats? stats) {
 
-            _scoreStatsClient.DeleteBlobIfExistsAsync(leaderboard.Id + "-leaderboard.json");
+            await _s3Client.DeleteStats(leaderboard.Id + "-leaderboard.json");
 
             float oldPp = player.Pp;
             int oldRank = player.Rank;
@@ -669,7 +641,7 @@ namespace BeatLeader_Server.Controllers
                 resultScore.Replay = (_environment.IsDevelopment() ? "https://localhost:9191/replays/" : "https://cdn.replays.beatleader.xyz/") + fileName;
                 
                 string replayLink = resultScore.Replay;
-                await _replaysS3Client.UploadReplay(fileName, replayData);
+                await _s3Client.UploadReplay(fileName, replayData);
                 (ScoreStatistic? statistic, string? error) = await _scoreController.CalculateAndSaveStatistic(replay, resultScore);
                 if (statistic == null)
                 {
@@ -1026,19 +998,6 @@ namespace BeatLeader_Server.Controllers
 
             leaderboard.PlayerStats.Add(stats);
             return stats;
-        }
-
-        [HttpGet("~/replay/{name}")]
-        public async Task<ActionResult> DownloadReplay(
-            string name,
-            CancellationToken ct)
-        {
-            var blob = _replaysClient.GetBlobClient(name);
-            return (await blob.ExistsAsync()) 
-                ? new FileStreamResult(await blob.OpenReadAsync(cancellationToken: ct), "application/octet-stream") {
-                    EnableRangeProcessing = true,
-                }
-                : NotFound();
         }
 
         //[NonAction]

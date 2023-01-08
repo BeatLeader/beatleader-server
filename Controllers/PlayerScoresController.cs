@@ -4,7 +4,6 @@ using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
@@ -25,7 +24,6 @@ namespace BeatLeader_Server.Controllers
             ReadAppContext readContext,
             IConfiguration configuration, 
             IServerTiming serverTiming,
-            IOptions<AzureStorageConfig> config,
             IWebHostEnvironment env)
         {
             _context = context;

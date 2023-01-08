@@ -1,14 +1,9 @@
-﻿using Azure.Identity;
-using Azure.Storage.Blobs;
+﻿using Amazon.S3;
 using BeatLeader_Server.Extensions;
-using BeatLeader_Server.Migrations;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
-using Discord;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -18,26 +13,18 @@ namespace BeatLeader_Server.Controllers
         private readonly AppContext _context;
         private readonly ReadAppContext _readContext;
         private readonly SongController _songController;
+        private readonly IAmazonS3 _s3Client;
 
-        private readonly BlobContainerClient _scoreStatsClient;
-
-        public LeaderboardController(AppContext context, ReadAppContext readContext, SongController songController, IOptions<AzureStorageConfig> config, IWebHostEnvironment env)
+        public LeaderboardController(
+            AppContext context, 
+            ReadAppContext readContext,
+            IConfiguration configuration,
+            SongController songController)
         {
             _context = context;
             _readContext = readContext;
             _songController = songController;
-
-            if (env.IsDevelopment())
-            {
-                _scoreStatsClient = new BlobContainerClient(config.Value.AccountName, config.Value.ScoreStatsContainerName);
-            }
-            else
-            {
-
-                string statsEndpoint = $"https://{config.Value.AccountName}.blob.core.windows.net/{config.Value.ScoreStatsContainerName}";
-
-                _scoreStatsClient = new BlobContainerClient(new Uri(statsEndpoint), new DefaultAzureCredential());
-            }
+            _s3Client = configuration.GetS3Client();
         }
 
         [HttpGet("~/leaderboard/{id}")]
@@ -634,9 +621,9 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/leaderboard/statistic/{id}")]
         public async Task<ActionResult<Models.ScoreStatistic>> RefreshStatistic(string id)
         {
-            var blobClient = _scoreStatsClient.GetBlobClient(id + "-leaderboard.json");
-            if (await blobClient.ExistsAsync()) {
-                return File(await blobClient.OpenReadAsync(), "application/json");
+            var stream = await _s3Client.DownloadStats(id + "-leaderboard.json");
+            if (stream != null) {
+                return File(stream, "application/json");
             }
             
             var leaderboard = _context.Leaderboards.Where(lb => lb.Id == id).Include(lb => lb.Scores.Where(s =>
@@ -655,24 +642,21 @@ namespace BeatLeader_Server.Controllers
 
             var statistics = scoreIds.Select(async id =>
             {
-                BlobClient blobClient = _scoreStatsClient.GetBlobClient(id + ".json");
-                MemoryStream stream = new MemoryStream(5);
-                if (!(await blobClient.ExistsAsync()))
-                {
-                    return null;
-                }
-                await blobClient.DownloadToAsync(stream);
-                stream.Position = 0;
+                using (var stream = await _s3Client.DownloadStats(id + "-leaderboard.json")) {
+                    if (stream == null)
+                    {
+                        return null;
+                    }
 
-                return stream.ObjectFromStream<Models.ScoreStatistic>();
+                    return stream.ObjectFromStream<Models.ScoreStatistic>();
+                }
             });
 
             var result = new Models.ScoreStatistic();
 
             await ReplayStatisticUtils.AverageStatistic(statistics, result);
 
-            await _scoreStatsClient.DeleteBlobIfExistsAsync(id + "-leaderboard.json");
-            await _scoreStatsClient.UploadBlobAsync(id + "-leaderboard.json", new BinaryData(JsonConvert.SerializeObject(result)));
+            await _s3Client.UploadScoreStats(id + "-leaderboard.json", result);
 
             return result;
         }
