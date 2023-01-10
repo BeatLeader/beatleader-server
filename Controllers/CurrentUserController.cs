@@ -483,13 +483,13 @@ namespace BeatLeader_Server.Controllers
         [HttpPatch("~/user/changePassword")]
         public ActionResult ChangePassword([FromForm] string login, [FromForm] string oldPassword, [FromForm] string newPassword)
         {
-            IPAddress? iPAddress = Request.HttpContext.Connection.RemoteIpAddress;
+            string? iPAddress = Request.HttpContext.GetIpAddress();
             if (iPAddress == null)
             {
                 return Unauthorized("You don't have an IP adress? Tell #NSGolova how you get this error.");
             }
 
-            LoginAttempt? loginAttempt = _context.LoginAttempts.FirstOrDefault(el => el.IP == iPAddress.ToString());
+            LoginAttempt? loginAttempt = _context.LoginAttempts.FirstOrDefault(el => el.IP == iPAddress);
             int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
             if (loginAttempt is { Count: 10 } && (timestamp - loginAttempt.Timestamp) < 60 * 60 * 24)
@@ -508,7 +508,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     loginAttempt = new LoginAttempt
                     {
-                        IP = iPAddress.ToString(),
+                        IP = iPAddress,
                         Timestamp = timestamp,
                     };
                     _context.LoginAttempts.Add(loginAttempt);
@@ -565,13 +565,13 @@ namespace BeatLeader_Server.Controllers
         [HttpPatch("~/user/changeLogin")]
         public ActionResult ChangeLogin([FromForm] string newLogin)
         {
-            IPAddress? iPAddress = Request.HttpContext.Connection.RemoteIpAddress;
+            string? iPAddress = Request.HttpContext.GetIpAddress();
             if (iPAddress == null)
             {
                 return Unauthorized("You don't have an IP adress? Tell #NSGolova how you get this error.");
             }
 
-            LoginAttempt? loginAttempt = _context.LoginAttempts.FirstOrDefault(el => el.IP == iPAddress.ToString());
+            LoginAttempt? loginAttempt = _context.LoginAttempts.FirstOrDefault(el => el.IP == iPAddress);
             int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
             if (loginAttempt is { Count: 10 } && (timestamp - loginAttempt.Timestamp) < 60 * 60 * 24)
@@ -609,7 +609,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     loginAttempt = new LoginAttempt
                     {
-                        IP = iPAddress.ToString(),
+                        IP = iPAddress,
                         Timestamp = timestamp,
                     };
                     _context.LoginAttempts.Add(loginAttempt);

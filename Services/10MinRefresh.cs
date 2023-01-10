@@ -15,7 +15,7 @@ namespace BeatLeader_Server.Services
         {
             do {
                 try {
-                    await WebRequest.Create($"https://beatleaderhelperbot20221206231439.azurewebsites.net/").GetResponseAsync();
+                    //await WebRequest.Create($"https://beatleaderhelperbot20221206231439.azurewebsites.net/").GetResponseAsync();
                 } catch {}
 
                 await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);

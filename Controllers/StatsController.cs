@@ -159,11 +159,11 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<VoteStatus>> Played(
             int scoreId)
         {
-            var ip = HttpContext.Request.HttpContext.Connection.RemoteIpAddress;
+            var ip = HttpContext.GetIpAddress();
 
             if (ip == null) return BadRequest();
 
-            string ipString = ip.ToString();
+            string ipString = ip;
             string? currentID = HttpContext.CurrentUserID(_context);
             if (currentID != null) {
                 if ((await _context.WatchingSessions.FirstOrDefaultAsync(ws => ws.ScoreId == scoreId && ws.Player == currentID)) != null) return Ok();

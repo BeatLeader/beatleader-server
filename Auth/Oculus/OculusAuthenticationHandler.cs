@@ -10,6 +10,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
 using AspNet.Security.OpenId.Events;
+using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -65,7 +66,7 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
 
         string id = "";
 
-        IPAddress? iPAddress = Request.HttpContext.Connection.RemoteIpAddress;
+        string? iPAddress = Request.HttpContext.GetIpAddress();
         if (iPAddress == null)
         {
             Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -75,7 +76,7 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
 
         if (action == "login")
         {
-            LoginAttempt? loginAttempt = dbContext.LoginAttempts.FirstOrDefault(el => el.IP == iPAddress.ToString());
+            LoginAttempt? loginAttempt = dbContext.LoginAttempts.FirstOrDefault(el => el.IP == iPAddress);
             int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
             if (loginAttempt != null && loginAttempt.Count == 10 && (timestamp - loginAttempt.Timestamp) < 60 * 60 * 24) {
@@ -88,7 +89,7 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
             {
                 if (loginAttempt == null) {
                     loginAttempt = new LoginAttempt {
-                        IP = iPAddress.ToString(),
+                        IP = iPAddress,
                         Timestamp = timestamp,
                      };
                     dbContext.LoginAttempts.Add(loginAttempt);

@@ -12,6 +12,23 @@ namespace BeatLeader_Server.Extensions
 {
     public static class HttpContextExtensions
     {
+        public static string? GetIpAddress(this HttpContext context)
+        {
+            if (!string.IsNullOrEmpty(context.Request.Headers["cf-connecting-ip"]))
+                return context.Request.Headers["cf-connecting-ip"];
+
+            var ipAddress = context.GetServerVariable("HTTP_X_FORWARDED_FOR");
+
+            if (!string.IsNullOrEmpty(ipAddress))
+            {
+                var addresses = ipAddress.Split(',');
+                if (addresses.Length != 0)
+                    return addresses.Last();
+            }
+
+            return context.Connection.RemoteIpAddress?.ToString();
+        }
+
         public static async Task<AuthenticationScheme[]> GetExternalProvidersAsync(this HttpContext context)
         {
             if (context == null)

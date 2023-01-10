@@ -98,6 +98,7 @@ namespace BeatLeader_Server.Controllers
                 if (stream != null) {
                     MemoryStream ms = new MemoryStream(5);
                     await stream.CopyToAsync(ms);
+                    ms.Position = 0;
 
                     return await PostReplay(authenticatedPlayerID, ms, context);
                 } else {
@@ -254,11 +255,11 @@ namespace BeatLeader_Server.Controllers
                 {
                     string? country = null;
 
-                    if (Request.Headers["cf-ipcountry"] != StringValues.Empty) {
-                       country = Request.Headers["cf-ipcountry"].ToString();
+                    if (context.Request.Headers["cf-ipcountry"] != StringValues.Empty) {
+                       country = context.Request.Headers["cf-ipcountry"].ToString();
                     }
 
-                    var ip = context.Request.HttpContext.Connection.RemoteIpAddress;
+                    var ip = context.Request.HttpContext.GetIpAddress();
                     if (country == null && ip != null)
                     {
                         country = WebUtils.GetCountryByIp(ip.ToString());
@@ -276,6 +277,10 @@ namespace BeatLeader_Server.Controllers
                     (currentScore.Pp == 0 && currentScore.ModifiedScore >= resultScore.ModifiedScore)))
             {
                 return (BadRequest("Score is lower than existing one"), true);
+            }
+
+            if (player.ScoreStats == null) {
+                player.ScoreStats = new PlayerScoreStats();
             }
 
             resultScore.PlayerId = info.playerID;
@@ -697,7 +702,7 @@ namespace BeatLeader_Server.Controllers
                         leaderboard.Difficulty.ModifierValues, 
                         leaderboard.Difficulty.Stars ?? 0, leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
                 }
-                resultScore.Country = Request.Headers["cf-ipcountry"] == StringValues.Empty ? "not set" : Request.Headers["cf-ipcountry"].ToString();
+                resultScore.Country = context.Request.Headers["cf-ipcountry"] == StringValues.Empty ? "not set" : context.Request.Headers["cf-ipcountry"].ToString();
 
                 if (currentScore != null)
                 {

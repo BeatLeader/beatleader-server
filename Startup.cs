@@ -3,9 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using System.Text.Json.Serialization;
 using BeatLeader_Server.Services;
 using AspNetCoreRateLimit;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 
 namespace BeatLeader_Server {
-
     public class Startup {
         static string MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
         public Startup (IConfiguration configuration, IWebHostEnvironment env)
@@ -26,6 +27,15 @@ namespace BeatLeader_Server {
             string beatSaverSecret = Configuration.GetValue<string>("BeatSaverSecret");
 
             string? cookieDomain = Configuration.GetValue<string>("CookieDomain");
+
+            services.AddDataProtection()
+            .PersistKeysToFileSystem(new DirectoryInfo(@"../keys/"))
+            .SetApplicationName("/home/site/wwwroot/");
+            services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders =
+                    ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            });
 
             var authBuilder = services.AddAuthentication (options => {
                 options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -91,12 +101,6 @@ namespace BeatLeader_Server {
                             Endpoint = "GET:/score/*",
                             Period = "10s",
                             Limit = 10,
-                        },
-                        new RateLimitRule
-                        {
-                            Endpoint = "GET:/replay/*",
-                            Period = "10s",
-                            Limit = 3,
                         }
                     };
             });
@@ -155,29 +159,8 @@ namespace BeatLeader_Server {
 
             services.AddServerTiming();
 
-            string readWriteConnection;
-            if (Environment.IsDevelopment())
-            {
-                readWriteConnection = "Data Source = tcp:localhost,1433; Initial Catalog = BeatLeader; User Id = sa; Password = SuperStrong!; encrypt=fals";
-            }
-            else
-            {
-                readWriteConnection = Configuration.GetConnectionString("DefaultConnection");
-            }
-            string readConnection;
-            if (Environment.IsDevelopment())
-            {
-                readConnection = "Data Source = tcp:localhost,1433; Initial Catalog = BeatLeader; ApplicationIntent=ReadOnly; User Id = sa; Password = SuperStrong!; encrypt=fals";
-            }
-            else
-            {
-                readConnection = Configuration.GetConnectionString("ReadOnlyConnection");
-            }
-
-
-            services.AddDbContext<AppContext>(options => options.UseSqlServer(readWriteConnection));
-            services.AddDbContext<ReadAppContext>(options => options.UseSqlServer(readConnection));
-
+            services.AddDbContext<AppContext>(options => options.UseSqlServer(Configuration.GetValue<string>("DefaultConnection")));
+            services.AddDbContext<ReadAppContext>(options => options.UseSqlServer(Configuration.GetValue<string>("ReadOnlyConnection")));
 
             if (Configuration.GetValue<string>("ServicesHost") == "YES")
             {
@@ -193,14 +176,14 @@ namespace BeatLeader_Server {
             if (!Environment.IsDevelopment())
             {
                 services.AddCors (options => {
-                options.AddPolicy (name: MyAllowSpecificOrigins,
-                    builder => {
-                        builder.WithOrigins("http://localhost:8888",
-                                            "https://www.beatleader.xyz",
-                                            "https://agitated-ptolemy-7d772c.netlify.app");
-                        builder.AllowCredentials();
-                    });
-            });
+                    options.AddPolicy (name: MyAllowSpecificOrigins,
+                        builder => {
+                            builder.WithOrigins(Configuration.GetSection("CORS").Get<string[]>())
+                            .AllowAnyHeader()
+                            .AllowAnyMethod()
+                            .AllowCredentials();
+                        });
+                });
             }
 
             services.AddSwaggerGen();
@@ -216,6 +199,7 @@ namespace BeatLeader_Server {
         public void Configure (IApplicationBuilder app)
         {
             app.UseStaticFiles ();
+            app.UseForwardedHeaders();
             app.UseServerTiming();
             app.UseWebSockets(new WebSocketOptions {
                 KeepAliveInterval = TimeSpan.FromMinutes(2)
@@ -223,6 +207,9 @@ namespace BeatLeader_Server {
             app.UseIpRateLimiting();
 
             app.UseRouting ();
+            app.UseCookiePolicy(new CookiePolicyOptions {
+                Secure = CookieSecurePolicy.Always
+            });
 
             app.UseAuthentication ();
             app.UseAuthorization ();

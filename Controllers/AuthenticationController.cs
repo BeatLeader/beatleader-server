@@ -98,13 +98,13 @@ namespace BeatLeader_Server.Controllers
             {
                 return BadRequest();
             }
-            IPAddress? iPAddress = Request.HttpContext.Connection.RemoteIpAddress;
+            string? iPAddress = Request.HttpContext.GetIpAddress();
             if (iPAddress == null) {
                 return BadRequest("IP address should not be null");
             }
             int random = new Random().Next(200);
             var linkRequest = new AccountLinkRequest {
-                IP = iPAddress.ToString(),
+                IP = iPAddress,
                 OculusID = Int32.Parse(HttpContext.CurrentUserID()),
                 Random = random,
             };
@@ -127,10 +127,10 @@ namespace BeatLeader_Server.Controllers
             {
                 await _playerController.GetLazy(userId);
 
-                IPAddress? iPAddress = Request.HttpContext.Connection.RemoteIpAddress;
+                string? iPAddress = Request.HttpContext.GetIpAddress();
                 if (iPAddress != null && migrateTo != null)
                 {
-                    string ip = iPAddress.ToString();
+                    string ip = iPAddress;
                     long oculusID = long.Parse(migrateTo);
                     AccountLinkRequest? request = _context.AccountLinkRequests.FirstOrDefault(a => a.IP == ip && a.Random == Random && a.OculusID == oculusID);
 

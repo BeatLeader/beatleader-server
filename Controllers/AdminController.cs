@@ -129,6 +129,12 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpGet("~/admin/ip")]
+        public async Task<ActionResult<string>> GetIP1()
+        {
+            return Request.HttpContext.GetIpAddress();
+        }
+
         [HttpGet("~/admin/allScores")]
         public async Task<ActionResult<List<Score>>> GetAllScores([FromQuery] int from, [FromQuery] int to)
         {
