@@ -1,6 +1,4 @@
-﻿using Azure.Identity;
-using Azure.Storage.Blobs;
-using BeatLeader_Server.Extensions;
+﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authentication;

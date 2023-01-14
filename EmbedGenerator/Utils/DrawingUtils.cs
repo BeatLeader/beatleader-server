@@ -1,23 +1,27 @@
-﻿using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Drawing.Imaging;
+﻿using SixLabors.Fonts;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Drawing.Processing;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 using System.Text;
 
 internal static class DrawingUtils {
     #region Resized
 
-    public static Image Resized(this Image source, Size newSize)
+    public static Image<Rgba32> Resized(this Image<Rgba32> source, Size newSize)
     {
-        if (newSize == source.Size) return source;
+        if (newSize == source.Size()) return source;
 
-        var destRect = new RectangleF(PointF.Empty, newSize);
-        var srcRect = new RectangleF(PointF.Empty, source.Size);
+        var resizedImage = source.Clone();
+        resizedImage.Mutate(x => x.Resize(newSize.Width, newSize.Height));
+        return resizedImage;
+    }
 
-        var bitmap = new Bitmap(newSize.Width, newSize.Height, PixelFormat.Format32bppPArgb);
-        using var graphics = Graphics.FromImage(bitmap);
-        graphics.InterpolationMode = InterpolationMode.HighQualityBilinear;
-        graphics.DrawImage(source, destRect, srcRect, GraphicsUnit.Pixel);
-        return bitmap;
+    public static SizeF MeasureString(string value, Font font) {
+        var options = new TextOptions(font);
+        options.Dpi = 96;
+        var measurement = TextMeasurer.Measure(value, options);
+        return new SizeF(measurement.Width, measurement.Height);
     }
 
     #endregion
@@ -25,19 +29,27 @@ internal static class DrawingUtils {
     #region DrawTextCentered
 
     public static void DrawTextCentered(
-        this Graphics graphics,
+        this Image<Rgba32> image,
         string text,
         Font font,
+        IReadOnlyList<FontFamily> fallbackFamilies,
         Color color,
-        Rectangle rectangle
-    )
+        Rectangle rectangle)
     {
-        var fittingSize = graphics.MeasureString(text, font);
+        var measurement = MeasureString(text, font);
+
         var point = new PointF(
-            rectangle.Location.X + (rectangle.Width - fittingSize.Width) / 2,
-            rectangle.Location.Y + (rectangle.Height - fittingSize.Height * 0.8f) / 2
+            rectangle.Location.X + (rectangle.Width - measurement.Width) / 2,
+            rectangle.Location.Y + (rectangle.Height - measurement.Height * 0.8f) / 2
         );
-        graphics.DrawString(text, font, new SolidBrush(color), point);
+
+        var options = new TextOptions(font);
+        options.Dpi = 96;
+        options.Origin = point;
+        options.FallbackFontFamilies = fallbackFamilies;
+        options.TextAlignment = TextAlignment.Center;
+
+        image.Mutate(x => x.DrawText(options, text, color));
     }
 
     #endregion
@@ -45,20 +57,21 @@ internal static class DrawingUtils {
     #region FitText
 
     public static void FitText(
-        this Graphics graphics,
+        this Image<Rgba32> image,
         string text,
         Color color,
         FontFamily fontFamily,
+        IReadOnlyList<FontFamily> fallbackFamilies,
         Rectangle rectangle,
         float minimalFontSize = 0.0f
     )
     {
-        var canFit = graphics.TryGetFittingFont(text, fontFamily, rectangle, 40, out var fittingFont, out var fittingSize);
+        var canFit = TryGetFittingFont(text, fontFamily, rectangle, 40, out var fittingFont, out var fittingSize);
         if (!canFit || fittingFont!.Size < minimalFontSize)
         {
             fittingFont = new Font(fontFamily, minimalFontSize);
-            graphics.TryGetFittingString(text, fittingFont, rectangle, out text, out fittingSize);
-            if (graphics.TryGetFittingFont(text, fontFamily, rectangle, 40, out var finalFont, out var finalSize))
+            TryGetFittingString(text, fittingFont, rectangle, out text, out fittingSize);
+            if (TryGetFittingFont(text, fontFamily, rectangle, 40, out var finalFont, out var finalSize))
             {
                 fittingFont = finalFont;
                 fittingSize = finalSize;
@@ -66,14 +79,23 @@ internal static class DrawingUtils {
         }
 
         var point = new PointF(
-            rectangle.Location.X + (rectangle.Width - fittingSize.Width) / 2,
-            rectangle.Location.Y + (rectangle.Height - fittingSize.Height * 0.8f) / 2
+            rectangle.Location.X + rectangle.Width / 2,
+            rectangle.Location.Y + rectangle.Height / 2
         );
-        graphics.DrawString(text, fittingFont, new SolidBrush(color), point);
+
+        var options = new TextOptions(fittingFont);
+        options.Dpi = 96;
+        options.Origin = point;
+        options.FallbackFontFamilies = fallbackFamilies;
+
+        options.HorizontalAlignment = HorizontalAlignment.Center;
+        options.VerticalAlignment = VerticalAlignment.Center;
+        options.TextAlignment = TextAlignment.Center;
+
+        image.Mutate(x => x.DrawText(options, text, color));
     }
 
     private static bool TryGetFittingString(
-        this Graphics graphics,
         string text,
         Font font,
         Rectangle rectangle,
@@ -95,7 +117,7 @@ internal static class DrawingUtils {
             }
 
             result = $"{sb}...";
-            measuredSize = graphics.MeasureString(result, font);
+            measuredSize = MeasureString(result, font);
             if (measuredSize.Width < rectangle.Size.Width) return true;
         }
 
@@ -103,7 +125,7 @@ internal static class DrawingUtils {
         for (var i = chars.Length - 1; i > 0; i--)
         {
             result = $"{text[..i]}...";
-            measuredSize = graphics.MeasureString(result, font);
+            measuredSize = MeasureString(result, font);
             if (measuredSize.Width < rectangle.Size.Width) return true;
         }
 
@@ -113,7 +135,6 @@ internal static class DrawingUtils {
     }
 
     private static bool TryGetFittingFont(
-        this Graphics graphics,
         string text,
         FontFamily fontFamily,
         Rectangle rectangle,
@@ -128,7 +149,7 @@ internal static class DrawingUtils {
         while (fontSize > 0)
         {
             font = new Font(fontFamily, fontSize);
-            measuredSize = graphics.MeasureString(text, font);
+            measuredSize = MeasureString(text, font);
             if (measuredSize.Width < rectangle.Width) return true;
             fontSize -= decPerStep;
         }

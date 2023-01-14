@@ -1,5 +1,5 @@
-﻿using System;
-using System.Drawing;
+﻿using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 using System.Numerics;
 
 public struct FloatColor {
@@ -49,21 +49,22 @@ public struct FloatColor {
 
     public static FloatColor FromColor(Color color)
     {
+        var pixel = color.ToPixel<Rgba32>();
         return new FloatColor(
-            color.R / 255f,
-            color.G / 255f,
-            color.B / 255f,
-            color.A / 255f
+            pixel.R / 255f,
+            pixel.G / 255f,
+            pixel.B / 255f,
+            pixel.A / 255f
         );
     }
 
     public Color ToColor()
     {
-        return Color.FromArgb(
-            ConvertToByte(A),
+        return new Color(new Rgba32( 
             ConvertToByte(R),
             ConvertToByte(G),
-            ConvertToByte(B)
+            ConvertToByte(B),
+            ConvertToByte(A))
         );
     }
 
@@ -83,10 +84,9 @@ public struct FloatColor {
 
     public void Add(FloatColor color)
     {
-        R += color.R;
-        G += color.G;
-        B += color.B;
-        A += color.A;
+        R += color.R * color.A;
+        G += color.G * color.A;
+        B += color.B * color.A;
     }
 
     public void Multiply(FloatColor color)

@@ -7,11 +7,16 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Drawing.Text;
+
+using SixLabors.Fonts;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Drawing.Processing;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.Drawing;
 using System.Dynamic;
 using System.Net;
+using SixLabors.ImageSharp.Formats.Png;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -25,14 +30,16 @@ namespace BeatLeader_Server.Controllers
         private readonly IAmazonS3 _s3Client;
         private readonly IServerTiming _serverTiming;
 
-        private Image StarImage;
-        private Image AvatarMask;
-        private Image AvatarShadow;
-        private Image GradientMask; 
-        private Image CoverMask;
-        private Image FinalMask;
-        private Image GradientMaskBlurred;
+        private Image<Rgba32> StarImage;
+        private Image<Rgba32> AvatarMask;
+        private Image<Rgba32> AvatarShadow;
+        private Image<Rgba32> GradientMask; 
+        private Image<Rgba32> CoverMask;
+        private Image<Rgba32> FinalMask;
+        private Image<Rgba32> GradientMaskBlurred;
         private FontFamily FontFamily;
+        private FontFamily AudiowideFontFamily;
+        private IReadOnlyList<FontFamily> FallbackFamilies;
         private EmbedGenerator EmbedGenerator;
 
         public PreviewController(
@@ -58,9 +65,17 @@ namespace BeatLeader_Server.Controllers
                 FinalMask = LoadImage("FinalMask.png");
                 GradientMaskBlurred = LoadImage("GradientMaskBlurred.png");
 
-                var fontCollection = new PrivateFontCollection();
-                fontCollection.AddFontFile(Path.Combine(_webHostEnvironment.WebRootPath + "/fonts/Teko-SemiBold.ttf"));
-                FontFamily = fontCollection.Families[0];
+                var fontCollection = new FontCollection();
+                fontCollection.Add(_webHostEnvironment.WebRootPath + "/fonts/Teko-SemiBold.ttf");
+                FontFamily = fontCollection.Families.First();
+
+                var fontCollection2 = new FontCollection();
+                fontCollection2.Add(_webHostEnvironment.WebRootPath + "/fonts/Audiowide-Regular.ttf");
+                AudiowideFontFamily = fontCollection2.Families.First();
+
+                var fallbackCollection = new FontCollection();
+                fallbackCollection.Add(_webHostEnvironment.WebRootPath + "/fonts/Cyberbit.ttf");
+                fallbackCollection.Add(_webHostEnvironment.WebRootPath + "/fonts/seguiemj.ttf");
 
                 EmbedGenerator = new EmbedGenerator(
                     new Size(500, 300),
@@ -71,7 +86,8 @@ namespace BeatLeader_Server.Controllers
                     GradientMaskBlurred,
                     CoverMask,
                     FinalMask,
-                    FontFamily
+                    FontFamily,
+                    FallbackFamilies
                 );
             }
         }
@@ -103,25 +119,25 @@ namespace BeatLeader_Server.Controllers
             public ProfileSettings? ProfileSettings { get; set; }
         }
 
-        private Image LoadImage(string fileName)
+        private Image<Rgba32> LoadImage(string fileName)
         {
-            return new Bitmap(_webHostEnvironment.WebRootPath + "/images/" + fileName);
+            return Image.Load<Rgba32>(_webHostEnvironment.WebRootPath + "/images/" + fileName);
         }
 
-        private async Task<Image?> LoadRemoteImage(string url)
+        private async Task<Image<Rgba32>?> LoadRemoteImage(string url)
         {
-            Image? result = null;
+            Image<Rgba32>? result = null;
             using (var request = new HttpRequestMessage(HttpMethod.Get, url))
             {
                 try {
                     Stream contentStream = await (await _client.SendAsync(request)).Content.ReadAsStreamAsync();
-                    result = new Bitmap(contentStream);
+                    result = Image.Load<Rgba32>(contentStream);
                 } catch { }
             }
             return result;
         }
 
-        private async Task<Image?> LoadOverlayImage(ScoreSelect score)
+        private async Task<Image<Rgba32>?> LoadOverlayImage(ScoreSelect score)
         {
             ResponseUtils.PostProcessSettings(score.PlayerRole, score.ProfileSettings, score.PatreonFeatures);
             if (score.ProfileSettings?.EffectName == null || score.ProfileSettings.EffectName.Length == 0) return null;
@@ -129,7 +145,7 @@ namespace BeatLeader_Server.Controllers
             using (var stream = await _s3Client.DownloadAsset(score.ProfileSettings.EffectName + "_Effect.png"))
             {
                 if (stream != null) {
-                    return new Bitmap(stream);
+                    return Image.Load<Rgba32>(stream);
                 } else {
                     return null;
                 }
@@ -147,17 +163,14 @@ namespace BeatLeader_Server.Controllers
             if (scoreId != null)
             {
                 var stream = await _s3Client.DownloadPreview(scoreId + "-preview.png");
-                if (stream != null) {
+                if (stream != null)
+                {
                     return File(stream, "image/png");
                 }
             }
-            else {
-                return await GetOld(playerID, id, difficulty, mode);
-            }
-
-            if (!OperatingSystem.IsWindows())
+            else
             {
-                return Redirect("https://freedm.azurewebsites.net/preview/replay" + Request.QueryString);
+                return await GetOld(playerID, id, difficulty, mode);
             }
 
             ScoreSelect? score = null;
@@ -209,9 +222,9 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            Image? avatarImage;
-            Image? coverImage;
-            Image? overlayImage;
+            Image<Rgba32>? avatarImage;
+            Image<Rgba32>? coverImage;
+            Image<Rgba32>? overlayImage;
 
             using (_serverTiming.TimeAction("images"))
             {
@@ -221,7 +234,7 @@ namespace BeatLeader_Server.Controllers
 
             (Color diffColor, string diff) = DiffColorAndName(score.Difficulty);
 
-            Image? result = null;
+            Image<Rgba32>? result = null;
             
             using (_serverTiming.TimeAction("generate"))
             {
@@ -239,20 +252,22 @@ namespace BeatLeader_Server.Controllers
                     overlayImage,
                     score.ProfileSettings?.Hue != null ? (int)score.ProfileSettings?.Hue : 0,
                     score.ProfileSettings?.Saturation ?? 1,
-                    score.ProfileSettings?.LeftSaberColor != null ? ColorTranslator.FromHtml(score.ProfileSettings.LeftSaberColor) : Color.FromArgb(255, 250, 20, 255),
-                    score.ProfileSettings?.RightSaberColor != null ? ColorTranslator.FromHtml(score.ProfileSettings.RightSaberColor) : Color.FromArgb(255, 128, 0, 255),
+                    score.ProfileSettings?.LeftSaberColor != null ? Color.Parse(score.ProfileSettings.LeftSaberColor) : new Color(new Rgba32(250, 20, 255, 255)),
+                    score.ProfileSettings?.RightSaberColor != null ? Color.Parse(score.ProfileSettings.RightSaberColor) : new Color(new Rgba32(128, 0, 255, 255)),
                     diffColor
                 ));
             }
             
             MemoryStream ms = new MemoryStream();
-            result.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+            result.SaveAsPng(ms);
             ms.Position = 0;
             if (scoreId != null)
             {
-                try {
+                try
+                {
                     await _s3Client.UploadPreview(scoreId + "-preview.png", ms);
-                } catch { }
+                }
+                catch { }
             }
             ms.Position = 0;
             return File(ms, "image/png");
@@ -265,11 +280,6 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? difficulty = null,
             [FromQuery] string? mode = null)
         {
-            if (!OperatingSystem.IsWindows())
-            {
-                return Redirect("https://freedm.azurewebsites.net/preview/replay" + Request.QueryString);
-            }
-
             Player? player = null;
             SongSelect? song = null;
 
@@ -285,46 +295,57 @@ namespace BeatLeader_Server.Controllers
             }
 
             int width = 500; int height = 300;
-            Bitmap bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 
-            Graphics graphics = Graphics.FromImage(bitmap);
-            graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-            graphics.DrawImage(new Bitmap(_webHostEnvironment.WebRootPath + "/images/backgroundold.png"), new Rectangle(0, 0, width, height));
-            graphics.DrawImage(new Bitmap(_webHostEnvironment.WebRootPath + "/images/replays.png"), new Rectangle(width / 2 - 50, height / 2 - 50 - 25, 100, 100));
+            Image<Rgba32> image = new Image<Rgba32>(width, height);
+
+            image.Mutate(x => x
+                .DrawImage(Image.Load<Rgba32>(_webHostEnvironment.WebRootPath + "/images/backgroundold.png").Resized(new Size(width, height)), new Point(0, 0), 1)
+                .DrawImage(Image.Load<Rgba32>(_webHostEnvironment.WebRootPath + "/images/replays.png").Resized(new Size(100, 100)), new Point(width / 2 - 50, height / 2 - 50 - 25), 1)
+            );
 
             using (var request = new HttpRequestMessage(HttpMethod.Get, player.Avatar))
             {
                 Stream contentStream = await (await _client.SendAsync(request)).Content.ReadAsStreamAsync();
-                Bitmap avatarBitmap = new Bitmap(contentStream);
+                Image<Rgba32> avatar = Image.Load<Rgba32>(contentStream);
 
-                graphics.DrawImage(avatarBitmap, new Rectangle(50, 50, 135, 135));
+                image.Mutate(x => x.DrawImage(avatar.Resized(new Size(135, 135)), new Point(50, 50), 1));
             }
 
-            using (var request = new HttpRequestMessage(HttpMethod.Get, song.CoverImage))
+            using (var request = new HttpRequestMessage(HttpMethod.Get,song.CoverImage))
             {
                 Stream contentStream = await (await _client.SendAsync(request)).Content.ReadAsStreamAsync();
-                Bitmap coverBitmap = new Bitmap(contentStream);
+                Image<Rgba32> cover = Image.Load<Rgba32>(contentStream);
 
-                graphics.DrawImage(coverBitmap, new Rectangle(width - 185, 50, 135, 135));
+                image.Mutate(x => x.DrawImage(cover.Resized(new Size(135, 135)), new Point(width - 185, 50), 1));
             }
 
-            PrivateFontCollection fontCollection = new PrivateFontCollection();
-            fontCollection.AddFontFile(_webHostEnvironment.WebRootPath + "/fonts/Audiowide-Regular.ttf");
-            var fontFamily = fontCollection.Families[0];
+            var font = new Font(AudiowideFontFamily, 26 - (player.Name.Length / 5) - (player.Name.Length > 15 ? 3 : 0));
+            var color = ColorFromHSV((Math.Max(0, player.Pp - 1000) / 18000) * 360, 1.0, 1.0);
+            var textOptions = new TextOptions(font);
+            textOptions.TextAlignment = TextAlignment.Center;
+            textOptions.HorizontalAlignment = HorizontalAlignment.Center;
+            textOptions.Dpi = 96;
+            textOptions.Origin = new PointF(width / 2, 185);
+            textOptions.WrappingLength = width;
+            textOptions.FallbackFontFamilies = FallbackFamilies;
 
-            StringFormat stringFormat = new StringFormat();
-            stringFormat.Alignment = StringAlignment.Center;
+            image.Mutate(x => x.DrawText(textOptions, player.Name, color));
 
-            Color nameColor = ColorFromHSV((Math.Max(0, player.Pp - 1000) / 18000) * 360, 1.0, 1.0);
-            var nameFont = new Font(fontFamily, 26 - (player.Name.Length / 5) - (player.Name.Length > 15 ? 3 : 0));
-            graphics.DrawString(player.Name, nameFont, new SolidBrush(nameColor), 30, new RectangleF(0, 176, width, 40), stringFormat);
+            var songNameFont = new Font(AudiowideFontFamily, 26 -song.Name.Length / 5);
+            textOptions = new TextOptions(songNameFont);
+            textOptions.TextAlignment = TextAlignment.Center;
+            textOptions.HorizontalAlignment = HorizontalAlignment.Center;
+            textOptions.Dpi = 96;
+            textOptions.Origin = new PointF(width / 2, 224);
+            textOptions.WrappingLength = width;
+            textOptions.LineSpacing = 0.8f;
+            textOptions.FallbackFontFamilies = FallbackFamilies;
 
-            var songNameFont = new Font(fontFamily, 30 - song.Name.Length / 5);
-            graphics.DrawString(song.Name, songNameFont, new SolidBrush(Color.White), 30, new RectangleF(0, 215, width, 80), stringFormat);
-            graphics.DrawRectangle(new Pen(new LinearGradientBrush(new Point(1, 1), new Point(100, 100), Color.Red, Color.BlueViolet), 5), new Rectangle(0, 0, width, height));
+            image.Mutate(x => x.DrawText(textOptions, song.Name, Color.White));
+            image.Mutate(x => x.Draw(new Pen(new LinearGradientBrush(new Point(1, 1), new Point(100, 100), GradientRepetitionMode.Repeat, new ColorStop(0, Color.Red), new ColorStop(1, Color.BlueViolet)), 5), new Rectangle(0, 0, width, height)));
 
             MemoryStream ms = new MemoryStream();
-            bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+            image.SaveAsPng(ms);
             ms.Position = 0;
             return File(ms, "image/png");
         }
@@ -336,12 +357,6 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? difficulty = null,
             [FromQuery] string? mode = null)
         {
-
-            if (!OperatingSystem.IsWindows())
-            {
-                return Redirect("https://freedm.azurewebsites.net/preview/royale" + Request.QueryString);
-            }
-
             List<Player> playersList = new List<Player>();
             SongSelect? song = null;
 
@@ -351,15 +366,16 @@ namespace BeatLeader_Server.Controllers
                 playersList = _context.Players.Where(p => ids.Contains(p.Id)).ToList();
                 foreach (var id in ids)
                 {
-                    if (playersList.FirstOrDefault(p => p.Id == id) == null) {
+                    if (playersList.FirstOrDefault(p => p.Id == id) == null)
+                    {
                         Player? ssplayer = await GetPlayerFromSS("https://scoresaber.com/api/player/" + id + "/full");
-                        if (ssplayer != null) {
+                        if (ssplayer != null)
+                        {
                             playersList.Add(ssplayer);
                         }
                     }
                 }
-                    
-                
+
                 song = _context.Songs.Select(s => new SongSelect { Hash = s.Hash, CoverImage = s.CoverImage, Name = s.Name }).FirstOrDefault(s => s.Hash == hash);
             }
 
@@ -369,24 +385,25 @@ namespace BeatLeader_Server.Controllers
             }
 
             int width = 500; int height = 300;
-            Bitmap bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            Image<Rgba32> image = new Image<Rgba32>(width, height);
 
-            Graphics graphics = Graphics.FromImage(bitmap);
-            graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-            graphics.DrawImage(new Bitmap(_webHostEnvironment.WebRootPath + "/images/backgroundold.png"), new Rectangle(0, 0, width, height));
-            graphics.DrawImage(new Bitmap(_webHostEnvironment.WebRootPath + "/images/royale.png"), new Rectangle(width - 120, 20, 100, 100));
+            image.Mutate(x => x
+                .DrawImage(Image.Load<Rgba32>(_webHostEnvironment.WebRootPath + "/images/backgroundold.png").Resized(new Size(width, height)), new Point(0, 0), 1)
+                .DrawImage(Image.Load<Rgba32>(_webHostEnvironment.WebRootPath + "/images/royale.png").Resized(new Size(90, 90)), new Point(width - 130, 20), 1)
+            );
 
-            PrivateFontCollection fontCollection = new PrivateFontCollection();
-            fontCollection.AddFontFile(_webHostEnvironment.WebRootPath + "/fonts/Audiowide-Regular.ttf");
-            var fontFamily = fontCollection.Families[0];
+            var textOptions = new TextOptions(new Font(AudiowideFontFamily, 9));
+            textOptions.TextAlignment = TextAlignment.Center;
+            textOptions.Dpi = 96;
+            textOptions.Origin = new PointF(width - 120, 12);
+            textOptions.WrappingLength = 100;
+            textOptions.LineSpacing = 0.8f;
+            textOptions.FallbackFontFamilies = FallbackFamilies;
 
-            StringFormat left = new StringFormat();
-            left.Alignment = StringAlignment.Near;
+            image.Mutate(x => x.DrawText(textOptions, "BS", new Color(new Rgba32(233, 2, 141))));
 
-            StringFormat center = new StringFormat();
-            center.Alignment = StringAlignment.Center;
-            graphics.DrawString("BS", new Font(fontFamily, 9), new SolidBrush(Color.FromArgb(233, 2, 141)), new RectangleF(width - 120, 12, 100, 20), center);
-            graphics.DrawString("Battle royale!", new Font(fontFamily, 9), new SolidBrush(Color.FromArgb(233, 2, 141)), new RectangleF(width - 120, 106, 100, 20), center);
+            textOptions.Origin = new PointF(width - 120, 106);
+            image.Mutate(x => x.DrawText(textOptions, "Battle royale!", new Color(new Rgba32(233, 2, 141))));
 
             for (int i = 0; i < playersList.Count; i++)
             {
@@ -395,38 +412,58 @@ namespace BeatLeader_Server.Controllers
                 using (var request = new HttpRequestMessage(HttpMethod.Get, player.Avatar))
                 {
                     Stream contentStream = await (await _client.SendAsync(request)).Content.ReadAsStreamAsync();
-                    Bitmap avatarBitmap = new Bitmap(contentStream);
+                    Image<Rgba32> avatar = Image.Load<Rgba32>(contentStream);
 
-                    graphics.DrawImage(avatarBitmap, new Rectangle(18, 15 + i * 27, 20, 20));
+                    image.Mutate(x => x.DrawImage(avatar.Resized(new Size(20, 20)), new Point(18, 15 + i * 27), 1));
                 }
 
-                var nameFont = new Font(fontFamily, 14 - (player.Name.Length / 5) - (player.Name.Length > 15 ? 3 : 0));
-                graphics.DrawString(player.Name, nameFont, new SolidBrush(Color.White), new RectangleF(40, 15 + i * 27, width / 2, 40));
+                var nameOptions = new TextOptions(new Font(AudiowideFontFamily, 14 - (player.Name.Length / 5) - (player.Name.Length > 15 ? 3 : 0)));
+                nameOptions.Dpi = 96;
+                nameOptions.Origin = new PointF(40, 15 + i * 27);
+                nameOptions.WrappingLength = width / 2;
+                nameOptions.LineSpacing = 0.8f;
+                nameOptions.FallbackFontFamilies = FallbackFamilies;
+
+                image.Mutate(x => x.DrawText(nameOptions, player.Name, Color.White));
             }
 
             using (var request = new HttpRequestMessage(HttpMethod.Get, song.CoverImage))
             {
                 Stream contentStream = await (await _client.SendAsync(request)).Content.ReadAsStreamAsync();
-                Bitmap coverBitmap = new Bitmap(contentStream);
+                Image<Rgba32> cover = Image.Load<Rgba32>(contentStream);
 
-                graphics.DrawImage(coverBitmap, new Rectangle(width / 2 - 40, 15, 135, 135));
+                image.Mutate(x => x.DrawImage(cover.Resized(new Size(135, 135)), new Point(width / 2 - 40, 15), 1));
             }
 
-            if (difficulty != null) {
-                (Color color, string diff) = DiffColorAndName(difficulty);
-                graphics.DrawString(diff, new Font(fontFamily, 12), new SolidBrush(color), new Point((int)(width / 2 - 44), 160), left);
-            }
+            var left = new TextOptions(new Font(AudiowideFontFamily, 12));
+            left.TextAlignment = TextAlignment.Start;
+            left.Dpi = 96;
+            left.Origin = new PointF((int)(width / 2 - 44), 160);
+            left.FallbackFontFamilies = FallbackFamilies;
 
-            var songNameFont = new Font(fontFamily, 24 - song.Name.Length / 5);
-            graphics.DrawString(song.Name, songNameFont, new SolidBrush(Color.FromArgb(250, 42, 125)), 30, new RectangleF(width / 2 - 46, 170, width / 2 + 60, 160), left);
-
-            graphics.DrawRectangle(new Pen(new LinearGradientBrush(new Point(1, 1), new Point(100, 100), Color.Red, Color.BlueViolet), 5), new Rectangle(0, 0, width, height));
-
-            using (MemoryStream ms = new MemoryStream())
+            if (difficulty != null)
             {
-                bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-                return File(ms.ToArray(), "image/png");
+                (Color color, string diff) = DiffColorAndName(difficulty);
+                image.Mutate(x => x.DrawText(left, diff, color));
             }
+
+            var songNameFont = new Font(AudiowideFontFamily, 26 -song.Name.Length / 5);
+            textOptions = new TextOptions(songNameFont);
+            textOptions.TextAlignment = TextAlignment.Center;
+            textOptions.HorizontalAlignment = HorizontalAlignment.Center;
+            textOptions.Dpi = 96;
+            textOptions.Origin = new PointF(width / 2, 224);
+            textOptions.WrappingLength = width;
+            textOptions.LineSpacing = 0.8f;
+            textOptions.FallbackFontFamilies = FallbackFamilies;
+
+            image.Mutate(x => x.DrawText(textOptions, song.Name, Color.White));
+            image.Mutate(x => x.Draw(new Pen(new LinearGradientBrush(new Point(1, 1), new Point(100, 100), GradientRepetitionMode.Repeat, new ColorStop(0, Color.Red), new ColorStop(1, Color.BlueViolet)), 5), new Rectangle(0, 0, width, height)));
+
+            MemoryStream ms = new MemoryStream();
+            image.SaveAsPng(ms);
+            ms.Position = 0;
+            return File(ms, "image/png");
         }
 
         private Task<Player?> GetPlayerFromSS(string url)
@@ -496,96 +533,29 @@ namespace BeatLeader_Server.Controllers
             int t = Convert.ToInt32(value * (1 - (1 - f) * saturation));
 
             if (hi == 0)
-                return Color.FromArgb(255, v, t, p);
+                return new Color(new Rgba32(v, t, p));
             else if (hi == 1)
-                return Color.FromArgb(255, q, v, p);
+                return new Color(new Rgba32(q, v, p));
             else if (hi == 2)
-                return Color.FromArgb(255, p, v, t);
+                return new Color(new Rgba32(p, v, t));
             else if (hi == 3)
-                return Color.FromArgb(255, p, q, v);
+                return new Color(new Rgba32(p, q, v));
             else if (hi == 4)
-                return Color.FromArgb(255, t, p, v);
+                return new Color(new Rgba32(t, p, v));
             else
-                return Color.FromArgb(255, v, p, q);
+                return new Color(new Rgba32(v, p, q));
         }
 
         public static (Color, string) DiffColorAndName(string diff) {
             switch (diff)
             {
-                case "Easy": return (Color.FromArgb(0, 159, 72), "Easy");
-                case "Normal": return (Color.FromArgb(28, 156, 255), "Normal");
-                case "Hard": return (Color.FromArgb(255, 99, 71), "Hard");
-                case "Expert": return (Color.FromArgb(227, 54, 172), "Expert");
-                case "ExpertPlus": return (Color.FromArgb(143, 72, 219), "Expert+");
+                case "Easy": return (new Color(new Rgba32(0, 159, 72)), "Easy");
+                case "Normal": return (new Color(new Rgba32(28, 156, 255)), "Normal");
+                case "Hard": return (new Color(new Rgba32(255, 99, 71)), "Hard");
+                case "Expert": return (new Color(new Rgba32(227, 54, 172)), "Expert");
+                case "ExpertPlus": return (new Color(new Rgba32(143, 72, 219)), "Expert+");
             }
             return (Color.White, diff);
-        }
-    }
-
-    public static class GraphicsExtension
-    {
-        public static IEnumerable<string> GetWrappedLines(this Graphics that, string text, Font font, double maxWidth = double.PositiveInfinity)
-        {
-            if (String.IsNullOrEmpty(text)) return new string[0];
-            if (font == null) throw new ArgumentNullException("font", "The 'font' parameter must not be null");
-            if (maxWidth <= 0) throw new ArgumentOutOfRangeException("maxWidth", "Maximum width must be greater than zero");
-
-            // See https://stackoverflow.com/questions/6111298/best-way-to-specify-whitespace-in-a-string-split-operation
-            string[] words = text.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
-
-            if (words.Length == 0) return Array.Empty<string>();
-
-            List<string> lines = new List<string>();
-
-            float spaceCharWidth = that.MeasureString(" ", font).Width;
-            float currentWidth = 0;
-            string currentLine = "";
-            for (int i = 0; i < words.Length; i++)
-            {
-                float currentWordWidth = that.MeasureString(words[i], font).Width;
-                if (currentWidth != 0)
-                {
-                    float potentialWordWidth = spaceCharWidth + currentWordWidth;
-                    if (currentWidth + potentialWordWidth < maxWidth)
-                    {
-                        currentWidth += potentialWordWidth;
-                        currentLine += " " + words[i];
-                    }
-                    else
-                    {
-                        lines.Add(currentLine);
-                        currentLine = words[i];
-                        currentWidth = currentWordWidth;
-                    }
-                }
-                else
-                {
-                    currentWidth += currentWordWidth;
-                    currentLine = words[i];
-                }
-
-                if (i == words.Length - 1)
-                {
-                    lines.Add(currentLine);
-                }
-            }
-
-            return lines;
-        }
-
-        public static void DrawString(this Graphics that, string text, Font font, Brush brush,
-                                            int lineHeight, RectangleF layoutRectangle, StringFormat format)
-        {
-            string[] lines = that.GetWrappedLines(text, font, layoutRectangle.Width).ToArray();
-            Rectangle lastDrawn = new Rectangle(Convert.ToInt32(layoutRectangle.X), Convert.ToInt32(layoutRectangle.Y), 0, 0);
-            foreach (string line in lines)
-            {
-                SizeF lineSize = that.MeasureString(line, font);
-                float increment = lastDrawn.Height == 0 ? (lines.Count() == 1 ? lineHeight * 0.5f : 0) : lineHeight;
-                RectangleF lineOrigin = layoutRectangle with { X = lastDrawn.X, Y = lastDrawn.Y + increment };
-                that.DrawString(line, font, brush, lineOrigin, format);
-                lastDrawn = new Rectangle(Point.Round(lineOrigin.Location), Size.Round(lineSize));
-            }
         }
     }
 }

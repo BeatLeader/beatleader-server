@@ -1,4 +1,5 @@
-﻿using System.Drawing;
+﻿using SixLabors.Fonts;
+using SixLabors.ImageSharp;
 
 internal class EmbedLayout {
     #region Properties
@@ -72,8 +73,7 @@ internal class EmbedLayout {
 
     #region CalculateCornerRectangles
 
-    public void CalculateCornerRectangles(
-        Graphics graphics, Font font, string diffText, bool hasStars,
+    public void CalculateCornerRectangles(Font font, string diffText, bool hasStars,
         out Rectangle textRectangle,
         out Rectangle starRectangle,
         out Rectangle cornerAreaRectangle
@@ -81,7 +81,7 @@ internal class EmbedLayout {
     {
         var pad = font.Size * 0.53f;
 
-        var textSize = new SizeF(graphics.MeasureString(diffText, font).Width - font.Size * 0.4f, font.Size);
+        var textSize = new SizeF(DrawingUtils.MeasureString(diffText, font).Width, font.Size);
         var starSize = hasStars ? textSize with { Width = textSize.Height } : SizeF.Empty;
         var cornerAreaSize = new SizeF(textSize.Width + starSize.Width + pad * 2, textSize.Height + pad * 2);
 

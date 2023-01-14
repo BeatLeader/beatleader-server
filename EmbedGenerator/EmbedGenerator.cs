@@ -1,11 +1,8 @@
-﻿using System;
-using System.Drawing;
-using System.Drawing.Text;
-using System.Globalization;
+﻿using SixLabors.Fonts;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 using System.Numerics;
-using System.Threading.Tasks;
-using ImageProcessor;
-using ImageProcessor.Imaging;
 
 internal class EmbedGenerator
 {
@@ -13,13 +10,13 @@ internal class EmbedGenerator
 
     private static readonly FloatColor BackgroundColor = FloatColor.White;
     private static readonly FloatColor CoverTintColor = new(0.6f, 0.6f, 0.6f, 1.0f);
-    private const int CoverBlurRadius = 4;
+    private const int CoverBlurRadius = 1;
 
     #endregion
 
     #region Constructor
 
-    private readonly Image _starImage;
+    private readonly Image<Rgba32> _starImage;
     private readonly ImageTexture _avatarMaskTexture;
     private readonly ImageTexture _avatarShadowTexture;
     private readonly ImageTexture _sharpGradientMaskTexture;
@@ -29,22 +26,25 @@ internal class EmbedGenerator
     private readonly EmbedLayout _layout;
     private readonly FontFamily _fontFamily;
     private readonly Font _diffFont;
+    private readonly IReadOnlyList<FontFamily> _fallbackFamilies;
 
     public EmbedGenerator(
         Size size,
-        Image starImage,
-        Image avatarMask,
-        Image avatarShadow,
-        Image sharpGradientMask,
-        Image blurredGradientMask,
-        Image coverMask,
-        Image finalMask,
-        FontFamily fontFamily
+        Image<Rgba32> starImage,
+        Image<Rgba32> avatarMask,
+        Image<Rgba32> avatarShadow,
+        Image<Rgba32> sharpGradientMask,
+        Image<Rgba32> blurredGradientMask,
+        Image<Rgba32> coverMask,
+        Image<Rgba32> finalMask,
+        FontFamily fontFamily,
+        IReadOnlyList<FontFamily> fallbackFamilies
     )
     {
         _fontFamily = fontFamily;
         _layout = new EmbedLayout(size);
         _diffFont = new Font(_fontFamily, _layout.DiffFontSize);
+        _fallbackFamilies = fallbackFamilies;
 
         _starImage = starImage;
         _avatarMaskTexture = new ImageTexture(avatarMask, _layout.AvatarRectangle);
@@ -59,7 +59,7 @@ internal class EmbedGenerator
 
     #region Generate
 
-    public Image Generate(
+    public Image<Rgba32> Generate(
         string playerName,
         string songName,
         string modifiers,
@@ -68,9 +68,9 @@ internal class EmbedGenerator
         int rank,
         float pp,
         float stars,
-        Image coverImage,
-        Image avatarImage,
-        Image? avatarBorderImage,
+        Image<Rgba32> coverImage,
+        Image<Rgba32> avatarImage,
+        Image<Rgba32>? avatarBorderImage,
         int overlayHueShift,
         float overlaySaturation,
         Color leftColor,
@@ -83,8 +83,7 @@ internal class EmbedGenerator
         var rankText = pp != 0 ? $"#{rank} • {MathF.Round(pp, 2)}pp" : $"#{rank}";
         var diffText = hasStars ? $"{difficulty} {MathF.Round(stars, 2)}" : difficulty;
 
-        _layout.CalculateCornerRectangles(
-            Graphics.FromImage(coverImage), _diffFont, diffText, hasStars,
+        _layout.CalculateCornerRectangles(_diffFont, diffText, hasStars,
             out var textRectangle, out var starRectangle, out var cornerAreaRectangle
         );
 
@@ -123,26 +122,20 @@ internal class EmbedGenerator
             overlaySaturation
         );
 
-        var bitmap = new Bitmap(_layout.Width, _layout.Height);
-        using (var destination = new FastBitmap(bitmap))
-        {
-            Parallel.For(0, _layout.Height, (int y) => {
-                for (var x = 0; x < _layout.Width; x++)
-                {
-                    var pixel = pixelShader.GetPixel(x, y).ToColor();
-                    destination.SetPixel(x, y, pixel);
-                }
-            });
-        };
+        var bitmap = new Image<Rgba32>(_layout.Width, _layout.Height);
+        Parallel.For(0, _layout.Height, (int y) => {
+            for (var x = 0; x < _layout.Width; x++)
+            {
+                bitmap[x, y] = pixelShader.GetPixel(x, y).ToColor();
+            }
+        });
 
-        var graphics = Graphics.FromImage(bitmap);
-        graphics.TextRenderingHint = TextRenderingHint.AntiAlias;
-        graphics.FitText(playerName, Color.White, _fontFamily, _layout.PlayerNameRectangle, _layout.MinPlayerNameFontSize);
-        graphics.FitText(songName, Color.White, _fontFamily, _layout.SongNameRectangle, _layout.MinSongNameFontSize);
-        graphics.FitText(accuracyText, Color.White, _fontFamily, _layout.AccTextRectangle);
-        graphics.FitText(rankText, Color.White, _fontFamily, _layout.RankTextRectangle);
-        graphics.FitText(modifiers, Color.White, _fontFamily, _layout.ModifiersTextRectangle);
-        graphics.DrawTextCentered(diffText, _diffFont, diffColor, textRectangle);
+        bitmap.FitText(playerName, Color.White, _fontFamily, _fallbackFamilies, _layout.PlayerNameRectangle, _layout.MinPlayerNameFontSize);
+        bitmap.FitText(songName, Color.White, _fontFamily, _fallbackFamilies, _layout.SongNameRectangle, _layout.MinSongNameFontSize);
+        bitmap.FitText(accuracyText, Color.White, _fontFamily, _fallbackFamilies, _layout.AccTextRectangle);
+        bitmap.FitText(rankText, Color.White, _fontFamily, _fallbackFamilies, _layout.RankTextRectangle);
+        bitmap.FitText(modifiers, Color.White, _fontFamily, _fallbackFamilies, _layout.ModifiersTextRectangle);
+        bitmap.DrawTextCentered(diffText, _diffFont, _fallbackFamilies, diffColor, textRectangle);
 
         return bitmap;
     }
@@ -151,14 +144,13 @@ internal class EmbedGenerator
 
     #region PreBlurCover
 
-    private Image PreBlurCover(Image coverImage)
+    private Image<Rgba32> PreBlurCover(Image<Rgba32> coverImage)
     {
-        var factory = new ImageFactory()
-            .Load(coverImage)
-            .GaussianBlur(CoverBlurRadius)
-            .Resize(new ResizeLayer(_layout.Size, ResizeMode.Crop));
+        coverImage.Mutate(x => x
+        .GaussianBlur(CoverBlurRadius)
+        .Resize(new ResizeOptions { Size = _layout.Size } ));
 
-        return factory.Image;
+        return coverImage;
     }
 
     #endregion
