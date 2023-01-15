@@ -55,41 +55,38 @@ namespace BeatLeader_Server.Controllers
             _serverTiming = serverTiming;
             _s3Client = configuration.GetS3Client();
 
-            if (OperatingSystem.IsWindows())
-            {
-                StarImage = LoadImage("Star.png");
-                AvatarMask = LoadImage("AvatarMask.png");
-                AvatarShadow = LoadImage("AvatarShadow.png");
-                GradientMask = LoadImage("GradientMask.png");
-                CoverMask = LoadImage("CoverMask.png");
-                FinalMask = LoadImage("FinalMask.png");
-                GradientMaskBlurred = LoadImage("GradientMaskBlurred.png");
+            StarImage = LoadImage("Star.png");
+            AvatarMask = LoadImage("AvatarMask.png");
+            AvatarShadow = LoadImage("AvatarShadow.png");
+            GradientMask = LoadImage("GradientMask.png");
+            CoverMask = LoadImage("CoverMask.png");
+            FinalMask = LoadImage("FinalMask.png");
+            GradientMaskBlurred = LoadImage("GradientMaskBlurred.png");
 
-                var fontCollection = new FontCollection();
-                fontCollection.Add(_webHostEnvironment.WebRootPath + "/fonts/Teko-SemiBold.ttf");
-                FontFamily = fontCollection.Families.First();
+            var fontCollection = new FontCollection();
+            fontCollection.Add(_webHostEnvironment.WebRootPath + "/fonts/Teko-SemiBold.ttf");
+            FontFamily = fontCollection.Families.First();
 
-                var fontCollection2 = new FontCollection();
-                fontCollection2.Add(_webHostEnvironment.WebRootPath + "/fonts/Audiowide-Regular.ttf");
-                AudiowideFontFamily = fontCollection2.Families.First();
+            var fontCollection2 = new FontCollection();
+            fontCollection2.Add(_webHostEnvironment.WebRootPath + "/fonts/Audiowide-Regular.ttf");
+            AudiowideFontFamily = fontCollection2.Families.First();
 
-                var fallbackCollection = new FontCollection();
-                fallbackCollection.Add(_webHostEnvironment.WebRootPath + "/fonts/Cyberbit.ttf");
-                fallbackCollection.Add(_webHostEnvironment.WebRootPath + "/fonts/seguiemj.ttf");
+            var fallbackCollection = new FontCollection();
+            fallbackCollection.Add(_webHostEnvironment.WebRootPath + "/fonts/Cyberbit.ttf");
+            fallbackCollection.Add(_webHostEnvironment.WebRootPath + "/fonts/seguiemj.ttf");
 
-                EmbedGenerator = new EmbedGenerator(
-                    new Size(500, 300),
-                    StarImage,
-                    AvatarMask,
-                    AvatarShadow,
-                    GradientMask,
-                    GradientMaskBlurred,
-                    CoverMask,
-                    FinalMask,
-                    FontFamily,
-                    FallbackFamilies
-                );
-            }
+            EmbedGenerator = new EmbedGenerator(
+                new Size(500, 300),
+                StarImage,
+                AvatarMask,
+                AvatarShadow,
+                GradientMask,
+                GradientMaskBlurred,
+                CoverMask,
+                FinalMask,
+                FontFamily,
+                FallbackFamilies
+            );
         }
         class SongSelect {
             public string Id { get; set; }
