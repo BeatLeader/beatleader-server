@@ -847,6 +847,31 @@ namespace BeatLeader_Server.Controllers
 
             return metadata;
         }
+
+        [HttpGet("~/replays/")]
+        public async Task<ActionResult<ResponseWithMetadata<string>>> GetReplays(int count = 50, int page = 1)
+        {
+            if (count > 1000) {
+                return BadRequest("Max count is 1000");
+            }
+            var scores = _context
+                .Scores
+                .OrderBy(s => s.Id);
+
+            return new ResponseWithMetadata<string>() {
+                    Metadata = new Metadata()
+                    {
+                        Page = page,
+                        ItemsPerPage = count,
+                        Total = scores.Count()
+                    },
+                    Data = scores
+                        .Skip((page - 1) * count)
+                        .Take(count)
+                        .Select(s => s.Replay)
+                        .ToList()
+            };
+        }
     }
 }
 
