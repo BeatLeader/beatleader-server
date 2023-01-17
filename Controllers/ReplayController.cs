@@ -689,7 +689,7 @@ namespace BeatLeader_Server.Controllers
                 resultScore.MaxCombo = statistic.hitTracker.maxCombo;
                 resultScore.FcAccuracy = statistic.accuracyTracker.fcAcc;
                 resultScore.MaxStreak = statistic.hitTracker.maxStreak;
-                if (resultScore.MaxStreak > player.ScoreStats.MaxStreak) {
+                if (!resultScore.IgnoreForStats && resultScore.MaxStreak > player.ScoreStats.MaxStreak) {
                     player.ScoreStats.MaxStreak = resultScore.MaxStreak;
                 }
 

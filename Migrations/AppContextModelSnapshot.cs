@@ -530,9 +530,6 @@ namespace BeatLeader_Server.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("TimesetMig")
-                        .HasColumnType("int");
-
                     b.Property<int>("WallsHit")
                         .HasColumnType("int");
 
@@ -1088,6 +1085,9 @@ namespace BeatLeader_Server.Migrations
                     b.Property<float>("PeakRank")
                         .HasColumnType("real");
 
+                    b.Property<int>("RankedMaxStreak")
+                        .HasColumnType("int");
+
                     b.Property<int>("RankedPlayCount")
                         .HasColumnType("int");
 
@@ -1136,6 +1136,9 @@ namespace BeatLeader_Server.Migrations
 
                     b.Property<long>("TotalUnrankedScore")
                         .HasColumnType("bigint");
+
+                    b.Property<int>("UnrankedMaxStreak")
+                        .HasColumnType("int");
 
                     b.Property<int>("UnrankedPlayCount")
                         .HasColumnType("int");
@@ -1857,9 +1860,6 @@ namespace BeatLeader_Server.Migrations
                     b.Property<string>("Timeset")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("TimesetMig")
-                        .HasColumnType("int");
-
                     b.Property<int>("WallsHit")
                         .HasColumnType("int");
 
@@ -1931,9 +1931,6 @@ namespace BeatLeader_Server.Migrations
                     b.Property<string>("Timeset")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("TimesetMig")
-                        .HasColumnType("int");
 
                     b.Property<float>("TotalPp")
                         .HasColumnType("real");

@@ -181,6 +181,7 @@ namespace BeatLeader_Server.Controllers
                 scoreStats.TopUnrankedAccuracy = unrankedScores.Max(s => s.Accuracy);
                 scoreStats.AverageUnrankedRank = unrankedScores.Average(s => (float)s.Rank);
                 scoreStats.LastUnrankedScoreTime = unrankedScores.MaxBy(s => s.Timeset).Timeset;
+                scoreStats.UnrankedMaxStreak = unrankedScores.Max(s => s.MaxStreak);
             } else {
                 scoreStats.TotalUnrankedScore = 0;
                 scoreStats.AverageUnrankedAccuracy = 0;
@@ -235,6 +236,7 @@ namespace BeatLeader_Server.Controllers
                 scoreStats.TopBonusPP = rankedScores.Max(s => s.BonusPp);
                 scoreStats.AverageRankedRank = rankedScores.Average(s => (float)s.Rank);
                 scoreStats.LastRankedScoreTime = rankedScores.MaxBy(s => s.Timeset).Timeset;
+                scoreStats.RankedMaxStreak = rankedScores.Max(s => s.MaxStreak);
 
                 scoreStats.SSPPlays = rankedScores.Count(s => s.Accuracy > 0.95);
                 scoreStats.SSPlays = rankedScores.Count(s => 0.9 < s.Accuracy && s.Accuracy < 0.95);

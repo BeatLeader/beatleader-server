@@ -98,7 +98,7 @@ namespace BeatLeader_Server.Controllers
                         sequence = sequence.Order(order, t => t.Rank);
                         break;
                     case "maxStreak":
-                        sequence = sequence.Order(order, t => t.MaxStreak);
+                        sequence = sequence.Where(s => !s.IgnoreForStats).Order(order, t => t.MaxStreak);
                         break;
                     case "timing":
                         sequence = sequence.Order(order, t => (t.LeftTiming + t.RightTiming) / 2);

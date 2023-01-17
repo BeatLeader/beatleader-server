@@ -29,6 +29,8 @@ namespace BeatLeader_Server.Models
         public float TopBonusPP { get; set; }
 
         public float PeakRank { get; set; }
+        public int RankedMaxStreak { get; set; }
+        public int UnrankedMaxStreak { get; set; }
         public int MaxStreak { get; set; }
         public float AverageLeftTiming { get; set; }
         public float AverageRightTiming { get; set; }

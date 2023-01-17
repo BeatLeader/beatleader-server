@@ -510,6 +510,9 @@ namespace BeatLeader_Server.Controllers
                         case "lastplay":
                             request = request.Order(order, p => p.ScoreStats.LastRankedScoreTime);
                             break;
+                        case "maxStreak":
+                            request = request.Order(order, p => p.ScoreStats.RankedMaxStreak);
+                            break;
                         default:
                             break;
                     }
@@ -540,6 +543,9 @@ namespace BeatLeader_Server.Controllers
                             break;
                         case "lastplay":
                             request = request.Order(order, p => p.ScoreStats.LastUnrankedScoreTime);
+                            break;
+                        case "maxStreak":
+                            request = request.Order(order, p => p.ScoreStats.UnrankedMaxStreak);
                             break;
                         default:
                             break;
@@ -579,7 +585,7 @@ namespace BeatLeader_Server.Controllers
                             request = request.Order(order, p => p.ScoreStats.LastScoreTime);
                             break;
                         case "maxStreak":
-                            request = request.Order(order == "desc" ? "asc" : "desc", p => p.ScoreStats.MaxStreak);
+                            request = request.Order(order, p => p.ScoreStats.MaxStreak);
                             break;
                         case "timing":
                             request = request.Order(order, p => (p.ScoreStats.AverageLeftTiming + p.ScoreStats.AverageRightTiming) / 2);

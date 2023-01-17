@@ -56,8 +56,10 @@ namespace BeatLeader_Server.Utils
     class NoteStruct
     {
         public int score;
+        public int id;
         public bool isBlock;
         public float time;
+        public float spawnTime;
         public ScoringType scoringType;
 
         public float multiplier;
@@ -322,9 +324,11 @@ namespace BeatLeader_Server.Utils
                 allStructs.Add(new NoteStruct
                 {
                     time = note.eventTime,
+                    id = note.noteID,
                     isBlock = param.colorType != 2,
                     score = scoreValue,
                     scoringType = param.scoringType,
+                    spawnTime = note.spawnTime
                 });
             }
 
@@ -333,7 +337,7 @@ namespace BeatLeader_Server.Utils
                 allStructs.Add(new NoteStruct
                 {
                     time = wall.time,
-
+                    id = wall.wallID,
                     score = -5
                 });
             }
@@ -390,6 +394,22 @@ namespace BeatLeader_Server.Utils
 
             allStructs = allStructs.OrderBy(s => s.time).ToList();
 
+            var groupedById = allStructs.GroupBy(s => s.id);
+            bool potentiallyPoodle = false;
+            foreach (var group in groupedById) {
+                var ordered = group.OrderBy(g => g.time).ToList();
+                for (int i = 1; i < ordered.Count; i++)
+                {
+                    if ((ordered[i].time - ordered[i - 1].time) < 0.04) {
+                        potentiallyPoodle = true;
+                        break;
+                    }
+                }
+                if (potentiallyPoodle) {
+                    break;
+                }
+            }
+
             int multiplier = 1;
             int score = 0, noteIndex = 0;
             int combo = 0, maxCombo = 0;
@@ -430,13 +450,15 @@ namespace BeatLeader_Server.Utils
                     fcScore += maxCounter.Multiplier * note.score;
                 }
 
-                if (note.score == 115) {
-                    streak++;
-                } else if (note.isBlock) {
-                    if (streak > maxStreak) {
-                        maxStreak = streak; 
+                if (!potentiallyPoodle) {
+                    if (note.score == 115) {
+                        streak++;
+                    } else if (note.isBlock) {
+                        if (streak > maxStreak) {
+                            maxStreak = streak; 
+                        }
+                        streak = 0;
                     }
-                    streak = 0;
                 }
 
                 if (combo > maxCombo)
