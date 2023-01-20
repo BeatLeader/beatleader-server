@@ -103,6 +103,20 @@ namespace BeatLeader_Server.Controllers
                     case "timing":
                         sequence = sequence.Order(order, t => (t.LeftTiming + t.RightTiming) / 2);
                         break;
+                    case "predictedAcc":
+                        sequence = sequence
+                                    .Include(lb => lb.Leaderboard)
+                                    .ThenInclude(lb => lb.Difficulty)
+                                    .Order(order, s => s.Leaderboard.Difficulty.PredictedAcc)
+                                    .Where(s => s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked);
+                        break;
+                    case "passRating":
+                        sequence = sequence
+                                    .Include(lb => lb.Leaderboard)
+                                    .ThenInclude(lb => lb.Difficulty)
+                                    .Order(order, s => s.Leaderboard.Difficulty.PassRating)
+                                    .Where(s => s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked);
+                        break;
                     case "stars":
                         sequence = sequence
                                     .Include(lb => lb.Leaderboard)
@@ -332,6 +346,20 @@ namespace BeatLeader_Server.Controllers
                         break;
                     case "rank":
                         sequence = sequence.Order(order, t => t.Rank);
+                        break;
+                    case "predictedAcc":
+                        sequence = sequence
+                                    .Include(lb => lb.Leaderboard)
+                                    .ThenInclude(lb => lb.Difficulty)
+                                    .Order(order, s => s.Leaderboard.Difficulty.PredictedAcc)
+                                    .Where(s => s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked);
+                        break;
+                    case "passRating":
+                        sequence = sequence
+                                    .Include(lb => lb.Leaderboard)
+                                    .ThenInclude(lb => lb.Difficulty)
+                                    .Order(order, s => s.Leaderboard.Difficulty.PassRating)
+                                    .Where(s => s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked);
                         break;
                     case "stars":
                         sequence = sequence

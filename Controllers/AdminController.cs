@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using System.Net;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -436,6 +437,73 @@ namespace BeatLeader_Server.Controllers
             _context.BulkSaveChanges();
 
             return Ok();
+        }
+
+        [HttpGet("~/admin/maps/newranking")]
+        public async Task<ActionResult> newranking()
+        {
+            var songs = _context.Songs.Where(el => el.Difficulties.FirstOrDefault(d => d.Status == DifficultyStatus.ranked) != null).Include(song => song.Difficulties).ToList();
+
+            foreach (var song in songs)
+            {
+                foreach (var diff in song.Difficulties)
+                {
+                    if (diff.Status == DifficultyStatus.ranked) {
+                        //(float? acc, float? pass) = await ExmachinaStars(song.Hash, diff.Value);
+                        //if (pass != null) {
+                        //    diff.PassRating = pass;
+                        //} else {
+                        //    diff.PassRating = diff.Stars;
+                        //}
+                        //if (acc != null) {
+                        //    diff.PredictedAcc = acc;
+                        //}
+
+                        float difficulty_to_acc;
+                        if (diff.PredictedAcc > 0) {
+                            difficulty_to_acc = ((600f / ReplayUtils.Curve2(diff.PredictedAcc ?? 0)) / 50f) * (-MathF.Pow(4, -(diff.PassRating ?? 0) - 0.5f) + 1f);
+                        } else {
+                            difficulty_to_acc = (-MathF.Pow(1.3f, -(diff.PassRating ?? 0)) + 1) * 8 + 2;
+                        }
+                        diff.AccRating = difficulty_to_acc;
+
+                        if (float.IsInfinity((float)diff.AccRating) || float.IsNaN((float)diff.AccRating) || float.IsNegativeInfinity((float)diff.AccRating))
+                        {
+                            diff.AccRating = 0;
+
+                        }
+                        if (float.IsInfinity((float)diff.PassRating) || float.IsNaN((float)diff.PassRating) || float.IsNegativeInfinity((float)diff.PassRating))
+                        {
+                            diff.PassRating = 0;
+
+                        }
+                        if (float.IsInfinity((float)diff.PredictedAcc) || float.IsNaN((float)diff.PredictedAcc) || float.IsNegativeInfinity((float)diff.PredictedAcc))
+                        {
+                            diff.PredictedAcc = 0;
+
+                        }
+                    }
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [NonAction]
+        public async Task<(float?, float?)> ExmachinaStars(string hash, int diff) {
+
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://bs-replays-ai.azurewebsites.net/bl-reweight/" + hash + "/Standard/" + diff + "/1");
+            request.Method = "GET";
+            request.Proxy = null;
+
+            try {
+                var response = await request.DynamicResponse();
+                return ((float?)response?.AIacc, (float?)response?.pass_rating);
+            } catch { return (null, null); }
+
+            
         }
 
         public static string GolovaID = "76561198059961776";

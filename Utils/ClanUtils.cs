@@ -12,7 +12,7 @@ namespace BeatLeader_Server.Utils
             float resultPP = 0f;
             foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
             {
-                float weight = MathF.Pow(0.965f, i);
+                float weight = MathF.Pow(0.95f, i);
                 resultPP += p.Pp * weight;
             }
             return resultPP;

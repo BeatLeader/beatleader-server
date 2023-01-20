@@ -700,7 +700,9 @@ namespace BeatLeader_Server.Controllers
                         resultScore.FcAccuracy, 
                         resultScore.Modifiers, 
                         leaderboard.Difficulty.ModifierValues, 
-                        leaderboard.Difficulty.Stars ?? 0, leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
+                        leaderboard.Difficulty.PredictedAcc ?? 0, 
+                        leaderboard.Difficulty.PassRating ?? 0, 
+                        leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
                 }
                 resultScore.Country = context.Request.Headers["cf-ipcountry"] == StringValues.Empty ? "not set" : context.Request.Headers["cf-ipcountry"].ToString();
 
