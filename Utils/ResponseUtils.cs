@@ -86,6 +86,7 @@ namespace BeatLeader_Server.Utils
             public bool FullCombo { get; set; }
             public string Platform { get; set; }
             public int MaxCombo { get; set; }
+            public int MaxStreak { get; set; }
             public HMD Hmd { get; set; }
             public ControllerEnum Controller { get; set; }
             public string LeaderboardId { get; set; }
@@ -273,7 +274,23 @@ namespace BeatLeader_Server.Utils
                 Timepost = s.Timepost,
                 LeaderboardId = s.LeaderboardId,
                 Platform = s.Platform,
-                Player = PostProcessSettings(ResponseFromPlayer(s.Player)),
+                Player = s.Player != null ? new PlayerResponse
+                {
+                    Id = s.Player.Id,
+                    Name = s.Player.Name,
+                    Platform = s.Player.Platform,
+                    Avatar = s.Player.Avatar,
+                    Country = s.Player.Country,
+
+                    Pp = s.Player.Pp,
+                    Rank = s.Player.Rank,
+                    CountryRank = s.Player.CountryRank,
+                    Role = s.Player.Role,
+                    Socials = s.Player.Socials,
+                    PatreonFeatures = s.Player.PatreonFeatures,
+                    ProfileSettings = s.Player.ProfileSettings,
+                    Clans = s.Player.Clans?.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                } : null,
                 ScoreImprovement = s.ScoreImprovement,
                 RankVoting = s.RankVoting,
                 Metadata = s.Metadata,
@@ -286,31 +303,69 @@ namespace BeatLeader_Server.Utils
             return RemoveLeaderboard<ScoreResponse>(s, i);
         }
 
-        public static ScoreResponse? RemoveNullableLeaderboard(Score? s, int i)
-        {
-            return s == null ? null : RemoveLeaderboard<ScoreResponse>(s, i);
-        }
-
         public static ScoreResponseWithMyScore ScoreWithMyScore(Score s, int i) {
-            var result = RemoveLeaderboard<ScoreResponseWithMyScore>(s, i);
-            result.Leaderboard = new LeaderboardResponse
-            {
-                Id = s.LeaderboardId,
-                Song = s.Leaderboard?.Song,
-                Difficulty = s.Leaderboard?.Difficulty
-            };
-            result.Weight = s.Weight;
-            result.AccLeft = s.AccLeft;
-            result.AccRight = s.AccRight;
-            return result;
-        }
 
-        public static ScoreResponseWithAcc ScoreWithAcc(Score s, int i) {
-            var result = RemoveLeaderboard<ScoreResponseWithAcc>(s, i);
-            result.Weight = s.Weight;
-            result.AccLeft = s.AccLeft;
-            result.AccRight = s.AccRight;
-            return result;
+            return new ScoreResponseWithMyScore
+            {
+                Id = s.Id,
+                BaseScore = s.BaseScore,
+                ModifiedScore = s.ModifiedScore,
+                PlayerId = s.PlayerId,
+                Accuracy = s.Accuracy,
+                Pp = s.Pp,
+                FcAccuracy = s.FcAccuracy,
+                FcPp = s.FcPp,
+                BonusPp = s.BonusPp,
+                Rank = s.Rank,
+                Replay = s.Replay,
+                Modifiers = s.Modifiers,
+                BadCuts = s.BadCuts,
+                MissedNotes = s.MissedNotes,
+                BombCuts = s.BombCuts,
+                WallsHit = s.WallsHit,
+                Pauses = s.Pauses,
+                FullCombo = s.FullCombo,
+                Hmd = s.Hmd,
+                Controller = s.Controller,
+                MaxCombo = s.MaxCombo,
+                Timeset = s.Timeset,
+                ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
+                Timepost = s.Timepost,
+                LeaderboardId = s.LeaderboardId,
+                Platform = s.Platform,
+                Player = new PlayerResponse
+                {
+                    Id = s.Player.Id,
+                    Name = s.Player.Name,
+                    Platform = s.Player.Platform,
+                    Avatar = s.Player.Avatar,
+                    Country = s.Player.Country,
+
+                    Pp = s.Player.Pp,
+                    Rank = s.Player.Rank,
+                    CountryRank = s.Player.CountryRank,
+                    Role = s.Player.Role,
+                    Socials = s.Player.Socials,
+                    PatreonFeatures = s.Player.PatreonFeatures,
+                    ProfileSettings = s.Player.ProfileSettings,
+                    Clans = s.Player?.Clans?.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                },
+                ScoreImprovement = s.ScoreImprovement,
+                RankVoting = s.RankVoting,
+                Metadata = s.Metadata,
+                Country = s.Country,
+                Offsets = s.ReplayOffsets,
+                Leaderboard = new LeaderboardResponse
+                {
+                    Id = s.LeaderboardId,
+                    Song = s.Leaderboard?.Song,
+                    Difficulty = s.Leaderboard?.Difficulty
+                },
+                Weight = s.Weight,
+                AccLeft = s.AccLeft,
+                AccRight = s.AccRight,
+                MaxStreak = s.MaxStreak
+            };
         }
 
         public static T? GeneralResponseFromPlayer<T>(Player? p) where T : PlayerResponse, new()

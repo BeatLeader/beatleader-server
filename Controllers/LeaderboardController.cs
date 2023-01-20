@@ -44,6 +44,8 @@ namespace BeatLeader_Server.Controllers
                     .Include(lb => lb.Difficulty)
                     .ThenInclude(d => d.ModifierValues)
                     .Include(lb => lb.Qualification)
+                    .ThenInclude(q => q.Modifiers)
+                    .Include(lb => lb.Qualification)
                     .ThenInclude(q => q.Changes)
                     .ThenInclude(ch => ch.NewModifiers)
                     .Include(lb => lb.Qualification)
@@ -147,6 +149,7 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
+                leaderboard.Plays = scoreQuery.Count();
                 leaderboard.Scores = scoreQuery
                     .OrderBy(s => s.Rank)
                     .Skip((page - 1) * count)
@@ -224,7 +227,7 @@ namespace BeatLeader_Server.Controllers
                         {
                             s.Accuracy = (float)s.BaseScore / (float)ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
                         }
-                        (s.Pp, s.BonusPp) = ReplayUtils.PpFromScoreResponse(s, reweight.Stars, reweight.Modifiers);
+                        (s.Pp, s.BonusPp) = ReplayUtils.PpFromScoreResponse(s, reweight.PredictedAcc, reweight.PassRating, reweight.Modifiers);
 
                         return s;
                     });
@@ -256,7 +259,7 @@ namespace BeatLeader_Server.Controllers
                         {
                             s.Accuracy = (float)s.BaseScore / (float)ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
                         }
-                        (s.Pp, s.BonusPp) = ReplayUtils.PpFromScoreResponse(s, leaderboard.Difficulty.Stars ?? 0, qualification.Modifiers);
+                        (s.Pp, s.BonusPp) = ReplayUtils.PpFromScoreResponse(s, leaderboard.Difficulty.PredictedAcc ?? 0, leaderboard.Difficulty.PassRating ?? 0, qualification.Modifiers);
 
                         return s;
                     });

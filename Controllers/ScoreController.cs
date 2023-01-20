@@ -598,15 +598,69 @@ namespace BeatLeader_Server.Controllers
                         Total = sequence.Count()
                     },
                     Data = sequence
-                        .Skip((page - 1) * count)
-                        .Take(count)
-                        .Include(lb => lb.Leaderboard)
-                        .ThenInclude(lb => lb.Song)
-                        .ThenInclude(lb => lb.Difficulties)
-                        .Include(lb => lb.Leaderboard)
-                        .ThenInclude(lb => lb.Difficulty)
-                        .Select(ScoreWithMyScore)
-                        .ToList()
+                    .Skip((page - 1) * count)
+                    .Take(count)
+                    .Select(s => new ScoreResponseWithMyScore {
+                        Id = s.Id,
+                        BaseScore = s.BaseScore,
+                        ModifiedScore = s.ModifiedScore,
+                        PlayerId = s.PlayerId,
+                        Accuracy = s.Accuracy,
+                        Pp = s.Pp,
+                        FcAccuracy = s.FcAccuracy,
+                        FcPp = s.FcPp,
+                        BonusPp = s.BonusPp,
+                        Rank = s.Rank,
+                        Replay = s.Replay,
+                        Modifiers = s.Modifiers,
+                        BadCuts = s.BadCuts,
+                        MissedNotes = s.MissedNotes,
+                        BombCuts = s.BombCuts,
+                        WallsHit = s.WallsHit,
+                        Pauses = s.Pauses,
+                        FullCombo = s.FullCombo,
+                        Hmd = s.Hmd,
+                        Controller = s.Controller,
+                        MaxCombo = s.MaxCombo,
+                        Timeset = s.Timeset,
+                        ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
+                        Timepost = s.Timepost,
+                        LeaderboardId = s.LeaderboardId,
+                        Platform = s.Platform,
+                        Player = new PlayerResponse
+                        {
+                            Id = s.Player.Id,
+                            Name = s.Player.Name,
+                            Platform = s.Player.Platform,
+                            Avatar = s.Player.Avatar,
+                            Country = s.Player.Country,
+
+                            Pp = s.Player.Pp,
+                            Rank = s.Player.Rank,
+                            CountryRank = s.Player.CountryRank,
+                            Role = s.Player.Role,
+                            Socials = s.Player.Socials,
+                            PatreonFeatures = s.Player.PatreonFeatures,
+                            ProfileSettings = s.Player.ProfileSettings,
+                            Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                        },
+                        ScoreImprovement = s.ScoreImprovement,
+                        RankVoting = s.RankVoting,
+                        Metadata = s.Metadata,
+                        Country = s.Country,
+                        Offsets = s.ReplayOffsets,
+                        Leaderboard = new LeaderboardResponse
+                        {
+                            Id = s.LeaderboardId,
+                            Song = s.Leaderboard.Song,
+                            Difficulty = s.Leaderboard.Difficulty
+                        },
+                        Weight = s.Weight,
+                        AccLeft = s.AccLeft,
+                        AccRight = s.AccRight,
+                        MaxStreak = s.MaxStreak
+                    })
+                    .ToList()
                 };
             }
             return result;
