@@ -720,6 +720,118 @@ namespace BeatLeader_Server.Controllers
             
         }
 
+        [HttpPost("~/playlist/rank")]
+        public async Task<ActionResult> RankPlaylist()
+        {
+
+            dynamic? playlist = null;
+
+            using (var ms = new MemoryStream(5))
+            {
+                await Request.Body.CopyToAsync(ms);
+                ms.Position= 0;
+                playlist = ms.ObjectFromStream();
+            }
+
+            var leaderboards = new List<Leaderboard>();
+
+            var players = new List<EventPlayer>();
+            var basicPlayers = new List<Player>();
+            var playerScores = new Dictionary<string, List<Score>>();
+
+            foreach (var songy in playlist.songs) {
+                foreach (var diffy in songy.difficulties)
+                {
+                    string hash = songy.hash.ToLower();
+                    string diffName = diffy.name.ToLower();
+                    string characteristic = diffy.characteristic.ToLower();
+
+                    var lb = _context.Leaderboards.Where(lb => 
+                        lb.Song.Hash.ToLower() == hash && 
+                        lb.Difficulty.DifficultyName.ToLower() == diffName &&
+                        lb.Difficulty.ModeName.ToLower() == characteristic).Include(lb => lb.Difficulty).Include(lb => lb.Song).FirstOrDefault();
+
+                    if (lb != null && lb.Difficulty.Status != DifficultyStatus.outdated) {
+
+                        if (lb.Difficulty.Status == DifficultyStatus.unranked || lb.Difficulty.Status == DifficultyStatus.inevent)
+                        {
+                            //var stars = await ExmachinaStars(hash, lb.Difficulty.Value);
+                            //if (stars != null) {
+                                var diff = lb.Difficulty;
+                                lb.Difficulty.Status = DifficultyStatus.ranked;
+                                (float? acc, float? pass) = await ExmachinaStars2(lb.Song.Hash, diff.Value);
+                                if (pass != null)
+                                {
+                                    diff.PassRating = pass;
+                                }
+                                else
+                                {
+                                    diff.PassRating = 4.2f;
+                                }
+                                if (acc != null)
+                                {
+                                    diff.PredictedAcc = acc;
+                                }
+                                else {
+                                    diff.PredictedAcc = 0.99f;
+                                }
+
+                                float difficulty_to_acc;
+                                if (diff.PredictedAcc > 0) {
+                                    difficulty_to_acc = ((600f / ReplayUtils.Curve2(diff.PredictedAcc ?? 0)) / 50f) * (-MathF.Pow(4, -(diff.PassRating ?? 0) - 0.5f) + 1f);
+                                } else {
+                                    difficulty_to_acc = (-MathF.Pow(1.3f, -(diff.PassRating ?? 0)) + 1) * 8 + 2;
+                                }
+                                diff.AccRating = difficulty_to_acc;
+
+                                if (float.IsInfinity((float)diff.AccRating) || float.IsNaN((float)diff.AccRating) || float.IsNegativeInfinity((float)diff.AccRating))
+                                {
+                                    diff.AccRating = 0;
+
+                                }
+                                if (float.IsInfinity((float)diff.PassRating) || float.IsNaN((float)diff.PassRating) || float.IsNegativeInfinity((float)diff.PassRating))
+                                {
+                                    diff.PassRating = 0;
+
+                                }
+                                if (float.IsInfinity((float)diff.PredictedAcc) || float.IsNaN((float)diff.PredictedAcc) || float.IsNegativeInfinity((float)diff.PredictedAcc))
+                                {
+                                    diff.PredictedAcc = 0;
+
+                                }
+                                await _context.SaveChangesAsync();
+
+                                await _scoreRefreshController.RefreshScores(lb.Id);
+                                //leaderboards.Add(lb);
+                            //} else { continue; }
+                        } else {
+                            leaderboards.Add(lb);
+                        }
+                    }
+                }
+            }
+
+            
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [NonAction]
+        public async Task<(float?, float?)> ExmachinaStars2(string hash, int diff) {
+
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://bs-replays-ai.azurewebsites.net/bl-reweight/" + hash + "/Standard/" + diff + "/1");
+            request.Method = "GET";
+            request.Proxy = null;
+
+            try {
+                var response = await request.DynamicResponse();
+                return ((float?)response?.AIacc, (float?)response?.pass_rating);
+            } catch { return (null, null); }
+
+            
+        }
+
         [HttpGet("~/event/{id}/refresh")]
         public async Task<ActionResult> RefreshEvent(int id)
         {

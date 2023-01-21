@@ -449,15 +449,19 @@ namespace BeatLeader_Server.Controllers
                 foreach (var diff in song.Difficulties)
                 {
                     if (diff.Status == DifficultyStatus.ranked) {
-                        //(float? acc, float? pass) = await ExmachinaStars(song.Hash, diff.Value);
-                        //if (pass != null) {
-                        //    diff.PassRating = pass;
-                        //} else {
-                        //    diff.PassRating = diff.Stars;
-                        //}
-                        //if (acc != null) {
-                        //    diff.PredictedAcc = acc;
-                        //}
+                        (float? acc, float? pass) = await ExmachinaStars(song.Hash, diff.Value);
+                        if (pass != null)
+                        {
+                            diff.PassRating = pass;
+                        }
+                        else
+                        {
+                            diff.PassRating = diff.Stars;
+                        }
+                        if (acc != null)
+                        {
+                            diff.PredictedAcc = acc;
+                        }
 
                         float difficulty_to_acc;
                         if (diff.PredictedAcc > 0) {
