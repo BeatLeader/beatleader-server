@@ -20,18 +20,33 @@ namespace BeatLeader_Server.Controllers
 
         private readonly IConfiguration _configuration;
         IWebHostEnvironment _environment;
+        static IHostApplicationLifetime _lifetime;
 
         public ScoresSocketController(
             AppContext context,
             ReadAppContext readContext,
             IConfiguration configuration,
-            IWebHostEnvironment env)
+            IWebHostEnvironment env,
+            IHostApplicationLifetime lifetime)
         {
             _context = context;
             _readContext = readContext;
 
             _configuration = configuration;
             _environment = env;
+
+            if (_lifetime == null) {
+                _lifetime = lifetime;
+
+                lifetime.ApplicationStopping.Register(async () => {
+                    foreach (var socket in sockets)
+                    {
+                        if (socket.Item1.State == WebSocketState.Open) {
+                            await socket.Item1.CloseAsync(WebSocketCloseStatus.NormalClosure, "Server shutdown!", CancellationToken.None);
+                        }
+                    }
+                });
+            }
         }
 
         [Route("/scores")]
@@ -48,11 +63,31 @@ namespace BeatLeader_Server.Controllers
 
                     sockets.Add(socketWithTask);
 
-                    await socketFinished.Task;
+                    var buffer = new Byte[1024];
+                    try {
+                        while (true)
+                        {
+                            var byteCount = await webSocket.ReceiveAsync(buffer, _lifetime.ApplicationStopped);
+
+                            if (byteCount == null || byteCount.Count == 0)
+                            {
+                                break;
+                            }
+                            else
+                            {
+                                // pong
+                                await webSocket.SendAsync(new Byte[] { 0b1000_1010, 0 }, WebSocketMessageType.Binary, true, _lifetime.ApplicationStopped);
+                            }
+
+                            if (socketFinished.Task.IsCompleted) {
+                                break;
+                            }
+                        }
+                    } catch (Exception ex) { }
 
                     sockets.Remove(socketWithTask);
 
-                    return Ok();
+                    return new EmptyResult();
                 } else {
                     return Redirect($"wss://{socketHost}/scores");
                 }
@@ -84,7 +119,7 @@ namespace BeatLeader_Server.Controllers
                     arraySegment,
                     WebSocketMessageType.Text,
                     true,
-                    CancellationToken.None))
+                    _lifetime.ApplicationStopping))
                 );
         }
 
