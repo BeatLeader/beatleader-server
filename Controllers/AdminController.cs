@@ -449,55 +449,32 @@ namespace BeatLeader_Server.Controllers
                 foreach (var diff in song.Difficulties)
                 {
                     if (diff.Status == DifficultyStatus.ranked) {
-                        (float? acc, float? pass, float? tech) = await ExmachinaStars(song.Hash, diff.Value);
-                        if (pass != null)
-                        {
-                            diff.PassRating = pass;
-                        }
-                        else
-                        {
-                            diff.PassRating = diff.Stars ?? 4.2f;
-                        }
+                        var response = await SongUtils.ExmachinaStars(song.Hash, diff.Value);
+                        if (response != null) {
+                            diff.PassRating = response.none.lack_map_calculation.passing_difficulty;
+                            diff.TechRating = response.none.lack_map_calculation.balanced_tech;
+                            diff.PredictedAcc = response.none.AIacc;
+                            diff.AccRating = ReplayUtils.AccRating(response.none.AIacc, response.none.lack_map_calculation.passing_difficulty);
 
-                        if (acc != null)
-                        {
-                            diff.PredictedAcc = acc;
-                        }
-                        else {
-                            diff.PredictedAcc = 0.98f;
-                        }
+                            diff.ModifiersRating = new ModifiersRating {
+                                SSPassRating = response.SS.lack_map_calculation.passing_difficulty,
+                                SSTechRating = response.SS.lack_map_calculation.balanced_tech,
+                                SSPredictedAcc = response.SS.AIacc,
+                                SSAccRating = ReplayUtils.AccRating(response.SS.AIacc, response.SS.lack_map_calculation.passing_difficulty),
+                                SFPassRating = response.SFS.lack_map_calculation.passing_difficulty,
+                                SFTechRating = response.SFS.lack_map_calculation.balanced_tech,
+                                SFPredictedAcc = response.SFS.AIacc,
+                                SFAccRating = ReplayUtils.AccRating(response.SFS.AIacc, response.SFS.lack_map_calculation.passing_difficulty),
+                                FSPassRating = response.FS.lack_map_calculation.passing_difficulty,
+                                FSTechRating = response.FS.lack_map_calculation.balanced_tech,
+                                FSPredictedAcc = response.FS.AIacc,
+                                FSAccRating = ReplayUtils.AccRating(response.FS.AIacc, response.FS.lack_map_calculation.passing_difficulty),
+                            };
 
-                        if (tech != null)
-                        {
-                            diff.TechRating = tech;
-                        }
-                        else {
-                            diff.TechRating = 4.2f;
-                        }
-
-                        float difficulty_to_acc;
-                        if (diff.PredictedAcc > 0) {
-                            difficulty_to_acc = ((600f / ReplayUtils.Curve2(diff.PredictedAcc ?? 0)) / 50f) * (-MathF.Pow(4, -(diff.PassRating ?? 0) - 0.5f) + 1f);
                         } else {
-                            difficulty_to_acc = (-MathF.Pow(1.3f, -(diff.PassRating ?? 0)) + 1) * 8 + 2;
-                        }
-                        diff.AccRating = difficulty_to_acc;
-
-                        if (float.IsInfinity((float)diff.AccRating) || float.IsNaN((float)diff.AccRating) || float.IsNegativeInfinity((float)diff.AccRating))
-                        {
-                            diff.AccRating = 0;
-                        }
-                        if (float.IsInfinity((float)diff.PassRating) || float.IsNaN((float)diff.PassRating) || float.IsNegativeInfinity((float)diff.PassRating))
-                        {
-                            diff.PassRating = 0;
-                        }
-                        if (float.IsInfinity((float)diff.PredictedAcc) || float.IsNaN((float)diff.PredictedAcc) || float.IsNegativeInfinity((float)diff.PredictedAcc))
-                        {
-                            diff.PredictedAcc = 0;
-                        }
-                        if (float.IsInfinity((float)diff.TechRating) || float.IsNaN((float)diff.TechRating) || float.IsNegativeInfinity((float)diff.TechRating))
-                        {
-                            diff.TechRating = 0;
+                            diff.PassRating = diff.Stars ?? 4.2f;
+                            diff.PredictedAcc = 0.98f;
+                            diff.TechRating = 4.2f;
                         }
                     }
                 }
@@ -506,21 +483,6 @@ namespace BeatLeader_Server.Controllers
             await _context.SaveChangesAsync();
 
             return Ok();
-        }
-
-        [NonAction]
-        public async Task<(float?, float?, float?)> ExmachinaStars(string hash, int diff) {
-
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://bs-replays-ai.azurewebsites.net/bl-reweight/" + hash + "/Standard/" + diff + "/1");
-            request.Method = "GET";
-            request.Proxy = null;
-
-            try {
-                var response = await request.DynamicResponse();
-                return ((float?)response?.AIacc, (float?)response?.pass_rating, (float?)response?.tech_rating);
-            } catch { return (null, null, null); }
-
-            
         }
 
         public static string GolovaID = "76561198059961776";

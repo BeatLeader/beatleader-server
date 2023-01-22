@@ -759,58 +759,32 @@ namespace BeatLeader_Server.Controllers
                             //if (stars != null) {
                                 var diff = lb.Difficulty;
                                 lb.Difficulty.Status = DifficultyStatus.ranked;
-                                (float? acc, float? pass, float? tech) = await ExmachinaStars2(lb.Song.Hash, diff.Value);
-                                if (pass != null)
-                                {
-                                    diff.PassRating = pass;
-                                }
-                                else
-                                {
-                                    diff.PassRating = 4.2f;
-                                }
-                                if (acc != null)
-                                {
-                                    diff.PredictedAcc = acc;
-                                }
-                                else {
-                                    diff.PredictedAcc = 0.99f;
-                                }
-                                if (tech != null)
-                                {
-                                    diff.TechRating = tech;
-                                }
-                                else
-                                {
-                                    diff.TechRating = 4.2f;
-                                }
+                                var response = await SongUtils.ExmachinaStars(lb.Song.Hash, diff.Value);
+                                if (response != null) {
+                                    diff.PassRating = response.none.lack_map_calculation.passing_difficulty;
+                                    diff.TechRating = response.none.lack_map_calculation.balanced_tech;
+                                    diff.PredictedAcc = response.none.AIacc;
+                                    diff.AccRating = ReplayUtils.AccRating(response.none.AIacc, response.none.lack_map_calculation.passing_difficulty);
 
-                                float difficulty_to_acc;
-                                if (diff.PredictedAcc > 0) {
-                                    difficulty_to_acc = ((600f / ReplayUtils.Curve2(diff.PredictedAcc ?? 0)) / 50f) * (-MathF.Pow(4, -(diff.PassRating ?? 0) - 0.5f) + 1f);
+                                    diff.ModifiersRating = new ModifiersRating {
+                                        SSPassRating = response.SS.lack_map_calculation.passing_difficulty,
+                                        SSTechRating = response.SS.lack_map_calculation.balanced_tech,
+                                        SSPredictedAcc = response.SS.AIacc,
+                                        SSAccRating = ReplayUtils.AccRating(response.SS.AIacc, response.SS.lack_map_calculation.passing_difficulty),
+                                        SFPassRating = response.SFS.lack_map_calculation.passing_difficulty,
+                                        SFTechRating = response.SFS.lack_map_calculation.balanced_tech,
+                                        SFPredictedAcc = response.SFS.AIacc,
+                                        SFAccRating = ReplayUtils.AccRating(response.SFS.AIacc, response.SFS.lack_map_calculation.passing_difficulty),
+                                        FSPassRating = response.FS.lack_map_calculation.passing_difficulty,
+                                        FSTechRating = response.FS.lack_map_calculation.balanced_tech,
+                                        FSPredictedAcc = response.FS.AIacc,
+                                        FSAccRating = ReplayUtils.AccRating(response.FS.AIacc, response.FS.lack_map_calculation.passing_difficulty),
+                                    };
+
                                 } else {
-                                    difficulty_to_acc = (-MathF.Pow(1.3f, -(diff.PassRating ?? 0)) + 1) * 8 + 2;
-                                }
-                                diff.AccRating = difficulty_to_acc;
-
-                                if (float.IsInfinity((float)diff.AccRating) || float.IsNaN((float)diff.AccRating) || float.IsNegativeInfinity((float)diff.AccRating))
-                                {
-                                    diff.AccRating = 0;
-
-                                }
-                                if (float.IsInfinity((float)diff.PassRating) || float.IsNaN((float)diff.PassRating) || float.IsNegativeInfinity((float)diff.PassRating))
-                                {
-                                    diff.PassRating = 0;
-
-                                }
-                                if (float.IsInfinity((float)diff.PredictedAcc) || float.IsNaN((float)diff.PredictedAcc) || float.IsNegativeInfinity((float)diff.PredictedAcc))
-                                {
-                                    diff.PredictedAcc = 0;
-
-                                }
-                                if (float.IsInfinity((float)diff.TechRating) || float.IsNaN((float)diff.TechRating) || float.IsNegativeInfinity((float)diff.TechRating))
-                                {
-                                    diff.TechRating = 0;
-
+                                    diff.PassRating = diff.Stars ?? 4.2f;
+                                    diff.PredictedAcc = 0.98f;
+                                    diff.TechRating = 4.2f;
                                 }
                                 await _context.SaveChangesAsync();
 

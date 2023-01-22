@@ -35,7 +35,7 @@ namespace BeatLeader_Server.Controllers
 
             //for (int iii = 0; iii < count; iii += 1000) 
             //{
-                var query = _context.Leaderboards.Include(s => s.Scores).Include(l => l.Difficulty).ThenInclude(d => d.ModifierValues);
+                var query = _context.Leaderboards.Include(s => s.Scores).Include(l => l.Difficulty).ThenInclude(d => d.ModifierValues).Include(l => l.Difficulty).ThenInclude(d => d.ModifiersRating);
                 var allLeaderboards = (leaderboardId != null ? query.Where(s => s.Id == leaderboardId) : query).Select(l => new { Scores = l.Scores, Difficulty = l.Difficulty }).ToList(); // .Skip(iii).Take(1000).ToList();
 
                 int counter = 0;
@@ -162,6 +162,7 @@ namespace BeatLeader_Server.Controllers
                     .Select(lb => new {
                         Difficulty = lb.Difficulty,
                         ModifierValues = lb.Difficulty.ModifierValues,
+                        ModifiersRating = lb.Difficulty.ModifiersRating,
                         Scores = lb.Scores.Select(s => new {
                             Id = s.Id,
                             Banned = s.Banned,
@@ -218,6 +219,7 @@ namespace BeatLeader_Server.Controllers
                                 score.Accuracy, 
                                 s.Modifiers, 
                                 leaderboard.Difficulty.ModifierValues, 
+                                leaderboard.Difficulty.ModifiersRating, 
                                 leaderboard.Difficulty.PredictedAcc ?? 0, 
                                 leaderboard.Difficulty.PassRating ?? 0, 
                                 leaderboard.Difficulty.TechRating ?? 0, 

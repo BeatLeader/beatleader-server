@@ -17,6 +17,7 @@
         public bool Finished { get; set; }
 
         public ModifiersMap Modifiers { get; set; }
+        public ModifiersRating ModifiersRating { get; set; }
 
         public ICollection<RankUpdateChange>? Changes { get; set; }
     }

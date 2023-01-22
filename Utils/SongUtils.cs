@@ -1,4 +1,5 @@
-﻿using BeatLeader_Server.Models;
+﻿using BeatLeader_Server.Extensions;
+using BeatLeader_Server.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System.Dynamic;
@@ -160,6 +161,34 @@ namespace BeatLeader_Server.Utils
             } else {
                 return response.Item2;
             }   
+        }
+
+        public class ExmachinaLackPart {
+            public float balanced_tech { get; set; }
+            public float passing_difficulty { get; set; }
+        }
+
+        public class ExmachinaRating {
+            public float AIacc { get; set; }
+            public ExmachinaLackPart lack_map_calculation { get; set; }
+        }
+
+        public class ExmachinaResponse {
+            public ExmachinaRating FS { get; set; }
+            public ExmachinaRating SFS { get; set; }
+            public ExmachinaRating SS { get; set; }
+            public ExmachinaRating none { get; set; }
+        }
+
+        public static async Task<ExmachinaResponse?> ExmachinaStars(string hash, int diff) {
+
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://bs-replays-ai.azurewebsites.net/bl-reweight/" + hash + "/Standard/" + diff);
+            request.Method = "GET";
+            request.Proxy = null;
+
+            try {
+                return await request.DynamicResponse<ExmachinaResponse>();
+            } catch { return null; }
         }
     }
 }

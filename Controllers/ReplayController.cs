@@ -700,6 +700,7 @@ namespace BeatLeader_Server.Controllers
                         resultScore.FcAccuracy, 
                         resultScore.Modifiers, 
                         leaderboard.Difficulty.ModifierValues, 
+                        leaderboard.Difficulty.ModifiersRating, 
                         leaderboard.Difficulty.PredictedAcc ?? 0, 
                         leaderboard.Difficulty.PassRating ?? 0, 
                         leaderboard.Difficulty.TechRating ?? 0, 

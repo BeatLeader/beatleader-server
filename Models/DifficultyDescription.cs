@@ -22,6 +22,7 @@ namespace BeatLeader_Server.Models
         public string ModeName { get; set; }
         public DifficultyStatus Status { get; set; }
         public ModifiersMap? ModifierValues { get; set; } = new ModifiersMap();
+        public ModifiersRating? ModifiersRating { get; set; }
         public int NominatedTime { get; set; }
         public int QualifiedTime { get; set; }
         public int RankedTime { get; set; }
