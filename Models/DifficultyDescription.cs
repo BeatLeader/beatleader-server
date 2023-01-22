@@ -27,9 +27,10 @@ namespace BeatLeader_Server.Models
         public int RankedTime { get; set; }
 
         public float? Stars { get; set; }
-        public float? PassRating { get; set; }
         public float? PredictedAcc { get; set; }
+        public float? PassRating { get; set; }
         public float? AccRating { get; set; }
+        public float? TechRating { get; set; }
         public int Type { get; set; }
 
         public float Njs { get; set; }

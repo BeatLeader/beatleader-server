@@ -759,7 +759,7 @@ namespace BeatLeader_Server.Controllers
                             //if (stars != null) {
                                 var diff = lb.Difficulty;
                                 lb.Difficulty.Status = DifficultyStatus.ranked;
-                                (float? acc, float? pass) = await ExmachinaStars2(lb.Song.Hash, diff.Value);
+                                (float? acc, float? pass, float? tech) = await ExmachinaStars2(lb.Song.Hash, diff.Value);
                                 if (pass != null)
                                 {
                                     diff.PassRating = pass;
@@ -774,6 +774,14 @@ namespace BeatLeader_Server.Controllers
                                 }
                                 else {
                                     diff.PredictedAcc = 0.99f;
+                                }
+                                if (tech != null)
+                                {
+                                    diff.TechRating = tech;
+                                }
+                                else
+                                {
+                                    diff.TechRating = 4.2f;
                                 }
 
                                 float difficulty_to_acc;
@@ -799,6 +807,11 @@ namespace BeatLeader_Server.Controllers
                                     diff.PredictedAcc = 0;
 
                                 }
+                                if (float.IsInfinity((float)diff.TechRating) || float.IsNaN((float)diff.TechRating) || float.IsNegativeInfinity((float)diff.TechRating))
+                                {
+                                    diff.TechRating = 0;
+
+                                }
                                 await _context.SaveChangesAsync();
 
                                 await _scoreRefreshController.RefreshScores(lb.Id);
@@ -818,7 +831,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task<(float?, float?)> ExmachinaStars2(string hash, int diff) {
+        public async Task<(float?, float?, float?)> ExmachinaStars2(string hash, int diff) {
 
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://bs-replays-ai.azurewebsites.net/bl-reweight/" + hash + "/Standard/" + diff + "/1");
             request.Method = "GET";
@@ -826,8 +839,8 @@ namespace BeatLeader_Server.Controllers
 
             try {
                 var response = await request.DynamicResponse();
-                return ((float?)response?.AIacc, (float?)response?.pass_rating);
-            } catch { return (null, null); }
+                return ((float?)response?.AIacc, (float?)response?.pass_rating, (float?)response?.tech_rating);
+            } catch { return (null, null, null); }
 
             
         }

@@ -449,18 +449,30 @@ namespace BeatLeader_Server.Controllers
                 foreach (var diff in song.Difficulties)
                 {
                     if (diff.Status == DifficultyStatus.ranked) {
-                        (float? acc, float? pass) = await ExmachinaStars(song.Hash, diff.Value);
+                        (float? acc, float? pass, float? tech) = await ExmachinaStars(song.Hash, diff.Value);
                         if (pass != null)
                         {
                             diff.PassRating = pass;
                         }
                         else
                         {
-                            diff.PassRating = diff.Stars;
+                            diff.PassRating = diff.Stars ?? 4.2f;
                         }
+
                         if (acc != null)
                         {
                             diff.PredictedAcc = acc;
+                        }
+                        else {
+                            diff.PredictedAcc = 0.98f;
+                        }
+
+                        if (tech != null)
+                        {
+                            diff.TechRating = tech;
+                        }
+                        else {
+                            diff.TechRating = 4.2f;
                         }
 
                         float difficulty_to_acc;
@@ -474,17 +486,18 @@ namespace BeatLeader_Server.Controllers
                         if (float.IsInfinity((float)diff.AccRating) || float.IsNaN((float)diff.AccRating) || float.IsNegativeInfinity((float)diff.AccRating))
                         {
                             diff.AccRating = 0;
-
                         }
                         if (float.IsInfinity((float)diff.PassRating) || float.IsNaN((float)diff.PassRating) || float.IsNegativeInfinity((float)diff.PassRating))
                         {
                             diff.PassRating = 0;
-
                         }
                         if (float.IsInfinity((float)diff.PredictedAcc) || float.IsNaN((float)diff.PredictedAcc) || float.IsNegativeInfinity((float)diff.PredictedAcc))
                         {
                             diff.PredictedAcc = 0;
-
+                        }
+                        if (float.IsInfinity((float)diff.TechRating) || float.IsNaN((float)diff.TechRating) || float.IsNegativeInfinity((float)diff.TechRating))
+                        {
+                            diff.TechRating = 0;
                         }
                     }
                 }
@@ -496,7 +509,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task<(float?, float?)> ExmachinaStars(string hash, int diff) {
+        public async Task<(float?, float?, float?)> ExmachinaStars(string hash, int diff) {
 
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://bs-replays-ai.azurewebsites.net/bl-reweight/" + hash + "/Standard/" + diff + "/1");
             request.Method = "GET";
@@ -504,8 +517,8 @@ namespace BeatLeader_Server.Controllers
 
             try {
                 var response = await request.DynamicResponse();
-                return ((float?)response?.AIacc, (float?)response?.pass_rating);
-            } catch { return (null, null); }
+                return ((float?)response?.AIacc, (float?)response?.pass_rating, (float?)response?.tech_rating);
+            } catch { return (null, null, null); }
 
             
         }

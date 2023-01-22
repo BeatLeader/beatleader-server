@@ -68,7 +68,7 @@ namespace BeatLeader_Server.Utils
             return (float)(pointList[i-1].Item2 + middle_dis * (pointList[i].Item2 - pointList[i-1].Item2));
         }
 
-        private static float GetPp(float accuracy, float predictedAcc, float passRating) {
+        private static float GetPp(float accuracy, float predictedAcc, float passRating, float techRating) {
             float difficulty_to_acc;
             if (predictedAcc > 0) {
                 difficulty_to_acc = ((600f / (ReplayUtils.Curve2(predictedAcc)) / 50f) * (-MathF.Pow(4, -passRating - 0.5f) + 1f));
@@ -76,12 +76,20 @@ namespace BeatLeader_Server.Utils
                 difficulty_to_acc = (-MathF.Pow(1.3f, (-passRating)) + 1) * 8 + 2;
             }
 
-            float passPP = passRating * 17.5f;
-            float accPP = Curve2(accuracy) * difficulty_to_acc * 30;
-            return passPP + accPP;
+            float passPP = passRating * 14;
+            float accPP = Curve2(accuracy) * difficulty_to_acc * 27.5f;
+            float techPP = (float)(1 / (1 + Math.Pow(Math.E, (-16 * (accuracy - 0.9f)))) * techRating * 10 * difficulty_to_acc / Math.Max((0.3333f * passRating), 1));
+            return passPP + accPP + techPP;
         }
 
-        public static (float, float) PpFromScore(float accuracy, string modifiers, ModifiersMap modifierValues, float predictedAcc, float passRating, bool timing)
+        public static (float, float) PpFromScore(
+            float accuracy, 
+            string modifiers, 
+            ModifiersMap modifierValues, 
+            float predictedAcc, 
+            float passRating, 
+            float techRating, 
+            bool timing)
         {
             bool negativeAcc = float.IsNegative(accuracy);
             if (negativeAcc)
@@ -95,8 +103,8 @@ namespace BeatLeader_Server.Utils
             if (!timing) {
                 if (!modifiers.Contains("NF"))
                 {
-                    rawPP = GetPp(accuracy, predictedAcc, passRating);
-                    fullPP = GetPp(accuracy, predictedAcc, passRating * mp);
+                    rawPP = GetPp(accuracy, predictedAcc, passRating, techRating);
+                    fullPP = GetPp(accuracy, predictedAcc, passRating * mp, techRating * mp);
                 }
             } else {
                 rawPP = accuracy * passRating * 55f;
@@ -126,12 +134,19 @@ namespace BeatLeader_Server.Utils
         }
 
         public static (float, float) PpFromScore(Score s, DifficultyDescription difficulty) {
-            return PpFromScore(s.Accuracy, s.Modifiers, difficulty.ModifierValues, difficulty.PredictedAcc ?? 0.0f, difficulty.PassRating ?? 0.0f, difficulty.ModeName.ToLower() == "rhythmgamestandard");
+            return PpFromScore(
+                s.Accuracy, 
+                s.Modifiers, 
+                difficulty.ModifierValues, 
+                difficulty.PredictedAcc ?? 0.0f, 
+                difficulty.PassRating ?? 0.0f, 
+                difficulty.TechRating ?? 0.0f, 
+                difficulty.ModeName.ToLower() == "rhythmgamestandard");
         }
 
-        public static (float, float) PpFromScoreResponse(ScoreResponse s, float predictedAcc, float passRating, ModifiersMap modifiers)
+        public static (float, float) PpFromScoreResponse(ScoreResponse s, float predictedAcc, float passRating, float techRating, ModifiersMap modifiers)
         {
-            return PpFromScore(s.Accuracy, s.Modifiers, modifiers, predictedAcc, passRating, false);
+            return PpFromScore(s.Accuracy, s.Modifiers, modifiers, predictedAcc, passRating, techRating, false);
         }
 
         public static (Score, int) ProcessReplayInfo(ReplayInfo info, DifficultyDescription difficulty) {

@@ -69,6 +69,7 @@ namespace BeatLeader_Server.Utils
                 case "stars":
                 case "passRating":
                 case "accRating":
+                case "techRating":
                     sequence = sequence
                         .Where(s => (date_from == null || (
                                         (s.Difficulty.Status == DifficultyStatus.nominated && s.Difficulty.NominatedTime >= date_from) ||
@@ -87,6 +88,8 @@ namespace BeatLeader_Server.Utils
                         sequence = sequence.Order(order, t => t.Difficulty.PassRating);
                     } else if (sortBy == "accRating") {
                         sequence = sequence.Order(order, t => t.Difficulty.AccRating);
+                    } else if (sortBy == "techRating") {
+                        sequence = sequence.Order(order, t => t.Difficulty.TechRating);
                     }
                     break;
                 case "scoreTime":

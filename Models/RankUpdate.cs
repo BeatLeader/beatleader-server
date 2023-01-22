@@ -9,6 +9,7 @@
 
         public float Stars { get; set; }
         public float PassRating { get; set; }
+        public float TechRating { get; set; }
         public float PredictedAcc { get; set; }
         public int Type { get; set; }
         public int CriteriaMet { get; set; }

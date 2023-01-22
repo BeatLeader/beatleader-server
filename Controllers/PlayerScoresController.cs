@@ -117,6 +117,13 @@ namespace BeatLeader_Server.Controllers
                                     .Order(order, s => s.Leaderboard.Difficulty.PassRating)
                                     .Where(s => s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked);
                         break;
+                    case "techRating":
+                        sequence = sequence
+                                    .Include(lb => lb.Leaderboard)
+                                    .ThenInclude(lb => lb.Difficulty)
+                                    .Order(order, s => s.Leaderboard.Difficulty.TechRating)
+                                    .Where(s => s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked);
+                        break;
                     case "stars":
                         sequence = sequence
                                     .Include(lb => lb.Leaderboard)

@@ -214,7 +214,14 @@ namespace BeatLeader_Server.Controllers
                         }
                         if (hasPp)
                         {
-                            (score.Pp, score.BonusPp) = ReplayUtils.PpFromScore(score.Accuracy, s.Modifiers, leaderboard.Difficulty.ModifierValues, leaderboard.Difficulty.PredictedAcc ?? 0, leaderboard.Difficulty.PassRating ?? 0, leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard");
+                            (score.Pp, score.BonusPp) = ReplayUtils.PpFromScore(
+                                score.Accuracy, 
+                                s.Modifiers, 
+                                leaderboard.Difficulty.ModifierValues, 
+                                leaderboard.Difficulty.PredictedAcc ?? 0, 
+                                leaderboard.Difficulty.PassRating ?? 0, 
+                                leaderboard.Difficulty.TechRating ?? 0, 
+                                leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard");
                         }
                         else
                         {
