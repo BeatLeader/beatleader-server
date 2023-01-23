@@ -39,10 +39,11 @@ namespace BeatLeader_Server.Controllers
                 _lifetime = lifetime;
 
                 lifetime.ApplicationStopping.Register(async () => {
-                    foreach (var socket in sockets)
+                    var newList = sockets.ToList();
+                    foreach (var socket in newList)
                     {
                         if (socket.Item1.State == WebSocketState.Open) {
-                            await socket.Item1.CloseAsync(WebSocketCloseStatus.NormalClosure, "Server shutdown!", CancellationToken.None);
+                            await socket.Item1.CloseAsync(WebSocketCloseStatus.EndpointUnavailable, "Server shutdown!", CancellationToken.None);
                         }
                     }
                 });

@@ -7,6 +7,32 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 
 namespace BeatLeader_Server {
+
+    public class ErrorLoggingMiddleware
+    {
+        private readonly RequestDelegate _next;
+        private readonly ILogger<ErrorLoggingMiddleware> _logger;
+
+        public ErrorLoggingMiddleware(RequestDelegate next, ILogger<ErrorLoggingMiddleware> logger)
+        {
+            _next = next;
+            _logger = logger;
+        }
+
+        public async Task Invoke(HttpContext context)
+        {
+            try
+            {
+                await _next(context);
+            }
+            catch (Exception e)
+            {
+                _logger.LogWarning(null, "LOL500 " + context.Request.Path + context.Request.QueryString);
+                throw;
+            }
+        }
+    }
+
     public class Startup {
         static string MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
         public Startup (IConfiguration configuration, IWebHostEnvironment env)
@@ -198,7 +224,8 @@ namespace BeatLeader_Server {
 
         public void Configure (IApplicationBuilder app)
         {
-            app.UseStaticFiles ();
+            app.UseMiddleware<ErrorLoggingMiddleware>();
+            app.UseStaticFiles();
             app.UseForwardedHeaders();
             app.UseServerTiming();
             app.UseWebSockets(new WebSocketOptions {

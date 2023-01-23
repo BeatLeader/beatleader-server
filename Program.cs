@@ -10,10 +10,9 @@ public static class Program
             .ConfigureWebHostDefaults(
                 (webBuilder) => webBuilder.UseStartup<Startup>()).ConfigureLogging((hostingContext, logging) =>
             {
-                //logging.AddConfiguration(hostingContext.Configuration.GetSection("Logging"));
-                //logging.AddConsole();
-                //logging.AddEventSourceLogger();
-                //logging.AddAzureWebAppDiagnostics();
-                //logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning);
+                logging.AddConfiguration(hostingContext.Configuration.GetSection("Logging"));
+                logging.AddConsole();
+                logging.AddEventSourceLogger();
+                logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning);
             });
 }

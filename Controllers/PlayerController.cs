@@ -266,6 +266,27 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpDelete("~/attempts/")]
+        [Authorize]
+        public async Task<ActionResult> DeleteAttempts()
+        {
+            string currentId = HttpContext.CurrentUserID(_context);
+            Player? currentPlayer = await _context.Players.FindAsync(currentId);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+            var info = _context.LoginAttempts.ToArray();
+            foreach (var item in info)
+            {
+                _context.LoginAttempts.Remove(item);
+            }
+            
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
         [HttpDelete("~/playerlink/{id}")]
         [Authorize]
         public async Task<ActionResult> DeletePlayerLinked(string id)
