@@ -43,6 +43,8 @@ namespace BeatLeader_Server.Controllers
                     .Where(lb => lb.Id == id)
                     .Include(lb => lb.Difficulty)
                     .ThenInclude(d => d.ModifierValues)
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(d => d.ModifiersRating)
                     .Include(lb => lb.Qualification)
                     .ThenInclude(q => q.Modifiers)
                     .Include(lb => lb.Qualification)

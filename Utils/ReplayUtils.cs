@@ -68,12 +68,13 @@ namespace BeatLeader_Server.Utils
             return (float)(pointList[i-1].Item2 + middle_dis * (pointList[i].Item2 - pointList[i-1].Item2));
         }
 
-        public static float AccRating(float? predictedAcc, float? passRating) {
+        public static float AccRating(float? predictedAcc, float? passRating, float? techRating) {
             float difficulty_to_acc;
             if (predictedAcc > 0) {
                 difficulty_to_acc = ((600f / Curve2(predictedAcc ?? 0)) / 50f) * (-MathF.Pow(4, -(passRating ?? 0) - 0.5f) + 1f);
             } else {
-                difficulty_to_acc = (-MathF.Pow(1.3f, -(passRating ?? 0)) + 1) * 8 + 2;
+                float tiny_tech = 0.0208f * (techRating ?? 0) + 1.1284f;
+                difficulty_to_acc = (-MathF.Pow(tiny_tech, -(passRating ?? 0)) + 1) * 8 + 2 + 0.01f * (techRating ?? 0) * (passRating ?? 0);
             }
             if (float.IsInfinity(difficulty_to_acc) || float.IsNaN(difficulty_to_acc) || float.IsNegativeInfinity(difficulty_to_acc)) {
                 difficulty_to_acc = 0;
@@ -82,11 +83,12 @@ namespace BeatLeader_Server.Utils
         }
 
         private static float GetPp(float accuracy, float predictedAcc, float passRating, float techRating) {
-            float difficulty_to_acc = AccRating(predictedAcc, passRating);
+            float difficulty_to_acc = AccRating(predictedAcc, passRating, techRating);
 
             float passPP = passRating * 14;
-            float accPP = Curve2(accuracy) * difficulty_to_acc * 27.5f;
-            float techPP = (float)(1 / (1 + Math.Pow(Math.E, (-16 * (accuracy - 0.9f)))) * techRating * difficulty_to_acc / Math.Max((0.3333f * passRating), 1));
+            float accPP = Curve2(accuracy) * difficulty_to_acc * 27.5f / (1 + MathF.Pow(MathF.E, -8 * (passRating + 0.05f)));
+            float techPP = (float)(1 / (1 + Math.Pow(Math.E, (-64 * (accuracy - 0.9f)))) * 1.5f * (techRating / (1 + Math.Pow(Math.E, -16 * (techRating * 0.1f - 0.5f)))) * difficulty_to_acc / Math.Max((0.3333f * passRating), 1));
+            
             return passPP + accPP + techPP;
         }
 

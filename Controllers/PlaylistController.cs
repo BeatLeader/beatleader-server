@@ -764,21 +764,21 @@ namespace BeatLeader_Server.Controllers
                                     diff.PassRating = response.none.lack_map_calculation.passing_difficulty;
                                     diff.TechRating = response.none.lack_map_calculation.balanced_tech * 10;
                                     diff.PredictedAcc = response.none.AIacc;
-                                    diff.AccRating = ReplayUtils.AccRating(response.none.AIacc, response.none.lack_map_calculation.passing_difficulty);
+                                    diff.AccRating = ReplayUtils.AccRating(response.none.AIacc, response.none.lack_map_calculation.passing_difficulty, response.none.lack_map_calculation.balanced_tech * 10);
 
                                     diff.ModifiersRating = new ModifiersRating {
                                         SSPassRating = response.SS.lack_map_calculation.passing_difficulty,
                                         SSTechRating = response.SS.lack_map_calculation.balanced_tech * 10,
                                         SSPredictedAcc = response.SS.AIacc,
-                                        SSAccRating = ReplayUtils.AccRating(response.SS.AIacc, response.SS.lack_map_calculation.passing_difficulty),
+                                        SSAccRating = ReplayUtils.AccRating(response.SS.AIacc, response.SS.lack_map_calculation.passing_difficulty, response.SS.lack_map_calculation.balanced_tech * 10),
                                         SFPassRating = response.SFS.lack_map_calculation.passing_difficulty,
                                         SFTechRating = response.SFS.lack_map_calculation.balanced_tech * 10,
                                         SFPredictedAcc = response.SFS.AIacc,
-                                        SFAccRating = ReplayUtils.AccRating(response.SFS.AIacc, response.SFS.lack_map_calculation.passing_difficulty),
+                                        SFAccRating = ReplayUtils.AccRating(response.SFS.AIacc, response.SFS.lack_map_calculation.passing_difficulty, response.SFS.lack_map_calculation.balanced_tech * 10),
                                         FSPassRating = response.FS.lack_map_calculation.passing_difficulty,
                                         FSTechRating = response.FS.lack_map_calculation.balanced_tech * 10,
                                         FSPredictedAcc = response.FS.AIacc,
-                                        FSAccRating = ReplayUtils.AccRating(response.FS.AIacc, response.FS.lack_map_calculation.passing_difficulty),
+                                        FSAccRating = ReplayUtils.AccRating(response.FS.AIacc, response.FS.lack_map_calculation.passing_difficulty, response.FS.lack_map_calculation.balanced_tech * 10),
                                     };
 
                                 } else {
