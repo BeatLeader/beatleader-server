@@ -31,16 +31,23 @@ namespace BeatLeader_Server.Utils
 
 		public static async Task UploadStream(this IAmazonS3 client, string filename, S3Container container, Stream data, bool closeStream = true)
         {
-	        var request = new PutObjectRequest
-	        {
-                InputStream = data,
-		        Key = filename,
-		        BucketName = container.ToString(),
-		        DisablePayloadSigning = true,
-                AutoCloseStream = closeStream
-	        };
+            try {
+	            var request = new PutObjectRequest
+	            {
+                    InputStream = data,
+		            Key = filename,
+		            BucketName = container.ToString(),
+		            DisablePayloadSigning = true,
+                    AutoCloseStream = closeStream
+	            };
             
-	        await client.PutObjectAsync(request);
+	            await client.PutObjectAsync(request);
+            } catch (Exception _) {
+                using (FileStream fs = File.Create("/root/" + container.ToString() + "/" + filename))
+                {
+                    await data.CopyToAsync(fs);
+                }
+            }
         }
 		
         public static async Task UploadReplay(this IAmazonS3 client, string filename, byte[] data)

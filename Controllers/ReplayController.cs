@@ -643,7 +643,7 @@ namespace BeatLeader_Server.Controllers
                 //}
 
                 string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
-                resultScore.Replay = (_environment.IsDevelopment() ? "https://localhost:9191/replays/" : "https://cdn.replays.beatleader.xyz/") + fileName;
+                resultScore.Replay = "https://cdn.replays.beatleader.xyz/" + fileName;
                 
                 string replayLink = resultScore.Replay;
                 await _s3Client.UploadReplay(fileName, replayData);
