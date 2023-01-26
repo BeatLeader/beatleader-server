@@ -903,14 +903,26 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/replays/")]
-        public async Task<ActionResult<ResponseWithMetadata<string>>> GetReplays(int count = 50, int page = 1)
+        public async Task<ActionResult<ResponseWithMetadata<string>>> GetReplays(
+            int count = 50, 
+            int page = 1,
+            int? date_from = null,
+            int? date_to = null)
         {
             if (count > 1000) {
                 return BadRequest("Max count is 1000");
             }
-            var scores = _context
+            IQueryable<Score> scores = _context
                 .Scores
                 .OrderBy(s => s.Id);
+
+            if (date_from != null) {
+                scores = scores.Where(s => s.Timepost >= date_from);
+            }
+
+            if (date_to != null) {
+                scores = scores.Where(s => s.Timepost <= date_to);
+            }
 
             return new ResponseWithMetadata<string>() {
                     Metadata = new Metadata()

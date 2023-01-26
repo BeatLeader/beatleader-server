@@ -9,8 +9,6 @@
         vive = 2,
         
         vivePro = 4,
-        viveCosmos = 128,
-        knuckles = 64,
         wmr = 8,
 
         picoNeo3 = 33,
@@ -21,9 +19,11 @@
         questPro = 61,
         viveTracker = 62,
         viveTracker2 = 63,
-        viveTracker3 = 64,
+        knuckles = 64,
         nolo = 65,
         picophoenix = 66,
-        hands = 67
+        hands = 67,
+        viveTracker3 = 68,
+        viveCosmos = 128,
     }
 }

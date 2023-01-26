@@ -220,32 +220,32 @@ namespace BeatLeader_Server.Utils
         }
 
         public static ControllerEnum ControllerFromName(string controllerName) {
-            string lowerHmd = controllerName.ToLower();
+            string lowerController = controllerName.ToLower();
 
-            if (lowerHmd.Contains("vive tracker") && lowerHmd.Contains("3")) return ControllerEnum.viveTracker3;
-            if (lowerHmd.Contains("vive tracker") && lowerHmd.Contains("pro")) return ControllerEnum.viveTracker2;
-            if (lowerHmd.Contains("vive tracker")) return ControllerEnum.viveTracker;
+            if (lowerController.Contains("vive tracker") && lowerController.Contains("3")) return ControllerEnum.viveTracker3;
+            if (lowerController.Contains("vive tracker") && lowerController.Contains("pro")) return ControllerEnum.viveTracker2;
+            if (lowerController.Contains("vive tracker")) return ControllerEnum.viveTracker;
 
-            if (lowerHmd.Contains("vive") && lowerHmd.Contains("cosmos")) return ControllerEnum.viveCosmos;
-            if (lowerHmd.Contains("vive") && lowerHmd.Contains("pro") && lowerHmd.Contains("2")) return ControllerEnum.vivePro2;
-            if (lowerHmd.Contains("vive") && lowerHmd.Contains("pro")) return ControllerEnum.vivePro;
-            if (lowerHmd.Contains("vive")) return ControllerEnum.vive;
+            if (lowerController.Contains("vive") && lowerController.Contains("cosmos")) return ControllerEnum.viveCosmos;
+            if (lowerController.Contains("vive") && lowerController.Contains("pro") && lowerController.Contains("2")) return ControllerEnum.vivePro2;
+            if (lowerController.Contains("vive") && lowerController.Contains("pro")) return ControllerEnum.vivePro;
+            if (lowerController.Contains("vive")) return ControllerEnum.vive;
 
-            if (lowerHmd.Contains("pico neo") && lowerHmd.Contains("phoenix")) return ControllerEnum.picophoenix;
-            if (lowerHmd.Contains("pico neo") && lowerHmd.Contains("3")) return ControllerEnum.picoNeo3;
-            if (lowerHmd.Contains("pico neo") && lowerHmd.Contains("2")) return ControllerEnum.picoNeo2;
-            if (lowerHmd.Contains("knuckles")) return ControllerEnum.knuckles;
-            if (lowerHmd.Contains("miramar")) return ControllerEnum.miramar;
+            if (lowerController.Contains("pico neo") && lowerController.Contains("phoenix")) return ControllerEnum.picophoenix;
+            if (lowerController.Contains("pico neo") && lowerController.Contains("3")) return ControllerEnum.picoNeo3;
+            if (lowerController.Contains("pico neo") && lowerController.Contains("2")) return ControllerEnum.picoNeo2;
+            if (lowerController.Contains("knuckles")) return ControllerEnum.knuckles;
+            if (lowerController.Contains("miramar")) return ControllerEnum.miramar;
             
-            if (lowerHmd.Contains("quest pro")) return ControllerEnum.questPro;
-            if (lowerHmd.Contains("quest2")) return ControllerEnum.quest2;
-            if (lowerHmd.Contains("oculus touch") || lowerHmd.Contains("rift cv1")) return ControllerEnum.oculustouch;
-            if (lowerHmd.Contains("rift s") || lowerHmd.Contains("quest")) return ControllerEnum.oculustouch2;
+            if (lowerController.Contains("quest pro")) return ControllerEnum.questPro;
+            if (lowerController.Contains("quest2")) return ControllerEnum.quest2;
+            if (lowerController.Contains("oculus touch") || lowerController.Contains("rift cv1")) return ControllerEnum.oculustouch;
+            if (lowerController.Contains("rift s") || lowerController.Contains("quest")) return ControllerEnum.oculustouch2;
 
-            if (lowerHmd.Contains("windows")) return ControllerEnum.wmr;
-            if (lowerHmd.Contains("nolo")) return ControllerEnum.nolo;
-            if (lowerHmd.Contains("disco")) return ControllerEnum.disco;
-            if (lowerHmd.Contains("hands")) return ControllerEnum.hands;
+            if (lowerController.Contains("windows")) return ControllerEnum.wmr;
+            if (lowerController.Contains("nolo")) return ControllerEnum.nolo;
+            if (lowerController.Contains("disco")) return ControllerEnum.disco;
+            if (lowerController.Contains("hands")) return ControllerEnum.hands;
 
             return ControllerEnum.unknown;
         }
