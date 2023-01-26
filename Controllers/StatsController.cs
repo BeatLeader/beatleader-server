@@ -176,13 +176,16 @@ namespace BeatLeader_Server.Controllers
 
             Player? scoreMaker = await _context.Players.Where(p => p.Id == score.PlayerId).Include(p => p.ScoreStats).FirstOrDefaultAsync();
             if (scoreMaker == null) return NotFound();
+            if (scoreMaker.ScoreStats == null) {
+                scoreMaker.ScoreStats = new PlayerScoreStats();
+            }
 
             if (currentID != null)
             {
                 score.AuthorizedReplayWatched++;
                 scoreMaker.ScoreStats.AuthorizedReplayWatched++;
                 var player = await _context.Players.Where(p => p.Id == currentID).Include(p => p.ScoreStats).FirstOrDefaultAsync();
-                if (player != null) {
+                if (player != null && player.ScoreStats != null) {
                     player.ScoreStats.WatchedReplays++;
                 }
             } else {

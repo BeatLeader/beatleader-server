@@ -200,41 +200,6 @@ namespace BeatLeader_Server.Controllers
                     .FirstOrDefault();
             }
 
-            var result = await StandardScore(
-                leaderboard, 
-                resultScore, 
-                currentScore, 
-                replay,
-                replayData,
-                offsets,
-                //replayDecoder, 
-                //continuing, 
-                context, 
-                maxScore);
-
-            if (result.Item2) {
-                await CollectStats(replay.info, true, replay.frames.Last().time, EndType.Clear);
-            }
-
-            return result.Item1;
-        }
-
-        [NonAction]
-        private async Task<(ActionResult<ScoreResponse>, bool)> StandardScore(
-            Leaderboard leaderboard,
-            Score resultScore,
-            Score? currentScore,
-            Replay replay,
-            byte[] replayData,
-            ReplayOffsets offsets,
-            //AsyncReplayDecoder replayDecoder,
-            //Task<Replay?> continuing,
-            HttpContext context,
-            int maxScore) {
-
-            var transaction = await _context.Database.BeginTransactionAsync();
-            var info = replay.info; // replayDecoder.replay.info;
-
             Player? player;
             using (_serverTiming.TimeAction("player"))
             {
@@ -269,6 +234,85 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
             }
+
+            var transaction = await _context.Database.BeginTransactionAsync();
+            ActionResult<ScoreResponse> result = BadRequest("Exception occured, ping NSGolova"); 
+            bool stats = false;
+             
+            try {
+                (result, stats) = await StandardScore(
+                    leaderboard, 
+                    player,
+                    resultScore, 
+                    currentScore, 
+                    replay,
+                    replayData,
+                    offsets,
+                    //replayDecoder, 
+                    //continuing, 
+                    context, 
+                    transaction,
+                    maxScore);
+            } catch (Exception e) {
+
+                 _context.RejectChanges();
+
+                string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsortemp";
+                resultScore.Replay = "https://cdn.replays.beatleader.xyz/" + fileName;
+                
+                await _s3Client.UploadReplay(fileName, replayData);
+
+                FailedScore failedScore = new FailedScore {
+                    Error = e.Message,
+                    Leaderboard = leaderboard,
+                    PlayerId = resultScore.PlayerId,
+                    Modifiers = resultScore.Modifiers,
+                    Replay = resultScore.Replay,
+                    Accuracy = resultScore.Accuracy,
+                    Timeset = resultScore.Timeset,
+                    BaseScore = resultScore.BaseScore,
+                    ModifiedScore = resultScore.ModifiedScore,
+                    Pp = resultScore.Pp,
+                    Weight = resultScore.Weight,
+                    Rank = resultScore.Rank,
+                    MissedNotes = resultScore.MissedNotes,
+                    BadCuts = resultScore.BadCuts,
+                    BombCuts = resultScore.BombCuts,
+                    Player = player,
+                    Pauses = resultScore.Pauses,
+                    Hmd = resultScore.Hmd,
+                    FullCombo = resultScore.FullCombo,
+                
+                };
+                _context.FailedScores.Add(failedScore);
+                _context.SaveChanges();
+
+                transaction.Commit();
+            }
+
+            if (stats) {
+                await CollectStats(replay.info, true, replay.frames.Last().time, EndType.Clear);
+            }
+
+            return result;
+        }
+
+        [NonAction]
+        private async Task<(ActionResult<ScoreResponse>, bool)> StandardScore(
+            Leaderboard leaderboard,
+            Player player,
+            Score resultScore,
+            Score? currentScore,
+            Replay replay,
+            byte[] replayData,
+            ReplayOffsets offsets,
+            //AsyncReplayDecoder replayDecoder,
+            //Task<Replay?> continuing,
+            HttpContext context,
+            IDbContextTransaction transaction,
+            int maxScore) {
+            
+            var info = replay.info; // replayDecoder.replay.info;
 
             if (player.Banned) return (BadRequest("You are banned!"), false);
             if (resultScore.BaseScore > maxScore) return (BadRequest("Score is bigger than max possible on this map!"), false);

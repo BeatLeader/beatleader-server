@@ -249,8 +249,8 @@ namespace BeatLeader_Server.Controllers
                     overlayImage,
                     score.ProfileSettings?.Hue != null ? (int)score.ProfileSettings?.Hue : 0,
                     score.ProfileSettings?.Saturation ?? 1,
-                    score.ProfileSettings?.LeftSaberColor != null ? Color.Parse(score.ProfileSettings.LeftSaberColor) : new Color(new Rgba32(250, 20, 255, 255)),
-                    score.ProfileSettings?.RightSaberColor != null ? Color.Parse(score.ProfileSettings.RightSaberColor) : new Color(new Rgba32(128, 0, 255, 255)),
+                    score.ProfileSettings?.LeftSaberColor?.Length > 0 ? Color.Parse(score.ProfileSettings.LeftSaberColor) : new Color(new Rgba32(250, 20, 255, 255)),
+                    score.ProfileSettings?.RightSaberColor?.Length > 0 ? Color.Parse(score.ProfileSettings.RightSaberColor) : new Color(new Rgba32(128, 0, 255, 255)),
                     diffColor
                 ));
             }

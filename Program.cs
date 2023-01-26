@@ -13,6 +13,6 @@ public static class Program
                 logging.AddConfiguration(hostingContext.Configuration.GetSection("Logging"));
                 logging.AddConsole();
                 logging.AddEventSourceLogger();
-                logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning);
+                logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Error);
             });
 }

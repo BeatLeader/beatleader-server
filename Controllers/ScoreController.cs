@@ -192,6 +192,10 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int count = 10)
         {
+            if (page < 1) {
+                return BadRequest("Page should be greater than zero!");
+            }
+
             ResponseWithMetadata<SaverScoreResponse> result = new ResponseWithMetadata<SaverScoreResponse>
             {
                 Data = new List<SaverScoreResponse>(),
@@ -270,6 +274,9 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int count = 10)
         {
+            if (page < 1) {
+                return BadRequest("Page should be greater than zero!");
+            }
             ResponseWithMetadataAndSelection<ScoreResponse> result = new ResponseWithMetadataAndSelection<ScoreResponse>
             {
                 Data = new List<ScoreResponse>(),
