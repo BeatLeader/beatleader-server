@@ -5,6 +5,9 @@ using BeatLeader_Server.Services;
 using AspNetCoreRateLimit;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
+using Prometheus.Client.DependencyInjection;
+using Prometheus.Client.HttpRequestDurations;
+using Prometheus.Client.AspNetCore;
 
 namespace BeatLeader_Server {
 
@@ -184,6 +187,7 @@ namespace BeatLeader_Server {
             }
 
             services.AddServerTiming();
+            services.AddMetricFactory();
 
             services.AddDbContext<AppContext>(options => options.UseSqlServer(Configuration.GetValue<string>("DefaultConnection")));
             services.AddDbContext<ReadAppContext>(options => options.UseSqlServer(Configuration.GetValue<string>("ReadOnlyConnection")));
@@ -225,6 +229,8 @@ namespace BeatLeader_Server {
         public void Configure (IApplicationBuilder app)
         {
             app.UseMiddleware<ErrorLoggingMiddleware>();
+            app.UsePrometheusServer();
+            app.UsePrometheusRequestDurations();
             app.UseStaticFiles();
             app.UseForwardedHeaders();
             app.UseServerTiming();
