@@ -9,38 +9,38 @@ namespace BeatLeader_Server.Utils
     static class ReplayUtils
     {
         static List<(double, double)> pointList = new List<(double, double)> { 
-                (1, 7),
-                (0.999, 5.8),
-                (0.9975, 4.7),
-                (0.995, 3.76),
-                (0.9925, 3.17),
-                (0.99, 2.73),
-                (0.9875, 2.38),
-                (0.985, 2.1),
-                (0.9825, 1.88),
-                (0.98, 1.71),
-                (0.9775, 1.57),
-                (0.975, 1.45),
-                (0.9725, 1.37),
-                (0.97, 1.31),
-                (0.965, 1.20),
-                (0.96, 1.11),
-                (0.955, 1.045),
-                (0.95, 1),
-                (0.94, 0.94),
-                (0.93, 0.885),
-                (0.92, 0.835),
-                (0.91, 0.79),
-                (0.9, 0.75),
-                (0.875, 0.655),
-                (0.85, 0.57),
-                (0.825, 0.51),
-                (0.8, 0.47),
-                (0.75, 0.40),
-                (0.7, 0.34),
-                (0.65, 0.29),
-                (0.6, 0.25),
-                (0.0, 0.0) };
+                (1.0, 7.424),
+                (0.999, 6.241),
+                (0.9975, 5.158),
+                (0.995, 4.010),
+                (0.9925, 3.241),
+                (0.99, 2.700),
+                (0.9875, 2.303),
+                (0.985, 2.007),
+                (0.9825, 1.786),
+                (0.98, 1.618),
+                (0.9775, 1.490),
+                (0.975, 1.392),
+                (0.9725, 1.315),
+                (0.97, 1.256),
+                (0.965, 1.167),
+                (0.96, 1.101),
+                (0.955, 1.047),
+                (0.95, 1.000),
+                (0.94, 0.919),
+                (0.93, 0.847),
+                (0.92, 0.786),
+                (0.91, 0.734),
+                (0.9, 0.692),
+                (0.875, 0.606),
+                (0.85, 0.537),
+                (0.825, 0.480),
+                (0.8, 0.429),
+                (0.75, 0.345),
+                (0.7, 0.286),
+                (0.65, 0.246),
+                (0.6, 0.217),
+                (0.0, 0.000) };
         public static float Curve(float acc, float stars)
         {
             float l = (float)(1f - (0.03f * (stars - 3.0f) / 11.0f));
@@ -79,20 +79,21 @@ namespace BeatLeader_Server.Utils
             if (float.IsInfinity(difficulty_to_acc) || float.IsNaN(difficulty_to_acc) || float.IsNegativeInfinity(difficulty_to_acc)) {
                 difficulty_to_acc = 0;
             }
-            return difficulty_to_acc;
+            return difficulty_to_acc * 1.3f;
         }
 
-        private static float GetPp(float accuracy, float predictedAcc, float passRating, float techRating) {
+        private static (float, float, float) GetPp(float accuracy, float predictedAcc, float passRating, float techRating) {
             float difficulty_to_acc = AccRating(predictedAcc, passRating, techRating);
 
-            float passPP = passRating * 14;
-            float accPP = Curve2(accuracy) * difficulty_to_acc * 27.5f / (1 + MathF.Pow(MathF.E, -8 * (passRating + 0.05f)));
-            float techPP = (float)(1 / (1 + Math.Pow(Math.E, (-64 * (accuracy - 0.9f)))) * 1.5f * (techRating / (1 + Math.Pow(Math.E, -16 * (techRating * 0.1f - 0.5f)))) * difficulty_to_acc / Math.Max((0.3333f * passRating), 1));
+            float reducedTechRating = techRating / 10;
+            float passPP = passRating * 15;
+            float accPP = Curve2(accuracy) * difficulty_to_acc * 22.5f;
+            float techPP = (float)(1 / (1 + Math.Pow(Math.E, -32 * (accuracy - 0.925f))) * (reducedTechRating / (1 + Math.Pow(Math.E, -8 * (reducedTechRating - 0.25f)))) * 10.5 * difficulty_to_acc / Math.Max((0.3333f * passRating), 2));
             
-            return passPP + accPP + techPP;
+            return (passPP, accPP, techPP);
         }
 
-        public static (float, float) PpFromScore(
+        public static (float, float, float, float, float) PpFromScore(
             float accuracy, 
             string modifiers, 
             ModifiersMap modifierValues, 
@@ -110,11 +111,12 @@ namespace BeatLeader_Server.Utils
 
             float mp = modifierValues.GetTotalMultiplier(modifiers, modifiersRating == null);
 
-            float rawPP = 0; float fullPP = 0;
+            float rawPP = 0; float fullPP = 0; float passPP = 0; float accPP = 0; float techPP = 0;
             if (!timing) {
                 if (!modifiers.Contains("NF"))
                 {
-                    rawPP = GetPp(accuracy, predictedAcc, passRating, techRating);
+                    (passPP, accPP, techPP) = GetPp(accuracy, predictedAcc, passRating, techRating);
+                    rawPP = passPP + accPP + techPP;
                     if (modifiersRating != null) {
                         var modifiersMap = modifiersRating.ToDictionary<float>();
                         foreach (var modifier in modifiers.ToUpper().Split(","))
@@ -128,7 +130,8 @@ namespace BeatLeader_Server.Utils
                             }
                         }
                     }
-                    fullPP = GetPp(accuracy, predictedAcc, passRating * mp, techRating * mp);
+                    (passPP, accPP, techPP) = GetPp(accuracy, predictedAcc, passRating * mp, techRating * mp);
+                    fullPP = passPP + accPP + techPP;
                 }
             } else {
                 rawPP = accuracy * passRating * 55f;
@@ -154,10 +157,10 @@ namespace BeatLeader_Server.Utils
                 fullPP *= -1;
             }
 
-            return (fullPP, fullPP - rawPP);
+            return (fullPP, fullPP - rawPP, passPP, accPP, techPP);
         }
 
-        public static (float, float) PpFromScore(Score s, DifficultyDescription difficulty) {
+        public static (float, float, float, float, float) PpFromScore(Score s, DifficultyDescription difficulty) {
             return PpFromScore(
                 s.Accuracy, 
                 s.Modifiers, 
@@ -169,7 +172,7 @@ namespace BeatLeader_Server.Utils
                 difficulty.ModeName.ToLower() == "rhythmgamestandard");
         }
 
-        public static (float, float) PpFromScoreResponse(
+        public static (float, float, float, float, float) PpFromScoreResponse(
             ScoreResponse s, 
             float predictedAcc, 
             float passRating, 
@@ -206,7 +209,7 @@ namespace BeatLeader_Server.Utils
             score.Modifiers = info.modifiers;
 
             if (hasPp) {
-                (score.Pp, score.BonusPp) = PpFromScore(score, difficulty);
+                (score.Pp, score.BonusPp, score.PassPP, score.AccPP, score.TechPP) = PpFromScore(score, difficulty);
             }
 
             score.Qualification = qualification;

@@ -229,7 +229,7 @@ namespace BeatLeader_Server.Controllers
                         {
                             s.Accuracy = (float)s.BaseScore / (float)ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
                         }
-                        (s.Pp, s.BonusPp) = ReplayUtils.PpFromScoreResponse(s, reweight.PredictedAcc, reweight.PassRating, reweight.TechRating, reweight.Modifiers, reweight.ModifiersRating);
+                        (s.Pp, s.BonusPp, s.PassPP, s.AccPP, s.TechPP) = ReplayUtils.PpFromScoreResponse(s, reweight.PredictedAcc, reweight.PassRating, reweight.TechRating, reweight.Modifiers, reweight.ModifiersRating);
 
                         return s;
                     });
@@ -261,7 +261,7 @@ namespace BeatLeader_Server.Controllers
                         {
                             s.Accuracy = (float)s.BaseScore / (float)ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
                         }
-                        (s.Pp, s.BonusPp) = ReplayUtils.PpFromScoreResponse(
+                        (s.Pp, s.BonusPp, s.PassPP, s.AccPP, s.TechPP) = ReplayUtils.PpFromScoreResponse(
                             s, 
                             leaderboard.Difficulty.PredictedAcc ?? 0, 
                             leaderboard.Difficulty.PassRating ?? 0, 

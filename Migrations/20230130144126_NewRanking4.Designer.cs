@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20230130144126_NewRanking4")]
+    partial class NewRanking4
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -647,17 +650,11 @@ namespace BeatLeader_Server.Migrations
                     b.Property<string>("LeaderboardId")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<float>("NewAccRating")
-                        .HasColumnType("real");
-
                     b.Property<int>("NewCriteriaMet")
                         .HasColumnType("int");
 
                     b.Property<int?>("NewModifiersModifierId")
                         .HasColumnType("int");
-
-                    b.Property<float>("NewPassRating")
-                        .HasColumnType("real");
 
                     b.Property<float>("NewRankability")
                         .HasColumnType("real");
@@ -665,14 +662,8 @@ namespace BeatLeader_Server.Migrations
                     b.Property<float>("NewStars")
                         .HasColumnType("real");
 
-                    b.Property<float>("NewTechRating")
-                        .HasColumnType("real");
-
                     b.Property<int>("NewType")
                         .HasColumnType("int");
-
-                    b.Property<float>("OldAccRating")
-                        .HasColumnType("real");
 
                     b.Property<int>("OldCriteriaMet")
                         .HasColumnType("int");
@@ -680,16 +671,10 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int?>("OldModifiersModifierId")
                         .HasColumnType("int");
 
-                    b.Property<float>("OldPassRating")
-                        .HasColumnType("real");
-
                     b.Property<float>("OldRankability")
                         .HasColumnType("real");
 
                     b.Property<float>("OldStars")
-                        .HasColumnType("real");
-
-                    b.Property<float>("OldTechRating")
                         .HasColumnType("real");
 
                     b.Property<int>("OldType")

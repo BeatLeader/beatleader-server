@@ -1,6 +1,7 @@
 ﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
+using Dasync.Collections;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -442,46 +443,100 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/admin/maps/newranking")]
         public async Task<ActionResult> newranking()
         {
-            var songs = _context.Songs.Where(el => el.Difficulties.FirstOrDefault(d => d.Status == DifficultyStatus.ranked) != null).Include(song => song.Difficulties).ToList();
+            var songs = _context.Songs.Where(el => el.Difficulties.FirstOrDefault(d => d.Status == DifficultyStatus.ranked || d.Status == DifficultyStatus.qualified || d.Status == DifficultyStatus.nominated) != null).Include(song => song.Difficulties).ThenInclude(d => d.ModifiersRating).ToList();
 
-            foreach (var song in songs)
-            {
+            await songs.ParallelForEachAsync(async song => {
                 foreach (var diff in song.Difficulties)
                 {
-                    if (diff.Status == DifficultyStatus.ranked) {
+                    if (diff.Status == DifficultyStatus.ranked || diff.Status == DifficultyStatus.qualified || diff.Status == DifficultyStatus.nominated) {
                         var response = await SongUtils.ExmachinaStars(song.Hash, diff.Value);
-                        if (response != null) {
-                            diff.PassRating = response.none.lack_map_calculation.passing_difficulty;
+                        if (response != null)
+                        {
+                            diff.PassRating = response.none.lack_map_calculation.balanced_pass_diff;
                             diff.TechRating = response.none.lack_map_calculation.balanced_tech * 10;
                             diff.PredictedAcc = response.none.AIacc;
-                            diff.AccRating = ReplayUtils.AccRating(
-                                response.none.AIacc, 
-                                response.none.lack_map_calculation.passing_difficulty,
-                                response.none.lack_map_calculation.balanced_tech * 10);
-
-                            diff.ModifiersRating = new ModifiersRating {
-                                SSPassRating = response.SS.lack_map_calculation.passing_difficulty,
+                            diff.ModifiersRating = new ModifiersRating
+                            {
+                                SSPassRating = response.SS.lack_map_calculation.balanced_pass_diff,
                                 SSTechRating = response.SS.lack_map_calculation.balanced_tech * 10,
                                 SSPredictedAcc = response.SS.AIacc,
-                                SSAccRating = ReplayUtils.AccRating(response.SS.AIacc, response.SS.lack_map_calculation.passing_difficulty, response.SS.lack_map_calculation.balanced_tech * 10),
-                                SFPassRating = response.SFS.lack_map_calculation.passing_difficulty,
-                                SFTechRating = response.SFS.lack_map_calculation.balanced_tech * 10 ,
+                                SFPassRating = response.SFS.lack_map_calculation.balanced_pass_diff,
+                                SFTechRating = response.SFS.lack_map_calculation.balanced_tech * 10,
                                 SFPredictedAcc = response.SFS.AIacc,
-                                SFAccRating = ReplayUtils.AccRating(response.SFS.AIacc, response.SFS.lack_map_calculation.passing_difficulty, response.SFS.lack_map_calculation.balanced_tech * 10),
-                                FSPassRating = response.FS.lack_map_calculation.passing_difficulty,
+                                FSPassRating = response.FS.lack_map_calculation.balanced_pass_diff,
                                 FSTechRating = response.FS.lack_map_calculation.balanced_tech * 10,
-                                FSPredictedAcc = response.FS.AIacc,
-                                FSAccRating = ReplayUtils.AccRating(response.FS.AIacc, response.FS.lack_map_calculation.passing_difficulty, response.FS.lack_map_calculation.balanced_tech * 10),
+                                FSPredictedAcc = response.FS.AIacc
                             };
 
-                        } else {
-                            diff.PassRating = diff.Stars ?? 4.2f;
+                            diff.AccRating = ReplayUtils.AccRating(
+                                diff.PredictedAcc, 
+                                diff.PassRating,
+                                diff.TechRating);
+
+                            diff.Stars = (diff.PassRating + diff.TechRating + diff.AccRating) / 3;
+
+                            var rating = diff.ModifiersRating;
+                            rating.SSAccRating = ReplayUtils.AccRating(
+                                    rating.SSPredictedAcc, 
+                                    rating.SSPassRating, 
+                                    rating.SSTechRating);
+                            rating.SFAccRating = ReplayUtils.AccRating(
+                                    rating.SFPredictedAcc, 
+                                    rating.SFPassRating, 
+                                    rating.SFTechRating);
+                            rating.FSAccRating = ReplayUtils.AccRating(
+                                    rating.FSPredictedAcc, 
+                                    rating.FSPassRating, 
+                                    rating.FSTechRating);
+
+                        }
+                        else
+                        {
+                            diff.PassRating = diff.Stars ?? 0.0f;
                             diff.PredictedAcc = 0.98f;
-                            diff.TechRating = 4.2f;
+                            diff.TechRating = 0.0f;
                         }
                     }
                 }
-            }
+            }, maxDegreeOfParallelism: 20);
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpGet("~/admin/maps/newranking2")]
+        public async Task<ActionResult> newranking2()
+        {
+            var songs = _context.Songs.Where(el => el.Difficulties.FirstOrDefault(d => d.Status == DifficultyStatus.ranked || d.Status == DifficultyStatus.qualified || d.Status == DifficultyStatus.nominated) != null).Include(song => song.Difficulties).ThenInclude(d => d.ModifiersRating).ToList();
+
+            await songs.ParallelForEachAsync(async song => {
+                foreach (var diff in song.Difficulties)
+                {
+                    if (diff.Status == DifficultyStatus.ranked || diff.Status == DifficultyStatus.qualified || diff.Status == DifficultyStatus.nominated) {
+                        diff.AccRating = ReplayUtils.AccRating(
+                                diff.PredictedAcc, 
+                                diff.PassRating,
+                                diff.TechRating);
+
+                        diff.Stars = MathF.Sqrt((MathF.Pow(diff.PassRating ?? 0, 2) + MathF.Pow(diff.TechRating ?? 0, 2) + MathF.Pow(diff.AccRating?? 0, 2)) / 2);
+
+                        var rating = diff.ModifiersRating;
+                        rating.SSAccRating = ReplayUtils.AccRating(
+                                rating.SSPredictedAcc, 
+                                rating.SSPassRating, 
+                                rating.SSTechRating);
+                        rating.SFAccRating = ReplayUtils.AccRating(
+                                rating.SFPredictedAcc, 
+                                rating.SFPassRating, 
+                                rating.SFTechRating);
+                        rating.FSAccRating = ReplayUtils.AccRating(
+                                rating.FSPredictedAcc, 
+                                rating.FSPassRating, 
+                                rating.FSTechRating);
+                    }
+                }
+            }, maxDegreeOfParallelism: 20);
 
             await _context.SaveChangesAsync();
 

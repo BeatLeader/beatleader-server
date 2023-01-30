@@ -69,7 +69,7 @@ namespace BeatLeader_Server.Controllers
                         }
                         if (hasPp)
                         {
-                            (s.Pp, s.BonusPp) = ReplayUtils.PpFromScore(s, leaderboard.Difficulty);
+                            (s.Pp, s.BonusPp, s.PassPP, s.AccPP, s.TechPP) = ReplayUtils.PpFromScore(s, leaderboard.Difficulty);
                         }
                         else
                         {
@@ -215,7 +215,7 @@ namespace BeatLeader_Server.Controllers
                         }
                         if (hasPp)
                         {
-                            (score.Pp, score.BonusPp) = ReplayUtils.PpFromScore(
+                            (score.Pp, score.BonusPp, score.PassPP, score.AccPP, score.TechPP) = ReplayUtils.PpFromScore(
                                 score.Accuracy, 
                                 s.Modifiers, 
                                 leaderboard.Difficulty.ModifierValues, 
@@ -250,6 +250,9 @@ namespace BeatLeader_Server.Controllers
                         _context.Entry(score).Property(x => x.Accuracy).IsModified = true;
                         _context.Entry(score).Property(x => x.Pp).IsModified = true;
                         _context.Entry(score).Property(x => x.BonusPp).IsModified = true;
+                        _context.Entry(score).Property(x => x.PassPP).IsModified = true;
+                        _context.Entry(score).Property(x => x.AccPP).IsModified = true;
+                        _context.Entry(score).Property(x => x.TechPP).IsModified = true;
                         _context.Entry(score).Property(x => x.Qualification).IsModified = true;
 
                         newScores.Add(score);

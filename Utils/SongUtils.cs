@@ -165,7 +165,7 @@ namespace BeatLeader_Server.Utils
 
         public class ExmachinaLackPart {
             public float balanced_tech { get; set; }
-            public float passing_difficulty { get; set; }
+            public float balanced_pass_diff { get; set; }
         }
 
         public class ExmachinaRating {
