@@ -522,18 +522,20 @@ namespace BeatLeader_Server.Controllers
                         diff.Stars = MathF.Sqrt((MathF.Pow(diff.PassRating ?? 0, 2) + MathF.Pow(diff.TechRating ?? 0, 2) + MathF.Pow(diff.AccRating?? 0, 2)) / 2);
 
                         var rating = diff.ModifiersRating;
-                        rating.SSAccRating = ReplayUtils.AccRating(
-                                rating.SSPredictedAcc, 
-                                rating.SSPassRating, 
-                                rating.SSTechRating);
-                        rating.SFAccRating = ReplayUtils.AccRating(
-                                rating.SFPredictedAcc, 
-                                rating.SFPassRating, 
-                                rating.SFTechRating);
-                        rating.FSAccRating = ReplayUtils.AccRating(
-                                rating.FSPredictedAcc, 
-                                rating.FSPassRating, 
-                                rating.FSTechRating);
+                        if (rating != null) {
+                            rating.SSAccRating = ReplayUtils.AccRating(
+                                    rating.SSPredictedAcc, 
+                                    rating.SSPassRating, 
+                                    rating.SSTechRating);
+                            rating.SFAccRating = ReplayUtils.AccRating(
+                                    rating.SFPredictedAcc, 
+                                    rating.SFPassRating, 
+                                    rating.SFTechRating);
+                            rating.FSAccRating = ReplayUtils.AccRating(
+                                    rating.FSPredictedAcc, 
+                                    rating.FSPassRating, 
+                                    rating.FSTechRating);
+                        }
                     }
                 }
             }, maxDegreeOfParallelism: 20);
