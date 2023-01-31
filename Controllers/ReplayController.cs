@@ -7,6 +7,7 @@ using Discord.Webhook;
 using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
@@ -257,6 +258,12 @@ namespace BeatLeader_Server.Controllers
 
                  _context.RejectChanges();
 
+                if (e is SqlException)
+                {
+                    transaction.Rollback();
+                    transaction = await _context.Database.BeginTransactionAsync();
+                }
+
                 string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsortemp";
                 resultScore.Replay = "https://cdn.replays.beatleader.xyz/" + fileName;
                 
@@ -268,21 +275,12 @@ namespace BeatLeader_Server.Controllers
                     PlayerId = resultScore.PlayerId,
                     Modifiers = resultScore.Modifiers,
                     Replay = resultScore.Replay,
-                    Accuracy = resultScore.Accuracy,
                     Timeset = resultScore.Timeset,
                     BaseScore = resultScore.BaseScore,
                     ModifiedScore = resultScore.ModifiedScore,
-                    Pp = resultScore.Pp,
-                    Weight = resultScore.Weight,
                     Rank = resultScore.Rank,
-                    MissedNotes = resultScore.MissedNotes,
-                    BadCuts = resultScore.BadCuts,
-                    BombCuts = resultScore.BombCuts,
                     Player = player,
-                    Pauses = resultScore.Pauses,
                     Hmd = resultScore.Hmd,
-                    FullCombo = resultScore.FullCombo,
-                
                 };
                 _context.FailedScores.Add(failedScore);
                 _context.SaveChanges();
