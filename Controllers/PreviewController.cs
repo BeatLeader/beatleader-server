@@ -121,7 +121,7 @@ namespace BeatLeader_Server.Controllers
             return Image.Load<Rgba32>(_webHostEnvironment.WebRootPath + "/images/" + fileName);
         }
 
-        private async Task<Image<Rgba32>?> LoadRemoteImage(string url)
+        private async Task<Image<Rgba32>> LoadRemoteImage(string url)
         {
             Image<Rgba32>? result = null;
             using (var request = new HttpRequestMessage(HttpMethod.Get, url))
@@ -131,7 +131,7 @@ namespace BeatLeader_Server.Controllers
                     result = Image.Load<Rgba32>(contentStream);
                 } catch { }
             }
-            return result;
+            return result ?? LoadImage("default.jpg");
         }
 
         private async Task<Image<Rgba32>?> LoadOverlayImage(ScoreSelect score)
@@ -219,8 +219,8 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            Image<Rgba32>? avatarImage;
-            Image<Rgba32>? coverImage;
+            Image<Rgba32> avatarImage;
+            Image<Rgba32> coverImage;
             Image<Rgba32>? overlayImage;
 
             using (_serverTiming.TimeAction("images"))

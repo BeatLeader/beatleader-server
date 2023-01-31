@@ -143,6 +143,9 @@ namespace BeatLeader_Server.Controllers
             var info = replay?.info;
 
             if (info == null) return BadRequest("It's not a replay or it has old version.");
+            if (replay.notes.Count == 0 || replay.frames.Count == 0) {
+                return BadRequest("Replay is broken, update your mod please.");
+            }
             if (info.hash.Length < 40) return BadRequest("Hash is to short");
 
             var gameversion = replay.info.gameVersion.Split(".");
@@ -176,7 +179,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            if (leaderboard.Difficulty.Notes != 0 && replay.notes.Count > leaderboard.Difficulty.Notes) {
+            if ((leaderboard.Difficulty.Status == DifficultyStatus.ranked || leaderboard.Difficulty.Status == DifficultyStatus.qualified) && leaderboard.Difficulty.Notes != 0 && replay.notes.Count > leaderboard.Difficulty.Notes) {
                 string? error = ReplayUtils.RemoveDuplicates(replay, leaderboard);
                 if (error != null) {
                     return BadRequest("Failed to delete duplicate note: " + error);
@@ -646,12 +649,6 @@ namespace BeatLeader_Server.Controllers
 
             //resultScore.ReplayOffsets = replayDecoder.offsets;
             //var replay = replayDecoder.replay;
-
-            if (replay.notes.Count == 0 || replay.frames.Count == 0) {
-                SaveFailedScore(transaction2, currentScore, resultScore, leaderboard, "Replay is broken, update your mod please.");
-
-                return;
-            }
 
             if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
             {
