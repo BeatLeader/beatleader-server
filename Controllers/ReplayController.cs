@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
+using Prometheus.Client;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -29,6 +30,10 @@ namespace BeatLeader_Server.Controllers
         private readonly IConfiguration _configuration;
         private readonly IServerTiming _serverTiming;
 
+        private readonly IMetricFamily<IGauge> _replayLocation;
+        private readonly Geohash.Geohasher _geoHasher;
+        private static IP2Location.Component ipLocation;
+
         public ReplayController(
             AppContext context,
             IWebHostEnvironment env,
@@ -36,7 +41,8 @@ namespace BeatLeader_Server.Controllers
             LeaderboardController leaderboardController, 
             PlayerController playerController,
             ScoreController scoreController,
-            IServerTiming serverTiming
+            IServerTiming serverTiming,
+            IMetricFactory metricFactory
             )
 		{
             _leaderboardController = leaderboardController;
@@ -47,6 +53,14 @@ namespace BeatLeader_Server.Controllers
             _configuration = configuration;
             _serverTiming = serverTiming;
             _s3Client = configuration.GetS3Client();
+
+            _replayLocation = metricFactory.CreateGauge("replay_position", "Posted replay location", new string[] { "geohash" });
+            _geoHasher = new Geohash.Geohasher();
+
+            if (ipLocation == null) {
+                ipLocation = new IP2Location.Component();
+                ipLocation.Open(env.WebRootPath + "/databases/IP2LOCATION-LITE-DB.BIN");
+            }
         }
 
         [HttpPost("~/replay"), DisableRequestSizeLimit]
@@ -204,7 +218,7 @@ namespace BeatLeader_Server.Controllers
                     .ThenInclude(v => v.Feedbacks)
                     .FirstOrDefault();
             }
-
+            var ip = context.Request.HttpContext.GetIpAddress();
             Player? player;
             using (_serverTiming.TimeAction("player"))
             {
@@ -228,8 +242,7 @@ namespace BeatLeader_Server.Controllers
                     if (context.Request.Headers["cf-ipcountry"] != StringValues.Empty) {
                        country = context.Request.Headers["cf-ipcountry"].ToString();
                     }
-
-                    var ip = context.Request.HttpContext.GetIpAddress();
+                    
                     if (country == null && ip != null)
                     {
                         country = WebUtils.GetCountryByIp(ip.ToString());
@@ -238,6 +251,18 @@ namespace BeatLeader_Server.Controllers
                         player.Country = country;
                     }
                 }
+            }
+
+            if (ipLocation != null && ip != null) {
+                var location = ipLocation.IPQuery(ip);
+                var hash = _geoHasher.Encode(location.Latitude, location.Longitude, 2);
+                var counter = _replayLocation.WithLabels(new string[] { hash });
+                counter.Inc();
+
+                Task.Run(async () => {
+                    await Task.Delay(TimeSpan.FromMinutes(10));
+                    counter.Dec();
+                });
             }
 
             var transaction = await _context.Database.BeginTransactionAsync();
