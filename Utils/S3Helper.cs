@@ -75,6 +75,29 @@ namespace BeatLeader_Server.Utils
             await client.UploadStream(filename, S3Container.playlists, new BinaryData(JsonConvert.SerializeObject(playlist)).ToStream());
         }
 
+        public static async Task<Stream?> DownloadStreamOffset(
+            this IAmazonS3 client, 
+            string filename, 
+            S3Container container,
+            int offset,
+            int size) {
+            var request = new GetObjectRequest 
+            {
+                BucketName = container.ToString(),
+                Key = filename,
+                ByteRange = new ByteRange(offset, offset + size)
+            };
+
+            try
+            {
+			    var result = await client.GetObjectAsync(request);
+            
+	            return result.HttpStatusCode == System.Net.HttpStatusCode.OK || result.HttpStatusCode == System.Net.HttpStatusCode.PartialContent ? result.ResponseStream : null;
+            } catch (Exception ex) {
+                return null;
+            }
+        }
+
         public static async Task<Stream?> DownloadStream(this IAmazonS3 client, string filename, S3Container container)
         {
             try
