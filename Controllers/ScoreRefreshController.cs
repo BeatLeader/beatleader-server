@@ -1,6 +1,7 @@
 ﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
+using Dasync.Collections;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -135,30 +136,32 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/scores/bulkrefresh")]
-        [Authorize]
+        //[Authorize]
         public async Task<ActionResult> BulkRefreshScores([FromQuery] string? leaderboardId = null)
         {
-            if (HttpContext != null)
-            {
-                string currentId = HttpContext.CurrentUserID(_context);
-                Player? currentPlayer = await _context.Players.FindAsync(currentId);
-                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-                {
-                    return Unauthorized();
-                }
-            }
+            //if (HttpContext != null)
+            //{
+            //    string currentId = HttpContext.CurrentUserID(_context);
+            //    Player? currentPlayer = await _context.Players.FindAsync(currentId);
+            //    if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            //    {
+            //        return Unauthorized();
+            //    }
+            //}
+            
+            var query = _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked || lb.Difficulty.Status == DifficultyStatus.nominated || lb.Difficulty.Status == DifficultyStatus.qualified);
+
+            //foreach (var lb in query.Include(lb => lb.Difficulty).ToList())
+            //{
+            //    lb.Difficulty.Stars = 0;
+            //}
+
+            //_context.SaveChanges();
+
             _context.ChangeTracker.AutoDetectChangesEnabled = false;
-            var query = _context.Leaderboards.Where(lb => true);
-
-            var count = await (leaderboardId != null ? query.Where(s => s.Id == leaderboardId) : query).CountAsync();
-
-            for (int iii = 0; iii < count; iii += 100)
-            {
                 query = (leaderboardId != null ? query.Where(s => s.Id == leaderboardId) : query);
 
                 var allLeaderboards = query
-                    .Skip(iii)
-                    .Take(100)
                     .Select(lb => new {
                         Difficulty = lb.Difficulty,
                         ModifierValues = lb.Difficulty.ModifierValues,
@@ -170,11 +173,8 @@ namespace BeatLeader_Server.Controllers
                             BaseScore = s.BaseScore,
                             Modifiers = s.Modifiers,
                         })
-                    })
-                    .ToList();
-
-                foreach (var leaderboard in allLeaderboards)
-                {
+                    }).ToList();
+                await allLeaderboards.ParallelForEachAsync(async leaderboard => {
                     var allScores = leaderboard.Scores.Where(s => !s.Banned).ToList();
 
                     var status = leaderboard.Difficulty.Status;
@@ -264,17 +264,9 @@ namespace BeatLeader_Server.Controllers
                         s.Rank = i + 1;
                         _context.Entry(s).Property(x => x.Rank).IsModified = true;
                     }
-                }
+                }, maxDegreeOfParallelism: 20);
 
-                try
-                {
-                    await _context.BulkSaveChangesAsync();
-                }
-                catch (Exception e)
-                {
-                    _context.RejectChanges();
-                }
-            }
+            await _context.BulkSaveChangesAsync();
 
             _context.ChangeTracker.AutoDetectChangesEnabled = true;
 

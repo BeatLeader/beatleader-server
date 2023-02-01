@@ -519,7 +519,7 @@ namespace BeatLeader_Server.Controllers
                                 diff.PassRating,
                                 diff.TechRating);
 
-                        diff.Stars = MathF.Sqrt((MathF.Pow(diff.PassRating ?? 0, 2) + MathF.Pow(diff.TechRating ?? 0, 2) + MathF.Pow(diff.AccRating?? 0, 2)) / 2);
+                        diff.Stars = MathF.Sqrt((MathF.Pow(diff.PassRating ?? 0, 2) + MathF.Pow(diff.TechRating ?? 0, 2) + MathF.Pow(diff.AccRating?? 0, 2) * 2) / 3);
 
                         var rating = diff.ModifiersRating;
                         if (rating != null) {

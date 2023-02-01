@@ -71,6 +71,40 @@ namespace BeatLeader_Server.Utils
             context.Entry(player).Property(x => x.Pp).IsModified = true;
         }
 
+        public static void RecalculatePPFast(this ReadAppContext context, AppContext writeContext, Player player)
+        {
+            var rankedScores = context
+                .Scores
+                .Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification)
+                .OrderByDescending(s => s.Pp)
+                .Select(s => new { 
+                    Id = s.Id, 
+                    Accuracy = s.Accuracy, 
+                    Rank = s.Rank, 
+                    Pp = s.Pp,
+                    Weight = s.Weight
+                })
+                .ToList();
+            float resultPP = 0f;
+            foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
+            {
+                float weight = MathF.Pow(0.96f, i);
+                if (s.Weight != weight)
+                {
+                    var score = context.Scores.Local.FirstOrDefault(ls => ls.Id == s.Id);
+                    if (score == null) {
+                        score = new Score() { Id = s.Id };
+                        writeContext.Scores.Attach(score);
+                    }
+                    score.Weight = weight;
+                    writeContext.Entry(score).Property(x => x.Weight).IsModified = true;
+                }
+                resultPP += s.Pp * weight;
+            }
+            player.Pp = resultPP;
+            writeContext.Entry(player).Property(x => x.Pp).IsModified = true;
+        }
+
         public static void RecalculatePPAndRankFast(this AppContext context, Player player)
         {
             float oldPp = player.Pp;

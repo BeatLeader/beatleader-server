@@ -83,11 +83,17 @@ namespace BeatLeader_Server.Utils
         }
 
         private static float Inflate(float peepee) {
-            return (443.12f * MathF.Pow(peepee, 1.5f)) / MathF.Pow(443.12f, 1.5f);
+            return (443.12f * MathF.Pow(peepee, 1.3f)) / MathF.Pow(443.12f, 1.3f) * 1.081805f;
         }
 
         private static float Inflate2(float peepee) {
             return peepee + peepee / MathF.Pow(MathF.E, (-peepee + 800)/150);
+        }
+
+        private static float Lack(float passPP, float accPP, float techPP) {
+            float refinedAccPP = accPP + techPP;
+            float bonusPP = MathF.Sqrt(MathF.Pow(passPP, 2) + MathF.Pow(refinedAccPP, 2)) * passPP * refinedAccPP / (passPP + refinedAccPP) / 250;
+            return (bonusPP + refinedAccPP) * 1.111f;
         }
 
         private static (float, float, float) GetPp(float accuracy, float predictedAcc, float passRating, float techRating) {
@@ -124,7 +130,8 @@ namespace BeatLeader_Server.Utils
                 if (!modifiers.Contains("NF"))
                 {
                     (passPP, accPP, techPP) = GetPp(accuracy, predictedAcc, passRating, techRating);
-                    rawPP = Inflate(passPP + accPP + techPP);
+                        
+                    rawPP = Lack(passPP, accPP, techPP);
                     if (modifiersRating != null) {
                         var modifiersMap = modifiersRating.ToDictionary<float>();
                         foreach (var modifier in modifiers.ToUpper().Split(","))
@@ -139,7 +146,7 @@ namespace BeatLeader_Server.Utils
                         }
                     }
                     (passPP, accPP, techPP) = GetPp(accuracy, predictedAcc, passRating * mp, techRating * mp);
-                    fullPP = Inflate(passPP + accPP + techPP);
+                    fullPP = Lack(passPP, accPP, techPP);
                 }
             } else {
                 rawPP = accuracy * passRating * 55f;
