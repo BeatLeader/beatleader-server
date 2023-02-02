@@ -384,7 +384,7 @@ namespace BeatLeader_Server.Controllers
                 .Scores
                 .Where(s => s.Pp != 0 && !s.Banned && !s.Qualification)
                 .OrderByDescending(s => s.Pp)
-                .Select(s => new { s.Id, s.Accuracy, s.Rank, s.Pp, s.Weight, s.PlayerId })
+                .Select(s => new { s.Id, s.Accuracy, s.Rank, s.Pp, s.AccPP, s.TechPP, s.PassPP, s.Weight, s.PlayerId })
                 .ToList();
 
             var query = _context.Players
@@ -400,6 +400,9 @@ namespace BeatLeader_Server.Controllers
                     allPlayers.Add(player);
 
                     float resultPP = 0f;
+                    float accPP = 0f;
+                    float techPP = 0f;
+                    float passPP = 0f;
                     var playerScores = scores.Where(s => s.PlayerId == p.Id).ToList();
                     foreach ((int i, var s) in playerScores.Select((value, i) => (i, value)))
                     {
@@ -411,10 +414,19 @@ namespace BeatLeader_Server.Controllers
                             _context.Entry(score).Property(x => x.Weight).IsModified = true;
                         }
                         resultPP += s.Pp * weight;
+                        accPP += s.AccPP * weight;
+                        techPP += s.TechPP * weight;
+                        passPP += s.PassPP * weight;
                     }
                     player.Pp = resultPP;
+                    player.AccPp = accPP;
+                    player.TechPp = techPP;
+                    player.PassPp = passPP;
 
                     _context.Entry(player).Property(x => x.Pp).IsModified = true;
+                    _context.Entry(player).Property(x => x.AccPp).IsModified = true;
+                    _context.Entry(player).Property(x => x.TechPp).IsModified = true;
+                    _context.Entry(player).Property(x => x.PassPp).IsModified = true;
                 } catch (Exception e) {
                 }
             }, maxDegreeOfParallelism: 50);

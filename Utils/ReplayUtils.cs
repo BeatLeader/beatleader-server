@@ -100,9 +100,9 @@ namespace BeatLeader_Server.Utils
             float difficulty_to_acc = AccRating(predictedAcc, passRating, techRating);
 
             float reducedTechRating = techRating / 10;
-            float passPP = passRating * 15;
-            float accPP = Curve2(accuracy) * difficulty_to_acc * 27.5f;
-            float techPP = (float)(1 / (1 + Math.Pow(Math.E, -32 * (accuracy - 0.925f))) * (reducedTechRating / (1 + Math.Pow(Math.E, -8 * (reducedTechRating - 0.25f)))) * 12.5 * difficulty_to_acc / Math.Max((0.3333f * passRating), 2));
+            float passPP = passRating * 13.5f;
+            float accPP = Curve2(accuracy) * difficulty_to_acc * 28.5f;
+            float techPP = (float)(1 / (1 + Math.Pow(Math.E, -32 * (accuracy - 0.925f))) * (reducedTechRating / (1 + Math.Pow(Math.E, -8 * (reducedTechRating - 0.25f)))) * 8 * difficulty_to_acc);
             
             return (passPP, accPP, techPP);
         }
@@ -130,8 +130,7 @@ namespace BeatLeader_Server.Utils
                 if (!modifiers.Contains("NF"))
                 {
                     (passPP, accPP, techPP) = GetPp(accuracy, predictedAcc, passRating, techRating);
-                        
-                    rawPP = Lack(passPP, accPP, techPP);
+                    rawPP = Inflate(passPP + accPP + techPP);
                     if (modifiersRating != null) {
                         var modifiersMap = modifiersRating.ToDictionary<float>();
                         foreach (var modifier in modifiers.ToUpper().Split(","))
@@ -146,7 +145,7 @@ namespace BeatLeader_Server.Utils
                         }
                     }
                     (passPP, accPP, techPP) = GetPp(accuracy, predictedAcc, passRating * mp, techRating * mp);
-                    fullPP = Lack(passPP, accPP, techPP);
+                    fullPP = Inflate(passPP + accPP + techPP);
                 }
             } else {
                 rawPP = accuracy * passRating * 55f;

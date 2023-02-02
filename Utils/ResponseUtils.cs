@@ -36,7 +36,9 @@ namespace BeatLeader_Server.Utils
 
         public class PlayerResponseWithStats : PlayerResponse
         {
-            public string Histories { get; set; } = "";
+            public float AccPp { get; set; }
+            public float PassPp { get; set; }
+            public float TechPp { get; set; }
             public PlayerScoreStats? ScoreStats { get; set; }
             public float LastWeekPp { get; set; }
             public int LastWeekRank { get; set; }
@@ -475,6 +477,9 @@ namespace BeatLeader_Server.Utils
                 Changes = p.Changes,
 
                 Pp = p.Pp,
+                AccPp = p.AccPp,
+                TechPp = p.TechPp,
+                PassPp = p.PassPp,
                 Rank = p.Rank,
                 CountryRank = p.CountryRank,
                 LastWeekPp = p.LastWeekPp,
