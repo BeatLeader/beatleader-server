@@ -64,8 +64,7 @@ namespace BeatLeader_Server.Controllers
             {
                 string lowSearch = search.ToLower();
                 sequence = sequence
-                    .Where(p => p.Name.ToLower().Contains(lowSearch) ||
-                                p.Tag.ToLower().Contains(lowSearch));
+                    .Where(p => EF.Functions.FreeText(p.Name, search) || EF.Functions.FreeText(p.Tag, search));
             }
 
             return new ResponseWithMetadata<Clan>()

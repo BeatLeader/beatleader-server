@@ -130,9 +130,7 @@ namespace BeatLeader_Server.Utils
                 string lowSearch = search.ToLower();
                 sequence = sequence
                     .Include(lb => lb.Song)
-                    .Where(p => p.Song.Author.Contains(lowSearch) ||
-                                p.Song.Mapper.Contains(lowSearch) ||
-                                p.Song.Name.Contains(lowSearch));
+                    .Where(p => EF.Functions.FreeText(p.Song.Author, search) || EF.Functions.FreeText(p.Song.Mapper, search) || EF.Functions.FreeText(p.Song.Name, search));
             }
 
             if (type != null && type.Length != 0)

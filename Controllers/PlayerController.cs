@@ -345,17 +345,7 @@ namespace BeatLeader_Server.Controllers
             }
             if (search.Length != 0)
             {
-                var player = Expression.Parameter(typeof(Player), "p");
-                
-                var contains = typeof(string).GetMethod("Contains", new[] { typeof(string) });
-
-                // 1 != 2 is here to trigger `OrElse` further the line.
-                var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
-                foreach (var term in search.ToLower().Split(","))
-                {
-                    exp = Expression.OrElse(exp, Expression.Call(Expression.Property(player, "Name"), contains, Expression.Constant(term)));
-                }
-                request = request.Where((Expression<Func<Player, bool>>)Expression.Lambda(exp, player));
+                request = request.Where(p => EF.Functions.FreeText(p.Name, search));
             }
 
             if (clans != null)
