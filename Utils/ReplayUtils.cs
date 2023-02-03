@@ -41,6 +41,39 @@ namespace BeatLeader_Server.Utils
                 (0.65, 0.246),
                 (0.6, 0.217),
                 (0.0, 0.000) };
+        static List<(double, double)> pointList2 = new List<(double, double)> {
+                (1.0, 7.424),
+                (0.999, 6.242),
+                (0.9975, 5.158),
+                (0.995, 4.010),
+                (0.9925, 3.242),
+                (0.99, 2.700),
+                (0.9875, 2.303),
+                (0.985, 2.007),
+                (0.9825, 1.786),
+                (0.98, 1.618),
+                (0.9775, 1.483),
+                (0.975, 1.374),
+                (0.9725, 1.289),
+                (0.97, 1.221),
+                (0.965, 1.108),
+                (0.96, 1.010),
+                (0.955, 0.925),
+                (0.95, 0.852),
+                (0.94, 0.729),
+                (0.93, 0.620),
+                (0.92, 0.524),
+                (0.91, 0.440),
+                (0.9, 0.368),
+                (0.875, 0.212),
+                (0.85, 0.082),
+                (0.825, 0.076),
+                (0.8, 0.000),
+                (0.75, 0.000),
+                (0.7, 0.000),
+                (0.65, 0.000),
+                (0.6, 0.000),
+                (0.0, 0.000) };
         public static float Curve(float acc, float stars)
         {
             float l = (float)(1f - (0.03f * (stars - 3.0f) / 11.0f));
@@ -55,23 +88,45 @@ namespace BeatLeader_Server.Utils
             int i = 0;
             for (; i < pointList.Count; i++)
             {
-                if (pointList[i].Item1 <= acc) {
+                if (pointList[i].Item1 <= acc)
+                {
                     break;
                 }
             }
-    
-            if (i == 0) {
+
+            if (i == 0)
+            {
                 i = 1;
             }
-    
-            double middle_dis = (acc - pointList[i-1].Item1) / (pointList[i].Item1 - pointList[i-1].Item1);
-            return (float)(pointList[i-1].Item2 + middle_dis * (pointList[i].Item2 - pointList[i-1].Item2));
+
+            double middle_dis = (acc - pointList[i - 1].Item1) / (pointList[i].Item1 - pointList[i - 1].Item1);
+            return (float)(pointList[i - 1].Item2 + middle_dis * (pointList[i].Item2 - pointList[i - 1].Item2));
+        }
+
+        public static float Curve3(float acc)
+        {
+            int i = 0;
+            for (; i < pointList2.Count; i++)
+            {
+                if (pointList2[i].Item1 <= acc)
+                {
+                    break;
+                }
+            }
+
+            if (i == 0)
+            {
+                i = 1;
+            }
+
+            double middle_dis = (acc - pointList2[i - 1].Item1) / (pointList2[i].Item1 - pointList2[i - 1].Item1);
+            return (float)(pointList2[i - 1].Item2 + middle_dis * (pointList2[i].Item2 - pointList2[i - 1].Item2));
         }
 
         public static float AccRating(float? predictedAcc, float? passRating, float? techRating) {
             float difficulty_to_acc;
             if (predictedAcc > 0) {
-                difficulty_to_acc = 15f / Curve2((predictedAcc ?? 0) + 0.005f);
+                difficulty_to_acc = 15f / Curve3((predictedAcc ?? 0) + 0.005f);
             } else {
                 float tiny_tech = 0.0208f * (techRating ?? 0) + 1.1284f;
                 difficulty_to_acc = (-MathF.Pow(tiny_tech, -(passRating ?? 0)) + 1) * 8 + 2 + 0.01f * (techRating ?? 0) * (passRating ?? 0);
