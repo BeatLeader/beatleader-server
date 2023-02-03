@@ -127,10 +127,10 @@ namespace BeatLeader_Server.Utils
             }
             if (search != null)
             {
-                string lowSearch = search.ToLower();
+                string lowSearch = "\"*" + search.ToLower() + "*\"";
                 sequence = sequence
                     .Include(lb => lb.Song)
-                    .Where(p => EF.Functions.FreeText(p.Song.Author, search) || EF.Functions.FreeText(p.Song.Mapper, search) || EF.Functions.FreeText(p.Song.Name, search));
+                    .Where(p => EF.Functions.Contains(p.Song.Author, lowSearch) || EF.Functions.Contains(p.Song.Mapper, lowSearch) || EF.Functions.Contains(p.Song.Name, lowSearch));
             }
 
             if (type != null && type.Length != 0)

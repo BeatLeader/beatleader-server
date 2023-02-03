@@ -255,7 +255,7 @@ namespace BeatLeader_Server.Controllers
 
             if (ipLocation != null && ip != null) {
                 var location = ipLocation.IPQuery(ip);
-                var hash = _geoHasher.Encode(location.Latitude, location.Longitude, 2);
+                var hash = _geoHasher.Encode(location.Latitude, location.Longitude, 3);
                 var counter = _replayLocation.WithLabels(new string[] { hash });
                 counter.Inc();
 

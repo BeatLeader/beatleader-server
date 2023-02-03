@@ -345,7 +345,7 @@ namespace BeatLeader_Server.Controllers
             }
             if (search.Length != 0)
             {
-                request = request.Where(p => EF.Functions.FreeText(p.Name, search));
+                request = request.Where(p => EF.Functions.Contains(p.Name, "\"*" + search + "*\""));
             }
 
             if (clans != null)
