@@ -21,5 +21,6 @@
         public float? Saturation { get; set; }
         public string? LeftSaberColor { get; set; }
         public string? RightSaberColor { get; set; }
+        public string? ProfileCover { get; set; }
     }
 }

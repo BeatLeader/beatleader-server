@@ -266,7 +266,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpPatch("~/user")]
-        public async Task<ActionResult> ChangeFullName(
+        public async Task<ActionResult> UpdatePlayerAll(
             [FromQuery] string? name = null,
             [FromQuery] string? country = null,
             [FromQuery] string? profileAppearance = null,
@@ -474,6 +474,105 @@ namespace BeatLeader_Server.Controllers
                 }
                 settings.RightSaberColor = rightSaberColor;
             }
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpPatch("~/user/cover")]
+        public async Task<ActionResult> UpdateCover(
+            [FromQuery] string? id = null)
+        {
+            string userId = GetId();
+            var player = _context
+                .Players
+                .Include(p => p.ProfileSettings)
+                .FirstOrDefault(p => p.Id == userId);
+
+            if (id != null && player != null && player.Role.Contains("admin"))
+            {
+                player = _context
+                    .Players
+                    .Include(p => p.ProfileSettings)
+                    .FirstOrDefault(p => p.Id == id);
+            }
+
+            if (player == null)
+            {
+                return NotFound();
+            }
+            if (player.Banned)
+            {
+                return BadRequest("You are banned!");
+            }
+
+            string? fileName = null;
+            try
+            {
+                var ms = new MemoryStream(5);
+                await Request.Body.CopyToAsync(ms);
+                ms.Position = 0;
+
+                (string extension, MemoryStream stream) = ImageUtils.GetFormat(ms);
+                Random rnd = new Random();
+                fileName = "cover-" + userId + "R" + rnd.Next(1, 50) + extension;
+
+                await _s3Client.UploadAsset(fileName, stream);
+            }
+            catch {}
+
+            ProfileSettings? settings = player.ProfileSettings;
+            if (settings == null)
+            {
+                settings = new ProfileSettings();
+                player.ProfileSettings = settings;
+            }
+
+            if (fileName != null) {
+                player.ProfileSettings.ProfileCover = "https://cdn.assets.beatleader.xyz/" + fileName;
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpDelete("~/user/cover")]
+        public async Task<ActionResult> RemoveCover(
+            [FromQuery] string? id = null)
+        {
+            string userId = GetId();
+            var player = _context
+                .Players
+                .Include(p => p.ProfileSettings)
+                .FirstOrDefault(p => p.Id == userId);
+
+            if (id != null && player != null && player.Role.Contains("admin"))
+            {
+                player = _context
+                    .Players
+                    .Include(p => p.ProfileSettings)
+                    .FirstOrDefault(p => p.Id == id);
+            }
+
+            if (player == null)
+            {
+                return NotFound();
+            }
+            if (player.Banned)
+            {
+                return BadRequest("You are banned!");
+            }
+
+            ProfileSettings? settings = player.ProfileSettings;
+            if (settings == null)
+            {
+                settings = new ProfileSettings();
+                player.ProfileSettings = settings;
+            }
+
+            settings.ProfileCover = null;
 
             await _context.SaveChangesAsync();
 
