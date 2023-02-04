@@ -62,9 +62,10 @@ namespace BeatLeader_Server.Controllers
             }
             if (search != null)
             {
-                string lowSearch = "\"*" + search.ToLower() + "*\"";
+                string lowSearch = search.ToLower();
                 sequence = sequence
-                    .Where(p => EF.Functions.Contains(p.Name, lowSearch) || EF.Functions.Contains(p.Tag, lowSearch));
+                    .Where(p => p.Name.ToLower().Contains(lowSearch) ||
+                                p.Tag.ToLower().Contains(lowSearch));
             }
 
             return new ResponseWithMetadata<Clan>()
