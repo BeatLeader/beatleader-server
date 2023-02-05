@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Prometheus.Client.DependencyInjection;
 using Prometheus.Client.HttpRequestDurations;
 using Prometheus.Client.AspNetCore;
+using System.Net;
 
 namespace BeatLeader_Server {
 
@@ -33,6 +34,34 @@ namespace BeatLeader_Server {
                 _logger.LogWarning(null, "LOL500 " + context.Request.Path + context.Request.QueryString);
                 throw;
             }
+        }
+    }
+
+    public class LocalstatsMiddleware
+    {
+        private readonly RequestDelegate _next;
+        private readonly ILogger<LocalstatsMiddleware> _logger;
+ 
+        public LocalstatsMiddleware(RequestDelegate next, ILogger<LocalstatsMiddleware> logger)
+        {
+            _next = next;
+            _logger = logger;
+        }
+ 
+        public async Task Invoke(HttpContext context)
+        {
+            if (context.Request.Path == "/metrics")
+            {
+                var remoteIp = context.Connection.RemoteIpAddress;
+ 
+                if (context.Request.Headers.ContainsKey("X-Forwarded-For") || !IPAddress.IsLoopback(remoteIp))
+                {
+                    context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
+                    return;
+                }
+            }
+ 
+            await _next(context);
         }
     }
 
@@ -229,6 +258,7 @@ namespace BeatLeader_Server {
         public void Configure (IApplicationBuilder app)
         {
             app.UseMiddleware<ErrorLoggingMiddleware>();
+            app.UseMiddleware<LocalstatsMiddleware>();
             app.UsePrometheusServer();
             app.UsePrometheusRequestDurations();
             app.UseStaticFiles();
