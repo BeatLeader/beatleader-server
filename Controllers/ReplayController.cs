@@ -87,11 +87,6 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] float time = 0,
             [FromQuery] EndType type = 0)
         {
-            if (type != EndType.Unknown && type != EndType.Clear)
-            {
-                return Ok();
-            }
-
             string? userId = HttpContext.CurrentUserID(_context);
             if (userId == null)
             {
@@ -1008,7 +1003,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (leaderboard.PlayerStats.Count > 0 && 
-                leaderboard.PlayerStats.FirstOrDefault(s => s.PlayerId == info.playerID && s.Score != info.score) != null) {
+                leaderboard.PlayerStats.FirstOrDefault(s => s.PlayerId == info.playerID && s.Score == info.score) != null) {
                 return;
             }
 
@@ -1020,7 +1015,6 @@ namespace BeatLeader_Server.Controllers
                 Score = info.score,
                 Type = type,
                 PlayerId = info.playerID,
-                Replay = ""
             };
 
             try {
@@ -1061,9 +1055,7 @@ namespace BeatLeader_Server.Controllers
                 Time = 0,
                 Score = oldScore.BaseScore,
                 Type = EndType.Clear,
-                PlayerId = oldScore.PlayerId,
-                Replay = "",
-                //OldScore = oldScore
+                PlayerId = oldScore.PlayerId
             };
 
             leaderboard.PlayerStats.Add(stats);

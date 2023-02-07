@@ -221,16 +221,23 @@ namespace BeatLeader_Server.Utils
         public static string? CheckReplay(Replay replay, Leaderboard leaderboard) {
             float endTime = replay.notes.Count > 0 ? replay.notes.Last().eventTime : 0;
 
-            if (replay.notes.Count < leaderboard.Difficulty.Notes && (leaderboard.Difficulty.Duration - endTime) > 1) {
-                return "Too few notes in the replay";
-            }
+            if (leaderboard.Difficulty.Status == DifficultyStatus.ranked || 
+                leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
+                leaderboard.Difficulty.Status == DifficultyStatus.nominated) {
+                if (replay.notes.Count < leaderboard.Difficulty.Notes && (leaderboard.Difficulty.Duration - endTime) > 1)
+                {
+                    return "Too few notes in the replay";
+                }
 
-            foreach (var note in replay.notes)
-            {
-                NoteParams param = new NoteParams(note.noteID);
-                if (note.noteID < 100000 && note.noteID > 0 && endTime - note.eventTime > 1) {
-                    if (note.eventType == NoteEventType.good && param.colorType != note.noteCutInfo.saberType) {
-                        return "Wrong saber type on a good cut note";
+                foreach (var note in replay.notes)
+                {
+                    NoteParams param = new NoteParams(note.noteID);
+                    if (note.noteID < 100000 && note.noteID > 0 && endTime - note.eventTime > 1)
+                    {
+                        if (note.eventType == NoteEventType.good && param.colorType != note.noteCutInfo.saberType)
+                        {
+                            return "Wrong saber type on a good cut note";
+                        }
                     }
                 }
             }

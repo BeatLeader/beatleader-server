@@ -18,7 +18,7 @@
         public float Time { get; set; }
         public int Score { get; set; }
 
-        public string Replay { get; set; }
+        public string? Replay { get; set; }
         public Score? OldScore { get; set; }
 
         public string? LeaderboardId { get; set; }

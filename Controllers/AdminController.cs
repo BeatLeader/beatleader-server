@@ -69,6 +69,27 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpDelete("~/admin/resetattempts")]
+        public async Task<ActionResult> resetattempts()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var attempts = _context.LoginAttempts.ToList();
+            foreach (var item in attempts)
+            {
+                _context.LoginAttempts.Remove(item);
+            }
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
         [HttpPost("~/admin/clan/{id}/setLeader")]
         public async Task<ActionResult> SetLeader(int id, [FromQuery] string newLeader)
         {
