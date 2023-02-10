@@ -224,7 +224,7 @@ namespace BeatLeader_Server.Controllers
 
                 await _assetsS3Client.UploadAsset(fileName, stream);
 
-                icon = (_environment.IsDevelopment() ? "https://localhost:9191/assets/" : "https://cdn.assets.beatleader.xyz/") + fileName;
+                icon = (_environment.IsDevelopment() ? "https://ssnowy-beatleader-testing.s3.us-east-2.amazonaws.com/" : "https://cdn.assets.beatleader.xyz/") + fileName;
             }
             catch (Exception e)
             {
@@ -365,7 +365,7 @@ namespace BeatLeader_Server.Controllers
 
                     await _assetsS3Client.UploadAsset(fileName, stream);
 
-                    clan.Icon = (_environment.IsDevelopment() ? "https://localhost:9191/assets/" : "https://cdn.assets.beatleader.xyz/") + fileName;
+                    clan.Icon = (_environment.IsDevelopment() ? "https://ssnowy-beatleader-testing.s3.us-east-2.amazonaws.com/" : "https://cdn.assets.beatleader.xyz/") + fileName;
                 }
             }
             catch (Exception)

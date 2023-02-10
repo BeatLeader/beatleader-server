@@ -580,6 +580,9 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int>("NegativeVotes")
                         .HasColumnType("int");
 
+                    b.Property<string>("OwningClan")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("Plays")
                         .HasColumnType("int");
 

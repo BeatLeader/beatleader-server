@@ -1,4 +1,5 @@
-﻿using Amazon.Runtime;
+﻿using Amazon;
+using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
 using BeatLeader_Server.Models;
@@ -24,9 +25,11 @@ namespace BeatLeader_Server.Utils
             config.GetValue<string>("S3AccessKey"), 
             config.GetValue<string>("S3AccessSecret"));
             return new AmazonS3Client(credentials, new AmazonS3Config
-		    {
-			    ServiceURL = "https://" + config.GetValue<string>("S3AccountID") + ".r2.cloudflarestorage.com",
-		    });
+            {
+                //ServiceURL = "https://" + config.GetValue<string>("S3AccountID") + ".r2.cloudflarestorage.com",
+                //ServiceURL = "https://0eabd091b5ad7e4a48bac26d0ed8a127.r2.cloudflarestorage.com/ssnowy-beatleader-testing",
+                RegionEndpoint = RegionEndpoint.USEast2,
+            });
 		}
 
 		public static async Task UploadStream(this IAmazonS3 client, string filename, S3Container container, Stream data, bool closeStream = true)
@@ -36,7 +39,7 @@ namespace BeatLeader_Server.Utils
 	            {
                     InputStream = data,
 		            Key = filename,
-		            BucketName = container.ToString(),
+		            BucketName = "ssnowy-beatleader-testing",
 		            DisablePayloadSigning = true,
                     AutoCloseStream = closeStream
 	            };

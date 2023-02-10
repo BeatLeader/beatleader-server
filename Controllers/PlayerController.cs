@@ -140,7 +140,7 @@ namespace BeatLeader_Server.Controllers
 
                         await _assetsS3Client.UploadAsset(fileName, stream);
 
-                        player.Avatar = (_environment.IsDevelopment() ? "https://localhost:9191/assets/" : "https://cdn.assets.beatleader.xyz/") + fileName;
+                        player.Avatar = (_environment.IsDevelopment() ? "https://ssnowy-beatleader-testing.s3.us-east-2.amazonaws.com/" : "https://cdn.assets.beatleader.xyz/") + fileName;
                     }
                 } else {
                     player = await GetPlayerFromBL(id);

@@ -182,6 +182,7 @@ namespace BeatLeader_Server.Utils
             
             public IEnumerable<LeaderboardGroupEntry>? LeaderboardGroup { get; set; }
             public int Plays { get; set; }
+            public string? OwningClan { get; set; }
         }
 
         public class LeaderboardGroupEntry {

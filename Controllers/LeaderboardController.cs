@@ -73,6 +73,7 @@ namespace BeatLeader_Server.Controllers
                         Song = l.Song,
                         Difficulty = l.Difficulty,
                         Plays = l.Plays,
+                        OwningClan = l.OwningClan,
                         Qualification = l.Qualification,
                         Reweight = l.Reweight,
                         Changes = l.Changes,

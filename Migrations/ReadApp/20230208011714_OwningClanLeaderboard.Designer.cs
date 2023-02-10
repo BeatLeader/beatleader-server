@@ -4,16 +4,19 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace BeatLeaderServer.Migrations.ReadApp
+namespace BeatLeader_Server.Migrations.ReadApp
 {
     [DbContext(typeof(ReadAppContext))]
-    partial class ReadAppContextModelSnapshot : ModelSnapshot
+    [Migration("20230208011714_OwningClanLeaderboard")]
+    partial class OwningClanLeaderboard
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
