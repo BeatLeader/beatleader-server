@@ -93,6 +93,7 @@ namespace BeatLeader_Server.Utils
             public string Timeset { get; set; }
             public int Timepost { get; set; }
             public int ReplaysWatched { get; set; }
+            public int PlayCount { get; set; }
             public PlayerResponse Player { get; set; }
             public ScoreImprovement? ScoreImprovement { get; set; }
             public RankVoting? RankVoting { get; set; }

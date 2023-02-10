@@ -18,9 +18,6 @@
         public float Time { get; set; }
         public int Score { get; set; }
 
-        public string? Replay { get; set; }
-        public Score? OldScore { get; set; }
-
         public string? LeaderboardId { get; set; }
         public Leaderboard? Leaderboard { get; set; }
     }
@@ -44,6 +41,7 @@
         public ICollection<EventRanking>? Events { get; set; }
         //public ICollection<AltBoard>? AltBoards { get; set; }
         public int Plays { get; set; }
+        public int PlayCount { get; set; }
 
         public int PositiveVotes { get; set; }
         public int StarVotes { get; set; }

@@ -4,6 +4,7 @@ using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -32,7 +33,11 @@ namespace BeatLeader_Server.Controllers
             string id, 
             [FromQuery] int page = 1, 
             [FromQuery] int count = 10, 
+            [FromQuery] string sortBy = "rank", 
+            [FromQuery] string order = "desc", 
             [FromQuery] string? countries = null,
+            [FromQuery] string? search = null,
+            [FromQuery] string? modifiers = null,
             [FromQuery] bool friends = false,
             [FromQuery] bool voters = false)
         {
@@ -149,15 +154,71 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
+                if (modifiers != null) {
+                    if (modifiers != "all") {
+                        var score = Expression.Parameter(typeof(Score), "s");
+                
+                        var contains = typeof(string).GetMethod("Contains", new[] { typeof(string) });
+
+                        var all = modifiers.Contains("all");
+                        // 1 != 2 is here to trigger `OrElse` further the line.
+                        var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(all ? 1 : 2));
+                        var modifiersList = modifiers.Split(",").Where(m => m != "all");
+
+                        foreach (var term in modifiersList)
+                        {
+                            var subexpression = Expression.Call(Expression.Property(score, "Modifiers"), contains, Expression.Constant(term));
+                            if (all) {
+                                exp = Expression.And(exp, subexpression);
+                            } else {
+                                exp = Expression.OrElse(exp, subexpression);
+                            }
+                        }
+                        scoreQuery = scoreQuery.Where((Expression<Func<Score, bool>>)Expression.Lambda(exp, score));
+                    } else {
+                        scoreQuery = scoreQuery.Where(s => s.Modifiers.Length == 0);
+                    }
+                }
+
+                switch (sortBy)
+                {
+                    case "date":
+                        scoreQuery = scoreQuery.Order(order, t => t.Timepost);
+                        break;
+                    case "pp":
+                        scoreQuery = scoreQuery.Order(order, t => t.Pp);
+                        break;
+                    case "acc":
+                        scoreQuery = scoreQuery.Order(order, t => t.Accuracy);
+                        break;
+                    case "pauses":
+                        scoreQuery = scoreQuery.Order(order, t => t.Pauses);
+                        break;
+                    case "rank":
+                        scoreQuery = scoreQuery.Order(order == "desc" ? "asc" : "desc", t => t.Rank);
+                        break;
+                    case "maxStreak":
+                        scoreQuery = scoreQuery.Order(order, t => t.MaxStreak);
+                        break;
+                    case "playCount":
+                        scoreQuery = scoreQuery.Order(order, t => t.PlayCount);
+                        break;
+                    default:
+                        break;
+                }
+                if (search != null)
+                {
+                    string lowSearch = search.ToLower();
+                    scoreQuery = scoreQuery
+                        .Where(s => s.Player.Name.ToLower().Contains(lowSearch) ||
+                                    s.Player.Clans.FirstOrDefault(c => c.Name.ToLower().Contains(lowSearch)) != null ||
+                                    s.Player.Clans.FirstOrDefault(c => c.Tag.ToLower().Contains(lowSearch)) != null);
+                }
+
                 leaderboard.Plays = scoreQuery.Count();
                 leaderboard.Scores = scoreQuery
-                    .OrderBy(s => s.Rank)
                     .Skip((page - 1) * count)
                     .Take(count)
-                    .Include(sc => sc.Player)
-                    .ThenInclude(p => p.ProfileSettings)
-                    .Include(s => s.Player)
-                    .ThenInclude(s => s.Clans)
                     .Select(s => new ScoreResponse
                     {
                         Id = s.Id,
@@ -176,6 +237,8 @@ namespace BeatLeader_Server.Controllers
                         FullCombo = s.FullCombo,
                         Timeset = s.Timeset,
                         Timepost = s.Timepost,
+                        MaxStreak = s.MaxStreak,
+                        PlayCount = s.PlayCount,
                         Player = new PlayerResponse
                         {
                             Id = s.Player.Id,
@@ -462,7 +525,9 @@ namespace BeatLeader_Server.Controllers
                         Platform = s.Platform,
                         Weight = s.Weight,
                         AccLeft = s.AccLeft,
-                        AccRight = s.AccRight
+                        AccRight = s.AccRight,
+                        PlayCount = s.PlayCount,
+                        MaxStreak = s.MaxStreak,
                     }).FirstOrDefault(),
                     Plays = showPlays ? lb.Scores.Count(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)) : 0
                 });

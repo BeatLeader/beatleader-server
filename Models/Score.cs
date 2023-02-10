@@ -74,6 +74,7 @@ namespace BeatLeader_Server.Models
         public ReplayOffsets? ReplayOffsets { get; set; }
         public string? Country { get; set; }
         public int MaxStreak { get; set; }
+        public int PlayCount { get; set; } = 1;
         public float LeftTiming { get; set; }
         public float RightTiming { get; set; }
 

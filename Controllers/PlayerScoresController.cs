@@ -228,7 +228,8 @@ namespace BeatLeader_Server.Controllers
                         Weight = s.Weight,
                         AccLeft = s.AccLeft,
                         AccRight = s.AccRight,
-                        MaxStreak = s.MaxStreak
+                        PlayCount = s.PlayCount,
+                        MaxStreak = s.MaxStreak,
                     })
                     .ToList()
                 };
@@ -764,6 +765,7 @@ namespace BeatLeader_Server.Controllers
                         Weight = s.Weight,
                         AccLeft = s.AccLeft,
                         AccRight = s.AccRight,
+                        PlayCount = s.PlayCount,
                         MaxStreak = s.MaxStreak
                     })
                     .ToList();
