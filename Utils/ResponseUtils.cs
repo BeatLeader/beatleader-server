@@ -175,7 +175,7 @@ namespace BeatLeader_Server.Utils
             public string? Id { get; set; }
             public Song? Song { get; set; }
             public DifficultyDescription? Difficulty { get; set; }
-            public IEnumerable<ScoreResponse>? Scores { get; set; }
+            public List<ScoreResponse>? Scores { get; set; }
             public IEnumerable<LeaderboardChange>? Changes { get; set; }
 
             public RankQualification? Qualification { get; set; }
@@ -402,7 +402,7 @@ namespace BeatLeader_Server.Utils
                 Id = l.Id,
                 Song = l.Song,
                 Difficulty = l.Difficulty,
-                Scores = l.Scores.Select(RemoveLeaderboard),
+                Scores = l.Scores.Select(RemoveLeaderboard).ToList(),
                 Plays = l.Plays,
                 Qualification = l.Qualification,
                 Reweight = l.Reweight,

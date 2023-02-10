@@ -155,23 +155,23 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 if (modifiers != null) {
-                    if (modifiers != "all") {
+                    if (!modifiers.Contains("none")) {
                         var score = Expression.Parameter(typeof(Score), "s");
                 
                         var contains = typeof(string).GetMethod("Contains", new[] { typeof(string) });
 
-                        var all = modifiers.Contains("all");
+                        var any = modifiers.Contains("any");
                         // 1 != 2 is here to trigger `OrElse` further the line.
-                        var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(all ? 1 : 2));
-                        var modifiersList = modifiers.Split(",").Where(m => m != "all");
+                        var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(any ? 2 : 1));
+                        var modifiersList = modifiers.Split(",").Where(m => m != "any" && m != "none");
 
                         foreach (var term in modifiersList)
                         {
                             var subexpression = Expression.Call(Expression.Property(score, "Modifiers"), contains, Expression.Constant(term));
-                            if (all) {
-                                exp = Expression.And(exp, subexpression);
-                            } else {
+                            if (any) {
                                 exp = Expression.OrElse(exp, subexpression);
+                            } else {
+                                exp = Expression.And(exp, subexpression);
                             }
                         }
                         scoreQuery = scoreQuery.Where((Expression<Func<Score, bool>>)Expression.Lambda(exp, score));
@@ -301,7 +301,7 @@ namespace BeatLeader_Server.Controllers
                         s.Rank = i + 1 + ((page - 1) * count);
                     }
 
-                    leaderboard.Scores = recalculated;
+                    leaderboard.Scores = recalculated.ToList();
                 }
             } else if (leaderboard.Difficulty.Status == DifficultyStatus.nominated) {
                 string currentID = HttpContext.CurrentUserID(currentContext);
@@ -325,7 +325,7 @@ namespace BeatLeader_Server.Controllers
                         (s.Pp, s.BonusPp) = ReplayUtils.PpFromScoreResponse(s, leaderboard.Difficulty.Stars ?? 0, qualification.Modifiers);
 
                         return s;
-                    });
+                    }).ToList();
 
                     var rankedScores = recalculated.OrderByDescending(el => el.Pp).ToList();
                     foreach ((int i, ScoreResponse s) in rankedScores.Select((value, i) => (i, value)))
@@ -335,6 +335,11 @@ namespace BeatLeader_Server.Controllers
 
                     leaderboard.Scores = recalculated;
                 }
+            }
+
+            for (int i = 0; i < leaderboard.Scores.Count; i++)
+            {
+                leaderboard.Scores[i].Rank = i + (page - 1) * count + 1;
             }
 
             return leaderboard;
