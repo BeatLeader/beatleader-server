@@ -31,10 +31,8 @@ namespace BeatLeader_Server.Utils
                     .ToList();
 
             // Build up a dictionary of the clans on this leaderboard with pp, weighted by the pp
-            // Any way to utilize linq?
             foreach (var score in leaderboardClans)
             {
-                // score.Clans can't be null, because leaderboardClans has s.Player.Clans != null in "Where" statement
                 foreach (Clan clan in score.Clans)
                 {
                     if (clanPPDict.ContainsKey(clan.Tag))
@@ -77,9 +75,10 @@ namespace BeatLeader_Server.Utils
 
             if (unclaimed)
             {
-                // Reserve clan name - Unclaimed
+                // Reserve clan name/tag?
                 Clan unclaimedClan = new Clan();
                 unclaimedClan.Name = "Unclaimed";
+                unclaimedClan.Tag = "OOOO";
                 unclaimedClan.Color = "#000000";
                 return unclaimedClan;
             }
@@ -87,15 +86,41 @@ namespace BeatLeader_Server.Utils
             {
                 if (contested)
                 {
-                    // Reserve clan name - Contested
+                    // If score submitted causes map to become contested, previous clan owner loses owned leaderboard
+                    var previousOwner = context
+                        .Leaderboards
+                        .Where(lb => lb.Id == leaderboardId)
+                        .Select(lb => lb.OwningClan)
+                        .FirstOrDefault();
+                    if (previousOwner != null)
+                    {
+                        previousOwner.OwnedLeaderboardsCount--;
+                    }
+
+                    // Reserve clan name/tag?
                     Clan contestedClan = new Clan();
                     contestedClan.Name = "Contested";
-                    contestedClan.Color = "#ff0000";
+                    contestedClan.Tag = "XXXX";
+                    contestedClan.Color = "#ffffff";
                     return contestedClan;
                 }
                 else
                 {
-                    return context.Clans.FirstOrDefault(c => c.Tag == owningClanTag);
+                    // Previous clan owner loses leaderboard, new clan owner captures leaderboard
+                    var previousOwner = context
+                        .Leaderboards
+                        .Where(lb => lb.Id == leaderboardId)
+                        .Select(lb => lb.OwningClan)
+                        .FirstOrDefault();
+                    previousOwner.OwnedLeaderboardsCount--;
+
+                    var newOwner = context
+                        .Clans
+                        .Where(c => c.Tag == owningClanTag)
+                        .FirstOrDefault();
+                    newOwner.OwnedLeaderboardsCount++;
+
+                    return newOwner;
                 }
             }
         }

@@ -84,7 +84,7 @@ namespace BeatLeader_Server.Controllers
 
         [HttpGet("~/clan/{tag}")]
         public async Task<ActionResult<ResponseWithMetadataAndContainer<PlayerResponse, Clan>>> GetClan(
-            string tag, 
+            string tag,
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
             [FromQuery] string sort = "pp",
@@ -93,7 +93,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? type = null)
         {
             Clan? clan = null;
-            if (tag == "my") {
+            if (tag == "my")
+            {
                 string? currentID = HttpContext.CurrentUserID(_readContext);
                 var player = await _readContext.Players.FindAsync(currentID);
 
@@ -107,7 +108,9 @@ namespace BeatLeader_Server.Controllers
                     .Include(c => c.Players)
                     .ThenInclude(p => p.ProfileSettings)
                     .FirstOrDefault();
-            } else {
+            }
+            else
+            {
                 clan = _readContext
                     .Clans
                     .Where(c => c.Tag == tag)
@@ -135,10 +138,12 @@ namespace BeatLeader_Server.Controllers
                 default:
                     break;
             }
-            return new ResponseWithMetadataAndContainer<PlayerResponse, Clan> {
+            return new ResponseWithMetadataAndContainer<PlayerResponse, Clan>
+            {
                 Container = clan,
                 Data = players.Skip((page - 1) * count).Take(count).Select(ResponseFromPlayer).Select(PostProcessSettings),
-                Metadata = new Metadata {
+                Metadata = new Metadata
+                {
                     Page = 1,
                     ItemsPerPage = 10,
                     Total = players.Count()
@@ -158,7 +163,8 @@ namespace BeatLeader_Server.Controllers
             string currentID = HttpContext.CurrentUserID(_context);
 
             var player = _context.Players.Where(p => p.Id == currentID).Include(p => p.Clans).Include(p => p.ScoreStats).FirstOrDefault();
-            if (player.Clans.Count == 3) {
+            if (player.Clans.Count == 3)
+            {
                 return BadRequest("You can join only up to 3 clans.");
             }
 
@@ -169,7 +175,8 @@ namespace BeatLeader_Server.Controllers
 
             string upperTag = tag.ToUpper();
 
-            if (_context.ReservedTags.FirstOrDefault(t => t.Tag == upperTag) != null) {
+            if (_context.ReservedTags.FirstOrDefault(t => t.Tag == upperTag) != null)
+            {
                 return BadRequest("This tag is reserved. Ask someone with #BeatFounder role in discord to allow this tag for you.");
             }
 
@@ -182,7 +189,8 @@ namespace BeatLeader_Server.Controllers
             {
                 return BadRequest("You already have a clan");
             }
-            if (upperTag.Length is > 4 or < 2 || !Regex.IsMatch(upperTag, @"^[A-Z0-9]+$")) {
+            if (upperTag.Length is > 4 or < 2 || !Regex.IsMatch(upperTag, @"^[A-Z0-9]+$"))
+            {
                 return BadRequest("Clan tag should be from 2 to 4 capital latin letters or numbers");
             }
             if (name.Length is > 25 or < 2)
@@ -190,11 +198,15 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Clan name should be from 2 to 25 letters");
             }
             int colorLength = color.Length;
-            try {
-                if (!(colorLength is 7 or 9 && long.Parse(color[1..], System.Globalization.NumberStyles.HexNumber) != 0)) {
+            try
+            {
+                if (!(colorLength is 7 or 9 && long.Parse(color[1..], System.Globalization.NumberStyles.HexNumber) != 0))
+                {
                     return BadRequest("Color is not valid");
                 }
-            } catch {
+            }
+            catch
+            {
                 return BadRequest("Color is not valid");
             }
 
@@ -324,7 +336,8 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            if (name != null) {
+            if (name != null)
+            {
                 if (name.Length is < 3 or > 30)
                 {
                     return BadRequest("Use name between the 3 and 30 symbols");
@@ -337,7 +350,8 @@ namespace BeatLeader_Server.Controllers
                 clan.Name = name;
             }
 
-            if (color != null) {
+            if (color != null)
+            {
                 int colorLength = color.Length;
                 try
                 {
@@ -359,7 +373,8 @@ namespace BeatLeader_Server.Controllers
             {
                 var ms = new MemoryStream(5);
                 await Request.Body.CopyToAsync(ms);
-                if (ms.Length > 0) {
+                if (ms.Length > 0)
+                {
                     ms.Position = 0;
 
                     (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(ms);
@@ -375,9 +390,12 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Error saving avatar");
             }
 
-            if (description.Length > 100) {
+            if (description.Length > 100)
+            {
                 return BadRequest("Description is too long");
-            } else {
+            }
+            else
+            {
                 clan.Description = description;
             }
 
@@ -408,17 +426,20 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            if (currentPlayer.Banned) {
+            if (currentPlayer.Banned)
+            {
                 return BadRequest("You are banned!");
             }
 
             Clan? clan = _context.Clans.FirstOrDefault(c => c.LeaderID == currentID);
-            if (clan == null) {
+            if (clan == null)
+            {
                 return NotFound("Current user is not leader of any clan");
             }
 
             User? user = await _userController.GetUserLazy(player);
-            if (user == null) {
+            if (user == null)
+            {
                 return NotFound("No such player");
             }
 
@@ -432,11 +453,13 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("User already joined maximum amount of clans.");
             }
 
-            if (user.BannedClans.FirstOrDefault(c => c.Id == clan.Id) != null) {
+            if (user.BannedClans.FirstOrDefault(c => c.Id == clan.Id) != null)
+            {
                 return BadRequest("This clan was banned by player");
             }
 
-            if (user.Player.Clans.FirstOrDefault(c => c.Id == clan.Id) != null) {
+            if (user.Player.Clans.FirstOrDefault(c => c.Id == clan.Id) != null)
+            {
                 return BadRequest("Player already in this clan");
             }
 
@@ -496,7 +519,7 @@ namespace BeatLeader_Server.Controllers
 
             Clan? clan;
             var currentPlayer = await _context.Players.FindAsync(currentID);
-            
+
             if (id != null && currentPlayer != null && currentPlayer.Role.Contains("admin"))
             {
                 clan = await _context.Clans.FindAsync(id);
@@ -527,7 +550,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             user.Player.Clans.Remove(clan);
-            
+
             clan.AverageAccuracy = MathUtils.RemoveFromAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageRankedAccuracy);
             clan.AverageRank = MathUtils.RemoveFromAverage(clan.AverageRank, clan.PlayersCount, user.Player.Rank);
             clan.PlayersCount--;
@@ -580,15 +603,14 @@ namespace BeatLeader_Server.Controllers
             clan.Pp = _context.RecalculateClanPP(clan.Id);
             await _context.SaveChangesAsync();
 
-            // Recalculate the owning clan on a leaderboard when a user joins a clan
-            // TODO: Add select to reduce query time?
+            // Recalculate owning clan on leaderboards the clan doesn't own if a user joins the clan
             var leaderboardsRecalc = _context
                 .Leaderboards
-                .Where(lb => lb.Scores.Any(s => s.PlayerId == currentID && lb.Difficulty.Status == DifficultyStatus.ranked))
+                .Where(lb => lb.Scores.Any(s => s.PlayerId == currentID && lb.Difficulty.Status == DifficultyStatus.ranked && lb.OwningClan != null && lb.OwningClan.Tag != clan.Tag))
                 .ToList();
 
             leaderboardsRecalc.ForEach(obj => obj.OwningClan = _context.CalculateOwningClan(obj.Id));
-            await _context.SaveChangesAsync();
+            await _context.BulkSaveChangesAsync();
 
             return Ok();
         }
@@ -612,7 +634,8 @@ namespace BeatLeader_Server.Controllers
             }
 
             user.ClanRequest.Remove(clan);
-            if (ban) {
+            if (ban)
+            {
                 user.BannedClans.Add(clan);
             }
             await _context.SaveChangesAsync();
@@ -662,7 +685,8 @@ namespace BeatLeader_Server.Controllers
                 return NotFound("User is not member of this clan");
             }
 
-            if (clan.LeaderID == currentID) {
+            if (clan.LeaderID == currentID)
+            {
                 return BadRequest("You cannot leave your own clan");
             }
 
@@ -675,15 +699,14 @@ namespace BeatLeader_Server.Controllers
             clan.Pp = _context.RecalculateClanPP(clan.Id);
             await _context.SaveChangesAsync();
 
-            // Recalculate the owning clan on a leaderboard when a user joins a clan
-            // TODO: Add select to reduce query time?
+            // Recalculate owning clan on leaderboards the clan owns if a user leaves the clan
             var leaderboardsRecalc = _context
                 .Leaderboards
-                .Where(lb => lb.Scores.Any(s => s.PlayerId == currentID && lb.Difficulty.Status == DifficultyStatus.ranked))
+                .Where(lb => lb.Scores.Any(s => s.PlayerId == currentID && lb.Difficulty.Status == DifficultyStatus.ranked && lb.OwningClan != null && lb.OwningClan.Tag == clan.Tag))
                 .ToList();
 
             leaderboardsRecalc.ForEach(obj => obj.OwningClan = _context.CalculateOwningClan(obj.Id));
-            await _context.SaveChangesAsync();
+            await _context.BulkSaveChangesAsync();
 
             return Ok();
         }
@@ -695,11 +718,13 @@ namespace BeatLeader_Server.Controllers
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            if (!currentPlayer.Role.Contains("admin")) {
+            if (!currentPlayer.Role.Contains("admin"))
+            {
                 return Unauthorized();
             }
 
-            _context.ReservedTags.Add(new ReservedClanTag {
+            _context.ReservedTags.Add(new ReservedClanTag
+            {
                 Tag = tag
             });
             await _context.SaveChangesAsync();
@@ -720,12 +745,36 @@ namespace BeatLeader_Server.Controllers
             }
 
             var rt = _context.ReservedTags.FirstOrDefault(rt => rt.Tag == tag);
-            if (rt == null) {
+            if (rt == null)
+            {
                 return NotFound();
             }
 
             _context.ReservedTags.Remove(rt);
             await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpPut("~/clan/recalculateOwners")]
+        public async Task<ActionResult> RecalculateOwners()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (!currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var leaderboardsRecalc = _context
+                .Leaderboards
+                .Where(lb => lb.Scores.Any(s => s.PlayerId == currentID && lb.Difficulty.Status == DifficultyStatus.ranked))
+                .ToList();
+
+            leaderboardsRecalc.ForEach(obj => obj.OwningClan = _context.CalculateOwningClan(obj.Id));
+
+            await _context.BulkSaveChangesAsync();
 
             return Ok();
         }

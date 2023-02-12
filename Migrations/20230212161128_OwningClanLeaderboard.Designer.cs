@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    [Migration("20230208010630_OwningClanLeaderboard")]
+    [Migration("20230212161128_OwningClanLeaderboard")]
     partial class OwningClanLeaderboard
     {
         /// <inheritdoc />
@@ -249,6 +249,9 @@ namespace BeatLeader_Server.Migrations
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("OwnedLeaderboardsCount")
+                        .HasColumnType("int");
 
                     b.Property<int>("PlayersCount")
                         .HasColumnType("int");
@@ -583,8 +586,8 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int>("NegativeVotes")
                         .HasColumnType("int");
 
-                    b.Property<string>("OwningClan")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int?>("OwningClanId")
+                        .HasColumnType("int");
 
                     b.Property<int>("Plays")
                         .HasColumnType("int");
@@ -615,6 +618,8 @@ namespace BeatLeader_Server.Migrations
                     b.HasIndex("DifficultyId");
 
                     b.HasIndex("LeaderboardGroupId");
+
+                    b.HasIndex("OwningClanId");
 
                     b.HasIndex("QualificationId");
 
@@ -2361,6 +2366,10 @@ namespace BeatLeader_Server.Migrations
                         .WithMany("Leaderboards")
                         .HasForeignKey("LeaderboardGroupId");
 
+                    b.HasOne("BeatLeader_Server.Models.Clan", "OwningClan")
+                        .WithMany()
+                        .HasForeignKey("OwningClanId");
+
                     b.HasOne("BeatLeader_Server.Models.RankQualification", "Qualification")
                         .WithMany()
                         .HasForeignKey("QualificationId");
@@ -2376,6 +2385,8 @@ namespace BeatLeader_Server.Migrations
                     b.Navigation("Difficulty");
 
                     b.Navigation("LeaderboardGroup");
+
+                    b.Navigation("OwningClan");
 
                     b.Navigation("Qualification");
 
