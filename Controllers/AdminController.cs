@@ -459,6 +459,48 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpPost("~/admin/ban/countrychanges")]
+        public async Task<ActionResult> BanCountrychanges([FromQuery] string playerId)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var changeBan = new CountryChangeBan {
+                Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
+                PlayerId = playerId
+            };
+            _context.CountryChangeBans.Add(changeBan);
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
+        [HttpDelete("~/admin/ban/countrychanges")]
+        public async Task<ActionResult> UnbanCountrychanges([FromQuery] string playerId)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var changeBan = _context.CountryChangeBans.Where(b => b.PlayerId == playerId).FirstOrDefault();
+            if (changeBan != null) {
+                _context.CountryChangeBans.Remove(changeBan);
+            }
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
         public static string GolovaID = "76561198059961776";
+        public static string RankingBotID = "19573";
     }
 }

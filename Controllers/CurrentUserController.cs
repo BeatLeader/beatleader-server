@@ -335,6 +335,11 @@ namespace BeatLeader_Server.Controllers
 
                 if (country != null)
                 {
+                    var changeBan = _context.CountryChangeBans.FirstOrDefault(b => b.PlayerId == player.Id);
+                    if (changeBan != null) {
+                        return BadRequest("Country change is banned for you!");
+                    }
+
                     if (!PlayerUtils.AllowedCountries().Contains(country))
                     {
                         return BadRequest("This country code is not allowed.");

@@ -121,7 +121,7 @@ namespace BeatLeader_Server.Services
                     LeaderboardChange rankChange = new LeaderboardChange
                     {
                         Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
-                        PlayerId = AdminController.GolovaID,
+                        PlayerId = AdminController.RankingBotID,
                         OldRankability = difficulty.Status == DifficultyStatus.ranked ? 1 : 0,
                         OldStars = difficulty.Stars ?? 0,
                         OldType = difficulty.Type,

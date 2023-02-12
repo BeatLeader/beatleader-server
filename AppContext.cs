@@ -49,6 +49,7 @@ namespace BeatLeader_Server
         public DbSet<PlayerScoreStatsHistory> PlayerScoreStatsHistory { get; set; }
 
         public DbSet<EventRanking> EventRankings { get; set; }
+        public DbSet<CountryChangeBan> CountryChangeBans { get; set; }
 
         public void RejectChanges()
         {
