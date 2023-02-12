@@ -50,7 +50,7 @@
         public int NegativeVotes { get; set; }
         public float VoteStars { get; set; }
 
-        public string? OwningClan { get; set; }
+        public Clan? OwningClan { get; set; }
     }
 
     public enum LeaderboardType

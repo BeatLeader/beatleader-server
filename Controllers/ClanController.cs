@@ -2,9 +2,11 @@
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
+using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using System.Text.RegularExpressions;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
@@ -578,6 +580,16 @@ namespace BeatLeader_Server.Controllers
             clan.Pp = _context.RecalculateClanPP(clan.Id);
             await _context.SaveChangesAsync();
 
+            // Recalculate the owning clan on a leaderboard when a user joins a clan
+            // TODO: Add select to reduce query time?
+            var leaderboardsRecalc = _context
+                .Leaderboards
+                .Where(lb => lb.Scores.Any(s => s.PlayerId == currentID && lb.Difficulty.Status == DifficultyStatus.ranked))
+                .ToList();
+
+            leaderboardsRecalc.ForEach(obj => obj.OwningClan = _context.CalculateOwningClan(obj.Id));
+            await _context.SaveChangesAsync();
+
             return Ok();
         }
 
@@ -661,6 +673,16 @@ namespace BeatLeader_Server.Controllers
             await _context.SaveChangesAsync();
 
             clan.Pp = _context.RecalculateClanPP(clan.Id);
+            await _context.SaveChangesAsync();
+
+            // Recalculate the owning clan on a leaderboard when a user joins a clan
+            // TODO: Add select to reduce query time?
+            var leaderboardsRecalc = _context
+                .Leaderboards
+                .Where(lb => lb.Scores.Any(s => s.PlayerId == currentID && lb.Difficulty.Status == DifficultyStatus.ranked))
+                .ToList();
+
+            leaderboardsRecalc.ForEach(obj => obj.OwningClan = _context.CalculateOwningClan(obj.Id));
             await _context.SaveChangesAsync();
 
             return Ok();

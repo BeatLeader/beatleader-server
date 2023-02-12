@@ -510,53 +510,8 @@ namespace BeatLeader_Server.Controllers
                 _context.Entry(score).Property(x => x.Rank).IsModified = true;
             }
 
-            // Calculate owning clan on this leaderboard
-            // TODO : Move this to its own class
-            if (isRanked)
-            {
-                var clanPPDict = new Dictionary<string, (float, float)>();
-                var leaderboardClans =
-                    _context
-                        .Scores
-                        .Where(s => s.LeaderboardId == leaderboard.Id && !s.Banned && s.Player.Clans != null)
-                        .OrderByDescending(el => el.Pp)
-                        .Select(s => new { Pp = s.Pp, Clans = s.Player.Clans })
-                        .ToList();
-
-                // Build up a dictionary of the clans on this leaderboard with pp, weighted by the pp
-                // TODO : Do this with linq. don't use dict preferrably
-                foreach (var clanPPObj in leaderboardClans)
-                {
-                    foreach (Clan clan in clanPPObj.Clans)
-                    {
-                        if (clanPPDict.ContainsKey(clan.Name))
-                        {
-                            float weight = clanPPDict[clan.Name].Item2 * 0.9f;
-                            float clanPP = clanPPDict[clan.Name].Item1 + (clanPPObj.Pp * weight);
-                            clanPPDict[clan.Name] = (clanPP, weight);
-                        }
-                        else
-                        {
-                            clanPPDict.Add(clan.Name, (clanPPObj.Pp, 1.0f));
-                        }
-                    }
-                }
-
-                // Get the clan with the most weighted pp on the map
-                // TODO : Refactor this - Sort a list, look at top two elements, if equal, then Contested, else Territory captured
-                string owningClan = "Unclaimed"; // Should be an enum
-                float maxPP = 0;
-                foreach (var clanWeightedPP in clanPPDict)
-                {
-                    if (clanWeightedPP.Value.Item1 > maxPP)
-                    {
-                        maxPP = clanWeightedPP.Value.Item1;
-                        owningClan = clanWeightedPP.Key; // Don't need to update this until the end
-                    }
-                    // TODO : Take into account when pp is equal to each other
-                }
-                leaderboard.OwningClan = owningClan;
-            }
+            // Calculate owning clan for this leaderboard, based on score just submitted
+            leaderboard.OwningClan = isRanked ? _context.CalculateOwningClan(leaderboard.Id) : null;
 
             using (_serverTiming.TimeAction("db")) {
                 try
