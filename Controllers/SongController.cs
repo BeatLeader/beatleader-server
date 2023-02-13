@@ -78,7 +78,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task MigrateLeaderboards(Song newSong, Song oldSong, Song baseSong, DifficultyDescription diff)
+        public async Task MigrateLeaderboards(Song newSong, Song oldSong, Song? baseSong, DifficultyDescription diff)
         {
             var newLeaderboard = await NewLeaderboard(newSong, baseSong, diff.DifficultyName, diff.ModeName);
             if (newLeaderboard != null && diff.Status != DifficultyStatus.ranked) {
@@ -133,15 +133,14 @@ namespace BeatLeader_Server.Controllers
                     _context.Songs.Add(song);
                     await _context.SaveChangesAsync();
 
-                    if (baseSong != null) {
-                        foreach (var oldSong in songsToMigrate)
+                    
+                    foreach (var oldSong in songsToMigrate)
+                    {
+                        foreach (var item in oldSong.Difficulties)
                         {
-                            foreach (var item in oldSong.Difficulties)
-                            {
-                                await MigrateLeaderboards(song, oldSong, baseSong, item);
-                                item.Status = DifficultyStatus.outdated;
-                                item.Stars = 0;
-                            }
+                            await MigrateLeaderboards(song, oldSong, baseSong, item);
+                            item.Status = DifficultyStatus.outdated;
+                            item.Stars = 0;
                         }
                     }
                     await _context.SaveChangesAsync();

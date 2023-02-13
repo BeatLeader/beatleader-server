@@ -420,7 +420,7 @@ namespace BeatLeader_Server.Controllers
         //}
 
         [NonAction]
-        public async Task<ActionResult<Leaderboard>> GetByHash(string hash, string diff, string mode) {
+        public async Task<ActionResult<Leaderboard>> GetByHash(string hash, string diff, string mode, bool recursive = true) {
             Leaderboard? leaderboard;
 
             leaderboard = _context
@@ -436,7 +436,15 @@ namespace BeatLeader_Server.Controllers
                     return NotFound();
                 }
                 // Song migrated leaderboards
-                return await GetByHash(hash, diff, mode);
+                if (recursive) {
+                    return await GetByHash(hash, diff, mode, false);
+                } else {
+                    leaderboard = await _songController.NewLeaderboard(song, null, diff, mode);
+                }
+
+                if (leaderboard == null) {
+                    return NotFound();
+                }
             }
 
             return leaderboard;
