@@ -32,7 +32,7 @@ namespace BeatLeader_Server.Controllers
             } else {
                 hash = hash.Substring(0, 40);
             }
-            (Song? song, _) = await GetOrAddSong(hash);
+            Song? song = await GetOrAddSong(hash);
             if (song is null)
             {
                 return NotFound();
@@ -57,7 +57,7 @@ namespace BeatLeader_Server.Controllers
             if(resFromLB.Length == 0)
             {
                 // We couldnt find any Leaderboard with that hash. Therefor we need to check if we can atleast get the song
-                (Song? song, _) = await GetOrAddSong(hash);
+                Song? song = await GetOrAddSong(hash);
                 // Otherwise the song does not exist
                 if (song is null)
                 {
@@ -78,11 +78,11 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task MigrateQualification(Song newSong, Song oldSong, Song baseSong, DifficultyDescription diff)
+        public async Task MigrateLeaderboards(Song newSong, Song oldSong, Song baseSong, DifficultyDescription diff)
         {
             var newLeaderboard = await NewLeaderboard(newSong, baseSong, diff.DifficultyName, diff.ModeName);
-            if (newLeaderboard != null) {
-                newLeaderboard.Difficulty.Status = DifficultyStatus.nominated;
+            if (newLeaderboard != null && diff.Status != DifficultyStatus.ranked) {
+                newLeaderboard.Difficulty.Status = diff.Status;
                 newLeaderboard.Difficulty.Stars = diff.Stars;
                 newLeaderboard.Difficulty.Type = diff.Type;
                 newLeaderboard.Difficulty.NominatedTime = diff.NominatedTime;
@@ -100,10 +100,9 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task<(Song?, Song?)> GetOrAddSong(string hash)
+        public async Task<Song?> GetOrAddSong(string hash)
         {
             Song? song = GetSongWithDiffsFromHash(hash);
-            Song? baseSong = null;
 
             if (song == null)
             {
@@ -111,13 +110,13 @@ namespace BeatLeader_Server.Controllers
 
                 if (song == null)
                 {
-                    return (null, null);
+                    return null;
                 }
                 else
                 {
                     string songId = song.Id;
                     Song? existingSong = _context.Songs.Include(s => s.Difficulties).ThenInclude(d => d.ModifierValues).FirstOrDefault(i => i.Id == songId);
-                    baseSong = existingSong;
+                    Song? baseSong = existingSong;
 
                     List<Song> songsToMigrate = new List<Song>();
                     while (existingSong != null)
@@ -134,23 +133,22 @@ namespace BeatLeader_Server.Controllers
                     _context.Songs.Add(song);
                     await _context.SaveChangesAsync();
 
-                    foreach (var oldSong in songsToMigrate)
-                    {
-                        foreach (var item in oldSong.Difficulties)
+                    if (baseSong != null) {
+                        foreach (var oldSong in songsToMigrate)
                         {
-                            if (item.Status == DifficultyStatus.nominated)
+                            foreach (var item in oldSong.Difficulties)
                             {
-                                await MigrateQualification(song, oldSong, baseSong, item);
+                                await MigrateLeaderboards(song, oldSong, baseSong, item);
+                                item.Status = DifficultyStatus.outdated;
+                                item.Stars = 0;
                             }
-                            item.Status = DifficultyStatus.outdated;
-                            item.Stars = 0;
                         }
                     }
                     await _context.SaveChangesAsync();
                 }
             }
 
-            return (song, baseSong);
+            return song;
         }
 
         [NonAction]

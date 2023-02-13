@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using System.Text;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -18,7 +19,7 @@ namespace BeatLeader_Server.Controllers
         private readonly IServerTiming _serverTiming;
         private readonly IConfiguration _configuration;
         private readonly ScoreRefreshController _scoreRefreshController;
-        private readonly PlayerController _playerController;
+        private readonly MapEvaluationController _mapEvaluationController;
         private readonly PlayerRefreshController _playerRefreshController;
         private readonly PlaylistController _playlistController;
 
@@ -29,7 +30,7 @@ namespace BeatLeader_Server.Controllers
             IServerTiming serverTiming,
             IConfiguration configuration,
             ScoreRefreshController scoreRefreshController,
-            PlayerController playerController,
+            MapEvaluationController mapEvaluationController,
             PlayerRefreshController playerRefreshController,
             PlaylistController playlistController)
         {
@@ -39,7 +40,7 @@ namespace BeatLeader_Server.Controllers
             _serverTiming = serverTiming;
             _configuration = configuration;
             _scoreRefreshController = scoreRefreshController;
-            _playerController = playerController;
+            _mapEvaluationController = mapEvaluationController;
             _playerRefreshController = playerRefreshController;
             _playlistController = playlistController;
         }
@@ -350,6 +351,15 @@ namespace BeatLeader_Server.Controllers
                 if (isRT || verified) {
                     difficulty.Stars = stars;
                 }
+
+                string? criteriaCheck = qualifiedLeaderboards.FirstOrDefault(lb => lb.Qualification.CriteriaCheck != null)?.Qualification.CriteriaCheck;
+                if (criteriaCheck == null) {
+                    try {
+                        MapCheckResult? mapCheckResult = (await _mapEvaluationController.Get(leaderboard.Song.Id)).Value;
+                        criteriaCheck = JsonExtensions.SerializeObject(mapCheckResult);
+                    } catch { }
+                }
+
                 leaderboard.Qualification = new RankQualification {
                     Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
                     RTMember = currentID,
@@ -357,6 +367,7 @@ namespace BeatLeader_Server.Controllers
                     MapperAllowed = !isRT || alreadyApproved != null,
                     MapperQualification = !isRT,
                     Modifiers = modifierValues,
+                    CriteriaCheck = criteriaCheck
                 };
                 
                 difficulty.ModifierValues = modifierValues;
@@ -1152,6 +1163,99 @@ namespace BeatLeader_Server.Controllers
 
                 _context.SaveChanges();
             }
+
+            return Ok();
+        }
+
+        [Authorize]
+        [HttpPost("~/qualification/comment/{id}")]
+        public async Task<ActionResult<QualificationCommentary>> PostComment(int id)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            RankQualification? qualification = _context
+                .RankQualification
+                .Include(q => q.Comments)
+                .FirstOrDefault(l => l.Id == id);
+
+            if (qualification == null) {
+                return NotFound();
+            }
+
+            bool isRT = true;
+            bool verified = false;
+            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam") && !currentPlayer.Role.Contains("qualityteam")))
+            {
+                if (currentPlayer != null && (currentPlayer.MapperId + "") == qualification?.MapperId) {
+                    isRT = false;
+                } else {
+                    return Unauthorized();
+                }
+            }
+
+            if (qualification.Comments == null) {
+                qualification.Comments = new List<QualificationCommentary>();
+            }
+
+            var ms = new MemoryStream(5);
+            await Request.Body.CopyToAsync(ms);
+            ms.Position = 0;
+
+            var result = new QualificationCommentary {
+                PlayerId = currentPlayer.Id,
+                Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
+                Value = Encoding.UTF8.GetString(ms.ToArray()),
+            };
+
+            qualification.Comments.Add(result);
+            _context.SaveChanges();
+
+            return result;
+        }
+
+        [Authorize]
+        [HttpPut("~/qualification/comment/{id}")]
+        public async Task<ActionResult<QualificationCommentary>> UpdateComment(int id) {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            var comment = await _context.QualificationCommentary.FirstOrDefaultAsync(c => c.Id == id);
+            if (comment == null) {
+                return NotFound();
+            }
+            if (comment.PlayerId != currentPlayer.Id && !currentPlayer.Role.Contains("admin")) {
+                return Unauthorized();
+            }
+
+            var ms = new MemoryStream(5);
+            await Request.Body.CopyToAsync(ms);
+            ms.Position = 0;
+
+            comment.Value = Encoding.UTF8.GetString(ms.ToArray());
+            comment.Edited = true;
+            comment.EditTimeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+            _context.SaveChanges();
+
+            return comment;
+        }
+
+        [Authorize]
+        [HttpDelete("~/qualification/comment/{id}")]
+        public async Task<ActionResult> DeleteComment(int id) {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            var comment = await _context.QualificationCommentary.FirstOrDefaultAsync(c => c.Id == id);
+            if (comment == null) {
+                return NotFound();
+            }
+            if (comment.PlayerId != currentPlayer.Id && !currentPlayer.Role.Contains("admin")) {
+                return Unauthorized();
+            }
+
+            _context.QualificationCommentary.Remove(comment);
+            _context.SaveChanges();
 
             return Ok();
         }

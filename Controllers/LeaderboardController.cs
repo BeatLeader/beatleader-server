@@ -43,7 +43,12 @@ namespace BeatLeader_Server.Controllers
         {
             var currentContext = _readContext;
 
-            LeaderboardResponse? leaderboard = currentContext
+            string currentID = HttpContext.CurrentUserID(currentContext);
+            var currentPlayer = await currentContext.Players.FindAsync(currentID);
+
+            bool isRt = (currentPlayer != null && (currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("rankedteam")));
+
+            IQueryable<Leaderboard> query = currentContext
                     .Leaderboards
                     .Where(lb => lb.Id == id)
                     .Include(lb => lb.Difficulty)
@@ -72,8 +77,13 @@ namespace BeatLeader_Server.Controllers
                     .ThenInclude(s => s.Difficulties)
                     .Include(lb => lb.LeaderboardGroup)
                     .ThenInclude(g => g.Leaderboards)
-                    .ThenInclude(glb => glb.Difficulty)
-                    .Select(l => new LeaderboardResponse {
+                    .ThenInclude(glb => glb.Difficulty);
+                
+                if (isRt) {
+                query = query.Include(lb => lb.Qualification).ThenInclude(q => q.Comments);
+            }
+
+                 LeaderboardResponse? leaderboard = query.Select(l => new LeaderboardResponse {
                         Id = l.Id,
                         Song = l.Song,
                         Difficulty = l.Difficulty,
@@ -99,10 +109,7 @@ namespace BeatLeader_Server.Controllers
 
                 if (voters)
                 {
-                    string currentID = HttpContext.CurrentUserID(currentContext);
-                    var currentPlayer = currentContext.Players.Find(currentID);
-
-                    if (currentPlayer != null && (currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("rankedteam")))
+                    if (isRt)
                     {
                         showVoters = true;
                     } else if (currentPlayer?.MapperId != 0 && leaderboard.Song.MapperId == currentPlayer.MapperId) {
@@ -114,7 +121,6 @@ namespace BeatLeader_Server.Controllers
 
                 if (friends)
                 {
-                    string? currentID = HttpContext.CurrentUserID(currentContext);
                     if (currentID == null)
                     {
                         return NotFound();
@@ -180,28 +186,30 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
+                string oppositeOrder = order == "desc" ? "asc" : "desc";
+
                 switch (sortBy)
                 {
                     case "date":
-                        scoreQuery = scoreQuery.Order(order, t => t.Timepost);
+                        scoreQuery = scoreQuery.Order(order, s => s.Timepost).ThenOrder(oppositeOrder, s => s.Rank);
                         break;
                     case "pp":
-                        scoreQuery = scoreQuery.Order(order, t => t.Pp);
+                        scoreQuery = scoreQuery.Order(order, s => s.Pp).ThenOrder(oppositeOrder, s => s.Rank);
                         break;
                     case "acc":
-                        scoreQuery = scoreQuery.Order(order, t => t.Accuracy);
+                        scoreQuery = scoreQuery.Order(order, s => s.Accuracy);
                         break;
                     case "pauses":
-                        scoreQuery = scoreQuery.Order(order, t => t.Pauses);
+                        scoreQuery = scoreQuery.Order(order, s => s.Pauses).ThenOrder(oppositeOrder, s => s.Rank);
                         break;
                     case "rank":
-                        scoreQuery = scoreQuery.Order(order == "desc" ? "asc" : "desc", t => t.Rank);
+                        scoreQuery = scoreQuery.Order(oppositeOrder, s => s.Rank);
                         break;
                     case "maxStreak":
-                        scoreQuery = scoreQuery.Order(order, t => t.MaxStreak);
+                        scoreQuery = scoreQuery.Order(order, s => s.MaxStreak).ThenOrder(oppositeOrder, s => s.Rank);
                         break;
                     case "playCount":
-                        scoreQuery = scoreQuery.Order(order, t => t.PlayCount);
+                        scoreQuery = scoreQuery.Order(order, s => s.PlayCount).ThenOrder(oppositeOrder, s => s.Rank);
                         break;
                     default:
                         break;
@@ -272,10 +280,7 @@ namespace BeatLeader_Server.Controllers
                     return ResponseFromLeaderboard((await GetByHash(song.Hash, difficulty.DifficultyName, difficulty.ModeName)).Value);
                 }
             } else if (leaderboard.Reweight != null && !leaderboard.Reweight.Finished) {
-                string currentID = HttpContext.CurrentUserID(currentContext);
-                var currentPlayer = await currentContext.Players.FindAsync(currentID);
-
-                if (currentPlayer != null && (currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("rankedteam")))
+                if (isRt)
                 {
                     var reweight = leaderboard.Reweight;
                     var recalculated = leaderboard.Scores.Select(s => {
@@ -304,10 +309,8 @@ namespace BeatLeader_Server.Controllers
                     leaderboard.Scores = recalculated.ToList();
                 }
             } else if (leaderboard.Difficulty.Status == DifficultyStatus.nominated) {
-                string currentID = HttpContext.CurrentUserID(currentContext);
-                var currentPlayer = await currentContext.Players.FindAsync(currentID);
 
-                if (currentPlayer != null && (currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("rankedteam")))
+                if (isRt)
                 {
                     var qualification = leaderboard.Qualification;
                     var recalculated = leaderboard.Scores.Select(s => {
@@ -427,24 +430,13 @@ namespace BeatLeader_Server.Controllers
                 .FirstOrDefault(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff);
 
             if (leaderboard == null) {
-                (Song? song, Song? baseSong) = await _songController.GetOrAddSong(hash);
+                Song? song = await _songController.GetOrAddSong(hash);
                 if (song == null)
                 {
                     return NotFound();
                 }
-
-                var difficulty = song.Difficulties.FirstOrDefault(d => d.DifficultyName == diff && d.ModeName == mode);
                 // Song migrated leaderboards
-                if (difficulty is { Status: DifficultyStatus.nominated }) {
-                    return await GetByHash(hash, diff, mode);
-                } else {
-                    leaderboard = await _songController.NewLeaderboard(song, baseSong, diff, mode);
-                }
-            }
-
-            if (leaderboard == null)
-            {
-                return NotFound();
+                return await GetByHash(hash, diff, mode);
             }
 
             return leaderboard;

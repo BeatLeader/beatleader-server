@@ -6,9 +6,26 @@ using System.Dynamic;
 using System.Linq.Expressions;
 using System.Net;
 using System.ComponentModel;
+using Newtonsoft.Json.Serialization;
 
 namespace BeatLeader_Server.Extensions
 {
+    public static class JsonExtensions
+    {
+        static DefaultContractResolver contractResolver = new DefaultContractResolver {
+            NamingStrategy = new CamelCaseNamingStrategy()
+        };
+
+        public static string SerializeObject(object? value)
+        {
+            return JsonConvert.SerializeObject(value, new JsonSerializerSettings
+            {
+                ContractResolver = contractResolver,
+                Formatting = Formatting.Indented
+            });
+        }
+    }
+
     public static class HttpContextExtensions
     {
         public static string? GetIpAddress(this HttpContext context)

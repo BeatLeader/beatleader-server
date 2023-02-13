@@ -524,6 +524,7 @@ namespace BeatLeader_Server.Utils
                 {
                     if (!role.Contains("creator") &&
                         !role.Contains("rankedteam") &&
+                        !role.Contains("qualityteam") &&
                         !role.Contains("juniorrankedteam") &&
                         !role.Contains("admin"))
                     {
@@ -536,6 +537,7 @@ namespace BeatLeader_Server.Utils
                         !role.Contains("sponsor") && 
                         !role.Contains("creator") && 
                         !role.Contains("rankedteam") &&
+                        !role.Contains("qualityteam") &&
                         !role.Contains("juniorrankedteam") && 
                         !role.Contains("admin")) {
                         settings.EffectName = "";
@@ -547,6 +549,7 @@ namespace BeatLeader_Server.Utils
                         !role.Contains("sponsor") &&
                         !role.Contains("creator") &&
                         !role.Contains("rankedteam") &&
+                        !role.Contains("qualityteam") &&
                         !role.Contains("juniorrankedteam") &&
                         !role.Contains("admin"))
                     {
@@ -558,6 +561,7 @@ namespace BeatLeader_Server.Utils
                     if (!role.Contains("sponsor") &&
                         !role.Contains("creator") &&
                         !role.Contains("rankedteam") &&
+                        !role.Contains("qualityteam") &&
                         !role.Contains("juniorrankedteam") &&
                         !role.Contains("admin"))
                     {
@@ -573,6 +577,7 @@ namespace BeatLeader_Server.Utils
                         !role.Contains("sponsor") &&
                         !role.Contains("creator") &&
                         !role.Contains("rankedteam") &&
+                        !role.Contains("qualityteam") &&
                         !role.Contains("juniorrankedteam") &&
                         !role.Contains("admin")) {
                     settings.RightSaberColor = null;

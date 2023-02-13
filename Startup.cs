@@ -232,18 +232,15 @@ namespace BeatLeader_Server {
             services.AddMvc ().AddControllersAsServices ().AddJsonOptions (options => {
                 options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
             });
-            if (!Environment.IsDevelopment())
-            {
-                services.AddCors (options => {
-                    options.AddPolicy (name: MyAllowSpecificOrigins,
-                        builder => {
-                            builder.WithOrigins(Configuration.GetSection("CORS").Get<string[]>())
-                            .AllowAnyHeader()
-                            .AllowAnyMethod()
-                            .AllowCredentials();
-                        });
-                });
-            }
+            services.AddCors (options => {
+                options.AddPolicy (name: MyAllowSpecificOrigins,
+                    builder => {
+                        builder.WithOrigins(Configuration.GetSection("CORS").Get<string[]>())
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .AllowCredentials();
+                    });
+            });
 
             services.AddSwaggerGen();
 
