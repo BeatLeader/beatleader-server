@@ -2,12 +2,36 @@
 using CoreHtmlToImage;
 using Discord;
 using Discord.WebSocket;
+using System.Reflection;
 
 namespace BeatLeader_Server.Bot
 {
     public class NominationsForum
     {
         public NominationsForum() {
+        }
+
+        private async Task<SocketThreadChannel?> ReturnOrUnarchiveThread(ulong id) {
+            var guild = BotService.Client.GetGuild(921820046345523311);
+            var channel = guild.GetThreadChannel(id);
+            
+            if (channel == null) {
+
+                 var ctor = typeof(SocketThreadChannel).GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic).FirstOrDefault();
+
+                channel = (SocketThreadChannel)ctor.Invoke(new object[5] { BotService.Client, guild, id, guild.GetForumChannel(1075436060139597886), null });
+                
+                try {
+                    await channel.ModifyAsync(props => {
+                        props.Archived = false;
+                    });
+                } catch { }
+
+                await Task.Delay(TimeSpan.FromSeconds(2));
+                channel = guild.GetThreadChannel(id);
+            }
+
+            return channel;
         }
 
         public async Task<ulong> OpenNomination(string playerName, Leaderboard leaderboard) {
@@ -41,16 +65,21 @@ namespace BeatLeader_Server.Bot
         }
 
         public async Task PostMessage(ulong forum, string message) {
-            var channel = BotService.Client.GetGuild(921820046345523311).GetThreadChannel(forum);
+            var channel = await ReturnOrUnarchiveThread(forum);
 
-            await channel.SendMessageAsync(message);
+            if (channel != null) {
+                await channel.SendMessageAsync(message);
+            }
         }
         
         public async Task<ulong> PostComment(ulong forum, string comment, Player player) {
             var converter = new HtmlConverter();
             var bytes = converter.FromHtmlString(comment);
 
-            var channel = BotService.Client.GetGuild(921820046345523311).GetThreadChannel(forum);
+            var channel = await ReturnOrUnarchiveThread(forum);
+            if (channel == null) {
+                return 0;
+            }
 
             return (await channel.SendFileAsync(new FileAttachment(new MemoryStream(bytes), "message.jpg"), "From " + player.Name)).Id;
         }
@@ -61,13 +90,20 @@ namespace BeatLeader_Server.Bot
             var converter = new HtmlConverter();
             var bytes = converter.FromHtmlString(comment);
 
-            var channel = BotService.Client.GetGuild(921820046345523311).GetThreadChannel(forum);
+            var channel = await ReturnOrUnarchiveThread(forum);
+            if (channel == null) {
+                return 0;
+            }
 
             return (await channel.SendFileAsync(new FileAttachment(new MemoryStream(bytes), "message.jpg"), "From " + player.Name)).Id;
         }
 
         public async Task DeleteComment(ulong forum, ulong id) {
-            await BotService.Client.GetGuild(921820046345523311).GetThreadChannel(forum).DeleteMessageAsync(id);
+            var channel = await ReturnOrUnarchiveThread(forum);
+            if (channel == null) {
+                return;
+            }
+            await channel.DeleteMessageAsync(id);
         }
     }
 }
