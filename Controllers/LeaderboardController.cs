@@ -46,7 +46,10 @@ namespace BeatLeader_Server.Controllers
             string currentID = HttpContext.CurrentUserID(currentContext);
             var currentPlayer = await currentContext.Players.FindAsync(currentID);
 
-            bool isRt = (currentPlayer != null && (currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("rankedteam")));
+            bool isRt = (currentPlayer != null && 
+                            (currentPlayer.Role.Contains("admin") || 
+                             currentPlayer.Role.Contains("rankedteam") || 
+                             currentPlayer.Role.Contains("qualityteam")));
 
             IQueryable<Leaderboard> query = currentContext
                     .Leaderboards
@@ -79,9 +82,7 @@ namespace BeatLeader_Server.Controllers
                     .ThenInclude(g => g.Leaderboards)
                     .ThenInclude(glb => glb.Difficulty);
                 
-                if (isRt) {
-                query = query.Include(lb => lb.Qualification).ThenInclude(q => q.Comments);
-            }
+                
 
                  LeaderboardResponse? leaderboard = query.Select(l => new LeaderboardResponse {
                         Id = l.Id,
@@ -103,6 +104,10 @@ namespace BeatLeader_Server.Controllers
                     .FirstOrDefault();
 
             if (leaderboard != null) {
+
+                if (leaderboard.Qualification != null && (isRt || leaderboard.Song.MapperId == currentPlayer?.MapperId)) {
+                    leaderboard.Qualification.Comments = _context.QualificationCommentary.Where(c => c.RankQualificationId == leaderboard.Qualification.Id).ToList();
+                }
 
                 var scoreQuery = currentContext.Scores.Where(s => s.LeaderboardId == leaderboard.Id);
                 bool showVoters = false;

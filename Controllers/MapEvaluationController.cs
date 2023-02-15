@@ -112,15 +112,15 @@ namespace BeatLeader_Server.Controllers
             var info = maps[0].info;
             var lines = new Dictionary<int, string>();
 
-            valueToCheck += $"Name: {info._songName} ";
+            valueToCheck += $"| Name: {info._songName} |";
             lines[valueToCheck.Length] = valueToCheck;
 
-            valueToCheck += $"Subname: {info._songSubName} ";
-            lines[valueToCheck.Length] = $"Subname: {info._songSubName} ";
+            valueToCheck += $"| Subname: {info._songSubName} |";
+            lines[valueToCheck.Length] = $"| Subname: {info._songSubName} |";
 
             foreach (var map in maps) { 
                 if (map.mapDiff._customData != null && map.mapDiff._customData._difficultyLabel != null) {
-                    var line = $"Diffname: {map.mapDiff._customData._difficultyLabel} ";
+                    var line = $"| Diffname: {map.mapDiff._customData._difficultyLabel} |";
                     
                     valueToCheck += line;
                     lines[valueToCheck.Length] = line;

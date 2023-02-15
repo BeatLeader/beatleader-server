@@ -9,6 +9,8 @@
 
         public int? EditTimeset { get; set; }
         public bool Edited { get; set; }
+
+        public int RankQualificationId { get; set; }
     }
 
     public class RankQualification

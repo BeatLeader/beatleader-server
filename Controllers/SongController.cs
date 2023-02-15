@@ -81,7 +81,7 @@ namespace BeatLeader_Server.Controllers
         public async Task MigrateLeaderboards(Song newSong, Song oldSong, Song? baseSong, DifficultyDescription diff)
         {
             var newLeaderboard = await NewLeaderboard(newSong, baseSong, diff.DifficultyName, diff.ModeName);
-            if (newLeaderboard != null && diff.Status != DifficultyStatus.ranked) {
+            if (newLeaderboard != null && diff.Status != DifficultyStatus.ranked && diff.Status != DifficultyStatus.outdated) {
                 newLeaderboard.Difficulty.Status = diff.Status;
                 newLeaderboard.Difficulty.Stars = diff.Stars;
                 newLeaderboard.Difficulty.Type = diff.Type;
@@ -115,7 +115,11 @@ namespace BeatLeader_Server.Controllers
                 else
                 {
                     string songId = song.Id;
-                    Song? existingSong = _context.Songs.Include(s => s.Difficulties).ThenInclude(d => d.ModifierValues).FirstOrDefault(i => i.Id == songId);
+                    Song? existingSong = _context
+                        .Songs
+                        .Include(s => s.Difficulties)
+                        .ThenInclude(d => d.ModifierValues)
+                        .FirstOrDefault(i => i.Id == songId);
                     Song? baseSong = existingSong;
 
                     List<Song> songsToMigrate = new List<Song>();
