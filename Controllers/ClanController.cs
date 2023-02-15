@@ -39,7 +39,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<ResponseWithMetadata<Clan>>> GetAll(
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
-            [FromQuery] string sort = "pp",
+            [FromQuery] string sort = "captures",
             [FromQuery] string order = "desc",
             [FromQuery] string? search = null,
             [FromQuery] string? type = null)
@@ -58,6 +58,9 @@ namespace BeatLeader_Server.Controllers
                     break;
                 case "count":
                     sequence = sequence.Order(order, t => t.PlayersCount);
+                    break;
+                case "captures":
+                    sequence = sequence.Order(order, c => c.OwnedLeaderboardsCount);
                     break;
                 default:
                     break;
