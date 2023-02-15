@@ -1,6 +1,8 @@
-﻿using BeatLeader_Server.Extensions;
+﻿using BeatLeader_Server.Bot;
+using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
+using Discord.Rest;
 using Discord.Webhook;
 using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
@@ -23,6 +25,8 @@ namespace BeatLeader_Server.Controllers
         private readonly PlayerRefreshController _playerRefreshController;
         private readonly PlaylistController _playlistController;
 
+        private readonly NominationsForum _nominationsForum;
+
         public RankController(
             AppContext context,
             ReadAppContext readContext,
@@ -32,7 +36,8 @@ namespace BeatLeader_Server.Controllers
             ScoreRefreshController scoreRefreshController,
             MapEvaluationController mapEvaluationController,
             PlayerRefreshController playerRefreshController,
-            PlaylistController playlistController)
+            PlaylistController playlistController,
+            NominationsForum nominationsForum)
         {
             _context = context;
             _readContext = readContext;
@@ -43,6 +48,8 @@ namespace BeatLeader_Server.Controllers
             _mapEvaluationController = mapEvaluationController;
             _playerRefreshController = playerRefreshController;
             _playlistController = playlistController;
+
+            _nominationsForum = nominationsForum;
         }
 
         public enum VoteStatus
@@ -400,6 +407,9 @@ namespace BeatLeader_Server.Controllers
 
                     await dsClient.SendMessageAsync(message);
                 }
+
+                leaderboard.Qualification.ForumChannelId = await _nominationsForum.OpenNomination(currentPlayer.Name, leaderboard);
+                await _context.SaveChangesAsync();
             }
 
             return Ok();
@@ -473,6 +483,8 @@ namespace BeatLeader_Server.Controllers
                         leaderboard.Difficulty.QualifiedTime = qualification.ApprovalTimeset;
 
                         var dsClient = qualificationDSClient();
+
+                        await _nominationsForum.PostMessage(qualification.ForumChannelId, "**QUALIFIED**");
 
                         if (dsClient != null)
                         {
@@ -579,11 +591,15 @@ namespace BeatLeader_Server.Controllers
 
                         qualification.Changes.Add(qualificationChange);
 
-                        var dsClient = nominationDSClient();
+                        if (qualificationChange.NewRankability <= 0)
+                        {
+                            await _nominationsForum.PostMessage(qualification.ForumChannelId, "**UN-NOMINATED**");
+                            await _nominationsForum.CloseNomination(qualification.ForumChannelId);
+                        }
 
+                        var dsClient = nominationDSClient();
                         if (dsClient != null)
                         {
-
                             string message = currentPlayer.Name + " updated nomination for **" + leaderboard.Song.Name + "**!\n";
                             if (qualificationChange.NewRankability <= 0)
                             {
@@ -1211,6 +1227,11 @@ namespace BeatLeader_Server.Controllers
             qualification.Comments.Add(result);
             _context.SaveChanges();
 
+            try {
+            result.ForumMessage = await _nominationsForum.PostComment(qualification.ForumChannelId, result.Value, currentPlayer);
+            _context.SaveChanges();
+            } catch { }
+
             return result;
         }
 
@@ -1220,7 +1241,10 @@ namespace BeatLeader_Server.Controllers
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            var comment = await _context.QualificationCommentary.FirstOrDefaultAsync(c => c.Id == id);
+            var comment = await _context
+                .QualificationCommentary
+                .Include(c => c.RankQualification)
+                .FirstOrDefaultAsync(c => c.Id == id);
             if (comment == null) {
                 return NotFound();
             }
@@ -1237,6 +1261,11 @@ namespace BeatLeader_Server.Controllers
             comment.EditTimeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             _context.SaveChanges();
 
+            try {
+            comment.ForumMessage = await _nominationsForum.UpdateComment(comment.RankQualification.ForumChannelId, comment.ForumMessage, comment.Value, currentPlayer);
+            _context.SaveChanges();
+            } catch { }
+
             return comment;
         }
 
@@ -1246,7 +1275,7 @@ namespace BeatLeader_Server.Controllers
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            var comment = await _context.QualificationCommentary.FirstOrDefaultAsync(c => c.Id == id);
+            var comment = await _context.QualificationCommentary.Include(c => c.RankQualification).FirstOrDefaultAsync(c => c.Id == id);
             if (comment == null) {
                 return NotFound();
             }
@@ -1256,6 +1285,10 @@ namespace BeatLeader_Server.Controllers
 
             _context.QualificationCommentary.Remove(comment);
             _context.SaveChanges();
+
+            try {
+            await _nominationsForum.DeleteComment(comment.RankQualification.ForumChannelId, comment.ForumMessage);
+            } catch { }
 
             return Ok();
         }

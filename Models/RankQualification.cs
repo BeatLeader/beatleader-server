@@ -10,7 +10,10 @@
         public int? EditTimeset { get; set; }
         public bool Edited { get; set; }
 
-        public int RankQualificationId { get; set; }
+        public int? RankQualificationId { get; set; }
+        public RankQualification? RankQualification { get; set; }
+
+        public ulong ForumMessage { get; set; }
     }
 
     public class RankQualification
@@ -39,5 +42,7 @@
 
         public ICollection<QualificationChange>? Changes { get; set; }
         public ICollection<QualificationCommentary>? Comments { get; set; }
+
+        public ulong ForumChannelId { get; set; }
     }
 }

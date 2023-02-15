@@ -9,6 +9,7 @@ using Prometheus.Client.DependencyInjection;
 using Prometheus.Client.HttpRequestDurations;
 using Prometheus.Client.AspNetCore;
 using System.Net;
+using BeatLeader_Server.Bot;
 
 namespace BeatLeader_Server {
 
@@ -229,6 +230,9 @@ namespace BeatLeader_Server {
                 services.AddHostedService<RankingService>();
                 services.AddHostedService<MinuteRefresh>();
             }
+            services.AddHostedService<BotService>();
+            services.AddSingleton<NominationsForum>();
+
             services.AddMvc ().AddControllersAsServices ().AddJsonOptions (options => {
                 options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
             });
