@@ -993,6 +993,10 @@ namespace BeatLeader_Server.Controllers
                 };
                 leaderboard.Changes.Add(rankChange);
 
+                // Calculate owning clan for this map because it has just been ranked
+                // TODO: what is the rankability value?
+                _context.CalculateOwningClan(leaderboard.Id);
+
                 bool updatePlaylists = (difficulty.Status == DifficultyStatus.ranked) != (rankability > 0); 
 
                 if (difficulty.Status != DifficultyStatus.ranked && rankability > 0) {
