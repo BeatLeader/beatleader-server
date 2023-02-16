@@ -489,6 +489,14 @@ namespace BeatLeader_Server.Controllers
                         if (dsClient != null)
                         {
                             string message = currentPlayer.Name + " qualified **" + diff + "** diff of **" + leaderboard.Song.Name + "**! \n";
+                            var mapper = _context.Players.Include(p => p.Socials).FirstOrDefault(p => p.Id == qualification.MapperId);
+                            if (mapper != null) {
+                                var discord = mapper.Socials?.FirstOrDefault(s => s.Service == "Discord");
+                                if (discord != null)
+                                {
+                                    message += $"Mapper: <@{discord.UserId}> <a:wavege:1069819816581546057> \n";
+                                }
+                            }
                             message += "★ " + leaderboard.Difficulty.Stars + "  ";
                             message += " **T**  ";
                             message += FormatUtils.DescribeType(leaderboard.Difficulty.Type);
@@ -1188,7 +1196,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<QualificationCommentary>> PostComment(int id)
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
+            var currentPlayer = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == currentID);
 
             RankQualification? qualification = _context
                 .RankQualification
@@ -1239,7 +1247,7 @@ namespace BeatLeader_Server.Controllers
         [HttpPut("~/qualification/comment/{id}")]
         public async Task<ActionResult<QualificationCommentary>> UpdateComment(int id) {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
+            var currentPlayer = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == currentID);
 
             var comment = await _context
                 .QualificationCommentary

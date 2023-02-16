@@ -17,7 +17,7 @@ namespace BeatLeader_Server.Bot
             
             if (channel == null) {
 
-                 var ctor = typeof(SocketThreadChannel).GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic).FirstOrDefault();
+                var ctor = typeof(SocketThreadChannel).GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic).FirstOrDefault();
 
                 channel = (SocketThreadChannel)ctor.Invoke(new object[5] { BotService.Client, guild, id, guild.GetForumChannel(1075436060139597886), null });
                 
@@ -74,28 +74,40 @@ namespace BeatLeader_Server.Bot
         
         public async Task<ulong> PostComment(ulong forum, string comment, Player player) {
             var converter = new HtmlConverter();
-            var bytes = converter.FromHtmlString(comment);
+            var length = 300;
+            if (comment.Length > 200) {
+                length = 700;
+            }
+
+            var bytes = converter.FromHtmlString(comment, length, CoreHtmlToImage.ImageFormat.Png, 100);
 
             var channel = await ReturnOrUnarchiveThread(forum);
             if (channel == null) {
                 return 0;
             }
 
-            return (await channel.SendFileAsync(new FileAttachment(new MemoryStream(bytes), "message.jpg"), "From " + player.Name)).Id;
+            var playername = player.Name; 
+            
+            var discord = player.Socials?.FirstOrDefault(s => s.Service == "Discord");
+            if (discord != null)
+            {
+                try {
+                    ulong discordId = ulong.Parse(discord.UserId); 
+                    playername = $"<@{discordId}>";
+                    var user = await ((IGuild)BotService.Client.GetGuild(921820046345523311)).GetUserAsync(discordId, CacheMode.AllowDownload);
+                    await channel.AddUserAsync(user);
+                } catch { }
+            }
+
+            return (await channel.SendFileAsync(
+                new FileAttachment(new MemoryStream(bytes), "message.png"), "From " + playername,
+                allowedMentions: new AllowedMentions { UserIds = new List<ulong>() })).Id;
         }
 
         public async Task<ulong> UpdateComment(ulong forum, ulong id, string comment, Player player) {
             await DeleteComment(forum, id);
 
-            var converter = new HtmlConverter();
-            var bytes = converter.FromHtmlString(comment);
-
-            var channel = await ReturnOrUnarchiveThread(forum);
-            if (channel == null) {
-                return 0;
-            }
-
-            return (await channel.SendFileAsync(new FileAttachment(new MemoryStream(bytes), "message.jpg"), "From " + player.Name)).Id;
+            return await PostComment(forum, comment, player);
         }
 
         public async Task DeleteComment(ulong forum, ulong id) {
