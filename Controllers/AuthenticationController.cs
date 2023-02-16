@@ -59,6 +59,10 @@ namespace BeatLeader_Server.Controllers
             {
                 redirectUrl = Url.Action("LinkTwitter", "Socials", new { returnUrl = returnUrl ?? "/" });
             }
+            else if (provider == "Discord")
+            {
+                redirectUrl = Url.Action("LinkDiscord", "Socials", new { returnUrl = returnUrl ?? "/" });
+            }
             else if (provider == "Google")
             {
                 redirectUrl = Url.Action("LinkGoogle", "Socials", new { returnUrl = returnUrl ?? "/" });

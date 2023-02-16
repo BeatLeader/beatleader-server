@@ -28,6 +28,15 @@
         public string Timestamp { get; set; } = "";
     }
 
+    public class DiscordLink
+    {
+        public string Id { get; set; }
+        public string DiscordId { get; set; }
+        public string Token { get; set; } = "";
+        public string RefreshToken { get; set; } = "";
+        public string Timestamp { get; set; } = "";
+    }
+
     public class YouTubeLink
     {
         public string Id { get; set; }

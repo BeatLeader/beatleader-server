@@ -119,7 +119,7 @@ namespace BeatLeader_Server {
             .AddCookie("BLTwitch")
             .AddCookie("BLTwitter")
             .AddCookie("BLGoogle")
-            //.AddCookie("BLDiscord")
+            .AddCookie("BLDiscord")
             .AddCookie("BLBeatSaver")
             .AddSteamTicket(options =>
             {
@@ -173,7 +173,6 @@ namespace BeatLeader_Server {
 
                 string patreonId = Configuration.GetValue<string>("PatreonId");
                 string patreonSecret = Configuration.GetValue<string>("PatreonSecret");
-
                 authBuilder.AddPatreon(options => {
                     options.SignInScheme = "BLPatreon";
                     options.SaveTokens = true;
@@ -183,7 +182,6 @@ namespace BeatLeader_Server {
 
                 string twitchId = Configuration.GetValue<string>("TwitchId");
                 string twitchSecret = Configuration.GetValue<string>("TwitchSecret");
-
                 authBuilder.AddTwitch(options =>
                 {
                     options.SaveTokens = true;
@@ -194,7 +192,6 @@ namespace BeatLeader_Server {
 
                 string twitterId = Configuration.GetValue<string>("TwitterId");
                 string twitterSecret = Configuration.GetValue<string>("TwitterSecret");
-
                 authBuilder.AddTwitter(options =>
                 {
                     options.SaveTokens = true;
@@ -203,9 +200,18 @@ namespace BeatLeader_Server {
                     options.SignInScheme = "BLTwitter";
                 });
 
+                string discordId = Configuration.GetValue<string>("DiscordId");
+                string discordSecret = Configuration.GetValue<string>("DiscordSecret");
+                authBuilder.AddDiscord(options => 
+                {
+                    options.SaveTokens = true;
+                    options.ClientId = discordId;
+                    options.ClientSecret = discordSecret;
+                    options.SignInScheme = "BLDiscord";
+                });
+
                 string googleId = Configuration.GetValue<string>("GoogleId");
                 string googleSecret = Configuration.GetValue<string>("GoogleSecret");
-
                 authBuilder.AddGoogle(options =>
                 {
                     options.SaveTokens = true;

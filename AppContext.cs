@@ -34,6 +34,7 @@ namespace BeatLeader_Server
         public DbSet<PatreonLink> PatreonLinks { get; set; }
         public DbSet<TwitchLink> TwitchLinks { get; set; }
         public DbSet<TwitterLink> TwitterLinks { get; set; }
+        public DbSet<DiscordLink> DiscordLinks { get; set; }
         public DbSet<YouTubeLink> YouTubeLinks { get; set; }
         public DbSet<BeatSaverLink> BeatSaverLinks { get; set; }
         public DbSet<PlayerLeaderboardStats> PlayerLeaderboardStats { get; set; }

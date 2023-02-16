@@ -124,6 +124,60 @@ namespace BeatLeader_Server.Controllers
             return Redirect(returnUrl);
         }
 
+        [HttpGet("~/user/linkDiscord")]
+        public async Task<ActionResult> LinkDiscord([FromQuery] string returnUrl)
+        {
+            string playerId = HttpContext.CurrentUserID(_context);
+            if (playerId == null)
+            {
+                return Redirect(returnUrl);
+            }
+            var auth = await HttpContext.AuthenticateAsync("Discord");
+
+            var player = _context.Players.Include(p => p.Socials).FirstOrDefault(p => p.Id == playerId);
+            if (player != null && (player.Socials?.FirstOrDefault(s => s.Service == "Discord") == null))
+            {
+                player.Socials ??= new List<PlayerSocial>();
+
+                var claims = auth.Principal.Claims;
+
+                var id = claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+                var username = claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
+                var discriminator = claims.FirstOrDefault(c => c.Type == "urn:discord:user:discriminator")?.Value;
+
+                string? token = auth?.Properties?.Items[".Token.access_token"];
+                string? refreshToken = auth?.Properties?.Items[".Token.refresh_token"];
+                string? timestamp = auth?.Properties?.Items[".Token.expires_at"];
+
+                if (discriminator != null && id != null && username != null && token != null)
+                {
+                    player.Socials.Add(new PlayerSocial
+                    {
+                        Service = "Discord",
+                        User = username + "#" + discriminator,
+                        UserId = id,
+                        Link = "https://discordapp.com/users/" + id
+                    });
+                    _context.DiscordLinks.Add(new DiscordLink
+                    {
+                        Token = token,
+                        RefreshToken = refreshToken ?? "",
+                        DiscordId = id,
+                        Id = playerId,
+                        Timestamp = timestamp ?? ""
+                    });
+
+                    await _context.SaveChangesAsync();
+                }
+            }
+            else
+            {
+                return Unauthorized("This Discord profile is already linked");
+            }
+
+            return Redirect(returnUrl);
+        }
+
         [HttpGet("~/user/linkGoogle")]
         public async Task<ActionResult> LinkGoogle([FromQuery] string returnUrl)
         {
@@ -253,6 +307,13 @@ namespace BeatLeader_Server.Controllers
                     if (link3 != null)
                     {
                         _context.YouTubeLinks.Remove(link3);
+                    }
+                    break;
+                case "Discord":
+                    var link4 = _context.DiscordLinks.FirstOrDefault(l => l.Id == player.Id);
+                    if (link4 != null)
+                    {
+                        _context.DiscordLinks.Remove(link4);
                     }
                     break;
                 default:
