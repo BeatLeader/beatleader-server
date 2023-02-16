@@ -11,15 +11,16 @@ namespace BeatLeader_Server.Bot
         public NominationsForum() {
         }
 
-        private async Task<SocketThreadChannel?> ReturnOrUnarchiveThread(ulong id) {
+        private async Task<SocketThreadChannel?> ReturnOrUnarchiveThread(string id) {
             var guild = BotService.Client.GetGuild(921820046345523311);
-            var channel = guild.GetThreadChannel(id);
+            ulong longId = ulong.Parse(id); 
+            var channel = guild.GetThreadChannel(longId);
             
             if (channel == null) {
 
                 var ctor = typeof(SocketThreadChannel).GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic).FirstOrDefault();
 
-                channel = (SocketThreadChannel)ctor.Invoke(new object[5] { BotService.Client, guild, id, guild.GetForumChannel(1075436060139597886), null });
+                channel = (SocketThreadChannel)ctor.Invoke(new object[5] { BotService.Client, guild, longId, guild.GetForumChannel(1075436060139597886), null });
                 
                 try {
                     await channel.ModifyAsync(props => {
@@ -28,13 +29,13 @@ namespace BeatLeader_Server.Bot
                 } catch { }
 
                 await Task.Delay(TimeSpan.FromSeconds(2));
-                channel = guild.GetThreadChannel(id);
+                channel = guild.GetThreadChannel(longId);
             }
 
             return channel;
         }
 
-        public async Task<ulong> OpenNomination(string playerName, Leaderboard leaderboard) {
+        public async Task<string> OpenNomination(string playerName, Leaderboard leaderboard) {
             var guild = BotService.Client.GetGuild(921820046345523311);
 
             var ForumChannel = guild.GetForumChannel(1075436060139597886);
@@ -52,11 +53,11 @@ namespace BeatLeader_Server.Bot
                     .Build()
             });
 
-            return post.Id;
+            return post.Id.ToString();
         }
 
-        public async Task CloseNomination(ulong id) {
-            var channel = BotService.Client.GetGuild(921820046345523311).GetThreadChannel(id);
+        public async Task CloseNomination(string id) {
+            var channel = BotService.Client.GetGuild(921820046345523311).GetThreadChannel(ulong.Parse(id));
             if (channel != null) {
                 await channel.ModifyAsync(props => {
                     props.Archived = true;
@@ -64,7 +65,7 @@ namespace BeatLeader_Server.Bot
             }
         }
 
-        public async Task PostMessage(ulong forum, string message) {
+        public async Task PostMessage(string forum, string message) {
             var channel = await ReturnOrUnarchiveThread(forum);
 
             if (channel != null) {
@@ -72,7 +73,7 @@ namespace BeatLeader_Server.Bot
             }
         }
         
-        public async Task<ulong> PostComment(ulong forum, string comment, Player player) {
+        public async Task<string> PostComment(string forum, string comment, Player player) {
             var converter = new HtmlConverter();
             var length = 300;
             if (comment.Length > 200) {
@@ -83,7 +84,7 @@ namespace BeatLeader_Server.Bot
 
             var channel = await ReturnOrUnarchiveThread(forum);
             if (channel == null) {
-                return 0;
+                return "";
             }
 
             var playername = player.Name; 
@@ -101,21 +102,21 @@ namespace BeatLeader_Server.Bot
 
             return (await channel.SendFileAsync(
                 new FileAttachment(new MemoryStream(bytes), "message.png"), "From " + playername,
-                allowedMentions: new AllowedMentions { UserIds = new List<ulong>() })).Id;
+                allowedMentions: new AllowedMentions { UserIds = new List<ulong>() })).Id.ToString();
         }
 
-        public async Task<ulong> UpdateComment(ulong forum, ulong id, string comment, Player player) {
+        public async Task<string> UpdateComment(string forum, string id, string comment, Player player) {
             await DeleteComment(forum, id);
 
             return await PostComment(forum, comment, player);
         }
 
-        public async Task DeleteComment(ulong forum, ulong id) {
+        public async Task DeleteComment(string forum, string id) {
             var channel = await ReturnOrUnarchiveThread(forum);
             if (channel == null) {
                 return;
             }
-            await channel.DeleteMessageAsync(id);
+            await channel.DeleteMessageAsync(ulong.Parse(id));
         }
     }
 }

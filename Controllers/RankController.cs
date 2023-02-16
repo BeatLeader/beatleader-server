@@ -408,7 +408,7 @@ namespace BeatLeader_Server.Controllers
                     await dsClient.SendMessageAsync(message);
                 }
 
-                leaderboard.Qualification.ForumChannelId = await _nominationsForum.OpenNomination(currentPlayer.Name, leaderboard);
+                leaderboard.Qualification.DiscordChannelId = (await _nominationsForum.OpenNomination(currentPlayer.Name, leaderboard)).ToString();
                 await _context.SaveChangesAsync();
             }
 
@@ -484,7 +484,7 @@ namespace BeatLeader_Server.Controllers
 
                         var dsClient = qualificationDSClient();
 
-                        await _nominationsForum.PostMessage(qualification.ForumChannelId, "**QUALIFIED**");
+                        await _nominationsForum.PostMessage(qualification.DiscordChannelId, "**QUALIFIED**");
 
                         if (dsClient != null)
                         {
@@ -601,8 +601,8 @@ namespace BeatLeader_Server.Controllers
 
                         if (qualificationChange.NewRankability <= 0)
                         {
-                            await _nominationsForum.PostMessage(qualification.ForumChannelId, "**UN-NOMINATED**");
-                            await _nominationsForum.CloseNomination(qualification.ForumChannelId);
+                            await _nominationsForum.PostMessage(qualification.DiscordChannelId, "**UN-NOMINATED**");
+                            await _nominationsForum.CloseNomination(qualification.DiscordChannelId);
                         }
 
                         var dsClient = nominationDSClient();
@@ -1236,7 +1236,7 @@ namespace BeatLeader_Server.Controllers
             _context.SaveChanges();
 
             try {
-            result.ForumMessage = await _nominationsForum.PostComment(qualification.ForumChannelId, result.Value, currentPlayer);
+            result.DiscordMessageId = await _nominationsForum.PostComment(qualification.DiscordChannelId, result.Value, currentPlayer);
             _context.SaveChanges();
             } catch { }
 
@@ -1270,7 +1270,7 @@ namespace BeatLeader_Server.Controllers
             _context.SaveChanges();
 
             try {
-            comment.ForumMessage = await _nominationsForum.UpdateComment(comment.RankQualification.ForumChannelId, comment.ForumMessage, comment.Value, currentPlayer);
+            comment.DiscordMessageId = await _nominationsForum.UpdateComment(comment.RankQualification.DiscordChannelId, comment.DiscordMessageId, comment.Value, currentPlayer);
             _context.SaveChanges();
             } catch { }
 
@@ -1295,7 +1295,7 @@ namespace BeatLeader_Server.Controllers
             _context.SaveChanges();
 
             try {
-            await _nominationsForum.DeleteComment(comment.RankQualification.ForumChannelId, comment.ForumMessage);
+            await _nominationsForum.DeleteComment(comment.RankQualification.DiscordChannelId, comment.DiscordMessageId);
             } catch { }
 
             return Ok();
