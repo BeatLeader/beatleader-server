@@ -484,7 +484,9 @@ namespace BeatLeader_Server.Controllers
 
                         var dsClient = qualificationDSClient();
 
-                        await _nominationsForum.PostMessage(qualification.DiscordChannelId, "**QUALIFIED**");
+                        if (qualification.DiscordChannelId.Length > 0) {
+                            await _nominationsForum.NominationQualified(qualification.DiscordChannelId);
+                        }
 
                         if (dsClient != null)
                         {
@@ -599,9 +601,8 @@ namespace BeatLeader_Server.Controllers
 
                         qualification.Changes.Add(qualificationChange);
 
-                        if (qualificationChange.NewRankability <= 0)
+                        if (qualificationChange.NewRankability <= 0 && qualification.DiscordChannelId.Length > 0)
                         {
-                            await _nominationsForum.PostMessage(qualification.DiscordChannelId, "**UN-NOMINATED**");
                             await _nominationsForum.CloseNomination(qualification.DiscordChannelId);
                         }
 
@@ -1208,7 +1209,6 @@ namespace BeatLeader_Server.Controllers
             }
 
             bool isRT = true;
-            bool verified = false;
             if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam") && !currentPlayer.Role.Contains("qualityteam")))
             {
                 if (currentPlayer != null && (currentPlayer.MapperId + "") == qualification?.MapperId) {

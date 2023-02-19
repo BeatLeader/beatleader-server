@@ -1,4 +1,5 @@
-﻿using BeatLeader_Server.Controllers;
+﻿using BeatLeader_Server.Bot;
+using BeatLeader_Server.Controllers;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Discord;
@@ -161,6 +162,13 @@ namespace BeatLeader_Server.Services
                               .WithUrl("https://beatleader.xyz/leaderboard/global/" + leaderboard.Id)
                               .Build()
                         });
+
+                        if (leaderboard.Qualification.DiscordChannelId.Length > 0) {
+                            try {
+                            var forum = scope.ServiceProvider.GetRequiredService<NominationsForum>();
+                            await forum.NominationRanked(leaderboard.Qualification.DiscordChannelId);
+                            } catch { }
+                        }
                     }
                 }
                 var _playlistController = scope.ServiceProvider.GetRequiredService<PlaylistController>();

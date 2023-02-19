@@ -51,25 +51,45 @@ namespace BeatLeader_Server.Bot
                     .WithTitle("Leaderboard")
                     .WithUrl("https://beatleader.xyz/leaderboard/global/" + leaderboard.Id)
                     .Build()
-            });
+            },
+            tags: ForumChannel.Tags.Where(t => t.Name == "Nominated").ToArray());
 
             return post.Id.ToString();
         }
 
         public async Task CloseNomination(string id) {
-            var channel = BotService.Client.GetGuild(921820046345523311).GetThreadChannel(ulong.Parse(id));
+            var channel = await ReturnOrUnarchiveThread(id);
             if (channel != null) {
+                await channel.SendMessageAsync("**UN-NOMINATED**");
                 await channel.ModifyAsync(props => {
                     props.Archived = true;
+                    props.AppliedTags = new List<ulong>();
                 });
             }
         }
 
-        public async Task PostMessage(string forum, string message) {
-            var channel = await ReturnOrUnarchiveThread(forum);
+        public async Task NominationQualified(string id) {
+            var ForumChannel = BotService.Client.GetGuild(921820046345523311).GetForumChannel(1075436060139597886);
 
+            var channel = await ReturnOrUnarchiveThread(id);
             if (channel != null) {
-                await channel.SendMessageAsync(message);
+                await channel.SendMessageAsync("**QUALIFIED**");
+                await channel.ModifyAsync(props => {
+                    props.AppliedTags = new List<ulong> { ForumChannel.Tags.First(t => t.Name == "Qualified").Id };
+                });
+            }
+        }
+
+        public async Task NominationRanked(string id) {
+            var ForumChannel = BotService.Client.GetGuild(921820046345523311).GetForumChannel(1075436060139597886);
+
+            var channel = await ReturnOrUnarchiveThread(id);
+            if (channel != null) {
+                await channel.SendMessageAsync("**RANKED <a:saberege:961310724787929168> **");
+                await channel.ModifyAsync(props => {
+                    props.Archived = true;
+                    props.AppliedTags = new List<ulong> { ForumChannel.Tags.First(t => t.Name == "Ranked").Id };
+                });
             }
         }
         
