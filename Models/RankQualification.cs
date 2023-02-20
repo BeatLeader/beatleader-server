@@ -16,6 +16,27 @@
         public string DiscordMessageId { get; set; } = "";
     }
 
+    public enum MapQuality
+    {
+        Good = 1,
+        Ok = 2,
+        Bad = 3
+    }
+
+    public class QualificationVote 
+    {
+        public int Id { get; set; }
+        public string PlayerId { get; set; }
+        public int Timeset { get; set; }
+        public MapQuality Value { get; set; }
+
+        public int? EditTimeset { get; set; }
+        public bool Edited { get; set; }
+
+        public int? RankQualificationId { get; set; }
+        public RankQualification? RankQualification { get; set; }
+    }
+
     public class RankQualification
     {
         public int Id { get; set; }
@@ -42,6 +63,9 @@
 
         public ICollection<QualificationChange>? Changes { get; set; }
         public ICollection<QualificationCommentary>? Comments { get; set; }
+
+        public int QualityVote { get; set; }
+        public ICollection<QualificationVote>? Votes { get; set; }
 
         public string DiscordChannelId { get; set; } = "";
     }

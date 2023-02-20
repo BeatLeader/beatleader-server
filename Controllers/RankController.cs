@@ -1301,6 +1301,53 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        //[Authorize]
+        //[HttpGet("~/qualification/tags/")]
+        //public async Task<ActionResult> AddTags() {
+        //    string currentID = HttpContext.CurrentUserID(_context);
+        //    var currentPlayer = await _context.Players.FindAsync(currentID);
+
+        //    var lbs = _context
+        //        .Leaderboards
+        //        .Include(lb => lb.Qualification)
+        //        .Include(lb => lb.Difficulty)
+        //        .Where(lb => lb.Difficulty.Status == DifficultyStatus.nominated || lb.Difficulty.Status == DifficultyStatus.qualified)
+        //        .ToList();
+
+        //    foreach (var lb in lbs)
+        //    {
+        //        if (lb.Qualification.DiscordChannelId.Length > 0) {
+        //            await _nominationsForum.SetTag(lb.Qualification.DiscordChannelId, lb.Difficulty.Status == DifficultyStatus.nominated ? "Nominated" : "Qualified");
+        //        }
+        //    }
+
+        //    return Ok();
+        //}
+
+        [Authorize]
+        [HttpPost("~/qualification/vote/{id}")]
+        public async Task<ActionResult<ICollection<QualificationVote>>> AddVote(int id, [FromQuery] MapQuality vote)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == currentID);
+
+            RankQualification? qualification = _context
+                .RankQualification
+                .Include(q => q.Votes)
+                .FirstOrDefault(l => l.Id == id);
+
+            if (qualification == null)
+            {
+                return NotFound();
+            }
+            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("qualityteam")))
+            {
+                return Unauthorized();
+            }
+
+            return await _nominationsForum.AddVote(_context, qualification, currentPlayer, vote);
+        }
+
         [NonAction]
         public DiscordWebhookClient? reweightDSClient()
         {

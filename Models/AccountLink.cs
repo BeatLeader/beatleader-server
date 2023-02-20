@@ -12,7 +12,7 @@ namespace BeatLeader_Server.Models
     public class AccountLinkRequest
     {
         public int Id { get; set; }
-        public int OculusID { get; set; }
+        public string OculusID { get; set; } = "";
 
         public int Random { get; set; }
         public string IP { get; set; }

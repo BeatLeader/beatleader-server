@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20230219111621_QualityVoting")]
+    partial class QualityVoting
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -58,9 +61,8 @@ namespace BeatLeader_Server.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("OculusID")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("OculusID")
+                        .HasColumnType("int");
 
                     b.Property<int>("Random")
                         .HasColumnType("int");
@@ -1624,9 +1626,6 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("bit");
 
                     b.Property<int?>("ModifiersModifierId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("QualityVote")
                         .HasColumnType("int");
 
                     b.Property<string>("RTMember")
