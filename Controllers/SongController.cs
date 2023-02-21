@@ -1,4 +1,5 @@
-﻿using BeatLeader_Server.Extensions;
+﻿using BeatLeader_Server.Bot;
+using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
@@ -18,10 +19,13 @@ namespace BeatLeader_Server.Controllers
         private readonly AppContext _context;
         private readonly ReadAppContext _readContext;
 
-        public SongController(AppContext context, ReadAppContext readContext)
+        private readonly NominationsForum _nominationsForum;
+
+        public SongController(AppContext context, ReadAppContext readContext, NominationsForum nominationsForum)
         {
-            _context = context;
+            _context = context;      
             _readContext = readContext;
+            _nominationsForum = nominationsForum;
         }
 
         [HttpGet("~/map/hash/{hash}")]
@@ -92,9 +96,12 @@ namespace BeatLeader_Server.Controllers
             var oldLeaderboardId = $"{oldSong.Id}{diff.Value}{diff.Mode}";
             var oldLeaderboard = await _context.Leaderboards.Where(lb => lb.Id == oldLeaderboardId).Include(lb => lb.Qualification).FirstOrDefaultAsync();
 
-            if (oldLeaderboard != null) {
+            if (oldLeaderboard?.Qualification != null) {
 
                 newLeaderboard.Qualification = oldLeaderboard.Qualification;
+                if (oldLeaderboard.Qualification.DiscordChannelId.Length > 0) {
+                    await _nominationsForum.NominationReuploaded(oldLeaderboard.Qualification.DiscordChannelId, oldLeaderboardId);
+                }
                 oldLeaderboard.Qualification = null;
             }
         }

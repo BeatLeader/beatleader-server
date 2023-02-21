@@ -612,7 +612,7 @@ namespace BeatLeader_Server.Controllers
                             string message = currentPlayer.Name + " updated nomination for **" + leaderboard.Song.Name + "**!\n";
                             if (qualificationChange.NewRankability <= 0)
                             {
-                                message += "**Declined!**\n Reason: " + qualification.CriteriaCommentary;
+                                message += "**Declined!**\n Reason: " + qualification.CriteriaCommentary + "\n";
                             }
                             else
                             {
@@ -717,7 +717,7 @@ namespace BeatLeader_Server.Controllers
                 if (dsClient != null) {
                     string message = currentPlayer.Name + " initiated reweight for **" + leaderboard.Song.Name + "**\n";
                     if (keep == false) {
-                        message += "*UNRANK!*\n Reason: " + criteriaCommentary;
+                        message += "*UNRANK!*\n Reason: " + criteriaCommentary + "\n";
                     } else {
                         if (reweight.Stars != leaderboard.Difficulty.Stars) {
                             message += "★ " + leaderboard.Difficulty.Stars + " → " + reweight.Stars + "\n";
@@ -866,11 +866,10 @@ namespace BeatLeader_Server.Controllers
 
                 if (dsClient != null)
                 {
-
                     string message = currentPlayer.Name + " approved reweight for **" + leaderboard.Song.Name + "**!\n";
                     if (!reweight.Keep)
                     {
-                        message += "**UNRANKED!**\n Reason: " + reweight.CriteriaCommentary;
+                        message += "**UNRANKED!**\n Reason: " + reweight.CriteriaCommentary + "\n";
                     }
                     else
                     {
@@ -1301,28 +1300,68 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
-        //[Authorize]
-        //[HttpGet("~/qualification/tags/")]
-        //public async Task<ActionResult> AddTags() {
-        //    string currentID = HttpContext.CurrentUserID(_context);
-        //    var currentPlayer = await _context.Players.FindAsync(currentID);
+        public async Task QualityUnnominate(RankQualification q) {
 
-        //    var lbs = _context
-        //        .Leaderboards
-        //        .Include(lb => lb.Qualification)
-        //        .Include(lb => lb.Difficulty)
-        //        .Where(lb => lb.Difficulty.Status == DifficultyStatus.nominated || lb.Difficulty.Status == DifficultyStatus.qualified)
-        //        .ToList();
+            Leaderboard? leaderboard = _context.Leaderboards
+                .Include(l => l.Difficulty)
+                .Include(l => l.Song)
+                .Include(l => l.Difficulty)
+                .ThenInclude(d => d.ModifierValues)
+                .Include(l => l.Qualification)
+                .ThenInclude(q => q.Changes)
+                .ThenInclude(ch => ch.OldModifiers)
+                .Include(l => l.Qualification)
+                .ThenInclude(q => q.Changes)
+                .ThenInclude(ch => ch.NewModifiers)
+                .Include(l => l.Qualification)
+                .ThenInclude(q => q.Modifiers)
+                .FirstOrDefault(l => l.Qualification == q);
 
-        //    foreach (var lb in lbs)
-        //    {
-        //        if (lb.Qualification.DiscordChannelId.Length > 0) {
-        //            await _nominationsForum.SetTag(lb.Qualification.DiscordChannelId, lb.Difficulty.Status == DifficultyStatus.nominated ? "Nominated" : "Qualified");
-        //        }
-        //    }
+            var qualification = leaderboard?.Qualification;
 
-        //    return Ok();
-        //}
+            if (qualification != null && (leaderboard.Difficulty.Status == DifficultyStatus.qualified || leaderboard.Difficulty.Status == DifficultyStatus.nominated))
+            {
+                QualificationChange qualificationChange = new QualificationChange {
+                    PlayerId = AdminController.RankingBotID,
+                    Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
+                    OldRankability = leaderboard.Difficulty.Status == DifficultyStatus.nominated || leaderboard.Difficulty.Status == DifficultyStatus.qualified ? 1.0f : 0,
+                };
+
+                leaderboard.Difficulty.Status = DifficultyStatus.unrankable;
+                leaderboard.Difficulty.NominatedTime = 0;
+                leaderboard.Difficulty.QualifiedTime = 0;
+                leaderboard.Difficulty.Stars = 0;
+                leaderboard.Difficulty.ModifierValues = new ModifiersMap();
+
+                qualificationChange.NewRankability = 0;
+
+                if (qualification.Changes == null) {
+                    qualification.Changes = new List<QualificationChange>();
+                }
+
+                qualification.Changes.Add(qualificationChange);
+
+                if (qualification.DiscordChannelId.Length > 0)
+                {
+                    await _nominationsForum.CloseNomination(qualification.DiscordChannelId);
+                }
+
+                var dsClient = nominationDSClient();
+                if (dsClient != null)
+                {
+                    string message = "Bot updated nomination for **" + leaderboard.Song.Name + "**!\n";
+                    message += "**Declined!**\n Reason: Reached 3 NQT downvotes.\n";
+                    message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
+
+                    await dsClient.SendMessageAsync(message);
+                }
+
+                await _context.SaveChangesAsync();
+                await _scoreRefreshController.RefreshScores(leaderboard.Id);
+                await _playlistController.RefreshNominatedPlaylist();
+                await _playlistController.RefreshQualifiedPlaylist();
+            }
+        }
 
         [Authorize]
         [HttpPost("~/qualification/vote/{id}")]
@@ -1345,7 +1384,11 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            return await _nominationsForum.AddVote(_context, qualification, currentPlayer, vote);
+            var result = await _nominationsForum.AddVote(_context, qualification, currentPlayer, vote);
+            if (qualification.QualityVote == -3) {
+                await QualityUnnominate(qualification);
+            }
+            return result;
         }
 
         [NonAction]

@@ -1,4 +1,5 @@
-﻿using Discord;
+﻿using BeatLeader_Server.Controllers;
+using Discord;
 using Discord.WebSocket;
 
 namespace BeatLeader_Server.Bot
@@ -35,7 +36,11 @@ namespace BeatLeader_Server.Bot
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
                 var _nominationForum = scope.ServiceProvider.GetRequiredService<NominationsForum>();
 
-                await _nominationForum.OnReactionAdded(_context, message, channel, reaction);
+                var qualification = await _nominationForum.OnReactionAdded(_context, message, channel, reaction);
+                if (qualification != null && qualification.QualityVote == -3) {
+                    var _rankController = scope.ServiceProvider.GetRequiredService<RankController>();
+                    await _rankController.QualityUnnominate(qualification);
+                }
             }
         }
         

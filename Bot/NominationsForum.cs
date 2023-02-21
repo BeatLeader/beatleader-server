@@ -98,6 +98,18 @@ namespace BeatLeader_Server.Bot
             }
         }
 
+        public async Task NominationReuploaded(string id, string newLeaderboardId) {
+            var channel = await ReturnOrUnarchiveThread(id);
+            if (channel != null) {
+                await channel.SendMessageAsync("**REUPLOADED**", embeds: new Embed []{ 
+                new EmbedBuilder()
+                    .WithTitle("Leaderboard")
+                    .WithUrl("https://beatleader.xyz/leaderboard/global/" + newLeaderboardId)
+                    .Build()
+            });
+            }
+        }
+
         public async Task NominationRanked(string id) {
             var ForumChannel = BotService.Client.GetGuild(BotService.BLServerID).GetForumChannel(NominationForumID);
 
@@ -155,19 +167,6 @@ namespace BeatLeader_Server.Bot
                 return;
             }
             await channel.DeleteMessageAsync(ulong.Parse(id));
-        }
-
-        public async Task SetTag(string forum, string tag) {
-            var channel = await ReturnOrUnarchiveThread(forum);
-            if (channel == null) {
-                return;
-            }
-
-            var ForumChannel = BotService.Client.GetGuild(BotService.BLServerID).GetForumChannel(NominationForumID);
-            await channel.ModifyAsync(props => {
-                    props.Archived = true;
-                    props.AppliedTags = new List<ulong> { ForumChannel.Tags.First(t => t.Name == tag).Id };
-                });
         }
 
         private MapQuality? EmoteNameToVote(string emoteName) {
@@ -279,7 +278,6 @@ namespace BeatLeader_Server.Bot
                 await message.RemoveAllReactionsAsync();
                 var nominatorName = context.Players.Where(p => p.Id == leaderboard.Qualification.RTMember).Select(p => p.Name).FirstOrDefault();
                 string messageText = NominationMessage(nominatorName ?? "", leaderboard);
-                int totalValue = 0;
                 if (leaderboard.Qualification.Votes != null && leaderboard.Qualification.Votes.Count > 0) {
                     messageText += "\n\n**VOTES:**\n";
                     foreach (var vote in leaderboard.Qualification.Votes.OrderBy(v => v.Value))
@@ -301,12 +299,18 @@ namespace BeatLeader_Server.Bot
                     }
                 }
                 await userMessage.ModifyAsync(m => m.Content = messageText);
-                await channel.ModifyAsync(c => c.Topic = (totalValue != 0 ? totalValue : "") + leaderboard.Song.Name);
+
+                var totalValue = leaderboard.Qualification.QualityVote;
+                string votePrefix = "";
+                if (totalValue != 0) {
+                    votePrefix = "(" + (totalValue > 0 ? "+" : "") + totalValue + ") "; 
+                }
+                await channel.ModifyAsync(c => c.Topic = votePrefix + leaderboard.Song.Name);
                 await AddVoteEmotes(message);
             }
         }
 
-        public async Task OnReactionAdded(
+        public async Task<RankQualification?> OnReactionAdded(
             AppContext context,
             Cacheable<IUserMessage, ulong> message, 
             Cacheable<IMessageChannel, ulong> channel, 
@@ -315,16 +319,20 @@ namespace BeatLeader_Server.Bot
             var vote = EmoteNameToVote(reaction.Emote.ToString() ?? "");
             if (vote != null) {
                 var qualification = await context.RankQualification.Include(q => q.Votes).FirstOrDefaultAsync(q => q.DiscordChannelId == message.Id.ToString());
-                if (qualification == null) return;
+                if (qualification == null) return null;
 
                 var social = await context.PlayerSocial.FirstOrDefaultAsync(p => p.UserId == reaction.UserId.ToString() && p.Service == "Discord" && p.PlayerId != null);
-                if (social == null) return;
+                if (social == null) return null;
 
                 var player = await context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Socials.FirstOrDefault(s => s.Id == social.Id) != null);
-                if (player == null) return;
+                if (player == null) return null;
 
                 await AddVote(context, qualification, player, vote ?? MapQuality.Ok);
+
+                return qualification;
             }
+
+            return null;
         }
     }
 }
