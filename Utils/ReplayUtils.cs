@@ -386,5 +386,28 @@ namespace BeatLeader_Server.Utils
             
             return null;
         }
+
+        public static bool IsPlayerCuttingNotesOnPlatform(Replay replay) {
+            int noteIndex = 0;
+            int zSum = 0;
+
+            foreach (var frame in replay.frames)
+            {
+                if (frame.time >= replay.notes[noteIndex].eventTime) {
+                    if (Math.Abs(frame.head.position.z) > 1) {
+                        zSum++;
+                    }
+                    if (zSum == (int)Math.Min(50, replay.notes.Count * 0.1f)) return false;
+
+                    if (noteIndex + 1 != replay.notes.Count) {
+                        noteIndex++;
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            return true;
+        }
     }
 }
