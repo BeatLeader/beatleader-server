@@ -13,6 +13,17 @@ namespace BeatLeader_Server.Models
         inevent = 6
     }
 
+    [Flags]
+    public enum Requirements
+    {
+        None = 0,
+        Chroma = 1 << 1,
+        Noodles = 1 << 2,
+        MappingExtensions = 1 << 3,
+        Cinema = 1 << 4,
+        V3 = 1 << 5,
+    }
+
     public class DifficultyDescription
     {
         public int Id { get; set; }
@@ -36,5 +47,7 @@ namespace BeatLeader_Server.Models
         public int Walls { get; set; }
         public int MaxScore { get; set; }
         public double Duration { get; set; }
+
+        public Requirements Requirements { get; set; }
     }
 }

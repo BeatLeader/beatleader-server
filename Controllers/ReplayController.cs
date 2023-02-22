@@ -709,13 +709,15 @@ namespace BeatLeader_Server.Controllers
                     SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Could not recalculate score from replay. Error: " + error);
                     return;
                 }
-                double scoreRatio = (double)resultScore.BaseScore / (double)statistic.winTracker.totalScore;
 
-                if (scoreRatio > 1.02 || scoreRatio < 0.98)
-                {
-                    SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Calculated on server score is too different: " + statistic.winTracker.totalScore + ". You probably need to update the mod.");
+                if (!leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles)) {
+                    double scoreRatio = (double)resultScore.BaseScore / (double)statistic.winTracker.totalScore;
+                    if (scoreRatio > 1.02 || scoreRatio < 0.98)
+                    {
+                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Calculated on server score is too different: " + statistic.winTracker.totalScore + ". You probably need to update the mod.");
 
-                    return;
+                        return;
+                    }
                 }
 
                 if (leaderboard.Difficulty.Notes > 30)
