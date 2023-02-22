@@ -220,6 +220,13 @@ namespace BeatLeader_Server.Bot
             }
             else if (qualificationVote.Value == vote)
             {
+                if (qualificationVote.Value == MapQuality.Good) {
+                    qualification.QualityVote--;
+                    leaderboard.PositiveVotes -= 8;
+                } else if (qualificationVote.Value == MapQuality.Bad) {
+                    qualification.QualityVote++;
+                    leaderboard.NegativeVotes -= 8;
+                }
                 qualification.Votes.Remove(qualificationVote);
 
                 qualificationVote = null;
@@ -229,9 +236,9 @@ namespace BeatLeader_Server.Bot
                 if (qualificationVote.Value == MapQuality.Good) {
                     qualification.QualityVote--;
                     leaderboard.PositiveVotes -= 8;
-                } else if (qualificationVote.Value == MapQuality.Good) {
+                } else if (qualificationVote.Value == MapQuality.Bad) {
                     qualification.QualityVote++;
-                    leaderboard.NegativeVotes += 8;
+                    leaderboard.NegativeVotes -= 8;
                 }
                 qualificationVote.Edited = true;
                 qualificationVote.EditTimeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
@@ -243,9 +250,9 @@ namespace BeatLeader_Server.Bot
                 if (vote == MapQuality.Good) {
                     qualification.QualityVote++;
                     leaderboard.PositiveVotes += 8;
-                } else if (vote == MapQuality.Good) {
+                } else if (vote == MapQuality.Bad) {
                     qualification.QualityVote--;
-                    leaderboard.NegativeVotes -= 8;
+                    leaderboard.NegativeVotes += 8;
                 }
             }
 
