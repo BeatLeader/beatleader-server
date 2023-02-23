@@ -388,6 +388,8 @@ namespace BeatLeader_Server.Utils
         }
 
         public static bool IsPlayerCuttingNotesOnPlatform(Replay replay) {
+            if (replay.notes.Count < 20) return true;
+
             int noteIndex = 0;
             int zSum = 0;
 
