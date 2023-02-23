@@ -323,6 +323,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string order = "desc",
             [FromQuery] string countries = "",
             [FromQuery] string mapsType = "ranked",
+            [FromQuery] string ppType = "general",
             [FromQuery] bool friends = false,
             [FromQuery] string? pp_range = null,
             [FromQuery] string? score_range = null,
@@ -453,7 +454,7 @@ namespace BeatLeader_Server.Controllers
                         break;
                 }
             }
-            request = Sorted(request, sortBy, order, mapsType);
+            request = Sorted(request, sortBy, ppType, order, mapsType);
             
             return new ResponseWithMetadata<PlayerResponseWithStats>()
             {
@@ -473,6 +474,9 @@ namespace BeatLeader_Server.Controllers
                     ScoreStats = p.ScoreStats,
 
                     Pp = p.Pp,
+                    TechPp= p.TechPp,
+                    AccPp = p.AccPp,
+                    PassPp = p.PassPp,
                     Rank = p.Rank,
                     CountryRank = p.CountryRank,
                     LastWeekPp = p.LastWeekPp,
@@ -487,14 +491,34 @@ namespace BeatLeader_Server.Controllers
             };
         }
 
-        private IQueryable<Player> Sorted(IQueryable<Player> request, string sortBy, string order, string mapsType) {
+        private IQueryable<Player> Sorted(
+            IQueryable<Player> request, 
+            string sortBy, 
+            string ppType,
+            string order, 
+            string mapsType) {
             switch (mapsType)
             {
                 case "ranked":
                     switch (sortBy)
                     {
                         case "pp":
-                            request = request.Order(order, p => p.Pp);
+                            switch (ppType)
+                            {
+                                case "acc":
+                                    request = request.Order(order, p => p.AccPp);
+                                    break;
+                                case "tech":
+                                    request = request.Order(order, p => p.TechPp);
+                                    break;
+                                case "pass":
+                                    request = request.Order(order, p => p.PassPp);
+                                    break;
+                                default:
+                                    request = request.Order(order, p => p.Pp);
+                                    break;
+                            }
+                            
                             break;
                         case "rank":
                             request = request

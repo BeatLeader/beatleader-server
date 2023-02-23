@@ -42,6 +42,9 @@ namespace BeatLeader_Server.Models
         public string PlayerId { get; set; }
         public float Pp { get; set; }
         public float BonusPp { get; set; }
+        public float PassPP { get; set; }
+        public float AccPP { get; set; }
+        public float TechPP { get; set; }
         public bool Qualification { get; set; }
         public float Weight { get; set; }
         public int Rank { get; set; }

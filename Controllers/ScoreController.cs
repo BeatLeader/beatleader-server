@@ -559,6 +559,15 @@ namespace BeatLeader_Server.Controllers
                     case "rank":
                         sequence = sequence.Order(order, t => t.Rank);
                         break;
+                    case "predictedAcc":
+                        sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Order(order, t => t.Leaderboard.Difficulty.PredictedAcc);
+                        break;
+                    case "passRating":
+                        sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Order(order, t => t.Leaderboard.Difficulty.PassRating);
+                        break;
+                    case "techRating":
+                        sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Order(order, t => t.Leaderboard.Difficulty.TechRating);
+                        break;
                     case "stars":
                         sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Order(order, t => t.Leaderboard.Difficulty.Stars);
                         break;

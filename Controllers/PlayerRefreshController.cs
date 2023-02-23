@@ -1,6 +1,7 @@
 ﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
+using Dasync.Collections;
 using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -373,39 +374,64 @@ namespace BeatLeader_Server.Controllers
             }
 
             _context.ChangeTracker.AutoDetectChangesEnabled = false;
-            var query = _context.Players.Where(p => p.Pp != 0 && !p.Banned);
-            var playersCount = query.Count();
-            var allPlayers = new List<Player>();
-            for (int i = 0; i < playersCount; i += 500)
+            var weights = new Dictionary<int, float>();
+            for (int i = 0; i < 5000; i++)
             {
-                var players = query
-                    .OrderByDescending(p => p.Pp)
-                    .Skip(i)
-                    .Take(500)
-                    .Select(p => new { Id = p.Id, Country = p.Country })
-                    .ToList();
-
-                foreach (var p in players)
-                {
-                    try {
-                        if (allPlayers.FirstOrDefault(pp => pp.Id == p.Id) != null) continue;
-                        Player player = new Player { Id = p.Id, Country = p.Country };
-                        _context.Players.Attach(player);
-                        allPlayers.Add(player);
-                        _context.RecalculatePPFast(player);
-                    } catch (Exception e) {
-                    }
-                }
-
-                try
-                {
-                    await _context.BulkSaveChangesAsync();
-                }
-                catch (Exception e)
-                {
-                    _context.RejectChanges();
-                }
+                weights[i] = MathF.Pow(0.96f, i);
             }
+
+            var scores = _context
+                .Scores
+                .Where(s => s.Pp != 0 && !s.Banned && !s.Qualification)
+                .OrderByDescending(s => s.Pp)
+                .Select(s => new { s.Id, s.Accuracy, s.Rank, s.Pp, s.AccPP, s.TechPP, s.PassPP, s.Weight, s.PlayerId })
+                .ToList();
+
+            var query = _context.Players
+                .OrderByDescending(p => p.Pp)
+                .Where(p => p.Pp != 0 && !p.Banned)
+                .Select(p => new { Id = p.Id, Country = p.Country });
+
+            var allPlayers = new List<Player>();
+            await query.ParallelForEachAsync(async p => {
+                try {
+                    Player player = new Player { Id = p.Id, Country = p.Country };
+                    _context.Players.Attach(player);
+                    allPlayers.Add(player);
+
+                    float resultPP = 0f;
+                    float accPP = 0f;
+                    float techPP = 0f;
+                    float passPP = 0f;
+                    var playerScores = scores.Where(s => s.PlayerId == p.Id).ToList();
+                    foreach ((int i, var s) in playerScores.Select((value, i) => (i, value)))
+                    {
+                        float weight = weights[i];
+                        if (s.Weight != weight)
+                        {
+                            var score = new Score() { Id = s.Id, Weight = weight };
+                            _context.Scores.Attach(score);
+                            _context.Entry(score).Property(x => x.Weight).IsModified = true;
+                        }
+                        resultPP += s.Pp * weight;
+                        accPP += s.AccPP * weight;
+                        techPP += s.TechPP * weight;
+                        passPP += s.PassPP * weight;
+                    }
+                    player.Pp = resultPP;
+                    player.AccPp = accPP;
+                    player.TechPp = techPP;
+                    player.PassPp = passPP;
+
+                    _context.Entry(player).Property(x => x.Pp).IsModified = true;
+                    _context.Entry(player).Property(x => x.AccPp).IsModified = true;
+                    _context.Entry(player).Property(x => x.TechPp).IsModified = true;
+                    _context.Entry(player).Property(x => x.PassPp).IsModified = true;
+                } catch (Exception e) {
+                }
+            }, maxDegreeOfParallelism: 50);
+
+            await _context.BulkSaveChangesAsync();
 
             Dictionary<string, int> countries = new Dictionary<string, int>();
             var ranked = allPlayers

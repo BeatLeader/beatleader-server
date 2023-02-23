@@ -56,6 +56,8 @@ namespace BeatLeader_Server.Controllers
                     .Where(lb => lb.Id == id)
                     .Include(lb => lb.Difficulty)
                     .ThenInclude(d => d.ModifierValues)
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(d => d.ModifiersRating)
                     .Include(lb => lb.Qualification)
                     .ThenInclude(lb => lb.Votes)
                     .Include(lb => lb.Qualification)
@@ -302,7 +304,7 @@ namespace BeatLeader_Server.Controllers
                         {
                             s.Accuracy = (float)s.BaseScore / (float)ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
                         }
-                        (s.Pp, s.BonusPp) = ReplayUtils.PpFromScoreResponse(s, reweight.Stars, reweight.Modifiers);
+                        (s.Pp, s.BonusPp, s.PassPP, s.AccPP, s.TechPP) = ReplayUtils.PpFromScoreResponse(s, reweight.PredictedAcc, reweight.PassRating, reweight.TechRating, reweight.Modifiers, reweight.ModifiersRating);
 
                         return s;
                     });
@@ -332,7 +334,14 @@ namespace BeatLeader_Server.Controllers
                         {
                             s.Accuracy = (float)s.BaseScore / (float)ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
                         }
-                        (s.Pp, s.BonusPp) = ReplayUtils.PpFromScoreResponse(s, leaderboard.Difficulty.Stars ?? 0, qualification.Modifiers);
+                        (s.Pp, s.BonusPp, s.PassPP, s.AccPP, s.TechPP) = ReplayUtils.PpFromScoreResponse(
+                            s, 
+                            leaderboard.Difficulty.PredictedAcc ?? 0, 
+                            leaderboard.Difficulty.PassRating ?? 0, 
+                            leaderboard.Difficulty.TechRating ?? 0, 
+                            qualification.Modifiers,
+                            qualification.ModifiersRating
+                            );
 
                         return s;
                     }).ToList();
