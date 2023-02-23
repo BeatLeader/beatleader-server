@@ -360,7 +360,7 @@ namespace BeatLeader_Server.Controllers
 
             if (player.Banned) return (BadRequest("You are banned!"), false);
             if (resultScore.BaseScore > maxScore) return (BadRequest("Score is bigger than max possible on this map!"), false);
-            if (currentScore != null &&
+            if (currentScore != null && !currentScore.Modifiers.Contains("OP") &&
                     ((currentScore.Pp != 0 && currentScore.Pp >= resultScore.Pp) ||
                     (currentScore.Pp == 0 && currentScore.ModifiedScore >= resultScore.ModifiedScore)))
             {

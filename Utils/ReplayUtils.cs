@@ -394,7 +394,7 @@ namespace BeatLeader_Server.Utils
             foreach (var frame in replay.frames)
             {
                 if (frame.time >= replay.notes[noteIndex].eventTime) {
-                    if (Math.Abs(frame.head.position.z) > 1) {
+                    if (frame.head.position.z > 1.05) {
                         zSum++;
                     }
                     if (zSum == (int)Math.Min(50, replay.notes.Count * 0.1f)) return false;
