@@ -1,5 +1,6 @@
 ﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Utils;
 using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -44,14 +45,13 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? search = null,
             [FromQuery] string? diff = null,
             [FromQuery] string? type = null,
+            [FromQuery] string? modifiers = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
             [FromQuery] int? time_from = null,
             [FromQuery] int? time_to = null,
             [FromQuery] int? eventId = null)
         {
-            IQueryable<Score> sequence;
-
             Int64 oculusId = 0;
             try
             {
@@ -77,83 +77,10 @@ namespace BeatLeader_Server.Controllers
             }
             string userId = (link != null ? (link.SteamID.Length > 0 ? link.SteamID : link.PCOculusID) : id);
 
-            using (_serverTiming.TimeAction("sequence"))
-            {
-                sequence = _readContext.Scores.Where(t => t.PlayerId == userId);
-                switch (sortBy)
-                {
-                    case "date":
-                        sequence = sequence.Order(order, t => t.Timeset);
-                        break;
-                    case "pp":
-                        sequence = sequence.Order(order, t => t.Pp);
-                        break;
-                    case "acc":
-                        sequence = sequence.Order(order, t => t.Accuracy);
-                        break;
-                    case "pauses":
-                        sequence = sequence.Order(order, t => t.Pauses);
-                        break;
-                    case "rank":
-                        sequence = sequence.Order(order, t => t.Rank);
-                        break;
-                    case "maxStreak":
-                        sequence = sequence.Where(s => !s.IgnoreForStats).Order(order, t => t.MaxStreak);
-                        break;
-                    case "timing":
-                        sequence = sequence.Order(order, t => (t.LeftTiming + t.RightTiming) / 2);
-                        break;
-                    case "stars":
-                        sequence = sequence
-                                    .Include(lb => lb.Leaderboard)
-                                    .ThenInclude(lb => lb.Difficulty)
-                                    .Order(order, s => s.Leaderboard.Difficulty.Stars)
-                                    .Where(s => s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked);
-                        break;
-                    default:
-                        break;
-                }
-                if (search != null)
-                {
-                    string lowSearch = search.ToLower();
-                    sequence = sequence
-                        .Include(lb => lb.Leaderboard)
-                        .ThenInclude(lb => lb.Song)
-                        .Where(p => p.Leaderboard.Song.Author.ToLower().Contains(lowSearch) ||
-                                    p.Leaderboard.Song.Mapper.ToLower().Contains(lowSearch) ||
-                                    p.Leaderboard.Song.Name.ToLower().Contains(lowSearch));
-                }
-                if (eventId != null) {
-                    var leaderboardIds = _context.EventRankings.Where(e => e.Id == eventId).Include(e => e.Leaderboards).Select(e => e.Leaderboards.Select(lb => lb.Id)).FirstOrDefault();
-                    if (leaderboardIds?.Count() != 0) {
-                        sequence = sequence.Where(s => leaderboardIds.Contains(s.LeaderboardId));
-                    }
-                }
-                if (diff != null)
-                {
-                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.DifficultyName.ToLower().Contains(diff.ToLower()));
-                }
-                if (type != null)
-                {
-                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked : p.Leaderboard.Difficulty.Status != DifficultyStatus.ranked);
-                }
-                if (stars_from != null)
-                {
-                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.Stars >= stars_from);
-                }
-                if (stars_to != null)
-                {
-                    sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.Stars <= stars_to);
-                }
-                if (time_from != null)
-                {
-                    sequence = sequence.Where(s => s.Timepost >= time_from);
-                }
-                if (time_to != null)
-                {
-                    sequence = sequence.Where(s => s.Timepost <= time_to);
-                }
-            }
+            IQueryable<Score> sequence = _readContext
+                .Scores
+                .Where(t => t.PlayerId == userId)
+                .Filter(_readContext, sortBy, order, search, diff, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);    
 
             ResponseWithMetadata<ScoreResponseWithMyScore> result; 
             using (_serverTiming.TimeAction("db"))
