@@ -235,7 +235,6 @@ namespace BeatLeader_Server {
                 services.AddHostedService<HistoryService>();
                 services.AddHostedService<RankingService>();
                 services.AddHostedService<MinuteRefresh>();
-                services.AddHostedService<MarkOPScores>();
             }
             services.AddHostedService<BotService>();
             services.AddSingleton<NominationsForum>();
