@@ -122,7 +122,7 @@ namespace BeatLeader_Server.Utils
         public static float AccRating(float? predictedAcc, float? passRating, float? techRating) {
             float difficulty_to_acc;
             if (predictedAcc > 0) {
-                difficulty_to_acc = 15f / Curve2((predictedAcc ?? 0) + 0.005f);
+                difficulty_to_acc = 15f / Curve2((predictedAcc ?? 0) + 0.002f);
             } else {
                 float tiny_tech = 0.0208f * (techRating ?? 0) + 1.1284f;
                 difficulty_to_acc = (-MathF.Pow(tiny_tech, -(passRating ?? 0)) + 1) * 8 + 2 + 0.01f * (techRating ?? 0) * (passRating ?? 0);
