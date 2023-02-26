@@ -73,7 +73,7 @@ namespace BeatLeader_Server.Controllers
                         Song = l.Song,
                         Difficulty = l.Difficulty,
                         Plays = l.Plays,
-                        OwningClan = l.OwningClan,
+                        ClanRanking = l.ClanRanking,
                         Qualification = l.Qualification,
                         Reweight = l.Reweight,
                         Changes = l.Changes,
@@ -353,10 +353,12 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<Leaderboard>> GetByHash(string hash, string diff, string mode) {
             Leaderboard? leaderboard;
 
+            // Added ClanRanking to leaderboardController to return ClanRankings with leaderboard
             leaderboard = _context
                 .Leaderboards
                 .Include(lb => lb.Difficulty)
                 .ThenInclude(d => d.ModifierValues)
+                .Include(lb => lb.ClanRanking)
                 .FirstOrDefault(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff);
 
             if (leaderboard == null) {

@@ -59,9 +59,9 @@ namespace BeatLeader_Server.Controllers
                 case "count":
                     sequence = sequence.Order(order, t => t.PlayersCount);
                     break;
-                case "captures":
-                    sequence = sequence.Order(order, c => c.OwnedLeaderboardsCount);
-                    break;
+                //case "captures":
+                //    sequence = sequence.Order(order, c => c.OwnedLeaderboardsCount);
+                //    break;
                 default:
                     break;
             }
@@ -268,6 +268,18 @@ namespace BeatLeader_Server.Controllers
             player.Clans.Add(newClan);
             await _context.SaveChangesAsync();
 
+            // Recalculate clanRanking on leaderboards for newly added clan
+            // Recalculate owning clan on leaderboards the clan owns if a user leaves the clan on any leaderboard where this user has a score
+            var leaderboardsRecalc = _context
+                .Leaderboards
+                .Include(lb => lb.ClanRanking)
+                .Include(lb => lb.Scores)
+                .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked && lb.Scores.Any(s => s.PlayerId == currentID))
+                .ToList();
+
+            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
+            await _context.BulkSaveChangesAsync();
+
             return newClan;
         }
 
@@ -297,8 +309,35 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
+            // Recalculate clanRanking on leaderboards that have this clan in their clanRanking
+            var leaderboardsRecalc = _context
+                .Leaderboards
+                .Include(lb => lb.ClanRanking)
+                .Where(lb => lb.ClanRanking != null ? 
+                lb.ClanRanking.Any(lbClan => lbClan.Clan.Tag == clan.Tag) && lb.Difficulty.Status == DifficultyStatus.ranked : 
+                lb.Difficulty.Status == DifficultyStatus.ranked)
+                .ToList();
+
+            // Remove the clanRankings
+            leaderboardsRecalc.ForEach(leaderboard =>
+            {
+                //    // TODO: Do we need to remove the clanRanking from both the leaderboard and the ClanRanking table?
+                //    // TODO: This probably doesn't need to be in a loop. Just testing
+                var clanRankingsToRemove = leaderboard.ClanRanking.Where(cr => cr.Clan == clan).ToList();
+                clanRankingsToRemove.ForEach(crToRemove =>
+                {
+                    leaderboard.ClanRanking.Remove(crToRemove);
+                    _context.ClanRanking.Remove(crToRemove);
+                });
+            });
+
+            // Remove the clan
             _context.Clans.Remove(clan);
-            await _context.SaveChangesAsync();
+            await _context.BulkSaveChangesAsync();
+
+            // Recalculate the clanRankings on each leaderboard where this clan had an impact
+            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
+            await _context.BulkSaveChangesAsync();
 
             return Ok();
         }
@@ -606,13 +645,15 @@ namespace BeatLeader_Server.Controllers
             clan.Pp = _context.RecalculateClanPP(clan.Id);
             await _context.SaveChangesAsync();
 
-            // Recalculate owning clan on leaderboards the clan doesn't own if a user joins the clan
+            // Recalculate owning clan on leaderboards this user has a score on if the user joins a new clan
             var leaderboardsRecalc = _context
                 .Leaderboards
-                .Where(lb => lb.Scores.Any(s => s.PlayerId == currentID && lb.Difficulty.Status == DifficultyStatus.ranked && lb.OwningClan != null && lb.OwningClan.Tag != clan.Tag))
+                .Include(lb => lb.ClanRanking)
+                .Include(lb => lb.Scores)
+                .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked && lb.Scores.Any(s => s.PlayerId == currentID))
                 .ToList();
 
-            leaderboardsRecalc.ForEach(obj => obj.OwningClan = _context.CalculateOwningClan(obj.Id));
+            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
             await _context.BulkSaveChangesAsync();
 
             return Ok();
@@ -702,13 +743,15 @@ namespace BeatLeader_Server.Controllers
             clan.Pp = _context.RecalculateClanPP(clan.Id);
             await _context.SaveChangesAsync();
 
-            // Recalculate owning clan on leaderboards the clan owns if a user leaves the clan
+            // Recalculate owning clan on leaderboards the clan owns if a user leaves the clan on any leaderboard where this user has a score
             var leaderboardsRecalc = _context
                 .Leaderboards
-                .Where(lb => lb.Scores.Any(s => s.PlayerId == currentID && lb.Difficulty.Status == DifficultyStatus.ranked && lb.OwningClan != null && lb.OwningClan.Tag == clan.Tag))
+                .Include(lb => lb.ClanRanking)
+                .Include(lb => lb.Scores)
+                .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked && lb.Scores.Any(s => s.PlayerId == currentID))
                 .ToList();
 
-            leaderboardsRecalc.ForEach(obj => obj.OwningClan = _context.CalculateOwningClan(obj.Id));
+            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
             await _context.BulkSaveChangesAsync();
 
             return Ok();
@@ -759,8 +802,8 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
-        [HttpPut("~/clan/recalculateOwners")]
-        public async Task<ActionResult> RecalculateOwners()
+        [HttpPut("~/clan/clanRanking")]
+        public async Task<ActionResult> RecalculateClanRanking()
         {
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
@@ -770,12 +813,19 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            var leaderboardsRecalc = _context
-                .Leaderboards
-                .Where(lb => lb.Scores.Any(s => s.PlayerId == currentID && lb.Difficulty.Status == DifficultyStatus.ranked))
-                .ToList();
-
-            leaderboardsRecalc.ForEach(obj => obj.OwningClan = _context.CalculateOwningClan(obj.Id));
+            // Recalculate Clan Ranking for all ranked maps - For testing
+            try
+            {
+                var leaderboardsRecalc = _context
+                    .Leaderboards
+                    .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
+                    .Include(lb => lb.ClanRanking)
+                    .ToList();
+                leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
+            } catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
 
             await _context.BulkSaveChangesAsync();
 

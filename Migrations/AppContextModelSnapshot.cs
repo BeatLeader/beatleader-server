@@ -247,9 +247,6 @@ namespace BeatLeader_Server.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("OwnedLeaderboardsCount")
-                        .HasColumnType("int");
-
                     b.Property<int>("PlayersCount")
                         .HasColumnType("int");
 
@@ -263,6 +260,32 @@ namespace BeatLeader_Server.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Clans");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.ClanRanking", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("ClanId")
+                        .HasColumnType("int");
+
+                    b.Property<float>("ClanPP")
+                        .HasColumnType("real");
+
+                    b.Property<string>("LeaderboardId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClanId");
+
+                    b.HasIndex("LeaderboardId");
+
+                    b.ToTable("ClanRanking");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.CountryChange", b =>
@@ -574,6 +597,9 @@ namespace BeatLeader_Server.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<int?>("ClanId")
+                        .HasColumnType("int");
+
                     b.Property<int>("DifficultyId")
                         .HasColumnType("int");
 
@@ -581,9 +607,6 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("NegativeVotes")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("OwningClanId")
                         .HasColumnType("int");
 
                     b.Property<int>("Plays")
@@ -612,11 +635,11 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ClanId");
+
                     b.HasIndex("DifficultyId");
 
                     b.HasIndex("LeaderboardGroupId");
-
-                    b.HasIndex("OwningClanId");
 
                     b.HasIndex("QualificationId");
 
@@ -2308,6 +2331,19 @@ namespace BeatLeader_Server.Migrations
                         .HasForeignKey("PlayerId");
                 });
 
+            modelBuilder.Entity("BeatLeader_Server.Models.ClanRanking", b =>
+                {
+                    b.HasOne("BeatLeader_Server.Models.Clan", "Clan")
+                        .WithMany()
+                        .HasForeignKey("ClanId");
+
+                    b.HasOne("BeatLeader_Server.Models.Leaderboard", null)
+                        .WithMany("ClanRanking")
+                        .HasForeignKey("LeaderboardId");
+
+                    b.Navigation("Clan");
+                });
+
             modelBuilder.Entity("BeatLeader_Server.Models.DifficultyDescription", b =>
                 {
                     b.HasOne("BeatLeader_Server.Models.ModifiersMap", "ModifierValues")
@@ -2353,6 +2389,10 @@ namespace BeatLeader_Server.Migrations
 
             modelBuilder.Entity("BeatLeader_Server.Models.Leaderboard", b =>
                 {
+                    b.HasOne("BeatLeader_Server.Models.Clan", null)
+                        .WithMany("CapturedLeaderboards")
+                        .HasForeignKey("ClanId");
+
                     b.HasOne("BeatLeader_Server.Models.DifficultyDescription", "Difficulty")
                         .WithMany()
                         .HasForeignKey("DifficultyId")
@@ -2362,10 +2402,6 @@ namespace BeatLeader_Server.Migrations
                     b.HasOne("BeatLeader_Server.Models.LeaderboardGroup", "LeaderboardGroup")
                         .WithMany("Leaderboards")
                         .HasForeignKey("LeaderboardGroupId");
-
-                    b.HasOne("BeatLeader_Server.Models.Clan", "OwningClan")
-                        .WithMany()
-                        .HasForeignKey("OwningClanId");
 
                     b.HasOne("BeatLeader_Server.Models.RankQualification", "Qualification")
                         .WithMany()
@@ -2382,8 +2418,6 @@ namespace BeatLeader_Server.Migrations
                     b.Navigation("Difficulty");
 
                     b.Navigation("LeaderboardGroup");
-
-                    b.Navigation("OwningClan");
 
                     b.Navigation("Qualification");
 
@@ -2672,6 +2706,11 @@ namespace BeatLeader_Server.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("BeatLeader_Server.Models.Clan", b =>
+                {
+                    b.Navigation("CapturedLeaderboards");
+                });
+
             modelBuilder.Entity("BeatLeader_Server.Models.EventRanking", b =>
                 {
                     b.Navigation("Players");
@@ -2680,6 +2719,8 @@ namespace BeatLeader_Server.Migrations
             modelBuilder.Entity("BeatLeader_Server.Models.Leaderboard", b =>
                 {
                     b.Navigation("Changes");
+
+                    b.Navigation("ClanRanking");
 
                     b.Navigation("PlayerStats");
 

@@ -27,6 +27,7 @@ namespace BeatLeader_Server
         public DbSet<LoginChange> LoginChanges { get; set; }
         public DbSet<ScoreRemovalLog> ScoreRemovalLogs { get; set; }
         public DbSet<Clan> Clans { get; set; }
+        public DbSet<ClanRanking> ClanRanking { get; set; }
         public DbSet<PlayerFriends> Friends { get; set; }
         public DbSet<CustomMode> CustomModes { get; set; }
         public DbSet<AccountLinkRequest> AccountLinkRequests { get; set; }

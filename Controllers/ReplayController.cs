@@ -510,8 +510,11 @@ namespace BeatLeader_Server.Controllers
                 _context.Entry(score).Property(x => x.Rank).IsModified = true;
             }
 
-            // Calculate owning clan for this leaderboard, based on score just submitted
-            leaderboard.OwningClan = isRanked ? _context.CalculateOwningClan(leaderboard.Id) : null;
+            // Calculate clan ranking for this leaderboard
+            if (isRanked)
+            {
+                leaderboard.ClanRanking = _context.CalculateClanRanking(leaderboard);
+            }
 
             using (_serverTiming.TimeAction("db")) {
                 try

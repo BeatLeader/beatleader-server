@@ -17,7 +17,8 @@ namespace BeatLeader_Server.Models
         public float Pp { get; set; }
         public float AverageRank { get; set; }
         public float AverageAccuracy { get; set; }
-        public int OwnedLeaderboardsCount { get; set; }
+
+        public ICollection<Leaderboard>? CapturedLeaderboards { get; set; }
 
         public ICollection<Player> Players { get; set; } = new List<Player>();
 
