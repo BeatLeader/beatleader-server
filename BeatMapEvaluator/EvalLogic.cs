@@ -9,19 +9,19 @@ namespace BeatMapEvaluator
 		//R1:d
 		public List<string> ModsRequired { get; set; }
 		//R1:f
-		public List<json_MapNote> NoteHotStarts { get; set; }
-		public List<json_MapObstacle> WallHotStarts { get; set; }
+		public List<MapNote> NoteHotStarts { get; set; }
+		public List<MapObstacle> WallHotStarts { get; set; }
 		//R1:g
-		public List<json_MapNote> NoteColdEnds { get; set; }
-		public List<json_MapObstacle> WallColdEnds { get; set; }
+		public List<MapNote> NoteColdEnds { get; set; }
+		public List<MapObstacle> WallColdEnds { get; set; }
 		//R3:a
-		public List<json_MapNote> NoteIntersections { get; set; }
-		public List<json_MapObstacle> WallIntersections { get; set; }
+		public List<MapNote> NoteIntersections { get; set; }
+		public List<MapObstacle> WallIntersections { get; set; }
 		//R4:cd
-		public List<json_MapNote> NoteOutOfRange { get; set; }
-		public List<json_MapObstacle> WallOutOfRange { get; set; }
+		public List<MapNote> NoteOutOfRange { get; set; }
+		public List<MapObstacle> WallOutOfRange { get; set; }
 		//R3:e, R5:a
-		public List<json_MapNote> NoteFailSwings { get; set; }
+		public List<MapNote> NoteFailSwings { get; set; }
 
 		//error, failed, passed
 		public static readonly string[] diffColors = {"#713E93","#BE1F46","#9CED9C"};
@@ -81,14 +81,14 @@ namespace BeatMapEvaluator
 	public class MapStorageLayout {
 		public DiffCriteriaReport report;
 		public json_beatMapDifficulty mapDiff;
-		public json_DiffFileV2 diffFile;
+		public DiffFileV2 diffFile;
 		public json_MapInfo info;
 
 		//??? C# moment lol
 		/// <summary>The maps notes in a cache</summary>
-		public Dictionary<float, List<json_MapNote>?>? noteCache;
+		public Dictionary<float, List<MapNote>?>? noteCache;
 		/// <summary>The maps walls in a cache</summary>
-		public Dictionary<float, List<json_MapObstacle>?>? wallCache;
+		public Dictionary<float, List<MapObstacle>?>? wallCache;
 		/// <summary>The swings per second L/R arrays</summary>
 		public int[]? LeftHandSwings, RightHandSwings;
 
@@ -112,7 +112,7 @@ namespace BeatMapEvaluator
 		//mmhm mmhm yep mmhm we constructing the class instance
 		public MapStorageLayout(
 				json_MapInfo info, 
-				json_DiffFileV2 diff, 
+				DiffFileV2 diff, 
 				json_beatMapDifficulty mapDiff,
 				float audioLength) {
 			
@@ -120,8 +120,8 @@ namespace BeatMapEvaluator
 			this.info = info;
 			this.audioLength = audioLength;
 
-			noteCache = new Dictionary<float, List<json_MapNote>?>();
-			wallCache = new Dictionary<float, List<json_MapObstacle>?>();
+			noteCache = new Dictionary<float, List<MapNote>?>();
+			wallCache = new Dictionary<float, List<MapObstacle>?>();
 			bpm = info._bpm;
 			beatsPerSecond = 60f / bpm;
 			njs = mapDiff._noteJumpMovementSpeed;
@@ -167,8 +167,8 @@ namespace BeatMapEvaluator
             report.LeftHandSwings = leftSwings;
 			report.RightHandSwings = rightSwings;
 
-			report.NoteOutOfRange = ((Task<List<json_MapNote>>)Cullers[0]).Result;
-			report.WallOutOfRange = ((Task<List<json_MapObstacle>>)Cullers[1]).Result;
+			report.NoteOutOfRange = ((Task<List<MapNote>>)Cullers[0]).Result;
+			report.WallOutOfRange = ((Task<List<MapObstacle>>)Cullers[1]).Result;
 			
 			//I really. Really. Hate this. but C# loves cockblocking the thread if something goes wrong
 			//and I dont actively know of any (try catch multiple) block that continues 
@@ -214,10 +214,10 @@ namespace BeatMapEvaluator
 		}
 
 		/// <summary>
-		/// Loads all notes from <see cref="json_DiffFileV2"/> to <see cref="noteCache"/>.
+		/// Loads all notes from <see cref="DiffFileV2"/> to <see cref="noteCache"/>.
 		/// </summary>
 		/// <param name="diff">The diffFile intermediate</param>
-		public Task Load_NotesToCache(json_DiffFileV2 diff) {
+		public Task Load_NotesToCache(DiffFileV2 diff) {
 			//Roud up how many seconds there are in the audio for swings/second
 			int cellCount = (int)Math.Ceiling(audioLength);
 
@@ -232,7 +232,7 @@ namespace BeatMapEvaluator
 				}
 
 				if(!noteCache.ContainsKey(note._time)) {
-					var push = new List<json_MapNote>(){note};
+					var push = new List<MapNote>(){note};
 					noteCache.Add(note._time, push);
 				} else {
 					noteCache[note._time].Add(note);
@@ -243,10 +243,10 @@ namespace BeatMapEvaluator
 			return Task.CompletedTask;
 		}
 		/// <summary>
-		/// Loads all walls from <see cref="json_DiffFileV2"/> to <see cref="wallCache"/>.
+		/// Loads all walls from <see cref="DiffFileV2"/> to <see cref="wallCache"/>.
 		/// </summary>
 		/// <param name="diff">The diffFile intermediate</param>
-		public Task Load_ObstaclesToCache(json_DiffFileV2 diff) {
+		public Task Load_ObstaclesToCache(DiffFileV2 diff) {
 			//Smallest acceptable time for walls
 			const float shortWallEpsilon = 1.0f / 72.0f;
 			foreach(var wall in diff._walls) {
@@ -257,7 +257,7 @@ namespace BeatMapEvaluator
 				
 				//No wall here? add it
 				if(!wallCache.ContainsKey(wall._time)) {
-					var push = new List<json_MapObstacle>(){wall};
+					var push = new List<MapObstacle>(){wall};
 					wallCache.Add(wall._time, push);
 				} else {
 					wallCache[wall._time].Add(wall);
@@ -291,8 +291,8 @@ namespace BeatMapEvaluator
 		/// </summary>
 		/// <param name="limit">hot start time in seconds</param>
 		/// <returns>List of offenders</returns>
-		public Task<List<json_MapNote>> Eval_NoteHotStart(float limit) {
-			List<json_MapNote> offenders = new List<json_MapNote>();
+		public Task<List<MapNote>> Eval_NoteHotStart(float limit) {
+			List<MapNote> offenders = new List<MapNote>();
 			//Get the limit beat
 			float beatLimit = limit * beatsPerSecond;
 			foreach(var (time, list) in noteCache) { 
@@ -308,8 +308,8 @@ namespace BeatMapEvaluator
 		/// </summary>
 		/// <param name="limit">hot start time in seconds</param>
 		/// <returns>List of offenders</returns>
-		public Task<List<json_MapObstacle>> Eval_WallHotStart(float limit) {
-			List<json_MapObstacle> offenders = new List<json_MapObstacle>();
+		public Task<List<MapObstacle>> Eval_WallHotStart(float limit) {
+			List<MapObstacle> offenders = new List<MapObstacle>();
 			//Get the limit beat
 			float beatLimit = limit * beatsPerSecond;
 
@@ -332,8 +332,8 @@ namespace BeatMapEvaluator
 		/// </summary>
 		/// <param name="limit">cold end time in seconds</param>
 		/// <returns>List of offenders</returns>
-		public Task<List<json_MapNote>> Eval_NoteColdEnd(float limit) {
-			List<json_MapNote> offenders = new List<json_MapNote>();
+		public Task<List<MapNote>> Eval_NoteColdEnd(float limit) {
+			List<MapNote> offenders = new List<MapNote>();
 			//Get the ending beat
 			float kernel = (audioLength - limit) / beatsPerSecond;
 			//Reverse the order of the noteCache with a stack
@@ -351,8 +351,8 @@ namespace BeatMapEvaluator
 		/// </summary>
 		/// <param name="limit">cold end time in seconds</param>
 		/// <returns>List of offenders</returns>
-		public Task<List<json_MapObstacle>> Eval_WallColdEnd(float limit) {
-			List<json_MapObstacle> offenders = new List<json_MapObstacle>();
+		public Task<List<MapObstacle>> Eval_WallColdEnd(float limit) {
+			List<MapObstacle> offenders = new List<MapObstacle>();
 			//Get the ending beat
 			float kernel = (audioLength - limit) / beatsPerSecond;
 			//Reverse the order of the wallCache with a stack
@@ -377,8 +377,8 @@ namespace BeatMapEvaluator
 		/// Finds notes that share the same cell on the same time step
 		/// </summary>
 		/// <returns>A list of offenders</returns>
-		public Task<List<json_MapNote>> Eval_NoteIntersections() {
-			List<json_MapNote> offenders = new List<json_MapNote>();
+		public Task<List<MapNote>> Eval_NoteIntersections() {
+			List<MapNote> offenders = new List<MapNote>();
 
 			foreach(var (time, list) in noteCache) { 
 				bool[] used = new bool[3*4];
@@ -395,11 +395,11 @@ namespace BeatMapEvaluator
 		/// Finds walls that have notes or other walls inside of them
 		/// </summary>
 		/// <returns>A list of offenders</returns>
-		public Task<List<json_MapObstacle>> Eval_WallIntersections() {
-			List<json_MapObstacle> offenders = new List<json_MapObstacle>();
+		public Task<List<MapObstacle>> Eval_WallIntersections() {
+			List<MapObstacle> offenders = new List<MapObstacle>();
 
 			foreach(var (time, list) in wallCache) { 
-				foreach(json_MapObstacle wall in list) {
+				foreach(MapObstacle wall in list) {
 					//Find all note timesteps that are within the walls time domain
 					var look = noteCache.Where(note => (note.Key >= time && note.Key <= wall.endTime));
 					
@@ -413,7 +413,7 @@ namespace BeatMapEvaluator
 					bool isFull = wall._type == ObstacleType.FullWall;
 					//Simple note inside wall check for every note thats in range
 					foreach(var (noteKey, noteList) in look) {
-						foreach(json_MapNote note in noteList) {
+						foreach(MapNote note in noteList) {
 							int nx = note._lineIndex;
 							int ny = note._lineLayer;
 							bool inRangeX = (nx >= wx) && (nx <= wSpan);
@@ -433,14 +433,14 @@ namespace BeatMapEvaluator
 		/// Removes all notes that have a position outside of the beat saber grid
 		/// </summary>
 		/// <returns>A list of offenders</returns>
-		public Task<List<json_MapNote>> Eval_OutOfRangeNotes() {
-			List<json_MapNote> offenders = new List<json_MapNote>();
+		public Task<List<MapNote>> Eval_OutOfRangeNotes() {
+			List<MapNote> offenders = new List<MapNote>();
 
 			//Tomb array because foreach has to iterate over the array
 			List<float> globalTomb = new List<float>();
 			foreach(var (time, list) in noteCache) {
 				//Local timestep tomb
-				List<json_MapNote> tomb = new List<json_MapNote>();
+				List<MapNote> tomb = new List<MapNote>();
 				foreach(var note in list) {
 					//Add all notes outside of the 3x4 space to the tomb list
 					bool xBound = note._lineIndex < 0 || note._lineIndex > 3;
@@ -468,14 +468,14 @@ namespace BeatMapEvaluator
 		/// Removes all walls that have a position outside of the beat saber grid
 		/// </summary>
 		/// <returns>A list of offenders</returns>
-		public Task<List<json_MapObstacle>> Eval_OutOfRangeWalls() {
-			List<json_MapObstacle> offenders = new List<json_MapObstacle>();
+		public Task<List<MapObstacle>> Eval_OutOfRangeWalls() {
+			List<MapObstacle> offenders = new List<MapObstacle>();
 
 			//Tomb array because foreach has to iterate over the array
 			List<float> globalTomb = new List<float>();
 			foreach(var (time, list) in wallCache) {
 				//Local timestep tomb
-				List<json_MapObstacle> tomb = new List<json_MapObstacle>();
+				List<MapObstacle> tomb = new List<MapObstacle>();
 				foreach(var wall in list) {
 					int wx = wall._lineIndex;
 					int wSpan = wx + (wall._width - 1);
@@ -512,8 +512,8 @@ namespace BeatMapEvaluator
 		/// for instance a bomb on the cut outward side of a block
 		/// </summary>
 		/// <returns>A list of offenders</returns>
-		public Task<List<json_MapNote>> Eval_FailSwings() {
-			List<json_MapNote> offenders = new List<json_MapNote>();
+		public Task<List<MapNote>> Eval_FailSwings() {
+			List<MapNote> offenders = new List<MapNote>();
 
 			foreach(var (time, list) in noteCache) { 
 				foreach(var note in list) { 
@@ -544,20 +544,20 @@ namespace BeatMapEvaluator
 
 			float[] noteKeys = noteCache.Keys.ToArray();
 
-			List<json_MapNote> lastCell = noteCache[noteKeys[0]];
-			json_MapNote? lastLeft = lastCell.Find(note => note._type == NoteType.Left);
-			json_MapNote? lastRight = lastCell.Find(note => note._type == NoteType.Right);
+			List<MapNote> lastCell = noteCache[noteKeys[0]];
+			MapNote? lastLeft = lastCell.Find(note => note._type == NoteType.Left);
+			MapNote? lastRight = lastCell.Find(note => note._type == NoteType.Right);
 			if(lastLeft != null) swingList[0].left++;
 			if(lastRight != null) swingList[0].right++;
 
 			for (int i = 1; i < noteKeys.Length; i++) {
 				//Get the second we are currently looking at for swings/second
 				int swingCellIndex = (int)Math.Floor(noteKeys[i] * beatsPerSecond);
-				List<json_MapNote> cell = noteCache[noteKeys[i]];
+				List<MapNote> cell = noteCache[noteKeys[i]];
 
 				//Find left and right blocks in the time step
-				json_MapNote? left = cell.Find(note => note._type == NoteType.Left);
-				json_MapNote? right = cell.Find(note => note._type == NoteType.Right);
+				MapNote? left = cell.Find(note => note._type == NoteType.Left);
+				MapNote? right = cell.Find(note => note._type == NoteType.Right);
 
 				//if there is a block between the last and current block
 				//evaluate if its part of a slider and add to the swing/second

@@ -38,8 +38,7 @@ namespace BeatMapEvaluator
 
     //Based off: https://bsmg.wiki/mapping/map-format.html#difficulty-beatmap-sets
     public class json_beatMapSet {
-        [JsonProperty("_beatmapCharacteristicName")]
-        public string _mapType { get; set; }
+        public string _beatmapCharacteristicName { get; set; }
         [JsonProperty("_difficultyBeatmaps")]
         public json_beatMapDifficulty[] _diffMaps { get; set; }
     }
@@ -70,18 +69,18 @@ namespace BeatMapEvaluator
     };
 
     //Based off: https://bsmg.wiki/mapping/map-format.html#difficulty-file-v2
-    public class json_DiffFileV2 {
+    public class DiffFileV2 {
         public string? _version { get; set; }
-        public json_MapNote[]? _notes { get; set; }
+        public MapNote[]? _notes { get; set; }
         [JsonProperty("_obstacles")]
-        public json_MapObstacle[]? _walls { get; set; }
+        public MapObstacle[]? _walls { get; set; }
 
         public int noteCount;
         public int obstacleCount;
     }
 
     //Based off: https://bsmg.wiki/mapping/map-format.html#notes-1
-    public class json_MapNote {
+    public class MapNote {
         /// <summary>Time in beats</summary>
         public float _time { get; set; }
         /// <summary>Position 0-3, left to right</summary>
@@ -103,7 +102,7 @@ namespace BeatMapEvaluator
         FullWall=0,CrouchWall=1
     };
     //Based off: https://bsmg.wiki/mapping/map-format.html#obstacles-3
-    public class json_MapObstacle {
+    public class MapObstacle {
         /// <summary>Starting time in beats</summary>
         public float _time { get; set; }
         /// <summary>Grid space index</summary>

@@ -155,10 +155,10 @@ namespace BeatMapEvaluator
         /// <param name="note">The current note to look from</param>
         /// <param name="lookDir">Which direction we are testing</param>
         /// <returns>
-        /// <c><see cref="BeatMapEvaluator.json_MapNote"/></c> if note found,
+        /// <c><see cref="BeatMapEvaluator.MapNote"/></c> if note found,
         /// <c><see cref="Nullable">null</see></c> if note outside of range or no note found.
         /// </returns>
-        public static json_MapNote? GetAdjacentNote(List<json_MapNote> list, json_MapNote note, NoteCutDirection lookDir) {
+        public static MapNote? GetAdjacentNote(List<MapNote> list, MapNote note, NoteCutDirection lookDir) {
             int cell = note.cellIndex;
 
             bool u = note._lineLayer != 2;  //Not the top most layer
@@ -221,7 +221,7 @@ namespace BeatMapEvaluator
         /// <param name="dotPrec">A dot notes precision</param>
         /// <param name="sliderPrec">A non-dot note precision</param>
         /// <returns><c><see cref="bool">True</see></c> if current is part of a slider</returns>
-        public static bool IsSlider(json_MapNote current, json_MapNote last, float dotPrec, float sliderPrec) {
+        public static bool IsSlider(MapNote current, MapNote last, float dotPrec, float sliderPrec) {
             int[] cutDir = {90, 270, 0, 180, 45, 135, 315, 225, 0};
             const float deltaEpsilon = 1.0f / 32.0f;
             const float angleEpsilon = 1.0f / 4.0f;

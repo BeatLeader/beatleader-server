@@ -93,7 +93,7 @@ namespace BeatLeader_Server.Controllers
                     var diffFile = archive.Entries.FirstOrDefault(e => e.Name == beatmap._beatmapFilename);
                     if (diffFile == null) continue;
 
-                    var diff = diffFile.Open().ObjectFromStream<json_DiffFileV2>();
+                    var diff = diffFile.Open().ObjectFromStream<DiffFileV2>();
                     diff.noteCount = diff._notes.Length;
                     diff.obstacleCount = diff._walls.Length;
 
