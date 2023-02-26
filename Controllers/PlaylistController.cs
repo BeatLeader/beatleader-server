@@ -585,10 +585,15 @@ namespace BeatLeader_Server.Controllers
             }
             string userId = (link != null ? (link.SteamID.Length > 0 ? link.SteamID : link.PCOculusID) : playerId);
 
+            var player = _context.Players.FirstOrDefault(p => p.Id == userId);
+            if (player == null) {
+                return NotFound();
+            }
+
             IQueryable<Score> sequence = _readAppContext
                 .Scores
                 .Where(t => t.PlayerId == userId)
-                .Filter(_readAppContext, sortBy, order, search, diff, type, modifiers, stars_from, stars_to, time_from, time_to, eventId); 
+                .Filter(_readAppContext, !player.Banned, sortBy, order, search, diff, type, modifiers, stars_from, stars_to, time_from, time_to, eventId); 
 
             var diffsCount = sequence.Select(s => s.Leaderboard.Song.Hash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash).Take(count).Last().Index + 1;
 

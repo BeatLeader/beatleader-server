@@ -1263,5 +1263,49 @@ namespace BeatLeader_Server.Controllers
 
             return Ok();
         }
+
+        [HttpPost("~/user/hideopscores")]
+        public async Task<ActionResult> HideOPScores([FromQuery] string? id = null)
+        {
+            string userId = GetId();
+
+            var player = await _context.Players.Include(p => p.ScoreStats).FirstOrDefaultAsync(p => p.Id == userId);
+
+            if (player != null && id == null && player.Role.Contains("admin")) {
+                return BadRequest("");
+            }
+
+            if (id != null && player != null && player.Role.Contains("admin"))
+            { 
+                player = await _context.Players.Include(p => p.ScoreStats).FirstOrDefaultAsync(p => p.Id == id);
+            }
+
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            var leaderboardsToUpdate = new List<string>();
+            var scores = _context.Scores.Where(s => s.PlayerId == player.Id && s.Modifiers.Contains("OP")).ToList();
+            foreach (var score in scores)
+            {
+                leaderboardsToUpdate.Add(score.LeaderboardId);
+                score.Banned = true;
+            }
+
+            await _context.SaveChangesAsync();
+
+            HttpContext.Response.OnCompleted(async () => {
+                foreach (var item in leaderboardsToUpdate)
+                {
+                    await _scoreRefreshController.RefreshScores(item);
+                }
+                await _playerRefreshController.RefreshPlayer(player);
+
+                await _playerRefreshController.RefreshRanks();
+            });
+
+            return Ok();
+        }
     }
 }

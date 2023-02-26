@@ -77,10 +77,15 @@ namespace BeatLeader_Server.Controllers
             }
             string userId = (link != null ? (link.SteamID.Length > 0 ? link.SteamID : link.PCOculusID) : id);
 
+            var player = _context.Players.FirstOrDefault(p => p.Id == userId);
+            if (player == null) {
+                return NotFound();
+            }
+
             IQueryable<Score> sequence = _readContext
                 .Scores
                 .Where(t => t.PlayerId == userId)
-                .Filter(_readContext, sortBy, order, search, diff, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);    
+                .Filter(_readContext, !player.Banned, sortBy, order, search, diff, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);    
 
             ResponseWithMetadata<ScoreResponseWithMyScore> result; 
             using (_serverTiming.TimeAction("db"))

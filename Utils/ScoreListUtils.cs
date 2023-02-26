@@ -12,6 +12,7 @@ namespace BeatLeader_Server.Utils
         public static IQueryable<Score> Filter(
             this IQueryable<Score> sequence, 
             ReadAppContext context,
+            bool excludeBanned,
             string sortBy = "date",
             string order = "desc",
             string? search = null,
@@ -97,6 +98,9 @@ namespace BeatLeader_Server.Utils
             {
                 sequence = sequence.Where(s => s.Timepost <= time_to);
             }
+            if (excludeBanned) {
+                sequence = sequence.Where(s => !s.Banned);
+            }
 
             if (modifiers != null) {
                 if (!modifiers.Contains("none")) {
@@ -105,17 +109,22 @@ namespace BeatLeader_Server.Utils
                     var contains = typeof(string).GetMethod("Contains", new[] { typeof(string) });
 
                     var any = modifiers.Contains("any");
+                    var not = modifiers.Contains("not");
                     // 1 != 2 is here to trigger `OrElse` further the line.
                     var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(any ? 2 : 1));
-                    var modifiersList = modifiers.Split(",").Where(m => m != "any" && m != "none");
+                    var modifiersList = modifiers.Split(",").Where(m => m != "any" && m != "none" && m != "not");
 
                     foreach (var term in modifiersList)
                     {
                         var subexpression = Expression.Call(Expression.Property(score, "Modifiers"), contains, Expression.Constant(term));
-                        if (any) {
-                            exp = Expression.OrElse(exp, subexpression);
+                        if (not) {
+                            exp = Expression.And(exp, Expression.Not(subexpression));
                         } else {
-                            exp = Expression.And(exp, subexpression);
+                            if (any) {
+                                exp = Expression.OrElse(exp, subexpression);
+                            } else {
+                                exp = Expression.And(exp, subexpression);
+                            }
                         }
                     }
                     sequence = sequence.Where((Expression<Func<Score, bool>>)Expression.Lambda(exp, score));

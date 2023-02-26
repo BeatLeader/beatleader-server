@@ -174,17 +174,22 @@ namespace BeatLeader_Server.Controllers
                         var contains = typeof(string).GetMethod("Contains", new[] { typeof(string) });
 
                         var any = modifiers.Contains("any");
+                        var not = modifiers.Contains("not");
                         // 1 != 2 is here to trigger `OrElse` further the line.
                         var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(any ? 2 : 1));
-                        var modifiersList = modifiers.Split(",").Where(m => m != "any" && m != "none");
+                        var modifiersList = modifiers.Split(",").Where(m => m != "any" && m != "none" && m != "not");
 
                         foreach (var term in modifiersList)
                         {
                             var subexpression = Expression.Call(Expression.Property(score, "Modifiers"), contains, Expression.Constant(term));
-                            if (any) {
-                                exp = Expression.OrElse(exp, subexpression);
+                            if (not) {
+                                exp = Expression.And(exp, Expression.Not(subexpression));
                             } else {
-                                exp = Expression.And(exp, subexpression);
+                                if (any) {
+                                    exp = Expression.OrElse(exp, subexpression);
+                                } else {
+                                    exp = Expression.And(exp, subexpression);
+                                }
                             }
                         }
                         scoreQuery = scoreQuery.Where((Expression<Func<Score, bool>>)Expression.Lambda(exp, score));
@@ -509,7 +514,7 @@ namespace BeatLeader_Server.Controllers
                     NegativeVotes = lb.NegativeVotes,
                     VoteStars = lb.VoteStars,
                     StarVotes = lb.StarVotes,
-                    MyScore = currentID == null ? null : lb.Scores.Where(s => s.PlayerId == currentID).Select(s => new ScoreResponseWithAcc
+                    MyScore = currentID == null ? null : lb.Scores.Where(s => s.PlayerId == currentID && !s.Banned).Select(s => new ScoreResponseWithAcc
                     {
                         Id = s.Id,
                         BaseScore = s.BaseScore,
