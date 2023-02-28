@@ -94,7 +94,7 @@ namespace BeatLeader_Server.Utils
             public int Timepost { get; set; }
             public int ReplaysWatched { get; set; }
             public int PlayCount { get; set; }
-            public PlayerResponse Player { get; set; }
+            public PlayerResponse? Player { get; set; }
             public ScoreImprovement? ScoreImprovement { get; set; }
             public RankVoting? RankVoting { get; set; }
             public ScoreMetadata? Metadata { get; set; }
@@ -334,7 +334,7 @@ namespace BeatLeader_Server.Utils
                 Timepost = s.Timepost,
                 LeaderboardId = s.LeaderboardId,
                 Platform = s.Platform,
-                Player = new PlayerResponse
+                Player = s.Player != null ? new PlayerResponse
                 {
                     Id = s.Player.Id,
                     Name = s.Player.Name,
@@ -349,8 +349,8 @@ namespace BeatLeader_Server.Utils
                     Socials = s.Player.Socials,
                     PatreonFeatures = s.Player.PatreonFeatures,
                     ProfileSettings = s.Player.ProfileSettings,
-                    Clans = s.Player?.Clans?.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                },
+                    Clans = s.Player.Clans?.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                } : null,
                 ScoreImprovement = s.ScoreImprovement,
                 RankVoting = s.RankVoting,
                 Metadata = s.Metadata,

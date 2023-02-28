@@ -18,6 +18,7 @@ namespace BeatLeader_Server.Controllers
         private readonly IAmazonS3 _s3Client;
 
         private readonly IServerTiming _serverTiming;
+        private readonly IConfiguration _configuration;
 
         public ScoreController(
             AppContext context,
@@ -30,6 +31,7 @@ namespace BeatLeader_Server.Controllers
             _readContext = readContext;
             _serverTiming = serverTiming;
             _s3Client = configuration.GetS3Client();
+            _configuration = configuration;
         }
 
         [HttpGet("~/score/{id}")]
@@ -143,6 +145,8 @@ namespace BeatLeader_Server.Controllers
                 leaderboard.Scores = new List<Score>(leaderboard.Scores);
                 leaderboard.Scores.Remove(score);
             }
+
+            await GeneralSocketController.ScoreWasRejected(score, _configuration, _context);
 
             if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
             {

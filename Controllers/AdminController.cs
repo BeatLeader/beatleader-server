@@ -500,6 +500,57 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpGet("~/admin/leaderboards/plot")]
+        public async Task<ActionResult<string>> LeaderboardsPlot()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var result = "x,y\n";
+            var scores = _context
+                .Scores
+                .Where(s => 
+                    s.Pp > 0 && 
+                    s.Rank == 1 && 
+                    !s.Banned && 
+                    // s.Leaderboard.Scores.Count() > 500 &&
+                    s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked)
+                .Select(s => new { 
+                    s.Accuracy, 
+                    s.Pp, 
+                    s.Modifiers, 
+                    s.Leaderboard.Difficulty.Stars,
+                    s.Leaderboard.Difficulty.ModifierValues,
+                    s.LeaderboardId }).OrderByDescending(s => s.Accuracy).ToList();
+
+            foreach (var score in scores)
+            {
+                if ((score.Modifiers.Contains("SF") || score.Modifiers.Contains("FS")) && score.ModifierValues != null)
+                {
+                    if (score.Modifiers.Contains("SF"))
+                    {
+                        result += $"{score.Stars * (score.ModifierValues.SF + 1f) },{score.Accuracy}\n";
+                    }
+                    else
+                    {
+                        result += $"{score.Stars * (score.ModifierValues.FS + 1f) },{score.Accuracy}\n";
+                    }
+
+                }
+                else
+                {
+                    result += $"{score.Stars},{score.Accuracy}\n";
+                }
+            }
+
+            return result;
+        }
+
         public static string GolovaID = "76561198059961776";
         public static string RankingBotID = "19573";
     }

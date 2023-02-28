@@ -145,8 +145,6 @@ namespace BeatLeader_Server.Bot
                 try {
                     ulong discordId = ulong.Parse(discord.UserId); 
                     playername = $"<@{discordId}>";
-                    var user = await ((IGuild)BotService.Client.GetGuild(BotService.BLServerID)).GetUserAsync(discordId, CacheMode.AllowDownload);
-                    await channel.AddUserAsync(user);
                 } catch { }
             }
 

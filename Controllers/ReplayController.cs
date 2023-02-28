@@ -286,6 +286,11 @@ namespace BeatLeader_Server.Controllers
                 });
             }
 
+            resultScore.PlayerId = info.playerID;
+            resultScore.LeaderboardId = leaderboard.Id;
+            GeneralSocketController.ScoreWasUploaded(resultScore, _configuration, _context);
+            resultScore.LeaderboardId = null;
+
             var transaction = await _context.Database.BeginTransactionAsync();
             ActionResult<ScoreResponse> result = BadRequest("Exception occured, ping NSGolova"); 
             bool stats = false;
@@ -370,8 +375,7 @@ namespace BeatLeader_Server.Controllers
             if (player.ScoreStats == null) {
                 player.ScoreStats = new PlayerScoreStats();
             }
-
-            resultScore.PlayerId = info.playerID;
+            
             resultScore.Player = player;
             int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             resultScore.Replay = "";
@@ -811,6 +815,7 @@ namespace BeatLeader_Server.Controllers
                 await transaction3.CommitAsync();
 
                 await ScoresSocketController.TryPublishNewScore(resultScore, _configuration, _context);
+                await GeneralSocketController.ScoreWasAccepted(resultScore, _configuration, _context);
 
                 if (leaderboard.Difficulty.Status == DifficultyStatus.ranked && resultScore.Rank == 1)
                 {
@@ -863,6 +868,7 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         private void SaveFailedScore(IDbContextTransaction transaction, Score? previousScore, Score score, Leaderboard leaderboard, string failReason) {
             //try {
+            GeneralSocketController.ScoreWasRejected(score, _configuration, _context);
             RollbackScore(score, previousScore, leaderboard);
             Player player = score.Player;
 

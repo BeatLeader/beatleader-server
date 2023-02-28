@@ -1181,6 +1181,8 @@ namespace BeatLeader_Server.Controllers
             {
                 leaderboardsToUpdate.Add(score.LeaderboardId);
                 score.Banned = true;
+
+                await GeneralSocketController.ScoreWasRejected(score, _configuration, _context);
             }
 
             player.Banned = true;
@@ -1245,6 +1247,8 @@ namespace BeatLeader_Server.Controllers
             {
                 leaderboardsToUpdate.Add(score.LeaderboardId);
                 score.Banned = false;
+
+                await GeneralSocketController.ScoreWasAccepted(score, _configuration, _context);
                 
             }
             player.Banned = false;
@@ -1286,11 +1290,13 @@ namespace BeatLeader_Server.Controllers
             }
 
             var leaderboardsToUpdate = new List<string>();
-            var scores = _context.Scores.Where(s => s.PlayerId == player.Id && s.Modifiers.Contains("OP")).ToList();
+            var scores = _context.Scores.Include(s => s.Leaderboard.Song).Where(s => s.PlayerId == player.Id && s.Modifiers.Contains("OP")).ToList();
             foreach (var score in scores)
             {
                 leaderboardsToUpdate.Add(score.LeaderboardId);
                 score.Banned = true;
+
+                await GeneralSocketController.ScoreWasRejected(score, _configuration, _context);
             }
 
             await _context.SaveChangesAsync();
