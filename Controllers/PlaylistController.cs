@@ -597,6 +597,8 @@ namespace BeatLeader_Server.Controllers
                 .Where(t => t.PlayerId == userId)
                 .Filter(_readAppContext, !player.Banned, sortBy, order, search, diff, type, modifiers, stars_from, stars_to, time_from, time_to, eventId); 
 
+            if (sequence.Count() == 0) { return NotFound(); }
+
             var diffsCount = sequence.Select(s => s.Leaderboard.Song.Hash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash).Take(count).Last().Index + 1;
 
             var diffs = sequence.Take(diffsCount).Select(s => new {

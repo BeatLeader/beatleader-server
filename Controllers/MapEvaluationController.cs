@@ -58,7 +58,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             var processingResults = await DownloadAndProcessMap(song.DownloadUrl, (float)song.Duration);
-            if (processingResults == null) {
+            if (processingResults == null || processingResults.Count == 0) {
                 return BadRequest("There was an error with processing map");
             }
 
@@ -74,8 +74,11 @@ namespace BeatLeader_Server.Controllers
 
         [NonAction]
         public static async Task<List<MapStorageLayout>?> DownloadAndProcessMap(string downloadLink, float duration) {
-            HttpWebResponse res = (HttpWebResponse) await WebRequest.Create(downloadLink).GetResponseAsync();
-            if (res.StatusCode != HttpStatusCode.OK) return null;
+            HttpWebResponse? res = null;
+                try {
+                res = (HttpWebResponse) await WebRequest.Create(downloadLink).GetResponseAsync();
+            } catch { }
+            if (res == null || res.StatusCode != HttpStatusCode.OK) return null;
 
             var archive = new ZipArchive(res.GetResponseStream());
 
@@ -94,6 +97,7 @@ namespace BeatLeader_Server.Controllers
                     if (diffFile == null) continue;
 
                     var diff = diffFile.Open().ObjectFromStream<DiffFileV2>();
+                    if (diff == null || diff._notes == null) continue;
                     diff.noteCount = diff._notes.Length;
                     diff.obstacleCount = diff._walls.Length;
 
