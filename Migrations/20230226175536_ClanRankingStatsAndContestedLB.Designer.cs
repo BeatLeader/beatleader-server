@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20230226175536_ClanRankingStatsAndContestedLB")]
+    partial class ClanRankingStatsAndContestedLB
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -282,15 +285,8 @@ namespace BeatLeader_Server.Migrations
                     b.Property<float>("ClanPP")
                         .HasColumnType("real");
 
-                    b.Property<int>("ClanRank")
-                        .HasColumnType("int");
-
                     b.Property<float>("ClanTotalScore")
                         .HasColumnType("real");
-
-                    b.Property<string>("LastUpdateTime")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("LeaderboardId")
                         .IsRequired()
@@ -1818,9 +1814,6 @@ namespace BeatLeader_Server.Migrations
                     b.Property<float>("BonusPp")
                         .HasColumnType("real");
 
-                    b.Property<int?>("ClanRankingId")
-                        .HasColumnType("int");
-
                     b.Property<int>("Controller")
                         .HasColumnType("int");
 
@@ -1921,8 +1914,6 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("real");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ClanRankingId");
 
                     b.HasIndex("LeaderboardId");
 
@@ -2609,10 +2600,6 @@ namespace BeatLeader_Server.Migrations
 
             modelBuilder.Entity("BeatLeader_Server.Models.Score", b =>
                 {
-                    b.HasOne("BeatLeader_Server.Models.ClanRanking", null)
-                        .WithMany("AssociatedScores")
-                        .HasForeignKey("ClanRankingId");
-
                     b.HasOne("BeatLeader_Server.Models.Leaderboard", "Leaderboard")
                         .WithMany("Scores")
                         .HasForeignKey("LeaderboardId")
@@ -2744,11 +2731,6 @@ namespace BeatLeader_Server.Migrations
             modelBuilder.Entity("BeatLeader_Server.Models.Clan", b =>
                 {
                     b.Navigation("CapturedLeaderboards");
-                });
-
-            modelBuilder.Entity("BeatLeader_Server.Models.ClanRanking", b =>
-                {
-                    b.Navigation("AssociatedScores");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.EventRanking", b =>

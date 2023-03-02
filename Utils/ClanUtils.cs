@@ -10,6 +10,19 @@ namespace BeatLeader_Server.Utils
 {
     public static class ClanUtils
     {
+        public struct ClanRankingData
+        {
+            public int numberOfScores;
+            public float weight;
+            public int lastUpdateTime;
+            public float clanPP;
+            public float totalAcc;
+            public int totalRank;
+            public int totalScore;
+            public List<Score> Scores;
+        };
+
+
         public static float RecalculateClanPP(this AppContext context, int clanId)
         {
             Clan clan = context.Clans.Where(c => c.Id == clanId).Include(c => c.Players).FirstOrDefault();
@@ -31,8 +44,7 @@ namespace BeatLeader_Server.Utils
             }
 
             // Calculate owning clan on this leaderboard
-            // Dictionary is: <Clan, (weight, pp-value)>
-            var clanPPDict = new Dictionary<Clan, (float, float)>();
+            var newClanRankingData = new Dictionary<Clan, ClanRankingData>();
             // Why can't I put a Where clause of: ".Where(s => s.LeaderboardId == leaderboardId && !s.Banned && s.Player.Clans != null)"
             // I want to ignore all players who aren't in any clans
             var leaderboardClans =
@@ -40,26 +52,48 @@ namespace BeatLeader_Server.Utils
                     .Scores
                     .Where(s => s.LeaderboardId == leaderboard.Id && !s.Banned)
                     .OrderByDescending(el => el.Pp)
-                    .Select(s => new { Pp = s.Pp, Clans = s.Player.Clans })
+                    //.Select(s => new { Clans = s.Player.Clans, Pp = s.Pp, Acc = s.Accuracy, Rank = s.Rank, Score = s.ModifiedScore })
                     .ToList();
 
-            // Build up a dictionary of the clans on this leaderboard with score pp, weighted by pp
-            foreach (var score in leaderboardClans)
+            // Build up a dictionary of the clans on this leaderboard based on scores
+            foreach (Score score in leaderboardClans)
             {
-                foreach (Clan clan in score.Clans)
+                foreach (Clan clan in score.Player.Clans)
                 {
-                    if (clanPPDict.ContainsKey(clan))
+                    if (newClanRankingData.ContainsKey(clan))
                     {
-                        // Just picked a value of .9f, need to balance value based on how many clan members usually play the same map so as to not give advantage
-                        // to clans with lots of members
-                        float weight = MathF.Pow(0.965f, clanPPDict[clan].Item1);
-                        //float weight = clanPPDict[clan].Item1 * 0.9f;
-                        float clanPP = clanPPDict[clan].Item2 + (score.Pp * weight);
-                        clanPPDict[clan] = (weight, clanPP);
+                        int numberOfScores = newClanRankingData[clan].numberOfScores + 1;
+                        float weight = MathF.Pow(0.965f, newClanRankingData[clan].weight);
+                        int totalRank = newClanRankingData[clan].totalRank + score.Rank;
+                        float clanPP = newClanRankingData[clan].clanPP + (score.Pp * weight);
+                        float totalAcc = newClanRankingData[clan].clanPP + score.Accuracy;
+                        int totalScore = newClanRankingData[clan].totalScore + score.ModifiedScore;
+                        int lastUpdateTime = Math.Max(Int32.Parse(score.Timeset), newClanRankingData[clan].lastUpdateTime);
+                        newClanRankingData[clan] = new ClanRankingData
+                        {
+                            numberOfScores = numberOfScores,
+                            weight = weight,
+                            lastUpdateTime = lastUpdateTime,
+                            clanPP = clanPP,
+                            totalAcc = totalAcc,
+                            totalRank = totalRank,
+                            totalScore = totalScore,
+                        };
+                        // Can we do this in the initializer somehow?
+                        newClanRankingData[clan].Scores.Add(score);
                     }
                     else
                     {
-                        clanPPDict.Add(clan, (1.0f, score.Pp));
+                        newClanRankingData.Add(clan, new ClanRankingData
+                        {
+                            numberOfScores = 1,
+                            weight = 1.0f,
+                            clanPP = score.Pp,
+                            totalAcc = score.Accuracy,
+                            totalRank = score.Rank,
+                            totalScore = score.ModifiedScore,
+                            Scores = new List<Score> { score }
+                        });
                     }
                 }
             }
@@ -74,11 +108,12 @@ namespace BeatLeader_Server.Utils
             // Won -> Tied : Good
             // Tied -> Won : Good
             // Tied -> Tied : Good
+            // Tied -> Null : Impossible
             // ----------------------
-            if (!clanPPDict.IsNullOrEmpty())
+            if (!newClanRankingData.IsNullOrEmpty())
             {
-                // Sort clanPPDict and clanRanking by PP
-                clanPPDict = clanPPDict.OrderBy(x => x.Value.Item2).ToDictionary(x => x.Key, x => x.Value);
+                // Sort newClanRankingData and clanRanking by PP
+                newClanRankingData = newClanRankingData.OrderBy(x => x.Value.clanPP).ToDictionary(x => x.Key, x => x.Value);
                 leaderboard.ClanRanking ??= new List<ClanRanking>();
                 var clanRanking = leaderboard.ClanRanking;
 
@@ -88,7 +123,7 @@ namespace BeatLeader_Server.Utils
                     var prevCaptor = clanRanking.First().Clan;
 
                     // If we are introducing a tie, remove captor from the clanRanking, if there is one
-                    if ((clanPPDict.Count > 1 && clanPPDict.ElementAt(0).Value.Item2 == clanPPDict.ElementAt(1).Value.Item2))
+                    if (newClanRankingData.Count > 1 && newClanRankingData.ElementAt(0).Value.clanPP == newClanRankingData.ElementAt(1).Value.clanPP)
                     {
                         // The reason this has to be in a loop is because of n-way ties.
                         // If an n-way tie existed in the clanRanking, the previous captor could be anywhere in the clanRanking list.
@@ -96,60 +131,86 @@ namespace BeatLeader_Server.Utils
                         {
                             RemoveCapturedLeaderboard(ref prevCaptor, leaderboard);
                         }
+                        leaderboard.ClanRankingContested = true;
                     }
                     else
                     {
                         // If the leaderboard was previously tied, and now it is captured, we don't want to remove captor (there wasn't one)
-                        if (clanRanking.Count > 1 && clanRanking.ElementAt(0).ClanPP == clanRanking.ElementAt(1).ClanPP)
+                        if (clanRanking.Count > 1 && leaderboard.ClanRankingContested)
                         {
-                            AddCapturedLeaderboard(ref clanPPDict, leaderboard);
-                        } else
+                            AddCapturedLeaderboard(ref newClanRankingData, leaderboard);
+                            leaderboard.ClanRankingContested = false;
+                        } 
+                        else
                         {
                             // If the leaderboard was previously won, and now it is won by a different clan,
                             // Remove board from old captor, add board to new captor
-                            if (prevCaptor != clanPPDict.First().Key)
+                            if (prevCaptor != newClanRankingData.First().Key)
                             {
                                 RemoveCapturedLeaderboard(ref prevCaptor, leaderboard);
-                                AddCapturedLeaderboard(ref clanPPDict, leaderboard);
+                                AddCapturedLeaderboard(ref newClanRankingData, leaderboard);
                             }
                         }
                     }
-                } else
+                } 
+                else
                 {
                     // If clanRanking was empty:
-                    // Empty --> Tie : Do nothing
-                    // Empty --> Won : Add captured leaderboard
-                    if (clanPPDict.Count == 1 || (clanPPDict.Count > 1 && clanPPDict.ElementAt(0).Value.Item2 != clanPPDict.ElementAt(1).Value.Item2))
+                    // Empty --> Tie : Set leaderboard as contested
+                    if (newClanRankingData.Count > 1 && newClanRankingData.ElementAt(0).Value.clanPP == newClanRankingData.ElementAt(1).Value.clanPP) {
+                        leaderboard.ClanRankingContested = true;
+                    } 
+                    else
                     {
-                        AddCapturedLeaderboard(ref clanPPDict, leaderboard);
+                        // Empty --> Won : Add captured leaderboard
+                        AddCapturedLeaderboard(ref newClanRankingData, leaderboard);
                     }
                 }
 
                 // Recalculate pp on clans
-                // TODO : Maybe have function that only needs to do these operations for the clans affected by the score set
-                foreach (var clan in clanPPDict)
+                // TODO : Maybe have function that only needs to do these operations for the clans affected by a new score set?
+                int clanRankCounter = 1;
+                foreach (var clan in newClanRankingData)
                 {
                     var updateClan = clanRanking.Where(cr => cr.Clan == clan.Key).FirstOrDefault();
                     if (updateClan != null)
                     {
-                        updateClan.ClanPP = clan.Value.Item2;
+                        updateClan.LastUpdateTime = clan.Value.lastUpdateTime.ToString();
+                        updateClan.ClanPP = clan.Value.clanPP;
+                        updateClan.ClanRank = clanRankCounter;
+                        updateClan.ClanAverageRank = clan.Value.totalRank / clan.Value.numberOfScores;
+                        updateClan.ClanAverageAccuracy = clan.Value.totalAcc / clan.Value.numberOfScores;
+                        updateClan.ClanTotalScore = clan.Value.totalScore;
+                        updateClan.AssociatedScores = clan.Value.Scores;
                     }
                     else
                     {
-                        clanRanking.Add(new ClanRanking { Clan = clan.Key, ClanPP = clan.Value.Item2 });
+                        clanRanking.Add(new ClanRanking { 
+                            Clan = clan.Key,
+                            LastUpdateTime = clan.Value.lastUpdateTime.ToString(),
+                            ClanPP = clan.Value.clanPP,
+                            ClanRank = clanRankCounter,
+                            ClanAverageRank = clan.Value.totalRank / clan.Value.numberOfScores,
+                            ClanAverageAccuracy = clan.Value.totalAcc / clan.Value.numberOfScores,
+                            ClanTotalScore = clan.Value.totalScore,
+                            LeaderboardId = leaderboard.Id,
+                            Leaderboard = leaderboard,
+                            AssociatedScores = clan.Value.Scores
+                        });
                     }
+                    clanRankCounter++;
                 }
             }
 
             return leaderboard.ClanRanking;
         }
 
-        private static void AddCapturedLeaderboard(ref Dictionary<Clan, (float, float)> clanPPDict, Leaderboard leaderboard)
+        private static void AddCapturedLeaderboard(ref Dictionary<Clan, ClanRankingData> newClanRankingData, Leaderboard leaderboard)
         {
             // Add leaderboard to new captor
-            if (clanPPDict.First().Key.CapturedLeaderboards == null)
+            if (newClanRankingData.First().Key.CapturedLeaderboards == null)
             {
-                clanPPDict.First().Key.CapturedLeaderboards = new List<Leaderboard>
+                newClanRankingData.First().Key.CapturedLeaderboards = new List<Leaderboard>
                 {
                     leaderboard
                 };
@@ -157,9 +218,9 @@ namespace BeatLeader_Server.Utils
             else
             {
                 // Check to make sure the clan hasn't already captured this map
-                if (!clanPPDict.First().Key.CapturedLeaderboards.Contains(leaderboard))
+                if (!newClanRankingData.First().Key.CapturedLeaderboards.Contains(leaderboard))
                 {
-                    clanPPDict.First().Key.CapturedLeaderboards.Add(leaderboard);
+                    newClanRankingData.First().Key.CapturedLeaderboards.Add(leaderboard);
                 }
             }
         }

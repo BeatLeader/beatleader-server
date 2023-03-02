@@ -183,6 +183,7 @@ namespace BeatLeader_Server.Utils
             public IEnumerable<LeaderboardGroupEntry>? LeaderboardGroup { get; set; }
             public int Plays { get; set; }
             public ICollection<ClanRanking>? ClanRanking { get; set; }
+            public bool ClanRankingContested { get; set; }
         }
 
         public class LeaderboardGroupEntry {

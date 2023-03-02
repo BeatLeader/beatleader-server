@@ -73,10 +73,10 @@ namespace BeatLeader_Server.Controllers
                         Song = l.Song,
                         Difficulty = l.Difficulty,
                         Plays = l.Plays,
-                        ClanRanking = l.ClanRanking,
                         Qualification = l.Qualification,
                         Reweight = l.Reweight,
                         Changes = l.Changes,
+                        ClanRankingContested = l.ClanRankingContested,
                         LeaderboardGroup = l.LeaderboardGroup.Leaderboards.Select(it =>
                             new LeaderboardGroupEntry
                             {
@@ -84,7 +84,7 @@ namespace BeatLeader_Server.Controllers
                                 Status = it.Difficulty.Status,
                                 Timestamp = it.Timestamp
                             }
-                        ),
+                        )
                     })
                     .FirstOrDefault();
 
@@ -199,6 +199,15 @@ namespace BeatLeader_Server.Controllers
                 {
                     score.Player = PostProcessSettings(score.Player);
                 }
+
+                leaderboard.ClanRanking = currentContext
+                    .ClanRanking
+                    .Where(cr => cr.LeaderboardId == leaderboard.Id)
+                    .OrderBy(cr => cr.ClanPP)
+                    .Skip((page - 1) * count)
+                    .Take(count)
+                    .Include(cr => cr.Clan)
+                    .ToList();
             }
 
             if (leaderboard == null) {

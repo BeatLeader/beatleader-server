@@ -51,6 +51,7 @@
         public float VoteStars { get; set; }
 
         public ICollection<ClanRanking>? ClanRanking { get; set; }
+        public bool ClanRankingContested { get; set; }
     }
 
     public enum LeaderboardType
