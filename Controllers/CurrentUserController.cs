@@ -672,7 +672,7 @@ namespace BeatLeader_Server.Controllers
             string? iPAddress = Request.HttpContext.GetIpAddress();
             if (iPAddress == null)
             {
-                return Unauthorized("You don't have an IP adress? Tell #NSGolova how you get this error.");
+                return Unauthorized("You don't have an IP adress? Tell #NSGolova how you got this error.");
             }
 
             LoginAttempt? loginAttempt = _context.LoginAttempts.FirstOrDefault(el => el.IP == iPAddress);
@@ -796,6 +796,9 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         public async Task<ActionResult<int>> MigratePrivate(string migrateToId, string migrateFromId)
         {
+            if (migrateToId == migrateFromId) {
+                return Unauthorized("Something went completly wrong");
+            }
             if (long.Parse(migrateToId) < 1000000000000000)
             {
                 return Unauthorized("You need to be logged in with Steam or Oculus");

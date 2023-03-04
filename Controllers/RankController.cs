@@ -421,10 +421,9 @@ namespace BeatLeader_Server.Controllers
             string hash,
             string diff,
             string mode,
-            [FromQuery] bool? stilQualifying,
+            [FromQuery] DifficultyStatus? newStatus,
             [FromQuery] float? stars,
             [FromQuery] int? type,
-            [FromQuery] bool? allowed,
             [FromQuery] int? criteriaCheck,
             [FromQuery] string? criteriaCommentary,
             [FromQuery] string? modifiers = null)
@@ -463,12 +462,10 @@ namespace BeatLeader_Server.Controllers
 
             if (qualification != null)
             {
-                if (stilQualifying == true 
-                    && (allowed == null || allowed == true)
+                if (newStatus == DifficultyStatus.qualified 
                     && leaderboard.Difficulty.Stars == stars
                     && leaderboard.Difficulty.Type == type
                     && (criteriaCheck == null || criteriaCheck == 1)
-                    && qualification.MapperAllowed
                     && qualification.CriteriaChecker != currentID
                     && qualification.RTMember != currentID
                     && qualification.CriteriaMet == 1
@@ -518,13 +515,8 @@ namespace BeatLeader_Server.Controllers
                         qualification.Approvers += "," + currentID;
                     }
 
-                    qualification.Approved = (bool)stilQualifying;
+                    qualification.Approved = true;
                 } else {
-
-                    if (leaderboard.Difficulty.Status == DifficultyStatus.qualified && currentPlayer.Role.Contains("juniorrankedteam"))
-                    {
-                        return Unauthorized();
-                    }
 
                     QualificationChange qualificationChange = new QualificationChange {
                         PlayerId = currentID,
@@ -537,8 +529,8 @@ namespace BeatLeader_Server.Controllers
                         OldModifiers = qualification.Modifiers,
                     };
 
-                    if (stilQualifying == false) {
-                        leaderboard.Difficulty.Status = DifficultyStatus.unrankable;
+                    if (newStatus == DifficultyStatus.unrankable || newStatus == DifficultyStatus.unranked) {
+                        leaderboard.Difficulty.Status = (DifficultyStatus)newStatus;
                         leaderboard.Difficulty.NominatedTime = 0;
                         leaderboard.Difficulty.QualifiedTime = 0;
                         leaderboard.Difficulty.Stars = 0;
@@ -551,14 +543,6 @@ namespace BeatLeader_Server.Controllers
                         if (type != null)
                         {
                             leaderboard.Difficulty.Type = (int)type;
-                        }
-                    }
-
-                    if (!qualification.MapperAllowed && allowed != null)
-                    {
-                        qualification.MapperAllowed = (bool)allowed;
-                        if ((bool)allowed) {
-                            qualification.MapperId = currentID;
                         }
                     }
 

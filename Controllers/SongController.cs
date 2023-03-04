@@ -259,7 +259,7 @@ namespace BeatLeader_Server.Controllers
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin") || role == "admin")
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
             }
