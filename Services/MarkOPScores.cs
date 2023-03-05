@@ -108,7 +108,7 @@ namespace BeatLeader_Server.Services
                         .ThenByDescending(s => s.ModifiedScore)
                         .Skip(i)
                         .Take(5000)
-                        .Select(s => new { s.Id, s.Replay, s.Modifiers, s.Pauses, s.IgnoreForStats, Requirements = s.Leaderboard.Difficulty.Requirements })
+                        .Select(s => new { s.Id, s.Replay, s.Modifiers, s.Pauses, s.IgnoreForStats })
                         .ToList();
                     var toUpdate = new List<Score>();
 
@@ -116,12 +116,12 @@ namespace BeatLeader_Server.Services
                     {
                         
                         var score = new Score { Id = s.Id, Modifiers = s.Modifiers, Replay = s.Replay, Pauses = s.Pauses, IgnoreForStats = s.IgnoreForStats };
-                        if (!s.Requirements.HasFlag(Requirements.Noodles)) {
-                                await MigrateScore(
-                                    score, 
-                                    _context,
-                                    _s3Client);
-                        }
+                        //if (!s.Requirements.HasFlag(Requirements.Noodles)) {
+                        //        await MigrateScore(
+                        //            score, 
+                        //            _context,
+                        //            _s3Client);
+                        //}
                         score.Migrated = true;
                         toUpdate.Add(score);
                     }, maxDegreeOfParallelism: 50);

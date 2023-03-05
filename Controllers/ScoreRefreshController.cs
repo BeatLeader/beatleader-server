@@ -148,6 +148,8 @@ namespace BeatLeader_Server.Controllers
             //        return Unauthorized();
             //    }
             //}
+
+            _context.ChangeTracker.AutoDetectChangesEnabled = false; 
             
             var query = _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked || lb.Difficulty.Status == DifficultyStatus.nominated || lb.Difficulty.Status == DifficultyStatus.qualified);
 
@@ -158,7 +160,7 @@ namespace BeatLeader_Server.Controllers
 
             //_context.SaveChanges();
 
-            _context.ChangeTracker.AutoDetectChangesEnabled = false;
+            
                 query = (leaderboardId != null ? query.Where(s => s.Id == leaderboardId) : query);
 
                 var allLeaderboards = query
@@ -173,7 +175,7 @@ namespace BeatLeader_Server.Controllers
                             BaseScore = s.BaseScore,
                             Modifiers = s.Modifiers,
                         })
-                    }).ToList();
+                    });
                 await allLeaderboards.ParallelForEachAsync(async leaderboard => {
                     var allScores = leaderboard.Scores.Where(s => !s.Banned).ToList();
 

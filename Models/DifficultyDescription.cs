@@ -53,6 +53,6 @@ namespace BeatLeader_Server.Models
         public int MaxScore { get; set; }
         public double Duration { get; set; }
 
-        public Requirements Requirements { get; set; }
+        //public Requirements Requirements { get; set; }
     }
 }

@@ -24,7 +24,7 @@ namespace BeatLeader_Server.Utils
 
             foreach ((int i, Score s) in ranked.Select((value, i) => (i, value)))
             {
-                float weight = MathF.Pow(0.96f, i);
+                float weight = MathF.Pow(0.965f, i);
                 if (s.Weight != weight)
                 {
                     s.Weight = weight;
@@ -49,7 +49,7 @@ namespace BeatLeader_Server.Utils
             float passPP = 0f;
             foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
             {
-                float weight = MathF.Pow(0.96f, i);
+                float weight = MathF.Pow(0.965f, i);
                 if (s.Weight != weight)
                 {
                     var score = context.Scores.Local.FirstOrDefault(ls => ls.Id == s.Id);
@@ -93,7 +93,7 @@ namespace BeatLeader_Server.Utils
             float passPP = 0f;
             foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
             {
-                float weight = MathF.Pow(0.96f, i);
+                float weight = MathF.Pow(0.965f, i);
                 if (s.Weight != weight)
                 {
                     var score = context.Scores.Local.FirstOrDefault(ls => ls.Id == s.Id);
@@ -223,7 +223,7 @@ namespace BeatLeader_Server.Utils
             float resultPP = 0f;
             foreach ((int i, float pp) in rankedScores.Select((value, i) => (i, value.Pp)))
             {
-                float weight = MathF.Pow(0.96f, i);
+                float weight = MathF.Pow(0.965f, i);
                 resultPP += pp * weight;
             }
 

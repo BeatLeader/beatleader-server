@@ -515,7 +515,7 @@ namespace BeatLeader_Server.Controllers
                                 diff.PassRating,
                                 diff.TechRating);
 
-                            diff.Stars = (diff.PassRating + diff.TechRating + diff.AccRating) / 3;
+                            diff.Stars = ReplayUtils.ToStars(diff.PredictedAcc ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0);
 
                             var rating = diff.ModifiersRating;
                             rating.SSAccRating = ReplayUtils.AccRating(

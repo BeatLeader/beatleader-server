@@ -122,7 +122,7 @@ namespace BeatLeader_Server.Utils
         public static float AccRating(float? predictedAcc, float? passRating, float? techRating) {
             float difficulty_to_acc;
             if (predictedAcc > 0) {
-                difficulty_to_acc = 15f / Curve2((predictedAcc ?? 0) + 0.002f);
+                difficulty_to_acc = 15f / Curve2((predictedAcc ?? 0) + 0.0001f);
             } else {
                 float tiny_tech = 0.0208f * (techRating ?? 0) + 1.1284f;
                 difficulty_to_acc = (-MathF.Pow(tiny_tech, -(passRating ?? 0)) + 1) * 8 + 2 + 0.01f * (techRating ?? 0) * (passRating ?? 0);
@@ -134,7 +134,7 @@ namespace BeatLeader_Server.Utils
         }
 
         private static float Inflate(float peepee) {
-            return (443.12f * MathF.Pow(peepee, 1.3f)) / MathF.Pow(443.12f, 1.3f) * 1.081805f;
+            return (550f * MathF.Pow(peepee, 1.3f)) / MathF.Pow(550f, 1.3f);
         }
 
         private static float Inflate2(float peepee) {
@@ -151,11 +151,18 @@ namespace BeatLeader_Server.Utils
             float difficulty_to_acc = AccRating(predictedAcc, passRating, techRating);
 
             float reducedTechRating = techRating / 10;
-            float passPP = passRating * 22.5f;
-            float accPP = Curve3(accuracy) * difficulty_to_acc * 27.5f;
+            float passPP = passRating * 19;
+            float accPP = Curve3(accuracy) * difficulty_to_acc * 26f;
             float techPP = (float)(1 / (1 + Math.Pow(Math.E, -32 * (accuracy - 0.925f))) * (reducedTechRating / (1 + Math.Pow(Math.E, -8 * (reducedTechRating - 0.25f)))) * 12.5 * difficulty_to_acc / Math.Max((0.3333f * passRating), 2));
             
-            return (passPP, accPP, techPP);
+            return (passPP, accPP, techPP * 2.1f);
+        }
+
+        public static float ToStars(float predictedAcc, float passRating, float techRating) {
+
+            (float passPP, float accPP, float techPP) = GetPp(0.96f, predictedAcc, passRating, techRating);
+
+            return Inflate(passPP + accPP + techPP) / 52f;
         }
 
         public static (float, float, float, float, float) PpFromScore(
@@ -182,7 +189,7 @@ namespace BeatLeader_Server.Utils
                 {
                     (passPP, accPP, techPP) = GetPp(accuracy, predictedAcc, passRating, techRating);
                         
-                    rawPP = Lack(passPP, accPP, techPP);
+                    rawPP = Inflate(passPP + accPP + techPP);
                     if (modifiersRating != null) {
                         var modifiersMap = modifiersRating.ToDictionary<float>();
                         foreach (var modifier in modifiers.ToUpper().Split(","))
@@ -197,7 +204,7 @@ namespace BeatLeader_Server.Utils
                         }
                     }
                     (passPP, accPP, techPP) = GetPp(accuracy, predictedAcc, passRating * mp, techRating * mp);
-                    fullPP = Lack(passPP, accPP, techPP);
+                    fullPP = Inflate(passPP + accPP + techPP);
                 }
             } else {
                 rawPP = accuracy * passRating * 55f;

@@ -151,18 +151,18 @@ namespace BeatLeader_Server.Utils
                         difficulty.Walls = (int)diff.obstacles;
                         difficulty.MaxScore = (int)diff.maxScore;
                         difficulty.Duration = result.Duration;
-                        if (diff.chroma) {
-                            difficulty.Requirements |= Requirements.Chroma;
-                        }
-                        if (diff.me) {
-                            difficulty.Requirements |= Requirements.MappingExtensions;
-                        }
-                        if (diff.ne) {
-                            difficulty.Requirements |= Requirements.Noodles;
-                        }
-                        if (diff.cinema) {
-                            difficulty.Requirements |= Requirements.Cinema;
-                        }
+                        //if (diff.chroma) {
+                        //    difficulty.Requirements |= Requirements.Chroma;
+                        //}
+                        //if (diff.me) {
+                        //    difficulty.Requirements |= Requirements.MappingExtensions;
+                        //}
+                        //if (diff.ne) {
+                        //    difficulty.Requirements |= Requirements.Noodles;
+                        //}
+                        //if (diff.cinema) {
+                        //    difficulty.Requirements |= Requirements.Cinema;
+                        //}
 
                         difficulties.Add(difficulty);
                     }

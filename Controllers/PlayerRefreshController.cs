@@ -377,7 +377,7 @@ namespace BeatLeader_Server.Controllers
             var weights = new Dictionary<int, float>();
             for (int i = 0; i < 5000; i++)
             {
-                weights[i] = MathF.Pow(0.96f, i);
+                weights[i] = MathF.Pow(0.965f, i);
             }
 
             var scores = _context
