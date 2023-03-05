@@ -99,6 +99,8 @@ namespace BeatLeader_Server.Controllers
             if (oldLeaderboard?.Qualification != null) {
 
                 newLeaderboard.Qualification = oldLeaderboard.Qualification;
+                newLeaderboard.NegativeVotes = oldLeaderboard.NegativeVotes;
+                newLeaderboard.PositiveVotes = oldLeaderboard.PositiveVotes;
                 if (oldLeaderboard.Qualification.DiscordChannelId.Length > 0) {
                     await _nominationsForum.NominationReuploaded(oldLeaderboard.Qualification.DiscordChannelId, oldLeaderboardId);
                 }

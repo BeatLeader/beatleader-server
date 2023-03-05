@@ -1,6 +1,7 @@
 ﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
+using Dasync.Collections;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -263,6 +264,65 @@ namespace BeatLeader_Server.Controllers
                     _context.RejectChanges();
                 }
             }
+
+            _context.ChangeTracker.AutoDetectChangesEnabled = true;
+
+            return Ok();
+        }
+
+        [HttpGet("~/scores/bulkrankrefresh")]
+        [Authorize]
+        public async Task<ActionResult> BulkRankRefreshScores()
+        {
+            if (HttpContext != null)
+            {
+                string currentId = HttpContext.CurrentUserID(_context);
+                Player? currentPlayer = await _context.Players.FindAsync(currentId);
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+
+            _context.ChangeTracker.AutoDetectChangesEnabled = false; 
+            
+            var allLeaderboards = _context.Leaderboards
+                .Select(lb => new {
+                    lb.Difficulty,
+                    Scores = lb.Scores.Select(s => new { s.Id, s.Banned, s.Pp, s.Accuracy, s.Timeset, s.ModifiedScore })
+                }).ToList();
+                await allLeaderboards.ParallelForEachAsync(async leaderboard => {
+                    var allScores = leaderboard.Scores.Where(s => !s.Banned).ToList();
+
+                    var status = leaderboard.Difficulty.Status;
+                    bool hasPp = status == DifficultyStatus.ranked || status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
+                    var newScores = new List<Score>();
+
+                    foreach (var s in allScores)
+                    {
+                        var score = new Score() { Id = s.Id, Pp = s.Pp, Accuracy = s.Accuracy, Timeset = s.Timeset, ModifiedScore = s.ModifiedScore };
+                        _context.Scores.Attach(score);
+
+                        newScores.Add(score);
+                    }
+
+                    var rankedScores = hasPp 
+                        ? newScores
+                            .OrderByDescending(el => Math.Round(el.Pp, 2))
+                            .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                            .ThenBy(el => el.Timeset).ToList() 
+                        : newScores
+                            .OrderByDescending(el => el.ModifiedScore)
+                            .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                            .ThenBy(el => el.Timeset).ToList();
+                    foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
+                    {
+                        s.Rank = i + 1;
+                        _context.Entry(s).Property(x => x.Rank).IsModified = true;
+                    }
+                }, maxDegreeOfParallelism: 20);
+
+            await _context.BulkSaveChangesAsync();
 
             _context.ChangeTracker.AutoDetectChangesEnabled = true;
 

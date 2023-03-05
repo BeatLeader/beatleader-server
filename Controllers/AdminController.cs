@@ -551,6 +551,55 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
+        [Authorize]
+        [HttpGet("~/recalculateVoting")]
+        public async Task<ActionResult> recalculateVoting()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var leaderboards = _context
+                .Leaderboards
+                .Where(lb => lb.Qualification != null)
+                .Include(lb => lb.Qualification)
+                .ThenInclude(q => q.Votes)
+                .Include(lb => lb.Scores.Where(s => s.RankVoting != null))
+                .ThenInclude(s => s.RankVoting)
+                .ToList();
+
+            foreach (var lb in leaderboards)
+            {
+                lb.PositiveVotes = 0;
+                lb.NegativeVotes = 0;
+                foreach (var score in lb.Scores)
+                {
+                    if (score.RankVoting.Rankability > 0) {
+                        lb.PositiveVotes++;
+                    } else {
+                        lb.NegativeVotes++;
+                    }
+                }
+
+                foreach (var vote in lb.Qualification.Votes)
+                {
+                    if (vote.Value == MapQuality.Good) {
+                        lb.PositiveVotes += 8;
+                    } else if (vote.Value == MapQuality.Bad) {
+                        lb.NegativeVotes += 8;
+                    }
+                }
+
+            }
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
         public static string GolovaID = "76561198059961776";
         public static string RankingBotID = "19573";
     }

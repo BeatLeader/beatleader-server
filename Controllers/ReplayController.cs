@@ -520,8 +520,8 @@ namespace BeatLeader_Server.Controllers
                 _context
                     .Scores
                     .Where(s => s.LeaderboardId == leaderboard.Id && s.Pp <= resultScore.Pp && !s.Banned)
-                    .OrderByDescending(el => el.Pp)
-                    .ThenByDescending(el => el.Accuracy)
+                    .OrderByDescending(el => Math.Round(el.Pp, 2))
+                    .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                     .ThenBy(el => el.Timeset)
                     .Select(s => new { Id = s.Id, Rank = s.Rank })
                     :
@@ -529,7 +529,7 @@ namespace BeatLeader_Server.Controllers
                     .Scores
                     .Where(s => s.LeaderboardId == leaderboard.Id && s.ModifiedScore <= resultScore.ModifiedScore && !s.Banned)
                     .OrderByDescending(el => el.ModifiedScore)
-                    .ThenByDescending(el => el.Accuracy)
+                    .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                     .ThenBy(el => el.Timeset)
                     .Select(s => new { Id = s.Id, Rank = s.Rank })
             ).ToList();
@@ -867,7 +867,7 @@ namespace BeatLeader_Server.Controllers
 
         [NonAction]
         private void SaveFailedScore(IDbContextTransaction transaction, Score? previousScore, Score score, Leaderboard leaderboard, string failReason) {
-            //try {
+            try {
             GeneralSocketController.ScoreWasRejected(score, _configuration, _context);
             RollbackScore(score, previousScore, leaderboard);
             Player player = score.Player;
@@ -967,7 +967,7 @@ namespace BeatLeader_Server.Controllers
             _context.BulkSaveChanges();
             transaction.Commit();
             
-            //} catch { }
+            } catch { }
         }
 
         [NonAction]
