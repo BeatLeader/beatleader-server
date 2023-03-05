@@ -544,6 +544,9 @@ namespace BeatLeader_Server.Controllers
                         {
                             leaderboard.Difficulty.Type = (int)type;
                         }
+                        if (newStatus == DifficultyStatus.nominated) {
+                            leaderboard.Difficulty.Status = DifficultyStatus.nominated;
+                        }
                     }
 
                     if (criteriaCheck != null && criteriaCheck != qualification.CriteriaMet) {
@@ -596,7 +599,11 @@ namespace BeatLeader_Server.Controllers
                             string message = currentPlayer.Name + " updated nomination for **" + leaderboard.Song.Name + "**!\n";
                             if (qualificationChange.NewRankability <= 0)
                             {
-                                message += "**Declined!**\n Reason: " + qualification.CriteriaCommentary + "\n";
+                                message += "**Declined!**\n";
+
+                                if (qualification.CriteriaCommentary?.Length > 0) {    
+                                    message += "Reason: " + qualification.CriteriaCommentary + "\n";
+                                }
                             }
                             else
                             {

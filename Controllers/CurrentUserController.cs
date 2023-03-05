@@ -1146,10 +1146,8 @@ namespace BeatLeader_Server.Controllers
             }
 
             var result = await _replayController.PostReplayFromCDN(score.PlayerId, name, HttpContext);
-            if (result.Value != null) {
-                _context.FailedScores.Remove(score);
-                await _context.SaveChangesAsync();
-            }
+            _context.FailedScores.Remove(score);
+            await _context.SaveChangesAsync();
 
             return result;
         }

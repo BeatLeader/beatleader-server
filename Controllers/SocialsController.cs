@@ -101,7 +101,7 @@ namespace BeatLeader_Server.Controllers
                     player.Socials.Add(new PlayerSocial
                     {
                         Service = "Twitter",
-                        User = name,
+                        User = "@" + username,
                         UserId = id,
                         Link = "https://twitter.com/" + username
                     });
@@ -210,6 +210,7 @@ namespace BeatLeader_Server.Controllers
                         var channel = channels.items[0];
                         if (channel.kind == "youtube#channel") {
                             channelLink = "https://www.youtube.com/channel/" + channel.id;
+                            username = channel.snippet.title;
                         }
                     }
 
@@ -246,7 +247,7 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         public Task<dynamic?> ListChanneld(string token)
         {
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://youtube.googleapis.com/youtube/v3/channels?part=id&mine=true&key=" + _configuration.GetValue<string>("GoogleSecret"));
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://youtube.googleapis.com/youtube/v3/channels?part=snippet&mine=true&key=" + _configuration.GetValue<string>("GoogleSecret"));
             request.Method = "GET";
             request.Headers.Add("Authorization", "Bearer " + token);
             request.Proxy = null;
