@@ -1,5 +1,6 @@
 ﻿using Amazon.S3;
 using BeatLeader_Server.Extensions;
+using BeatLeader_Server.Migrations;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
@@ -34,7 +35,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int count = 10, 
             [FromQuery] string? countries = null,
             [FromQuery] bool friends = false,
-            [FromQuery] bool voters = false)
+            [FromQuery] bool voters = false,
+            [FromQuery] bool clanRanking = false)
         {
             var currentContext = _readContext;
 
@@ -199,15 +201,74 @@ namespace BeatLeader_Server.Controllers
                 {
                     score.Player = PostProcessSettings(score.Player);
                 }
-
-                leaderboard.ClanRanking = currentContext
+                if (clanRanking)
+                {
+                    leaderboard.ClanRanking = currentContext
                     .ClanRanking
                     .Where(cr => cr.LeaderboardId == leaderboard.Id)
                     .OrderBy(cr => cr.ClanPP)
                     .Skip((page - 1) * count)
                     .Take(count)
                     .Include(cr => cr.Clan)
+                    .Select(cr => new ClanRankingResponse
+                    {
+                        Id = cr.Id,
+                        Clan = cr.Clan,
+                        LastUpdateTime = cr.LastUpdateTime,
+                        ClanRank = cr.ClanRank,
+                        ClanAverageRank = cr.ClanAverageRank,
+                        ClanPP = cr.ClanPP,
+                        ClanAverageAccuracy = cr.ClanAverageAccuracy,
+                        ClanTotalScore = cr.ClanTotalScore,
+                        LeaderboardId = cr.LeaderboardId,
+                        Leaderboard = cr.Leaderboard,
+                        AssociatedScores = scoreQuery
+                            .OrderBy(s => s.Rank)
+                            .Skip((page - 1) * count)
+                            .Take(count)
+                            .Include(sc => sc.Player)
+                            .ThenInclude(p => p.ProfileSettings)
+                            .Include(s => s.Player)
+                            .ThenInclude(s => s.Clans)
+                            .Select(s => new ScoreResponse
+                            {
+                                Id = s.Id,
+                                BaseScore = s.BaseScore,
+                                ModifiedScore = s.ModifiedScore,
+                                PlayerId = s.PlayerId,
+                                Accuracy = s.Accuracy,
+                                Pp = s.Pp,
+                                Rank = s.Rank,
+                                Modifiers = s.Modifiers,
+                                BadCuts = s.BadCuts,
+                                MissedNotes = s.MissedNotes,
+                                BombCuts = s.BombCuts,
+                                WallsHit = s.WallsHit,
+                                Pauses = s.Pauses,
+                                FullCombo = s.FullCombo,
+                                Timeset = s.Timeset,
+                                Timepost = s.Timepost,
+                                Player = new PlayerResponse
+                                {
+                                    Id = s.Player.Id,
+                                    Name = s.Player.Name,
+                                    Avatar = s.Player.Avatar,
+                                    Country = s.Player.Country,
+
+                                    Pp = s.Player.Pp,
+                                    Rank = s.Player.Rank,
+                                    CountryRank = s.Player.CountryRank,
+                                    Role = s.Player.Role,
+                                    ProfileSettings = s.Player.ProfileSettings,
+                                    Clans = s.Player.Clans
+                                        .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                                },
+                                RankVoting = showVoters ? s.RankVoting : null,
+                            })
+                            .ToList(),
+                    })
                     .ToList();
+                }
             }
 
             if (leaderboard == null) {

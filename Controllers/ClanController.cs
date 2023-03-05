@@ -93,7 +93,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string sort = "pp",
             [FromQuery] string order = "desc",
             [FromQuery] string? search = null,
-            [FromQuery] string? type = null)
+            [FromQuery] string? capturedLeaderboards = null)
         {
             Clan? clan = null;
             if (tag == "my")
@@ -105,21 +105,72 @@ namespace BeatLeader_Server.Controllers
                 {
                     return NotFound();
                 }
-                clan = _readContext
-                    .Clans
-                    .Where(c => c.LeaderID == currentID)
-                    .Include(c => c.Players)
-                    .ThenInclude(p => p.ProfileSettings)
-                    .FirstOrDefault();
+
+                if (capturedLeaderboards != null)
+                {
+                    clan = _readContext
+                        .Clans
+                        .Where(c => c.LeaderID == currentID)
+                        .Include(c => c.CapturedLeaderboards)
+                            .ThenInclude(s => s.Song)
+                            .ThenInclude(d => d.Difficulties)
+                        .Include(c => c.CapturedLeaderboards)
+                            .ThenInclude(lb => lb.LeaderboardGroup)
+                                .ThenInclude(g => g.Leaderboards)
+                                    .ThenInclude(glb => glb.Difficulty)
+                        .FirstOrDefault();
+                }
+                else
+                {
+                    clan = _readContext
+                        .Clans
+                        .Where(c => c.LeaderID == currentID)
+                        .Include(c => c.Players)
+                        .ThenInclude(p => p.ProfileSettings)
+                        .Include(c => c.CapturedLeaderboards)
+                        .Include(c => c.CapturedLeaderboards)
+                            .ThenInclude(s => s.Song)
+                            .ThenInclude(d => d.Difficulties)
+                        .Include(c => c.CapturedLeaderboards)
+                            .ThenInclude(lb => lb.LeaderboardGroup)
+                                .ThenInclude(g => g.Leaderboards)
+                                    .ThenInclude(glb => glb.Difficulty)
+                        .FirstOrDefault();
+                }
             }
             else
             {
-                clan = _readContext
-                    .Clans
-                    .Where(c => c.Tag == tag)
-                    .Include(c => c.Players)
-                    .ThenInclude(p => p.ProfileSettings)
-                    .FirstOrDefault();
+                if (capturedLeaderboards != null)
+                {
+                    clan = _readContext
+                        .Clans
+                        .Where(c => c.Tag == tag)
+                        .Include(c => c.CapturedLeaderboards)
+                        .Include(c => c.CapturedLeaderboards)
+                            .ThenInclude(s => s.Song)
+                            .ThenInclude(d => d.Difficulties)
+                        .Include(c => c.CapturedLeaderboards)
+                            .ThenInclude(lb => lb.LeaderboardGroup)
+                                .ThenInclude(g => g.Leaderboards)
+                                    .ThenInclude(glb => glb.Difficulty)
+                        .FirstOrDefault();
+                } else
+                {
+                    clan = _readContext
+                        .Clans
+                        .Where(c => c.Tag == tag)
+                        .Include(c => c.Players)
+                        .ThenInclude(p => p.ProfileSettings)
+                        .Include(c => c.CapturedLeaderboards)
+                        .Include(c => c.CapturedLeaderboards)
+                            .ThenInclude(s => s.Song)
+                            .ThenInclude(d => d.Difficulties)
+                        .Include(c => c.CapturedLeaderboards)
+                            .ThenInclude(lb => lb.LeaderboardGroup)
+                                .ThenInclude(g => g.Leaderboards)
+                                    .ThenInclude(glb => glb.Difficulty)
+                        .FirstOrDefault();
+                }
             }
             if (clan == null)
             {
@@ -808,10 +859,10 @@ namespace BeatLeader_Server.Controllers
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            if (!currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
+            //if (!currentPlayer.Role.Contains("admin"))
+            //{
+            //    return Unauthorized();
+            //}
 
             // Recalculate Clan Ranking for all ranked maps - For testing
             try

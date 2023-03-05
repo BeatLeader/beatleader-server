@@ -182,8 +182,23 @@ namespace BeatLeader_Server.Utils
             
             public IEnumerable<LeaderboardGroupEntry>? LeaderboardGroup { get; set; }
             public int Plays { get; set; }
-            public ICollection<ClanRanking>? ClanRanking { get; set; }
+            public ICollection<ClanRankingResponse>? ClanRanking { get; set; }
             public bool ClanRankingContested { get; set; }
+        }
+
+        public class ClanRankingResponse
+        {
+            public int Id { get; set; }
+            public Clan Clan { get; set; }
+            public string LastUpdateTime { get; set; }
+            public int ClanRank { get; set; }
+            public float ClanAverageRank { get; set; }
+            public float ClanPP { get; set; }
+            public float ClanAverageAccuracy { get; set; }
+            public float ClanTotalScore { get; set; }
+            public string LeaderboardId { get; set; }
+            public Leaderboard Leaderboard { get; set; }
+            public ICollection<ScoreResponse> AssociatedScores { get; set; }
         }
 
         public class LeaderboardGroupEntry {
