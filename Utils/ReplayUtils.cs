@@ -41,39 +41,6 @@ namespace BeatLeader_Server.Utils
                 (0.65, 0.246),
                 (0.6, 0.217),
                 (0.0, 0.000) };
-        static List<(double, double)> pointList2 = new List<(double, double)> { 
-                (1.0, 7.424),
-                (0.999, 6.241),
-                (0.9975, 5.158),
-                (0.995, 4.010),
-                (0.9925, 3.241),
-                (0.99, 2.700),
-                (0.9875, 2.303),
-                (0.985, 2.007),
-                (0.9825, 1.786),
-                (0.98, 1.618),
-                (0.9775, 1.490),
-                (0.975, 1.392),
-                (0.9725, 1.315),
-                (0.97, 1.256),
-                (0.965, 1.167),
-                (0.96, 1.101),
-                (0.955, 1.047),
-                (0.95, 1.000),
-                (0.94, 0.919),
-                (0.93, 0.86),
-                (0.92, 0.825),
-                (0.91, 0.805),
-                (0.9, 0.790),
-                (0.875, 0.745),
-                (0.85, 0.67),
-                (0.825, 0.59),
-                (0.8, 0.52),
-                (0.75, 0.41),
-                (0.7, 0.33),
-                (0.65, 0.27),
-                (0.6, 0.217),
-                (0.0, 0.000) };
         public static float Curve(float acc, float stars)
         {
             float l = (float)(1f - (0.03f * (stars - 3.0f) / 11.0f));
@@ -101,28 +68,10 @@ namespace BeatLeader_Server.Utils
             return (float)(pointList[i-1].Item2 + middle_dis * (pointList[i].Item2 - pointList[i-1].Item2));
         }
 
-        public static float Curve3(float acc)
-        {
-            int i = 0;
-            for (; i < pointList2.Count; i++)
-            {
-                if (pointList2[i].Item1 <= acc) {
-                    break;
-                }
-            }
-    
-            if (i == 0) {
-                i = 1;
-            }
-    
-            double middle_dis = (acc - pointList2[i-1].Item1) / (pointList2[i].Item1 - pointList2[i-1].Item1);
-            return (float)(pointList2[i-1].Item2 + middle_dis * (pointList2[i].Item2 - pointList2[i-1].Item2));
-        }
-
         public static float AccRating(float? predictedAcc, float? passRating, float? techRating) {
             float difficulty_to_acc;
             if (predictedAcc > 0) {
-                difficulty_to_acc = 15f / Curve2((predictedAcc ?? 0) + 0.0001f);
+                difficulty_to_acc = 15f / Curve2((predictedAcc ?? 0) + 0.005f);
             } else {
                 float tiny_tech = 0.0208f * (techRating ?? 0) + 1.1284f;
                 difficulty_to_acc = (-MathF.Pow(tiny_tech, -(passRating ?? 0)) + 1) * 8 + 2 + 0.01f * (techRating ?? 0) * (passRating ?? 0);
@@ -134,7 +83,7 @@ namespace BeatLeader_Server.Utils
         }
 
         private static float Inflate(float peepee) {
-            return (550f * MathF.Pow(peepee, 1.3f)) / MathF.Pow(550f, 1.3f);
+            return (443.12f * MathF.Pow(peepee, 1.3f)) / MathF.Pow(443.12f, 1.3f) * 1.081805f;
         }
 
         private static float Inflate2(float peepee) {
@@ -151,18 +100,18 @@ namespace BeatLeader_Server.Utils
             float difficulty_to_acc = AccRating(predictedAcc, passRating, techRating);
 
             float reducedTechRating = techRating / 10;
-            float passPP = passRating * 19;
-            float accPP = Curve3(accuracy) * difficulty_to_acc * 26f;
+            float passPP = passRating * 22.5f;
+            float accPP = Curve2(accuracy) * difficulty_to_acc * 27.5f;
             float techPP = (float)(1 / (1 + Math.Pow(Math.E, -32 * (accuracy - 0.925f))) * (reducedTechRating / (1 + Math.Pow(Math.E, -8 * (reducedTechRating - 0.25f)))) * 12.5 * difficulty_to_acc / Math.Max((0.3333f * passRating), 2));
             
-            return (passPP, accPP, techPP * 2.1f);
+            return (passPP, accPP, techPP);
         }
 
         public static float ToStars(float predictedAcc, float passRating, float techRating) {
 
             (float passPP, float accPP, float techPP) = GetPp(0.96f, predictedAcc, passRating, techRating);
 
-            return Inflate(passPP + accPP + techPP) / 52f;
+            return Lack(passPP, accPP, techPP) / 52f;
         }
 
         public static (float, float, float, float, float) PpFromScore(
@@ -189,7 +138,7 @@ namespace BeatLeader_Server.Utils
                 {
                     (passPP, accPP, techPP) = GetPp(accuracy, predictedAcc, passRating, techRating);
                         
-                    rawPP = Inflate(passPP + accPP + techPP);
+                    rawPP = Lack(passPP, accPP, techPP);
                     if (modifiersRating != null) {
                         var modifiersMap = modifiersRating.ToDictionary<float>();
                         foreach (var modifier in modifiers.ToUpper().Split(","))
@@ -204,7 +153,7 @@ namespace BeatLeader_Server.Utils
                         }
                     }
                     (passPP, accPP, techPP) = GetPp(accuracy, predictedAcc, passRating * mp, techRating * mp);
-                    fullPP = Inflate(passPP + accPP + techPP);
+                    fullPP = Lack(passPP, accPP, techPP);
                 }
             } else {
                 rawPP = accuracy * passRating * 55f;
