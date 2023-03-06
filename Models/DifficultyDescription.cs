@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BeatLeader_Server.Models
 {
@@ -24,6 +25,7 @@ namespace BeatLeader_Server.Models
         V3 = 1 << 5,
     }
 
+    [Index(nameof(Status), IsUnique = false)]
     public class DifficultyDescription
     {
         public int Id { get; set; }

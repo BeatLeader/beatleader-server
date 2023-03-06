@@ -32,6 +32,8 @@ namespace BeatLeader_Server.Models
     }
     [Index(nameof(PlayerId))]
     [Index(nameof(PlayerId), nameof(LeaderboardId), IsUnique = true)]
+    [Index(nameof(Banned), nameof(Qualification), nameof(Pp), IsUnique = false)]
+    [Index(nameof(PlayerId), nameof(Banned), nameof(Qualification), nameof(Pp), IsUnique = false)]
     public class Score
     {
         [Key]
