@@ -100,7 +100,7 @@ namespace BeatLeader_Server.Utils
             float difficulty_to_acc = AccRating(predictedAcc, passRating, techRating);
 
             float reducedTechRating = techRating / 10;
-            float passPP = passRating * 22.5f;
+            float passPP = passRating * 15f;
             float accPP = Curve2(accuracy) * difficulty_to_acc * 27.5f;
             float techPP = (float)(1 / (1 + Math.Pow(Math.E, -32 * (accuracy - 0.925f))) * (reducedTechRating / (1 + Math.Pow(Math.E, -8 * (reducedTechRating - 0.25f)))) * 12.5 * difficulty_to_acc / Math.Max((0.3333f * passRating), 2));
             
