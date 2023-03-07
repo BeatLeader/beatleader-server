@@ -134,6 +134,7 @@ namespace BeatLeader_Server.Controllers
                         .Include(p => p.Socials)
                         .Include(p => p.ProfileSettings)
                         .Include(p => p.History)
+                        .Include(p => p.Changes)
                         .FirstOrDefault();
                     if (oldplayer != null)
                     {
@@ -144,6 +145,7 @@ namespace BeatLeader_Server.Controllers
                         oldplayer.Socials = null;
                         oldplayer.ProfileSettings = null;
                         oldplayer.History = null;
+                        oldplayer.Changes = null;
                         _context.Players.Remove(oldplayer);
                     }
                     _context.BeatSaverLinks.Remove(bslink);

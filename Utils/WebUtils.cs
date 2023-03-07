@@ -3,11 +3,14 @@ using Newtonsoft.Json.Converters;
 using Newtonsoft.Json;
 using System.Dynamic;
 using System.Net;
+using BeatLeader_Server.Extensions;
 
 namespace BeatLeader_Server.Utils
 {
     public class WebUtils
     {
+        public static readonly HttpClient client = new HttpClient();
+
         public static string? GetCountryByIp(string ip)
         {
             string? result = null;
@@ -37,6 +40,14 @@ namespace BeatLeader_Server.Utils
             }
 
             return result;
+        }
+
+        public static async Task<ExpandoObject> PostHTTPRequestAsync(string url, Dictionary<string, string> data)
+        {
+            using HttpContent formContent = new FormUrlEncodedContent(data);
+            using HttpResponseMessage response = await client.PostAsync(url, formContent).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+            return (await response.Content.ReadAsStreamAsync()).ObjectFromStream();
         }
     }
 }

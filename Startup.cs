@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Prometheus.Client.DependencyInjection;
 using Prometheus.Client.HttpRequestDurations;
 using Prometheus.Client.AspNetCore;
+using System.Net;
+using BeatLeader_Server.Bot;
 
 namespace BeatLeader_Server {
 
@@ -33,6 +35,34 @@ namespace BeatLeader_Server {
                 _logger.LogWarning(null, "LOL500 " + context.Request.Path + context.Request.QueryString);
                 throw;
             }
+        }
+    }
+
+    public class LocalstatsMiddleware
+    {
+        private readonly RequestDelegate _next;
+        private readonly ILogger<LocalstatsMiddleware> _logger;
+ 
+        public LocalstatsMiddleware(RequestDelegate next, ILogger<LocalstatsMiddleware> logger)
+        {
+            _next = next;
+            _logger = logger;
+        }
+ 
+        public async Task Invoke(HttpContext context)
+        {
+            if (context.Request.Path == "/metrics")
+            {
+                var remoteIp = context.Connection.RemoteIpAddress;
+ 
+                if (context.Request.Headers.ContainsKey("X-Forwarded-For") || !IPAddress.IsLoopback(remoteIp))
+                {
+                    context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
+                    return;
+                }
+            }
+ 
+            await _next(context);
         }
     }
 
@@ -89,7 +119,7 @@ namespace BeatLeader_Server {
             .AddCookie("BLTwitch")
             .AddCookie("BLTwitter")
             .AddCookie("BLGoogle")
-            //.AddCookie("BLDiscord")
+            .AddCookie("BLDiscord")
             .AddCookie("BLBeatSaver")
             .AddSteamTicket(options =>
             {
@@ -143,7 +173,6 @@ namespace BeatLeader_Server {
 
                 string patreonId = Configuration.GetValue<string>("PatreonId");
                 string patreonSecret = Configuration.GetValue<string>("PatreonSecret");
-
                 authBuilder.AddPatreon(options => {
                     options.SignInScheme = "BLPatreon";
                     options.SaveTokens = true;
@@ -153,7 +182,6 @@ namespace BeatLeader_Server {
 
                 string twitchId = Configuration.GetValue<string>("TwitchId");
                 string twitchSecret = Configuration.GetValue<string>("TwitchSecret");
-
                 authBuilder.AddTwitch(options =>
                 {
                     options.SaveTokens = true;
@@ -164,7 +192,6 @@ namespace BeatLeader_Server {
 
                 string twitterId = Configuration.GetValue<string>("TwitterId");
                 string twitterSecret = Configuration.GetValue<string>("TwitterSecret");
-
                 authBuilder.AddTwitter(options =>
                 {
                     options.SaveTokens = true;
@@ -173,9 +200,18 @@ namespace BeatLeader_Server {
                     options.SignInScheme = "BLTwitter";
                 });
 
+                string discordId = Configuration.GetValue<string>("DiscordId");
+                string discordSecret = Configuration.GetValue<string>("DiscordSecret");
+                authBuilder.AddDiscord(options => 
+                {
+                    options.SaveTokens = true;
+                    options.ClientId = discordId;
+                    options.ClientSecret = discordSecret;
+                    options.SignInScheme = "BLDiscord";
+                });
+
                 string googleId = Configuration.GetValue<string>("GoogleId");
                 string googleSecret = Configuration.GetValue<string>("GoogleSecret");
-
                 authBuilder.AddGoogle(options =>
                 {
                     options.SaveTokens = true;
@@ -200,11 +236,12 @@ namespace BeatLeader_Server {
                 services.AddHostedService<RankingService>();
                 services.AddHostedService<MinuteRefresh>();
             }
+            services.AddHostedService<BotService>();
+            services.AddSingleton<NominationsForum>();
+
             services.AddMvc ().AddControllersAsServices ().AddJsonOptions (options => {
                 options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
             });
-            //if (!Environment.IsDevelopment())
-            //{
             services.AddCors (options => {
                 options.AddPolicy (name: MyAllowSpecificOrigins,
                     builder => {
@@ -214,7 +251,6 @@ namespace BeatLeader_Server {
                         .AllowCredentials();
                     });
             });
-            //}
 
             services.AddSwaggerGen();
 
@@ -229,6 +265,7 @@ namespace BeatLeader_Server {
         public void Configure (IApplicationBuilder app)
         {
             app.UseMiddleware<ErrorLoggingMiddleware>();
+            app.UseMiddleware<LocalstatsMiddleware>();
             app.UsePrometheusServer();
             app.UsePrometheusRequestDurations();
             app.UseStaticFiles();

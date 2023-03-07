@@ -32,6 +32,8 @@ namespace BeatLeader_Server.Models
     }
     [Index(nameof(PlayerId))]
     [Index(nameof(PlayerId), nameof(LeaderboardId), IsUnique = true)]
+    [Index(nameof(Banned), nameof(Qualification), nameof(Pp), IsUnique = false)]
+    [Index(nameof(PlayerId), nameof(Banned), nameof(Qualification), nameof(Pp), IsUnique = false)]
     public class Score
     {
         [Key]
@@ -74,6 +76,7 @@ namespace BeatLeader_Server.Models
         public ReplayOffsets? ReplayOffsets { get; set; }
         public string? Country { get; set; }
         public int MaxStreak { get; set; }
+        public int PlayCount { get; set; } = 1;
         public float LeftTiming { get; set; }
         public float RightTiming { get; set; }
 

@@ -1,12 +1,15 @@
-﻿using BeatLeader_Server.Extensions;
+﻿using BeatLeader_Server.Bot;
+using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
+using Discord.Rest;
 using Discord.Webhook;
 using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using System.Text;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -18,9 +21,11 @@ namespace BeatLeader_Server.Controllers
         private readonly IServerTiming _serverTiming;
         private readonly IConfiguration _configuration;
         private readonly ScoreRefreshController _scoreRefreshController;
-        private readonly PlayerController _playerController;
+        private readonly MapEvaluationController _mapEvaluationController;
         private readonly PlayerRefreshController _playerRefreshController;
         private readonly PlaylistController _playlistController;
+
+        private readonly NominationsForum _nominationsForum;
 
         public RankController(
             AppContext context,
@@ -29,9 +34,10 @@ namespace BeatLeader_Server.Controllers
             IServerTiming serverTiming,
             IConfiguration configuration,
             ScoreRefreshController scoreRefreshController,
-            PlayerController playerController,
+            MapEvaluationController mapEvaluationController,
             PlayerRefreshController playerRefreshController,
-            PlaylistController playlistController)
+            PlaylistController playlistController,
+            NominationsForum nominationsForum)
         {
             _context = context;
             _readContext = readContext;
@@ -39,9 +45,11 @@ namespace BeatLeader_Server.Controllers
             _serverTiming = serverTiming;
             _configuration = configuration;
             _scoreRefreshController = scoreRefreshController;
-            _playerController = playerController;
+            _mapEvaluationController = mapEvaluationController;
             _playerRefreshController = playerRefreshController;
             _playlistController = playlistController;
+
+            _nominationsForum = nominationsForum;
         }
 
         public enum VoteStatus
@@ -350,6 +358,15 @@ namespace BeatLeader_Server.Controllers
                 if (isRT || verified) {
                     difficulty.Stars = stars;
                 }
+
+                string? criteriaCheck = qualifiedLeaderboards.FirstOrDefault(lb => lb.Qualification.CriteriaCheck != null)?.Qualification.CriteriaCheck;
+                if (criteriaCheck == null) {
+                    try {
+                        MapCheckResult? mapCheckResult = (await _mapEvaluationController.Get(leaderboard.Song.Id)).Value;
+                        criteriaCheck = JsonExtensions.SerializeObject(mapCheckResult);
+                    } catch { }
+                }
+
                 leaderboard.Qualification = new RankQualification {
                     Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
                     RTMember = currentID,
@@ -357,6 +374,7 @@ namespace BeatLeader_Server.Controllers
                     MapperAllowed = !isRT || alreadyApproved != null,
                     MapperQualification = !isRT,
                     Modifiers = modifierValues,
+                    CriteriaCheck = criteriaCheck
                 };
                 
                 difficulty.ModifierValues = modifierValues;
@@ -389,6 +407,9 @@ namespace BeatLeader_Server.Controllers
 
                     await dsClient.SendMessageAsync(message);
                 }
+
+                leaderboard.Qualification.DiscordChannelId = (await _nominationsForum.OpenNomination(currentPlayer.Name, leaderboard)).ToString();
+                await _context.SaveChangesAsync();
             }
 
             return Ok();
@@ -400,10 +421,9 @@ namespace BeatLeader_Server.Controllers
             string hash,
             string diff,
             string mode,
-            [FromQuery] bool? stilQualifying,
+            [FromQuery] DifficultyStatus? newStatus,
             [FromQuery] float? stars,
             [FromQuery] int? type,
-            [FromQuery] bool? allowed,
             [FromQuery] int? criteriaCheck,
             [FromQuery] string? criteriaCommentary,
             [FromQuery] string? modifiers = null)
@@ -442,12 +462,10 @@ namespace BeatLeader_Server.Controllers
 
             if (qualification != null)
             {
-                if (stilQualifying == true 
-                    && (allowed == null || allowed == true)
+                if (newStatus == DifficultyStatus.qualified 
                     && leaderboard.Difficulty.Stars == stars
                     && leaderboard.Difficulty.Type == type
                     && (criteriaCheck == null || criteriaCheck == 1)
-                    && qualification.MapperAllowed
                     && qualification.CriteriaChecker != currentID
                     && qualification.RTMember != currentID
                     && qualification.CriteriaMet == 1
@@ -463,9 +481,21 @@ namespace BeatLeader_Server.Controllers
 
                         var dsClient = qualificationDSClient();
 
+                        if (qualification.DiscordChannelId.Length > 0) {
+                            await _nominationsForum.NominationQualified(qualification.DiscordChannelId);
+                        }
+
                         if (dsClient != null)
                         {
                             string message = currentPlayer.Name + " qualified **" + diff + "** diff of **" + leaderboard.Song.Name + "**! \n";
+                            var mapper = _context.Players.Include(p => p.Socials).FirstOrDefault(p => p.Id == qualification.MapperId);
+                            if (mapper != null) {
+                                var discord = mapper.Socials?.FirstOrDefault(s => s.Service == "Discord");
+                                if (discord != null)
+                                {
+                                    message += $"Mapper: <@{discord.UserId}> <a:wavege:1069819816581546057> \n";
+                                }
+                            }
                             message += "★ " + leaderboard.Difficulty.Stars + "  ";
                             message += " **T**  ";
                             message += FormatUtils.DescribeType(leaderboard.Difficulty.Type);
@@ -485,13 +515,8 @@ namespace BeatLeader_Server.Controllers
                         qualification.Approvers += "," + currentID;
                     }
 
-                    qualification.Approved = (bool)stilQualifying;
+                    qualification.Approved = true;
                 } else {
-
-                    if (leaderboard.Difficulty.Status == DifficultyStatus.qualified && currentPlayer.Role.Contains("juniorrankedteam"))
-                    {
-                        return Unauthorized();
-                    }
 
                     QualificationChange qualificationChange = new QualificationChange {
                         PlayerId = currentID,
@@ -504,8 +529,8 @@ namespace BeatLeader_Server.Controllers
                         OldModifiers = qualification.Modifiers,
                     };
 
-                    if (stilQualifying == false) {
-                        leaderboard.Difficulty.Status = DifficultyStatus.unrankable;
+                    if (newStatus == DifficultyStatus.unrankable || newStatus == DifficultyStatus.unranked) {
+                        leaderboard.Difficulty.Status = (DifficultyStatus)newStatus;
                         leaderboard.Difficulty.NominatedTime = 0;
                         leaderboard.Difficulty.QualifiedTime = 0;
                         leaderboard.Difficulty.Stars = 0;
@@ -519,13 +544,8 @@ namespace BeatLeader_Server.Controllers
                         {
                             leaderboard.Difficulty.Type = (int)type;
                         }
-                    }
-
-                    if (!qualification.MapperAllowed && allowed != null)
-                    {
-                        qualification.MapperAllowed = (bool)allowed;
-                        if ((bool)allowed) {
-                            qualification.MapperId = currentID;
+                        if (newStatus == DifficultyStatus.nominated) {
+                            leaderboard.Difficulty.Status = DifficultyStatus.nominated;
                         }
                     }
 
@@ -568,15 +588,22 @@ namespace BeatLeader_Server.Controllers
 
                         qualification.Changes.Add(qualificationChange);
 
-                        var dsClient = nominationDSClient();
+                        if (qualificationChange.NewRankability <= 0 && qualification.DiscordChannelId.Length > 0)
+                        {
+                            await _nominationsForum.CloseNomination(qualification.DiscordChannelId);
+                        }
 
+                        var dsClient = nominationDSClient();
                         if (dsClient != null)
                         {
-
                             string message = currentPlayer.Name + " updated nomination for **" + leaderboard.Song.Name + "**!\n";
                             if (qualificationChange.NewRankability <= 0)
                             {
-                                message += "**Declined!**\n Reason: " + qualification.CriteriaCommentary;
+                                message += "**Declined!**\n";
+
+                                if (qualification.CriteriaCommentary?.Length > 0) {    
+                                    message += "Reason: " + qualification.CriteriaCommentary + "\n";
+                                }
                             }
                             else
                             {
@@ -681,7 +708,7 @@ namespace BeatLeader_Server.Controllers
                 if (dsClient != null) {
                     string message = currentPlayer.Name + " initiated reweight for **" + leaderboard.Song.Name + "**\n";
                     if (keep == false) {
-                        message += "*UNRANK!*\n Reason: " + criteriaCommentary;
+                        message += "*UNRANK!*\n Reason: " + criteriaCommentary + "\n";
                     } else {
                         if (reweight.Stars != leaderboard.Difficulty.Stars) {
                             message += "★ " + leaderboard.Difficulty.Stars + " → " + reweight.Stars + "\n";
@@ -830,11 +857,10 @@ namespace BeatLeader_Server.Controllers
 
                 if (dsClient != null)
                 {
-
                     string message = currentPlayer.Name + " approved reweight for **" + leaderboard.Song.Name + "**!\n";
                     if (!reweight.Keep)
                     {
-                        message += "**UNRANKED!**\n Reason: " + reweight.CriteriaCommentary;
+                        message += "**UNRANKED!**\n Reason: " + reweight.CriteriaCommentary + "\n";
                     }
                     else
                     {
@@ -1160,6 +1186,206 @@ namespace BeatLeader_Server.Controllers
             }
 
             return Ok();
+        }
+
+        [Authorize]
+        [HttpPost("~/qualification/comment/{id}")]
+        public async Task<ActionResult<QualificationCommentary>> PostComment(int id)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == currentID);
+
+            RankQualification? qualification = _context
+                .RankQualification
+                .Include(q => q.Comments)
+                .FirstOrDefault(l => l.Id == id);
+
+            if (qualification == null) {
+                return NotFound();
+            }
+
+            bool isRT = true;
+            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam") && !currentPlayer.Role.Contains("qualityteam")))
+            {
+                if (currentPlayer != null && (currentPlayer.MapperId + "") == qualification?.MapperId) {
+                    isRT = false;
+                } else {
+                    return Unauthorized();
+                }
+            }
+
+            if (qualification.Comments == null) {
+                qualification.Comments = new List<QualificationCommentary>();
+            }
+
+            var ms = new MemoryStream(5);
+            await Request.Body.CopyToAsync(ms);
+            ms.Position = 0;
+
+            var result = new QualificationCommentary {
+                PlayerId = currentPlayer.Id,
+                Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
+                Value = Encoding.UTF8.GetString(ms.ToArray()),
+            };
+
+            qualification.Comments.Add(result);
+            _context.SaveChanges();
+
+            try {
+            result.DiscordMessageId = await _nominationsForum.PostComment(qualification.DiscordChannelId, result.Value, currentPlayer);
+            _context.SaveChanges();
+            } catch { }
+
+            return result;
+        }
+
+        [Authorize]
+        [HttpPut("~/qualification/comment/{id}")]
+        public async Task<ActionResult<QualificationCommentary>> UpdateComment(int id) {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == currentID);
+
+            var comment = await _context
+                .QualificationCommentary
+                .Include(c => c.RankQualification)
+                .FirstOrDefaultAsync(c => c.Id == id);
+            if (comment == null) {
+                return NotFound();
+            }
+            if (comment.PlayerId != currentPlayer.Id && !currentPlayer.Role.Contains("admin")) {
+                return Unauthorized();
+            }
+
+            var ms = new MemoryStream(5);
+            await Request.Body.CopyToAsync(ms);
+            ms.Position = 0;
+
+            comment.Value = Encoding.UTF8.GetString(ms.ToArray());
+            comment.Edited = true;
+            comment.EditTimeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+            _context.SaveChanges();
+
+            try {
+            comment.DiscordMessageId = await _nominationsForum.UpdateComment(comment.RankQualification.DiscordChannelId, comment.DiscordMessageId, comment.Value, currentPlayer);
+            _context.SaveChanges();
+            } catch { }
+
+            return comment;
+        }
+
+        [Authorize]
+        [HttpDelete("~/qualification/comment/{id}")]
+        public async Task<ActionResult> DeleteComment(int id) {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            var comment = await _context.QualificationCommentary.Include(c => c.RankQualification).FirstOrDefaultAsync(c => c.Id == id);
+            if (comment == null) {
+                return NotFound();
+            }
+            if (comment.PlayerId != currentPlayer.Id && !currentPlayer.Role.Contains("admin")) {
+                return Unauthorized();
+            }
+
+            _context.QualificationCommentary.Remove(comment);
+            _context.SaveChanges();
+
+            try {
+            await _nominationsForum.DeleteComment(comment.RankQualification.DiscordChannelId, comment.DiscordMessageId);
+            } catch { }
+
+            return Ok();
+        }
+
+        public async Task QualityUnnominate(RankQualification q) {
+
+            Leaderboard? leaderboard = _context.Leaderboards
+                .Include(l => l.Difficulty)
+                .Include(l => l.Song)
+                .Include(l => l.Difficulty)
+                .ThenInclude(d => d.ModifierValues)
+                .Include(l => l.Qualification)
+                .ThenInclude(q => q.Changes)
+                .ThenInclude(ch => ch.OldModifiers)
+                .Include(l => l.Qualification)
+                .ThenInclude(q => q.Changes)
+                .ThenInclude(ch => ch.NewModifiers)
+                .Include(l => l.Qualification)
+                .ThenInclude(q => q.Modifiers)
+                .FirstOrDefault(l => l.Qualification == q);
+
+            var qualification = leaderboard?.Qualification;
+
+            if (qualification != null && (leaderboard.Difficulty.Status == DifficultyStatus.qualified || leaderboard.Difficulty.Status == DifficultyStatus.nominated))
+            {
+                QualificationChange qualificationChange = new QualificationChange {
+                    PlayerId = AdminController.RankingBotID,
+                    Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
+                    OldRankability = leaderboard.Difficulty.Status == DifficultyStatus.nominated || leaderboard.Difficulty.Status == DifficultyStatus.qualified ? 1.0f : 0,
+                };
+
+                leaderboard.Difficulty.Status = DifficultyStatus.unrankable;
+                leaderboard.Difficulty.NominatedTime = 0;
+                leaderboard.Difficulty.QualifiedTime = 0;
+                leaderboard.Difficulty.Stars = 0;
+                leaderboard.Difficulty.ModifierValues = new ModifiersMap();
+
+                qualificationChange.NewRankability = 0;
+
+                if (qualification.Changes == null) {
+                    qualification.Changes = new List<QualificationChange>();
+                }
+
+                qualification.Changes.Add(qualificationChange);
+
+                if (qualification.DiscordChannelId.Length > 0)
+                {
+                    await _nominationsForum.CloseNomination(qualification.DiscordChannelId);
+                }
+
+                var dsClient = nominationDSClient();
+                if (dsClient != null)
+                {
+                    string message = "Bot updated nomination for **" + leaderboard.Song.Name + "**!\n";
+                    message += "**Declined!**\n Reason: Reached 3 NQT downvotes.\n";
+                    message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
+
+                    await dsClient.SendMessageAsync(message);
+                }
+
+                await _context.SaveChangesAsync();
+                await _scoreRefreshController.RefreshScores(leaderboard.Id);
+                await _playlistController.RefreshNominatedPlaylist();
+                await _playlistController.RefreshQualifiedPlaylist();
+            }
+        }
+
+        [Authorize]
+        [HttpPost("~/qualification/vote/{id}")]
+        public async Task<ActionResult<ICollection<QualificationVote>>> AddVote(int id, [FromQuery] MapQuality vote)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == currentID);
+
+            RankQualification? qualification = _context
+                .RankQualification
+                .Include(q => q.Votes)
+                .FirstOrDefault(l => l.Id == id);
+
+            if (qualification == null)
+            {
+                return NotFound();
+            }
+            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("qualityteam")))
+            {
+                return Unauthorized();
+            }
+
+            var result = await _nominationsForum.AddVote(_context, qualification, currentPlayer, vote);
+            if (qualification.QualityVote == -3) {
+                await QualityUnnominate(qualification);
+            }
+            return result;
         }
 
         [NonAction]

@@ -1,5 +1,11 @@
 ﻿using BeatLeader_Server.Utils;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc;
+using System.IO.Compression;
+using System.Net;
+using BeatLeader_Server.Extensions;
+using BeatMapEvaluator;
+using BeatLeader_Server.BeatMapEvaluator;
 
 namespace BeatLeader_Server.Services
 {
@@ -15,18 +21,19 @@ namespace BeatLeader_Server.Services
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             do {
-                 int minuteSpan = 60 - DateTime.Now.Minute;
-                 int numberOfMinutes = minuteSpan;
+                int minuteSpan = 60 - DateTime.Now.Minute;
+                int numberOfMinutes = minuteSpan;
 
-                 if (minuteSpan == 60)
-                 {
+                if (minuteSpan == 60)
+                {
                     await RefreshClans();
+                    await CheckMaps();
 
                     minuteSpan = 60 - DateTime.Now.Minute;
                     numberOfMinutes = minuteSpan;
-                 }
+                }
 
-                 await Task.Delay(TimeSpan.FromMinutes(numberOfMinutes), stoppingToken);
+                await Task.Delay(TimeSpan.FromMinutes(numberOfMinutes), stoppingToken);
             }
             while (!stoppingToken.IsCancellationRequested);
         }
@@ -51,6 +58,52 @@ namespace BeatLeader_Server.Services
                     }
                 }
             
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task CheckMaps()
+        {
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+
+                var songs = await _context.Songs.Where(s => !s.Checked).OrderBy(s => s.Id).Include(s => s.Difficulties).ToListAsync();
+
+                foreach (var song in songs)
+                {
+                    try {
+                        HttpWebResponse res = (HttpWebResponse) await WebRequest.Create(song.DownloadUrl).GetResponseAsync();
+                        if (res.StatusCode != HttpStatusCode.OK) continue;
+
+                        var archive = new ZipArchive(res.GetResponseStream());
+
+                        var infoFile = archive.Entries.FirstOrDefault(e => e.Name.ToLower() == "info.dat");
+                        if (infoFile == null) continue;
+
+                        var info = infoFile.Open().ObjectFromStream<json_MapInfo>();
+                        if (info == null) continue;
+
+                        foreach (var set in info.beatmapSets)
+                        {
+                            foreach (var beatmap in set._diffMaps)
+                            {
+                                var diffFile = archive.Entries.FirstOrDefault(e => e.Name == beatmap._beatmapFilename);
+                                if (diffFile == null) continue;
+
+                                var diff = diffFile.Open().ObjectFromStream<DiffFileV3>();
+                                if (diff != null && (diff.burstSliders?.Length > 0 || diff.sliders?.Length > 0)) {
+                                    var songDiff = song.Difficulties.FirstOrDefault(d => d.DifficultyName == beatmap._difficulty && d.ModeName == set._beatmapCharacteristicName);
+                                    if (songDiff != null) {
+                                        songDiff.Requirements |= Models.Requirements.V3;
+                                    }
+                                }
+                            }
+                        }
+                    } catch { }
+                    song.Checked = true;
+                }
+
                 await _context.SaveChangesAsync();
             }
         }

@@ -69,6 +69,27 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpDelete("~/admin/resetattempts")]
+        public async Task<ActionResult> resetattempts()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var attempts = _context.LoginAttempts.ToList();
+            foreach (var item in attempts)
+            {
+                _context.LoginAttempts.Remove(item);
+            }
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
         [HttpPost("~/admin/clan/{id}/setLeader")]
         public async Task<ActionResult> SetLeader(int id, [FromQuery] string newLeader)
         {
@@ -438,6 +459,148 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpPost("~/admin/ban/countrychanges")]
+        public async Task<ActionResult> BanCountrychanges([FromQuery] string playerId)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var changeBan = new CountryChangeBan {
+                Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
+                PlayerId = playerId
+            };
+            _context.CountryChangeBans.Add(changeBan);
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
+        [HttpDelete("~/admin/ban/countrychanges")]
+        public async Task<ActionResult> UnbanCountrychanges([FromQuery] string playerId)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var changeBan = _context.CountryChangeBans.Where(b => b.PlayerId == playerId).FirstOrDefault();
+            if (changeBan != null) {
+                _context.CountryChangeBans.Remove(changeBan);
+            }
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
+        [HttpGet("~/admin/leaderboards/plot")]
+        public async Task<ActionResult<string>> LeaderboardsPlot()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var result = "x,y\n";
+            var scores = _context
+                .Scores
+                .Where(s => 
+                    s.Pp > 0 && 
+                    s.Rank == 1 && 
+                    !s.Banned && 
+                    // s.Leaderboard.Scores.Count() > 500 &&
+                    s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked)
+                .Select(s => new { 
+                    s.Accuracy, 
+                    s.Pp, 
+                    s.Modifiers, 
+                    s.Leaderboard.Difficulty.Stars,
+                    s.Leaderboard.Difficulty.ModifierValues,
+                    s.LeaderboardId }).OrderByDescending(s => s.Accuracy).ToList();
+
+            foreach (var score in scores)
+            {
+                if ((score.Modifiers.Contains("SF") || score.Modifiers.Contains("FS")) && score.ModifierValues != null)
+                {
+                    if (score.Modifiers.Contains("SF"))
+                    {
+                        result += $"{score.Stars * (score.ModifierValues.SF + 1f) },{score.Accuracy}\n";
+                    }
+                    else
+                    {
+                        result += $"{score.Stars * (score.ModifierValues.FS + 1f) },{score.Accuracy}\n";
+                    }
+
+                }
+                else
+                {
+                    result += $"{score.Stars},{score.Accuracy}\n";
+                }
+            }
+
+            return result;
+        }
+
+        [Authorize]
+        [HttpGet("~/recalculateVoting")]
+        public async Task<ActionResult> recalculateVoting()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var leaderboards = _context
+                .Leaderboards
+                .Where(lb => lb.Qualification != null)
+                .Include(lb => lb.Qualification)
+                .ThenInclude(q => q.Votes)
+                .Include(lb => lb.Scores.Where(s => s.RankVoting != null))
+                .ThenInclude(s => s.RankVoting)
+                .ToList();
+
+            foreach (var lb in leaderboards)
+            {
+                lb.PositiveVotes = 0;
+                lb.NegativeVotes = 0;
+                foreach (var score in lb.Scores)
+                {
+                    if (score.RankVoting.Rankability > 0) {
+                        lb.PositiveVotes++;
+                    } else {
+                        lb.NegativeVotes++;
+                    }
+                }
+
+                foreach (var vote in lb.Qualification.Votes)
+                {
+                    if (vote.Value == MapQuality.Good) {
+                        lb.PositiveVotes += 8;
+                    } else if (vote.Value == MapQuality.Bad) {
+                        lb.NegativeVotes += 8;
+                    }
+                }
+
+            }
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
         public static string GolovaID = "76561198059961776";
+        public static string RankingBotID = "19573";
     }
 }

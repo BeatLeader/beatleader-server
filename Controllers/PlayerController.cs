@@ -690,7 +690,7 @@ namespace BeatLeader_Server.Controllers
 
         [HttpPut("~/badge")]
         [Authorize]
-        public ActionResult<Badge> CreateBadge([FromQuery] string description, [FromQuery] string image, [FromQuery] string? link = null) {
+        public async Task<ActionResult<Badge>> CreateBadge([FromQuery] string description, [FromQuery] string? link = null) {
             string currentId = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = _context.Players.Find(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
@@ -700,11 +700,29 @@ namespace BeatLeader_Server.Controllers
 
             Badge badge = new Badge {
                 Description = description,
-                Image = image,
+                Image = "",
                 Link = link
             };
 
             _context.Badges.Add(badge);
+            _context.SaveChanges();
+
+            string? fileName = null;
+            try
+            {
+                var ms = new MemoryStream(5);
+                await Request.Body.CopyToAsync(ms);
+                ms.Position = 0;
+
+                (string extension, MemoryStream stream) = ImageUtils.GetFormat(ms);
+                Random rnd = new Random();
+                fileName = "badge-" + badge.Id + "R" + rnd.Next(1, 50) + extension;
+
+                await _assetsS3Client.UploadAsset(fileName, stream);
+            }
+            catch {}
+
+            badge.Image = fileName;
             _context.SaveChanges();
 
             return badge;

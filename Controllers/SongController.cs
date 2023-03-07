@@ -1,4 +1,5 @@
-﻿using BeatLeader_Server.Extensions;
+﻿using BeatLeader_Server.Bot;
+using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
@@ -18,10 +19,13 @@ namespace BeatLeader_Server.Controllers
         private readonly AppContext _context;
         private readonly ReadAppContext _readContext;
 
-        public SongController(AppContext context, ReadAppContext readContext)
+        private readonly NominationsForum _nominationsForum;
+
+        public SongController(AppContext context, ReadAppContext readContext, NominationsForum nominationsForum)
         {
-            _context = context;
+            _context = context;      
             _readContext = readContext;
+            _nominationsForum = nominationsForum;
         }
 
         [HttpGet("~/map/hash/{hash}")]
@@ -32,7 +36,7 @@ namespace BeatLeader_Server.Controllers
             } else {
                 hash = hash.Substring(0, 40);
             }
-            (Song? song, _) = await GetOrAddSong(hash);
+            Song? song = await GetOrAddSong(hash);
             if (song is null)
             {
                 return NotFound();
@@ -57,7 +61,7 @@ namespace BeatLeader_Server.Controllers
             if(resFromLB.Length == 0)
             {
                 // We couldnt find any Leaderboard with that hash. Therefor we need to check if we can atleast get the song
-                (Song? song, _) = await GetOrAddSong(hash);
+                Song? song = await GetOrAddSong(hash);
                 // Otherwise the song does not exist
                 if (song is null)
                 {
@@ -78,11 +82,11 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task MigrateQualification(Song newSong, Song oldSong, Song baseSong, DifficultyDescription diff)
+        public async Task MigrateLeaderboards(Song newSong, Song oldSong, Song? baseSong, DifficultyDescription diff)
         {
             var newLeaderboard = await NewLeaderboard(newSong, baseSong, diff.DifficultyName, diff.ModeName);
-            if (newLeaderboard != null) {
-                newLeaderboard.Difficulty.Status = DifficultyStatus.nominated;
+            if (newLeaderboard != null && diff.Status != DifficultyStatus.ranked && diff.Status != DifficultyStatus.outdated) {
+                newLeaderboard.Difficulty.Status = diff.Status;
                 newLeaderboard.Difficulty.Stars = diff.Stars;
                 newLeaderboard.Difficulty.Type = diff.Type;
                 newLeaderboard.Difficulty.NominatedTime = diff.NominatedTime;
@@ -92,18 +96,22 @@ namespace BeatLeader_Server.Controllers
             var oldLeaderboardId = $"{oldSong.Id}{diff.Value}{diff.Mode}";
             var oldLeaderboard = await _context.Leaderboards.Where(lb => lb.Id == oldLeaderboardId).Include(lb => lb.Qualification).FirstOrDefaultAsync();
 
-            if (oldLeaderboard != null) {
+            if (oldLeaderboard?.Qualification != null) {
 
                 newLeaderboard.Qualification = oldLeaderboard.Qualification;
+                newLeaderboard.NegativeVotes = oldLeaderboard.NegativeVotes;
+                newLeaderboard.PositiveVotes = oldLeaderboard.PositiveVotes;
+                if (oldLeaderboard.Qualification.DiscordChannelId.Length > 0) {
+                    await _nominationsForum.NominationReuploaded(oldLeaderboard.Qualification.DiscordChannelId, oldLeaderboardId);
+                }
                 oldLeaderboard.Qualification = null;
             }
         }
 
         [NonAction]
-        public async Task<(Song?, Song?)> GetOrAddSong(string hash)
+        public async Task<Song?> GetOrAddSong(string hash)
         {
             Song? song = GetSongWithDiffsFromHash(hash);
-            Song? baseSong = null;
 
             if (song == null)
             {
@@ -111,13 +119,17 @@ namespace BeatLeader_Server.Controllers
 
                 if (song == null)
                 {
-                    return (null, null);
+                    return null;
                 }
                 else
                 {
                     string songId = song.Id;
-                    Song? existingSong = _context.Songs.Include(s => s.Difficulties).ThenInclude(d => d.ModifierValues).FirstOrDefault(i => i.Id == songId);
-                    baseSong = existingSong;
+                    Song? existingSong = _context
+                        .Songs
+                        .Include(s => s.Difficulties)
+                        .ThenInclude(d => d.ModifierValues)
+                        .FirstOrDefault(i => i.Id == songId);
+                    Song? baseSong = existingSong;
 
                     List<Song> songsToMigrate = new List<Song>();
                     while (existingSong != null)
@@ -129,19 +141,20 @@ namespace BeatLeader_Server.Controllers
                         songId += "x";
                         existingSong = _context.Songs.Include(s => s.Difficulties).FirstOrDefault(i => i.Id == songId);
                     }
+                    var checkAgain = GetSongWithDiffsFromHash(hash);
+                    if (checkAgain != null) return checkAgain;
+
                     song.Id = songId;
                     song.Hash = hash;
                     _context.Songs.Add(song);
                     await _context.SaveChangesAsync();
 
+                    
                     foreach (var oldSong in songsToMigrate)
                     {
                         foreach (var item in oldSong.Difficulties)
                         {
-                            if (item.Status == DifficultyStatus.nominated)
-                            {
-                                await MigrateQualification(song, oldSong, baseSong, item);
-                            }
+                            await MigrateLeaderboards(song, oldSong, baseSong, item);
                             item.Status = DifficultyStatus.outdated;
                             item.Stars = 0;
                         }
@@ -150,16 +163,15 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            return (song, baseSong);
+            return song;
         }
 
         [NonAction]
         public async Task<Leaderboard?> NewLeaderboard(Song song, Song? baseSong, string diff, string mode)
         {
-            var leaderboard = new Leaderboard();
-            leaderboard.SongId = song.Id;
             IEnumerable<DifficultyDescription> difficulties = song.Difficulties.Where(el => el.DifficultyName.ToLower() == diff.ToLower());
             DifficultyDescription? difficulty = difficulties.FirstOrDefault(x => x.ModeName.ToLower() == mode.ToLower());
+   
             if (difficulty == null)
             {
                 difficulty = difficulties.FirstOrDefault(x => x.ModeName == "Standard");
@@ -198,10 +210,20 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            leaderboard.Difficulty = difficulty;
-            leaderboard.Scores = new List<Score>();
-            leaderboard.Id = $"{song.Id}{difficulty.Value}{difficulty.Mode}";
-            leaderboard.Timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
+            string newLeaderboardId = $"{song.Id}{difficulty.Value}{difficulty.Mode}";
+            var leaderboard = _context.Leaderboards.Include(lb => lb.Difficulty).Where(l => l.Id == newLeaderboardId).FirstOrDefault();
+
+            if (leaderboard == null) {
+                leaderboard = new Leaderboard();
+                leaderboard.SongId = song.Id;
+
+                leaderboard.Difficulty = difficulty;
+                leaderboard.Scores = new List<Score>();
+                leaderboard.Id = newLeaderboardId;
+                leaderboard.Timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
+
+                _context.Leaderboards.Add(leaderboard);
+            }
 
             if (baseSong != null) {
                 var baseId = $"{baseSong.Id}{difficulty.Value}{difficulty.Mode}";
@@ -219,17 +241,59 @@ namespace BeatLeader_Server.Controllers
                         group.Leaderboards.Add(baseLeaderboard);
                         baseLeaderboard.LeaderboardGroup = group;
                     }
-                
-                    group.Leaderboards.Add(leaderboard);
 
-                    leaderboard.LeaderboardGroup = group;
+                    if (group.Leaderboards.FirstOrDefault(lb => lb.Id == leaderboard.Id) == null) {
+                        group.Leaderboards.Add(leaderboard);
+
+                        leaderboard.LeaderboardGroup = group;
+                    }
                 }
             }
 
-            _context.Leaderboards.Add(leaderboard);
             await _context.SaveChangesAsync();
 
             return leaderboard;
+        }
+
+        [HttpGet("~/map/migratenominations")]
+        public async Task<ActionResult> MigrateNominations([FromQuery] string baseSongId, [FromQuery] string oldSongId, [FromQuery] string newSongId)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            Song? baseSong = _context
+                .Songs
+                .Include(s => s.Difficulties)
+                .ThenInclude(d => d.ModifierValues)
+                .FirstOrDefault(i => i.Id == baseSongId);
+            Song? oldSong = _context
+                .Songs
+                .Include(s => s.Difficulties)
+                .ThenInclude(d => d.ModifierValues)
+                .FirstOrDefault(i => i.Id == oldSongId);
+            Song? newSong = _context
+                .Songs
+                .Include(s => s.Difficulties)
+                .ThenInclude(d => d.ModifierValues)
+                .FirstOrDefault(i => i.Id == newSongId);
+
+            if (baseSong == null || oldSong == null || newSong == null) return NotFound();
+
+            foreach (var item in oldSong.Difficulties)
+            {
+                await MigrateLeaderboards(newSong, oldSong, baseSong, item);
+                item.Status = DifficultyStatus.outdated;
+                item.Stars = 0;
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
         }
 
         [NonAction]

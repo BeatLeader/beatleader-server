@@ -173,6 +173,7 @@ namespace BeatLeader_Server.Controllers
 
             Score? score = await _context.Scores.FindAsync(scoreId);
             if (score == null) return NotFound();
+            if (score.PlayerId == currentID) return Ok();
 
             Player? scoreMaker = await _context.Players.Where(p => p.Id == score.PlayerId).Include(p => p.ScoreStats).FirstOrDefaultAsync();
             if (scoreMaker == null) return NotFound();

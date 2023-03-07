@@ -59,6 +59,10 @@ namespace BeatLeader_Server.Controllers
             {
                 redirectUrl = Url.Action("LinkTwitter", "Socials", new { returnUrl = returnUrl ?? "/" });
             }
+            else if (provider == "Discord")
+            {
+                redirectUrl = Url.Action("LinkDiscord", "Socials", new { returnUrl = returnUrl ?? "/" });
+            }
             else if (provider == "Google")
             {
                 redirectUrl = Url.Action("LinkGoogle", "Socials", new { returnUrl = returnUrl ?? "/" });
@@ -105,7 +109,7 @@ namespace BeatLeader_Server.Controllers
             int random = new Random().Next(200);
             var linkRequest = new AccountLinkRequest {
                 IP = iPAddress,
-                OculusID = Int32.Parse(HttpContext.CurrentUserID()),
+                OculusID = HttpContext.CurrentUserID(),
                 Random = random,
             };
             _context.AccountLinkRequests.Add(linkRequest);
@@ -131,8 +135,7 @@ namespace BeatLeader_Server.Controllers
                 if (iPAddress != null && migrateTo != null)
                 {
                     string ip = iPAddress;
-                    long oculusID = long.Parse(migrateTo);
-                    AccountLinkRequest? request = _context.AccountLinkRequests.FirstOrDefault(a => a.IP == ip && a.Random == Random && a.OculusID == oculusID);
+                    AccountLinkRequest? request = _context.AccountLinkRequests.FirstOrDefault(a => a.IP == ip && a.Random == Random && a.OculusID == migrateTo);
 
                     if (request != null)
                     {

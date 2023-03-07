@@ -93,7 +93,8 @@ namespace BeatLeader_Server.Utils
             public string Timeset { get; set; }
             public int Timepost { get; set; }
             public int ReplaysWatched { get; set; }
-            public PlayerResponse Player { get; set; }
+            public int PlayCount { get; set; }
+            public PlayerResponse? Player { get; set; }
             public ScoreImprovement? ScoreImprovement { get; set; }
             public RankVoting? RankVoting { get; set; }
             public ScoreMetadata? Metadata { get; set; }
@@ -174,7 +175,7 @@ namespace BeatLeader_Server.Utils
             public string? Id { get; set; }
             public Song? Song { get; set; }
             public DifficultyDescription? Difficulty { get; set; }
-            public IEnumerable<ScoreResponse>? Scores { get; set; }
+            public List<ScoreResponse>? Scores { get; set; }
             public IEnumerable<LeaderboardChange>? Changes { get; set; }
 
             public RankQualification? Qualification { get; set; }
@@ -350,7 +351,7 @@ namespace BeatLeader_Server.Utils
                 Timepost = s.Timepost,
                 LeaderboardId = s.LeaderboardId,
                 Platform = s.Platform,
-                Player = new PlayerResponse
+                Player = s.Player != null ? new PlayerResponse
                 {
                     Id = s.Player.Id,
                     Name = s.Player.Name,
@@ -365,8 +366,8 @@ namespace BeatLeader_Server.Utils
                     Socials = s.Player.Socials,
                     PatreonFeatures = s.Player.PatreonFeatures,
                     ProfileSettings = s.Player.ProfileSettings,
-                    Clans = s.Player?.Clans?.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                },
+                    Clans = s.Player.Clans?.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                } : null,
                 ScoreImprovement = s.ScoreImprovement,
                 RankVoting = s.RankVoting,
                 Metadata = s.Metadata,
@@ -418,7 +419,7 @@ namespace BeatLeader_Server.Utils
                 Id = l.Id,
                 Song = l.Song,
                 Difficulty = l.Difficulty,
-                Scores = l.Scores.Select(RemoveLeaderboard),
+                Scores = l.Scores.Select(RemoveLeaderboard).ToList(),
                 Plays = l.Plays,
                 Qualification = l.Qualification,
                 Reweight = l.Reweight,
@@ -540,6 +541,7 @@ namespace BeatLeader_Server.Utils
                 {
                     if (!role.Contains("creator") &&
                         !role.Contains("rankedteam") &&
+                        !role.Contains("qualityteam") &&
                         !role.Contains("juniorrankedteam") &&
                         !role.Contains("admin"))
                     {
@@ -552,6 +554,7 @@ namespace BeatLeader_Server.Utils
                         !role.Contains("sponsor") && 
                         !role.Contains("creator") && 
                         !role.Contains("rankedteam") &&
+                        !role.Contains("qualityteam") &&
                         !role.Contains("juniorrankedteam") && 
                         !role.Contains("admin")) {
                         settings.EffectName = "";
@@ -563,6 +566,7 @@ namespace BeatLeader_Server.Utils
                         !role.Contains("sponsor") &&
                         !role.Contains("creator") &&
                         !role.Contains("rankedteam") &&
+                        !role.Contains("qualityteam") &&
                         !role.Contains("juniorrankedteam") &&
                         !role.Contains("admin"))
                     {
@@ -574,6 +578,7 @@ namespace BeatLeader_Server.Utils
                     if (!role.Contains("sponsor") &&
                         !role.Contains("creator") &&
                         !role.Contains("rankedteam") &&
+                        !role.Contains("qualityteam") &&
                         !role.Contains("juniorrankedteam") &&
                         !role.Contains("admin"))
                     {
@@ -589,6 +594,7 @@ namespace BeatLeader_Server.Utils
                         !role.Contains("sponsor") &&
                         !role.Contains("creator") &&
                         !role.Contains("rankedteam") &&
+                        !role.Contains("qualityteam") &&
                         !role.Contains("juniorrankedteam") &&
                         !role.Contains("admin")) {
                     settings.RightSaberColor = null;

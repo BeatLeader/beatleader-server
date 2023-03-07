@@ -396,7 +396,7 @@ namespace BeatLeader_Server.Controllers
         [HttpPut("~/clan")]
         [Authorize]
         public async Task<ActionResult> UpdateClan(
-            [FromQuery] string? id = null,
+            [FromQuery] int? id = null,
             [FromQuery] string? name = null,
             [FromQuery] string? color = null,
             [FromQuery] string description = "",

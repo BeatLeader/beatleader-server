@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 
 namespace BeatLeader_Server.Models
 {
@@ -17,6 +18,7 @@ namespace BeatLeader_Server.Models
         public string? Changer { get; set; }
     }
 
+    [Index(nameof(Banned), IsUnique = false)]
     public class Player
     {
         [Key]

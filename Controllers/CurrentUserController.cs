@@ -266,7 +266,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpPatch("~/user")]
-        public async Task<ActionResult> ChangeFullName(
+        public async Task<ActionResult> UpdatePlayerAll(
             [FromQuery] string? name = null,
             [FromQuery] string? country = null,
             [FromQuery] string? profileAppearance = null,
@@ -335,6 +335,11 @@ namespace BeatLeader_Server.Controllers
 
                 if (country != null)
                 {
+                    var changeBan = _context.CountryChangeBans.FirstOrDefault(b => b.PlayerId == player.Id);
+                    if (changeBan != null) {
+                        return BadRequest("Country change is banned for you!");
+                    }
+
                     if (!PlayerUtils.AllowedCountries().Contains(country))
                     {
                         return BadRequest("This country code is not allowed.");
@@ -480,6 +485,105 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpPatch("~/user/cover")]
+        public async Task<ActionResult> UpdateCover(
+            [FromQuery] string? id = null)
+        {
+            string userId = GetId();
+            var player = _context
+                .Players
+                .Include(p => p.ProfileSettings)
+                .FirstOrDefault(p => p.Id == userId);
+
+            if (id != null && player != null && player.Role.Contains("admin"))
+            {
+                player = _context
+                    .Players
+                    .Include(p => p.ProfileSettings)
+                    .FirstOrDefault(p => p.Id == id);
+            }
+
+            if (player == null)
+            {
+                return NotFound();
+            }
+            if (player.Banned)
+            {
+                return BadRequest("You are banned!");
+            }
+
+            string? fileName = null;
+            try
+            {
+                var ms = new MemoryStream(5);
+                await Request.Body.CopyToAsync(ms);
+                ms.Position = 0;
+
+                (string extension, MemoryStream stream) = ImageUtils.GetFormat(ms);
+                Random rnd = new Random();
+                fileName = "cover-" + userId + "R" + rnd.Next(1, 50) + extension;
+
+                await _s3Client.UploadAsset(fileName, stream);
+            }
+            catch {}
+
+            ProfileSettings? settings = player.ProfileSettings;
+            if (settings == null)
+            {
+                settings = new ProfileSettings();
+                player.ProfileSettings = settings;
+            }
+
+            if (fileName != null) {
+                player.ProfileSettings.ProfileCover = "https://cdn.assets.beatleader.xyz/" + fileName;
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpDelete("~/user/cover")]
+        public async Task<ActionResult> RemoveCover(
+            [FromQuery] string? id = null)
+        {
+            string userId = GetId();
+            var player = _context
+                .Players
+                .Include(p => p.ProfileSettings)
+                .FirstOrDefault(p => p.Id == userId);
+
+            if (id != null && player != null && player.Role.Contains("admin"))
+            {
+                player = _context
+                    .Players
+                    .Include(p => p.ProfileSettings)
+                    .FirstOrDefault(p => p.Id == id);
+            }
+
+            if (player == null)
+            {
+                return NotFound();
+            }
+            if (player.Banned)
+            {
+                return BadRequest("You are banned!");
+            }
+
+            ProfileSettings? settings = player.ProfileSettings;
+            if (settings == null)
+            {
+                settings = new ProfileSettings();
+                player.ProfileSettings = settings;
+            }
+
+            settings.ProfileCover = null;
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
         [HttpPatch("~/user/changePassword")]
         public ActionResult ChangePassword([FromForm] string login, [FromForm] string oldPassword, [FromForm] string newPassword)
         {
@@ -568,7 +672,7 @@ namespace BeatLeader_Server.Controllers
             string? iPAddress = Request.HttpContext.GetIpAddress();
             if (iPAddress == null)
             {
-                return Unauthorized("You don't have an IP adress? Tell #NSGolova how you get this error.");
+                return Unauthorized("You don't have an IP adress? Tell #NSGolova how you got this error.");
             }
 
             LoginAttempt? loginAttempt = _context.LoginAttempts.FirstOrDefault(el => el.IP == iPAddress);
@@ -692,6 +796,9 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         public async Task<ActionResult<int>> MigratePrivate(string migrateToId, string migrateFromId)
         {
+            if (migrateToId == migrateFromId) {
+                return Unauthorized("Something went completly wrong");
+            }
             if (long.Parse(migrateToId) < 1000000000000000)
             {
                 return Unauthorized("You need to be logged in with Steam or Oculus");
@@ -1039,10 +1146,8 @@ namespace BeatLeader_Server.Controllers
             }
 
             var result = await _replayController.PostReplayFromCDN(score.PlayerId, name, HttpContext);
-            if (result.Value != null) {
-                _context.FailedScores.Remove(score);
-                await _context.SaveChangesAsync();
-            }
+            _context.FailedScores.Remove(score);
+            await _context.SaveChangesAsync();
 
             return result;
         }
@@ -1077,6 +1182,8 @@ namespace BeatLeader_Server.Controllers
             {
                 leaderboardsToUpdate.Add(score.LeaderboardId);
                 score.Banned = true;
+
+                await GeneralSocketController.ScoreWasRejected(score, _configuration, _context);
             }
 
             player.Banned = true;
@@ -1141,6 +1248,8 @@ namespace BeatLeader_Server.Controllers
             {
                 leaderboardsToUpdate.Add(score.LeaderboardId);
                 score.Banned = false;
+
+                await GeneralSocketController.ScoreWasAccepted(score, _configuration, _context);
                 
             }
             player.Banned = false;
@@ -1154,6 +1263,52 @@ namespace BeatLeader_Server.Controllers
                     await _scoreRefreshController.RefreshScores(item);
                 }
                 await _playerRefreshController.RefreshPlayer(player);
+                await _playerRefreshController.RefreshRanks();
+            });
+
+            return Ok();
+        }
+
+        [HttpPost("~/user/hideopscores")]
+        public async Task<ActionResult> HideOPScores([FromQuery] string? id = null)
+        {
+            string userId = GetId();
+
+            var player = await _context.Players.Include(p => p.ScoreStats).FirstOrDefaultAsync(p => p.Id == userId);
+
+            if (player != null && id == null && player.Role.Contains("admin")) {
+                return BadRequest("");
+            }
+
+            if (id != null && player != null && player.Role.Contains("admin"))
+            { 
+                player = await _context.Players.Include(p => p.ScoreStats).FirstOrDefaultAsync(p => p.Id == id);
+            }
+
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            var leaderboardsToUpdate = new List<string>();
+            var scores = _context.Scores.Include(s => s.Leaderboard.Song).Where(s => s.PlayerId == player.Id && s.Modifiers.Contains("OP")).ToList();
+            foreach (var score in scores)
+            {
+                leaderboardsToUpdate.Add(score.LeaderboardId);
+                score.Banned = true;
+
+                await GeneralSocketController.ScoreWasRejected(score, _configuration, _context);
+            }
+
+            await _context.SaveChangesAsync();
+
+            HttpContext.Response.OnCompleted(async () => {
+                foreach (var item in leaderboardsToUpdate)
+                {
+                    await _scoreRefreshController.RefreshScores(item);
+                }
+                await _playerRefreshController.RefreshPlayer(player);
+
                 await _playerRefreshController.RefreshRanks();
             });
 

@@ -464,7 +464,9 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? search = null,
             [FromQuery] string? type = null,
             [FromQuery] int? mapType = null,
-            [FromQuery] int allTypes = 0,
+            [FromQuery] Operation allTypes = 0,
+            [FromQuery] Requirements? mapRequirements = null,
+            [FromQuery] Operation allRequirements = 0,
             [FromQuery] string? mytype = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
@@ -479,7 +481,7 @@ namespace BeatLeader_Server.Controllers
             var sequence = _readAppContext.Leaderboards.AsQueryable();
             string? currentID = HttpContext.CurrentUserID(_readAppContext);
 
-            sequence = sequence.Filter(_readAppContext, sortBy, order, search, type, mapType, allTypes, mytype, stars_from, stars_to, date_from, date_to, currentID);
+            sequence = sequence.Filter(_readAppContext, sortBy, order, search, type, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, date_from, date_to, currentID);
 
             var diffsCount = sequence.Select(s => s.Song.Hash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash).Take(count).Last().Index + 1;
 
@@ -538,6 +540,116 @@ namespace BeatLeader_Server.Controllers
             playlist.customData = new CustomData
             {
                 owner = currentID
+            };
+
+            return JsonConvert.SerializeObject(playlist);
+        }
+
+        [HttpGet("~/playlist/scores/generate")]
+        public async Task<ActionResult<string>> ScoresPlaylist(
+            [FromQuery] int count = 100,
+
+            [FromQuery] string playerId = "1",
+            [FromQuery] string sortBy = "date",
+            [FromQuery] string order = "desc",
+            [FromQuery] string? search = null,
+            [FromQuery] string? diff = null,
+            [FromQuery] string? type = null,
+            [FromQuery] string? modifiers = null,
+            [FromQuery] float? stars_from = null,
+            [FromQuery] float? stars_to = null,
+            [FromQuery] int? time_from = null,
+            [FromQuery] int? time_to = null,
+            [FromQuery] int? eventId = null,
+
+            [FromQuery] bool duplicate_diffs = false)
+        {
+            if (count > 2000) {
+                return Unauthorized("Count is too big. 2000 max");
+            }
+
+            Int64 oculusId = 0;
+            try
+            {
+                oculusId = Int64.Parse(playerId);
+            }
+            catch { 
+                return BadRequest("Id should be a number");
+            }
+            AccountLink? link = null;
+            if (oculusId < 1000000000000000)
+            {
+                link = _readAppContext.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
+            }
+            if (link == null && oculusId < 70000000000000000)
+            {
+                link = _readAppContext.AccountLinks.FirstOrDefault(el => el.PCOculusID == playerId);
+            }
+            string userId = (link != null ? (link.SteamID.Length > 0 ? link.SteamID : link.PCOculusID) : playerId);
+
+            var player = _context.Players.FirstOrDefault(p => p.Id == userId);
+            if (player == null) {
+                return NotFound();
+            }
+
+            IQueryable<Score> sequence = _readAppContext
+                .Scores
+                .Where(t => t.PlayerId == userId)
+                .Filter(_readAppContext, !player.Banned, sortBy, order, search, diff, type, modifiers, stars_from, stars_to, time_from, time_to, eventId); 
+
+            if (sequence.Count() == 0) { return NotFound(); }
+
+            var diffsCount = sequence.Select(s => s.Leaderboard.Song.Hash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash).Take(count).Last().Index + 1;
+
+            var diffs = sequence.Take(diffsCount).Select(s => new {
+                hash = s.Leaderboard.Song.Hash,
+                songName = s.Leaderboard.Song.Name,
+                levelAuthorName = s.Leaderboard.Song.Mapper,
+                difficulties = new List<PlaylistDifficulty> { new PlaylistDifficulty
+                    {
+                        name = s.Leaderboard.Difficulty.DifficultyName.FirstCharToLower(),
+                        characteristic = s.Leaderboard.Difficulty.ModeName
+                    }
+                }
+            }).ToList();
+
+            dynamic? playlist = null;
+
+            using (var stream = await _s3Client.DownloadPlaylist("scoresearchresult.bplist")) {
+                if (stream != null) {
+                    playlist = stream.ObjectFromStream();
+                }
+            }
+
+            if (playlist == null)
+            {
+                return BadRequest("Original plist dead. Wake up NSGolova!");
+            }
+
+            if (duplicate_diffs) {
+                playlist.songs = diffs.Select(diff => 
+                 new
+                {
+                    hash = diff.hash,
+                    songName = diff.songName,
+                    levelAuthorName = diff.levelAuthorName,
+                    difficulties = diff.difficulties
+                }
+                ).ToList();
+            } else {
+                playlist.songs = diffs.GroupBy(s => s.hash).Select(group => 
+                 new
+                {
+                    hash = group.First().hash,
+                    songName = group.First().songName,
+                    levelAuthorName = group.First().levelAuthorName,
+                    difficulties = group.Select(s => s.difficulties.First())
+                }
+                ).ToList();
+            }
+            playlist.customData = new CustomData
+            {
+                owner = HttpContext.CurrentUserID(_readAppContext) ?? ""
             };
 
             return JsonConvert.SerializeObject(playlist);

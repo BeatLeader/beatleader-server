@@ -10,5 +10,6 @@ namespace BeatLeader_Server.Models
         public string User { get; set; }
 
         public string UserId { get; set; }
+        public string? PlayerId { get; set; }
     }
 }

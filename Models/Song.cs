@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
 
 namespace BeatLeader_Server.Models
 {
@@ -8,6 +9,7 @@ namespace BeatLeader_Server.Models
         public string Id { get; set; }
         public string Hash { get; set; }
         public string Name { get; set; }
+        [JsonIgnore]
         public string? Description { get; set; }
         public string? SubName { get; set; }
         public string Author { get; set; }
@@ -18,8 +20,13 @@ namespace BeatLeader_Server.Models
         public double Bpm { get; set; }
         public double Duration { get; set; }
         public string? Tags { get; set; }
+
+        [JsonIgnore]
         public string CreatedTime { get; set; } = "";
         public int UploadTime { get; set; }
         public ICollection<DifficultyDescription> Difficulties { get; set; }
+
+        [JsonIgnore]
+        public bool Checked { get; set; }
     }
 }

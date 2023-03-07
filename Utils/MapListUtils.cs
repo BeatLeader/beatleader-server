@@ -7,6 +7,13 @@ using System.Linq.Expressions;
 
 namespace BeatLeader_Server.Utils
 {
+    public enum Operation
+    {
+        any = 0,
+        all = 1,
+        not = 2,
+    }
+
     public static class MapListUtils
     {
         public static IQueryable<Leaderboard> Filter(
@@ -17,7 +24,9 @@ namespace BeatLeader_Server.Utils
             string? search = null,
             string? type = null,
             int? mapType = null,
-            int allTypes = 0,
+            Operation allTypes = 0,
+            Requirements? mapRequirements = null,
+            Operation allRequirements = 0,
             string? mytype = null,
             float? stars_from = null,
             float? stars_to = null,
@@ -214,14 +223,31 @@ namespace BeatLeader_Server.Utils
                 int maptype = (int)mapType;
                 switch (allTypes)
                 {
-                    case 0:
+                    case Operation.any:
                         sequence = sequence.Include(lb => lb.Difficulty).Where(p => (p.Difficulty.Type & maptype) != 0);
                         break;
-                    case 1:
+                    case Operation.all:
                         sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.Type == maptype);
                         break;
-                    case 2:
+                    case Operation.not:
                         sequence = sequence.Include(lb => lb.Difficulty).Where(p => (p.Difficulty.Type & maptype) == 0);
+                        break;
+                }
+            }
+
+            if (mapRequirements != null)
+            {
+                Requirements maprequirements = (Requirements)mapRequirements;
+                switch (allRequirements)
+                {
+                    case Operation.any:
+                        sequence = sequence.Include(lb => lb.Difficulty).Where(p => (p.Difficulty.Requirements & maprequirements) != 0);
+                        break;
+                    case Operation.all:
+                        sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.Requirements == maprequirements);
+                        break;
+                    case Operation.not:
+                        sequence = sequence.Include(lb => lb.Difficulty).Where(p => (p.Difficulty.Requirements & maprequirements) == 0);
                         break;
                 }
             }
