@@ -61,6 +61,8 @@ namespace BeatLeader_Server.Controllers
                     .Include(lb => lb.Qualification)
                     .ThenInclude(q => q.Modifiers)
                     .Include(lb => lb.Qualification)
+                    .ThenInclude(q => q.CriteriaComments)
+                    .Include(lb => lb.Qualification)
                     .ThenInclude(q => q.Changes)
                     .ThenInclude(ch => ch.NewModifiers)
                     .Include(lb => lb.Qualification)

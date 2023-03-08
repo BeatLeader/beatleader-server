@@ -26,6 +26,7 @@ namespace BeatLeader_Server.Controllers
         private readonly PlaylistController _playlistController;
 
         private readonly NominationsForum _nominationsForum;
+        private readonly RTNominationsForum _rtNominationsForum;
 
         public RankController(
             AppContext context,
@@ -37,7 +38,8 @@ namespace BeatLeader_Server.Controllers
             MapEvaluationController mapEvaluationController,
             PlayerRefreshController playerRefreshController,
             PlaylistController playlistController,
-            NominationsForum nominationsForum)
+            NominationsForum nominationsForum,
+            RTNominationsForum rtNominationsForum)
         {
             _context = context;
             _readContext = readContext;
@@ -50,6 +52,7 @@ namespace BeatLeader_Server.Controllers
             _playlistController = playlistController;
 
             _nominationsForum = nominationsForum;
+            _rtNominationsForum = rtNominationsForum;
         }
 
         public enum VoteStatus
@@ -297,8 +300,8 @@ namespace BeatLeader_Server.Controllers
             } else {
                 hash = hash.Substring(0, 40);
             }
-            string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.Where(p => p.Id == currentID).Include(p => p.Socials).FirstOrDefaultAsync();
 
             Leaderboard? leaderboard = _context.Leaderboards.Include(l => l.Difficulty).Include(l => l.Song).FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
@@ -409,6 +412,7 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 leaderboard.Qualification.DiscordChannelId = (await _nominationsForum.OpenNomination(currentPlayer.Name, leaderboard)).ToString();
+                leaderboard.Qualification.DiscordRTChannelId = (await _rtNominationsForum.OpenNomination(currentPlayer, leaderboard)).ToString();
                 await _context.SaveChangesAsync();
             }
 
@@ -483,6 +487,10 @@ namespace BeatLeader_Server.Controllers
 
                         if (qualification.DiscordChannelId.Length > 0) {
                             await _nominationsForum.NominationQualified(qualification.DiscordChannelId);
+                        }
+
+                        if (qualification.DiscordRTChannelId.Length > 0) {
+                            await _rtNominationsForum.NominationQualified(qualification.DiscordRTChannelId);
                         }
 
                         if (dsClient != null)
@@ -591,6 +599,11 @@ namespace BeatLeader_Server.Controllers
                         if (qualificationChange.NewRankability <= 0 && qualification.DiscordChannelId.Length > 0)
                         {
                             await _nominationsForum.CloseNomination(qualification.DiscordChannelId);
+                        }
+
+                        if (qualificationChange.NewRankability <= 0 && qualification.DiscordRTChannelId.Length > 0)
+                        {
+                            await _rtNominationsForum.CloseNomination(qualification.DiscordRTChannelId);
                         }
 
                         var dsClient = nominationDSClient();
@@ -1055,6 +1068,29 @@ namespace BeatLeader_Server.Controllers
             public int Time { get; set; }
         }
 
+        [HttpGet("~/generateforum")]
+        public async Task<ActionResult> GenerateForum()
+        {
+            var list = _context
+                .Leaderboards
+                .Include(lb => lb.Song)
+                .Include(lb => lb.Difficulty)
+                .Include(lb => lb.Qualification)
+                .Where(lb => lb.Qualification.DiscordRTChannelId.Length == 0 && (lb.Difficulty.Status == DifficultyStatus.nominated || lb.Difficulty.Status == DifficultyStatus.qualified))
+                .ToList();
+
+            foreach (var item in list)
+            {
+                var player = _context.Players.Where(p => p.MapperId == item.Song.MapperId).Include(p => p.Socials).FirstOrDefault();
+                if (player != null) {
+                    item.Qualification.DiscordRTChannelId = (await _rtNominationsForum.OpenNomination(player, item)).ToString();
+                }
+            }
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
         [Authorize]
         [HttpGet("~/prevQualTime/{hash}")]
         public ActionResult<PrevQualification> PrevQualificationTime(string hash)
@@ -1291,6 +1327,115 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [Authorize]
+        [HttpPost("~/qualification/criteria/{id}")]
+        public async Task<ActionResult<CriteriaCommentary>> PostCriteriaComment(int id)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == currentID);
+
+            RankQualification? qualification = _context
+                .RankQualification
+                .Include(q => q.CriteriaComments)
+                .FirstOrDefault(l => l.Id == id);
+
+            if (qualification == null) {
+                return NotFound();
+            }
+
+            bool isRT = true;
+            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
+            {
+                if (currentPlayer != null && (currentPlayer.MapperId + "") == qualification?.MapperId) {
+                    isRT = false;
+                } else {
+                    return Unauthorized();
+                }
+            }
+
+            if (qualification.CriteriaComments == null) {
+                qualification.CriteriaComments = new List<CriteriaCommentary>();
+            }
+
+            var ms = new MemoryStream(5);
+            await Request.Body.CopyToAsync(ms);
+            ms.Position = 0;
+
+            var result = new CriteriaCommentary {
+                PlayerId = currentPlayer.Id,
+                Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
+                Value = Encoding.UTF8.GetString(ms.ToArray()),
+            };
+
+            qualification.CriteriaComments.Add(result);
+            _context.SaveChanges();
+
+            try {
+            result.DiscordMessageId = await _rtNominationsForum.PostComment(qualification.DiscordRTChannelId, result.Value, currentPlayer);
+            _context.SaveChanges();
+            } catch { }
+
+            return result;
+        }
+
+        [Authorize]
+        [HttpPut("~/qualification/criteria/{id}")]
+        public async Task<ActionResult<CriteriaCommentary>> UpdateCriteriaComment(int id) {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == currentID);
+
+            var comment = await _context
+                .CriteriaCommentary
+                .Include(c => c.RankQualification)
+                .FirstOrDefaultAsync(c => c.Id == id);
+            if (comment == null) {
+                return NotFound();
+            }
+            if (comment.PlayerId != currentPlayer.Id && !currentPlayer.Role.Contains("admin")) {
+                return Unauthorized();
+            }
+
+            var ms = new MemoryStream(5);
+            await Request.Body.CopyToAsync(ms);
+            ms.Position = 0;
+
+            comment.Value = Encoding.UTF8.GetString(ms.ToArray());
+            comment.Edited = true;
+            comment.EditTimeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+            _context.SaveChanges();
+
+            try {
+            comment.DiscordMessageId = await _rtNominationsForum.UpdateComment(comment.RankQualification.DiscordRTChannelId, comment.DiscordMessageId, comment.Value, currentPlayer);
+            _context.SaveChanges();
+            } catch { }
+
+            return comment;
+        }
+
+        [Authorize]
+        [HttpDelete("~/qualification/criteria/{id}")]
+        public async Task<ActionResult> DeleteCriteriaomment(int id) {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            var comment = await _context.CriteriaCommentary.Include(c => c.RankQualification).FirstOrDefaultAsync(c => c.Id == id);
+            if (comment == null) {
+                return NotFound();
+            }
+            if (comment.PlayerId != currentPlayer.Id && !currentPlayer.Role.Contains("admin")) {
+                return Unauthorized();
+            }
+
+            _context.CriteriaCommentary.Remove(comment);
+            _context.SaveChanges();
+
+            try {
+            await _rtNominationsForum.DeleteComment(comment.RankQualification.DiscordRTChannelId, comment.DiscordMessageId);
+            } catch { }
+
+            return Ok();
+        }
+
         public async Task QualityUnnominate(RankQualification q) {
 
             Leaderboard? leaderboard = _context.Leaderboards
@@ -1335,6 +1480,11 @@ namespace BeatLeader_Server.Controllers
                 if (qualification.DiscordChannelId.Length > 0)
                 {
                     await _nominationsForum.CloseNomination(qualification.DiscordChannelId);
+                }
+
+                if (qualification.DiscordRTChannelId.Length > 0)
+                {
+                    await _rtNominationsForum.CloseNomination(qualification.DiscordRTChannelId);
                 }
 
                 var dsClient = nominationDSClient();

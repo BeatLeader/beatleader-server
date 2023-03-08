@@ -153,7 +153,7 @@ namespace BeatLeader_Server.Controllers
             var info = replay?.info;
 
             if (info == null) return BadRequest("It's not a replay or it has old version.");
-            if (replay.notes.Count == 0 || replay.frames.Count == 0) {
+            if (replay.notes.Count == 0) {
                 return BadRequest("Replay is broken, update your mod please.");
             }
             if (info.hash.Length < 40) return BadRequest("Hash is to short");
@@ -188,6 +188,10 @@ namespace BeatLeader_Server.Controllers
                 return Ok();
             } else {
                 await CollectStats(replay.info.score, authenticatedPlayerID, leaderboard, replay.frames.Last().time, EndType.Clear);
+            }
+
+            if (replay.frames.Count == 0) {
+                return BadRequest("Replay is broken, update your mod please.");
             }
 
             if ((leaderboard.Difficulty.Status == DifficultyStatus.ranked || leaderboard.Difficulty.Status == DifficultyStatus.qualified) && leaderboard.Difficulty.Notes != 0 && replay.notes.Count > leaderboard.Difficulty.Notes) {

@@ -53,6 +53,7 @@ namespace BeatLeader_Server
         public DbSet<CountryChangeBan> CountryChangeBans { get; set; }
         public DbSet<RankQualification> RankQualification { get; set; }
         public DbSet<QualificationCommentary> QualificationCommentary { get; set; }
+        public DbSet<CriteriaCommentary> CriteriaCommentary { get; set; }
         public DbSet<QualificationVote> QualificationVote { get; set; }
         public DbSet<PlayerSocial> PlayerSocial { get; set; }
 

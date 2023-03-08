@@ -20,12 +20,13 @@ namespace BeatLeader_Server.Controllers
         private readonly ReadAppContext _readContext;
 
         private readonly NominationsForum _nominationsForum;
-
-        public SongController(AppContext context, ReadAppContext readContext, NominationsForum nominationsForum)
+        private readonly RTNominationsForum _rtNominationsForum;
+        public SongController(AppContext context, ReadAppContext readContext, NominationsForum nominationsForum, RTNominationsForum rtNominationsForum)
         {
             _context = context;      
             _readContext = readContext;
             _nominationsForum = nominationsForum;
+            _rtNominationsForum = rtNominationsForum;
         }
 
         [HttpGet("~/map/hash/{hash}")]
@@ -103,6 +104,9 @@ namespace BeatLeader_Server.Controllers
                 newLeaderboard.PositiveVotes = oldLeaderboard.PositiveVotes;
                 if (oldLeaderboard.Qualification.DiscordChannelId.Length > 0) {
                     await _nominationsForum.NominationReuploaded(oldLeaderboard.Qualification.DiscordChannelId, oldLeaderboardId);
+                }
+                if (oldLeaderboard.Qualification.DiscordRTChannelId.Length > 0) {
+                    await _rtNominationsForum.NominationReuploaded(oldLeaderboard.Qualification.DiscordRTChannelId, oldLeaderboardId);
                 }
                 oldLeaderboard.Qualification = null;
             }

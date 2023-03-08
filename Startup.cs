@@ -238,6 +238,7 @@ namespace BeatLeader_Server {
             }
             services.AddHostedService<BotService>();
             services.AddSingleton<NominationsForum>();
+            services.AddSingleton<RTNominationsForum>();
 
             services.AddMvc ().AddControllersAsServices ().AddJsonOptions (options => {
                 options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
