@@ -41,6 +41,8 @@
         vridge = 58,
         medion = 59,
         picoNeo4 = 60,
-        questPro = 61
+        questPro = 61,
+        pimaxCrystal = 62,
+        e4 = 63,
     }
 }

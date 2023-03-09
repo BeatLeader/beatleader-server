@@ -24,6 +24,12 @@
         picophoenix = 66,
         hands = 67,
         viveTracker3 = 68,
+        pimax = 69,
+        huawei = 70,
+        polaris = 71,
+        tundra = 72,
+        cry = 73,
+        e4 = 74,
         viveCosmos = 128,
     }
 }

@@ -176,21 +176,23 @@ namespace BeatLeader_Server.Utils
             if (lowerHmd.Contains("vive elite")) return HMD.viveElite;
             if (lowerHmd.Contains("focus3")) return HMD.viveFocus;
             if (lowerHmd.Contains("miramar")) return HMD.miramar;
-            if (lowerHmd.Contains("pimax vision 8k")) return HMD.pimax8k;
-            if (lowerHmd.Contains("pimax 5k")) return HMD.pimax5k;
-            if (lowerHmd.Contains("pimax artisan")) return HMD.pimaxArtisan;
+            if (lowerHmd.Contains("pimax") && lowerHmd.Contains("8k")) return HMD.pimax8k;
+            if (lowerHmd.Contains("pimax") && lowerHmd.Contains("5k")) return HMD.pimax5k;
+            if (lowerHmd.Contains("pimax") && lowerHmd.Contains("artisan")) return HMD.pimaxArtisan;
+            if (lowerHmd.Contains("pimax") && lowerHmd.Contains("crystal")) return HMD.pimaxCrystal;
 
             if (lowerHmd.Contains("hp reverb")) return HMD.hpReverb;
             if (lowerHmd.Contains("samsung windows")) return HMD.samsungWmr;
             if (lowerHmd.Contains("qiyu dream")) return HMD.qiyuDream;
             if (lowerHmd.Contains("disco")) return HMD.disco;
             if (lowerHmd.Contains("lenovo explorer")) return HMD.lenovoExplorer;
-            if (lowerHmd.Contains("acer ah1010")) return HMD.acerWmr;
-            if (lowerHmd.Contains("acer ah5010")) return HMD.acerWmr;
+            if (lowerHmd.Contains("acer")) return HMD.acerWmr;
             if (lowerHmd.Contains("arpara")) return HMD.arpara;
             if (lowerHmd.Contains("dell visor")) return HMD.dellVisor;
 
             if (lowerHmd.Contains("e3")) return HMD.e3;
+            if (lowerHmd.Contains("e4")) return HMD.e4;
+
             if (lowerHmd.Contains("vive dvt")) return HMD.viveDvt;
             if (lowerHmd.Contains("3glasses s20")) return HMD.glasses20;
             if (lowerHmd.Contains("hedy")) return HMD.hedy;
@@ -231,7 +233,7 @@ namespace BeatLeader_Server.Utils
             if (lowerController.Contains("vive") && lowerController.Contains("pro")) return ControllerEnum.vivePro;
             if (lowerController.Contains("vive")) return ControllerEnum.vive;
 
-            if (lowerController.Contains("pico neo") && lowerController.Contains("phoenix")) return ControllerEnum.picophoenix;
+            if (lowerController.Contains("pico") && lowerController.Contains("phoenix")) return ControllerEnum.picophoenix;
             if (lowerController.Contains("pico neo") && lowerController.Contains("3")) return ControllerEnum.picoNeo3;
             if (lowerController.Contains("pico neo") && lowerController.Contains("2")) return ControllerEnum.picoNeo2;
             if (lowerController.Contains("knuckles")) return ControllerEnum.knuckles;
@@ -246,6 +248,13 @@ namespace BeatLeader_Server.Utils
             if (lowerController.Contains("nolo")) return ControllerEnum.nolo;
             if (lowerController.Contains("disco")) return ControllerEnum.disco;
             if (lowerController.Contains("hands")) return ControllerEnum.hands;
+
+            if (lowerController.Contains("pimax")) return ControllerEnum.pimax;
+            if (lowerController.Contains("huawei")) return ControllerEnum.huawei;
+            if (lowerController.Contains("polaris")) return ControllerEnum.polaris;
+            if (lowerController.Contains("tundra")) return ControllerEnum.tundra;
+            if (lowerController.Contains("cry")) return ControllerEnum.cry;
+            if (lowerController.Contains("e4")) return ControllerEnum.e4;
 
             return ControllerEnum.unknown;
         }

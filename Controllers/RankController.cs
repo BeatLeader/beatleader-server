@@ -1068,29 +1068,6 @@ namespace BeatLeader_Server.Controllers
             public int Time { get; set; }
         }
 
-        [HttpGet("~/generateforum")]
-        public async Task<ActionResult> GenerateForum()
-        {
-            var list = _context
-                .Leaderboards
-                .Include(lb => lb.Song)
-                .Include(lb => lb.Difficulty)
-                .Include(lb => lb.Qualification)
-                .Where(lb => lb.Qualification.DiscordRTChannelId.Length == 0 && (lb.Difficulty.Status == DifficultyStatus.nominated || lb.Difficulty.Status == DifficultyStatus.qualified))
-                .ToList();
-
-            foreach (var item in list)
-            {
-                var player = _context.Players.Where(p => p.MapperId == item.Song.MapperId).Include(p => p.Socials).FirstOrDefault();
-                if (player != null) {
-                    item.Qualification.DiscordRTChannelId = (await _rtNominationsForum.OpenNomination(player, item)).ToString();
-                }
-            }
-            _context.SaveChanges();
-
-            return Ok();
-        }
-
         [Authorize]
         [HttpGet("~/prevQualTime/{hash}")]
         public ActionResult<PrevQualification> PrevQualificationTime(string hash)
