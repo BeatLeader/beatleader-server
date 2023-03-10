@@ -341,7 +341,15 @@ namespace BeatLeader_Server.Controllers
                 .Where(p => !p.Banned);
             if (countries.Length != 0)
             {
-                request = request.Where(p => countries.Contains(p.Country));
+                var player = Expression.Parameter(typeof(Player), "p");
+
+                // 1 != 2 is here to trigger `OrElse` further the line.
+                var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
+                foreach (var term in countries.ToLower().Split(","))
+                {
+                    exp = Expression.OrElse(exp, Expression.Equal(Expression.Property(player, "Country"), Expression.Constant(term)));
+                }
+                request = request.Where((Expression<Func<Player, bool>>)Expression.Lambda(exp, player));
             }
             if (search.Length != 0)
             {
@@ -642,7 +650,15 @@ namespace BeatLeader_Server.Controllers
             
             if (countries.Length != 0)
             {
-                request = request.Where(p => countries.Contains(p.Country));
+                var player = Expression.Parameter(typeof(Player), "p");
+
+                // 1 != 2 is here to trigger `OrElse` further the line.
+                var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
+                foreach (var term in countries.ToLower().Split(","))
+                {
+                    exp = Expression.OrElse(exp, Expression.Equal(Expression.Property(player, "Country"), Expression.Constant(term)));
+                }
+                request = request.Where((Expression<Func<Player, bool>>)Expression.Lambda(exp, player));
             }
 
             if (search.Length != 0)
