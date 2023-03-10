@@ -95,82 +95,41 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? search = null,
             [FromQuery] string? capturedLeaderboards = null)
         {
+            // What use is there for finding a clan by leaderID versus just using the tag?
             Clan? clan = null;
-            if (tag == "my")
+            if (capturedLeaderboards != null)
             {
-                string? currentID = HttpContext.CurrentUserID(_readContext);
-                var player = await _readContext.Players.FindAsync(currentID);
-
-                if (player == null)
-                {
-                    return NotFound();
-                }
-
-                if (capturedLeaderboards != null)
-                {
-                    clan = _readContext
-                        .Clans
-                        .Where(c => c.LeaderID == currentID)
-                        .Include(c => c.CapturedLeaderboards)
-                            .ThenInclude(s => s.Song)
-                            .ThenInclude(d => d.Difficulties)
-                        .Include(c => c.CapturedLeaderboards)
-                            .ThenInclude(lb => lb.LeaderboardGroup)
-                                .ThenInclude(g => g.Leaderboards)
-                                    .ThenInclude(glb => glb.Difficulty)
-                        .FirstOrDefault();
-                }
-                else
-                {
-                    clan = _readContext
-                        .Clans
-                        .Where(c => c.LeaderID == currentID)
-                        .Include(c => c.Players)
-                        .ThenInclude(p => p.ProfileSettings)
-                        .Include(c => c.CapturedLeaderboards)
-                        .Include(c => c.CapturedLeaderboards)
-                            .ThenInclude(s => s.Song)
-                            .ThenInclude(d => d.Difficulties)
-                        .Include(c => c.CapturedLeaderboards)
-                            .ThenInclude(lb => lb.LeaderboardGroup)
-                                .ThenInclude(g => g.Leaderboards)
-                                    .ThenInclude(glb => glb.Difficulty)
-                        .FirstOrDefault();
-                }
-            }
-            else
+                clan = _readContext
+                    .Clans
+                    .Where(c => c.Tag == tag)
+                    .Include(p => p.Players)
+                    .ThenInclude(pr => pr.ProfileSettings)
+                    .Include(c => c.CapturedLeaderboards)
+                    .ThenInclude(cr => cr.ClanRanking)
+                    .ThenInclude(s => s.AssociatedScores)
+                    .ThenInclude(p => p.Player)
+                    .Include(c => c.CapturedLeaderboards)
+                    .ThenInclude(s => s.Song)
+                    .Include(c => c.CapturedLeaderboards)
+                    .ThenInclude(d => d.Difficulty)
+                    .FirstOrDefault();
+            } else
             {
-                if (capturedLeaderboards != null)
-                {
-                    clan = _readContext
-                        .Clans
-                        .Where(c => c.Tag == tag)
-                        .Include(c => c.CapturedLeaderboards)
-                        .Include(c => c.CapturedLeaderboards)
-                            .ThenInclude(s => s.Song)
-                            .ThenInclude(d => d.Difficulties)
-                        .Include(c => c.CapturedLeaderboards)
-                            .ThenInclude(lb => lb.LeaderboardGroup)
-                                .ThenInclude(g => g.Leaderboards)
-                                    .ThenInclude(glb => glb.Difficulty)
-                        .FirstOrDefault();
-                } else
-                {
-                    clan = _readContext
-                        .Clans
-                        .Where(c => c.Tag == tag)
-                        .Include(c => c.Players)
-                        .ThenInclude(p => p.ProfileSettings)
-                        .Include(c => c.CapturedLeaderboards)
-                        .Include(c => c.CapturedLeaderboards)
-                            .ThenInclude(s => s.Song)
-                            .ThenInclude(d => d.Difficulties)
-                        .Include(c => c.CapturedLeaderboards)
-                            .ThenInclude(lb => lb.LeaderboardGroup)
-                                .ThenInclude(g => g.Leaderboards)
-                                    .ThenInclude(glb => glb.Difficulty)
-                        .FirstOrDefault();
-                }
+                clan = _readContext
+                    .Clans
+                    .Where(c => c.Tag == tag)
+                    .Include(p => p.Players)
+                    .ThenInclude(pr => pr.ProfileSettings)
+                    .Include(c => c.CapturedLeaderboards)
+                    .ThenInclude(cr => cr.ClanRanking)
+                    .ThenInclude(s => s.AssociatedScores)
+                    .ThenInclude(p => p.Player)
+                    .Include(c => c.CapturedLeaderboards)
+                    .ThenInclude(s => s.Song)
+                    .Include(c => c.CapturedLeaderboards)
+                    .ThenInclude(d => d.Difficulty)
+                    .FirstOrDefault();
+
             }
             if (clan == null)
             {

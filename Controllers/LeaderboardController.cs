@@ -286,6 +286,7 @@ namespace BeatLeader_Server.Controllers
                 }
                 if (clanRanking)
                 {
+                    // TODO: Is there a better way to do this? There's no way this is the right way to do this...
                     leaderboard.ClanRanking = currentContext
                     .ClanRanking
                     .Where(cr => cr.LeaderboardId == leaderboard.Id)
