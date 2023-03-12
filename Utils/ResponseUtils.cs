@@ -509,7 +509,11 @@ namespace BeatLeader_Server.Utils
             return input;
         }
 
-        public static void PostProcessSettings(string role, ProfileSettings? settings, PatreonFeatures? patreonFeatures) {
+        public static void PostProcessSettings(string role, ProfileSettings? settings, PatreonFeatures? patreonFeatures, bool hideStarredFriends = true) {
+            if (settings != null && hideStarredFriends) {
+                settings.StarredFriends = "";
+            }
+
             if (!role.Contains("sponsor")) {
                 if (settings != null) {
                     settings.Message = null;

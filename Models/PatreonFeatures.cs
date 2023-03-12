@@ -22,5 +22,6 @@
         public string? LeftSaberColor { get; set; }
         public string? RightSaberColor { get; set; }
         public string? ProfileCover { get; set; }
+        public string? StarredFriends { get; set; }
     }
 }

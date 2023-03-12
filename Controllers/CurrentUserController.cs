@@ -63,7 +63,7 @@ namespace BeatLeader_Server.Controllers
             }
             string id = user.Id;
 
-            PlayerFriends? friends = _readContext.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == id);
+            PlayerFriends? friends = _readContext.Friends.Include(f => f.Friends).ThenInclude(f => f.ProfileSettings).FirstOrDefault(f => f.Id == id);
             Clan? clan = _readContext.Clans.Include(c => c.Players).FirstOrDefault(f => f.LeaderID == id);
 
             long intId = Int64.Parse(id);
@@ -92,8 +92,13 @@ namespace BeatLeader_Server.Controllers
             } : null;
             var player = user.Player;
 
+            var playerResponse = ResponseFullFromPlayer(player);
+            if (playerResponse != null) {
+                PostProcessSettings(playerResponse.Role, playerResponse.ProfileSettings, playerResponse.PatreonFeatures, false);
+            }
+
             return new UserReturn {
-                Player = PostProcessSettings(ResponseFullFromPlayer(player)),
+                Player = playerResponse,
                 Ban = player.Banned ? _readContext
                     .Bans
                     .Where(b => b.PlayerId == player.Id)
@@ -101,7 +106,7 @@ namespace BeatLeader_Server.Controllers
                     .FirstOrDefault() : null,
                 ClanRequest = user.ClanRequest,
                 BannedClans = user.BannedClans,
-                Friends = friends != null ? friends.Friends.Select(ResponseFullFromPlayer).ToList() : new List<PlayerResponseFull>(),
+                Friends = friends != null ? friends.Friends.Select(ResponseFullFromPlayer).Select(PostProcessSettings).ToList() : new List<PlayerResponseFull>(),
                 Login = _readContext.Auths.FirstOrDefault(a => a.Id == intId)?.Login,
                 
                 Migrated = _readContext.AccountLinks.FirstOrDefault(a => a.SteamID == id) != null,
@@ -276,6 +281,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? effectName = null,
             [FromQuery] string? leftSaberColor = null,
             [FromQuery] string? rightSaberColor = null,
+            [FromQuery] string? starredFriends = null,
             [FromQuery] string? id = null)
         {
             string userId = GetId();
@@ -417,6 +423,9 @@ namespace BeatLeader_Server.Controllers
             if (Request.Query.ContainsKey("saturation"))
             {
                 settings.Saturation = saturation;
+            }
+            if (Request.Query.ContainsKey("starredFriends")) {
+                settings.StarredFriends = starredFriends;
             }
 
             if (Request.Query.ContainsKey("message")) {
