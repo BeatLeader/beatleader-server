@@ -64,7 +64,7 @@ namespace BeatLeader_Server.Controllers
             string id = user.Id;
 
             PlayerFriends? friends = _readContext.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == id);
-            Clan? clan = _readContext.Clans.Include(c => c.Players).FirstOrDefault(f => f.LeaderID == id);
+            Clan? clan = _readContext.Clans.Include(c => c.Players).Include(c => c.CapturedLeaderboards).FirstOrDefault(f => f.LeaderID == id);
 
             long intId = Int64.Parse(id);
             if (intId > 1000000000000000) {
@@ -74,19 +74,19 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            ClanReturn? clanReturn = 
+            ClanReturn? clanReturn =
             clan != null ? new ClanReturn {
-               Id = clan.Id,
+                Id = clan.Id,
                 Name = clan.Name,
                 Color = clan.Color,
                 Icon = clan.Icon,
                 Tag = clan.Tag,
                 LeaderID = clan.LeaderID,
-
                 PlayersCount = clan.PlayersCount,
                 Pp = clan.Pp,
                 AverageRank = clan.AverageRank,
                 AverageAccuracy = clan.AverageAccuracy,
+                CapturedLeaderboards = clan.CapturedLeaderboards,
                 Players = clan.Players.Select(p => p.Id).ToList(),
                 PendingInvites = _readContext.Users.Where(u => u.ClanRequest.Contains(clan)).Select(f => f.Id).ToList(),
             } : null;

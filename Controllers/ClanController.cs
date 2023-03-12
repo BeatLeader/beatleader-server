@@ -36,7 +36,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/clans/")]
-        public async Task<ActionResult<ResponseWithMetadata<Clan>>> GetAll(
+        public async Task<ActionResult<ResponseWithMetadataAndContainer<Clan, int>>> GetAll(
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
             [FromQuery] string sort = "captures",
@@ -44,7 +44,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? search = null,
             [FromQuery] string? type = null)
         {
-            var sequence = _readContext.Clans.AsQueryable();
+            var sequence = _readContext.Clans.Include(cl => cl.CapturedLeaderboards).AsQueryable();
             switch (sort)
             {
                 case "pp":
@@ -59,9 +59,9 @@ namespace BeatLeader_Server.Controllers
                 case "count":
                     sequence = sequence.Order(order, t => t.PlayersCount);
                     break;
-                //case "captures":
-                //    sequence = sequence.Order(order, c => c.OwnedLeaderboardsCount);
-                //    break;
+                case "captures":
+                    sequence = sequence.Order(order, c => c.CapturedLeaderboards != null ? c.CapturedLeaderboards.Count : 0 );
+                    break;
                 default:
                     break;
             }
@@ -73,8 +73,18 @@ namespace BeatLeader_Server.Controllers
                                 p.Tag.ToLower().Contains(lowSearch));
             }
 
-            return new ResponseWithMetadata<Clan>()
+            // SSnowy - Calculate the number of ranked maps
+            // We will use this to tell what % of the entire ranked map pool a clan has captured.
+            int rankedMapCount = _readContext
+                .Leaderboards
+                .Include(lb => lb.Difficulty)
+                .Count(lb => lb.Difficulty.Status == DifficultyStatus.ranked);
+
+            return new ResponseWithMetadataAndContainer<Clan, int>()
             {
+                // SSnowy - Least intrusive solution, but also looks weird because the "container" is just a number
+                // Should I just add another ResponseWithMetaData to the DB?
+                Container = rankedMapCount,
                 Metadata = new Metadata()
                 {
                     Page = page,
@@ -129,7 +139,6 @@ namespace BeatLeader_Server.Controllers
                     .Include(c => c.CapturedLeaderboards)
                     .ThenInclude(d => d.Difficulty)
                     .FirstOrDefault();
-
             }
             if (clan == null)
             {
@@ -226,6 +235,7 @@ namespace BeatLeader_Server.Controllers
             if (description.Length > 100)
             {
                 return BadRequest("Description is too long");
+                return BadRequest("Description is too long");
             }
 
             if (bio.Length > 1000)
@@ -272,6 +282,7 @@ namespace BeatLeader_Server.Controllers
                 AverageAccuracy = player.ScoreStats.AverageRankedAccuracy,
                 AverageRank = player.Rank
             };
+
             _context.Clans.Add(newClan);
             await _context.SaveChangesAsync();
 
