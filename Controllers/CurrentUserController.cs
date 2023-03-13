@@ -87,6 +87,7 @@ namespace BeatLeader_Server.Controllers
                 AverageRank = clan.AverageRank,
                 AverageAccuracy = clan.AverageAccuracy,
                 CapturedLeaderboards = clan.CapturedLeaderboards,
+                RankedPoolPercentCaptured = clan.RankedPoolPercentCaptured,
                 Players = clan.Players.Select(p => p.Id).ToList(),
                 PendingInvites = _readContext.Users.Where(u => u.ClanRequest.Contains(clan)).Select(f => f.Id).ToList(),
             } : null;

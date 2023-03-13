@@ -50,11 +50,10 @@ namespace BeatLeader_Server.Utils
             var leaderboardClans =
                 context
                     .Scores
-                    .Where(s => s.LeaderboardId == leaderboard.Id && !s.Banned)
-                    .OrderByDescending(el => el.Pp)
                     .Include(s => s.Player)
                     .ThenInclude(p => p.Clans)
-                    //.Select(s => new { Clans = s.Player.Clans, Pp = s.Pp, Acc = s.Accuracy, Rank = s.Rank, Score = s.ModifiedScore })
+                    .Where(s => s.LeaderboardId == leaderboard.Id && !s.Banned)
+                    .OrderByDescending(el => el.Pp)
                     .ToList();
 
             // Build up a dictionary of the clans on this leaderboard based on scores
@@ -105,18 +104,18 @@ namespace BeatLeader_Server.Utils
                 }
             }
 
-            // Cases covered -------
+            // Captured leaderboard cases covered -------
             // Null -> Null : Good
             // Null -> Won : Good
             // Null -> Tied : Good
-            // Won -> Null : Impossible
+            // Won -> Null : Impossible (unranked ranked map?)
             // Won -> Won same Clan : Good
             // Won -> Won diff Clan : Good
             // Won -> Tied : Good
             // Tied -> Won : Good
             // Tied -> Tied : Good
             // Tied -> Null : Impossible
-            // ----------------------
+            // ------------------------------------------
             if (!newClanRankingData.IsNullOrEmpty())
             {
                 // Sort newClanRankingData and clanRanking by PP
@@ -145,7 +144,7 @@ namespace BeatLeader_Server.Utils
                         // If the leaderboard was previously tied, and now it is captured, we don't want to remove captor (there wasn't one)
                         if (clanRanking.Count > 1 && leaderboard.ClanRankingContested)
                         {
-                            AddCapturedLeaderboard(ref newClanRankingData, leaderboard);
+                            AddCapturedLeaderboard(ref newClanRankingData, leaderboard, context);
                             leaderboard.ClanRankingContested = false;
                         } 
                         else
@@ -155,7 +154,7 @@ namespace BeatLeader_Server.Utils
                             if (prevCaptor != newClanRankingData.First().Key)
                             {
                                 RemoveCapturedLeaderboard(ref prevCaptor, leaderboard);
-                                AddCapturedLeaderboard(ref newClanRankingData, leaderboard);
+                                AddCapturedLeaderboard(ref newClanRankingData, leaderboard, context);
                             }
                         }
                     }
@@ -170,7 +169,7 @@ namespace BeatLeader_Server.Utils
                     else
                     {
                         // Empty --> Won : Add captured leaderboard
-                        AddCapturedLeaderboard(ref newClanRankingData, leaderboard);
+                        AddCapturedLeaderboard(ref newClanRankingData, leaderboard, context);
                     }
                 }
 
@@ -212,7 +211,10 @@ namespace BeatLeader_Server.Utils
             return leaderboard.ClanRanking;
         }
 
-        private static void AddCapturedLeaderboard(ref Dictionary<Clan, ClanRankingData> newClanRankingData, Leaderboard leaderboard)
+        private static void AddCapturedLeaderboard(
+            ref Dictionary<Clan, ClanRankingData> newClanRankingData,
+            Leaderboard leaderboard,
+            AppContext context)
         {
             // Add leaderboard to new captor
             if (newClanRankingData.First().Key.CapturedLeaderboards == null)
@@ -230,6 +232,16 @@ namespace BeatLeader_Server.Utils
                     newClanRankingData.First().Key.CapturedLeaderboards.Add(leaderboard);
                 }
             }
+
+            // SSnowy - Calculate the number of ranked maps, I feel like this should be a static global or something
+            // We will use this to tell what % of the entire ranked map pool a clan has captured.
+            int rankedMapCount = context
+                .Leaderboards
+                .Include(lb => lb.Difficulty)
+                .Count(lb => lb.Difficulty.Status == DifficultyStatus.ranked);
+
+            newClanRankingData.First().Key.RankedPoolPercentCaptured =
+                newClanRankingData.First().Key.CapturedLeaderboards?.Count / rankedMapCount ?? 0;
         }
 
         private static void RemoveCapturedLeaderboard(ref Clan prevCaptor, Leaderboard leaderboard)

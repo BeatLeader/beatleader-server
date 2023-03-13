@@ -36,7 +36,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/clans/")]
-        public async Task<ActionResult<ResponseWithMetadataAndContainer<Clan, int>>> GetAll(
+        public async Task<ActionResult<ResponseWithMetadata<Clan>>> GetAll(
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
             [FromQuery] string sort = "captures",
@@ -73,18 +73,8 @@ namespace BeatLeader_Server.Controllers
                                 p.Tag.ToLower().Contains(lowSearch));
             }
 
-            // SSnowy - Calculate the number of ranked maps
-            // We will use this to tell what % of the entire ranked map pool a clan has captured.
-            int rankedMapCount = _readContext
-                .Leaderboards
-                .Include(lb => lb.Difficulty)
-                .Count(lb => lb.Difficulty.Status == DifficultyStatus.ranked);
-
-            return new ResponseWithMetadataAndContainer<Clan, int>()
+            return new ResponseWithMetadata<Clan>()
             {
-                // SSnowy - Least intrusive solution, but also looks weird because the "container" is just a number
-                // Should I just add another ResponseWithMetaData to the DB?
-                Container = rankedMapCount,
                 Metadata = new Metadata()
                 {
                     Page = page,
@@ -280,7 +270,8 @@ namespace BeatLeader_Server.Controllers
                 PlayersCount = 1,
                 Pp = player.Pp,
                 AverageAccuracy = player.ScoreStats.AverageRankedAccuracy,
-                AverageRank = player.Rank
+                AverageRank = player.Rank,
+                RankedPoolPercentCaptured = 0
             };
 
             _context.Clans.Add(newClan);
