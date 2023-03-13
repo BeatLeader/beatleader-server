@@ -623,12 +623,19 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/player/{id}/history")]
         public async Task<ActionResult<ICollection<PlayerScoreStatsHistory>>> GetHistory(string id, [FromQuery] int count = 50)
         {
-            return _readContext
+            var result = _readContext
                     .PlayerScoreStatsHistory
                     .Where(p => p.PlayerId == id)
                     .OrderByDescending(s => s.Timestamp)
                     .Take(count)
                     .ToList();
+            if (result.Count == 0) {
+                var player = _context.Players.Where(p => p.Id == id).FirstOrDefault();
+
+                result = new List<PlayerScoreStatsHistory> { new PlayerScoreStatsHistory { Rank = player?.Rank ?? 0, Pp = player?.Pp ?? 0, CountryRank = player?.CountryRank ?? 0 } };
+            }
+
+            return result;
         }
 
         [HttpGet("~/player/{id}/pinnedScores")]
