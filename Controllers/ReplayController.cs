@@ -254,27 +254,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (!leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles) && !ReplayUtils.IsPlayerCuttingNotesOnPlatform(replay)) {
-                string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsortemp";
-                resultScore.Replay = "https://cdn.replays.beatleader.xyz/" + fileName;
-                
-                await _s3Client.UploadReplay(fileName, replayData);
-
-                FailedScore failedScore = new FailedScore {
-                    Error = "Played outside of the platform",
-                    Leaderboard = leaderboard,
-                    PlayerId = resultScore.PlayerId,
-                    Modifiers = resultScore.Modifiers,
-                    Replay = resultScore.Replay,
-                    Timeset = resultScore.Timeset,
-                    BaseScore = resultScore.BaseScore,
-                    ModifiedScore = resultScore.ModifiedScore,
-                    Rank = resultScore.Rank,
-                    Player = player,
-                    Hmd = resultScore.Hmd,
-                };
-                _context.FailedScores.Add(failedScore);
-                _context.SaveChanges();
-
+                Thread.Sleep(8000); // Error may not show if returned too quick
                 return BadRequest("Please stay on the platform.");
             }
 
