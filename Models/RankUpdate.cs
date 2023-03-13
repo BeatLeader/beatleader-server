@@ -8,12 +8,16 @@
         public bool Keep { get; set; }
 
         public float Stars { get; set; }
+        public float PassRating { get; set; }
+        public float TechRating { get; set; }
+        public float PredictedAcc { get; set; }
         public int Type { get; set; }
         public int CriteriaMet { get; set; }
         public string? CriteriaCommentary { get; set; }
         public bool Finished { get; set; }
 
         public ModifiersMap Modifiers { get; set; }
+        public ModifiersRating? ModifiersRating { get; set; }
 
         public ICollection<RankUpdateChange>? Changes { get; set; }
     }

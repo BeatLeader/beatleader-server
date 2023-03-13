@@ -109,6 +109,9 @@ namespace BeatLeader_Server.Controllers
                         PlayerId = s.PlayerId,
                         Accuracy = s.Accuracy,
                         Pp = s.Pp,
+                        TechPP = s.TechPP,
+                        AccPP = s.AccPP,
+                        PassPP = s.PassPP,
                         FcAccuracy = s.FcAccuracy,
                         FcPp = s.FcPp,
                         BonusPp = s.BonusPp,
@@ -265,6 +268,20 @@ namespace BeatLeader_Server.Controllers
                         break;
                     case "rank":
                         sequence = sequence.Order(order, t => t.Rank);
+                        break;
+                    case "predictedAcc":
+                        sequence = sequence
+                                    .Include(lb => lb.Leaderboard)
+                                    .ThenInclude(lb => lb.Difficulty)
+                                    .Order(order, s => s.Leaderboard.Difficulty.PredictedAcc)
+                                    .Where(s => s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked);
+                        break;
+                    case "passRating":
+                        sequence = sequence
+                                    .Include(lb => lb.Leaderboard)
+                                    .ThenInclude(lb => lb.Difficulty)
+                                    .Order(order, s => s.Leaderboard.Difficulty.PassRating)
+                                    .Where(s => s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked);
                         break;
                     case "stars":
                         sequence = sequence

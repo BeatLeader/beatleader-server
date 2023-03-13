@@ -563,6 +563,15 @@ namespace BeatLeader_Server.Controllers
                     case "rank":
                         sequence = sequence.Order(order, t => t.Rank);
                         break;
+                    case "predictedAcc":
+                        sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Order(order, t => t.Leaderboard.Difficulty.PredictedAcc);
+                        break;
+                    case "passRating":
+                        sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Order(order, t => t.Leaderboard.Difficulty.PassRating);
+                        break;
+                    case "techRating":
+                        sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Order(order, t => t.Leaderboard.Difficulty.TechRating);
+                        break;
                     case "stars":
                         sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Order(order, t => t.Leaderboard.Difficulty.Stars);
                         break;
@@ -913,6 +922,52 @@ namespace BeatLeader_Server.Controllers
             return metadata;
         }
 
+        [HttpGet("~/scorestats/")]
+        public async Task<ActionResult<string>> GetStats()
+        {
+            var currentId = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentId);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin")) {
+                return Unauthorized();
+            }
+
+            string result = "Count,Count >80%,Count >95%,Count/80,Count/95,Average,Top250,Total PP,PP/topPP filtered,PP/topPP unfiltered,Acc Rating,Pass Rating,Tech Rating,Name,Link\n";
+            float weightTreshold = MathF.Pow(0.965f, 40);
+
+            var leaderboards = _context
+                .Leaderboards
+                .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
+                .Select(lb => new { 
+                    Average = lb.Scores.Average(s => s.Weight), 
+                    Count8 = lb.Scores.Where(s => s.Weight > 0.8).Count(),
+                    Count95 = lb.Scores.Where(s => s.Weight > 0.95).Count(),
+                    PPsum = lb.Scores.Sum(s => s.Pp * s.Weight),
+                    PPAverage = lb
+                        .Scores
+                        .Where(s => s.Player.ScoreStats.RankedPlayCount >= 50 && s.Player.ScoreStats.TopPp != 0)
+                      .Average(s => s.Pp / s.Player.ScoreStats.TopPp),
+                    PPAverage2 = lb
+                        .Scores
+                        .Where(s => s.Player.ScoreStats.TopPp != 0)
+                      .Average(s => s.Pp / s.Player.ScoreStats.TopPp),
+                    Count = lb.Scores.Count(),
+                    Top250 = lb.Scores.Where(s => s.Player.Rank < 250 && s.Weight > weightTreshold).Count(),
+                    lb.Id,
+                    lb.Song.Name,
+                    lb.Difficulty.AccRating,
+                    lb.Difficulty.PassRating,
+                    lb.Difficulty.TechRating})
+                .ToList();
+
+            foreach (var item in leaderboards)
+            {
+                result += $"{item.Count},{item.Count8},{item.Count95},{item.Count8/(float)item.Count},{item.Count95/(float)item.Count},{item.Average},{item.Top250},{item.PPsum},{item.PPAverage},{item.PPAverage2},{item.AccRating},{item.PassRating},{item.TechRating},{item.Name.Replace(",","")},https://stage.beatleader.net/leaderboard/global/{item.Id}/1\n";
+            }
+
+            return result;
+        }
+
         [HttpGet("~/replays/")]
         public async Task<ActionResult<ResponseWithMetadata<string>>> GetReplays(
             int count = 50, 
@@ -948,47 +1003,6 @@ namespace BeatLeader_Server.Controllers
                         .Select(s => s.Replay)
                         .ToList()
             };
-        }
-
-        [HttpGet("~/scorestats/")]
-        public async Task<ActionResult<string>> GetStats()
-        {
-            var currentId = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentId);
-
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin")) {
-                return Unauthorized();
-            }
-
-            string result = "Count,Count >80%,Count >95%,Count/80,Count/95,Average,Total PP,PP/topPP filtered,PP/topPP unfiltered,Stars,Link\n";
-
-            var leaderboards = _context
-                .Leaderboards
-                .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
-                .Select(lb => new { 
-                    Average = lb.Scores.Average(s => s.Weight), 
-                    Count8 = lb.Scores.Where(s => s.Weight > 0.8).Count(),
-                    Count95 = lb.Scores.Where(s => s.Weight > 0.95).Count(),
-                    PPsum = lb.Scores.Sum(s => s.Pp * s.Weight),
-                    PPAverage = lb
-                        .Scores
-                        .Where(s => s.Player.ScoreStats.RankedPlayCount >= 50 && s.Player.ScoreStats.TopPp != 0)
-                      .Average(s => s.Pp / s.Player.ScoreStats.TopPp),
-                    PPAverage2 = lb
-                        .Scores
-                        .Where(s => s.Player.ScoreStats.TopPp != 0)
-                      .Average(s => s.Pp / s.Player.ScoreStats.TopPp),
-                    Count = lb.Scores.Count(),
-                    lb.Id,
-                    lb.Difficulty.Stars})
-                .ToList();
-
-            foreach (var item in leaderboards)
-            {
-                result += $"{item.Count},{item.Count8},{item.Count95},{item.Count8/(float)item.Count},{item.Count95/(float)item.Count},{item.Average},{item.PPsum},{item.PPAverage},{item.PPAverage2},{item.Stars},https://www.beatleader.xyz/leaderboard/global/{item.Id}/1\n";
-            }
-
-            return result;
         }
     }
 }

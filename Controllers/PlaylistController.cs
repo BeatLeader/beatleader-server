@@ -832,6 +832,105 @@ namespace BeatLeader_Server.Controllers
             
         }
 
+        [HttpPost("~/playlist/rank")]
+        public async Task<ActionResult> RankPlaylist()
+        {
+
+            dynamic? playlist = null;
+
+            using (var ms = new MemoryStream(5))
+            {
+                await Request.Body.CopyToAsync(ms);
+                ms.Position= 0;
+                playlist = ms.ObjectFromStream();
+            }
+
+            var leaderboards = new List<Leaderboard>();
+
+            var players = new List<EventPlayer>();
+            var basicPlayers = new List<Player>();
+            var playerScores = new Dictionary<string, List<Score>>();
+
+            foreach (var songy in playlist.songs) {
+                foreach (var diffy in songy.difficulties)
+                {
+                    string hash = songy.hash.ToLower();
+                    string diffName = diffy.name.ToLower();
+                    string characteristic = diffy.characteristic.ToLower();
+
+                    var lb = _context.Leaderboards.Where(lb => 
+                        lb.Song.Hash.ToLower() == hash && 
+                        lb.Difficulty.DifficultyName.ToLower() == diffName &&
+                        lb.Difficulty.ModeName.ToLower() == characteristic).Include(lb => lb.Difficulty).Include(lb => lb.Song).FirstOrDefault();
+
+                    if (lb != null && lb.Difficulty.Status != DifficultyStatus.outdated) {
+
+                        if (lb.Difficulty.Status == DifficultyStatus.unranked || lb.Difficulty.Status == DifficultyStatus.inevent)
+                        {
+                            //var stars = await ExmachinaStars(hash, lb.Difficulty.Value);
+                            //if (stars != null) {
+                                var diff = lb.Difficulty;
+                                lb.Difficulty.Status = DifficultyStatus.ranked;
+                                var response = await SongUtils.ExmachinaStars(lb.Song.Hash, diff.Value);
+                                if (response != null) {
+                                    diff.PassRating = response.none.lack_map_calculation.balanced_pass_diff;
+                                    diff.TechRating = response.none.lack_map_calculation.balanced_tech * 10;
+                                    diff.PredictedAcc = response.none.AIacc;
+                                    diff.AccRating = ReplayUtils.AccRating(response.none.AIacc, response.none.lack_map_calculation.balanced_pass_diff, response.none.lack_map_calculation.balanced_tech * 10);
+
+                                    diff.ModifiersRating = new ModifiersRating {
+                                        SSPassRating = response.SS.lack_map_calculation.balanced_pass_diff,
+                                        SSTechRating = response.SS.lack_map_calculation.balanced_tech * 10,
+                                        SSPredictedAcc = response.SS.AIacc,
+                                        SSAccRating = ReplayUtils.AccRating(response.SS.AIacc, response.SS.lack_map_calculation.balanced_pass_diff, response.SS.lack_map_calculation.balanced_tech * 10),
+                                        SFPassRating = response.SFS.lack_map_calculation.balanced_pass_diff,
+                                        SFTechRating = response.SFS.lack_map_calculation.balanced_tech * 10,
+                                        SFPredictedAcc = response.SFS.AIacc,
+                                        SFAccRating = ReplayUtils.AccRating(response.SFS.AIacc, response.SFS.lack_map_calculation.balanced_pass_diff, response.SFS.lack_map_calculation.balanced_tech * 10),
+                                        FSPassRating = response.FS.lack_map_calculation.balanced_pass_diff,
+                                        FSTechRating = response.FS.lack_map_calculation.balanced_tech * 10,
+                                        FSPredictedAcc = response.FS.AIacc,
+                                        FSAccRating = ReplayUtils.AccRating(response.FS.AIacc, response.FS.lack_map_calculation.balanced_pass_diff, response.FS.lack_map_calculation.balanced_tech * 10),
+                                    };
+
+                                } else {
+                                    diff.PassRating = diff.Stars ?? 4.2f;
+                                    diff.PredictedAcc = 0.98f;
+                                    diff.TechRating = 4.2f;
+                                }
+                                await _context.SaveChangesAsync();
+
+                                await _scoreRefreshController.RefreshScores(lb.Id);
+                                //leaderboards.Add(lb);
+                            //} else { continue; }
+                        } else {
+                            leaderboards.Add(lb);
+                        }
+                    }
+                }
+            }
+
+            
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [NonAction]
+        public async Task<(float?, float?, float?)> ExmachinaStars2(string hash, int diff) {
+
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://bs-replays-ai.azurewebsites.net/bl-reweight/" + hash + "/Standard/" + diff + "/1");
+            request.Method = "GET";
+            request.Proxy = null;
+
+            try {
+                var response = await request.DynamicResponse();
+                return ((float?)response?.AIacc, (float?)response?.pass_rating, (float?)response?.tech_rating);
+            } catch { return (null, null, null); }
+
+            
+        }
+
         [HttpGet("~/event/{id}/refresh")]
         public async Task<ActionResult> RefreshEvent(int id)
         {
