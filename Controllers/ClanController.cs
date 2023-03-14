@@ -280,8 +280,7 @@ namespace BeatLeader_Server.Controllers
             player.Clans.Add(newClan);
             await _context.SaveChangesAsync();
 
-            // Recalculate clanRanking on leaderboards for newly added clan
-            // Recalculate owning clan on leaderboards the clan owns if a user leaves the clan on any leaderboard where this user has a score
+            // Recalculate clanRanking on leaderboards where newly created clan has inherent influence (clan leader already has a score)
             var leaderboardsRecalc = _context
                 .Leaderboards
                 .Include(lb => lb.ClanRanking)
@@ -325,6 +324,7 @@ namespace BeatLeader_Server.Controllers
             var leaderboardsRecalc = _context
                 .Leaderboards
                 .Include(lb => lb.ClanRanking)
+                .ThenInclude(cr => cr.AssociatedScores)
                 .Where(lb => lb.ClanRanking != null ? 
                 lb.ClanRanking.Any(lbClan => lbClan.Clan.Tag == clan.Tag) && lb.Difficulty.Status == DifficultyStatus.ranked : 
                 lb.Difficulty.Status == DifficultyStatus.ranked)
@@ -335,12 +335,18 @@ namespace BeatLeader_Server.Controllers
             {
                 //    // TODO: Do we need to remove the clanRanking from both the leaderboard and the ClanRanking table?
                 //    // TODO: This probably doesn't need to be in a loop. Just testing
-                var clanRankingsToRemove = leaderboard.ClanRanking.Where(cr => cr.Clan == clan).ToList();
-                clanRankingsToRemove.ForEach(crToRemove =>
+                var crToRemove =
+                    leaderboard.ClanRanking?
+                    .Where(cr => cr.Clan == clan)
+                    .FirstOrDefault();
+                if (crToRemove != null)
                 {
-                    leaderboard.ClanRanking.Remove(crToRemove);
+                    leaderboard.ClanRanking?.Remove(crToRemove);
+                    // Sever the relationship between clanRanking and scores, if we don't, deleting the clan throws an error
+                    // https://learn.microsoft.com/en-us/ef/core/saving/cascade-delete
+                    crToRemove.AssociatedScores?.Clear();
                     _context.ClanRanking.Remove(crToRemove);
-                });
+                }
             });
 
             // Remove the clan
@@ -817,6 +823,11 @@ namespace BeatLeader_Server.Controllers
         [HttpPut("~/clan/clanRanking")]
         public async Task<ActionResult> RecalculateClanRanking()
         {
+            /// <summary>
+            /// RecalculateClanRanking: Http Put endpoint that recalculates the clan rankings for all ranked leaderboards.
+            /// Only accessible to admins.
+            /// </summary>
+
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 

@@ -286,14 +286,14 @@ namespace BeatLeader_Server.Controllers
                 }
                 if (clanRanking)
                 {
-                    // TODO: Is there a better way to do this? There's no way this is the right way to do this...
+                    // SSnowy - Is there a better way to do this? There's no way this is the right way to do this...
                     leaderboard.ClanRanking = currentContext
                     .ClanRanking
+                    .Include(cr => cr.Clan)
                     .Where(cr => cr.LeaderboardId == leaderboard.Id)
                     .OrderBy(cr => cr.ClanPP)
                     .Skip((page - 1) * count)
                     .Take(count)
-                    .Include(cr => cr.Clan)
                     .Select(cr => new ClanRankingResponse
                     {
                         Id = cr.Id,
@@ -307,13 +307,13 @@ namespace BeatLeader_Server.Controllers
                         LeaderboardId = cr.LeaderboardId,
                         Leaderboard = cr.Leaderboard,
                         AssociatedScores = scoreQuery
-                            .OrderBy(s => s.Rank)
-                            .Skip((page - 1) * count)
-                            .Take(count)
                             .Include(sc => sc.Player)
                             .ThenInclude(p => p.ProfileSettings)
                             .Include(s => s.Player)
                             .ThenInclude(s => s.Clans)
+                            .OrderBy(s => s.Rank)
+                            .Skip((page - 1) * count)
+                            .Take(count)
                             .Select(s => new ScoreResponse
                             {
                                 Id = s.Id,

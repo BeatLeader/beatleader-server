@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System;
 using System.Numerics;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace BeatLeader_Server.Utils
 {
@@ -38,6 +40,14 @@ namespace BeatLeader_Server.Utils
 
         public static ICollection<ClanRanking> CalculateClanRanking(this AppContext context, Leaderboard leaderboard)
         {
+            /// <summary>
+            /// CalculateClanRanking: Function that calculates the clanRanking given a leaderboard
+            /// This function is called whenever a user sets a new score, a clan is created, a user leaves a clan,
+            /// a user joins a clan, a map is ranked, or a clan is deleted.
+            /// </summary>
+            /// <param name="context">The read/write db context</param>
+            /// <param name="leaderboard">The leaderboard for which we will calculate the clan ranking</param>
+
             if (leaderboard == null) 
             {
                 return null;
@@ -52,7 +62,7 @@ namespace BeatLeader_Server.Utils
                     .Scores
                     .Include(s => s.Player)
                     .ThenInclude(p => p.Clans)
-                    .Where(s => s.LeaderboardId == leaderboard.Id && !s.Banned)
+                    .Where(s => s.LeaderboardId == leaderboard.Id && !s.Banned && s.Player.Clans.Count != 0)
                     .OrderByDescending(el => el.Pp)
                     .ToList();
 
