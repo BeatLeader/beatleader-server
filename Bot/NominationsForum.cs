@@ -16,7 +16,11 @@ namespace BeatLeader_Server.Bot
 
         public const ulong NominationForumID = 1075436060139597886;
 
-        public NominationsForum() {}
+        private readonly RTNominationsForum _rtNominationsForum;
+
+        public NominationsForum(RTNominationsForum rtNominationsForum) {
+            _rtNominationsForum = rtNominationsForum;
+        }
 
         private async Task<SocketThreadChannel?> ReturnOrUnarchiveThread(string id) {
             var guild = BotService.Client.GetGuild(BotService.BLServerID);
@@ -98,10 +102,40 @@ namespace BeatLeader_Server.Bot
             }
         }
 
-        public async Task NominationReuploaded(string id, string newLeaderboardId) {
-            var channel = await ReturnOrUnarchiveThread(id);
+        public async Task NominationReuploaded(
+            AppContext context,
+            RankQualification qualification, 
+            string newLeaderboardId) {
+            var channel = await ReturnOrUnarchiveThread(qualification.DiscordChannelId);
             if (channel != null) {
-                await channel.SendMessageAsync("**REUPLOADED**", embeds: new Embed []{ 
+                string message = "**REUPLOADED**";
+
+                var voters = context.RankQualification
+                    .Where(lb => lb.Id == qualification.Id)
+                    .Include(q => q.Votes)
+                    .Select(lb => lb.Votes.Select(v => v.PlayerId))
+                    .FirstOrDefault()?.ToList() ?? new List<string>();
+
+                if (voters.Count > 0) {
+                    bool pings = false;
+                    foreach (var playerid in voters.Distinct())
+                    {
+                        var discord = context.PlayerSocial.Where(s => s.PlayerId == playerid && s.Service == "Discord").FirstOrDefault();
+                        if (discord != null)
+                        {
+                            try {
+                                ulong discordId = ulong.Parse(discord.UserId); 
+                                message += $" <@{discordId}>";
+                                pings = true;
+                            } catch { }
+                        }
+                    }
+                    
+                    if (pings) {
+                        message += "<a:wavege:1069819816581546057>";
+                    }
+                }
+                await channel.SendMessageAsync(message, embeds: new Embed []{ 
                 new EmbedBuilder()
                     .WithTitle("Leaderboard")
                     .WithUrl("https://beatleader.xyz/leaderboard/global/" + newLeaderboardId)
@@ -195,7 +229,6 @@ namespace BeatLeader_Server.Bot
             Player player,
             MapQuality vote)
         {
-
             Leaderboard leaderboard = await context
                 .Leaderboards
                 .Include(lb => lb.Difficulty)
@@ -226,7 +259,9 @@ namespace BeatLeader_Server.Bot
                     leaderboard.NegativeVotes -= 8;
                 }
                 qualification.Votes.Remove(qualificationVote);
-
+                if (qualificationVote.DiscordRTMessageId != null) {
+                    await _rtNominationsForum.VoteRemoved(qualification.DiscordRTChannelId, qualificationVote.DiscordRTMessageId);
+                }
                 qualificationVote = null;
             }
             else
@@ -240,6 +275,9 @@ namespace BeatLeader_Server.Bot
                 }
                 qualificationVote.Edited = true;
                 qualificationVote.EditTimeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+                if (qualificationVote.DiscordRTMessageId != null) {
+                    await _rtNominationsForum.VoteRemoved(qualification.DiscordRTChannelId, qualificationVote.DiscordRTMessageId);
+                }
             }
 
             if (qualificationVote != null) {
@@ -252,6 +290,8 @@ namespace BeatLeader_Server.Bot
                     qualification.QualityVote--;
                     leaderboard.NegativeVotes += 8;
                 }
+
+                qualificationVote.DiscordRTMessageId = await _rtNominationsForum.VoteAdded(qualification.DiscordRTChannelId, player, vote);
             }
 
             context.SaveChanges();

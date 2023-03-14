@@ -51,6 +51,8 @@
 
         public int? RankQualificationId { get; set; }
         public RankQualification? RankQualification { get; set; }
+
+        public string? DiscordRTMessageId { get; set; }
     }
 
     public class RankQualification

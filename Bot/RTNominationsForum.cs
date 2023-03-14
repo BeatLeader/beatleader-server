@@ -99,10 +99,46 @@ namespace BeatLeader_Server.Bot
             }
         }
 
-        public async Task NominationReuploaded(string id, string newLeaderboardId) {
-            var channel = await ReturnOrUnarchiveThread(id);
+        public async Task NominationReuploaded(
+            AppContext context,
+            RankQualification qualification, 
+            string newLeaderboardId) {
+            var channel = await ReturnOrUnarchiveThread(qualification.DiscordRTChannelId);
+
             if (channel != null) {
-                await channel.SendMessageAsync("**REUPLOADED**", embeds: new Embed []{ 
+                string message = "**REUPLOADED**";
+
+                var criteriaCheckers = context.RankQualification
+                    .Where(lb => lb.Id == qualification.Id)
+                    .Include(q => q.CriteriaComments)
+                    .Select(lb => lb.CriteriaComments.Select(v => v.PlayerId))
+                    .FirstOrDefault()
+                    ?.ToList() ?? new List<string>();
+
+                if (qualification.CriteriaChecker != null) {
+                    criteriaCheckers.Add(qualification.CriteriaChecker);
+                }
+
+                if (criteriaCheckers.Count > 0) {
+                    bool pings = false;
+                    foreach (var playerid in criteriaCheckers.Distinct())
+                    {
+                        var discord = context.PlayerSocial.Where(s => s.PlayerId == playerid && s.Service == "Discord").FirstOrDefault();
+                        if (discord != null)
+                        {
+                            try {
+                                ulong discordId = ulong.Parse(discord.UserId); 
+                                message += $" <@{discordId}>";
+                                pings = true;
+                            } catch { }
+                        }
+                    }
+                    
+                    if (pings) {
+                        message += "<a:wavege:1069819816581546057>";
+                    }
+                }
+                await channel.SendMessageAsync(message, embeds: new Embed []{ 
                 new EmbedBuilder()
                     .WithTitle("Leaderboard")
                     .WithUrl("https://beatleader.xyz/leaderboard/global/" + newLeaderboardId)
@@ -161,6 +197,35 @@ namespace BeatLeader_Server.Bot
         }
 
         public async Task DeleteComment(string forum, string id) {
+            var channel = await ReturnOrUnarchiveThread(forum);
+            if (channel == null) {
+                return;
+            }
+            await channel.DeleteMessageAsync(ulong.Parse(id));
+        }
+
+        public async Task<string> VoteAdded(string forum, Player player, MapQuality vote) {
+            var channel = await ReturnOrUnarchiveThread(forum);
+            if (channel == null) {
+                return "";
+            }
+
+            var playername = player.Name; 
+            
+            var discord = player.Socials?.FirstOrDefault(s => s.Service == "Discord");
+            if (discord != null)
+            {
+                try {
+                    ulong discordId = ulong.Parse(discord.UserId); 
+                    playername = $"<@{discordId}>";
+                } catch { }
+            }
+
+            return (await channel.SendMessageAsync("New vote from " + playername + ": **" + vote.ToString() + "!**",
+                allowedMentions: new AllowedMentions { UserIds = new List<ulong>() })).Id.ToString();
+        }
+
+        public async Task VoteRemoved(string forum, string id) {
             var channel = await ReturnOrUnarchiveThread(forum);
             if (channel == null) {
                 return;

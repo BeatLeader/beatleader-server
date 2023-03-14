@@ -103,10 +103,10 @@ namespace BeatLeader_Server.Controllers
                 newLeaderboard.NegativeVotes = oldLeaderboard.NegativeVotes;
                 newLeaderboard.PositiveVotes = oldLeaderboard.PositiveVotes;
                 if (oldLeaderboard.Qualification.DiscordChannelId.Length > 0) {
-                    await _nominationsForum.NominationReuploaded(oldLeaderboard.Qualification.DiscordChannelId, oldLeaderboardId);
+                    await _nominationsForum.NominationReuploaded(_context, oldLeaderboard.Qualification, oldLeaderboardId);
                 }
                 if (oldLeaderboard.Qualification.DiscordRTChannelId.Length > 0) {
-                    await _rtNominationsForum.NominationReuploaded(oldLeaderboard.Qualification.DiscordRTChannelId, oldLeaderboardId);
+                    await _rtNominationsForum.NominationReuploaded(_context, oldLeaderboard.Qualification, oldLeaderboardId);
                 }
                 oldLeaderboard.Qualification = null;
             }

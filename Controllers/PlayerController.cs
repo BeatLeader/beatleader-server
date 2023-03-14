@@ -330,15 +330,30 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? role = null,
             [FromQuery] string? hmd = null,
             [FromQuery] string? clans = null,
-            [FromQuery] int? activityPeriod = null)
+            [FromQuery] int? activityPeriod = null,
+            [FromQuery] bool? banned = null)
         {
             IQueryable<Player> request = 
                 _readContext
                 .Players
                 .Include(p => p.ScoreStats)
                 .Include(p => p.Clans)
-                .Include(p => p.ProfileSettings)
-                .Where(p => !p.Banned);
+                .Include(p => p.ProfileSettings);
+
+            if (banned != null) {
+                string userId = HttpContext.CurrentUserID(_readContext);
+                var player = await _readContext.Players.FindAsync(userId);
+                if (player == null || !player.Role.Contains("admin"))
+                {
+                    return NotFound();
+                }
+
+                bool bannedUnwrapped = (bool)banned;
+
+                request = request.Where(p => p.Banned == bannedUnwrapped);
+            } else {
+                request = request.Where(p => !p.Banned);
+            }
             if (countries.Length != 0)
             {
                 var player = Expression.Parameter(typeof(Player), "p");

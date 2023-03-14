@@ -861,6 +861,7 @@ namespace BeatLeader_Server.Controllers
                 .Include(p => p.History)
                 .Include(p => p.Badges)
                 .Include(p => p.ScoreStats)
+                .Include(p => p.Socials)
                 .FirstOrDefault();
 
             if (currentPlayer == null || migratedToPlayer == null)
@@ -961,6 +962,14 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
+            if (currentPlayer.Socials?.Count >= 0)
+            {
+                foreach (var item in currentPlayer.Socials)
+                {
+                    item.PlayerId = migrateToId;
+                }
+            }
+
             PlayerFriends? currentPlayerFriends = _context.Friends.Where(u => u.Id == currentPlayer.Id).Include(f => f.Friends).FirstOrDefault();
             PlayerFriends? playerFriends = _context.Friends.Where(u => u.Id == migratedToPlayer.Id).Include(f => f.Friends).FirstOrDefault();
             if (playerFriends == null && currentPlayerFriends != null)
@@ -989,9 +998,18 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            PatreonLink? link = await _context.PatreonLinks.FindAsync(currentPlayer.Id);
-            if (link != null) {
-                link.Id = migratedToPlayer.Id;
+            PatreonLink? patreonLink = await _context.PatreonLinks.FindAsync(currentPlayer.Id);
+            if (patreonLink != null) {
+                var newLink = new PatreonLink {
+                    Id = patreonLink.Id,
+                    PatreonId = patreonLink.PatreonId,
+                    Token = patreonLink.Token,
+                    RefreshToken = patreonLink.RefreshToken,
+                    Timestamp = patreonLink.Timestamp,
+                    Tier = patreonLink.Tier,
+                };
+                _context.PatreonLinks.Remove(patreonLink);
+                _context.PatreonLinks.Add(newLink);
             }
 
             PatreonFeatures? features = migratedToPlayer.PatreonFeatures;
@@ -1005,6 +1023,8 @@ namespace BeatLeader_Server.Controllers
             {
                 migratedToPlayer.ProfileSettings = currentPlayer.ProfileSettings;
             }
+
+            migratedToPlayer.Role += currentPlayer.Role;
 
             List<Score> scores = _context.Scores
                 .Include(el => el.Player)
