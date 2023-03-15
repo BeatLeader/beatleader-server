@@ -893,6 +893,8 @@ namespace BeatLeader_Server.Controllers
                                         FSAccRating = ReplayUtils.AccRating(response.FS.AIacc, response.FS.lack_map_calculation.balanced_pass_diff, response.FS.lack_map_calculation.balanced_tech * 10),
                                     };
 
+                                    diff.Stars = ReplayUtils.ToStars(diff.PredictedAcc ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0);
+
                                 } else {
                                     diff.PassRating = diff.Stars ?? 4.2f;
                                     diff.PredictedAcc = 0.98f;

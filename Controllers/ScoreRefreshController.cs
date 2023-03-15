@@ -46,7 +46,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     var allScores = leaderboard.Scores.Where(s => !s.Banned).ToList();
                     var status = leaderboard.Difficulty.Status;
-                    var modifiers = leaderboard.Difficulty.ModifierValues;
+                    var modifiers = leaderboard.Difficulty.ModifierValues ?? new ModifiersMap();
                     bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
                     bool hasPp = status == DifficultyStatus.ranked || qualification;
 

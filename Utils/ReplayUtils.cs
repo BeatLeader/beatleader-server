@@ -75,7 +75,7 @@ namespace BeatLeader_Server.Utils
         public static float AccRating(float? predictedAcc, float? passRating, float? techRating) {
             float difficulty_to_acc;
             if (predictedAcc > 0) {
-                difficulty_to_acc = 15f / Curve2((predictedAcc ?? 0) + 0.002f);
+                difficulty_to_acc = 15f / Curve2((predictedAcc ?? 0) + 0.0022f);
             } else {
                 float tiny_tech = 0.0208f * (techRating ?? 0) + 1.1284f;
                 difficulty_to_acc = (-MathF.Pow(tiny_tech, -(passRating ?? 0)) + 1) * 8 + 2 + 0.01f * (techRating ?? 0) * (passRating ?? 0);
@@ -87,7 +87,7 @@ namespace BeatLeader_Server.Utils
         }
 
         private static float Inflate(float peepee) {
-            return (650f * MathF.Pow(peepee, 1.2f)) / MathF.Pow(650f, 1.2f);
+            return (650f * MathF.Pow(peepee, 1.3f)) / MathF.Pow(650f, 1.3f);
         }
 
         private static (float, float, float) GetPp(float accuracy, float predictedAcc, float passRating, float techRating) {
@@ -97,7 +97,7 @@ namespace BeatLeader_Server.Utils
             if (float.IsInfinity(passPP) || float.IsNaN(passPP) || float.IsNegativeInfinity(passPP)) {
                 passPP = 0;
             }
-            float accPP = Curve2(accuracy) * difficulty_to_acc * 33f;
+            float accPP = Curve2(accuracy) * difficulty_to_acc * 34f;
             float techPP = MathF.Exp(1.9f * accuracy) * techRating;
             
             return (passPP, accPP, techPP);

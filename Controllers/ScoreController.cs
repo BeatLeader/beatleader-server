@@ -968,6 +968,47 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
+        [HttpGet("~/autoreweight/")]
+        public async Task<ActionResult<string>> Autoreweight()
+        {
+            var currentId = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentId);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin")) {
+                return Unauthorized();
+            }
+
+            string result = "Count,Count >80%,Count >95%,Count/80,Count/95,Average,Top250,Total PP,PP/topPP filtered,PP/topPP unfiltered,Acc Rating,Pass Rating,Tech Rating,Name,Link\n";
+            float weightTreshold = MathF.Pow(0.965f, 40);
+
+            var leaderboards = _context
+                .Leaderboards
+                .Where(lb => 
+                    lb.Difficulty.Status == DifficultyStatus.ranked &&
+                    lb.Scores
+                        .Where(s => s.Player.ScoreStats.RankedPlayCount >= 50 && s.Player.ScoreStats.TopPp != 0)
+                      .Average(s => s.Pp / s.Player.ScoreStats.TopPp) > 0.78)
+                .Select(lb => new { 
+                    Average = lb.Scores.Average(s => s.Weight),
+                    lb.Difficulty,
+                    lb.Difficulty.ModifiersRating})
+                .ToList();
+            int i = 0;
+            foreach (var item in leaderboards)
+            {
+                float weight = MathF.Pow(0.97f, i);
+                item.Difficulty.PassRating -= (item.Average / 2) * weight;
+                item.Difficulty.AccRating -= (item.Average / 2) * weight;
+                if (item.ModifiersRating != null) {
+                    item.ModifiersRating.FSPassRating -= item.Average * 1.5f * weight;
+                    item.ModifiersRating.SFPassRating -= item.Average * 2 * weight;
+                }
+            }
+            await _context.SaveChangesAsync();
+
+            return result;
+        }
+
         [HttpGet("~/replays/")]
         public async Task<ActionResult<ResponseWithMetadata<string>>> GetReplays(
             int count = 50, 
