@@ -913,7 +913,7 @@ namespace BeatLeader_Server.Models
         private static string DecodeString(byte[] buffer, ref int pointer)
         {
             int length = BitConverter.ToInt32(buffer, pointer);
-            if (length > 1000 || length < 0)
+            if (length > 300 || length < 0)
             {
                 pointer += 1;
                 return DecodeString(buffer, ref pointer);
