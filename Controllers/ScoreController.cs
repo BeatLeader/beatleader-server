@@ -690,7 +690,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/score/calculatestatistic/{id}")]
         public async Task<ActionResult<ScoreStatistic?>> CalculateStatistic(string id)
         {
-            Score? score = _context.Scores.Where(s => s.Id == Int64.Parse(id)).Include(s => s.Leaderboard).ThenInclude(l => l.Song).FirstOrDefault();
+            Score? score = _context.Scores.Where(s => s.Id == Int64.Parse(id)).Include(s => s.Leaderboard).ThenInclude(l => l.Song).Include(s => s.Leaderboard).ThenInclude(l => l.Difficulty).FirstOrDefault();
             if (score == null)
             {
                 return NotFound("Score not found");

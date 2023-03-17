@@ -228,15 +228,18 @@ namespace BeatLeader_Server {
             services.AddDbContext<AppContext>(options => options.UseSqlServer(Configuration.GetValue<string>("DefaultConnection")));
             services.AddDbContext<ReadAppContext>(options => options.UseSqlServer(Configuration.GetValue<string>("ReadOnlyConnection")));
 
-            if (Configuration.GetValue<string>("ServicesHost") == "YES")
-            {
-                services.AddHostedService<HourlyRefresh>();
-                services.AddHostedService<DailyRefresh>();
-                services.AddHostedService<HistoryService>();
-                services.AddHostedService<RankingService>();
-                services.AddHostedService<MinuteRefresh>();
+            if (!Environment.IsDevelopment()) {
+                if (Configuration.GetValue<string>("ServicesHost") == "YES")
+                {
+                    services.AddHostedService<HourlyRefresh>();
+                    services.AddHostedService<DailyRefresh>();
+                    services.AddHostedService<HistoryService>();
+                    services.AddHostedService<RankingService>();
+                    services.AddHostedService<MinuteRefresh>();
+                }
+                services.AddHostedService<BotService>();
             }
-            services.AddHostedService<BotService>();
+
             services.AddSingleton<NominationsForum>();
             services.AddSingleton<RTNominationsForum>();
 

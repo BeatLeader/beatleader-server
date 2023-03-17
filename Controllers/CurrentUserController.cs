@@ -1091,13 +1091,18 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/user/failedscores")]
         public async Task<ActionResult<ResponseWithMetadata<FailedScore>>> GetFailedScores(
             [FromQuery] int page = 1,
-            [FromQuery] int count = 3)
+            [FromQuery] int count = 3,
+            [FromQuery] string? id = null)
         {
-            string? id = GetId();
-            if (id == null) {
+            string? playerId = GetId();
+            if (playerId == null) {
                 return NotFound();
             }
-            Player? currentPlayer = await _readContext.Players.FindAsync(id);
+            Player? currentPlayer = await _readContext.Players.FindAsync(playerId);
+            if (currentPlayer == null) {
+                return Unauthorized();
+            }
+
             IQueryable<FailedScore> query = _readContext.FailedScores.Include(lb => lb.Player).ThenInclude(p => p.ScoreStats).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))

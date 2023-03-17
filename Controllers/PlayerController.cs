@@ -106,6 +106,18 @@ namespace BeatLeader_Server.Controllers
             }
         }
 
+        [HttpGet("~/player/discord/{id}")]
+        public async Task<ActionResult<PlayerResponseFull>> GetDiscord(string id)
+        {
+            var social = _context.PlayerSocial.Where(s => s.Service == "Discord" && s.UserId == id && s.PlayerId != null).FirstOrDefault();
+
+            if (social == null || social.PlayerId == null) {
+                return NotFound();
+            }
+
+            return await Get(social.PlayerId, true);
+        }
+
         [NonAction]
         public async Task<ActionResult<Player>> GetLazy(string id, bool addToBase = true)
         {
