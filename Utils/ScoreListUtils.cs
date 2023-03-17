@@ -1,8 +1,6 @@
 ﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using System.Linq.Expressions;
 
 namespace BeatLeader_Server.Utils
@@ -17,6 +15,8 @@ namespace BeatLeader_Server.Utils
             string order = "desc",
             string? search = null,
             string? diff = null,
+            string? mode = null,
+            Requirements? requirements = null,
             string? type = null,
             string? modifiers = null,
             float? stars_from = null,
@@ -62,9 +62,9 @@ namespace BeatLeader_Server.Utils
             {
                 string lowSearch = search.ToLower();
                 sequence = sequence
-                    .Include(lb => lb.Leaderboard)
-                    .ThenInclude(lb => lb.Song)
-                    .Where(p => p.Leaderboard.Song.Author.ToLower().Contains(lowSearch) ||
+                    .Where(p => p.Leaderboard.Song.Id == lowSearch ||
+                                p.Leaderboard.Song.Hash == lowSearch ||
+                                p.Leaderboard.Song.Author.ToLower().Contains(lowSearch) ||
                                 p.Leaderboard.Song.Mapper.ToLower().Contains(lowSearch) ||
                                 p.Leaderboard.Song.Name.ToLower().Contains(lowSearch));
             }
@@ -76,19 +76,27 @@ namespace BeatLeader_Server.Utils
             }
             if (diff != null)
             {
-                sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.DifficultyName.ToLower().Contains(diff.ToLower()));
+                sequence = sequence.Where(p => p.Leaderboard.Difficulty.DifficultyName == diff);
+            }
+            if (mode != null)
+            {
+                sequence = sequence.Where(p => p.Leaderboard.Difficulty.ModeName == mode);
+            }
+            if (requirements != null)
+            {
+                sequence = sequence.Where(p => p.Leaderboard.Difficulty.Requirements.HasFlag(requirements));
             }
             if (type != null)
             {
-                sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked : p.Leaderboard.Difficulty.Status != DifficultyStatus.ranked);
+                sequence = sequence.Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked : p.Leaderboard.Difficulty.Status != DifficultyStatus.ranked);
             }
             if (stars_from != null)
             {
-                sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.Stars >= stars_from);
+                sequence = sequence.Where(p => p.Leaderboard.Difficulty.Stars >= stars_from);
             }
             if (stars_to != null)
             {
-                sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Where(p => p.Leaderboard.Difficulty.Stars <= stars_to);
+                sequence = sequence.Where(p => p.Leaderboard.Difficulty.Stars <= stars_to);
             }
             if (time_from != null)
             {

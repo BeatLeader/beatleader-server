@@ -472,6 +472,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? order = null,
             [FromQuery] string? search = null,
             [FromQuery] string? type = null,
+            [FromQuery] string? mode = null,
             [FromQuery] int? mapType = null,
             [FromQuery] Operation allTypes = 0,
             [FromQuery] Requirements? mapRequirements = null,
@@ -484,7 +485,7 @@ namespace BeatLeader_Server.Controllers
 
             var sequence = _readContext.Leaderboards.AsQueryable();
             string? currentID = HttpContext.CurrentUserID(_readContext);
-            sequence = sequence.Filter(_readContext, sortBy, order, search, type, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, date_from, date_to, currentID);
+            sequence = sequence.Filter(_readContext, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, date_from, date_to, currentID);
 
             var result = new ResponseWithMetadata<LeaderboardInfoResponse>()
             {

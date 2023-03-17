@@ -463,6 +463,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string order = "desc",
             [FromQuery] string? search = null,
             [FromQuery] string? type = null,
+            [FromQuery] string? mode = null,
             [FromQuery] int? mapType = null,
             [FromQuery] Operation allTypes = 0,
             [FromQuery] Requirements? mapRequirements = null,
@@ -481,7 +482,7 @@ namespace BeatLeader_Server.Controllers
             var sequence = _readAppContext.Leaderboards.AsQueryable();
             string? currentID = HttpContext.CurrentUserID(_readAppContext);
 
-            sequence = sequence.Filter(_readAppContext, sortBy, order, search, type, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, date_from, date_to, currentID);
+            sequence = sequence.Filter(_readAppContext, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, date_from, date_to, currentID);
 
             var diffsCount = sequence.Select(s => s.Song.Hash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash).Take(count).Last().Index + 1;
 
@@ -555,6 +556,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? search = null,
             [FromQuery] string? diff = null,
             [FromQuery] string? type = null,
+            [FromQuery] string? mode = null,
+            [FromQuery] Requirements? requirements = null,
             [FromQuery] string? modifiers = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
@@ -595,7 +598,7 @@ namespace BeatLeader_Server.Controllers
             IQueryable<Score> sequence = _readAppContext
                 .Scores
                 .Where(t => t.PlayerId == userId)
-                .Filter(_readAppContext, !player.Banned, sortBy, order, search, diff, type, modifiers, stars_from, stars_to, time_from, time_to, eventId); 
+                .Filter(_readAppContext, !player.Banned, sortBy, order, search, diff, mode, requirements, type, modifiers, stars_from, stars_to, time_from, time_to, eventId); 
 
             if (sequence.Count() == 0) { return NotFound(); }
 

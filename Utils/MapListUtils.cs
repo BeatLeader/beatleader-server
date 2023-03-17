@@ -23,6 +23,7 @@ namespace BeatLeader_Server.Utils
             string? order = null,
             string? search = null,
             string? type = null,
+            string? mode = null,
             int? mapType = null,
             Operation allTypes = 0,
             Requirements? mapRequirements = null,
@@ -138,8 +139,9 @@ namespace BeatLeader_Server.Utils
             {
                 string lowSearch = search.ToLower();
                 sequence = sequence
-                    .Include(lb => lb.Song)
-                    .Where(p => p.Song.Author.Contains(lowSearch) ||
+                    .Where(p => p.Song.Id == lowSearch ||
+                                p.Song.Hash == lowSearch ||
+                                p.Song.Author.Contains(lowSearch) ||
                                 p.Song.Mapper.Contains(lowSearch) ||
                                 p.Song.Name.Contains(lowSearch));
             }
@@ -233,6 +235,11 @@ namespace BeatLeader_Server.Utils
                         sequence = sequence.Include(lb => lb.Difficulty).Where(p => (p.Difficulty.Type & maptype) == 0);
                         break;
                 }
+            }
+
+            if (mode != null)
+            {
+                sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.ModeName == mode);
             }
 
             if (mapRequirements != null)
