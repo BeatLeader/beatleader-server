@@ -53,6 +53,9 @@ namespace BeatLeader_Server.Services
 
             (var newPp, var newRank, var newCountryRank) = _context.RecalculatePPAndRankFaster(player);
 
+            player.Rank = newRank;
+            player.Pp = newPp;
+
             if (score != null && score.ScoreImprovement != null) {
                 score.ScoreImprovement.TotalRank = player.Rank - oldRank;
                 score.ScoreImprovement.TotalPp = player.Pp - oldPp;
@@ -167,6 +170,13 @@ namespace BeatLeader_Server.Services
                             try {
                             var forum = scope.ServiceProvider.GetRequiredService<NominationsForum>();
                             await forum.NominationRanked(leaderboard.Qualification.DiscordChannelId);
+                            } catch { }
+                        }
+
+                        if (leaderboard.Qualification.DiscordRTChannelId.Length > 0) {
+                            try {
+                            var forum = scope.ServiceProvider.GetRequiredService<RTNominationsForum>();
+                            await forum.NominationRanked(leaderboard.Qualification.DiscordRTChannelId);
                             } catch { }
                         }
                     }

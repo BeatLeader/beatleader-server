@@ -154,7 +154,6 @@ namespace BeatLeader_Server.Bot
             if (channel != null) {
                 await channel.SendMessageAsync("**RANKED <a:saberege:961310724787929168> **");
                 await channel.ModifyAsync(props => {
-                    props.Archived = true;
                     props.AppliedTags = new List<ulong> { ForumChannel.Tags.First(t => t.Name == "Ranked").Id };
                 });
             }
