@@ -902,8 +902,17 @@ namespace BeatLeader_Server.Controllers
                 case "date":
                     query = query.Order(order, p => p.EndDate);
                     break;
+                case "name":
+                    query = query.Order(order == "desc" ? "asc" : "desc", t => t.Name);
+                    break;
                 default:
                     break;
+            }
+
+            if (search != null)
+            {
+                string lowSearch = search.ToLower();
+                query = query.Where(p => p.Name.ToLower().Contains(lowSearch));
             }
 
             var result = new ResponseWithMetadata<EventResponse>

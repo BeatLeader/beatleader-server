@@ -40,11 +40,18 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string sort = "pp",
             [FromQuery] string order = "desc",
             [FromQuery] string? search = null,
-            [FromQuery] string? type = null)
+            [FromQuery] string? type = null,
+            [FromQuery] string? sortBy = null)
         {
             var sequence = _readContext.Clans.AsQueryable();
+            if (sortBy != null) {
+                sort = sortBy;
+            }
             switch (sort)
             {
+                case "name":
+                    sequence = sequence.Order(order == "desc" ? "asc" : "desc", t => t.Name);
+                    break;
                 case "pp":
                     sequence = sequence.Order(order, t => t.Pp);
                     break;

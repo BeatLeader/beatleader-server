@@ -531,6 +531,9 @@ namespace BeatLeader_Server.Controllers
                         case "pp":
                             request = request.Order(order, p => p.Pp);
                             break;
+                        case "name":
+                            request = request.Order(order == "desc" ? "asc" : "desc", p => p.Name);
+                            break;
                         case "rank":
                             request = request
                                 .Where(p => p.ScoreStats.AverageRankedRank != 0)
@@ -576,6 +579,9 @@ namespace BeatLeader_Server.Controllers
                 case "unranked":
                     switch (sortBy)
                     {
+                        case "name":
+                            request = request.Order(order == "desc" ? "asc" : "desc", p => p.Name);
+                            break;
                         case "rank":
                             request = request
                                 .Where(p => p.ScoreStats.AverageUnrankedRank != 0)
@@ -612,6 +618,9 @@ namespace BeatLeader_Server.Controllers
                     {
                         case "pp":
                             request = request.Order(order, p => p.Pp);
+                            break;
+                        case "name":
+                            request = request.Order(order == "desc" ? "asc" : "desc", p => p.Name);
                             break;
                         case "rank":
                             request = request
