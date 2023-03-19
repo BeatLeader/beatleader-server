@@ -439,21 +439,28 @@ namespace BeatLeader_Server.Controllers
             } else {
                 hash = hash.Substring(0, 40);
             }
-           var leaderboards = _readContext.Leaderboards
-                .Where(lb => lb.Song.Hash == hash)
-                .Include(lb => lb.Song)
-                .ThenInclude(s => s.Difficulties)
-                .Include(lb => lb.Difficulty)
-                .ThenInclude(d => d.ModifierValues)
-                .Include(lb => lb.Qualification)
-                .Include(lb => lb.Reweight)
-                .Select(lb => new {
-                    Song = lb.Song,
-                    Id = lb.Id,
-                    Qualification = lb.Qualification,
-                    Difficulty = lb.Difficulty,
-                    Reweight = lb.Reweight
-                })
+
+            // TODO: Do I need to sort ClanRanking here to get the clan that has captured the leaderboard?
+            // Or should I just add a field to the leaderboard table called: "Captor Clan" or something like that, even though that data is already in the ClanRanking.
+            var leaderboards = _readContext.Leaderboards
+                 .Where(lb => lb.Song.Hash == hash)
+                 .Include(lb => lb.Song)
+                 .ThenInclude(s => s.Difficulties)
+                 .Include(lb => lb.Difficulty)
+                 .ThenInclude(d => d.ModifierValues)
+                 .Include(lb => lb.Qualification)
+                 .Include(lb => lb.Reweight)
+                 .Include(lb => lb.ClanRanking)
+                 .ThenInclude(cr => cr.Clan)
+                 .Select(lb => new {
+                     Song = lb.Song,
+                     Id = lb.Id,
+                     Qualification = lb.Qualification,
+                     Difficulty = lb.Difficulty,
+                     Reweight = lb.Reweight,
+                     ClanRankingContested = lb.ClanRankingContested,
+                     ClanRanking = lb.ClanRanking.FirstOrDefault()
+                 })
                 .ToList();
 
             if (leaderboards.Count() == 0) {
@@ -467,7 +474,9 @@ namespace BeatLeader_Server.Controllers
                     Id = lb.Id,
                     Qualification = lb.Qualification,
                     Difficulty = lb.Difficulty,
-                    Reweight = lb.Reweight
+                    Reweight = lb.Reweight,
+                    ClanRankingContested = lb.ClanRankingContested,
+                    ClanRanking = lb.ClanRanking
                 }).ToList()
             };
         }
@@ -574,7 +583,9 @@ namespace BeatLeader_Server.Controllers
                 .ThenInclude(lb => lb.ModifierValues)
                 .Include(lb => lb.Song)
                 .Include(lb => lb.Reweight)
-                .ThenInclude(rew => rew.Modifiers);
+                .ThenInclude(rew => rew.Modifiers)
+                .Include(lb => lb.ClanRanking)
+                .ThenInclude(cr => cr.Clan);
 
             bool showPlays = sortBy == "playcount";
 
@@ -586,6 +597,8 @@ namespace BeatLeader_Server.Controllers
                     Difficulty = lb.Difficulty,
                     Qualification = lb.Qualification,
                     Reweight = lb.Reweight,
+                    ClanRankingContested = lb.ClanRankingContested,
+                    ClanRanking = lb.ClanRanking.FirstOrDefault(),
                     PositiveVotes = lb.PositiveVotes,
                     NegativeVotes = lb.NegativeVotes,
                     VoteStars = lb.VoteStars,

@@ -42,7 +42,7 @@ namespace BeatLeader_Server.Utils
         {
             /// <summary>
             /// CalculateClanRanking: Function that calculates the clanRanking given a leaderboard
-            /// This function is called whenever a user sets a new score, a clan is created, a user leaves a clan,
+            /// This function is called on relevant leaderboards whenever a user sets a new score, a clan is created, a user leaves a clan,
             /// a user joins a clan, a map is ranked, or a clan is deleted.
             /// </summary>
             /// <param name="context">The read/write db context</param>
