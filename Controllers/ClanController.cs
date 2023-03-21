@@ -50,7 +50,7 @@ namespace BeatLeader_Server.Controllers
             switch (sort)
             {
                 case "name":
-                    sequence = sequence.Order(order == "desc" ? "asc" : "desc", t => t.Name);
+                    sequence = sequence.Order(order, t => t.Name);
                     break;
                 case "pp":
                     sequence = sequence.Order(order, t => t.Pp);

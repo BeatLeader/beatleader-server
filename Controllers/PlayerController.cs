@@ -532,7 +532,7 @@ namespace BeatLeader_Server.Controllers
                             request = request.Order(order, p => p.Pp);
                             break;
                         case "name":
-                            request = request.Order(order == "desc" ? "asc" : "desc", p => p.Name);
+                            request = request.Order(order, p => p.Name);
                             break;
                         case "rank":
                             request = request
@@ -580,7 +580,7 @@ namespace BeatLeader_Server.Controllers
                     switch (sortBy)
                     {
                         case "name":
-                            request = request.Order(order == "desc" ? "asc" : "desc", p => p.Name);
+                            request = request.Order(order, p => p.Name);
                             break;
                         case "rank":
                             request = request
@@ -620,7 +620,7 @@ namespace BeatLeader_Server.Controllers
                             request = request.Order(order, p => p.Pp);
                             break;
                         case "name":
-                            request = request.Order(order == "desc" ? "asc" : "desc", p => p.Name);
+                            request = request.Order(order, p => p.Name);
                             break;
                         case "rank":
                             request = request

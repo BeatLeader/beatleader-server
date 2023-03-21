@@ -74,7 +74,7 @@ namespace BeatLeader_Server.Utils
                 case "name":
                     sequence = sequence
                         .Where(s => (date_from == null || s.Song.UploadTime >= date_from) && (date_to == null || s.Song.UploadTime <= date_to))
-                        .Order(order == "desc" ? "asc" : "desc", t => t.Song.Name);
+                        .Order(order, t => t.Song.Name);
                     break;
                 case "stars":
                     sequence = sequence

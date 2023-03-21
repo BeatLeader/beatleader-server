@@ -903,7 +903,7 @@ namespace BeatLeader_Server.Controllers
                     query = query.Order(order, p => p.EndDate);
                     break;
                 case "name":
-                    query = query.Order(order == "desc" ? "asc" : "desc", t => t.Name);
+                    query = query.Order(order, t => t.Name);
                     break;
                 default:
                     break;

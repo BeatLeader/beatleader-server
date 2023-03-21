@@ -222,9 +222,6 @@ namespace BeatLeader_Server.Controllers
                     case "maxStreak":
                         scoreQuery = scoreQuery.Order(order, s => s.MaxStreak).ThenOrder(oppositeOrder, s => s.Rank);
                         break;
-                    case "playCount":
-                        scoreQuery = scoreQuery.Order(order, s => s.PlayCount).ThenOrder(oppositeOrder, s => s.Rank);
-                        break;
                     default:
                         break;
                 }
@@ -260,7 +257,6 @@ namespace BeatLeader_Server.Controllers
                         Timeset = s.Timeset,
                         Timepost = s.Timepost,
                         MaxStreak = s.MaxStreak,
-                        PlayCount = s.PlayCount,
                         Player = new PlayerResponse
                         {
                             Id = s.Player.Id,
@@ -548,7 +544,6 @@ namespace BeatLeader_Server.Controllers
                         Weight = s.Weight,
                         AccLeft = s.AccLeft,
                         AccRight = s.AccRight,
-                        PlayCount = s.PlayCount,
                         MaxStreak = s.MaxStreak,
                     }).FirstOrDefault(),
                     Plays = showPlays ? lb.Scores.Count(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)) : 0
