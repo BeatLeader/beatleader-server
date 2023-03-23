@@ -207,25 +207,17 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> AddFriend([FromQuery] string playerId)
         {
             string? id = GetId();
+            if (id == null) {
+                return Unauthorized();
+            }
+
             if (playerId == id) {
                 return BadRequest("Couldnt add user as a friend to himself");
             }
-            Player? player = _context.Players.FirstOrDefault(u => u.Id == id);
-            if (player == null)
-            {
-                return NotFound();
-            }
-            PlayerFriends? playerFriends = _context.Friends.Where(u => u.Id == id).Include(f => f.Friends).FirstOrDefault();
+            PlayerFriends? playerFriends = _context.Friends.Where(u => u.Id == id).FirstOrDefault();
             if (playerFriends == null) {
-                playerFriends = new PlayerFriends();
-                playerFriends.Id = id;
+                playerFriends = new PlayerFriends { Id = id, Friends = new List<Player>() };
                 _context.Friends.Add(playerFriends);
-                await _context.SaveChangesAsync();
-            }
-
-            if (playerFriends.Friends.FirstOrDefault(p => p.Id == playerId) != null)
-            {
-                return BadRequest("Already a friend");
             }
 
             Player? friend = _context.Players.FirstOrDefault(p => p.Id == playerId);
@@ -244,16 +236,14 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> RemoveFriend([FromQuery] string playerId)
         {
             string? id = GetId();
+            if (id == null) {
+                return Unauthorized();
+            }
             if (playerId == id)
             {
                 return BadRequest("Couldnt remove user as a friend from himself");
             }
-            Player? player = _context.Players.FirstOrDefault(u => u.Id == id);
-            if (player == null)
-            {
-                return NotFound();
-            }
-            PlayerFriends? playerFriends = _context.Friends.Where(u => u.Id == id).Include(f => f.Friends).FirstOrDefault();
+            PlayerFriends? playerFriends = _context.Friends.Where(u => u.Id == id).Include(p => p.Friends).FirstOrDefault();
             if (playerFriends == null)
             {
                 return NotFound();
@@ -285,12 +275,13 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? id = null)
         {
             string userId = GetId();
-            var player = _context
+            var player = await _context
                 .Players
+                .Where(p => p.Id == userId)
                 .Include(p => p.ProfileSettings)
                 .Include(p => p.PatreonFeatures)
                 .Include(p => p.Changes)
-                .FirstOrDefault(p => p.Id == userId);
+                .FirstOrDefaultAsync();
             bool adminChange = false;
 
             if (id != null && player != null && player.Role.Contains("admin"))
