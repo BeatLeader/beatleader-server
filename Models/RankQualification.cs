@@ -78,6 +78,7 @@
         public string? CriteriaCheck { get; set; }
 
         public ModifiersMap? Modifiers { get; set; }
+        public ModifiersRating? ModifiersRating { get; set; }
 
         public ICollection<QualificationChange>? Changes { get; set; }
         public ICollection<QualificationCommentary>? Comments { get; set; }

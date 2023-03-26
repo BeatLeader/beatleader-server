@@ -77,6 +77,9 @@ namespace BeatLeader_Server.Utils
                         .Order(order, t => t.Song.Name);
                     break;
                 case "stars":
+                case "passRating":
+                case "accRating":
+                case "techRating":
                     sequence = sequence
                         .Where(s => (date_from == null || (
                                         (s.Difficulty.Status == DifficultyStatus.nominated && s.Difficulty.NominatedTime >= date_from) ||
@@ -88,7 +91,16 @@ namespace BeatLeader_Server.Utils
                                         (s.Difficulty.Status == DifficultyStatus.qualified && s.Difficulty.QualifiedTime <= date_to) ||
                                         (s.Difficulty.Status == DifficultyStatus.ranked && s.Difficulty.RankedTime <= date_to)
                                         )))
-                        .Include(lb => lb.Difficulty).Order(order, t => t.Difficulty.Stars);
+                        .Include(lb => lb.Difficulty);
+                    if (sortBy == "stars") {
+                        sequence = sequence.Order(order, t => t.Difficulty.Stars);
+                    } else if (sortBy == "passRating") {
+                        sequence = sequence.Order(order, t => t.Difficulty.PassRating);
+                    } else if (sortBy == "accRating") {
+                        sequence = sequence.Order(order, t => t.Difficulty.AccRating);
+                    } else if (sortBy == "techRating") {
+                        sequence = sequence.Order(order, t => t.Difficulty.TechRating);
+                    }
                     break;
                 case "scoreTime":
                     if (mytype == "played")

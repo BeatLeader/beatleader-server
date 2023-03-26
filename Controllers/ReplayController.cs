@@ -713,7 +713,7 @@ namespace BeatLeader_Server.Controllers
                 //    await MigrateOldReplay(currentScore, stats);
                 //}
 
-                string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
+                string fileName = replay.info.playerID + resultScore.Id.ToString() + "-" + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
                 resultScore.Replay = "https://cdn.replays.beatleader.xyz/" + fileName;
                 
                 string replayLink = resultScore.Replay;
@@ -773,7 +773,11 @@ namespace BeatLeader_Server.Controllers
                         resultScore.FcAccuracy, 
                         resultScore.Modifiers, 
                         leaderboard.Difficulty.ModifierValues, 
-                        leaderboard.Difficulty.Stars ?? 0, leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
+                        leaderboard.Difficulty.ModifiersRating, 
+                        leaderboard.Difficulty.AccRating ?? 0, 
+                        leaderboard.Difficulty.PassRating ?? 0, 
+                        leaderboard.Difficulty.TechRating ?? 0, 
+                        leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
                 }
                 resultScore.Country = context.Request.Headers["cf-ipcountry"] == StringValues.Empty ? "not set" : context.Request.Headers["cf-ipcountry"].ToString();
 

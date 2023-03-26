@@ -988,7 +988,9 @@ namespace BeatLeader_Server.Controllers
             string diff,
             string mode,
             [FromQuery] float rankability,
-            [FromQuery] float stars = 0,
+            [FromQuery] float accRating = 0,
+            [FromQuery] float passRating = 0,
+            [FromQuery] float techRating = 0,
             [FromQuery] int type = 0)
         {
             if (hash.Length < 40) {
@@ -1016,7 +1018,8 @@ namespace BeatLeader_Server.Controllers
             if (leaderboard != null)
             {
                 DifficultyDescription? difficulty = leaderboard.Difficulty;
-                if (leaderboard.Changes == null) {
+                if (leaderboard.Changes == null)
+                {
                     leaderboard.Changes = new List<LeaderboardChange>();
                 }
                 LeaderboardChange rankChange = new LeaderboardChange
@@ -1024,10 +1027,17 @@ namespace BeatLeader_Server.Controllers
                     Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
                     PlayerId = currentID,
                     OldRankability = difficulty.Status == DifficultyStatus.ranked ? 1 : 0,
-                    OldStars = difficulty.Stars ?? 0,
+                    OldAccRating = difficulty.AccRating ?? 0,
+                    OldPassRating = difficulty.PassRating ?? 0,
+                    OldTechRating = difficulty.TechRating ?? 0,
                     OldType = difficulty.Type,
                     NewRankability = rankability,
-                    NewStars = stars,
+                    NewAccRating = ReplayUtils.AccRating(
+                                accRating, 
+                                passRating, 
+                                techRating),
+                    NewPassRating = passRating,
+                    NewTechRating = techRating,
                     NewType = type
                 };
                 leaderboard.Changes.Add(rankChange);
@@ -1043,7 +1053,14 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 difficulty.Status = rankability > 0 ? DifficultyStatus.ranked : DifficultyStatus.unranked;
-                difficulty.Stars = stars;
+                difficulty.PredictedAcc = accRating;
+                difficulty.PassRating = passRating;
+                difficulty.TechRating = techRating;
+                difficulty.AccRating = ReplayUtils.AccRating(
+                                accRating, 
+                                passRating, 
+                                techRating);
+
                 difficulty.Type = type;
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
