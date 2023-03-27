@@ -426,7 +426,9 @@ namespace BeatLeader_Server.Controllers
             string diff,
             string mode,
             [FromQuery] DifficultyStatus? newStatus,
-            [FromQuery] float? stars,
+            [FromQuery] float? accRating,
+            [FromQuery] float? passRating,
+            [FromQuery] float? techRating,
             [FromQuery] int? type,
             [FromQuery] int? criteriaCheck,
             [FromQuery] string? criteriaCommentary,
@@ -467,7 +469,9 @@ namespace BeatLeader_Server.Controllers
             if (qualification != null)
             {
                 if (newStatus == DifficultyStatus.qualified 
-                    && leaderboard.Difficulty.Stars == stars
+                    && leaderboard.Difficulty.AccRating == accRating
+                    && leaderboard.Difficulty.PassRating == passRating
+                    && leaderboard.Difficulty.TechRating == techRating
                     && leaderboard.Difficulty.Type == type
                     && (criteriaCheck == null || criteriaCheck == 1)
                     && qualification.CriteriaChecker != currentID
@@ -531,6 +535,9 @@ namespace BeatLeader_Server.Controllers
                         Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
                         OldRankability = leaderboard.Difficulty.Status == DifficultyStatus.nominated || leaderboard.Difficulty.Status == DifficultyStatus.qualified ? 1.0f : 0,
                         OldStars = leaderboard.Difficulty.Stars ?? 0,
+                        OldAccRating = leaderboard.Difficulty.AccRating ?? 0,
+                        OldPassRating = leaderboard.Difficulty.PassRating ?? 0,
+                        OldTechRating = leaderboard.Difficulty.TechRating ?? 0,
                         OldType = (int)leaderboard.Difficulty.Type,
                         OldCriteriaMet = qualification.CriteriaMet,
                         OldCriteriaCommentary = qualification.CriteriaCommentary,
@@ -542,12 +549,24 @@ namespace BeatLeader_Server.Controllers
                         leaderboard.Difficulty.NominatedTime = 0;
                         leaderboard.Difficulty.QualifiedTime = 0;
                         leaderboard.Difficulty.Stars = 0;
+                        leaderboard.Difficulty.AccRating = 0;
+                        leaderboard.Difficulty.PassRating = 0;
+                        leaderboard.Difficulty.TechRating = 0;
                         leaderboard.Difficulty.ModifierValues = new ModifiersMap();
                     } else {
-                        if (stars != null)
+                        if (accRating != null)
                         {
-                            leaderboard.Difficulty.Stars = stars;
+                            leaderboard.Difficulty.AccRating = accRating;
                         }
+                        if (passRating != null)
+                        {
+                            leaderboard.Difficulty.PassRating = passRating;
+                        }
+                        if (techRating != null)
+                        {
+                            leaderboard.Difficulty.TechRating = techRating;
+                        }
+                        leaderboard.Difficulty.Stars = ReplayUtils.ToStars(leaderboard.Difficulty.AccRating ?? 0, leaderboard.Difficulty.PassRating ?? 0, leaderboard.Difficulty.TechRating ?? 0);
                         if (type != null)
                         {
                             leaderboard.Difficulty.Type = (int)type;
@@ -573,6 +592,10 @@ namespace BeatLeader_Server.Controllers
                     }
 
                     qualificationChange.NewRankability = leaderboard.Difficulty.Status == DifficultyStatus.nominated || leaderboard.Difficulty.Status == DifficultyStatus.qualified ? 1.0f : 0;
+
+                    qualificationChange.NewAccRating = leaderboard.Difficulty.AccRating ?? 0;
+                    qualificationChange.NewPassRating = leaderboard.Difficulty.PassRating ?? 0;
+                    qualificationChange.NewTechRating = leaderboard.Difficulty.TechRating ?? 0;
                     qualificationChange.NewStars = leaderboard.Difficulty.Stars ?? 0;
                     qualificationChange.NewType = (int)leaderboard.Difficulty.Type;
                     qualificationChange.NewCriteriaMet = qualification.CriteriaMet;
@@ -584,7 +607,9 @@ namespace BeatLeader_Server.Controllers
                     }
 
                     if (qualificationChange.NewRankability != qualificationChange.OldRankability
-                        || qualificationChange.NewStars != qualificationChange.OldStars
+                        || qualificationChange.NewPassRating != qualificationChange.OldPassRating
+                        || qualificationChange.NewAccRating != qualificationChange.OldAccRating
+                        || qualificationChange.NewTechRating != qualificationChange.OldTechRating
                         || qualificationChange.NewType != qualificationChange.OldType
                         || qualificationChange.NewCriteriaMet != qualificationChange.OldCriteriaMet
                         || qualificationChange.NewCriteriaCommentary != qualificationChange.OldCriteriaCommentary
@@ -620,9 +645,17 @@ namespace BeatLeader_Server.Controllers
                             }
                             else
                             {
-                                if (qualificationChange.NewStars != qualificationChange.OldStars)
+                                if (qualificationChange.NewAccRating != qualificationChange.OldAccRating)
                                 {
-                                    message += "★ " + qualificationChange.OldStars + " → " + qualificationChange.NewStars;
+                                    message += "Acc ★ " + qualificationChange.OldAccRating + " → " + qualificationChange.NewAccRating;
+                                }
+                                if (qualificationChange.NewPassRating != qualificationChange.OldPassRating)
+                                {
+                                    message += "Pass ★ " + qualificationChange.OldPassRating + " → " + qualificationChange.NewPassRating;
+                                }
+                                if (qualificationChange.NewTechRating != qualificationChange.OldTechRating)
+                                {
+                                    message += "Tech ★ " + qualificationChange.OldTechRating + " → " + qualificationChange.NewTechRating;
                                 }
                                 message += FormatUtils.DescribeTypeChanges(qualificationChange.OldType, qualificationChange.NewType);
                                 if (qualificationChange.OldCriteriaMet != qualificationChange.NewCriteriaMet)

@@ -446,6 +446,8 @@ namespace BeatLeader_Server.Controllers
                 .Leaderboards
                 .Include(lb => lb.Difficulty)
                 .ThenInclude(d => d.ModifierValues)
+                .Include(lb => lb.Difficulty)
+                .ThenInclude(d => d.ModifiersRating)
                 .FirstOrDefault(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff);
 
             if (leaderboard == null) {
