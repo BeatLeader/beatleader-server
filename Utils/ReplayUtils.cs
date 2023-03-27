@@ -81,7 +81,7 @@ namespace BeatLeader_Server.Utils
         private static (float, float, float) GetPp(float accuracy, float accRating, float passRating, float techRating) {
 
             float passPP = 15.2f * MathF.Exp(MathF.Pow(passRating, 1 / 2.62f)) - 30f;
-            if (float.IsInfinity(passPP) || float.IsNaN(passPP) || float.IsNegativeInfinity(passPP))
+            if (float.IsInfinity(passPP) || float.IsNaN(passPP) || float.IsNegativeInfinity(passPP) || passPP < 0)
             {
                 passPP = 0;
             }
@@ -135,7 +135,7 @@ namespace BeatLeader_Server.Utils
                             }
                         }
                     }
-                    (passPP, accPP, techPP) = GetPp(accuracy, accRating, passRating * mp, techRating * mp);
+                    (passPP, accPP, techPP) = GetPp(accuracy, accRating * mp, passRating * mp, techRating * mp);
                     fullPP = Inflate(passPP + accPP + techPP);
                     if ((passPP + accPP + techPP) > 0) {
                         increase = fullPP / (passPP + accPP + techPP);
