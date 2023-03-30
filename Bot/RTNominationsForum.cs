@@ -220,7 +220,7 @@ namespace BeatLeader_Server.Bot
                 } catch { }
             }
 
-            return (await channel.SendMessageAsync("New vote from " + playername + ": **" + vote.ToString() + "!**",
+            return (await channel.SendMessageAsync("New vote from " + playername + ": **" + (vote != MapQuality.Bad ? vote.ToString() : "Downvote") + "!**",
                 allowedMentions: new AllowedMentions { UserIds = new List<ulong>() })).Id.ToString();
         }
 

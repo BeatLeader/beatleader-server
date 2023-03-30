@@ -562,6 +562,64 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
+        [HttpGet("~/leaderboards/groupped/")]
+        public async Task<ActionResult<ResponseWithMetadata<LeaderboardInfoResponse>>> GetAllGroupped(
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10,
+            [FromQuery] string? sortBy = null,
+            [FromQuery] string? order = null,
+            [FromQuery] string? search = null,
+            [FromQuery] string? type = null,
+            [FromQuery] string? mode = null,
+            [FromQuery] int? mapType = null,
+            [FromQuery] Operation allTypes = 0,
+            [FromQuery] Requirements? mapRequirements = null,
+            [FromQuery] Operation allRequirements = 0,
+            [FromQuery] string? mytype = null,
+            [FromQuery] float? stars_from = null,
+            [FromQuery] float? stars_to = null,
+            [FromQuery] int? date_from = null,
+            [FromQuery] int? date_to = null) {
+
+            var sequence = _readContext.Leaderboards.AsQueryable();
+            string? currentID = HttpContext.CurrentUserID(_readContext);
+            sequence = sequence.Filter(_readContext, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, date_from, date_to, currentID);
+
+            var ids = sequence.Select(lb => lb.SongId).ToList();
+
+            var result = new ResponseWithMetadata<LeaderboardInfoResponse>()
+            {
+                Metadata = new Metadata()
+                {
+                    Page = page,
+                    ItemsPerPage = count,
+                    Total = ids.Count()
+                }
+            };
+
+            ids = ids.Distinct().Skip((page - 1) * count)
+                .Take(count).ToList();
+
+            sequence = sequence
+                .Where(lb => ids.Contains(lb.SongId)).Filter(_readContext, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, date_from, date_to, currentID)
+                .Include(lb => lb.Difficulty)
+                .Include(lb => lb.Song);
+
+            result.Data = sequence
+                .Select(lb => new LeaderboardInfoResponse
+                {
+                    Id = lb.Id,
+                    Song = lb.Song,
+                    Difficulty = lb.Difficulty,
+                    Qualification = lb.Qualification,
+                    PositiveVotes = lb.PositiveVotes,
+                    NegativeVotes = lb.NegativeVotes,
+                    VoteStars = lb.VoteStars,
+                    StarVotes = lb.StarVotes
+                }).ToList();
+            return result;
+        }
+
         [HttpGet("~/leaderboards/refresh")]
         public async Task<ActionResult> RefreshLeaderboards([FromQuery] string? id = null)
         {

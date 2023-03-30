@@ -713,7 +713,7 @@ namespace BeatLeader_Server.Controllers
                 //    await MigrateOldReplay(currentScore, stats);
                 //}
 
-                string fileName = replay.info.playerID + resultScore.Id.ToString() + "-" + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
+                string fileName = replay.info.playerID + "-" + resultScore.Id.ToString() + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
                 resultScore.Replay = "https://cdn.replays.beatleader.xyz/" + fileName;
                 
                 string replayLink = resultScore.Replay;

@@ -205,6 +205,13 @@ namespace BeatLeader_Server.Utils
                             .ThenInclude(ch => ch.NewModifiers)
                             .Where(p => p.Difficulty.Status == DifficultyStatus.qualified);
                         break;
+                    case "staff":
+                        sequence = sequence
+                            .Include(lb => lb.Difficulty)
+                            .Include(lb => lb.Qualification)
+                            .ThenInclude(q => q.Votes)
+                            .Where(p => p.Difficulty.Status == DifficultyStatus.qualified || p.Difficulty.Status == DifficultyStatus.nominated);
+                        break;
                     case "reweighting":
                         sequence = sequence
                             .Include(lb => lb.Difficulty)

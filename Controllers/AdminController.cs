@@ -488,6 +488,14 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/admin/maps/newranking")]
         public async Task<ActionResult> newranking()
         {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
             var songs = _context.Songs.Where(el => el.Difficulties.FirstOrDefault(d => 
                 d.Status == DifficultyStatus.ranked || 
                 d.Status == DifficultyStatus.qualified || 
@@ -581,7 +589,7 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
-        [HttpPost("~/playlist/rank")]
+        [HttpPost("~/admin/playlist/rank")]
         public async Task<ActionResult> RankPlaylist()
         {
             string currentID = HttpContext.CurrentUserID(_context);
@@ -665,9 +673,40 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpGet("~/admin/reweightsummary")]
+        public async Task<ActionResult<string>> ReweightSummary()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+            var Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - 60 * 60 * 5;
+            var scores = _context.Leaderboards.Where(s => s.Changes.FirstOrDefault(c => c.Timeset > Timeset) != null).Include(s => s.Changes).Include(s => s.Song).OrderByDescending(lb => lb.Difficulty.Stars).ToList();
+
+            var result = "Name,Old stars,New Stars,Old acc rating,New acc rating,Old pass rating,New pass rating,Link\n";
+
+            foreach (var lb in scores) {
+                var change = lb.Changes.OrderByDescending(c => c.Timeset).FirstOrDefault();
+
+                result += $"{lb.Song.Name.Replace(",","")},{change.OldStars},{change.NewStars},{change.OldAccRating},{change.NewAccRating},{change.OldPassRating},{change.NewPassRating},https://www.beatleader.xyz/leaderboard/global/{lb.Id}/1\n";
+            }
+
+            return result;
+        }
+
         [HttpGet("~/admin/maps/newranking2")]
         public async Task<ActionResult> newranking2()
         {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
             var songs = _context.Songs.Where(el => el.Difficulties.FirstOrDefault(d => d.Status == DifficultyStatus.ranked || d.Status == DifficultyStatus.qualified || d.Status == DifficultyStatus.nominated) != null).Include(song => song.Difficulties).ThenInclude(d => d.ModifiersRating).ToList();
 
             await songs.ParallelForEachAsync(async song => {
