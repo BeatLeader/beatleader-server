@@ -91,10 +91,9 @@ public static partial class MapListUtils
                 .Include(leaderboard => leaderboard.Reweight)
                 .ThenInclude(rankUpdate => rankUpdate.Changes)
                 .ThenInclude(rankUpdateChange => rankUpdateChange.NewModifiers)
-                .Where(leaderboard => leaderboard.Difficulty.Status != DifficultyStatus.unranked
-                                   && leaderboard.Difficulty.Status != DifficultyStatus.outdated);
+                .Where(leaderboard => leaderboard.Difficulty.Status != DifficultyStatus.unranked && leaderboard.Difficulty.Status != DifficultyStatus.outdated);
 
     private static IQueryable<Leaderboard> WithRanked(this IQueryable<Leaderboard> sequence) =>
         sequence.Include(leaderboard => leaderboard.Difficulty)
-                .Where(p => p.Difficulty.Status == DifficultyStatus.ranked);
+                .Where(leaderboard => leaderboard.Difficulty.Status == DifficultyStatus.ranked);
 }
