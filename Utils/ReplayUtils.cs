@@ -326,7 +326,10 @@ namespace BeatLeader_Server.Utils
             if (lowerController.Contains("oculus touch") || lowerController.Contains("rift cv1")) return ControllerEnum.oculustouch;
             if (lowerController.Contains("rift s") || lowerController.Contains("quest")) return ControllerEnum.oculustouch2;
 
+            if (lowerController.Contains("066a")) return ControllerEnum.hpMotion;
+            if (lowerController.Contains("065d")) return ControllerEnum.odyssey;
             if (lowerController.Contains("windows")) return ControllerEnum.wmr;
+
             if (lowerController.Contains("nolo")) return ControllerEnum.nolo;
             if (lowerController.Contains("disco")) return ControllerEnum.disco;
             if (lowerController.Contains("hands")) return ControllerEnum.hands;
