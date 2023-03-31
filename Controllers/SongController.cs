@@ -89,6 +89,9 @@ namespace BeatLeader_Server.Controllers
             if (newLeaderboard != null && diff.Status != DifficultyStatus.ranked && diff.Status != DifficultyStatus.outdated) {
                 newLeaderboard.Difficulty.Status = diff.Status;
                 newLeaderboard.Difficulty.Stars = diff.Stars;
+                newLeaderboard.Difficulty.AccRating = diff.AccRating;
+                newLeaderboard.Difficulty.PassRating = diff.PassRating;
+                newLeaderboard.Difficulty.TechRating = diff.TechRating;
                 newLeaderboard.Difficulty.Type = diff.Type;
                 newLeaderboard.Difficulty.NominatedTime = diff.NominatedTime;
                 newLeaderboard.Difficulty.ModifierValues = diff.ModifierValues;
