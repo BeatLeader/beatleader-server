@@ -204,6 +204,11 @@ namespace BeatLeader_Server.Controllers
             (Score resultScore, int maxScore) = ReplayUtils.ProcessReplayInfo(info, leaderboard.Difficulty);
             ReplayUtils.PostProcessReplay(resultScore, replay);
 
+            if (leaderboard.Difficulty.Poodles && (replay.info.modifiers.Length > 0 || resultScore.Pauses > 0)) {
+                Thread.Sleep(8000);
+                return BadRequest("Modifiers or pauses are prohibited on ranked maps");
+            }
+
             Score? currentScore;
             using (_serverTiming.TimeAction("currS"))
             {
@@ -573,9 +578,12 @@ namespace BeatLeader_Server.Controllers
             });
 
             var result = RemoveLeaderboard(resultScore, resultScore.Rank);
-            result.Player.Rank = rank;
-            result.Player.CountryRank = countryRank;
-            result.Player.Pp = pp;
+            var eventPlayer = _context.RecalculateEventsPP(player, leaderboard);
+            if (eventPlayer != null) {
+            result.Player.Rank = eventPlayer.Rank;
+            result.Player.CountryRank = eventPlayer.CountryRank;
+            result.Player.Pp = eventPlayer.Pp;
+            }
 
             return (result, false);
         }
@@ -692,7 +700,6 @@ namespace BeatLeader_Server.Controllers
                     player.ScoreStats.PeakRank = player.Rank;
                 }
             }
-            _context.RecalculateEventsPP(player, leaderboard);
 
             try
             {
@@ -777,7 +784,7 @@ namespace BeatLeader_Server.Controllers
                         leaderboard.Difficulty.AccRating ?? 0, 
                         leaderboard.Difficulty.PassRating ?? 0, 
                         leaderboard.Difficulty.TechRating ?? 0, 
-                        leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
+                        leaderboard.Difficulty.Poodles || leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
                 }
                 resultScore.Country = context.Request.Headers["cf-ipcountry"] == StringValues.Empty ? "not set" : context.Request.Headers["cf-ipcountry"].ToString();
 

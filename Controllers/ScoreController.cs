@@ -479,6 +479,13 @@ namespace BeatLeader_Server.Controllers
             foreach (var item in resultList)
             {
                 item.Player = PostProcessSettings(item.Player);
+
+                var eventPlayer = _context.EventPlayer.FirstOrDefault(p => p.PlayerId == item.Player.Id && p.EventId == 31);
+                if (eventPlayer != null) {
+                    item.Player.Rank = eventPlayer.Rank;
+                    item.Player.Pp = eventPlayer.Pp;
+                    item.Player.CountryRank = eventPlayer.CountryRank;
+                }
             }
 
             for (int i = 0; i < resultList.Count; i++)

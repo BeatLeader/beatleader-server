@@ -159,6 +159,7 @@ namespace BeatLeader_Server.Controllers
                         Difficulty = lb.Difficulty,
                         ModifierValues = lb.Difficulty.ModifierValues,
                         ModifiersRating = lb.Difficulty.ModifiersRating,
+                        lb.Difficulty.Poodles,
                         Scores = lb.Scores.Select(s => new {
                             Id = s.Id,
                             Banned = s.Banned,
@@ -216,7 +217,7 @@ namespace BeatLeader_Server.Controllers
                                 leaderboard.Difficulty.AccRating ?? 0, 
                                 leaderboard.Difficulty.PassRating ?? 0, 
                                 leaderboard.Difficulty.TechRating ?? 0, 
-                                leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard");
+                                leaderboard.Poodles || leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard");
                         }
                         else
                         {

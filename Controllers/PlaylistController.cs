@@ -18,6 +18,7 @@ namespace BeatLeader_Server.Controllers
     {
         private readonly AppContext _context;
         private readonly ReadAppContext _readAppContext;
+        private readonly SongController _songController;
 
         IAmazonS3 _s3Client;
         ScoreRefreshController _scoreRefreshController;
@@ -27,6 +28,7 @@ namespace BeatLeader_Server.Controllers
             AppContext context,
             ReadAppContext readAppContext,
             ScoreRefreshController scoreRefreshController,
+            SongController songController,
             IWebHostEnvironment env,
             IConfiguration configuration)
         {
@@ -35,6 +37,7 @@ namespace BeatLeader_Server.Controllers
             _scoreRefreshController = scoreRefreshController;
             _s3Client = configuration.GetS3Client();
             _environment = env;
+            _songController = songController;
         }
 
         [Authorize]
@@ -658,6 +661,47 @@ namespace BeatLeader_Server.Controllers
             return JsonConvert.SerializeObject(playlist);
         }
 
+        [HttpPost("~/event/procerss")]
+        public async Task<ActionResult> SpecialEvent()
+        {
+            dynamic? playlist = null;
+
+            using (var stream = new MemoryStream(5)) {
+                await Request.Body.CopyToAsync(stream);
+                stream.Position = 0;
+                playlist = stream.ObjectFromStream();
+            }
+
+            if (playlist == null)
+            {
+                return BadRequest("Can't find such plist");
+            }
+
+            foreach (var song in playlist.songs) {
+                string hash = song.hash.ToLower();
+
+                    var lb = _context.Songs.Where(lb => 
+                        lb.Hash.ToLower() == hash)
+                    .FirstOrDefault();
+                    if (lb != null) {
+
+                    lb.Hash = hash + "backup";
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            foreach (var song in playlist.songs) {
+                string hash = song.hash.ToLower();
+
+                await _songController.GetOrAddSong(hash);
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
         [HttpPost("~/event/start/{id}")]
         public async Task<ActionResult> StartEvent(
                int id, 
@@ -691,7 +735,6 @@ namespace BeatLeader_Server.Controllers
             string fileName = id + "-event";
             try
             {
-
                 var ms = new MemoryStream(5);
                 await Request.Body.CopyToAsync(ms);
                 ms.Position = 0;
@@ -727,16 +770,16 @@ namespace BeatLeader_Server.Controllers
 
                         if (lb.Difficulty.Status == DifficultyStatus.unranked || lb.Difficulty.Status == DifficultyStatus.inevent)
                         {
-                            var stars = await ExmachinaStars(hash, lb.Difficulty.Value);
-                            if (stars != null) {
+                            lb.Difficulty.Status = DifficultyStatus.inevent;
+                            lb.Difficulty.AccRating = 10;
+                            lb.Difficulty.PassRating = 10;
+                            lb.Difficulty.TechRating = 10;
+                            lb.Difficulty.Stars = 0;
+                            lb.Difficulty.Poodles = true;
+                            await _context.SaveChangesAsync();
 
-                                lb.Difficulty.Status = DifficultyStatus.inevent;
-                                lb.Difficulty.Stars = stars;
-                                await _context.SaveChangesAsync();
-
-                                await _scoreRefreshController.RefreshScores(lb.Id);
-                                leaderboards.Add(lb);
-                            } else { continue; }
+                            await _scoreRefreshController.RefreshScores(lb.Id);
+                            leaderboards.Add(lb);
                         } else {
                             leaderboards.Add(lb);
                         }
@@ -818,21 +861,6 @@ namespace BeatLeader_Server.Controllers
             await _context.SaveChangesAsync();
 
             return Ok();
-        }
-
-        [NonAction]
-        public async Task<float?> ExmachinaStars(string hash, int diff) {
-
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://bs-replays-ai.azurewebsites.net/json/" + hash + "/" + diff + "/basic");
-            request.Method = "GET";
-            request.Proxy = null;
-
-            try {
-                var response = await request.DynamicResponse();
-                return (float?)response?.balanced;
-            } catch { return 4.2f; }
-
-            
         }
 
         [HttpGet("~/event/{id}/refresh")]

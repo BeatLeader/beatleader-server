@@ -56,5 +56,6 @@ namespace BeatLeader_Server.Models
         public double Duration { get; set; }
 
         public Requirements Requirements { get; set; }
+        public bool Poodles { get; set; }
     }
 }

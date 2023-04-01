@@ -84,12 +84,12 @@ namespace BeatLeader_Server.Utils
                         .Where(s => (date_from == null || (
                                         (s.Difficulty.Status == DifficultyStatus.nominated && s.Difficulty.NominatedTime >= date_from) ||
                                         (s.Difficulty.Status == DifficultyStatus.qualified && s.Difficulty.QualifiedTime >= date_from) ||
-                                        (s.Difficulty.Status == DifficultyStatus.ranked && s.Difficulty.RankedTime >= date_from)
+                                        (s.Difficulty.Poodles && s.Difficulty.RankedTime >= date_from)
                                         ))
                                  && (date_to == null || (
                                         (s.Difficulty.Status == DifficultyStatus.nominated && s.Difficulty.NominatedTime <= date_to) ||
                                         (s.Difficulty.Status == DifficultyStatus.qualified && s.Difficulty.QualifiedTime <= date_to) ||
-                                        (s.Difficulty.Status == DifficultyStatus.ranked && s.Difficulty.RankedTime <= date_to)
+                                        (s.Difficulty.Poodles && s.Difficulty.RankedTime <= date_to)
                                         )))
                         .Include(lb => lb.Difficulty);
                     if (sortBy == "stars") {
@@ -163,7 +163,7 @@ namespace BeatLeader_Server.Utils
                 switch (type)
                 {
                     case "ranked":
-                        sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.Status == DifficultyStatus.ranked);
+                        sequence = sequence.Include(lb => lb.Difficulty).Where(p => p.Difficulty.Poodles);
                         break;
                     case "ranking":
                         sequence = sequence

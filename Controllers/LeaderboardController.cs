@@ -364,6 +364,10 @@ namespace BeatLeader_Server.Controllers
                 leaderboard.Scores[i].Rank = i + (page - 1) * count + 1;
             }
 
+            if (leaderboard.Difficulty.Poodles) {
+                leaderboard.Difficulty.Status = DifficultyStatus.ranked;
+            }
+
             return leaderboard;
         }
 
@@ -558,7 +562,14 @@ namespace BeatLeader_Server.Controllers
                         MaxStreak = s.MaxStreak,
                     }).FirstOrDefault(),
                     Plays = showPlays ? lb.Scores.Count(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)) : 0
-                });
+                }).ToList();
+
+            foreach (var item in result.Data) {
+                if (item.Difficulty.Poodles) {
+                    item.Difficulty.Status = DifficultyStatus.ranked;
+                }
+            }
+
             return result;
         }
 

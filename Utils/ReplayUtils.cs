@@ -171,7 +171,7 @@ namespace BeatLeader_Server.Utils
                 difficulty.AccRating ?? 0.0f, 
                 difficulty.PassRating ?? 0.0f, 
                 difficulty.TechRating ?? 0.0f, 
-                difficulty.ModeName.ToLower() == "rhythmgamestandard");
+                difficulty.Poodles || difficulty.ModeName.ToLower() == "rhythmgamestandard");
         }
 
         public static (float, float, float, float, float) PpFromScoreResponse(

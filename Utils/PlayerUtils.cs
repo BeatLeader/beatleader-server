@@ -251,7 +251,7 @@ namespace BeatLeader_Server.Utils
             return (resultPP, rank, countryRank);
         }
 
-        public static void RecalculateEventsPP(this AppContext context, Player player, Leaderboard leaderboard)
+        public static EventPlayer? RecalculateEventsPP(this AppContext context, Player player, Leaderboard leaderboard)
         {
             int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             var events = context.EventRankings
@@ -259,8 +259,10 @@ namespace BeatLeader_Server.Utils
                 .Include(ev => ev.Players)
                 .ToList();
             if (events.Count() == 0) {
-                return;
+                return null;
             }
+
+            EventPlayer? result = null;
 
             foreach (var eventRanking in events)
             {
@@ -279,6 +281,9 @@ namespace BeatLeader_Server.Utils
                 }
 
                 var eventPlayer = eventRanking.Players.Where(p => p.PlayerId == player.Id).FirstOrDefault();
+                if (eventRanking.Id == 31) {
+                    result = eventPlayer;
+                }
 
                 if (eventPlayer == null)
                 {
@@ -328,6 +333,8 @@ namespace BeatLeader_Server.Utils
                     countries[p.Country]++;
                 }
             }
+
+            return result;
         }
 
         public static string[] AllowedCountries() {
