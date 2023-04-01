@@ -57,6 +57,8 @@ namespace BeatLeader_Server
         public DbSet<QualificationVote> QualificationVote { get; set; }
         public DbSet<PlayerSocial> PlayerSocial { get; set; }
 
+        public DbSet<VoterFeedback> VoterFeedback { get; set; }
+
         public void RejectChanges()
         {
             foreach (var entry in ChangeTracker.Entries())

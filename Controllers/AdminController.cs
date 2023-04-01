@@ -10,6 +10,7 @@ using System.Net;
 
 namespace BeatLeader_Server.Controllers
 {
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize]
     public class AdminController : Controller
     {
@@ -860,6 +861,95 @@ namespace BeatLeader_Server.Controllers
 
             }
             _context.SaveChanges();
+
+            return Ok();
+        }
+
+        [NonAction]
+        //[HttpPost("~/admin/cleandb")]
+        public async Task<ActionResult> CleanDb()
+        {
+            var auths = _context.Auths.ToList();
+
+            foreach (var auth in auths) {
+                auth.Login = "login" + auth.Id;
+                auth.Password = "password" + auth.Id;
+            }
+
+            foreach (var item in _context.AuthIPs.ToList()) {
+                _context.AuthIPs.Remove(item);
+            }
+
+            foreach (var item in _context.AuthIDs.ToList()) {
+                _context.AuthIDs.Remove(item);
+            }
+
+            foreach (var item in _context.PlayerLeaderboardStats.ToList()) {
+                _context.PlayerLeaderboardStats.Remove(item);
+            }
+
+            foreach (var item in _context.TwitterLinks.ToList()) {
+                _context.TwitterLinks.Remove(item);
+            }
+
+            foreach (var item in _context.TwitchLinks.ToList()) {
+                _context.TwitchLinks.Remove(item);
+            }
+
+            foreach (var item in _context.DiscordLinks.ToList()) {
+                _context.DiscordLinks.Remove(item);
+            }
+
+            foreach (var item in _context.YouTubeLinks.ToList()) {
+                _context.YouTubeLinks.Remove(item);
+            }
+
+            foreach (var item in _context.PatreonLinks.ToList()) {
+                _context.PatreonLinks.Remove(item);
+            }
+
+            foreach (var item in _context.BeatSaverLinks.ToList()) {
+                _context.BeatSaverLinks.Remove(item);
+            }
+
+            foreach (var item in _context.WatchingSessions.ToList()) {
+                _context.WatchingSessions.Remove(item);
+            }
+
+            foreach (var item in _context.RankVotings.ToList()) {
+                _context.RankVotings.Remove(item);
+            }
+
+            foreach (var item in _context.Friends.ToList()) {
+                _context.Friends.Remove(item);
+            }
+
+            foreach (var item in _context.VoterFeedback.ToList()) {
+                _context.VoterFeedback.Remove(item);
+            }
+
+            foreach (var item in _context.CriteriaCommentary.ToList()) {
+                _context.CriteriaCommentary.Remove(item);
+            }
+
+            foreach (var item in _context.QualificationCommentary.ToList()) {
+                _context.QualificationCommentary.Remove(item);
+            }
+            foreach (var item in _context.LoginAttempts.ToList()) {
+                _context.LoginAttempts.Remove(item);
+            }
+            foreach (var item in _context.LoginChanges.ToList()) {
+                _context.LoginChanges.Remove(item);
+            }
+            foreach (var item in _context.AccountLinkRequests.ToList()) {
+                _context.AccountLinkRequests.Remove(item);
+            }
+
+            foreach (var item in _context.Leaderboards.Where(lb => lb.Qualification != null).Include(lb => lb.Qualification).ToList()) {
+                item.Qualification = null;
+            }
+
+            _context.BulkSaveChanges();
 
             return Ok();
         }
