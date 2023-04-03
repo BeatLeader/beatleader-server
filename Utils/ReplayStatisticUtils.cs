@@ -122,11 +122,14 @@ namespace BeatLeader_Server.Utils
             ScoreStatistic result = new ScoreStatistic();
             float firstNoteTime = replay.notes.FirstOrDefault()?.eventTime ?? 0.0f;
             float lastNoteTime = replay.notes.LastOrDefault()?.eventTime ?? 0.0f;
+
+            var filteredPauses = replay.pauses.Where(p => p.time >= firstNoteTime && p.time <= lastNoteTime);
             result.winTracker = new WinTracker
             {
                 won = replay.info.failTime < 0.01,
                 endTime = (replay.frames.LastOrDefault() != null) ? replay.frames.Last().time : 0,
-                nbOfPause = replay.pauses.Where(p => p.time >= firstNoteTime && p.time <= lastNoteTime).Count(),
+                nbOfPause = filteredPauses.Count(),
+                totalPauseDuration = filteredPauses.Count() > 0 ? filteredPauses.Sum(p => p.duration) : 0,
                 jumpDistance = replay.info.jumpDistance,
                 averageHeight = replay.heights.Count() > 0 ? replay.heights.Average(h => h.height) : replay.info.height,
                 averageHeadPosition = new AveragePosition {
