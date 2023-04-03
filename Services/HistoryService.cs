@@ -40,6 +40,11 @@ namespace BeatLeader_Server.Services
                 _context.ChangeTracker.AutoDetectChangesEnabled = false;
 
                 int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+
+                var lastHistory = _context.PlayerScoreStatsHistory.OrderByDescending(ps => ps.Timestamp).FirstOrDefault();
+                if (lastHistory != null && lastHistory.Timestamp > timeset - 60 * 60 * 12) {
+                    return;
+                }
                 var playersCount = _context.Players.Where(p => !p.Banned).Count();
                 for (int i = 0; i < playersCount; i += 5000)
                 {

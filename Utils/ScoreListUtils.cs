@@ -28,7 +28,7 @@ namespace BeatLeader_Server.Utils
             switch (sortBy)
             {
                 case "date":
-                    sequence = sequence.Order(order, t => t.Timeset);
+                    sequence = sequence.Order(order, t => t.Timepost);
                     break;
                 case "pp":
                     sequence = sequence.Order(order, t => t.Pp);
