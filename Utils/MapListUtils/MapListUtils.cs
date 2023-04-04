@@ -28,8 +28,8 @@ public static partial class MapListUtils
                                                  int? date_from = null,
                                                  int? date_to = null,
                                                  string? currentID = null) =>
-        source.Sort(sortBy, order!, type, mytype, date_from, date_to, currentID)
-              .FilterBySearch(search)
+        source.FilterBySearch(search)
+              .Sort(sortBy, order!, type, mytype, date_from, date_to, currentID)
               .WithType(type)
               .WithMapType(mapType, allTypes)
               .WithMode(mode)
