@@ -28,7 +28,7 @@ public static partial class MapListUtils
                                                  int? date_from = null,
                                                  int? date_to = null,
                                                  string? currentID = null) =>
-        source.FilterBySearch(search)
+        source.FilterBySearch(search, ref type, ref mode, ref mapType, ref allTypes, ref mapRequirements, ref allRequirements, ref stars_from, ref stars_to, ref mytype, ref date_from, ref date_to)
               .Sort(sortBy, order!, type, mytype, date_from, date_to, currentID)
               .WithType(type)
               .WithMapType(mapType, allTypes)
