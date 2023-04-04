@@ -286,20 +286,18 @@ namespace BeatLeader_Server.Controllers
         }
 
         [Authorize]
-        [HttpPost("~/qualify/{hash}/{diff}/{mode}/")]
-        public async Task<ActionResult> QualifyMap(
+        [HttpPost("~/nominate/{hash}/{diff}/{mode}/")]
+        public async Task<ActionResult> NominateMap(
             string hash,
             string diff,
-            string mode,
-            [FromQuery] float stars = 0,
-            [FromQuery] int type = 0,
-            [FromQuery] string? modifiers = null)
+            string mode)
         {
             if (hash.Length < 40) {
                 return BadRequest("Hash is to short");
             } else {
                 hash = hash.Substring(0, 40);
             }
+
             string? currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.Where(p => p.Id == currentID).Include(p => p.Socials).FirstOrDefaultAsync();
 
@@ -307,7 +305,7 @@ namespace BeatLeader_Server.Controllers
 
             bool isRT = true;
             bool verified = false;
-            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 if (currentPlayer != null && currentPlayer.MapperId == leaderboard?.Song.MapperId) {
                     isRT = false;
@@ -324,6 +322,8 @@ namespace BeatLeader_Server.Controllers
                        .Include(lb => lb.Qualification)
                        .Include(lb => lb.Difficulty)
                        .ThenInclude(d => d.ModifierValues)
+                       .Include(lb => lb.Difficulty)
+                       .ThenInclude(d => d.ModifiersRating)
                        .Where(lb => lb.Song.Id == leaderboard.Song.Id && lb.Qualification != null).ToList();
                 string? alreadyApproved = qualifiedLeaderboards.Count() == 0 ? null : qualifiedLeaderboards.FirstOrDefault(lb => lb.Qualification.MapperAllowed)?.Qualification.MapperId;
 
@@ -350,16 +350,40 @@ namespace BeatLeader_Server.Controllers
                     return BadRequest("Already qualified or ranked");
                 }
 
-                ModifiersMap? modifierValues = modifiers == null ? null : JsonConvert.DeserializeObject<ModifiersMap>(modifiers);
-                if (modifierValues == null) {
-                    modifierValues = new ModifiersMap();
-                    modifierValues.FS *= 2; modifierValues.SF *= 2; modifierValues.DA *= 2; modifierValues.GN *= 2; modifierValues.NF = -1.0f;
-                }
+                ModifiersMap? modifierValues = new ModifiersMap();
+                modifierValues.FS *= 2; modifierValues.SF *= 2; modifierValues.DA *= 2; modifierValues.GN *= 2; modifierValues.NF = -1.0f;
 
                 difficulty.Status = DifficultyStatus.nominated;
                 difficulty.NominatedTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-                if (isRT || verified) {
-                    difficulty.Stars = stars;
+
+                var response = await SongUtils.ExmachinaStars(leaderboard.Song.Hash, difficulty.Value);
+                if (response != null) {
+                    difficulty.PassRating = response.none.lack_map_calculation.balanced_pass_diff;
+                    difficulty.TechRating = response.none.lack_map_calculation.balanced_tech * 10;
+                    difficulty.PredictedAcc = response.none.AIacc;
+                    difficulty.AccRating = ReplayUtils.AccRating(response.none.AIacc, response.none.lack_map_calculation.balanced_pass_diff, response.none.lack_map_calculation.balanced_tech * 10);
+
+                    difficulty.ModifiersRating = new ModifiersRating {
+                        SSPassRating = response.SS.lack_map_calculation.balanced_pass_diff,
+                        SSTechRating = response.SS.lack_map_calculation.balanced_tech * 10,
+                        SSPredictedAcc = response.SS.AIacc,
+                        SSAccRating = ReplayUtils.AccRating(response.SS.AIacc, response.SS.lack_map_calculation.balanced_pass_diff, response.SS.lack_map_calculation.balanced_tech * 10),
+                        SFPassRating = response.SFS.lack_map_calculation.balanced_pass_diff,
+                        SFTechRating = response.SFS.lack_map_calculation.balanced_tech * 10,
+                        SFPredictedAcc = response.SFS.AIacc,
+                        SFAccRating = ReplayUtils.AccRating(response.SFS.AIacc, response.SFS.lack_map_calculation.balanced_pass_diff, response.SFS.lack_map_calculation.balanced_tech * 10),
+                        FSPassRating = response.FS.lack_map_calculation.balanced_pass_diff,
+                        FSTechRating = response.FS.lack_map_calculation.balanced_tech * 10,
+                        FSPredictedAcc = response.FS.AIacc,
+                        FSAccRating = ReplayUtils.AccRating(response.FS.AIacc, response.FS.lack_map_calculation.balanced_pass_diff, response.FS.lack_map_calculation.balanced_tech * 10),
+                    };
+
+                    difficulty.Stars = ReplayUtils.ToStars(difficulty.AccRating ?? 0, difficulty.PassRating ?? 0, difficulty.TechRating ?? 0);
+
+                } else {
+                    difficulty.PassRating = 0;
+                    difficulty.AccRating = 0;
+                    difficulty.TechRating = 0;
                 }
 
                 string? criteriaCheck = qualifiedLeaderboards.FirstOrDefault(lb => lb.Qualification.CriteriaCheck != null)?.Qualification.CriteriaCheck;
@@ -381,7 +405,6 @@ namespace BeatLeader_Server.Controllers
                 };
                 
                 difficulty.ModifierValues = modifierValues;
-                difficulty.Type = type;
                 await _context.SaveChangesAsync();
                 await _scoreRefreshController.RefreshScores(leaderboard.Id);
                 await _playlistController.RefreshNominatedPlaylist();
@@ -390,22 +413,10 @@ namespace BeatLeader_Server.Controllers
 
                 if (dsClient != null)
                 {
-                    string message = "";
-                    if (isRT) {
-                        message += "RT";
-                    } else if (verified) {
-                        message += "Verified mapper";
-                    } else {
-                        message += "Mapper";
-                    }
-                        
-                    message += " **" + currentPlayer.Name + "** nominated **" + diff + "** diff of **" + leaderboard.Song.Name + "**! \n";
+                    string message = "**" + currentPlayer.Name + "** nominated **" + diff + "** diff of **" + leaderboard.Song.Name + "**! \n";
                     if (isRT || verified) {
-                        message += "★ " + difficulty.Stars + "  ";
+                        message += $"Acc: {difficulty.AccRating:0.00}★\nPass: {difficulty.PassRating:0.00}★\nTech: {difficulty.TechRating:0.00}★\n";
                     }
-                    message += " **T**  ";
-                    message += FormatUtils.DescribeType(leaderboard.Difficulty.Type);
-                    message += "\n";
                     message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
 
                     await dsClient.SendMessageAsync(message);

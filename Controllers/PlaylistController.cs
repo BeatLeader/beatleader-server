@@ -330,7 +330,7 @@ namespace BeatLeader_Server.Controllers
 
             playlist.songs = songs.DistinctBy(s => s.hash).ToList();
             playlist.customData = new CustomData { 
-                syncURL = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/playlists/" : "https://beatleadercdn.blob.core.windows.net/playlists/") + "ranked.bplist",
+                syncURL = "https://api.beatleader.xyz/playlist/ranked",
                 owner = "BeatLeader",
                 id = "ranked"
             };
@@ -386,7 +386,7 @@ namespace BeatLeader_Server.Controllers
             playlist.songs = songs.DistinctBy(s => s.hash).ToList();
             playlist.customData = new CustomData
             {
-                syncURL = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/playlists/" : "https://beatleadercdn.blob.core.windows.net/playlists/") + "nominated.bplist",
+                syncURL = "https://api.beatleader.xyz/playlist/nominated",
                 owner = "BeatLeader",
                 id = "nominated"
             };

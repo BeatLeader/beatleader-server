@@ -1,6 +1,7 @@
 ﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Migrations;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -168,6 +169,7 @@ namespace BeatLeader_Server.Controllers
 
                     _context.Players.Add(player);
                     playerId = player.Id;
+                    SearchService.PlayerAdded(player.Id, player.Name);
 
                 } else {
                     playerId = bslink.Id;
