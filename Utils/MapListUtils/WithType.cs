@@ -28,7 +28,7 @@ public static partial class MapListUtils
 
     private static IQueryable<Leaderboard> WithUnranked(this IQueryable<Leaderboard> sequence) =>
         sequence.Include(leaderboard => leaderboard.Difficulty)
-                .Where(p => p.Difficulty.Status == DifficultyStatus.unranked);
+                .Where(leaderboard => leaderboard.Difficulty.Status == DifficultyStatus.unranked);
 
     private static IQueryable<Leaderboard> WithReWeighted(this IQueryable<Leaderboard> sequence) =>
         sequence.Include(leaderboard => leaderboard.Difficulty)
