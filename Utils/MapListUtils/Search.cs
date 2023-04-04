@@ -1,4 +1,5 @@
 ﻿using BeatLeader_Server.Models;
+using BeatLeader_Server.Services;
 
 namespace BeatLeader_Server.Utils;
 
@@ -6,17 +7,13 @@ public static partial class MapListUtils
 {
     private static IQueryable<Leaderboard> FilterBySearch(this IQueryable<Leaderboard> sequence, string? search)
     {
-        if (search == null)
+        if (string.IsNullOrEmpty(search))
         {
             return sequence;
         }
 
-        string lowSearch = search.ToLower();
+        List<string> matches = SearchService.SearchMaps(search);
 
-        return sequence.Where(leaderboard => leaderboard.Song.Id == lowSearch
-                                          || leaderboard.Song.Hash == lowSearch
-                                          || leaderboard.Song.Author.Contains(lowSearch)
-                                          || leaderboard.Song.Mapper.Contains(lowSearch)
-                                          || leaderboard.Song.Name.Contains(lowSearch));
+        return sequence.Where(leaderboard => matches.Contains(leaderboard.SongId));
     }
 }
