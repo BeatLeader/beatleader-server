@@ -27,6 +27,7 @@
     <PackageReference Include="CoreHtmlToImage" Version="1.0.6" />
     <PackageReference Include="Discord.Net.Webhook" Version="3.9.0" />
     <PackageReference Include="Discord.Net.WebSocket" Version="3.9.0" />
+    <PackageReference Include="FuzzySharp" Version="2.0.2" />
     <PackageReference Include="geohash-dotnet" Version="1.0.4" />
     <PackageReference Include="IP2Location.IPGeolocation" Version="8.10.1" />
     <PackageReference Include="Lib.AspNetCore.ServerTiming" Version="5.1.0" />

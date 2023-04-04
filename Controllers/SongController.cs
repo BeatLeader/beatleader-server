@@ -1,6 +1,7 @@
 ﻿using BeatLeader_Server.Bot;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -156,6 +157,7 @@ namespace BeatLeader_Server.Controllers
                     _context.Songs.Add(song);
                     await _context.SaveChangesAsync();
 
+                    SearchService.SongAdded(song.Id, song.Hash, song.Name, song.Author, song.Mapper);
                     
                     foreach (var oldSong in songsToMigrate)
                     {

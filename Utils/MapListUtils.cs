@@ -1,5 +1,6 @@
 ﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
@@ -36,127 +37,124 @@ namespace BeatLeader_Server.Utils
             string? currentID = null)
         {
             var sequence = source;
-            switch (sortBy)
+            if (search != null && search.Length > 0)
             {
-                case "timestamp":
-                    switch (type)
-                    {
-                        default:
-                            sequence = sequence.Where(s => (date_from == null || s.Difficulty.RankedTime >= date_from) && (date_to == null || s.Difficulty.RankedTime <= date_to))
-                            .Order(order, t => t.Difficulty.RankedTime);
-                            break;
-                        case "nominated":
-                            sequence = sequence.Where(s => (date_from == null || s.Difficulty.NominatedTime >= date_from) && (date_to == null || s.Difficulty.NominatedTime <= date_to))
-                            .Order(order, t => t.Difficulty.NominatedTime);
-                            break;
-                        case "qualified":
-                            sequence = sequence.Where(s => (date_from == null || s.Difficulty.QualifiedTime >= date_from) && (date_to == null || s.Difficulty.QualifiedTime <= date_to))
-                            .Order(order, t => t.Difficulty.QualifiedTime);
-                            break;
-                        case "ranking":
-                            sequence = sequence.Where(s => 
-                                (   
-                                    date_from == null || 
-                                    s.Difficulty.RankedTime >= date_from || 
-                                    s.Difficulty.NominatedTime >= date_from || 
-                                    s.Difficulty.QualifiedTime >= date_from ||
-                                    s.Changes.OrderByDescending(ch => ch.Timeset).FirstOrDefault().Timeset >= date_from) && 
-                                (
-                                    date_to == null || 
-                                    s.Difficulty.RankedTime <= date_to ||
-                                    s.Difficulty.NominatedTime <= date_to ||
-                                    s.Difficulty.QualifiedTime <= date_to ||
-                                    s.Changes.OrderByDescending(ch => ch.Timeset).FirstOrDefault().Timeset <= date_to));
-                            break;
-                    }
+                var matches = SearchService.SearchMaps(search);
+                sequence = sequence.Where(p => matches.Contains(p.SongId));
+            } else {
+                switch (sortBy)
+                {
+                    case "timestamp":
+                        switch (type)
+                        {
+                            default:
+                                sequence = sequence.Where(s => (date_from == null || s.Difficulty.RankedTime >= date_from) && (date_to == null || s.Difficulty.RankedTime <= date_to))
+                                .Order(order, t => t.Difficulty.RankedTime);
+                                break;
+                            case "nominated":
+                                sequence = sequence.Where(s => (date_from == null || s.Difficulty.NominatedTime >= date_from) && (date_to == null || s.Difficulty.NominatedTime <= date_to))
+                                .Order(order, t => t.Difficulty.NominatedTime);
+                                break;
+                            case "qualified":
+                                sequence = sequence.Where(s => (date_from == null || s.Difficulty.QualifiedTime >= date_from) && (date_to == null || s.Difficulty.QualifiedTime <= date_to))
+                                .Order(order, t => t.Difficulty.QualifiedTime);
+                                break;
+                            case "ranking":
+                                sequence = sequence.Where(s => 
+                                    (   
+                                        date_from == null || 
+                                        s.Difficulty.RankedTime >= date_from || 
+                                        s.Difficulty.NominatedTime >= date_from || 
+                                        s.Difficulty.QualifiedTime >= date_from ||
+                                        s.Changes.OrderByDescending(ch => ch.Timeset).FirstOrDefault().Timeset >= date_from) && 
+                                    (
+                                        date_to == null || 
+                                        s.Difficulty.RankedTime <= date_to ||
+                                        s.Difficulty.NominatedTime <= date_to ||
+                                        s.Difficulty.QualifiedTime <= date_to ||
+                                        s.Changes.OrderByDescending(ch => ch.Timeset).FirstOrDefault().Timeset <= date_to));
+                                break;
+                        }
 
-                    break;
-                case "name":
-                    sequence = sequence
-                        .Where(s => (date_from == null || s.Song.UploadTime >= date_from) && (date_to == null || s.Song.UploadTime <= date_to))
-                        .Order(order, t => t.Song.Name);
-                    break;
-                case "stars":
-                case "passRating":
-                case "accRating":
-                case "techRating":
-                    sequence = sequence
-                        .Where(s => (date_from == null || (
-                                        (s.Difficulty.Status == DifficultyStatus.nominated && s.Difficulty.NominatedTime >= date_from) ||
-                                        (s.Difficulty.Status == DifficultyStatus.qualified && s.Difficulty.QualifiedTime >= date_from) ||
-                                        (s.Difficulty.Status == DifficultyStatus.ranked && s.Difficulty.RankedTime >= date_from)
-                                        ))
-                                 && (date_to == null || (
-                                        (s.Difficulty.Status == DifficultyStatus.nominated && s.Difficulty.NominatedTime <= date_to) ||
-                                        (s.Difficulty.Status == DifficultyStatus.qualified && s.Difficulty.QualifiedTime <= date_to) ||
-                                        (s.Difficulty.Status == DifficultyStatus.ranked && s.Difficulty.RankedTime <= date_to)
-                                        )))
-                        .Include(lb => lb.Difficulty);
-                    if (sortBy == "stars") {
-                        sequence = sequence.Order(order, t => t.Difficulty.Stars);
-                    } else if (sortBy == "passRating") {
-                        sequence = sequence.Order(order, t => t.Difficulty.PassRating);
-                    } else if (sortBy == "accRating") {
-                        sequence = sequence.Order(order, t => t.Difficulty.AccRating);
-                    } else if (sortBy == "techRating") {
-                        sequence = sequence.Order(order, t => t.Difficulty.TechRating);
-                    }
-                    break;
-                case "scoreTime":
-                    if (mytype == "played")
-                    {
+                        break;
+                    case "name":
                         sequence = sequence
-                            .Order(order, lb =>
-                                lb.Scores
-                                    .Where(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to) && s.PlayerId == currentID)
-                                    .Max(s => s.Timepost));
-                    }
-                    else
-                    {
+                            .Where(s => (date_from == null || s.Song.UploadTime >= date_from) && (date_to == null || s.Song.UploadTime <= date_to))
+                            .Order(order, t => t.Song.Name);
+                        break;
+                    case "stars":
+                    case "passRating":
+                    case "accRating":
+                    case "techRating":
+                        sequence = sequence
+                            .Where(s => (date_from == null || (
+                                            (s.Difficulty.Status == DifficultyStatus.nominated && s.Difficulty.NominatedTime >= date_from) ||
+                                            (s.Difficulty.Status == DifficultyStatus.qualified && s.Difficulty.QualifiedTime >= date_from) ||
+                                            (s.Difficulty.Status == DifficultyStatus.ranked && s.Difficulty.RankedTime >= date_from)
+                                            ))
+                                     && (date_to == null || (
+                                            (s.Difficulty.Status == DifficultyStatus.nominated && s.Difficulty.NominatedTime <= date_to) ||
+                                            (s.Difficulty.Status == DifficultyStatus.qualified && s.Difficulty.QualifiedTime <= date_to) ||
+                                            (s.Difficulty.Status == DifficultyStatus.ranked && s.Difficulty.RankedTime <= date_to)
+                                            )))
+                            .Include(lb => lb.Difficulty);
+                        if (sortBy == "stars") {
+                            sequence = sequence.Order(order, t => t.Difficulty.Stars);
+                        } else if (sortBy == "passRating") {
+                            sequence = sequence.Order(order, t => t.Difficulty.PassRating);
+                        } else if (sortBy == "accRating") {
+                            sequence = sequence.Order(order, t => t.Difficulty.AccRating);
+                        } else if (sortBy == "techRating") {
+                            sequence = sequence.Order(order, t => t.Difficulty.TechRating);
+                        }
+                        break;
+                    case "scoreTime":
+                        if (mytype == "played")
+                        {
+                            sequence = sequence
+                                .Order(order, lb =>
+                                    lb.Scores
+                                        .Where(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to) && s.PlayerId == currentID)
+                                        .Max(s => s.Timepost));
+                        }
+                        else
+                        {
+                            sequence = sequence
+                                .Order(order, lb =>
+                                    lb.Scores
+                                        .Where(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to))
+                                        .Max(s => s.Timepost));
+                        }
+
+                        break;
+                    case "playcount":
                         sequence = sequence
                             .Order(order, lb =>
                                 lb.Scores
                                     .Where(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to))
-                                    .Max(s => s.Timepost));
-                    }
-
-                    break;
-                case "playcount":
-                    sequence = sequence
-                        .Order(order, lb =>
-                            lb.Scores
-                                .Where(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to))
-                                .Count());
-                    break;
-                case "voting":
-                    sequence = sequence
-                        .Order(order, lb => lb.PositiveVotes - lb.NegativeVotes);
-                    break;
-                case "votecount":
-                    sequence = sequence.Order(order, lb => lb.PositiveVotes + lb.NegativeVotes);
-                    break;
-                case "voteratio":
-                    sequence = sequence
-                        .Where(lb => lb.PositiveVotes > 0 || lb.NegativeVotes > 0)
-                        .Order(order, lb => (int)(
-                            lb.PositiveVotes
-                            /
-                            (lb.PositiveVotes + lb.NegativeVotes) * 100.0))
-                        .ThenOrder(order, lb => lb.PositiveVotes + lb.NegativeVotes);
-                    break;
-                default:
-                    break;
+                                    .Count());
+                        break;
+                    case "voting":
+                        sequence = sequence
+                            .Order(order, lb => lb.PositiveVotes - lb.NegativeVotes);
+                        break;
+                    case "votecount":
+                        sequence = sequence.Order(order, lb => lb.PositiveVotes + lb.NegativeVotes);
+                        break;
+                    case "voteratio":
+                        sequence = sequence
+                            .Where(lb => lb.PositiveVotes > 0 || lb.NegativeVotes > 0)
+                            .Order(order, lb => (int)(
+                                lb.PositiveVotes
+                                /
+                                (lb.PositiveVotes + lb.NegativeVotes) * 100.0))
+                            .ThenOrder(order, lb => lb.PositiveVotes + lb.NegativeVotes);
+                        break;
+                    default:
+                        break;
+                }
             }
-            if (search != null)
-            {
-                string lowSearch = search.ToLower();
-                sequence = sequence
-                    .Where(p => p.Song.Id == lowSearch ||
-                                p.Song.Hash == lowSearch ||
-                                p.Song.Author.Contains(lowSearch) ||
-                                p.Song.Mapper.Contains(lowSearch) ||
-                                p.Song.Name.Contains(lowSearch));
-            }
+            
 
             if (type != null && type.Length != 0)
             {

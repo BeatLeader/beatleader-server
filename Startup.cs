@@ -151,7 +151,7 @@ namespace BeatLeader_Server {
                 options.EnableEndpointRateLimiting = true;
                 options.StackBlockedRequests = false;
                 options.HttpStatusCode = 429;
-                options.RealIpHeader = "X-Real-IP";
+                options.RealIpHeader = "cf-connecting-ip";
                 options.ClientIdHeader = "X-ClientId";
                 options.GeneralRules = new List<RateLimitRule>
                     {
@@ -239,6 +239,8 @@ namespace BeatLeader_Server {
                 }
                 services.AddHostedService<BotService>();
             }
+
+            services.AddHostedService<SearchService>();
 
             services.AddSingleton<NominationsForum>();
             services.AddSingleton<RTNominationsForum>();

@@ -1,6 +1,7 @@
 using Amazon.S3;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -328,6 +329,8 @@ namespace BeatLeader_Server.Controllers
 
                     player.Name = name;
                     newChange.NewName = name;
+
+                    SearchService.PlayerChangedName(player.Id, player.Name);
                 }
 
                 if (country != null)
