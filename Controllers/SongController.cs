@@ -1,6 +1,7 @@
 ﻿using BeatLeader_Server.Bot;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -89,6 +90,9 @@ namespace BeatLeader_Server.Controllers
             if (newLeaderboard != null && diff.Status != DifficultyStatus.ranked && diff.Status != DifficultyStatus.outdated) {
                 newLeaderboard.Difficulty.Status = diff.Status;
                 newLeaderboard.Difficulty.Stars = diff.Stars;
+                newLeaderboard.Difficulty.AccRating = diff.AccRating;
+                newLeaderboard.Difficulty.PassRating = diff.PassRating;
+                newLeaderboard.Difficulty.TechRating = diff.TechRating;
                 newLeaderboard.Difficulty.Type = diff.Type;
                 newLeaderboard.Difficulty.NominatedTime = diff.NominatedTime;
                 newLeaderboard.Difficulty.ModifierValues = diff.ModifierValues;
@@ -153,6 +157,7 @@ namespace BeatLeader_Server.Controllers
                     _context.Songs.Add(song);
                     await _context.SaveChangesAsync();
 
+                    SearchService.SongAdded(song.Id, song.Hash, song.Name, song.Author, song.Mapper);
                     
                     foreach (var oldSong in songsToMigrate)
                     {

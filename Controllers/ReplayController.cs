@@ -1,6 +1,7 @@
 ﻿using Amazon.S3;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Dasync.Collections;
 using Discord;
@@ -233,6 +234,8 @@ namespace BeatLeader_Server.Controllers
                     player.SetDefaultAvatar();
 
                     _context.Players.Add(player);
+
+                    SearchService.PlayerAdded(player.Id, player.Name);
                 }
 
                 if (player.Country == "not set")

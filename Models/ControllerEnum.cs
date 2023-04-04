@@ -10,6 +10,8 @@
         
         vivePro = 4,
         wmr = 8,
+        odyssey = 9,
+        hpMotion = 10,
 
         picoNeo3 = 33,
         picoNeo2 = 34,

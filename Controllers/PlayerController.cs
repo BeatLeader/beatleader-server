@@ -1,6 +1,7 @@
 ﻿using Amazon.S3;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
@@ -165,7 +166,10 @@ namespace BeatLeader_Server.Controllers
                 player.ScoreStats = new PlayerScoreStats();
                 if (addToBase) {
                     _context.Players.Add(player);
+                    
                     await _context.SaveChangesAsync();
+
+                    SearchService.PlayerAdded(player.Id, player.Name);
                 }
             }
 
@@ -381,17 +385,8 @@ namespace BeatLeader_Server.Controllers
             }
             if (search.Length != 0)
             {
-                var player = Expression.Parameter(typeof(Player), "p");
-                
-                var contains = typeof(string).GetMethod("Contains", new[] { typeof(string) });
-
-                // 1 != 2 is here to trigger `OrElse` further the line.
-                var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
-                foreach (var term in search.ToLower().Split(","))
-                {
-                    exp = Expression.OrElse(exp, Expression.Call(Expression.Property(player, "Name"), contains, Expression.Constant(term)));
-                }
-                request = request.Where((Expression<Func<Player, bool>>)Expression.Lambda(exp, player));
+                var match = SearchService.SearchPlayers(search);
+                request = request.Where(p => match.Contains(p.Id));
             }
 
             if (clans != null)
@@ -489,9 +484,11 @@ namespace BeatLeader_Server.Controllers
                         break;
                 }
             }
-            request = Sorted(request, sortBy, ppType, order, mapsType);
+            if (search == null || search.Length == 0) {
+                request = Sorted(request, sortBy, ppType, order, mapsType);
+            }
             
-            return new ResponseWithMetadata<PlayerResponseWithStats>()
+            var result = new ResponseWithMetadata<PlayerResponseWithStats>()
             {
                 Metadata = new Metadata()
                 {
@@ -524,6 +521,12 @@ namespace BeatLeader_Server.Controllers
                     Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                 }).ToList().Select(PostProcessSettings)
             };
+
+            if (search != null && search.Length > 0) {
+                result.Data = SearchService.SortPlayers(result.Data, search);
+            }
+
+            return result;
         }
 
         private IQueryable<Player> Sorted(
