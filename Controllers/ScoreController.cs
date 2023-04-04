@@ -266,6 +266,47 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
+        public static string FilterOutPositiveModifiers(string modifiers, ModifiersMap modifiersObject)
+        {
+            List<string> modifierArray = new List<string>();
+            var modifiersMap = modifiersObject.ToDictionary<float>();
+            foreach (var modifier in modifiersMap.Keys)
+            {
+                if (modifiers.Contains(modifier)) {
+                    if (modifiersMap[modifier] < 0) {
+                        modifierArray.Add(modifier);
+                    }
+                }
+            }
+
+            return String.Join(",", modifierArray);
+        }
+
+        private ScoreResponse RemovePositiveModifiers(ScoreResponse s, DifficultyDescription difficulty) {
+            ScoreResponse result = s;
+
+            var status = difficulty.Status;
+            var modifiers = difficulty.ModifierValues ?? new ModifiersMap();
+
+            bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
+            bool hasPp = status == DifficultyStatus.ranked || qualification;
+
+            s.Modifiers = FilterOutPositiveModifiers(s.Modifiers, modifiers);
+            s.ModifiedScore = (int)(s.BaseScore * modifiers.GetNegativeMultiplier(s.Modifiers));
+
+            if (hasPp)
+            {
+                (s.Pp, s.BonusPp, s.PassPP, s.AccPP, s.TechPP) = ReplayUtils.PpFromScoreResponse(s, difficulty);
+            }
+            else
+            {
+                s.Pp = 0;
+                s.BonusPp = 0;
+            }
+
+            return result;
+        }
+
         [HttpGet("~/v3/scores/{hash}/{diff}/{mode}/{context}/{scope}/{method}")]
         public async Task<ActionResult<ResponseWithMetadataAndSelection<ScoreResponse>>> GetByHash3(
             string hash,
@@ -347,11 +388,11 @@ namespace BeatLeader_Server.Controllers
                 query = query.Where(s => s.Player.Country == currentPlayer.Country);
             }
 
-            //if (context.ToLower() == "standard")
-            //{
-            //    var modifiers = _context.Leaderboards.Where(lb => lb.Id == leaderboardId).Include(lb => lb.Difficulty).ThenInclude(d => d.ModifierValues).Select(lb => new { ModifierValues = lb.Difficulty.ModifierValues, Stars = lb.Difficulty.Stars }).FirstOrDefault();
-            //    query = query.ToList().AsQueryable().Select(s => RemovePositiveModifiers(s, modifiers.ModifierValues, modifiers.Stars)).OrderByDescending(p => p.Accuracy);
-            //}
+            if (context.ToLower() == "standard") {
+                query = query
+                    .Where(s => s.ModifiedScore >= s.BaseScore)
+                    .OrderByDescending(p => p.Accuracy);
+            }
 
             if (method.ToLower() == "around")
             {
@@ -475,6 +516,24 @@ namespace BeatLeader_Server.Controllers
                     ScoreImprovement = s.ScoreImprovement
                 })
                 .ToList();
+
+            if (context.ToLower() == "standard") {
+                var difficulty = _context
+                    .Leaderboards
+                    .Where(lb => lb.Id == leaderboardId)
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(d => d.ModifiersRating)
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(d => d.ModifierValues)
+                    .Select(lb => lb.Difficulty)
+                    .FirstOrDefault();
+
+                if (difficulty != null) {
+                    foreach (var item in resultList) {
+                        RemovePositiveModifiers(item, difficulty);
+                    }
+                }
+            }
 
             foreach (var item in resultList)
             {

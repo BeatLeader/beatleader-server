@@ -185,6 +185,13 @@ namespace BeatLeader_Server.Utils
             return PpFromScore(s.Accuracy, s.Modifiers, modifiers, modifiersRating, accRating, passRating, techRating, false);
         }
 
+        public static (float, float, float, float, float) PpFromScoreResponse(
+            ScoreResponse s, 
+            DifficultyDescription diff)
+        {
+            return PpFromScore(s.Accuracy, s.Modifiers, diff.ModifierValues, diff.ModifiersRating, diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0, false);
+        }
+
         public static (Score, int) ProcessReplayInfo(ReplayInfo info, DifficultyDescription difficulty) {
             Score score = new Score();
             
