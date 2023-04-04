@@ -87,23 +87,42 @@ public static partial class MapListUtils
         };
     }
 
-    private static IQueryable<Leaderboard> WhereStarsFrom(this IQueryable<Leaderboard> sequence, float? starsFrom)
-    {
-        if (starsFrom == null)
-        {
-            return sequence;
-        }
-
-        return sequence.Where(leaderboard => leaderboard.Difficulty.Stars >= starsFrom);
+    public enum RatingType {
+        Stars,
+        Acc,
+        Pass,
+        Tech
     }
 
-    private static IQueryable<Leaderboard> WhereStarsTo(this IQueryable<Leaderboard> sequence, float? starsTo)
+    private static IQueryable<Leaderboard> WhereRatingFrom(this IQueryable<Leaderboard> sequence, RatingType rating, float? from)
     {
-        if (starsTo == null)
+        if (from == null)
         {
             return sequence;
         }
 
-        return sequence.Where(leaderboard => leaderboard.Difficulty.Stars <= starsTo);
+        return rating switch {
+            RatingType.Stars => sequence.Where(leaderboard => leaderboard.Difficulty.Stars >= from),
+            RatingType.Acc => sequence.Where(leaderboard => leaderboard.Difficulty.AccRating >= from),
+            RatingType.Pass => sequence.Where(leaderboard => leaderboard.Difficulty.PassRating >= from),
+            RatingType.Tech => sequence.Where(leaderboard => leaderboard.Difficulty.TechRating >= from),
+            _ => sequence,
+        };
+    }
+
+    private static IQueryable<Leaderboard> WhereRatingTo(this IQueryable<Leaderboard> sequence, RatingType rating, float? to)
+    {
+        if (to == null)
+        {
+            return sequence;
+        }
+
+        return rating switch {
+            RatingType.Stars => sequence.Where(leaderboard => leaderboard.Difficulty.Stars <= to),
+            RatingType.Acc => sequence.Where(leaderboard => leaderboard.Difficulty.AccRating <= to),
+            RatingType.Pass => sequence.Where(leaderboard => leaderboard.Difficulty.PassRating <= to),
+            RatingType.Tech => sequence.Where(leaderboard => leaderboard.Difficulty.TechRating <= to),
+            _ => sequence,
+        };
     }
 }

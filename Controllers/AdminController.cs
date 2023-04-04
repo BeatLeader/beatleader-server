@@ -721,6 +721,13 @@ namespace BeatLeader_Server.Controllers
 
                         diff.Stars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0);
 
+                        var modifiersRating = diff.ModifiersRating;
+                        if (modifiersRating != null) {
+                            modifiersRating.SSStars = ReplayUtils.ToStars(modifiersRating.SSAccRating, modifiersRating.SSPassRating, modifiersRating.SSTechRating);
+                            modifiersRating.SFStars = ReplayUtils.ToStars(modifiersRating.SFAccRating, modifiersRating.SFPassRating, modifiersRating.SFTechRating);
+                            modifiersRating.FSStars = ReplayUtils.ToStars(modifiersRating.FSAccRating, modifiersRating.FSPassRating, modifiersRating.FSTechRating);
+                        }
+
                         //var rating = diff.ModifiersRating;
                         //if (rating != null) {
                         //    rating.SSAccRating = ReplayUtils.AccRating(

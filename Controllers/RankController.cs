@@ -363,7 +363,7 @@ namespace BeatLeader_Server.Controllers
                     difficulty.PredictedAcc = response.none.AIacc;
                     difficulty.AccRating = ReplayUtils.AccRating(response.none.AIacc, response.none.lack_map_calculation.balanced_pass_diff, response.none.lack_map_calculation.balanced_tech * 10);
 
-                    difficulty.ModifiersRating = new ModifiersRating {
+                    var modifiersRating = new ModifiersRating {
                         SSPassRating = response.SS.lack_map_calculation.balanced_pass_diff,
                         SSTechRating = response.SS.lack_map_calculation.balanced_tech * 10,
                         SSPredictedAcc = response.SS.AIacc,
@@ -377,8 +377,12 @@ namespace BeatLeader_Server.Controllers
                         FSPredictedAcc = response.FS.AIacc,
                         FSAccRating = ReplayUtils.AccRating(response.FS.AIacc, response.FS.lack_map_calculation.balanced_pass_diff, response.FS.lack_map_calculation.balanced_tech * 10),
                     };
+                    difficulty.ModifiersRating = modifiersRating;
 
                     difficulty.Stars = ReplayUtils.ToStars(difficulty.AccRating ?? 0, difficulty.PassRating ?? 0, difficulty.TechRating ?? 0);
+                    modifiersRating.SSStars = ReplayUtils.ToStars(modifiersRating.SSAccRating, modifiersRating.SSPassRating, modifiersRating.SSTechRating);
+                    modifiersRating.SFStars = ReplayUtils.ToStars(modifiersRating.SFAccRating, modifiersRating.SFPassRating, modifiersRating.SFTechRating);
+                    modifiersRating.FSStars = ReplayUtils.ToStars(modifiersRating.FSAccRating, modifiersRating.FSPassRating, modifiersRating.FSTechRating);
 
                 } else {
                     difficulty.PassRating = 0;
@@ -1096,7 +1100,9 @@ namespace BeatLeader_Server.Controllers
                     difficulty.ModifierValues = null;
                 }
 
-                difficulty.Status = rankability > 0 ? DifficultyStatus.ranked : DifficultyStatus.unranked;
+                if (rankability > 0) {
+
+                difficulty.Status =  DifficultyStatus.ranked;
                 difficulty.PredictedAcc = accRating;
                 difficulty.PassRating = passRating;
                 difficulty.TechRating = techRating;
@@ -1104,6 +1110,13 @@ namespace BeatLeader_Server.Controllers
                                 accRating, 
                                 passRating, 
                                 techRating);
+                } else {
+                    difficulty.Status = DifficultyStatus.unranked;
+                difficulty.PredictedAcc = 0;
+                difficulty.PassRating = 0;
+                difficulty.TechRating = 0;
+                difficulty.AccRating = 0;
+                }
 
                 difficulty.Type = type;
                 await _context.SaveChangesAsync();
