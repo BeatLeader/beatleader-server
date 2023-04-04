@@ -2,15 +2,13 @@
 
 namespace BeatLeader_Server.Utils;
 
-public enum Operation
-{
+public enum Operation {
     any = 0,
     all = 1,
     not = 2,
 }
 
-public static partial class MapListUtils
-{
+public static partial class MapListUtils {
     public static IQueryable<Leaderboard> Filter(this IQueryable<Leaderboard> source,
                                                  ReadAppContext context,
                                                  string? sortBy = null,
@@ -27,14 +25,22 @@ public static partial class MapListUtils
                                                  float? stars_to = null,
                                                  int? date_from = null,
                                                  int? date_to = null,
-                                                 string? currentID = null) =>
-        source.FilterBySearch(search)
-              .Sort(sortBy, order!, type, mytype, date_from, date_to, currentID)
-              .WithType(type)
-              .WithMapType(mapType, allTypes)
-              .WithMode(mode)
-              .WithMapRequirements(mapRequirements, allRequirements)
-              .FilterByMyType(context, mytype, currentID)
-              .WithStarsFrom(stars_from)
-              .WithStarsTo(stars_to);
+                                                 string? currentID = null) {
+
+        var filtered = source
+               .FilterBySearch(search)
+               .WhereType(type)
+               .WhereMapType(mapType, allTypes)
+               .WhereMode(mode)
+               .WhereMapRequirements(mapRequirements, allRequirements)
+               .WhereMyType(context, mytype, currentID)
+               .WhereStarsFrom(stars_from)
+               .WhereStarsTo(stars_to);
+
+        if (search == null || search.Length == 0) {
+            return filtered.Sort(sortBy, order!, type, mytype, date_from, date_to, currentID);
+        } else {
+            return filtered;
+        }
+    }
 }

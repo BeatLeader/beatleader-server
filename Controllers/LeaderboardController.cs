@@ -508,10 +508,18 @@ namespace BeatLeader_Server.Controllers
             sequence = sequence.Skip((page - 1) * count)
                 .Take(count)
                 .Include(lb => lb.Difficulty)
-                .ThenInclude(lb => lb.ModifierValues)
                 .Include(lb => lb.Song)
-                .Include(lb => lb.Reweight)
-                .ThenInclude(rew => rew.Modifiers);
+                .Include(lb => lb.Reweight);
+
+            if (type == "staff") {
+                sequence = sequence
+                    .Include(lb => lb.Qualification)
+                    .ThenInclude(q => q.Votes);
+            } else if (type == "ranking") {
+                sequence = sequence
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(q => q.ModifierValues);
+            }
 
             bool showPlays = sortBy == "playcount";
 
@@ -609,6 +617,16 @@ namespace BeatLeader_Server.Controllers
                 .Where(lb => ids.Contains(lb.SongId)).Filter(_readContext, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, date_from, date_to, currentID)
                 .Include(lb => lb.Difficulty)
                 .Include(lb => lb.Song);
+
+            if (type == "staff") {
+                sequence = sequence
+                    .Include(lb => lb.Qualification)
+                    .ThenInclude(q => q.Votes);
+            } else if (type == "ranking") {
+                sequence = sequence
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(q => q.ModifierValues);
+            }
 
             result.Data = sequence
                 .Select(lb => new LeaderboardInfoResponse
