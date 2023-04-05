@@ -80,8 +80,11 @@ public static partial class MapListUtils
         {
             if (!filter.Contains('=') || !filter.Contains('<') || !filter.Contains('>'))
             {
-                stringBuilder.Append(filter);
-                stringBuilder.Append(' ');
+                if (!string.IsNullOrWhiteSpace(filter))
+                {
+                    stringBuilder.Append(filter);
+                    stringBuilder.Append(' ');
+                }
 
                 continue;
             }
@@ -155,6 +158,8 @@ public static partial class MapListUtils
             stringBuilder.Append(filter);
             stringBuilder.Append(' ');
         }
+
+        stringBuilder.Remove(stringBuilder.Length - 1, 1);
 
         return stringBuilder.ToString();
     }
