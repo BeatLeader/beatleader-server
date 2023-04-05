@@ -32,24 +32,38 @@ public static partial class MapListUtils {
                                                  int? date_from = null,
                                                  int? date_to = null,
                                                  string? currentID = null) {
-
-        var filtered = source
-               .FilterBySearch(search)
-               .WhereType(type)
-               .WhereMapType(mapType, allTypes)
-               .WhereMode(mode)
-               .WhereMapRequirements(mapRequirements, allRequirements)
-               .WhereMyType(context, mytype, currentID)
-
-               .WhereRatingFrom(RatingType.Stars, stars_from)
-               .WhereRatingFrom(RatingType.Acc, accrating_from)
-               .WhereRatingFrom(RatingType.Pass, passrating_from)
-               .WhereRatingFrom(RatingType.Tech, techrating_from)
-
-               .WhereRatingTo(RatingType.Stars, stars_to)
-               .WhereRatingTo(RatingType.Acc, accrating_to)
-               .WhereRatingTo(RatingType.Pass, passrating_to)
-               .WhereRatingTo(RatingType.Tech, techrating_to);
+        IQueryable<Leaderboard> filtered = source
+                                           .FilterBySearch(search,
+                                                           ref type,
+                                                           ref mode,
+                                                           ref mapType,
+                                                           ref allTypes,
+                                                           ref mapRequirements,
+                                                           ref allRequirements,
+                                                           ref mytype,
+                                                           ref stars_from,
+                                                           ref stars_to,
+                                                           ref accrating_from,
+                                                           ref accrating_to,
+                                                           ref passrating_from,
+                                                           ref passrating_to,
+                                                           ref techrating_from,
+                                                           ref techrating_to,
+                                                           ref date_from,
+                                                           ref date_to)
+                                           .WhereType(type)
+                                           .WhereMapType(mapType, allTypes)
+                                           .WhereMode(mode)
+                                           .WhereMapRequirements(mapRequirements, allRequirements)
+                                           .WhereMyType(context, mytype, currentID)
+                                           .WhereRatingFrom(RatingType.Stars, stars_from)
+                                           .WhereRatingFrom(RatingType.Acc, accrating_from)
+                                           .WhereRatingFrom(RatingType.Pass, passrating_from)
+                                           .WhereRatingFrom(RatingType.Tech, techrating_from)
+                                           .WhereRatingTo(RatingType.Stars, stars_to)
+                                           .WhereRatingTo(RatingType.Acc, accrating_to)
+                                           .WhereRatingTo(RatingType.Pass, passrating_to)
+                                           .WhereRatingTo(RatingType.Tech, techrating_to);
 
         if (search == null || search.Length == 0) {
             return filtered.Sort(sortBy, order!, type, mytype, date_from, date_to, currentID);

@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Globalization;
+using System.Text;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
 
@@ -14,9 +15,15 @@ public static partial class MapListUtils
                                                           ref Operation allTypes,
                                                           ref Requirements? mapRequirements,
                                                           ref Operation allRequirements,
+                                                          ref string? mytype,
                                                           ref float? starsFrom,
                                                           ref float? starsTo,
-                                                          ref string? mytype,
+                                                          ref float? accRatingFrom,
+                                                          ref float? accRatingTo,
+                                                          ref float? passRatingFrom,
+                                                          ref float? passRatingTo,
+                                                          ref float? techRatingFrom,
+                                                          ref float? techRatingTo,
                                                           ref int? dateFrom,
                                                           ref int? dateTo)
     {
@@ -31,9 +38,15 @@ public static partial class MapListUtils
                                          ref allTypes,
                                          ref mapRequirements,
                                          ref allRequirements,
+                                         ref mytype,
                                          ref starsFrom,
                                          ref starsTo,
-                                         ref mytype,
+                                         ref accRatingFrom,
+                                         ref accRatingTo,
+                                         ref passRatingFrom,
+                                         ref passRatingTo,
+                                         ref techRatingFrom,
+                                         ref techRatingTo,
                                          ref dateFrom,
                                          ref dateTo);
 
@@ -49,9 +62,15 @@ public static partial class MapListUtils
                                            ref Operation allTypes,
                                            ref Requirements? mapRequirements,
                                            ref Operation allRequirements,
+                                           ref string? mytype,
                                            ref float? starsFrom,
                                            ref float? starsTo,
-                                           ref string? mytype,
+                                           ref float? accRatingFrom,
+                                           ref float? accRatingTo,
+                                           ref float? passRatingFrom,
+                                           ref float? passRatingTo,
+                                           ref float? techRatingFrom,
+                                           ref float? techRatingTo,
                                            ref int? dateFrom,
                                            ref int? dateTo)
     {
@@ -59,7 +78,7 @@ public static partial class MapListUtils
 
         foreach (string filter in search.Split(' '))
         {
-            if (!filter.Contains('='))
+            if (!filter.Contains('=') || !filter.Contains('<') || !filter.Contains('>'))
             {
                 stringBuilder.Append(filter);
                 stringBuilder.Append(' ');
@@ -67,48 +86,151 @@ public static partial class MapListUtils
                 continue;
             }
 
-            string[] nameValue = filter.ToLower().Split('=');
-            string name = nameValue[0];
-            string value = nameValue[1];
-
-            switch (name)
+            if (BasicFilter(filter, nameof(type), ref type))
             {
-                case "type":            type = value;
+                continue;
+            }
 
-                    break;
-                case "mode":            mode = value;
+            if (BasicFilter(filter, nameof(mode), ref mode))
+            {
+                continue;
+            }
 
-                    break;
-                case "maptype":         mapType = int.Parse(value);
+            if (BasicParseFilter(filter, nameof(mapType), ref mapType))
+            {
+                continue;
+            }
 
-                    break;
-                case "allTypes":        allTypes = Enum.Parse<Operation>(value, true);
+            if (EnumFilter(filter, ref allTypes))
+            {
+                continue;
+            }
 
-                    break;
-                case "maprequirements": mapRequirements = Enum.Parse<Requirements>(value, true);
+            // bypass because null
+            Requirements requirements = Requirements.None;
 
-                    break;
-                case "allRequirements": allRequirements = Enum.Parse<Operation>(value, true);
+            if (EnumFilter(filter, ref requirements))
+            {
+                mapRequirements = requirements;
 
-                    break;
-                case "starsfrom":       starsFrom = float.Parse(name);
+                continue;
+            }
 
-                    break;
-                case "starsto":         starsTo = float.Parse(name);
+            if (EnumFilter(filter, ref allRequirements))
+            {
+                continue;
+            }
 
-                    break;
-                case "mytype":          mytype = value;
+            if (BasicFilter(filter, nameof(mytype), ref mytype))
+            {
+                continue;
+            }
 
-                    break;
-                case "datefrom":        dateFrom = int.Parse(value);
+            if (ClampFilter(filter, RatingType.Stars.ToString(), ref starsFrom, ref starsTo))
+            {
+                continue;
+            }
 
-                    break;
-                case "dateto":          dateTo = int.Parse(value);
+            if (ClampFilter(filter, RatingType.Acc.ToString(), ref accRatingFrom, ref accRatingTo))
+            {
+                continue;
+            }
 
-                    break;
+            if (ClampFilter(filter, RatingType.Pass.ToString(), ref passRatingFrom, ref passRatingTo))
+            {
+                continue;
+            }
+
+            if (ClampFilter(filter, RatingType.Tech.ToString(), ref techRatingFrom, ref techRatingTo))
+            {
+                continue;
+            }
+
+            if (ClampFilter(filter, "date", ref dateFrom, ref dateTo))
+            {
+                continue;
             }
         }
 
         return stringBuilder.ToString();
+    }
+
+    private static bool BasicFilter(string filter, string name, ref string? stringValue)
+    {
+        if (!filter.StartsWith(name, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        stringValue = filter[(name.Length + 1)..];
+
+        return true;
+    }
+
+    private static bool BasicParseFilter<T>(string filter, string name, ref T? parsableValue)
+        where T : struct, IParsable<T>
+    {
+        if (!filter.StartsWith(name, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (T.TryParse(filter[(name.Length + 1)..], CultureInfo.InvariantCulture, out T value))
+        {
+            parsableValue = value;
+        }
+
+        return true;
+    }
+
+    private static bool EnumFilter<T>(string filter, ref T enumValue)
+        where T : struct, Enum
+    {
+        const string name = nameof(T);
+
+        if (!filter.StartsWith(name, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (Enum.TryParse(filter[(name.Length + 1)..], true, out T value))
+        {
+            enumValue = value;
+        }
+
+        return true;
+    }
+
+    private static bool ClampFilter<T>(string filter, string name, ref T? from, ref T? to)
+        where T : struct, IParsable<T>
+
+    {
+        if (!filter.StartsWith(name, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        int valueOffset = filter[name.Length + 1] == '='
+            ? name.Length + 2
+            : name.Length + 1;
+
+        if (T.TryParse(filter[valueOffset..], CultureInfo.InvariantCulture, out T value))
+        {
+            if (filter[name.Length] == '=')
+            {
+                to = value;
+                from = value;
+            }
+            else if (filter[name.Length] == '<')
+            {
+                to = value;
+            }
+            else if (filter[name.Length] == '>')
+            {
+                from = value;
+            }
+        }
+
+        return true;
     }
 }
