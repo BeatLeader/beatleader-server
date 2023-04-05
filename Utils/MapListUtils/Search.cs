@@ -153,6 +153,7 @@ public static partial class MapListUtils
 
             // adds string back to search if parse fails
             stringBuilder.Append(filter);
+            stringBuilder.Append(' ');
         }
 
         return stringBuilder.ToString();
