@@ -9,16 +9,19 @@ namespace BeatLeader_Server.Models
         public float FSPassRating { get; set; }
         public float FSAccRating { get; set; }
         public float FSTechRating { get; set; }
+        public float FSStars { get; set; }
 
         public float SSPredictedAcc { get; set; }
         public float SSPassRating { get; set; }
         public float SSAccRating { get; set; }
         public float SSTechRating { get; set; }
+        public float SSStars { get; set; }
 
         public float SFPredictedAcc { get; set; }
         public float SFPassRating { get; set; }
         public float SFAccRating { get; set; }
         public float SFTechRating { get; set; }
+        public float SFStars { get; set; }
     }
 
     public class ModifiersMap

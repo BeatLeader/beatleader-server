@@ -2,15 +2,13 @@
 
 namespace BeatLeader_Server.Utils;
 
-public enum Operation
-{
+public enum Operation {
     any = 0,
     all = 1,
     not = 2,
 }
 
-public static partial class MapListUtils
-{
+public static partial class MapListUtils {
     public static IQueryable<Leaderboard> Filter(this IQueryable<Leaderboard> source,
                                                  ReadAppContext context,
                                                  string? sortBy = null,
@@ -25,16 +23,38 @@ public static partial class MapListUtils
                                                  string? mytype = null,
                                                  float? stars_from = null,
                                                  float? stars_to = null,
+                                                 float? accrating_from = null,
+                                                 float? accrating_to = null,
+                                                 float? passrating_from = null,
+                                                 float? passrating_to = null,
+                                                 float? techrating_from = null,
+                                                 float? techrating_to = null,
                                                  int? date_from = null,
                                                  int? date_to = null,
-                                                 string? currentID = null) =>
-        source.FilterBySearch(search, ref type, ref mode, ref mapType, ref allTypes, ref mapRequirements, ref allRequirements, ref stars_from, ref stars_to, ref mytype, ref date_from, ref date_to)
-              .Sort(sortBy, order!, type, mytype, date_from, date_to, currentID)
-              .WithType(type)
-              .WithMapType(mapType, allTypes)
-              .WithMode(mode)
-              .WithMapRequirements(mapRequirements, allRequirements)
-              .FilterByMyType(context, mytype, currentID)
-              .WithStarsFrom(stars_from)
-              .WithStarsTo(stars_to);
+                                                 string? currentID = null) {
+
+        var filtered = source
+               .FilterBySearch(search)
+               .WhereType(type)
+               .WhereMapType(mapType, allTypes)
+               .WhereMode(mode)
+               .WhereMapRequirements(mapRequirements, allRequirements)
+               .WhereMyType(context, mytype, currentID)
+
+               .WhereRatingFrom(RatingType.Stars, stars_from)
+               .WhereRatingFrom(RatingType.Acc, accrating_from)
+               .WhereRatingFrom(RatingType.Pass, passrating_from)
+               .WhereRatingFrom(RatingType.Tech, techrating_from)
+
+               .WhereRatingTo(RatingType.Stars, stars_to)
+               .WhereRatingTo(RatingType.Acc, accrating_to)
+               .WhereRatingTo(RatingType.Pass, passrating_to)
+               .WhereRatingTo(RatingType.Tech, techrating_to);
+
+        if (search == null || search.Length == 0) {
+            return filtered.Sort(sortBy, order!, type, mytype, date_from, date_to, currentID);
+        } else {
+            return filtered;
+        }
+    }
 }

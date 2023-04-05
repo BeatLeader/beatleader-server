@@ -291,7 +291,9 @@ namespace BeatLeader_Server.Bot
                     leaderboard.NegativeVotes += 8;
                 }
 
-                qualificationVote.DiscordRTMessageId = await _rtNominationsForum.VoteAdded(qualification.DiscordRTChannelId, player, vote);
+                if (qualification.DiscordRTChannelId.Length > 0) {
+                    qualificationVote.DiscordRTMessageId = await _rtNominationsForum.VoteAdded(qualification.DiscordRTChannelId, player, vote);
+                }
             }
 
             context.SaveChanges();

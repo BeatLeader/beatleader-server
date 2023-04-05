@@ -488,12 +488,18 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? mytype = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
+            [FromQuery] float? accrating_from = null,
+            [FromQuery] float? accrating_to = null,
+            [FromQuery] float? passrating_from = null,
+            [FromQuery] float? passrating_to = null,
+            [FromQuery] float? techrating_from = null,
+            [FromQuery] float? techrating_to = null,
             [FromQuery] int? date_from = null,
             [FromQuery] int? date_to = null) {
 
             var sequence = _readContext.Leaderboards.AsQueryable();
             string? currentID = HttpContext.CurrentUserID(_readContext);
-            sequence = sequence.Filter(_readContext, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, date_from, date_to, currentID);
+            sequence = sequence.Filter(_readContext, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
 
             var result = new ResponseWithMetadata<LeaderboardInfoResponse>()
             {
@@ -508,10 +514,18 @@ namespace BeatLeader_Server.Controllers
             sequence = sequence.Skip((page - 1) * count)
                 .Take(count)
                 .Include(lb => lb.Difficulty)
-                .ThenInclude(lb => lb.ModifierValues)
                 .Include(lb => lb.Song)
-                .Include(lb => lb.Reweight)
-                .ThenInclude(rew => rew.Modifiers);
+                .Include(lb => lb.Reweight);
+
+            if (type == "staff") {
+                sequence = sequence
+                    .Include(lb => lb.Qualification)
+                    .ThenInclude(q => q.Votes);
+            } else if (type == "ranking") {
+                sequence = sequence
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(q => q.ModifierValues);
+            }
 
             bool showPlays = sortBy == "playcount";
 
@@ -527,37 +541,36 @@ namespace BeatLeader_Server.Controllers
                     NegativeVotes = lb.NegativeVotes,
                     VoteStars = lb.VoteStars,
                     StarVotes = lb.StarVotes,
-                    //MyScore = currentID == null ? null : lb.Scores.Where(s => s.PlayerId == currentID && !s.Banned).Select(s => new ScoreResponseWithAcc
-                    //{
-                    //    Id = s.Id,
-                    //    BaseScore = s.BaseScore,
-                    //    ModifiedScore = s.ModifiedScore,
-                    //    PlayerId = s.PlayerId,
-                    //    Accuracy = s.Accuracy,
-                    //    Pp = s.Pp,
-                    //    FcAccuracy = s.FcAccuracy,
-                    //    FcPp = s.FcPp,
-                    //    BonusPp = s.BonusPp,
-                    //    Rank = s.Rank,
-                    //    Replay = s.Replay,
-                    //    Modifiers = s.Modifiers,
-                    //    BadCuts = s.BadCuts,
-                    //    MissedNotes = s.MissedNotes,
-                    //    BombCuts = s.BombCuts,
-                    //    WallsHit = s.WallsHit,
-                    //    Pauses = s.Pauses,
-                    //    FullCombo = s.FullCombo,
-                    //    Hmd = s.Hmd,
-                    //    Timeset = s.Timeset,
-                    //    Timepost = s.Timepost,
-                    //    ReplaysWatched = s.AuthorizedReplayWatched + s.AnonimusReplayWatched,
-                    //    LeaderboardId = s.LeaderboardId,
-                    //    Platform = s.Platform,
-                    //    Weight = s.Weight,
-                    //    AccLeft = s.AccLeft,
-                    //    AccRight = s.AccRight,
-                    //    MaxStreak = s.MaxStreak,
-                    //}).FirstOrDefault(),
+                    MyScore = currentID == null ? null : lb.Scores.Where(s => s.PlayerId == currentID && !s.Banned).Select(s => new ScoreResponseWithAcc {
+                        Id = s.Id,
+                        BaseScore = s.BaseScore,
+                        ModifiedScore = s.ModifiedScore,
+                        PlayerId = s.PlayerId,
+                        Accuracy = s.Accuracy,
+                        Pp = s.Pp,
+                        FcAccuracy = s.FcAccuracy,
+                        FcPp = s.FcPp,
+                        BonusPp = s.BonusPp,
+                        Rank = s.Rank,
+                        Replay = s.Replay,
+                        Modifiers = s.Modifiers,
+                        BadCuts = s.BadCuts,
+                        MissedNotes = s.MissedNotes,
+                        BombCuts = s.BombCuts,
+                        WallsHit = s.WallsHit,
+                        Pauses = s.Pauses,
+                        FullCombo = s.FullCombo,
+                        Hmd = s.Hmd,
+                        Timeset = s.Timeset,
+                        Timepost = s.Timepost,
+                        ReplaysWatched = s.AuthorizedReplayWatched + s.AnonimusReplayWatched,
+                        LeaderboardId = s.LeaderboardId,
+                        Platform = s.Platform,
+                        Weight = s.Weight,
+                        AccLeft = s.AccLeft,
+                        AccRight = s.AccRight,
+                        MaxStreak = s.MaxStreak,
+                    }).FirstOrDefault(),
                     Plays = showPlays ? lb.Scores.Count(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)) : 0
                 }).ToList();
             if (search != null && search.Length > 0) {
@@ -583,12 +596,18 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? mytype = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
+            [FromQuery] float? accrating_from = null,
+            [FromQuery] float? accrating_to = null,
+            [FromQuery] float? passrating_from = null,
+            [FromQuery] float? passrating_to = null,
+            [FromQuery] float? techrating_from = null,
+            [FromQuery] float? techrating_to = null,
             [FromQuery] int? date_from = null,
             [FromQuery] int? date_to = null) {
 
             var sequence = _readContext.Leaderboards.AsQueryable();
             string? currentID = HttpContext.CurrentUserID(_readContext);
-            sequence = sequence.Filter(_readContext, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, date_from, date_to, currentID);
+            sequence = sequence.Filter(_readContext, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
 
             var ids = sequence.Select(lb => lb.SongId).ToList();
 
@@ -606,9 +625,19 @@ namespace BeatLeader_Server.Controllers
                 .Take(count).ToList();
 
             sequence = sequence
-                .Where(lb => ids.Contains(lb.SongId)).Filter(_readContext, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, date_from, date_to, currentID)
+                .Where(lb => ids.Contains(lb.SongId)).Filter(_readContext, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID)
                 .Include(lb => lb.Difficulty)
                 .Include(lb => lb.Song);
+
+            if (type == "staff") {
+                sequence = sequence
+                    .Include(lb => lb.Qualification)
+                    .ThenInclude(q => q.Votes);
+            } else if (type == "ranking") {
+                sequence = sequence
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(q => q.ModifierValues);
+            }
 
             result.Data = sequence
                 .Select(lb => new LeaderboardInfoResponse
