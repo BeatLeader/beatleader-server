@@ -159,9 +159,7 @@ public static partial class MapListUtils
             stringBuilder.Append(' ');
         }
 
-        stringBuilder.Remove(stringBuilder.Length - 1, 1);
-
-        return stringBuilder.ToString();
+        return stringBuilder.ToString().Trim();
     }
 
     private static bool BasicFilter(string filter, string name, ref string? stringValue)
