@@ -150,6 +150,9 @@ public static partial class MapListUtils
             {
                 continue;
             }
+
+            // adds string back to search if parse fails
+            stringBuilder.Append(filter);
         }
 
         return stringBuilder.ToString();
