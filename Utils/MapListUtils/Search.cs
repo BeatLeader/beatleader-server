@@ -55,30 +55,30 @@ public static partial class MapListUtils
         return sequence.Where(leaderboard => matches.Contains(leaderboard.SongId));
     }
 
-    private static string GetSearchFilters(this string search,
-                                           ref string? type,
-                                           ref string? mode,
-                                           ref int? mapType,
-                                           ref Operation allTypes,
-                                           ref Requirements? mapRequirements,
-                                           ref Operation allRequirements,
-                                           ref string? mytype,
-                                           ref float? starsFrom,
-                                           ref float? starsTo,
-                                           ref float? accRatingFrom,
-                                           ref float? accRatingTo,
-                                           ref float? passRatingFrom,
-                                           ref float? passRatingTo,
-                                           ref float? techRatingFrom,
-                                           ref float? techRatingTo,
-                                           ref int? dateFrom,
-                                           ref int? dateTo)
+    public static string GetSearchFilters(this string search,
+                                          ref string? type,
+                                          ref string? mode,
+                                          ref int? mapType,
+                                          ref Operation allTypes,
+                                          ref Requirements? mapRequirements,
+                                          ref Operation allRequirements,
+                                          ref string? mytype,
+                                          ref float? starsFrom,
+                                          ref float? starsTo,
+                                          ref float? accRatingFrom,
+                                          ref float? accRatingTo,
+                                          ref float? passRatingFrom,
+                                          ref float? passRatingTo,
+                                          ref float? techRatingFrom,
+                                          ref float? techRatingTo,
+                                          ref int? dateFrom,
+                                          ref int? dateTo)
     {
         StringBuilder stringBuilder = new(search.Length);
 
         foreach (string filter in search.Split(' '))
         {
-            if (!filter.Contains('=') || !filter.Contains('<') || !filter.Contains('>'))
+            if (!(filter.Contains('=') || filter.Contains('<') || filter.Contains('>')))
             {
                 if (!string.IsNullOrWhiteSpace(filter))
                 {
@@ -104,7 +104,7 @@ public static partial class MapListUtils
                 continue;
             }
 
-            if (EnumFilter(filter, ref allTypes))
+            if (EnumFilter(filter, nameof(allTypes), ref allTypes))
             {
                 continue;
             }
@@ -112,14 +112,14 @@ public static partial class MapListUtils
             // bypass because null
             Requirements requirements = Requirements.None;
 
-            if (EnumFilter(filter, ref requirements))
+            if (EnumFilter(filter, nameof(mapRequirements), ref requirements))
             {
                 mapRequirements = requirements;
 
                 continue;
             }
 
-            if (EnumFilter(filter, ref allRequirements))
+            if (EnumFilter(filter, nameof(allRequirements), ref allRequirements))
             {
                 continue;
             }
@@ -192,11 +192,9 @@ public static partial class MapListUtils
         return true;
     }
 
-    private static bool EnumFilter<T>(string filter, ref T enumValue)
+    private static bool EnumFilter<T>(string filter, string name, ref T enumValue)
         where T : struct, Enum
     {
-        const string name = nameof(T);
-
         if (!filter.StartsWith(name, StringComparison.OrdinalIgnoreCase))
         {
             return false;
