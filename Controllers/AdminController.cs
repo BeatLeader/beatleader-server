@@ -955,6 +955,9 @@ namespace BeatLeader_Server.Controllers
             foreach (var item in _context.Leaderboards.Where(lb => lb.Qualification != null).Include(lb => lb.Qualification).ToList()) {
                 item.Qualification = null;
             }
+            foreach (var item in _context.ScoreRemovalLogs.ToList()) {
+                _context.ScoreRemovalLogs.Remove(item);
+            }
 
             _context.BulkSaveChanges();
 
