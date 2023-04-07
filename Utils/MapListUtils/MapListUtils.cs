@@ -11,6 +11,9 @@ public enum Operation {
 public static partial class MapListUtils {
     public static IQueryable<Leaderboard> Filter(this IQueryable<Leaderboard> source,
                                                  ReadAppContext context,
+                                                 int page,
+                                                 int count,
+                                                 ref int totalCount,
                                                  string? sortBy = null,
                                                  string? order = null,
                                                  string? search = null,
@@ -34,7 +37,7 @@ public static partial class MapListUtils {
                                                  string? currentID = null) {
 
         var filtered = source
-               .FilterBySearch(search)
+               .FilterBySearch(page, count, ref totalCount, search)
                .WhereType(type)
                .WhereMapType(mapType, allTypes)
                .WhereMode(mode)

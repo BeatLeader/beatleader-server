@@ -5,15 +5,19 @@ namespace BeatLeader_Server.Utils;
 
 public static partial class MapListUtils
 {
-    private static IQueryable<Leaderboard> FilterBySearch(this IQueryable<Leaderboard> sequence, string? search)
+    private static IQueryable<Leaderboard> FilterBySearch(this IQueryable<Leaderboard> sequence, int page, int count, ref int matchCount, string? search)
     {
         if (string.IsNullOrEmpty(search))
         {
             return sequence;
         }
 
-        List<string> matches = SearchService.SearchMaps(search);
+        var matches = SearchService.SearchMaps(search);
 
-        return sequence.Where(leaderboard => matches.Contains(leaderboard.SongId));
+        matchCount = matches.Count;
+
+        var ids = matches.OrderByDescending(m => m.Score).Skip((page - 1) * count).Take(count).Select(m => m.Id).ToArray();
+
+        return sequence.Where(leaderboard => ids.Contains(leaderboard.SongId));
     }
 }
