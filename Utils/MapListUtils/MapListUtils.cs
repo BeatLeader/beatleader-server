@@ -2,15 +2,20 @@
 
 namespace BeatLeader_Server.Utils;
 
-public enum Operation {
+public enum Operation
+{
     any = 0,
     all = 1,
     not = 2,
 }
 
-public static partial class MapListUtils {
+public static partial class MapListUtils
+{
     public static IQueryable<Leaderboard> Filter(this IQueryable<Leaderboard> source,
                                                  ReadAppContext context,
+                                                 int page,
+                                                 int count,
+                                                 ref int totalCount,
                                                  string? sortBy = null,
                                                  string? order = null,
                                                  string? search = null,
@@ -31,9 +36,13 @@ public static partial class MapListUtils {
                                                  float? techrating_to = null,
                                                  int? date_from = null,
                                                  int? date_to = null,
-                                                 string? currentID = null) {
+                                                 string? currentID = null)
+    {
         IQueryable<Leaderboard> filtered = source
                                            .FilterBySearch(search,
+                                                           page,
+                                                           count,
+                                                           ref totalCount,
                                                            ref type,
                                                            ref mode,
                                                            ref mapType,
@@ -65,10 +74,8 @@ public static partial class MapListUtils {
                                            .WhereRatingTo(RatingType.Pass, passrating_to)
                                            .WhereRatingTo(RatingType.Tech, techrating_to);
 
-        if (search == null || search.Length == 0) {
-            return filtered.Sort(sortBy, order!, type, mytype, date_from, date_to, currentID);
-        } else {
-            return filtered;
-        }
+        return string.IsNullOrEmpty(search)
+            ? filtered.Sort(sortBy, order!, type, mytype, date_from, date_to, currentID)
+            : filtered;
     }
 }

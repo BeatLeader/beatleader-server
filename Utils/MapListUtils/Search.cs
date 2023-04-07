@@ -9,6 +9,9 @@ public static partial class MapListUtils
 {
     private static IQueryable<Leaderboard> FilterBySearch(this IQueryable<Leaderboard> sequence,
                                                           string? search,
+                                                          int page,
+                                                          int count,
+                                                          ref int matchCount,
                                                           ref string? type,
                                                           ref string? mode,
                                                           ref int? mapType,
@@ -50,9 +53,13 @@ public static partial class MapListUtils
                                          ref dateFrom,
                                          ref dateTo);
 
-        List<string> matches = SearchService.SearchMaps(search);
+        List<SearchService.SongMatch> matches = SearchService.SearchMaps(search);
 
-        return sequence.Where(leaderboard => matches.Contains(leaderboard.SongId));
+        matchCount = matches.Count;
+
+        string[] ids = matches.OrderByDescending(m => m.Score).Skip((page - 1) * count).Take(count).Select(m => m.Id).ToArray();
+
+        return sequence.Where(leaderboard => ids.Contains(leaderboard.SongId));
     }
 
     public static string GetSearchFilters(this string search,
