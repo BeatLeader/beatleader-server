@@ -499,7 +499,18 @@ namespace BeatLeader_Server.Controllers
 
             var sequence = _readContext.Leaderboards.AsQueryable();
             string? currentID = HttpContext.CurrentUserID(_readContext);
-            sequence = sequence.Filter(_readContext, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
+
+            var useragent = HttpContext.Request.Headers["user-agent"].ToString();
+
+            if (currentID != null && date_from != null && type == "ranking") {
+                var lastScore = _context.Scores.Where(s => s.PlayerId == currentID).OrderByDescending(s => s.Timepost).Select(s => s.Platform).FirstOrDefault();
+                if (lastScore == null || !lastScore.Contains("1.29")) {
+                    date_from = 0;
+                }
+            }
+
+            int searchCount = 0;
+            sequence = sequence.Filter(_readContext, page, count, ref searchCount, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
 
             var result = new ResponseWithMetadata<LeaderboardInfoResponse>()
             {
@@ -507,12 +518,15 @@ namespace BeatLeader_Server.Controllers
                 {
                     Page = page,
                     ItemsPerPage = count,
-                    Total = sequence.Count()
+                    Total = searchCount > 0 ? searchCount : sequence.Count()
                 }
             };
 
-            sequence = sequence.Skip((page - 1) * count)
-                .Take(count)
+            if (search == null || search.Length == 0) {
+                sequence = sequence.Skip((page - 1) * count).Take(count);
+            }
+
+            sequence = sequence
                 .Include(lb => lb.Difficulty)
                 .Include(lb => lb.Song)
                 .Include(lb => lb.Reweight);
@@ -573,7 +587,7 @@ namespace BeatLeader_Server.Controllers
                     }).FirstOrDefault(),
                     Plays = showPlays ? lb.Scores.Count(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)) : 0
                 }).ToList();
-            if (search != null && search.Length > 0) {
+            if (search?.Length > 0) {
                 result.Data = SearchService.SortMaps(result.Data, search);
             }
 
@@ -607,7 +621,8 @@ namespace BeatLeader_Server.Controllers
 
             var sequence = _readContext.Leaderboards.AsQueryable();
             string? currentID = HttpContext.CurrentUserID(_readContext);
-            sequence = sequence.Filter(_readContext, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
+            int searchCount = 0;
+            sequence = sequence.Filter(_readContext, page, count, ref searchCount, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
 
             var ids = sequence.Select(lb => lb.SongId).ToList();
 
@@ -625,7 +640,7 @@ namespace BeatLeader_Server.Controllers
                 .Take(count).ToList();
 
             sequence = sequence
-                .Where(lb => ids.Contains(lb.SongId)).Filter(_readContext, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID)
+                .Where(lb => ids.Contains(lb.SongId)).Filter(_readContext, page, count, ref searchCount, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID)
                 .Include(lb => lb.Difficulty)
                 .Include(lb => lb.Song);
 

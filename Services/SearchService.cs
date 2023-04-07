@@ -77,35 +77,42 @@ namespace BeatLeader_Server.Services {
             }
         }
 
-        public static List<string> SearchMaps(string query) {
-            List<string> result = new List<string>();
+        private static int ComparisonScore(string value, string query) {
+            if (value == query) {
+                return 100;
+            } else {
+                return Math.Max(Fuzz.WeightedRatio(value, query), value.Contains(query) ? 60 : 0);
+            }   
+        }
+
+        private static int MapComparisonScore(string id, string hash, string name, string author, string mapper, string query) {
+            if (id == query || hash == query) return 100;
+            if (name == query || author == query || mapper == query) return 100;
+
+            var score = name.Length >= 4 ? Fuzz.WeightedRatio(name, query) : 0;
+
+            score = Math.Max(score, author.Length >= 4 ? Fuzz.WeightedRatio(author, query) : 0);
+            score = Math.Max(score, mapper.Length >= 4 ? Fuzz.WeightedRatio(mapper, query) : 0);
+            score = Math.Max(score, name.Contains(query) ? 50 : 0);
+
+            return score;
+        }
+
+        public class SongMatch {
+            public string Id { get; set; }
+            public int Score { get; set; }
+        }
+
+        public static List<SongMatch> SearchMaps(string query) {
+            var result = new List<SongMatch>();
 
             query = query.ToLower();
 
             foreach (var s in songs) {
-                bool match = s.Id == query;
-                if (!match) {
-                    match |= s.Hash == query;
-                }
 
-                if (!match) {
-                    match |= (s.Name.Length < 4 && s.Name == query) || (s.Name.Length >= 4 && Fuzz.WeightedRatio(s.Name, query) > 70);
-                }
-
-                if (!match) {
-                    match |= (s.Author.Length < 4 && s.Author == query) || (s.Author.Length >= 4 && Fuzz.WeightedRatio(s.Author, query) > 70);
-                }
-
-                if (!match) {
-                    match |= (s.Mapper.Length < 4 && s.Mapper == query) || (s.Mapper.Length >= 4 && Fuzz.WeightedRatio(s.Mapper, query) > 70);
-                }
-
-                if (!match) {
-                    match |= s.Name.Contains(query);
-                }
-
-                if (match) {
-                    result.Add(s.Id);
+                var score = MapComparisonScore(s.Id, s.Hash, s.Name, s.Author, s.Mapper, query);
+                if (score > 70) {
+                    result.Add(new SongMatch {Id = s.Id, Score = score });
                 }
             }
 
@@ -115,33 +122,33 @@ namespace BeatLeader_Server.Services {
         public static List<LeaderboardInfoResponse> SortMaps(IEnumerable<LeaderboardInfoResponse> query, string searchQuery) {
             searchQuery = searchQuery.ToLower();
 
-            return query.OrderByDescending(s => {
-                if (s.Song.Id.ToLower() == searchQuery || s.Song.Hash.ToLower() == searchQuery) {
-                    return 100;
-                } else {
-                    return Math.Max(
-                        Math.Max(
-                            Fuzz.WeightedRatio(s.Song.Name.ToLower(), searchQuery), Fuzz.WeightedRatio(s.Song.Author.ToLower(), searchQuery)
-                            ), 
-                        Fuzz.WeightedRatio(s.Song.Mapper.ToLower(), searchQuery));
-                }
-            }).ToList();
+            return query.OrderByDescending(s => MapComparisonScore(
+                s.Song.Id.ToLower(), 
+                s.Song.Hash.ToLower(), 
+                s.Song.Name.ToLower(), 
+                s.Song.Author.ToLower(), 
+                s.Song.Mapper.ToLower(), 
+                searchQuery)).ToList();
         }
 
         public static void SongAdded(string id, string hash, string name, string author, string mapper) {
             songs.Add(new SongMetadata { Id = id, Hash = hash, Name = name, Author = author, Mapper = mapper });
         }
 
-        public static List<string> SearchPlayers(string query) {
-            List<string> result = new List<string>();
+        public class PlayerMatch {
+            public string Id { get; set; }
+            public int Score { get; set; }
+        }
+
+        public static List<PlayerMatch> SearchPlayers(string query) {
+            var result = new List<PlayerMatch>();
 
             query = query.ToLower();
 
-            var sdsd = players.Where(p => p.Names.FirstOrDefault(n => n == null) != null).ToList();
-
             foreach (var s in players) {
-                if (s.Names.FirstOrDefault(x => (x.Length < 4 && x == query) || x.Contains(query) || (x.Length >= 4 && Fuzz.WeightedRatio(x, query) > 70)) != null) {
-                    result.Add(s.Id);
+                var match = s.Names.FirstOrDefault(x => (x.Length < 4 && x == query) || x.Contains(query) || (x.Length >= 4 && Fuzz.WeightedRatio(x, query) > 70));
+                if (match != null) {
+                    result.Add(new PlayerMatch {Id = s.Id, Score = ComparisonScore(match, query) });
                 }
             }
 
@@ -151,7 +158,7 @@ namespace BeatLeader_Server.Services {
         public static List<PlayerResponseWithStats> SortPlayers(IEnumerable<PlayerResponseWithStats> query, string searchQuery) {
             searchQuery = searchQuery.ToLower();
 
-            return query.OrderByDescending(s => s.Name.Contains(searchQuery) ? 100 : Fuzz.WeightedRatio(s.Name.ToLower(), searchQuery)).ToList();
+            return query.OrderByDescending(s => ComparisonScore(s.Name.ToLower(), searchQuery)).ToList();
         }
 
         public static void PlayerAdded(string id, string name) {

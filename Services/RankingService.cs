@@ -181,12 +181,16 @@ namespace BeatLeader_Server.Services
                         }
                     }
                 }
+
+                var _playerController = scope.ServiceProvider.GetRequiredService<PlayerRefreshController>();
+                await _playerController.RefreshRanks();
+
                 var _playlistController = scope.ServiceProvider.GetRequiredService<PlaylistController>();
                 await _playlistController.RefreshNominatedPlaylist();
                 await _playlistController.RefreshQualifiedPlaylist();
                 await _playlistController.RefreshRankedPlaylist();
 
-                var _playerController = scope.ServiceProvider.GetRequiredService<PlayerRefreshController>();
+                
                 await _playerController.RefreshPlayers();
                 await _playerController.RefreshPlayersStats();
             }

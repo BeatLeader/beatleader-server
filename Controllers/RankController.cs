@@ -523,9 +523,10 @@ namespace BeatLeader_Server.Controllers
                                     message += $"Mapper: <@{discord.UserId}> <a:wavege:1069819816581546057> \n";
                                 }
                             }
-                            message += "★ " + leaderboard.Difficulty.Stars + "  ";
+                            var difficulty = leaderboard.Difficulty;
+                            message += $"Acc: {difficulty.AccRating:0.00}★\nPass: {difficulty.PassRating:0.00}★\nTech: {difficulty.TechRating:0.00}★\n";
                             message += " **T**  ";
-                            message += FormatUtils.DescribeType(leaderboard.Difficulty.Type);
+                            message += FormatUtils.DescribeType(difficulty.Type);
                             message += "\n";
                             message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
 
@@ -588,6 +589,9 @@ namespace BeatLeader_Server.Controllers
                         }
                         if (newStatus == DifficultyStatus.nominated) {
                             leaderboard.Difficulty.Status = DifficultyStatus.nominated;
+                            qualification.ApprovalTimeset = 0;
+                            qualification.Approved = false;
+                            qualification.Approvers = null;
                         }
                     }
 
@@ -662,15 +666,15 @@ namespace BeatLeader_Server.Controllers
                             {
                                 if (qualificationChange.NewAccRating != qualificationChange.OldAccRating)
                                 {
-                                    message += "Acc ★ " + qualificationChange.OldAccRating + " → " + qualificationChange.NewAccRating;
+                                    message += $"Acc {qualificationChange.OldAccRating:0.00}★ → {qualificationChange.NewAccRating:0.00}★";
                                 }
                                 if (qualificationChange.NewPassRating != qualificationChange.OldPassRating)
                                 {
-                                    message += "Pass ★ " + qualificationChange.OldPassRating + " → " + qualificationChange.NewPassRating;
+                                    message += $"Pass {qualificationChange.OldPassRating:0.00}★ → {qualificationChange.NewPassRating:0.00}★";
                                 }
                                 if (qualificationChange.NewTechRating != qualificationChange.OldTechRating)
                                 {
-                                    message += "Tech ★ " + qualificationChange.OldTechRating + " → " + qualificationChange.NewTechRating;
+                                    message += $"Tech {qualificationChange.OldTechRating:0.00}★ → {qualificationChange.NewTechRating:0.00}★";
                                 }
                                 message += FormatUtils.DescribeTypeChanges(qualificationChange.OldType, qualificationChange.NewType);
                                 if (qualificationChange.OldCriteriaMet != qualificationChange.NewCriteriaMet)

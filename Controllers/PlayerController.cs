@@ -357,6 +357,8 @@ namespace BeatLeader_Server.Controllers
                 .Include(p => p.Clans)
                 .Include(p => p.ProfileSettings);
 
+            int totalCount = 0;
+
             if (banned != null) {
                 string userId = HttpContext.CurrentUserID(_readContext);
                 var player = await _readContext.Players.FindAsync(userId);
@@ -383,10 +385,13 @@ namespace BeatLeader_Server.Controllers
                 }
                 request = request.Where((Expression<Func<Player, bool>>)Expression.Lambda(exp, player));
             }
-            if (search.Length != 0)
+            if (search?.Length != 0)
             {
                 var match = SearchService.SearchPlayers(search);
-                request = request.Where(p => match.Contains(p.Id));
+                totalCount = match.Count;
+
+                var ids = match.OrderByDescending(m => m.Score).Skip((page - 1) * count).Take(count).Select(m => m.Id).ToArray();
+                request = request.Where(p => ids.Contains(p.Id));
             }
 
             if (clans != null)
@@ -484,9 +489,6 @@ namespace BeatLeader_Server.Controllers
                         break;
                 }
             }
-            if (search == null || search.Length == 0) {
-                request = Sorted(request, sortBy, ppType, order, mapsType);
-            }
             
             var result = new ResponseWithMetadata<PlayerResponseWithStats>()
             {
@@ -494,9 +496,15 @@ namespace BeatLeader_Server.Controllers
                 {
                     Page = page,
                     ItemsPerPage = count,
-                    Total = request.Count()
-                },
-                Data = request.Skip((page - 1) * count).Take(count).Select(p => new PlayerResponseWithStats
+                    Total = totalCount > 0 ? totalCount : request.Count()
+                }
+            };
+
+            if (search == null || search.Length == 0) {
+                request = Sorted(request, sortBy, ppType, order, mapsType).Skip((page - 1) * count).Take(count);
+            }
+
+            result.Data = request.Select(p => new PlayerResponseWithStats
                 {
                     Id = p.Id,
                     Name = p.Name,
@@ -519,10 +527,9 @@ namespace BeatLeader_Server.Controllers
                     PatreonFeatures = p.PatreonFeatures,
                     ProfileSettings = p.ProfileSettings,
                     Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                }).ToList().Select(PostProcessSettings)
-            };
+                }).ToList().Select(PostProcessSettings);
 
-            if (search != null && search.Length > 0) {
+            if (search?.Length != 0) {
                 result.Data = SearchService.SortPlayers(result.Data, search);
             }
 
