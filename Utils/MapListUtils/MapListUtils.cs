@@ -1,4 +1,5 @@
 ﻿using BeatLeader_Server.Models;
+using static BeatLeader_Server.Services.SearchService;
 
 namespace BeatLeader_Server.Utils;
 
@@ -13,7 +14,7 @@ public static partial class MapListUtils {
                                                  ReadAppContext context,
                                                  int page,
                                                  int count,
-                                                 ref int totalCount,
+                                                 ref int searchCount, 
                                                  string? sortBy = null,
                                                  string? order = null,
                                                  string? search = null,
@@ -36,8 +37,10 @@ public static partial class MapListUtils {
                                                  int? date_to = null,
                                                  string? currentID = null) {
 
+        List<SongMatch>? matches = null;
+
         var filtered = source
-               .FilterBySearch(page, count, ref totalCount, search)
+               .FilterBySearch(ref matches, search)
                .WhereType(type)
                .WhereMapType(mapType, allTypes)
                .WhereMode(mode)
@@ -54,10 +57,18 @@ public static partial class MapListUtils {
                .WhereRatingTo(RatingType.Pass, passrating_to)
                .WhereRatingTo(RatingType.Tech, techrating_to);
 
-        if (search == null || search.Length == 0) {
-            return filtered.Sort(sortBy, order!, type, mytype, date_from, date_to, currentID);
+        if (matches != null) {
+            var matchedAndFiltered = filtered.Select(p => p.Id).ToList();
+            searchCount = matchedAndFiltered.Count;
+            var sorted = matchedAndFiltered
+                .OrderByDescending(p => matches.FirstOrDefault(m => m.Id == p)?.Score ?? 0)
+                .Skip((page - 1) * count)
+                .Take(count)
+                .ToList();
+
+            return filtered.Where(p => sorted.Contains(p.Id));
         } else {
-            return filtered;
+            return filtered.Sort(sortBy, order!, type, mytype, date_from, date_to, currentID);
         }
     }
 }

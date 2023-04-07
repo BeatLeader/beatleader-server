@@ -491,7 +491,9 @@ namespace BeatLeader_Server.Controllers
             int searchCount = 0;
             sequence = sequence.Filter(_readAppContext, 1, count, ref searchCount, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
 
-            var diffsCount = sequence.Select(s => s.Song.Hash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash).Take(count).Last().Index + 1;
+            var diffsList = sequence.Select(s => s.Song.Hash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash);
+
+            var diffsCount = diffsList.Count() == 0 ? 0 : diffsList.Take(count).Last().Index + 1;
 
             sequence = sequence
                 .Include(lb => lb.Difficulty)

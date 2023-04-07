@@ -500,8 +500,6 @@ namespace BeatLeader_Server.Controllers
             var sequence = _readContext.Leaderboards.AsQueryable();
             string? currentID = HttpContext.CurrentUserID(_readContext);
 
-            var useragent = HttpContext.Request.Headers["user-agent"].ToString();
-
             if (currentID != null && date_from != null && type == "ranking") {
                 var lastScore = _context.Scores.Where(s => s.PlayerId == currentID).OrderByDescending(s => s.Timepost).Select(s => s.Platform).FirstOrDefault();
                 if (lastScore == null || !lastScore.Contains("1.29")) {
