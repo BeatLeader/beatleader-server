@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20230329135938_Oauth")]
+    partial class Oauth
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -939,9 +942,6 @@ namespace BeatLeader_Server.Migrations
                     b.Property<float>("FSPredictedAcc")
                         .HasColumnType("real");
 
-                    b.Property<float>("FSStars")
-                        .HasColumnType("real");
-
                     b.Property<float>("FSTechRating")
                         .HasColumnType("real");
 
@@ -954,9 +954,6 @@ namespace BeatLeader_Server.Migrations
                     b.Property<float>("SFPredictedAcc")
                         .HasColumnType("real");
 
-                    b.Property<float>("SFStars")
-                        .HasColumnType("real");
-
                     b.Property<float>("SFTechRating")
                         .HasColumnType("real");
 
@@ -967,9 +964,6 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("real");
 
                     b.Property<float>("SSPredictedAcc")
-                        .HasColumnType("real");
-
-                    b.Property<float>("SSStars")
                         .HasColumnType("real");
 
                     b.Property<float>("SSTechRating")

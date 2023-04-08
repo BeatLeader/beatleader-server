@@ -42,6 +42,8 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3-beta1" />
+    <PackageReference Include="OpenIddict.AspNetCore" Version="4.2.0" />
+    <PackageReference Include="OpenIddict.EntityFrameworkCore" Version="4.2.0" />
     <PackageReference Include="Prometheus.Client" Version="5.2.0" />
     <PackageReference Include="Prometheus.Client.Abstractions" Version="5.2.0" />
     <PackageReference Include="Prometheus.Client.AspNetCore" Version="4.8.0" />
