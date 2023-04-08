@@ -648,6 +648,19 @@ namespace BeatLeader_Server.Controllers
                         player.ScoreStats.TopBonusPP = resultScore.BonusPp;
                     }
 
+                    if (resultScore.PassPP > player.ScoreStats.TopPassPP)
+                    {
+                        player.ScoreStats.TopPassPP = resultScore.PassPP;
+                    }
+                    if (resultScore.AccPP > player.ScoreStats.TopAccPP)
+                    {
+                        player.ScoreStats.TopAccPP = resultScore.AccPP;
+                    }
+                    if (resultScore.TechPP > player.ScoreStats.TopTechPP)
+                    {
+                        player.ScoreStats.TopTechPP = resultScore.TechPP;
+                    }
+
                     switch (resultScore.Accuracy)
                     {
                         case > 0.95f:
