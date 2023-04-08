@@ -76,6 +76,9 @@ namespace BeatLeader_Server.Controllers
             public float Accuracy;
             public float Pp;
             public float BonusPp;
+            public float PassPP;
+            public float AccPP;
+            public float TechPP;
             public int Rank;
             public int Timeset;
             public float Weight;
@@ -98,6 +101,9 @@ namespace BeatLeader_Server.Controllers
                     Accuracy = s.Accuracy,
                     Pp = s.Pp,
                     BonusPp = s.BonusPp,
+                    PassPP = s.PassPP,
+                    AccPP = s.AccPP,
+                    TechPP = s.TechPP,
                     Rank = s.Rank,
                     Timeset = s.Timepost,
                     Weight = s.Weight,
@@ -235,6 +241,9 @@ namespace BeatLeader_Server.Controllers
                 scoreStats.TopRankedAccuracy = rankedScores.Max(s => s.Accuracy);
                 scoreStats.TopPp = rankedScores.Max(s => s.Pp);
                 scoreStats.TopBonusPP = rankedScores.Max(s => s.BonusPp);
+                scoreStats.TopPassPP = rankedScores.Max(s => s.PassPP);
+                scoreStats.TopAccPP = rankedScores.Max(s => s.AccPP);
+                scoreStats.TopTechPP = rankedScores.Max(s => s.TechPP);
                 scoreStats.AverageRankedRank = rankedScores.Average(s => (float)s.Rank);
                 scoreStats.LastRankedScoreTime = rankedScores.MaxBy(s => s.Timeset).Timeset;
                 scoreStats.RankedMaxStreak = rankedScores.Max(s => s.MaxStreak);
@@ -253,6 +262,9 @@ namespace BeatLeader_Server.Controllers
                 scoreStats.TopRankedAccuracy = 0;
                 scoreStats.TopPp = 0;
                 scoreStats.TopBonusPP = 0;
+                scoreStats.TopPassPP = 0;
+                scoreStats.TopAccPP = 0;
+                scoreStats.TopTechPP = 0;
                 scoreStats.AverageRankedRank = 0;
                 scoreStats.LastRankedScoreTime = 0;
                 
@@ -477,6 +489,9 @@ namespace BeatLeader_Server.Controllers
                     Accuracy = s.Accuracy,
                     Pp = s.Pp,
                     BonusPp = s.BonusPp,
+                    PassPP = s.PassPP,
+                    AccPP = s.AccPP,
+                    TechPP = s.TechPP,
                     Rank = s.Rank,
                     Timeset = s.Timepost,
                     Weight = s.Weight,

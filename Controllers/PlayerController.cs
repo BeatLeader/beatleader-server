@@ -598,7 +598,22 @@ namespace BeatLeader_Server.Controllers
                             request = request.Order(order, p => p.ScoreStats.TopRankedAccuracy);
                             break;
                         case "topPp":
-                            request = request.Order(order, p => p.ScoreStats.TopPp);
+                            switch (ppType)
+                            {
+                                case "acc":
+                                    request = request.Order(order, p => p.ScoreStats.TopAccPP);
+                                    break;
+                                case "tech":
+                                    request = request.Order(order, p => p.ScoreStats.TopTechPP);
+                                    break;
+                                case "pass":
+                                    request = request.Order(order, p => p.ScoreStats.TopPassPP);
+                                    break;
+                                default:
+                                    request = request.Order(order, p => p.ScoreStats.TopPp);
+                                    break;
+                            }
+
                             break;
                         case "hmd":
                             request = request.Order(order, p => p.ScoreStats.TopHMD);
