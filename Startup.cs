@@ -10,6 +10,7 @@ using Prometheus.Client.HttpRequestDurations;
 using Prometheus.Client.AspNetCore;
 using System.Net;
 using BeatLeader_Server.Bot;
+using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace BeatLeader_Server {
 
@@ -151,7 +152,7 @@ namespace BeatLeader_Server {
                 options.EnableEndpointRateLimiting = true;
                 options.StackBlockedRequests = false;
                 options.HttpStatusCode = 429;
-                options.RealIpHeader = "X-Real-IP";
+                options.RealIpHeader = "cf-connecting-ip";
                 options.ClientIdHeader = "X-ClientId";
                 options.GeneralRules = new List<RateLimitRule>
                     {
@@ -220,24 +221,98 @@ namespace BeatLeader_Server {
                     options.SignInScheme = "BLGoogle";
                     options.Scope.Add("https://www.googleapis.com/auth/youtube.readonly");
                 });
+            } else {
+                authBuilder.AddCookie("BLBeatLeader")
+                .AddBeatLeader(options => {
+                    options.SignInScheme = "BLBeatLeader";
+                    options.SaveTokens = true;
+                    options.ClientId = OauthService.TestClientId;
+                    options.ClientSecret = OauthService.TestClientSecret;
+                });
             }
 
             services.AddServerTiming();
             services.AddMetricFactory();
+            services.AddAntiforgery(options =>
+            {
+                options.Cookie.Name = "X-CSRF-TOKEN";
+                options.HeaderName = "X-CSRF-TOKEN";
+                options.SuppressXFrameOptionsHeader = false;
+            });
 
-            services.AddDbContext<AppContext>(options => options.UseSqlServer(Configuration.GetValue<string>("DefaultConnection")));
+            services.AddDbContext<AppContext>(options => { 
+                options.UseSqlServer(Configuration.GetValue<string>("DefaultConnection"));
+
+                options.UseOpenIddict();
+            });
             services.AddDbContext<ReadAppContext>(options => options.UseSqlServer(Configuration.GetValue<string>("ReadOnlyConnection")));
 
-            if (Configuration.GetValue<string>("ServicesHost") == "YES")
+            services.AddOpenIddict()
+            // Register the OpenIddict core components.
+            .AddCore(options =>
             {
-                services.AddHostedService<HourlyRefresh>();
-                services.AddHostedService<DailyRefresh>();
-                services.AddHostedService<HistoryService>();
-                services.AddHostedService<RankingService>();
-                services.AddHostedService<MinuteRefresh>();
+                // Configure OpenIddict to use the Entity Framework Core stores and models.
+                // Note: call ReplaceDefaultEntities() to replace the default entities.
+                options.UseEntityFrameworkCore()
+                       .UseDbContext<AppContext>();
+            })
+
+            // Register the OpenIddict server components.
+            .AddServer(options =>
+            {
+                // Enable the token endpoint.
+                options.SetAuthorizationEndpointUris("oauth2/authorize")
+                       .SetLogoutEndpointUris("signout")
+                       .SetTokenEndpointUris("oauth2/token")
+                       .SetUserinfoEndpointUris("oauth2/identity");
+
+                // Enable the client credentials flow.
+                options.RegisterScopes(Scopes.Profile);
+
+                // Note: the sample uses the code and refresh token flows but you can enable
+                // the other flows if you need to support implicit, password or client credentials.
+                options.AllowAuthorizationCodeFlow()
+                       .AllowRefreshTokenFlow();
+
+                // Register the signing and encryption credentials.
+                options.AddDevelopmentEncryptionCertificate()
+                       .AddDevelopmentSigningCertificate();
+
+                // Register the ASP.NET Core host and configure the ASP.NET Core options.
+                options.UseAspNetCore()
+                       .EnableAuthorizationEndpointPassthrough()
+                       .EnableLogoutEndpointPassthrough()
+                       .EnableStatusCodePagesIntegration()
+                       .EnableUserinfoEndpointPassthrough();
+            })
+
+            // Register the OpenIddict validation components.
+            .AddValidation(options =>
+            {
+                // Import the configuration from the local OpenIddict server instance.
+                options.UseLocalServer();
+
+                // Register the ASP.NET Core host.
+                options.UseAspNetCore();
+            });
+
+            if (!Environment.IsDevelopment()) {
+                if (Configuration.GetValue<string>("ServicesHost") == "YES")
+                {
+                    services.AddHostedService<HourlyRefresh>();
+                    services.AddHostedService<DailyRefresh>();
+                    services.AddHostedService<HistoryService>();
+                    services.AddHostedService<RankingService>();
+                    services.AddHostedService<MinuteRefresh>();
+                }
+                services.AddHostedService<BotService>();
             }
-            services.AddHostedService<BotService>();
+
+            services.AddHostedService<SearchService>();
+            services.AddHostedService<OauthService>();
+
             services.AddSingleton<NominationsForum>();
+            services.AddSingleton<RTNominationsForum>();
 
             services.AddMvc ().AddControllersAsServices ().AddJsonOptions (options => {
                 options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;

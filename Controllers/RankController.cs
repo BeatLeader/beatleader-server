@@ -26,6 +26,7 @@ namespace BeatLeader_Server.Controllers
         private readonly PlaylistController _playlistController;
 
         private readonly NominationsForum _nominationsForum;
+        private readonly RTNominationsForum _rtNominationsForum;
 
         public RankController(
             AppContext context,
@@ -37,7 +38,8 @@ namespace BeatLeader_Server.Controllers
             MapEvaluationController mapEvaluationController,
             PlayerRefreshController playerRefreshController,
             PlaylistController playlistController,
-            NominationsForum nominationsForum)
+            NominationsForum nominationsForum,
+            RTNominationsForum rtNominationsForum)
         {
             _context = context;
             _readContext = readContext;
@@ -50,6 +52,7 @@ namespace BeatLeader_Server.Controllers
             _playlistController = playlistController;
 
             _nominationsForum = nominationsForum;
+            _rtNominationsForum = rtNominationsForum;
         }
 
         public enum VoteStatus
@@ -283,28 +286,26 @@ namespace BeatLeader_Server.Controllers
         }
 
         [Authorize]
-        [HttpPost("~/qualify/{hash}/{diff}/{mode}/")]
-        public async Task<ActionResult> QualifyMap(
+        [HttpPost("~/nominate/{hash}/{diff}/{mode}/")]
+        public async Task<ActionResult> NominateMap(
             string hash,
             string diff,
-            string mode,
-            [FromQuery] float stars = 0,
-            [FromQuery] int type = 0,
-            [FromQuery] string? modifiers = null)
+            string mode)
         {
             if (hash.Length < 40) {
                 return BadRequest("Hash is to short");
             } else {
                 hash = hash.Substring(0, 40);
             }
-            string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.Where(p => p.Id == currentID).Include(p => p.Socials).FirstOrDefaultAsync();
 
             Leaderboard? leaderboard = _context.Leaderboards.Include(l => l.Difficulty).Include(l => l.Song).FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             bool isRT = true;
             bool verified = false;
-            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 if (currentPlayer != null && currentPlayer.MapperId == leaderboard?.Song.MapperId) {
                     isRT = false;
@@ -321,6 +322,8 @@ namespace BeatLeader_Server.Controllers
                        .Include(lb => lb.Qualification)
                        .Include(lb => lb.Difficulty)
                        .ThenInclude(d => d.ModifierValues)
+                       .Include(lb => lb.Difficulty)
+                       .ThenInclude(d => d.ModifiersRating)
                        .Where(lb => lb.Song.Id == leaderboard.Song.Id && lb.Qualification != null).ToList();
                 string? alreadyApproved = qualifiedLeaderboards.Count() == 0 ? null : qualifiedLeaderboards.FirstOrDefault(lb => lb.Qualification.MapperAllowed)?.Qualification.MapperId;
 
@@ -347,16 +350,44 @@ namespace BeatLeader_Server.Controllers
                     return BadRequest("Already qualified or ranked");
                 }
 
-                ModifiersMap? modifierValues = modifiers == null ? null : JsonConvert.DeserializeObject<ModifiersMap>(modifiers);
-                if (modifierValues == null) {
-                    modifierValues = new ModifiersMap();
-                    modifierValues.FS *= 2; modifierValues.SF *= 2; modifierValues.DA *= 2; modifierValues.GN *= 2; modifierValues.NF = -1.0f;
-                }
+                ModifiersMap? modifierValues = new ModifiersMap();
+                modifierValues.FS *= 2; modifierValues.SF *= 2; modifierValues.DA *= 2; modifierValues.GN *= 2; modifierValues.NF = -1.0f;
 
                 difficulty.Status = DifficultyStatus.nominated;
                 difficulty.NominatedTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-                if (isRT || verified) {
-                    difficulty.Stars = stars;
+
+                var response = await SongUtils.ExmachinaStars(leaderboard.Song.Hash, difficulty.Value);
+                if (response != null) {
+                    difficulty.PassRating = response.none.lack_map_calculation.balanced_pass_diff;
+                    difficulty.TechRating = response.none.lack_map_calculation.balanced_tech * 10;
+                    difficulty.PredictedAcc = response.none.AIacc;
+                    difficulty.AccRating = ReplayUtils.AccRating(response.none.AIacc, response.none.lack_map_calculation.balanced_pass_diff, response.none.lack_map_calculation.balanced_tech * 10);
+
+                    var modifiersRating = new ModifiersRating {
+                        SSPassRating = response.SS.lack_map_calculation.balanced_pass_diff,
+                        SSTechRating = response.SS.lack_map_calculation.balanced_tech * 10,
+                        SSPredictedAcc = response.SS.AIacc,
+                        SSAccRating = ReplayUtils.AccRating(response.SS.AIacc, response.SS.lack_map_calculation.balanced_pass_diff, response.SS.lack_map_calculation.balanced_tech * 10),
+                        SFPassRating = response.SFS.lack_map_calculation.balanced_pass_diff,
+                        SFTechRating = response.SFS.lack_map_calculation.balanced_tech * 10,
+                        SFPredictedAcc = response.SFS.AIacc,
+                        SFAccRating = ReplayUtils.AccRating(response.SFS.AIacc, response.SFS.lack_map_calculation.balanced_pass_diff, response.SFS.lack_map_calculation.balanced_tech * 10),
+                        FSPassRating = response.FS.lack_map_calculation.balanced_pass_diff,
+                        FSTechRating = response.FS.lack_map_calculation.balanced_tech * 10,
+                        FSPredictedAcc = response.FS.AIacc,
+                        FSAccRating = ReplayUtils.AccRating(response.FS.AIacc, response.FS.lack_map_calculation.balanced_pass_diff, response.FS.lack_map_calculation.balanced_tech * 10),
+                    };
+                    difficulty.ModifiersRating = modifiersRating;
+
+                    difficulty.Stars = ReplayUtils.ToStars(difficulty.AccRating ?? 0, difficulty.PassRating ?? 0, difficulty.TechRating ?? 0);
+                    modifiersRating.SSStars = ReplayUtils.ToStars(modifiersRating.SSAccRating, modifiersRating.SSPassRating, modifiersRating.SSTechRating);
+                    modifiersRating.SFStars = ReplayUtils.ToStars(modifiersRating.SFAccRating, modifiersRating.SFPassRating, modifiersRating.SFTechRating);
+                    modifiersRating.FSStars = ReplayUtils.ToStars(modifiersRating.FSAccRating, modifiersRating.FSPassRating, modifiersRating.FSTechRating);
+
+                } else {
+                    difficulty.PassRating = 0;
+                    difficulty.AccRating = 0;
+                    difficulty.TechRating = 0;
                 }
 
                 string? criteriaCheck = qualifiedLeaderboards.FirstOrDefault(lb => lb.Qualification.CriteriaCheck != null)?.Qualification.CriteriaCheck;
@@ -378,7 +409,6 @@ namespace BeatLeader_Server.Controllers
                 };
                 
                 difficulty.ModifierValues = modifierValues;
-                difficulty.Type = type;
                 await _context.SaveChangesAsync();
                 await _scoreRefreshController.RefreshScores(leaderboard.Id);
                 await _playlistController.RefreshNominatedPlaylist();
@@ -387,28 +417,17 @@ namespace BeatLeader_Server.Controllers
 
                 if (dsClient != null)
                 {
-                    string message = "";
-                    if (isRT) {
-                        message += "RT";
-                    } else if (verified) {
-                        message += "Verified mapper";
-                    } else {
-                        message += "Mapper";
-                    }
-                        
-                    message += " **" + currentPlayer.Name + "** nominated **" + diff + "** diff of **" + leaderboard.Song.Name + "**! \n";
+                    string message = "**" + currentPlayer.Name + "** nominated **" + diff + "** diff of **" + leaderboard.Song.Name + "**! \n";
                     if (isRT || verified) {
-                        message += "★ " + difficulty.Stars + "  ";
+                        message += $"Acc: {difficulty.AccRating:0.00}★\nPass: {difficulty.PassRating:0.00}★\nTech: {difficulty.TechRating:0.00}★\n";
                     }
-                    message += " **T**  ";
-                    message += FormatUtils.DescribeType(leaderboard.Difficulty.Type);
-                    message += "\n";
                     message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
 
                     await dsClient.SendMessageAsync(message);
                 }
 
                 leaderboard.Qualification.DiscordChannelId = (await _nominationsForum.OpenNomination(currentPlayer.Name, leaderboard)).ToString();
+                leaderboard.Qualification.DiscordRTChannelId = (await _rtNominationsForum.OpenNomination(currentPlayer, leaderboard)).ToString();
                 await _context.SaveChangesAsync();
             }
 
@@ -422,7 +441,9 @@ namespace BeatLeader_Server.Controllers
             string diff,
             string mode,
             [FromQuery] DifficultyStatus? newStatus,
-            [FromQuery] float? stars,
+            [FromQuery] float? accRating,
+            [FromQuery] float? passRating,
+            [FromQuery] float? techRating,
             [FromQuery] int? type,
             [FromQuery] int? criteriaCheck,
             [FromQuery] string? criteriaCommentary,
@@ -463,7 +484,9 @@ namespace BeatLeader_Server.Controllers
             if (qualification != null)
             {
                 if (newStatus == DifficultyStatus.qualified 
-                    && leaderboard.Difficulty.Stars == stars
+                    && leaderboard.Difficulty.AccRating == accRating
+                    && leaderboard.Difficulty.PassRating == passRating
+                    && leaderboard.Difficulty.TechRating == techRating
                     && leaderboard.Difficulty.Type == type
                     && (criteriaCheck == null || criteriaCheck == 1)
                     && qualification.CriteriaChecker != currentID
@@ -485,6 +508,10 @@ namespace BeatLeader_Server.Controllers
                             await _nominationsForum.NominationQualified(qualification.DiscordChannelId);
                         }
 
+                        if (qualification.DiscordRTChannelId.Length > 0) {
+                            await _rtNominationsForum.NominationQualified(qualification.DiscordRTChannelId);
+                        }
+
                         if (dsClient != null)
                         {
                             string message = currentPlayer.Name + " qualified **" + diff + "** diff of **" + leaderboard.Song.Name + "**! \n";
@@ -496,9 +523,10 @@ namespace BeatLeader_Server.Controllers
                                     message += $"Mapper: <@{discord.UserId}> <a:wavege:1069819816581546057> \n";
                                 }
                             }
-                            message += "★ " + leaderboard.Difficulty.Stars + "  ";
+                            var difficulty = leaderboard.Difficulty;
+                            message += $"Acc: {difficulty.AccRating:0.00}★\nPass: {difficulty.PassRating:0.00}★\nTech: {difficulty.TechRating:0.00}★\n";
                             message += " **T**  ";
-                            message += FormatUtils.DescribeType(leaderboard.Difficulty.Type);
+                            message += FormatUtils.DescribeType(difficulty.Type);
                             message += "\n";
                             message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
 
@@ -523,6 +551,9 @@ namespace BeatLeader_Server.Controllers
                         Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
                         OldRankability = leaderboard.Difficulty.Status == DifficultyStatus.nominated || leaderboard.Difficulty.Status == DifficultyStatus.qualified ? 1.0f : 0,
                         OldStars = leaderboard.Difficulty.Stars ?? 0,
+                        OldAccRating = leaderboard.Difficulty.AccRating ?? 0,
+                        OldPassRating = leaderboard.Difficulty.PassRating ?? 0,
+                        OldTechRating = leaderboard.Difficulty.TechRating ?? 0,
                         OldType = (int)leaderboard.Difficulty.Type,
                         OldCriteriaMet = qualification.CriteriaMet,
                         OldCriteriaCommentary = qualification.CriteriaCommentary,
@@ -534,18 +565,33 @@ namespace BeatLeader_Server.Controllers
                         leaderboard.Difficulty.NominatedTime = 0;
                         leaderboard.Difficulty.QualifiedTime = 0;
                         leaderboard.Difficulty.Stars = 0;
+                        leaderboard.Difficulty.AccRating = 0;
+                        leaderboard.Difficulty.PassRating = 0;
+                        leaderboard.Difficulty.TechRating = 0;
                         leaderboard.Difficulty.ModifierValues = new ModifiersMap();
                     } else {
-                        if (stars != null)
+                        if (accRating != null)
                         {
-                            leaderboard.Difficulty.Stars = stars;
+                            leaderboard.Difficulty.AccRating = accRating;
                         }
+                        if (passRating != null)
+                        {
+                            leaderboard.Difficulty.PassRating = passRating;
+                        }
+                        if (techRating != null)
+                        {
+                            leaderboard.Difficulty.TechRating = techRating;
+                        }
+                        leaderboard.Difficulty.Stars = ReplayUtils.ToStars(leaderboard.Difficulty.AccRating ?? 0, leaderboard.Difficulty.PassRating ?? 0, leaderboard.Difficulty.TechRating ?? 0);
                         if (type != null)
                         {
                             leaderboard.Difficulty.Type = (int)type;
                         }
                         if (newStatus == DifficultyStatus.nominated) {
                             leaderboard.Difficulty.Status = DifficultyStatus.nominated;
+                            qualification.ApprovalTimeset = 0;
+                            qualification.Approved = false;
+                            qualification.Approvers = null;
                         }
                     }
 
@@ -565,6 +611,10 @@ namespace BeatLeader_Server.Controllers
                     }
 
                     qualificationChange.NewRankability = leaderboard.Difficulty.Status == DifficultyStatus.nominated || leaderboard.Difficulty.Status == DifficultyStatus.qualified ? 1.0f : 0;
+
+                    qualificationChange.NewAccRating = leaderboard.Difficulty.AccRating ?? 0;
+                    qualificationChange.NewPassRating = leaderboard.Difficulty.PassRating ?? 0;
+                    qualificationChange.NewTechRating = leaderboard.Difficulty.TechRating ?? 0;
                     qualificationChange.NewStars = leaderboard.Difficulty.Stars ?? 0;
                     qualificationChange.NewType = (int)leaderboard.Difficulty.Type;
                     qualificationChange.NewCriteriaMet = qualification.CriteriaMet;
@@ -576,7 +626,9 @@ namespace BeatLeader_Server.Controllers
                     }
 
                     if (qualificationChange.NewRankability != qualificationChange.OldRankability
-                        || qualificationChange.NewStars != qualificationChange.OldStars
+                        || qualificationChange.NewPassRating != qualificationChange.OldPassRating
+                        || qualificationChange.NewAccRating != qualificationChange.OldAccRating
+                        || qualificationChange.NewTechRating != qualificationChange.OldTechRating
                         || qualificationChange.NewType != qualificationChange.OldType
                         || qualificationChange.NewCriteriaMet != qualificationChange.OldCriteriaMet
                         || qualificationChange.NewCriteriaCommentary != qualificationChange.OldCriteriaCommentary
@@ -593,6 +645,11 @@ namespace BeatLeader_Server.Controllers
                             await _nominationsForum.CloseNomination(qualification.DiscordChannelId);
                         }
 
+                        if (qualificationChange.NewRankability <= 0 && qualification.DiscordRTChannelId.Length > 0)
+                        {
+                            await _rtNominationsForum.CloseNomination(qualification.DiscordRTChannelId);
+                        }
+
                         var dsClient = nominationDSClient();
                         if (dsClient != null)
                         {
@@ -607,9 +664,17 @@ namespace BeatLeader_Server.Controllers
                             }
                             else
                             {
-                                if (qualificationChange.NewStars != qualificationChange.OldStars)
+                                if (qualificationChange.NewAccRating != qualificationChange.OldAccRating)
                                 {
-                                    message += "★ " + qualificationChange.OldStars + " → " + qualificationChange.NewStars;
+                                    message += $"Acc {qualificationChange.OldAccRating:0.00}★ → {qualificationChange.NewAccRating:0.00}★";
+                                }
+                                if (qualificationChange.NewPassRating != qualificationChange.OldPassRating)
+                                {
+                                    message += $"Pass {qualificationChange.OldPassRating:0.00}★ → {qualificationChange.NewPassRating:0.00}★";
+                                }
+                                if (qualificationChange.NewTechRating != qualificationChange.OldTechRating)
+                                {
+                                    message += $"Tech {qualificationChange.OldTechRating:0.00}★ → {qualificationChange.NewTechRating:0.00}★";
                                 }
                                 message += FormatUtils.DescribeTypeChanges(qualificationChange.OldType, qualificationChange.NewType);
                                 if (qualificationChange.OldCriteriaMet != qualificationChange.NewCriteriaMet)
@@ -975,7 +1040,9 @@ namespace BeatLeader_Server.Controllers
             string diff,
             string mode,
             [FromQuery] float rankability,
-            [FromQuery] float stars = 0,
+            [FromQuery] float accRating = 0,
+            [FromQuery] float passRating = 0,
+            [FromQuery] float techRating = 0,
             [FromQuery] int type = 0)
         {
             if (hash.Length < 40) {
@@ -1004,7 +1071,8 @@ namespace BeatLeader_Server.Controllers
             if (leaderboard != null)
             {
                 DifficultyDescription? difficulty = leaderboard.Difficulty;
-                if (leaderboard.Changes == null) {
+                if (leaderboard.Changes == null)
+                {
                     leaderboard.Changes = new List<LeaderboardChange>();
                 }
                 LeaderboardChange rankChange = new LeaderboardChange
@@ -1012,10 +1080,17 @@ namespace BeatLeader_Server.Controllers
                     Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
                     PlayerId = currentID,
                     OldRankability = difficulty.Status == DifficultyStatus.ranked ? 1 : 0,
-                    OldStars = difficulty.Stars ?? 0,
+                    OldAccRating = difficulty.AccRating ?? 0,
+                    OldPassRating = difficulty.PassRating ?? 0,
+                    OldTechRating = difficulty.TechRating ?? 0,
                     OldType = difficulty.Type,
                     NewRankability = rankability,
-                    NewStars = stars,
+                    NewAccRating = ReplayUtils.AccRating(
+                                accRating, 
+                                passRating, 
+                                techRating),
+                    NewPassRating = passRating,
+                    NewTechRating = techRating,
                     NewType = type
                 };
                 leaderboard.Changes.Add(rankChange);
@@ -1033,8 +1108,24 @@ namespace BeatLeader_Server.Controllers
                     difficulty.ModifierValues = null;
                 }
 
-                difficulty.Status = rankability > 0 ? DifficultyStatus.ranked : DifficultyStatus.unranked;
-                difficulty.Stars = stars;
+                if (rankability > 0) {
+
+                difficulty.Status =  DifficultyStatus.ranked;
+                difficulty.PredictedAcc = accRating;
+                difficulty.PassRating = passRating;
+                difficulty.TechRating = techRating;
+                difficulty.AccRating = ReplayUtils.AccRating(
+                                accRating, 
+                                passRating, 
+                                techRating);
+                } else {
+                    difficulty.Status = DifficultyStatus.unranked;
+                difficulty.PredictedAcc = 0;
+                difficulty.PassRating = 0;
+                difficulty.TechRating = 0;
+                difficulty.AccRating = 0;
+                }
+
                 difficulty.Type = type;
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -1297,6 +1388,115 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [Authorize]
+        [HttpPost("~/qualification/criteria/{id}")]
+        public async Task<ActionResult<CriteriaCommentary>> PostCriteriaComment(int id)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == currentID);
+
+            RankQualification? qualification = _context
+                .RankQualification
+                .Include(q => q.CriteriaComments)
+                .FirstOrDefault(l => l.Id == id);
+
+            if (qualification == null) {
+                return NotFound();
+            }
+
+            bool isRT = true;
+            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
+            {
+                if (currentPlayer != null && (currentPlayer.MapperId + "") == qualification?.MapperId) {
+                    isRT = false;
+                } else {
+                    return Unauthorized();
+                }
+            }
+
+            if (qualification.CriteriaComments == null) {
+                qualification.CriteriaComments = new List<CriteriaCommentary>();
+            }
+
+            var ms = new MemoryStream(5);
+            await Request.Body.CopyToAsync(ms);
+            ms.Position = 0;
+
+            var result = new CriteriaCommentary {
+                PlayerId = currentPlayer.Id,
+                Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
+                Value = Encoding.UTF8.GetString(ms.ToArray()),
+            };
+
+            qualification.CriteriaComments.Add(result);
+            _context.SaveChanges();
+
+            try {
+            result.DiscordMessageId = await _rtNominationsForum.PostComment(qualification.DiscordRTChannelId, result.Value, currentPlayer);
+            _context.SaveChanges();
+            } catch { }
+
+            return result;
+        }
+
+        [Authorize]
+        [HttpPut("~/qualification/criteria/{id}")]
+        public async Task<ActionResult<CriteriaCommentary>> UpdateCriteriaComment(int id) {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == currentID);
+
+            var comment = await _context
+                .CriteriaCommentary
+                .Include(c => c.RankQualification)
+                .FirstOrDefaultAsync(c => c.Id == id);
+            if (comment == null) {
+                return NotFound();
+            }
+            if (comment.PlayerId != currentPlayer.Id && !currentPlayer.Role.Contains("admin")) {
+                return Unauthorized();
+            }
+
+            var ms = new MemoryStream(5);
+            await Request.Body.CopyToAsync(ms);
+            ms.Position = 0;
+
+            comment.Value = Encoding.UTF8.GetString(ms.ToArray());
+            comment.Edited = true;
+            comment.EditTimeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+            _context.SaveChanges();
+
+            try {
+            comment.DiscordMessageId = await _rtNominationsForum.UpdateComment(comment.RankQualification.DiscordRTChannelId, comment.DiscordMessageId, comment.Value, currentPlayer);
+            _context.SaveChanges();
+            } catch { }
+
+            return comment;
+        }
+
+        [Authorize]
+        [HttpDelete("~/qualification/criteria/{id}")]
+        public async Task<ActionResult> DeleteCriteriaomment(int id) {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            var comment = await _context.CriteriaCommentary.Include(c => c.RankQualification).FirstOrDefaultAsync(c => c.Id == id);
+            if (comment == null) {
+                return NotFound();
+            }
+            if (comment.PlayerId != currentPlayer.Id && !currentPlayer.Role.Contains("admin")) {
+                return Unauthorized();
+            }
+
+            _context.CriteriaCommentary.Remove(comment);
+            _context.SaveChanges();
+
+            try {
+            await _rtNominationsForum.DeleteComment(comment.RankQualification.DiscordRTChannelId, comment.DiscordMessageId);
+            } catch { }
+
+            return Ok();
+        }
+
         public async Task QualityUnnominate(RankQualification q) {
 
             Leaderboard? leaderboard = _context.Leaderboards
@@ -1341,6 +1541,11 @@ namespace BeatLeader_Server.Controllers
                 if (qualification.DiscordChannelId.Length > 0)
                 {
                     await _nominationsForum.CloseNomination(qualification.DiscordChannelId);
+                }
+
+                if (qualification.DiscordRTChannelId.Length > 0)
+                {
+                    await _rtNominationsForum.CloseNomination(qualification.DiscordRTChannelId);
                 }
 
                 var dsClient = nominationDSClient();

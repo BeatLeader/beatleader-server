@@ -44,6 +44,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int count = 8,
             [FromQuery] string? search = null,
             [FromQuery] string? diff = null,
+            [FromQuery] string? mode = null,
+            [FromQuery] Requirements? requirements = null,
             [FromQuery] string? type = null,
             [FromQuery] string? modifiers = null,
             [FromQuery] float? stars_from = null,
@@ -85,7 +87,7 @@ namespace BeatLeader_Server.Controllers
             IQueryable<Score> sequence = _readContext
                 .Scores
                 .Where(t => t.PlayerId == userId)
-                .Filter(_readContext, !player.Banned, sortBy, order, search, diff, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);    
+                .Filter(_readContext, !player.Banned, sortBy, order, search, diff, mode, requirements, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);    
 
             ResponseWithMetadata<ScoreResponseWithMyScore> result; 
             using (_serverTiming.TimeAction("db"))
@@ -109,6 +111,9 @@ namespace BeatLeader_Server.Controllers
                         PlayerId = s.PlayerId,
                         Accuracy = s.Accuracy,
                         Pp = s.Pp,
+                        TechPP = s.TechPP,
+                        AccPP = s.AccPP,
+                        PassPP = s.PassPP,
                         FcAccuracy = s.FcAccuracy,
                         FcPp = s.FcPp,
                         BonusPp = s.BonusPp,
@@ -160,7 +165,6 @@ namespace BeatLeader_Server.Controllers
                         Weight = s.Weight,
                         AccLeft = s.AccLeft,
                         AccRight = s.AccRight,
-                        PlayCount = s.PlayCount,
                         MaxStreak = s.MaxStreak,
                     })
                     .ToList()
@@ -623,12 +627,19 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/player/{id}/history")]
         public async Task<ActionResult<ICollection<PlayerScoreStatsHistory>>> GetHistory(string id, [FromQuery] int count = 50)
         {
-            return _readContext
+            var result = _readContext
                     .PlayerScoreStatsHistory
                     .Where(p => p.PlayerId == id)
                     .OrderByDescending(s => s.Timestamp)
                     .Take(count)
                     .ToList();
+            if (result.Count == 0) {
+                var player = _context.Players.Where(p => p.Id == id).FirstOrDefault();
+
+                result = new List<PlayerScoreStatsHistory> { new PlayerScoreStatsHistory { Rank = player?.Rank ?? 0, Pp = player?.Pp ?? 0, CountryRank = player?.CountryRank ?? 0 } };
+            }
+
+            return result;
         }
 
         [HttpGet("~/player/{id}/pinnedScores")]
@@ -646,6 +657,9 @@ namespace BeatLeader_Server.Controllers
                         PlayerId = s.PlayerId,
                         Accuracy = s.Accuracy,
                         Pp = s.Pp,
+                        PassPP = s.PassPP,
+                        AccPP = s.AccPP,
+                        TechPP = s.TechPP,
                         FcAccuracy = s.FcAccuracy,
                         FcPp = s.FcPp,
                         BonusPp = s.BonusPp,
@@ -697,7 +711,6 @@ namespace BeatLeader_Server.Controllers
                         Weight = s.Weight,
                         AccLeft = s.AccLeft,
                         AccRight = s.AccRight,
-                        PlayCount = s.PlayCount,
                         MaxStreak = s.MaxStreak
                     })
                     .ToList();

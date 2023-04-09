@@ -1,18 +1,22 @@
 ﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
+using Dasync.Collections;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using System.Net;
 
 namespace BeatLeader_Server.Controllers
 {
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize]
     public class AdminController : Controller
     {
         private readonly AppContext _context;
         CurrentUserController _currentUserController;
+        ScoreRefreshController _scoreRefreshController;
         ReplayController _replayController;
         IWebHostEnvironment _environment;
 
@@ -20,10 +24,12 @@ namespace BeatLeader_Server.Controllers
             AppContext context,
             IWebHostEnvironment env,
             CurrentUserController currentUserController,
+            ScoreRefreshController scoreRefreshController,
             ReplayController replayController)
         {
             _context = context;
             _currentUserController = currentUserController;
+            _scoreRefreshController = scoreRefreshController;
             _replayController = replayController;
             _environment = env;
         }
@@ -480,6 +486,272 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpGet("~/admin/maps/newranking")]
+        public async Task<ActionResult> newranking()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var songs = _context.Songs.Where(el => el.Difficulties.FirstOrDefault(d => 
+                d.Status == DifficultyStatus.ranked || 
+                d.Status == DifficultyStatus.qualified || 
+                d.Status == DifficultyStatus.nominated) != null)
+                .Include(song => song.Difficulties)
+                .ThenInclude(d => d.ModifiersRating)
+                .ToList();
+
+            await songs.ParallelForEachAsync(async song => {
+                foreach (var diff in song.Difficulties)
+                {
+                    if (diff.Status == DifficultyStatus.ranked || diff.Status == DifficultyStatus.qualified || diff.Status == DifficultyStatus.nominated) {
+                        var response = await SongUtils.ExmachinaStars(song.Hash, diff.Value);
+                        if (response != null)
+                        {
+                            diff.PassRating = response.none.lack_map_calculation.balanced_pass_diff;
+                            diff.TechRating = response.none.lack_map_calculation.balanced_tech * 10;
+                            diff.PredictedAcc = response.none.AIacc;
+                            diff.AccRating = ReplayUtils.AccRating(diff.PredictedAcc, diff.PassRating, diff.TechRating);
+
+                            diff.ModifiersRating = new ModifiersRating
+                            {
+                                SSPassRating = response.SS.lack_map_calculation.balanced_pass_diff,
+                                SSTechRating = response.SS.lack_map_calculation.balanced_tech * 10,
+                                SSPredictedAcc = response.SS.AIacc,
+                                FSPassRating = response.FS.lack_map_calculation.balanced_pass_diff,
+                                FSTechRating = response.FS.lack_map_calculation.balanced_tech * 10,
+                                FSPredictedAcc = response.FS.AIacc,
+                                SFPassRating = response.SFS.lack_map_calculation.balanced_pass_diff,
+                                SFTechRating = response.SFS.lack_map_calculation.balanced_tech * 10,
+                                SFPredictedAcc = response.SFS.AIacc,
+                            };
+
+                            var rating = diff.ModifiersRating;
+                            rating.SSAccRating = ReplayUtils.AccRating(
+                                    rating.SSPredictedAcc, 
+                                    rating.SSPassRating, 
+                                    rating.SSTechRating);
+                            rating.FSAccRating = ReplayUtils.AccRating(
+                                    rating.FSPredictedAcc, 
+                                    rating.FSPassRating, 
+                                    rating.FSTechRating);
+                            rating.SFAccRating = ReplayUtils.AccRating(
+                                    rating.SFPredictedAcc, 
+                                    rating.SFPassRating, 
+                                    rating.SFTechRating);
+                        }
+                        else
+                        {
+                            diff.PassRating = 0.0f;
+                            diff.PredictedAcc = 1.0f;
+                            diff.TechRating = 0.0f;
+                        }
+                    }
+                }
+            }, maxDegreeOfParallelism: 3);
+
+            await _context.SaveChangesAsync();
+
+            var leaderboards = _context
+                .Leaderboards
+                .Where(lb => 
+                    lb.Difficulty.Status == DifficultyStatus.ranked || 
+                    lb.Difficulty.Status == DifficultyStatus.qualified || 
+                    lb.Difficulty.Status == DifficultyStatus.nominated)
+                .Include(lb => lb.Difficulty)
+                .Include(lb => lb.Changes)
+                .ToList();
+            foreach (var leaderboard  in leaderboards) {
+                var diff = leaderboard.Difficulty;
+
+                LeaderboardChange rankChange = new LeaderboardChange
+                {
+                    Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
+                    PlayerId = RankingBotID,
+                    OldStars = diff.Stars ?? 0,
+                    NewStars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0),
+                    NewAccRating = diff.AccRating ?? 0,
+                    NewPassRating = diff.PassRating ?? 0,
+                    NewTechRating = diff.TechRating ?? 0,
+                };
+                diff.Stars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0);
+                if (leaderboard.Changes == null) {
+                    leaderboard.Changes = new List<LeaderboardChange>();
+                }
+
+                leaderboard.Changes.Add(rankChange);
+            }
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpPost("~/admin/playlist/rank")]
+        public async Task<ActionResult> RankPlaylist()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            dynamic? playlist = null;
+
+            using (var ms = new MemoryStream(5))
+            {
+                await Request.Body.CopyToAsync(ms);
+                ms.Position = 0;
+                playlist = ms.ObjectFromStream();
+            }
+
+            var players = new List<EventPlayer>();
+            var basicPlayers = new List<Player>();
+            var playerScores = new Dictionary<string, List<Score>>();
+
+            foreach (var songy in playlist.songs) {
+                foreach (var diffy in songy.difficulties)
+                {
+                    string hash = songy.hash.ToLower();
+                    string diffName = diffy.name.ToLower();
+                    string characteristic = diffy.characteristic.ToLower();
+
+                    var lb = _context.Leaderboards.Where(lb => 
+                        lb.Song.Hash.ToLower() == hash && 
+                        lb.Difficulty.DifficultyName.ToLower() == diffName &&
+                        lb.Difficulty.ModeName.ToLower() == characteristic).Include(lb => lb.Difficulty).Include(lb => lb.Song).FirstOrDefault();
+
+                    if (lb != null && lb.Difficulty.Status != DifficultyStatus.outdated) {
+
+                        if (lb.Difficulty.Status == DifficultyStatus.unranked || lb.Difficulty.Status == DifficultyStatus.inevent)
+                        {
+                            var diff = lb.Difficulty;
+                            lb.Difficulty.Status = DifficultyStatus.ranked;
+                            var response = await SongUtils.ExmachinaStars(lb.Song.Hash, diff.Value);
+                            if (response != null) {
+                                diff.PassRating = response.none.lack_map_calculation.balanced_pass_diff;
+                                diff.TechRating = response.none.lack_map_calculation.balanced_tech * 10;
+                                diff.PredictedAcc = response.none.AIacc;
+                                diff.AccRating = ReplayUtils.AccRating(response.none.AIacc, response.none.lack_map_calculation.balanced_pass_diff, response.none.lack_map_calculation.balanced_tech * 10);
+
+                                diff.ModifiersRating = new ModifiersRating {
+                                    SSPassRating = response.SS.lack_map_calculation.balanced_pass_diff,
+                                    SSTechRating = response.SS.lack_map_calculation.balanced_tech * 10,
+                                    SSPredictedAcc = response.SS.AIacc,
+                                    SSAccRating = ReplayUtils.AccRating(response.SS.AIacc, response.SS.lack_map_calculation.balanced_pass_diff, response.SS.lack_map_calculation.balanced_tech * 10),
+                                    SFPassRating = response.SFS.lack_map_calculation.balanced_pass_diff,
+                                    SFTechRating = response.SFS.lack_map_calculation.balanced_tech * 10,
+                                    SFPredictedAcc = response.SFS.AIacc,
+                                    SFAccRating = ReplayUtils.AccRating(response.SFS.AIacc, response.SFS.lack_map_calculation.balanced_pass_diff, response.SFS.lack_map_calculation.balanced_tech * 10),
+                                    FSPassRating = response.FS.lack_map_calculation.balanced_pass_diff,
+                                    FSTechRating = response.FS.lack_map_calculation.balanced_tech * 10,
+                                    FSPredictedAcc = response.FS.AIacc,
+                                    FSAccRating = ReplayUtils.AccRating(response.FS.AIacc, response.FS.lack_map_calculation.balanced_pass_diff, response.FS.lack_map_calculation.balanced_tech * 10),
+                                };
+
+                                diff.Stars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0);
+
+                            } else {
+                                diff.PassRating = diff.Stars ?? 0;
+                                diff.PredictedAcc = 0.98f;
+                                diff.TechRating = 0;
+                            }
+                            await _context.SaveChangesAsync();
+
+                            await _scoreRefreshController.RefreshScores(lb.Id);
+                        }
+                    }
+                }
+            }
+            
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpGet("~/admin/reweightsummary")]
+        public async Task<ActionResult<string>> ReweightSummary()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+            var Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - 60 * 60 * 5;
+            var scores = _context.Leaderboards.Where(s => s.Changes.FirstOrDefault(c => c.Timeset > Timeset) != null).Include(s => s.Changes).Include(s => s.Song).OrderByDescending(lb => lb.Difficulty.Stars).ToList();
+
+            var result = "Name,Old stars,New Stars,Old acc rating,New acc rating,Old pass rating,New pass rating,Link\n";
+
+            foreach (var lb in scores) {
+                var change = lb.Changes.OrderByDescending(c => c.Timeset).FirstOrDefault();
+
+                result += $"{lb.Song.Name.Replace(",","")},{change.OldStars},{change.NewStars},{change.OldAccRating},{change.NewAccRating},{change.OldPassRating},{change.NewPassRating},https://www.beatleader.xyz/leaderboard/global/{lb.Id}/1\n";
+            }
+
+            return result;
+        }
+
+        [HttpGet("~/admin/maps/newranking2")]
+        public async Task<ActionResult> newranking2()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+            var songs = _context.Songs.Where(el => el.Difficulties.FirstOrDefault(d => d.Status == DifficultyStatus.ranked || d.Status == DifficultyStatus.qualified || d.Status == DifficultyStatus.nominated) != null).Include(song => song.Difficulties).ThenInclude(d => d.ModifiersRating).ToList();
+
+            await songs.ParallelForEachAsync(async song => {
+                foreach (var diff in song.Difficulties)
+                {
+                    if (diff.Status == DifficultyStatus.ranked || diff.Status == DifficultyStatus.qualified || diff.Status == DifficultyStatus.nominated) {
+                        //diff.AccRating = ReplayUtils.AccRating(
+                        //        diff.PredictedAcc, 
+                        //        diff.PassRating,
+                        //        diff.TechRating);
+
+                        diff.Stars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0);
+
+                        var modifiersRating = diff.ModifiersRating;
+                        if (modifiersRating != null) {
+                            modifiersRating.SSStars = ReplayUtils.ToStars(modifiersRating.SSAccRating, modifiersRating.SSPassRating, modifiersRating.SSTechRating);
+                            modifiersRating.SFStars = ReplayUtils.ToStars(modifiersRating.SFAccRating, modifiersRating.SFPassRating, modifiersRating.SFTechRating);
+                            modifiersRating.FSStars = ReplayUtils.ToStars(modifiersRating.FSAccRating, modifiersRating.FSPassRating, modifiersRating.FSTechRating);
+                        }
+
+                        //var rating = diff.ModifiersRating;
+                        //if (rating != null) {
+                        //    rating.SSAccRating = ReplayUtils.AccRating(
+                        //            rating.SSPredictedAcc, 
+                        //            rating.SSPassRating, 
+                        //            rating.SSTechRating);
+                        //    rating.SFAccRating = ReplayUtils.AccRating(
+                        //            rating.SFPredictedAcc, 
+                        //            rating.SFPassRating, 
+                        //            rating.SFTechRating);
+                        //    rating.FSAccRating = ReplayUtils.AccRating(
+                        //            rating.FSPredictedAcc, 
+                        //            rating.FSPassRating, 
+                        //            rating.FSTechRating);
+                        //}
+                    }
+                }
+            }, maxDegreeOfParallelism: 20);
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
         [HttpDelete("~/admin/ban/countrychanges")]
         public async Task<ActionResult> UnbanCountrychanges([FromQuery] string playerId)
         {
@@ -596,6 +868,98 @@ namespace BeatLeader_Server.Controllers
 
             }
             _context.SaveChanges();
+
+            return Ok();
+        }
+
+        [NonAction]
+        //[HttpPost("~/admin/cleandb")]
+        public async Task<ActionResult> CleanDb()
+        {
+            var auths = _context.Auths.ToList();
+
+            foreach (var auth in auths) {
+                auth.Login = "login" + auth.Id;
+                auth.Password = "password" + auth.Id;
+            }
+
+            foreach (var item in _context.AuthIPs.ToList()) {
+                _context.AuthIPs.Remove(item);
+            }
+
+            foreach (var item in _context.AuthIDs.ToList()) {
+                _context.AuthIDs.Remove(item);
+            }
+
+            foreach (var item in _context.PlayerLeaderboardStats.ToList()) {
+                _context.PlayerLeaderboardStats.Remove(item);
+            }
+
+            foreach (var item in _context.TwitterLinks.ToList()) {
+                _context.TwitterLinks.Remove(item);
+            }
+
+            foreach (var item in _context.TwitchLinks.ToList()) {
+                _context.TwitchLinks.Remove(item);
+            }
+
+            foreach (var item in _context.DiscordLinks.ToList()) {
+                _context.DiscordLinks.Remove(item);
+            }
+
+            foreach (var item in _context.YouTubeLinks.ToList()) {
+                _context.YouTubeLinks.Remove(item);
+            }
+
+            foreach (var item in _context.PatreonLinks.ToList()) {
+                _context.PatreonLinks.Remove(item);
+            }
+
+            foreach (var item in _context.BeatSaverLinks.ToList()) {
+                _context.BeatSaverLinks.Remove(item);
+            }
+
+            foreach (var item in _context.WatchingSessions.ToList()) {
+                _context.WatchingSessions.Remove(item);
+            }
+
+            foreach (var item in _context.RankVotings.ToList()) {
+                _context.RankVotings.Remove(item);
+            }
+
+            foreach (var item in _context.Friends.ToList()) {
+                _context.Friends.Remove(item);
+            }
+
+            foreach (var item in _context.VoterFeedback.ToList()) {
+                _context.VoterFeedback.Remove(item);
+            }
+
+            foreach (var item in _context.CriteriaCommentary.ToList()) {
+                _context.CriteriaCommentary.Remove(item);
+            }
+
+            foreach (var item in _context.QualificationCommentary.ToList()) {
+                _context.QualificationCommentary.Remove(item);
+            }
+            foreach (var item in _context.LoginAttempts.ToList()) {
+                _context.LoginAttempts.Remove(item);
+            }
+            foreach (var item in _context.LoginChanges.ToList()) {
+                _context.LoginChanges.Remove(item);
+            }
+            foreach (var item in _context.AccountLinkRequests.ToList()) {
+                _context.AccountLinkRequests.Remove(item);
+            }
+
+            foreach (var item in _context.Leaderboards.Where(lb => lb.Qualification != null).Include(lb => lb.Qualification).ToList()) {
+                item.Qualification = null;
+            }
+            foreach (var item in _context.ScoreRemovalLogs.ToList()) {
+                _context.ScoreRemovalLogs.Remove(item);
+            }
+
+            _context.BulkSaveChanges();
 
             return Ok();
         }

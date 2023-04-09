@@ -36,7 +36,9 @@ namespace BeatLeader_Server.Utils
 
         public class PlayerResponseWithStats : PlayerResponse
         {
-            public string Histories { get; set; } = "";
+            public float AccPp { get; set; }
+            public float PassPp { get; set; }
+            public float TechPp { get; set; }
             public PlayerScoreStats? ScoreStats { get; set; }
             public float LastWeekPp { get; set; }
             public int LastWeekRank { get; set; }
@@ -71,6 +73,9 @@ namespace BeatLeader_Server.Utils
             public string PlayerId { get; set; }
             public float Pp { get; set; }
             public float BonusPp { get; set; }
+            public float PassPP { get; set; }
+            public float AccPP { get; set; }
+            public float TechPP { get; set; }
             public int Rank { get; set; }
             public int CountryRank { get; set; }
             public string? Country { get; set; }
@@ -497,6 +502,9 @@ namespace BeatLeader_Server.Utils
                 Changes = p.Changes,
 
                 Pp = p.Pp,
+                AccPp = p.AccPp,
+                TechPp = p.TechPp,
+                PassPp = p.PassPp,
                 Rank = p.Rank,
                 CountryRank = p.CountryRank,
                 LastWeekPp = p.LastWeekPp,
@@ -533,7 +541,11 @@ namespace BeatLeader_Server.Utils
             return input;
         }
 
-        public static void PostProcessSettings(string role, ProfileSettings? settings, PatreonFeatures? patreonFeatures) {
+        public static void PostProcessSettings(string role, ProfileSettings? settings, PatreonFeatures? patreonFeatures, bool hideStarredFriends = true) {
+            if (settings != null && hideStarredFriends) {
+                settings.StarredFriends = "";
+            }
+
             if (!role.Contains("sponsor")) {
                 if (settings != null) {
                     settings.Message = null;

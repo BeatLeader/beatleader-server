@@ -75,6 +75,8 @@ namespace BeatLeader_Server.Controllers
             fallbackCollection.Add(_webHostEnvironment.WebRootPath + "/fonts/Cyberbit.ttf");
             fallbackCollection.Add(_webHostEnvironment.WebRootPath + "/fonts/seguiemj.ttf");
 
+            FallbackFamilies = fallbackCollection.Families.ToList();
+
             EmbedGenerator = new EmbedGenerator(
                 new Size(500, 300),
                 StarImage,

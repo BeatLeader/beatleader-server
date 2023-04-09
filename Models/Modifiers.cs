@@ -2,6 +2,28 @@
 
 namespace BeatLeader_Server.Models
 {
+    public class ModifiersRating 
+    {
+        public int Id { get; set; }
+        public float FSPredictedAcc { get; set; }
+        public float FSPassRating { get; set; }
+        public float FSAccRating { get; set; }
+        public float FSTechRating { get; set; }
+        public float FSStars { get; set; }
+
+        public float SSPredictedAcc { get; set; }
+        public float SSPassRating { get; set; }
+        public float SSAccRating { get; set; }
+        public float SSTechRating { get; set; }
+        public float SSStars { get; set; }
+
+        public float SFPredictedAcc { get; set; }
+        public float SFPassRating { get; set; }
+        public float SFAccRating { get; set; }
+        public float SFTechRating { get; set; }
+        public float SFStars { get; set; }
+    }
+
     public class ModifiersMap
     {
         [Key]
@@ -9,8 +31,8 @@ namespace BeatLeader_Server.Models
 
         public float DA { get; set; } = 0.0f;
         public float FS { get; set; } = 0.20f;
-        public float SS { get; set; } = -0.3f;
         public float SF { get; set; } = 0.36f;
+        public float SS { get; set; } = -0.3f;
         public float GN { get; set; } = 0.04f;
         public float NA { get; set; } = -0.3f;
         public float NB { get; set; } = -0.2f;

@@ -1,6 +1,7 @@
 ﻿using Amazon.S3;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Linq.Expressions;
+using static BeatLeader_Server.Services.SearchService;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -106,6 +108,18 @@ namespace BeatLeader_Server.Controllers
             }
         }
 
+        [HttpGet("~/player/discord/{id}")]
+        public async Task<ActionResult<PlayerResponseFull>> GetDiscord(string id)
+        {
+            var social = _context.PlayerSocial.Where(s => s.Service == "Discord" && s.UserId == id && s.PlayerId != null).FirstOrDefault();
+
+            if (social == null || social.PlayerId == null) {
+                return NotFound();
+            }
+
+            return await Get(social.PlayerId, true);
+        }
+
         [NonAction]
         public async Task<ActionResult<Player>> GetLazy(string id, bool addToBase = true)
         {
@@ -153,7 +167,10 @@ namespace BeatLeader_Server.Controllers
                 player.ScoreStats = new PlayerScoreStats();
                 if (addToBase) {
                     _context.Players.Add(player);
+                    
                     await _context.SaveChangesAsync();
+
+                    SearchService.PlayerAdded(player.Id, player.Name);
                 }
             }
 
@@ -323,6 +340,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string order = "desc",
             [FromQuery] string countries = "",
             [FromQuery] string mapsType = "ranked",
+            [FromQuery] string ppType = "general",
             [FromQuery] bool friends = false,
             [FromQuery] string? pp_range = null,
             [FromQuery] string? score_range = null,
@@ -330,32 +348,50 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? role = null,
             [FromQuery] string? hmd = null,
             [FromQuery] string? clans = null,
-            [FromQuery] int? activityPeriod = null)
+            [FromQuery] int? activityPeriod = null,
+            [FromQuery] bool? banned = null)
         {
             IQueryable<Player> request = 
                 _readContext
                 .Players
                 .Include(p => p.ScoreStats)
                 .Include(p => p.Clans)
-                .Include(p => p.ProfileSettings)
-                .Where(p => !p.Banned);
+                .Include(p => p.ProfileSettings);
+
+            if (banned != null) {
+                string userId = HttpContext.CurrentUserID(_readContext);
+                var player = await _readContext.Players.FindAsync(userId);
+                if (player == null || !player.Role.Contains("admin"))
+                {
+                    return NotFound();
+                }
+
+                bool bannedUnwrapped = (bool)banned;
+
+                request = request.Where(p => p.Banned == bannedUnwrapped);
+            } else {
+                request = request.Where(p => !p.Banned);
+            }
             if (countries.Length != 0)
             {
-                request = request.Where(p => countries.Contains(p.Country));
-            }
-            if (search.Length != 0)
-            {
                 var player = Expression.Parameter(typeof(Player), "p");
-                
-                var contains = typeof(string).GetMethod("Contains", new[] { typeof(string) });
 
                 // 1 != 2 is here to trigger `OrElse` further the line.
                 var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
-                foreach (var term in search.ToLower().Split(","))
+                foreach (var term in countries.ToLower().Split(","))
                 {
-                    exp = Expression.OrElse(exp, Expression.Call(Expression.Property(player, "Name"), contains, Expression.Constant(term)));
+                    exp = Expression.OrElse(exp, Expression.Equal(Expression.Property(player, "Country"), Expression.Constant(term)));
                 }
                 request = request.Where((Expression<Func<Player, bool>>)Expression.Lambda(exp, player));
+            }
+
+            List<PlayerMatch>? searchMatch = null;
+            if (search?.Length != 0)
+            {
+                searchMatch = SearchService.SearchPlayers(search);
+
+                var ids = searchMatch.Select(m => m.Id).ToArray();
+                request = request.Where(p => ids.Contains(p.Id));
             }
 
             if (clans != null)
@@ -453,17 +489,31 @@ namespace BeatLeader_Server.Controllers
                         break;
                 }
             }
-            request = Sorted(request, sortBy, order, mapsType);
             
-            return new ResponseWithMetadata<PlayerResponseWithStats>()
+            var result = new ResponseWithMetadata<PlayerResponseWithStats>()
             {
                 Metadata = new Metadata()
                 {
                     Page = page,
                     ItemsPerPage = count,
                     Total = request.Count()
-                },
-                Data = request.Skip((page - 1) * count).Take(count).Select(p => new PlayerResponseWithStats
+                }
+            };
+
+            if (searchMatch != null) {
+                var matchedAndFiltered = request.Select(p => p.Id).ToList();
+                var sorted = matchedAndFiltered
+                    .OrderByDescending(p => searchMatch.FirstOrDefault(m => m.Id == p)?.Score ?? 0)
+                    .Skip((page - 1) * count)
+                    .Take(count)
+                    .ToList();
+
+                request = request.Where(p => sorted.Contains(p.Id));
+            } else {
+                request = Sorted(request, sortBy, ppType, order, mapsType).Skip((page - 1) * count).Take(count);
+            }
+
+            result.Data = request.Select(p => new PlayerResponseWithStats
                 {
                     Id = p.Id,
                     Name = p.Name,
@@ -473,6 +523,9 @@ namespace BeatLeader_Server.Controllers
                     ScoreStats = p.ScoreStats,
 
                     Pp = p.Pp,
+                    TechPp= p.TechPp,
+                    AccPp = p.AccPp,
+                    PassPp = p.PassPp,
                     Rank = p.Rank,
                     CountryRank = p.CountryRank,
                     LastWeekPp = p.LastWeekPp,
@@ -483,18 +536,46 @@ namespace BeatLeader_Server.Controllers
                     PatreonFeatures = p.PatreonFeatures,
                     ProfileSettings = p.ProfileSettings,
                     Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                }).ToList().Select(PostProcessSettings)
-            };
+                }).ToList().Select(PostProcessSettings);
+
+            if (search?.Length != 0) {
+                result.Data = SearchService.SortPlayers(result.Data, search);
+            }
+
+            return result;
         }
 
-        private IQueryable<Player> Sorted(IQueryable<Player> request, string sortBy, string order, string mapsType) {
+        private IQueryable<Player> Sorted(
+            IQueryable<Player> request, 
+            string sortBy, 
+            string ppType,
+            string order, 
+            string mapsType) {
             switch (mapsType)
             {
                 case "ranked":
                     switch (sortBy)
                     {
                         case "pp":
-                            request = request.Order(order, p => p.Pp);
+                            switch (ppType)
+                            {
+                                case "acc":
+                                    request = request.Order(order, p => p.AccPp);
+                                    break;
+                                case "tech":
+                                    request = request.Order(order, p => p.TechPp);
+                                    break;
+                                case "pass":
+                                    request = request.Order(order, p => p.PassPp);
+                                    break;
+                                default:
+                                    request = request.Order(order, p => p.Pp);
+                                    break;
+                            }
+                            
+                            break;
+                        case "name":
+                            request = request.Order(order, p => p.Name);
                             break;
                         case "rank":
                             request = request
@@ -517,7 +598,22 @@ namespace BeatLeader_Server.Controllers
                             request = request.Order(order, p => p.ScoreStats.TopRankedAccuracy);
                             break;
                         case "topPp":
-                            request = request.Order(order, p => p.ScoreStats.TopPp);
+                            switch (ppType)
+                            {
+                                case "acc":
+                                    request = request.Order(order, p => p.ScoreStats.TopAccPP);
+                                    break;
+                                case "tech":
+                                    request = request.Order(order, p => p.ScoreStats.TopTechPP);
+                                    break;
+                                case "pass":
+                                    request = request.Order(order, p => p.ScoreStats.TopPassPP);
+                                    break;
+                                default:
+                                    request = request.Order(order, p => p.ScoreStats.TopPp);
+                                    break;
+                            }
+
                             break;
                         case "hmd":
                             request = request.Order(order, p => p.ScoreStats.TopHMD);
@@ -541,6 +637,9 @@ namespace BeatLeader_Server.Controllers
                 case "unranked":
                     switch (sortBy)
                     {
+                        case "name":
+                            request = request.Order(order, p => p.Name);
+                            break;
                         case "rank":
                             request = request
                                 .Where(p => p.ScoreStats.AverageUnrankedRank != 0)
@@ -577,6 +676,9 @@ namespace BeatLeader_Server.Controllers
                     {
                         case "pp":
                             request = request.Order(order, p => p.Pp);
+                            break;
+                        case "name":
+                            request = request.Order(order, p => p.Name);
                             break;
                         case "rank":
                             request = request
@@ -642,7 +744,15 @@ namespace BeatLeader_Server.Controllers
             
             if (countries.Length != 0)
             {
-                request = request.Where(p => countries.Contains(p.Country));
+                var player = Expression.Parameter(typeof(Player), "p");
+
+                // 1 != 2 is here to trigger `OrElse` further the line.
+                var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
+                foreach (var term in countries.ToLower().Split(","))
+                {
+                    exp = Expression.OrElse(exp, Expression.Equal(Expression.Property(player, "Country"), Expression.Constant(term)));
+                }
+                request = request.Where((Expression<Func<Player, bool>>)Expression.Lambda(exp, player));
             }
 
             if (search.Length != 0)

@@ -53,6 +53,9 @@ namespace BeatLeader_Server.Services
 
             (var newPp, var newRank, var newCountryRank) = _context.RecalculatePPAndRankFaster(player);
 
+            player.Rank = newRank;
+            player.Pp = newPp;
+
             if (score != null && score.ScoreImprovement != null) {
                 score.ScoreImprovement.TotalRank = player.Rank - oldRank;
                 score.ScoreImprovement.TotalPp = player.Pp - oldPp;
@@ -169,14 +172,25 @@ namespace BeatLeader_Server.Services
                             await forum.NominationRanked(leaderboard.Qualification.DiscordChannelId);
                             } catch { }
                         }
+
+                        if (leaderboard.Qualification.DiscordRTChannelId.Length > 0) {
+                            try {
+                            var forum = scope.ServiceProvider.GetRequiredService<RTNominationsForum>();
+                            await forum.NominationRanked(leaderboard.Qualification.DiscordRTChannelId);
+                            } catch { }
+                        }
                     }
                 }
+
+                var _playerController = scope.ServiceProvider.GetRequiredService<PlayerRefreshController>();
+                await _playerController.RefreshRanks();
+
                 var _playlistController = scope.ServiceProvider.GetRequiredService<PlaylistController>();
                 await _playlistController.RefreshNominatedPlaylist();
                 await _playlistController.RefreshQualifiedPlaylist();
                 await _playlistController.RefreshRankedPlaylist();
 
-                var _playerController = scope.ServiceProvider.GetRequiredService<PlayerRefreshController>();
+                
                 await _playerController.RefreshPlayers();
                 await _playerController.RefreshPlayersStats();
             }

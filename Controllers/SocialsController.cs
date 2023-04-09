@@ -244,6 +244,28 @@ namespace BeatLeader_Server.Controllers
             return Redirect(returnUrl);
         }
 
+        // Demo endpoint sample for the BL oauth2 flow
+        [HttpGet("~/user/linkBeatLeader")]
+        public async Task<ActionResult> LinkBeatLeader([FromQuery] string returnUrl)
+        {
+            string playerId = HttpContext.CurrentUserID(_context);
+            if (playerId == null)
+            {
+                return Redirect(returnUrl);
+            }
+            var auth = await HttpContext.AuthenticateAsync("BeatLeader");
+
+            var claims = auth.Principal.Claims;
+
+            var id = claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+            var username = claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
+
+            string? token = auth?.Properties?.Items[".Token.access_token"];
+            string? timestamp = auth?.Properties?.Items[".Token.expires_at"];
+
+            return Redirect(returnUrl);
+        }
+
         [NonAction]
         public Task<dynamic?> ListChanneld(string token)
         {

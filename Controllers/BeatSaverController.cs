@@ -1,6 +1,7 @@
 ﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Migrations;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -92,11 +93,14 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/user/linkBeatSaver")]
-        public async Task<ActionResult> LinkBeatSaver([FromQuery] string? returnUrl = null)
+        public async Task<ActionResult> LinkBeatSaver([FromQuery] string? returnUrl = null, [FromQuery] string? oauthState = null)
         {
             (int? id, string? error) = await LinkBeatSaverPrivate();
             if (id == null) {
                 return Unauthorized(error);
+            }
+            if (oauthState != null) {
+                return Redirect($"/oauth2/authorize{oauthState}");
             }
             return returnUrl != null ? Redirect(returnUrl) : Ok();
         }
@@ -168,6 +172,7 @@ namespace BeatLeader_Server.Controllers
 
                     _context.Players.Add(player);
                     playerId = player.Id;
+                    SearchService.PlayerAdded(player.Id, player.Name);
 
                 } else {
                     playerId = bslink.Id;

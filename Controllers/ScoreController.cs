@@ -266,6 +266,47 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
+        public static string FilterOutPositiveModifiers(string modifiers, ModifiersMap modifiersObject)
+        {
+            List<string> modifierArray = new List<string>();
+            var modifiersMap = modifiersObject.ToDictionary<float>();
+            foreach (var modifier in modifiersMap.Keys)
+            {
+                if (modifiers.Contains(modifier)) {
+                    if (modifiersMap[modifier] < 0) {
+                        modifierArray.Add(modifier);
+                    }
+                }
+            }
+
+            return String.Join(",", modifierArray);
+        }
+
+        private ScoreResponse RemovePositiveModifiers(ScoreResponse s, DifficultyDescription difficulty) {
+            ScoreResponse result = s;
+
+            var status = difficulty.Status;
+            var modifiers = difficulty.ModifierValues ?? new ModifiersMap();
+
+            bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
+            bool hasPp = status == DifficultyStatus.ranked || qualification;
+
+            s.Modifiers = FilterOutPositiveModifiers(s.Modifiers, modifiers);
+            s.ModifiedScore = (int)(s.BaseScore * modifiers.GetNegativeMultiplier(s.Modifiers));
+
+            if (hasPp)
+            {
+                (s.Pp, s.BonusPp, s.PassPP, s.AccPP, s.TechPP) = ReplayUtils.PpFromScoreResponse(s, difficulty);
+            }
+            else
+            {
+                s.Pp = 0;
+                s.BonusPp = 0;
+            }
+
+            return result;
+        }
+
         [HttpGet("~/v3/scores/{hash}/{diff}/{mode}/{context}/{scope}/{method}")]
         public async Task<ActionResult<ResponseWithMetadataAndSelection<ScoreResponse>>> GetByHash3(
             string hash,
@@ -347,11 +388,11 @@ namespace BeatLeader_Server.Controllers
                 query = query.Where(s => s.Player.Country == currentPlayer.Country);
             }
 
-            //if (context.ToLower() == "standard")
-            //{
-            //    var modifiers = _context.Leaderboards.Where(lb => lb.Id == leaderboardId).Include(lb => lb.Difficulty).ThenInclude(d => d.ModifierValues).Select(lb => new { ModifierValues = lb.Difficulty.ModifierValues, Stars = lb.Difficulty.Stars }).FirstOrDefault();
-            //    query = query.ToList().AsQueryable().Select(s => RemovePositiveModifiers(s, modifiers.ModifierValues, modifiers.Stars)).OrderByDescending(p => p.Accuracy);
-            //}
+            if (context.ToLower() == "standard") {
+                query = query
+                    .Where(s => s.ModifiedScore >= s.BaseScore)
+                    .OrderByDescending(p => p.Accuracy);
+            }
 
             if (method.ToLower() == "around")
             {
@@ -476,6 +517,24 @@ namespace BeatLeader_Server.Controllers
                 })
                 .ToList();
 
+            if (context.ToLower() == "standard") {
+                var difficulty = _context
+                    .Leaderboards
+                    .Where(lb => lb.Id == leaderboardId)
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(d => d.ModifiersRating)
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(d => d.ModifierValues)
+                    .Select(lb => lb.Difficulty)
+                    .FirstOrDefault();
+
+                if (difficulty != null) {
+                    foreach (var item in resultList) {
+                        RemovePositiveModifiers(item, difficulty);
+                    }
+                }
+            }
+
             foreach (var item in resultList)
             {
                 item.Player = PostProcessSettings(item.Player);
@@ -562,6 +621,15 @@ namespace BeatLeader_Server.Controllers
                         break;
                     case "rank":
                         sequence = sequence.Order(order, t => t.Rank);
+                        break;
+                    case "predictedAcc":
+                        sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Order(order, t => t.Leaderboard.Difficulty.PredictedAcc);
+                        break;
+                    case "passRating":
+                        sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Order(order, t => t.Leaderboard.Difficulty.PassRating);
+                        break;
+                    case "techRating":
+                        sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Order(order, t => t.Leaderboard.Difficulty.TechRating);
                         break;
                     case "stars":
                         sequence = sequence.Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Difficulty).Order(order, t => t.Leaderboard.Difficulty.Stars);
@@ -690,7 +758,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/score/calculatestatistic/{id}")]
         public async Task<ActionResult<ScoreStatistic?>> CalculateStatistic(string id)
         {
-            Score? score = _context.Scores.Where(s => s.Id == Int64.Parse(id)).Include(s => s.Leaderboard).ThenInclude(l => l.Song).FirstOrDefault();
+            Score? score = _context.Scores.Where(s => s.Id == Int64.Parse(id)).Include(s => s.Leaderboard).ThenInclude(l => l.Song).Include(s => s.Leaderboard).ThenInclude(l => l.Difficulty).FirstOrDefault();
             if (score == null)
             {
                 return NotFound("Score not found");
@@ -960,7 +1028,8 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            string result = "Count,Count >80%,Count >95%,Count/80,Count/95,Average,Total PP,PP/topPP filtered,PP/topPP unfiltered,Stars,Link\n";
+            string result = "Count,Count >80%,Count >95%,Count/80,Count/95,Average,Top250,Total PP,PP/topPP filtered,PP/topPP unfiltered,Acc Rating,Pass Rating,Tech Rating,Name,Link\n";
+            float weightTreshold = MathF.Pow(0.965f, 40);
 
             var leaderboards = _context
                 .Leaderboards
@@ -979,13 +1048,17 @@ namespace BeatLeader_Server.Controllers
                         .Where(s => s.Player.ScoreStats.TopPp != 0)
                       .Average(s => s.Pp / s.Player.ScoreStats.TopPp),
                     Count = lb.Scores.Count(),
+                    Top250 = lb.Scores.Where(s => s.Player.Rank < 250 && s.Weight > weightTreshold).Count(),
                     lb.Id,
-                    lb.Difficulty.Stars})
+                    lb.Song.Name,
+                    lb.Difficulty.AccRating,
+                    lb.Difficulty.PassRating,
+                    lb.Difficulty.TechRating})
                 .ToList();
 
             foreach (var item in leaderboards)
             {
-                result += $"{item.Count},{item.Count8},{item.Count95},{item.Count8/(float)item.Count},{item.Count95/(float)item.Count},{item.Average},{item.PPsum},{item.PPAverage},{item.PPAverage2},{item.Stars},https://www.beatleader.xyz/leaderboard/global/{item.Id}/1\n";
+                result += $"{item.Count},{item.Count8},{item.Count95},{item.Count8/(float)item.Count},{item.Count95/(float)item.Count},{item.Average},{item.Top250},{item.PPsum},{item.PPAverage},{item.PPAverage2},{item.AccRating},{item.PassRating},{item.TechRating},{item.Name.Replace(",","")},https://stage.beatleader.net/leaderboard/global/{item.Id}/1\n";
             }
 
             return result;

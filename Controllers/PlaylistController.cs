@@ -330,7 +330,7 @@ namespace BeatLeader_Server.Controllers
 
             playlist.songs = songs.DistinctBy(s => s.hash).ToList();
             playlist.customData = new CustomData { 
-                syncURL = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/playlists/" : "https://beatleadercdn.blob.core.windows.net/playlists/") + "ranked.bplist",
+                syncURL = "https://api.beatleader.xyz/playlist/ranked",
                 owner = "BeatLeader",
                 id = "ranked"
             };
@@ -386,7 +386,7 @@ namespace BeatLeader_Server.Controllers
             playlist.songs = songs.DistinctBy(s => s.hash).ToList();
             playlist.customData = new CustomData
             {
-                syncURL = (_environment.IsDevelopment() ? "http://127.0.0.1:10000/devstoreaccount1/playlists/" : "https://beatleadercdn.blob.core.windows.net/playlists/") + "nominated.bplist",
+                syncURL = "https://api.beatleader.xyz/playlist/nominated",
                 owner = "BeatLeader",
                 id = "nominated"
             };
@@ -463,6 +463,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string order = "desc",
             [FromQuery] string? search = null,
             [FromQuery] string? type = null,
+            [FromQuery] string? mode = null,
             [FromQuery] int? mapType = null,
             [FromQuery] Operation allTypes = 0,
             [FromQuery] Requirements? mapRequirements = null,
@@ -470,6 +471,12 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? mytype = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
+            [FromQuery] float? accrating_from = null,
+            [FromQuery] float? accrating_to = null,
+            [FromQuery] float? passrating_from = null,
+            [FromQuery] float? passrating_to = null,
+            [FromQuery] float? techrating_from = null,
+            [FromQuery] float? techrating_to = null,
             [FromQuery] int? date_from = null,
             [FromQuery] int? date_to = null,
             [FromQuery] bool duplicate_diffs = false)
@@ -481,9 +488,12 @@ namespace BeatLeader_Server.Controllers
             var sequence = _readAppContext.Leaderboards.AsQueryable();
             string? currentID = HttpContext.CurrentUserID(_readAppContext);
 
-            sequence = sequence.Filter(_readAppContext, sortBy, order, search, type, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, date_from, date_to, currentID);
+            int searchCount = 0;
+            sequence = sequence.Filter(_readAppContext, 1, count, ref searchCount, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
 
-            var diffsCount = sequence.Select(s => s.Song.Hash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash).Take(count).Last().Index + 1;
+            var diffsList = sequence.Select(s => s.Song.Hash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash);
+
+            var diffsCount = diffsList.Count() == 0 ? 0 : diffsList.Take(count).Last().Index + 1;
 
             sequence = sequence
                 .Include(lb => lb.Difficulty)
@@ -555,6 +565,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? search = null,
             [FromQuery] string? diff = null,
             [FromQuery] string? type = null,
+            [FromQuery] string? mode = null,
+            [FromQuery] Requirements? requirements = null,
             [FromQuery] string? modifiers = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
@@ -595,7 +607,7 @@ namespace BeatLeader_Server.Controllers
             IQueryable<Score> sequence = _readAppContext
                 .Scores
                 .Where(t => t.PlayerId == userId)
-                .Filter(_readAppContext, !player.Banned, sortBy, order, search, diff, type, modifiers, stars_from, stars_to, time_from, time_to, eventId); 
+                .Filter(_readAppContext, !player.Banned, sortBy, order, search, diff, mode, requirements, type, modifiers, stars_from, stars_to, time_from, time_to, eventId); 
 
             if (sequence.Count() == 0) { return NotFound(); }
 
@@ -899,8 +911,17 @@ namespace BeatLeader_Server.Controllers
                 case "date":
                     query = query.Order(order, p => p.EndDate);
                     break;
+                case "name":
+                    query = query.Order(order, t => t.Name);
+                    break;
                 default:
                     break;
+            }
+
+            if (search != null)
+            {
+                string lowSearch = search.ToLower();
+                query = query.Where(p => p.Name.ToLower().Contains(lowSearch));
             }
 
             var result = new ResponseWithMetadata<EventResponse>

@@ -2,6 +2,7 @@
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Migrations;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -58,10 +59,14 @@ namespace BeatLeader_Server.Controllers
                     .Where(lb => lb.Id == id)
                     .Include(lb => lb.Difficulty)
                     .ThenInclude(d => d.ModifierValues)
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(d => d.ModifiersRating)
                     .Include(lb => lb.Qualification)
                     .ThenInclude(lb => lb.Votes)
                     .Include(lb => lb.Qualification)
                     .ThenInclude(q => q.Modifiers)
+                    .Include(lb => lb.Qualification)
+                    .ThenInclude(q => q.CriteriaComments)
                     .Include(lb => lb.Qualification)
                     .ThenInclude(q => q.Changes)
                     .ThenInclude(ch => ch.NewModifiers)
@@ -223,9 +228,6 @@ namespace BeatLeader_Server.Controllers
                     case "maxStreak":
                         scoreQuery = scoreQuery.Order(order, s => s.MaxStreak).ThenOrder(oppositeOrder, s => s.Rank);
                         break;
-                    case "playCount":
-                        scoreQuery = scoreQuery.Order(order, s => s.PlayCount).ThenOrder(oppositeOrder, s => s.Rank);
-                        break;
                     default:
                         break;
                 }
@@ -261,7 +263,6 @@ namespace BeatLeader_Server.Controllers
                         Timeset = s.Timeset,
                         Timepost = s.Timepost,
                         MaxStreak = s.MaxStreak,
-                        PlayCount = s.PlayCount,
                         Player = new PlayerResponse
                         {
                             Id = s.Player.Id,
@@ -379,7 +380,7 @@ namespace BeatLeader_Server.Controllers
                         {
                             s.Accuracy = (float)s.BaseScore / (float)ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
                         }
-                        (s.Pp, s.BonusPp) = ReplayUtils.PpFromScoreResponse(s, reweight.Stars, reweight.Modifiers);
+                        (s.Pp, s.BonusPp, s.PassPP, s.AccPP, s.TechPP) = ReplayUtils.PpFromScoreResponse(s, ReplayUtils.AccRating(reweight.PredictedAcc, reweight.PassRating, reweight.TechRating), reweight.PassRating, reweight.TechRating, reweight.Modifiers, reweight.ModifiersRating);
 
                         return s;
                     });
@@ -409,7 +410,14 @@ namespace BeatLeader_Server.Controllers
                         {
                             s.Accuracy = (float)s.BaseScore / (float)ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
                         }
-                        (s.Pp, s.BonusPp) = ReplayUtils.PpFromScoreResponse(s, leaderboard.Difficulty.Stars ?? 0, qualification.Modifiers);
+                        (s.Pp, s.BonusPp, s.PassPP, s.AccPP, s.TechPP) = ReplayUtils.PpFromScoreResponse(
+                            s, 
+                            leaderboard.Difficulty.AccRating ?? 0, 
+                            leaderboard.Difficulty.PassRating ?? 0, 
+                            leaderboard.Difficulty.TechRating ?? 0, 
+                            qualification.Modifiers,
+                            qualification.ModifiersRating
+                            );
 
                         return s;
                     }).ToList();
@@ -522,6 +530,8 @@ namespace BeatLeader_Server.Controllers
                 .Include(lb => lb.Difficulty)
                 .ThenInclude(d => d.ModifierValues)
                 .Include(lb => lb.ClanRanking)
+                .Include(lb => lb.Difficulty)
+                .ThenInclude(d => d.ModifiersRating)
                 .FirstOrDefault(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff);
 
             if (leaderboard == null) {
@@ -553,6 +563,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? order = null,
             [FromQuery] string? search = null,
             [FromQuery] string? type = null,
+            [FromQuery] string? mode = null,
             [FromQuery] int? mapType = null,
             [FromQuery] Operation allTypes = 0,
             [FromQuery] Requirements? mapRequirements = null,
@@ -560,12 +571,27 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? mytype = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
+            [FromQuery] float? accrating_from = null,
+            [FromQuery] float? accrating_to = null,
+            [FromQuery] float? passrating_from = null,
+            [FromQuery] float? passrating_to = null,
+            [FromQuery] float? techrating_from = null,
+            [FromQuery] float? techrating_to = null,
             [FromQuery] int? date_from = null,
             [FromQuery] int? date_to = null) {
 
             var sequence = _readContext.Leaderboards.AsQueryable();
             string? currentID = HttpContext.CurrentUserID(_readContext);
-            sequence = sequence.Filter(_readContext, sortBy, order, search, type, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, date_from, date_to, currentID);
+
+            if (currentID != null && date_from != null && type == "ranking") {
+                var lastScore = _context.Scores.Where(s => s.PlayerId == currentID).OrderByDescending(s => s.Timepost).Select(s => s.Platform).FirstOrDefault();
+                if (lastScore == null || !lastScore.Contains("1.29")) {
+                    date_from = 0;
+                }
+            }
+
+            int searchCount = 0;
+            sequence = sequence.Filter(_readContext, page, count, ref searchCount, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
 
             var result = new ResponseWithMetadata<LeaderboardInfoResponse>()
             {
@@ -573,19 +599,30 @@ namespace BeatLeader_Server.Controllers
                 {
                     Page = page,
                     ItemsPerPage = count,
-                    Total = sequence.Count()
+                    Total = searchCount > 0 ? searchCount : sequence.Count()
                 }
             };
 
-            sequence = sequence.Skip((page - 1) * count)
-                .Take(count)
+            if (search == null || search.Length == 0) {
+                sequence = sequence.Skip((page - 1) * count).Take(count);
+            }
+
+            sequence = sequence
                 .Include(lb => lb.Difficulty)
-                .ThenInclude(lb => lb.ModifierValues)
                 .Include(lb => lb.Song)
-                .Include(lb => lb.Reweight)
-                .ThenInclude(rew => rew.Modifiers)
                 .Include(lb => lb.ClanRanking)
-                .ThenInclude(cr => cr.Clan);
+                .ThenInclude(cr => cr.Clan)
+                .Include(lb => lb.Reweight);
+
+            if (type == "staff") {
+                sequence = sequence
+                    .Include(lb => lb.Qualification)
+                    .ThenInclude(q => q.Votes);
+            } else if (type == "ranking") {
+                sequence = sequence
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(q => q.ModifierValues);
+            }
 
             bool showPlays = sortBy == "playcount";
 
@@ -603,8 +640,7 @@ namespace BeatLeader_Server.Controllers
                     NegativeVotes = lb.NegativeVotes,
                     VoteStars = lb.VoteStars,
                     StarVotes = lb.StarVotes,
-                    MyScore = currentID == null ? null : lb.Scores.Where(s => s.PlayerId == currentID && !s.Banned).Select(s => new ScoreResponseWithAcc
-                    {
+                    MyScore = currentID == null ? null : lb.Scores.Where(s => s.PlayerId == currentID && !s.Banned).Select(s => new ScoreResponseWithAcc {
                         Id = s.Id,
                         BaseScore = s.BaseScore,
                         ModifiedScore = s.ModifiedScore,
@@ -632,11 +668,92 @@ namespace BeatLeader_Server.Controllers
                         Weight = s.Weight,
                         AccLeft = s.AccLeft,
                         AccRight = s.AccRight,
-                        PlayCount = s.PlayCount,
                         MaxStreak = s.MaxStreak,
                     }).FirstOrDefault(),
                     Plays = showPlays ? lb.Scores.Count(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)) : 0
-                });
+                }).ToList();
+            if (search?.Length > 0) {
+                result.Data = SearchService.SortMaps(result.Data, search);
+            }
+
+            return result;
+        }
+
+        [HttpGet("~/leaderboards/groupped/")]
+        public async Task<ActionResult<ResponseWithMetadata<LeaderboardInfoResponse>>> GetAllGroupped(
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10,
+            [FromQuery] string? sortBy = null,
+            [FromQuery] string? order = null,
+            [FromQuery] string? search = null,
+            [FromQuery] string? type = null,
+            [FromQuery] string? mode = null,
+            [FromQuery] int? mapType = null,
+            [FromQuery] Operation allTypes = 0,
+            [FromQuery] Requirements? mapRequirements = null,
+            [FromQuery] Operation allRequirements = 0,
+            [FromQuery] string? mytype = null,
+            [FromQuery] float? stars_from = null,
+            [FromQuery] float? stars_to = null,
+            [FromQuery] float? accrating_from = null,
+            [FromQuery] float? accrating_to = null,
+            [FromQuery] float? passrating_from = null,
+            [FromQuery] float? passrating_to = null,
+            [FromQuery] float? techrating_from = null,
+            [FromQuery] float? techrating_to = null,
+            [FromQuery] int? date_from = null,
+            [FromQuery] int? date_to = null) {
+
+            var sequence = _readContext.Leaderboards.AsQueryable();
+            string? currentID = HttpContext.CurrentUserID(_readContext);
+            int searchCount = 0;
+            sequence = sequence.Filter(_readContext, page, count, ref searchCount, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
+
+            var ids = sequence.Select(lb => lb.SongId).ToList();
+
+            var result = new ResponseWithMetadata<LeaderboardInfoResponse>()
+            {
+                Metadata = new Metadata()
+                {
+                    Page = page,
+                    ItemsPerPage = count,
+                    Total = ids.Count()
+                }
+            };
+
+            ids = ids.Distinct().Skip((page - 1) * count)
+                .Take(count).ToList();
+
+            sequence = sequence
+                .Where(lb => ids.Contains(lb.SongId)).Filter(_readContext, page, count, ref searchCount, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID)
+                .Include(lb => lb.Difficulty)
+                .Include(lb => lb.Song);
+
+            if (type == "staff") {
+                sequence = sequence
+                    .Include(lb => lb.Qualification)
+                    .ThenInclude(q => q.Votes);
+            } else if (type == "ranking") {
+                sequence = sequence
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(q => q.ModifierValues);
+            }
+
+            result.Data = sequence
+                .Select(lb => new LeaderboardInfoResponse
+                {
+                    Id = lb.Id,
+                    Song = lb.Song,
+                    Difficulty = lb.Difficulty,
+                    Qualification = lb.Qualification,
+                    PositiveVotes = lb.PositiveVotes,
+                    NegativeVotes = lb.NegativeVotes,
+                    VoteStars = lb.VoteStars,
+                    StarVotes = lb.StarVotes
+                }).ToList();
+            if (search != null && search.Length > 0) {
+                result.Data = SearchService.SortMaps(result.Data, search);
+            }
             return result;
         }
 

@@ -29,6 +29,7 @@ namespace BeatLeader_Server.Models
         public bool won { get; set; }
         public float endTime { get; set; }
         public int nbOfPause { get; set; }
+        public float totalPauseDuration { get; set; }
         public float jumpDistance { get; set; }
         public float averageHeight { get; set; }
         public AveragePosition? averageHeadPosition { get; set; }    

@@ -1,6 +1,7 @@
 ﻿using BeatLeader_Server.Bot;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -20,12 +21,13 @@ namespace BeatLeader_Server.Controllers
         private readonly ReadAppContext _readContext;
 
         private readonly NominationsForum _nominationsForum;
-
-        public SongController(AppContext context, ReadAppContext readContext, NominationsForum nominationsForum)
+        private readonly RTNominationsForum _rtNominationsForum;
+        public SongController(AppContext context, ReadAppContext readContext, NominationsForum nominationsForum, RTNominationsForum rtNominationsForum)
         {
             _context = context;      
             _readContext = readContext;
             _nominationsForum = nominationsForum;
+            _rtNominationsForum = rtNominationsForum;
         }
 
         [HttpGet("~/map/hash/{hash}")]
@@ -88,6 +90,9 @@ namespace BeatLeader_Server.Controllers
             if (newLeaderboard != null && diff.Status != DifficultyStatus.ranked && diff.Status != DifficultyStatus.outdated) {
                 newLeaderboard.Difficulty.Status = diff.Status;
                 newLeaderboard.Difficulty.Stars = diff.Stars;
+                newLeaderboard.Difficulty.AccRating = diff.AccRating;
+                newLeaderboard.Difficulty.PassRating = diff.PassRating;
+                newLeaderboard.Difficulty.TechRating = diff.TechRating;
                 newLeaderboard.Difficulty.Type = diff.Type;
                 newLeaderboard.Difficulty.NominatedTime = diff.NominatedTime;
                 newLeaderboard.Difficulty.ModifierValues = diff.ModifierValues;
@@ -102,7 +107,10 @@ namespace BeatLeader_Server.Controllers
                 newLeaderboard.NegativeVotes = oldLeaderboard.NegativeVotes;
                 newLeaderboard.PositiveVotes = oldLeaderboard.PositiveVotes;
                 if (oldLeaderboard.Qualification.DiscordChannelId.Length > 0) {
-                    await _nominationsForum.NominationReuploaded(oldLeaderboard.Qualification.DiscordChannelId, oldLeaderboardId);
+                    await _nominationsForum.NominationReuploaded(_context, oldLeaderboard.Qualification, oldLeaderboardId);
+                }
+                if (oldLeaderboard.Qualification.DiscordRTChannelId.Length > 0) {
+                    await _rtNominationsForum.NominationReuploaded(_context, oldLeaderboard.Qualification, oldLeaderboardId);
                 }
                 oldLeaderboard.Qualification = null;
             }
@@ -149,6 +157,7 @@ namespace BeatLeader_Server.Controllers
                     _context.Songs.Add(song);
                     await _context.SaveChangesAsync();
 
+                    SearchService.SongAdded(song.Id, song.Hash, song.Name, song.Author, song.Mapper);
                     
                     foreach (var oldSong in songsToMigrate)
                     {

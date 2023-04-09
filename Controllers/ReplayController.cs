@@ -1,6 +1,7 @@
 ﻿using Amazon.S3;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Dasync.Collections;
 using Discord;
@@ -153,7 +154,7 @@ namespace BeatLeader_Server.Controllers
             var info = replay?.info;
 
             if (info == null) return BadRequest("It's not a replay or it has old version.");
-            if (replay.notes.Count == 0 || replay.frames.Count == 0) {
+            if (replay.notes.Count == 0) {
                 return BadRequest("Replay is broken, update your mod please.");
             }
             if (info.hash.Length < 40) return BadRequest("Hash is to short");
@@ -188,6 +189,10 @@ namespace BeatLeader_Server.Controllers
                 return Ok();
             } else {
                 await CollectStats(replay.info.score, authenticatedPlayerID, leaderboard, replay.frames.Last().time, EndType.Clear);
+            }
+
+            if (replay.frames.Count == 0) {
+                return BadRequest("Replay is broken, update your mod please.");
             }
 
             if ((leaderboard.Difficulty.Status == DifficultyStatus.ranked || leaderboard.Difficulty.Status == DifficultyStatus.qualified) && leaderboard.Difficulty.Notes != 0 && replay.notes.Count > leaderboard.Difficulty.Notes) {
@@ -229,6 +234,8 @@ namespace BeatLeader_Server.Controllers
                     player.SetDefaultAvatar();
 
                     _context.Players.Add(player);
+
+                    SearchService.PlayerAdded(player.Id, player.Name);
                 }
 
                 if (player.Country == "not set")
@@ -249,28 +256,10 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            if (!leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles) && !ReplayUtils.IsPlayerCuttingNotesOnPlatform(replay)) {
-                string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsortemp";
-                resultScore.Replay = "https://cdn.replays.beatleader.xyz/" + fileName;
-                
-                await _s3Client.UploadReplay(fileName, replayData);
-
-                FailedScore failedScore = new FailedScore {
-                    Error = "Played outside of the platform",
-                    Leaderboard = leaderboard,
-                    PlayerId = resultScore.PlayerId,
-                    Modifiers = resultScore.Modifiers,
-                    Replay = resultScore.Replay,
-                    Timeset = resultScore.Timeset,
-                    BaseScore = resultScore.BaseScore,
-                    ModifiedScore = resultScore.ModifiedScore,
-                    Rank = resultScore.Rank,
-                    Player = player,
-                    Hmd = resultScore.Hmd,
-                };
-                _context.FailedScores.Add(failedScore);
-                _context.SaveChanges();
-
+            if (!leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles) && 
+                !leaderboard.Difficulty.Requirements.HasFlag(Requirements.MappingExtensions) && 
+                !ReplayUtils.IsPlayerCuttingNotesOnPlatform(replay)) {
+                Thread.Sleep(8000); // Error may not show if returned too quick
                 return BadRequest("Please stay on the platform.");
             }
 
@@ -666,6 +655,19 @@ namespace BeatLeader_Server.Controllers
                         player.ScoreStats.TopBonusPP = resultScore.BonusPp;
                     }
 
+                    if (resultScore.PassPP > player.ScoreStats.TopPassPP)
+                    {
+                        player.ScoreStats.TopPassPP = resultScore.PassPP;
+                    }
+                    if (resultScore.AccPP > player.ScoreStats.TopAccPP)
+                    {
+                        player.ScoreStats.TopAccPP = resultScore.AccPP;
+                    }
+                    if (resultScore.TechPP > player.ScoreStats.TopTechPP)
+                    {
+                        player.ScoreStats.TopTechPP = resultScore.TechPP;
+                    }
+
                     switch (resultScore.Accuracy)
                     {
                         case > 0.95f:
@@ -734,7 +736,7 @@ namespace BeatLeader_Server.Controllers
                 //    await MigrateOldReplay(currentScore, stats);
                 //}
 
-                string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
+                string fileName = replay.info.playerID + "-" + resultScore.Id.ToString() + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
                 resultScore.Replay = "https://cdn.replays.beatleader.xyz/" + fileName;
                 
                 string replayLink = resultScore.Replay;
@@ -794,7 +796,11 @@ namespace BeatLeader_Server.Controllers
                         resultScore.FcAccuracy, 
                         resultScore.Modifiers, 
                         leaderboard.Difficulty.ModifierValues, 
-                        leaderboard.Difficulty.Stars ?? 0, leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
+                        leaderboard.Difficulty.ModifiersRating, 
+                        leaderboard.Difficulty.AccRating ?? 0, 
+                        leaderboard.Difficulty.PassRating ?? 0, 
+                        leaderboard.Difficulty.TechRating ?? 0, 
+                        leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
                 }
                 resultScore.Country = context.Request.Headers["cf-ipcountry"] == StringValues.Empty ? "not set" : context.Request.Headers["cf-ipcountry"].ToString();
 
