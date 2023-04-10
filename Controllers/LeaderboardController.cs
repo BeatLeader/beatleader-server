@@ -381,6 +381,8 @@ namespace BeatLeader_Server.Controllers
                 .ThenInclude(s => s.Difficulties)
                 .Include(lb => lb.Difficulty)
                 .ThenInclude(d => d.ModifierValues)
+                .Include(lb => lb.Difficulty)
+                .ThenInclude(d => d.ModifiersRating)
                 .Include(lb => lb.Qualification)
                 .Include(lb => lb.Reweight)
                 .Select(lb => new {

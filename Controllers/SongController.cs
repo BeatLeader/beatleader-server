@@ -308,7 +308,14 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         private Song? GetSongWithDiffsFromHash(string hash)
         {
-            return _context.Songs.Where(el => el.Hash == hash).Include(song => song.Difficulties).ThenInclude(d => d.ModifierValues).FirstOrDefault();
+            return _context
+                .Songs
+                .Where(el => el.Hash == hash)
+                .Include(song => song.Difficulties)
+                .ThenInclude(d => d.ModifierValues)
+                .Include(song => song.Difficulties)
+                .ThenInclude(d => d.ModifiersRating)
+                .FirstOrDefault();
         }
     }
 }
