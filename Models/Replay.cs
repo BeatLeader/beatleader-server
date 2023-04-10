@@ -736,7 +736,10 @@ namespace BeatLeader_Server.Models
             List<Frame> result = new List<Frame>();
             for (int i = 0; i < length; i++)
             {
-                result.Add(DecodeFrame(buffer, ref pointer));
+                var frame  = DecodeFrame(buffer, ref pointer);
+                if (frame.time != 0 && (result.Count == 0 || frame.time != result[result.Count - 1].time)) {
+                    result.Add(frame);
+                }
             }
             return result;
         }

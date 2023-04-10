@@ -93,11 +93,14 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/user/linkBeatSaver")]
-        public async Task<ActionResult> LinkBeatSaver([FromQuery] string? returnUrl = null)
+        public async Task<ActionResult> LinkBeatSaver([FromQuery] string? returnUrl = null, [FromQuery] string? oauthState = null)
         {
             (int? id, string? error) = await LinkBeatSaverPrivate();
             if (id == null) {
                 return Unauthorized(error);
+            }
+            if (oauthState != null) {
+                return Redirect($"/oauth2/authorize{oauthState}");
             }
             return returnUrl != null ? Redirect(returnUrl) : Ok();
         }

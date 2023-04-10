@@ -81,7 +81,7 @@ namespace BeatLeader_Server.Services {
             if (value == query) {
                 return 100;
             } else {
-                return Math.Max(Fuzz.WeightedRatio(value, query), value.Contains(query) ? 60 : 0);
+                return Math.Max(Fuzz.WeightedRatio(value, query), value.Contains(query) ? 71 : 0);
             }   
         }
 
@@ -93,7 +93,7 @@ namespace BeatLeader_Server.Services {
 
             score = Math.Max(score, author.Length >= 4 ? Fuzz.WeightedRatio(author, query) : 0);
             score = Math.Max(score, mapper.Length >= 4 ? Fuzz.WeightedRatio(mapper, query) : 0);
-            score = Math.Max(score, name.Contains(query) ? 50 : 0);
+            score = Math.Max(score, name.Contains(query) ? 71 : 0);
 
             return score;
         }

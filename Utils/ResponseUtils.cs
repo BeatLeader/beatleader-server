@@ -512,6 +512,10 @@ namespace BeatLeader_Server.Utils
         public static T PostProcessSettings<T>(T input) where T: PlayerResponse? {
             if (input == null) return null;
 
+            if (input.ProfileSettings == null) {
+                input.ProfileSettings = new ProfileSettings();
+            }
+
             PostProcessSettings(input.Role, input.ProfileSettings, input.PatreonFeatures);
 
             return input;
@@ -520,6 +524,10 @@ namespace BeatLeader_Server.Utils
         public static void PostProcessSettings(string role, ProfileSettings? settings, PatreonFeatures? patreonFeatures, bool hideStarredFriends = true) {
             if (settings != null && hideStarredFriends) {
                 settings.StarredFriends = "";
+            }
+
+            if (settings != null && settings.ProfileAppearance == null) {
+                settings.ProfileAppearance = "topPp,averageRankedAccuracy,topPlatform,topHMD";
             }
 
             if (!role.Contains("sponsor")) {

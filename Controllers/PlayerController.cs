@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Linq.Expressions;
+using static BeatLeader_Server.Services.SearchService;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -357,8 +358,6 @@ namespace BeatLeader_Server.Controllers
                 .Include(p => p.Clans)
                 .Include(p => p.ProfileSettings);
 
-            int totalCount = 0;
-
             if (banned != null) {
                 string userId = HttpContext.CurrentUserID(_readContext);
                 var player = await _readContext.Players.FindAsync(userId);
@@ -385,12 +384,13 @@ namespace BeatLeader_Server.Controllers
                 }
                 request = request.Where((Expression<Func<Player, bool>>)Expression.Lambda(exp, player));
             }
+
+            List<PlayerMatch>? searchMatch = null;
             if (search?.Length != 0)
             {
-                var match = SearchService.SearchPlayers(search);
-                totalCount = match.Count;
+                searchMatch = SearchService.SearchPlayers(search);
 
-                var ids = match.OrderByDescending(m => m.Score).Skip((page - 1) * count).Take(count).Select(m => m.Id).ToArray();
+                var ids = searchMatch.Select(m => m.Id).ToArray();
                 request = request.Where(p => ids.Contains(p.Id));
             }
 
@@ -496,11 +496,20 @@ namespace BeatLeader_Server.Controllers
                 {
                     Page = page,
                     ItemsPerPage = count,
-                    Total = totalCount > 0 ? totalCount : request.Count()
+                    Total = request.Count()
                 }
             };
 
-            if (search == null || search.Length == 0) {
+            if (searchMatch != null) {
+                var matchedAndFiltered = request.Select(p => p.Id).ToList();
+                var sorted = matchedAndFiltered
+                    .OrderByDescending(p => searchMatch.FirstOrDefault(m => m.Id == p)?.Score ?? 0)
+                    .Skip((page - 1) * count)
+                    .Take(count)
+                    .ToList();
+
+                request = request.Where(p => sorted.Contains(p.Id));
+            } else {
                 request = Sorted(request, sortBy, ppType, order, mapsType).Skip((page - 1) * count).Take(count);
             }
 
@@ -589,7 +598,22 @@ namespace BeatLeader_Server.Controllers
                             request = request.Order(order, p => p.ScoreStats.TopRankedAccuracy);
                             break;
                         case "topPp":
-                            request = request.Order(order, p => p.ScoreStats.TopPp);
+                            switch (ppType)
+                            {
+                                case "acc":
+                                    request = request.Order(order, p => p.ScoreStats.TopAccPP);
+                                    break;
+                                case "tech":
+                                    request = request.Order(order, p => p.ScoreStats.TopTechPP);
+                                    break;
+                                case "pass":
+                                    request = request.Order(order, p => p.ScoreStats.TopPassPP);
+                                    break;
+                                default:
+                                    request = request.Order(order, p => p.ScoreStats.TopPp);
+                                    break;
+                            }
+
                             break;
                         case "hmd":
                             request = request.Order(order, p => p.ScoreStats.TopHMD);
