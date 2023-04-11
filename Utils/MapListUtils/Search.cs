@@ -9,9 +9,6 @@ public static partial class MapListUtils
 {
     private static IQueryable<Leaderboard> FilterBySearch(this IQueryable<Leaderboard> sequence,
                                                           string? search,
-                                                          int page,
-                                                          int count,
-                                                          ref int matchCount,
                                                           ref string? type,
                                                           ref string? mode,
                                                           ref int? mapType,
@@ -28,10 +25,13 @@ public static partial class MapListUtils
                                                           ref float? techRatingFrom,
                                                           ref float? techRatingTo,
                                                           ref int? dateFrom,
-                                                          ref int? dateTo)
+                                                          ref int? dateTo,
+                                                          out List<SearchService.SongMatch> matches)
     {
         if (string.IsNullOrEmpty(search))
         {
+            matches = new List<SearchService.SongMatch>(0);
+
             return sequence;
         }
 
@@ -53,11 +53,9 @@ public static partial class MapListUtils
                                          ref dateFrom,
                                          ref dateTo);
 
-        List<SearchService.SongMatch> matches = SearchService.SearchMaps(search);
+        matches = SearchService.SearchMaps(search);
 
-        matchCount = matches.Count;
-
-        string[] ids = matches.OrderByDescending(m => m.Score).Skip((page - 1) * count).Take(count).Select(m => m.Id).ToArray();
+        IEnumerable<string> ids = matches.Select(songMatch => songMatch.Id);
 
         return sequence.Where(leaderboard => ids.Contains(leaderboard.SongId));
     }

@@ -1,4 +1,5 @@
 ﻿using BeatLeader_Server.Models;
+using BeatLeader_Server.Services;
 
 namespace BeatLeader_Server.Utils;
 
@@ -15,7 +16,7 @@ public static partial class MapListUtils
                                                  ReadAppContext context,
                                                  int page,
                                                  int count,
-                                                 ref int totalCount,
+                                                 ref int searchCount,
                                                  string? sortBy = null,
                                                  string? order = null,
                                                  string? search = null,
@@ -26,23 +27,20 @@ public static partial class MapListUtils
                                                  Requirements? mapRequirements = null,
                                                  Operation allRequirements = 0,
                                                  string? mytype = null,
-                                                 float? stars_from = null,
-                                                 float? stars_to = null,
-                                                 float? accrating_from = null,
-                                                 float? accrating_to = null,
-                                                 float? passrating_from = null,
-                                                 float? passrating_to = null,
-                                                 float? techrating_from = null,
-                                                 float? techrating_to = null,
-                                                 int? date_from = null,
-                                                 int? date_to = null,
+                                                 float? starsFrom = null,
+                                                 float? starsTo = null,
+                                                 float? accRatingFrom = null,
+                                                 float? accRatingTo = null,
+                                                 float? passRatingFrom = null,
+                                                 float? passRatingTo = null,
+                                                 float? techRatingFrom = null,
+                                                 float? techRatingTo = null,
+                                                 int? dateFrom = null,
+                                                 int? dateTo = null,
                                                  string? currentID = null)
     {
         IQueryable<Leaderboard> filtered = source
                                            .FilterBySearch(search,
-                                                           page,
-                                                           count,
-                                                           ref totalCount,
                                                            ref type,
                                                            ref mode,
                                                            ref mapType,
@@ -50,32 +48,44 @@ public static partial class MapListUtils
                                                            ref mapRequirements,
                                                            ref allRequirements,
                                                            ref mytype,
-                                                           ref stars_from,
-                                                           ref stars_to,
-                                                           ref accrating_from,
-                                                           ref accrating_to,
-                                                           ref passrating_from,
-                                                           ref passrating_to,
-                                                           ref techrating_from,
-                                                           ref techrating_to,
-                                                           ref date_from,
-                                                           ref date_to)
+                                                           ref starsFrom,
+                                                           ref starsTo,
+                                                           ref accRatingFrom,
+                                                           ref accRatingTo,
+                                                           ref passRatingFrom,
+                                                           ref passRatingTo,
+                                                           ref techRatingFrom,
+                                                           ref techRatingTo,
+                                                           ref dateFrom,
+                                                           ref dateTo,
+                                                           out List<SearchService.SongMatch> matches)
                                            .WhereType(type)
                                            .WhereMapType(mapType, allTypes)
                                            .WhereMode(mode)
                                            .WhereMapRequirements(mapRequirements, allRequirements)
                                            .WhereMyType(context, mytype, currentID)
-                                           .WhereRatingFrom(RatingType.Stars, stars_from)
-                                           .WhereRatingFrom(RatingType.Acc, accrating_from)
-                                           .WhereRatingFrom(RatingType.Pass, passrating_from)
-                                           .WhereRatingFrom(RatingType.Tech, techrating_from)
-                                           .WhereRatingTo(RatingType.Stars, stars_to)
-                                           .WhereRatingTo(RatingType.Acc, accrating_to)
-                                           .WhereRatingTo(RatingType.Pass, passrating_to)
-                                           .WhereRatingTo(RatingType.Tech, techrating_to);
+                                           .WhereRatingFrom(RatingType.Stars, starsFrom)
+                                           .WhereRatingFrom(RatingType.Acc, accRatingFrom)
+                                           .WhereRatingFrom(RatingType.Pass, passRatingFrom)
+                                           .WhereRatingFrom(RatingType.Tech, techRatingFrom)
+                                           .WhereRatingTo(RatingType.Stars, starsTo)
+                                           .WhereRatingTo(RatingType.Acc, accRatingTo)
+                                           .WhereRatingTo(RatingType.Pass, passRatingTo)
+                                           .WhereRatingTo(RatingType.Tech, techRatingTo);
 
-        return string.IsNullOrEmpty(search)
-            ? filtered.Sort(sortBy, order!, type, mytype, date_from, date_to, currentID)
-            : filtered;
+        if (matches.Count != 0)
+        {
+            List<string> matchedAndFiltered = filtered.Select(leaderboard => leaderboard.Id).ToList();
+            searchCount = matchedAndFiltered.Count;
+
+            IEnumerable<string> sorted = matchedAndFiltered
+                                         .OrderByDescending(s => matches.FirstOrDefault(songMatch => songMatch.Id == s)?.Score ?? 0)
+                                         .Skip((page - 1) * count)
+                                         .Take(count);
+
+            return filtered.Where(leaderboard => sorted.Contains(leaderboard.Id));
+        }
+
+        return filtered.Sort(sortBy, order!, type, mytype, dateFrom, dateTo, currentID);
     }
 }
