@@ -367,7 +367,6 @@ namespace BeatLeader_Server.Controllers
             
             resultScore.Player = player;
             int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-            resultScore.Replay = "";
             resultScore.Timepost = timeset;
             if (currentScore != null) {
                 resultScore.PlayCount = currentScore.PlayCount;
@@ -545,6 +544,9 @@ namespace BeatLeader_Server.Controllers
                 _context.Entry(score).Property(x => x.Rank).IsModified = true;
             }
 
+            string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
+            resultScore.Replay = "https://cdn.replays.beatleader.xyz/" + fileName;
+
             using (_serverTiming.TimeAction("db")) {
                 try
                 {
@@ -560,7 +562,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             (float pp, int rank, int countryRank) = _context.RecalculatePPAndRankFaster(player);
-
+            
             context.Response.OnCompleted(async () => {
                 await PostUploadAction(
                     replay,
@@ -627,6 +629,20 @@ namespace BeatLeader_Server.Controllers
 
             _context.ChangeTracker.AutoDetectChangesEnabled = true;
             transaction2 = await _context.Database.BeginTransactionAsync();
+
+            ScoreStatistic? statistic;
+            try {
+                (statistic, string? error) = await _scoreController.CalculateAndSaveStatistic(replay, resultScore);
+                if (statistic == null)
+                {
+                    SaveFailedScore(transaction2, currentScore, resultScore, leaderboard, "Could not recalculate score from replay. Error: " + error);
+                    return;
+                }
+            } catch (Exception e)
+            {
+                SaveFailedScore(transaction2, currentScore, resultScore, leaderboard, e.ToString());
+                return;
+            }
 
             if (!resultScore.IgnoreForStats) {
                 player.ScoreStats.TotalScore += resultScore.ModifiedScore;
@@ -729,17 +745,9 @@ namespace BeatLeader_Server.Controllers
                 //    await MigrateOldReplay(currentScore, stats);
                 //}
 
-                string fileName = replay.info.playerID + "-" + resultScore.Id.ToString() + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
+                string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
                 resultScore.Replay = "https://cdn.replays.beatleader.xyz/" + fileName;
-                
-                string replayLink = resultScore.Replay;
                 await _s3Client.UploadReplay(fileName, replayData);
-                (ScoreStatistic? statistic, string? error) = await _scoreController.CalculateAndSaveStatistic(replay, resultScore);
-                if (statistic == null)
-                {
-                    SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Could not recalculate score from replay. Error: " + error);
-                    return;
-                }
 
                 if (!leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles)) {
                     double scoreRatio = (double)resultScore.BaseScore / (double)statistic.winTracker.totalScore;
@@ -772,7 +780,6 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
-                resultScore.Replay = replayLink;
                 resultScore.AccLeft = statistic.accuracyTracker.accLeft;
                 resultScore.AccRight = statistic.accuracyTracker.accRight;
                 resultScore.MaxCombo = statistic.hitTracker.maxCombo;
