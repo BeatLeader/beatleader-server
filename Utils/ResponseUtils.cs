@@ -227,16 +227,18 @@ namespace BeatLeader_Server.Utils
             public RankUpdate? Reweight { get; set; }
         }
 
-        public class DiffModResponse
-        {
-            public string DifficultyName { get; set; }
-            public string ModeName { get; set; }
-            public float? Stars { get; set; }
-            public DifficultyStatus Status { get; set; }
-            public int Type { get; set; }
-            public float[] Votes { get; set; }
-            public ModifiersMap? ModifierValues { get; set; }
-        }
+        public record DiffModResponse(
+            string DifficultyName,
+            string ModeName,
+            float? Stars,
+            DifficultyStatus Status,
+            int Type,
+            float[] Votes,
+            ModifiersMap? ModifierValues,
+            float? PassRating,
+            float? AccRating,
+            float? TechRating
+            );
 
         public class EventResponse
         {
@@ -497,16 +499,18 @@ namespace BeatLeader_Server.Utils
         
         public static DiffModResponse DiffModResponseFromDiffAndVotes(DifficultyDescription diff, float[] votes)
         {
-            return new DiffModResponse
-            {
-                DifficultyName = diff.DifficultyName,
-                ModeName = diff.ModeName,
-                Stars = diff.Stars,
-                Status = diff.Status,
-                Type = diff.Type,
-                Votes = votes,
-                ModifierValues = diff.ModifierValues
-            };
+            return new(
+                diff.DifficultyName,
+                diff.ModeName,
+                diff.Stars,
+                diff.Status,
+                diff.Type,
+                votes,
+                diff.ModifierValues,
+                diff.PassRating,
+                diff.AccRating,
+                diff.TechRating
+            );
         }
 
         public static T PostProcessSettings<T>(T input) where T: PlayerResponse? {
