@@ -330,7 +330,7 @@ namespace BeatLeader_Server.Controllers
                     player.Name = name;
                     newChange.NewName = name;
 
-                    SearchService.PlayerChangedName(player.Id, player.Name);
+                    PlayerSearchService.PlayerChangedName(player);
                 }
 
                 if (country != null)

@@ -26,11 +26,11 @@ public static partial class MapListUtils
                                                           ref float? techRatingTo,
                                                           ref int? dateFrom,
                                                           ref int? dateTo,
-                                                          out List<SearchService.SongMatch> matches)
+                                                          out List<SongMatch> matches)
     {
         if (string.IsNullOrEmpty(search))
         {
-            matches = new List<SearchService.SongMatch>(0);
+            matches = new List<SongMatch>(0);
 
             return sequence;
         }
@@ -53,7 +53,7 @@ public static partial class MapListUtils
                                          ref dateFrom,
                                          ref dateTo);
 
-        matches = SearchService.SearchMaps(search);
+        matches = SongSearchService.SearchSongs(search);
 
         IEnumerable<string> ids = matches.Select(songMatch => songMatch.Id);
 

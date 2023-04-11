@@ -58,7 +58,7 @@ public static partial class MapListUtils
                                                            ref techRatingTo,
                                                            ref dateFrom,
                                                            ref dateTo,
-                                                           out List<SearchService.SongMatch> matches)
+                                                           out List<SongMatch> matches)
                                            .WhereType(type)
                                            .WhereMapType(mapType, allTypes)
                                            .WhereMode(mode)

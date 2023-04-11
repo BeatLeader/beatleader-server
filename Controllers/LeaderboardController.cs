@@ -588,7 +588,7 @@ namespace BeatLeader_Server.Controllers
                     Plays = showPlays ? lb.Scores.Count(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)) : 0
                 }).ToList();
             if (search?.Length > 0) {
-                result.Data = SearchService.SortMaps(result.Data, search);
+                result.Data = SongSearchService.SortSongs(result.Data, search);
             }
 
             return result;
@@ -667,7 +667,7 @@ namespace BeatLeader_Server.Controllers
                     StarVotes = lb.StarVotes
                 }).ToList();
             if (search != null && search.Length > 0) {
-                result.Data = SearchService.SortMaps(result.Data, search);
+                result.Data = SongSearchService.SortSongs(result.Data, search);
             }
             return result;
         }

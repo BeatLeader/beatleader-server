@@ -170,7 +170,7 @@ namespace BeatLeader_Server.Controllers
                     
                     await _context.SaveChangesAsync();
 
-                    SearchService.PlayerAdded(player.Id, player.Name);
+                    PlayerSearchService.AddNewPlayer(player);
                 }
             }
 
@@ -388,7 +388,7 @@ namespace BeatLeader_Server.Controllers
             List<PlayerMatch>? searchMatch = null;
             if (search?.Length != 0)
             {
-                searchMatch = SearchService.SearchPlayers(search);
+                searchMatch = PlayerSearchService.SearchPlayers(search);
 
                 var ids = searchMatch.Select(m => m.Id).ToArray();
                 request = request.Where(p => ids.Contains(p.Id));
@@ -539,7 +539,7 @@ namespace BeatLeader_Server.Controllers
                 }).ToList().Select(PostProcessSettings);
 
             if (search?.Length != 0) {
-                result.Data = SearchService.SortPlayers(result.Data, search);
+                result.Data = PlayerSearchService.SortPlayers(result.Data, search);
             }
 
             return result;

@@ -235,7 +235,7 @@ namespace BeatLeader_Server.Controllers
 
                     _context.Players.Add(player);
 
-                    SearchService.PlayerAdded(player.Id, player.Name);
+                    PlayerSearchService.AddNewPlayer(player);
                 }
 
                 if (player.Country == "not set")
