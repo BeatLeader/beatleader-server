@@ -26,7 +26,7 @@ public class SearchService : BackgroundService
 
         AppContext context = scope.ServiceProvider.GetRequiredService<AppContext>();
 
-        SongSearchService.AddSongs(context);
+        SongSearchService.AddNewSongs(context.Songs);
 
         PlayerSearchService.AddPlayers(context);
 
@@ -40,23 +40,23 @@ public class SearchService : BackgroundService
     public static int MapComparisonScore(string id, string hash, string name, string author, string mapper, string query)
     {
         if (id == query
-         || hash == query)
-        {
-            return 100;
-        }
-
-        if (name == query
+         || hash == query
+         || name == query
          || author == query
          || mapper == query)
         {
             return 100;
         }
 
-        int score = name.Length >= 4 ? Fuzz.WeightedRatio(name, query) : 0;
+        int nameScore = name.Length >= 4 ? Fuzz.WeightedRatio(name, query) : 0;
+        int authorScore = author.Length >= 4 ? Fuzz.WeightedRatio(author, query) : 0;
+        int mapperScore = mapper.Length >= 4 ? Fuzz.WeightedRatio(mapper, query) : 0;
+        int nameScore2 = name.Contains(query) ? 71 : 0;
 
-        score = Math.Max(score, author.Length >= 4 ? Fuzz.WeightedRatio(author, query) : 0);
-        score = Math.Max(score, mapper.Length >= 4 ? Fuzz.WeightedRatio(mapper, query) : 0);
-        score = Math.Max(score, name.Contains(query) ? 71 : 0);
+        int score = nameScore;
+        score = Math.Max(score, authorScore);
+        score = Math.Max(score, mapperScore);
+        score = Math.Max(score, nameScore2);
 
         return score;
     }
