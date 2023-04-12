@@ -6,7 +6,7 @@ internal class PlayerMetadata
 {
     public string Id { get; set; }
 
-    public List<string> Names { get; set; }
+    public List<string> Names { get; set; } = new();
 
     public static explicit operator PlayerMetadata(Player player)
     {
