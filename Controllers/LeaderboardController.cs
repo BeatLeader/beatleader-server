@@ -510,7 +510,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             int searchCount = 0;
-            sequence = sequence.Filter(_readContext, page, count, ref searchCount, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
+            sequence = sequence.Filter(_readContext, out List<SongMetadata> matches, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
 
             var result = new ResponseWithMetadata<LeaderboardInfoResponse>()
             {
@@ -587,8 +587,12 @@ namespace BeatLeader_Server.Controllers
                     }).FirstOrDefault(),
                     Plays = showPlays ? lb.Scores.Count(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)) : 0
                 }).ToList();
-            if (search?.Length > 0) {
-                result.Data = SongSearchService.SortSongs(result.Data, search);
+
+            if (matches.Count > 0)
+            {
+                List<string> ids = matches.Select(songMetadata => songMetadata.Id).ToList();
+
+                result.Data = result.Data.OrderBy(x => ids.IndexOf(x.Song.Id));
             }
 
             return result;
@@ -622,7 +626,8 @@ namespace BeatLeader_Server.Controllers
             var sequence = _readContext.Leaderboards.AsQueryable();
             string? currentID = HttpContext.CurrentUserID(_readContext);
             int searchCount = 0;
-            sequence = sequence.Filter(_readContext, page, count, ref searchCount, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
+            List<SongMetadata> matches;
+            sequence = sequence.Filter(_readContext, out matches, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
 
             var ids = sequence.Select(lb => lb.SongId).ToList();
 
@@ -640,7 +645,7 @@ namespace BeatLeader_Server.Controllers
                 .Take(count).ToList();
 
             sequence = sequence
-                .Where(lb => ids.Contains(lb.SongId)).Filter(_readContext, page, count, ref searchCount, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID)
+                .Where(lb => ids.Contains(lb.SongId)).Filter(_readContext, out matches, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID)
                 .Include(lb => lb.Difficulty)
                 .Include(lb => lb.Song);
 
@@ -666,8 +671,12 @@ namespace BeatLeader_Server.Controllers
                     VoteStars = lb.VoteStars,
                     StarVotes = lb.StarVotes
                 }).ToList();
-            if (search != null && search.Length > 0) {
-                result.Data = SongSearchService.SortSongs(result.Data, search);
+
+            if (matches.Count > 0)
+            {
+                List<string> songMatchIds = matches.Select(songMetadata => songMetadata.Id).ToList();
+
+                result.Data = result.Data.OrderBy(x => songMatchIds.IndexOf(x.Song.Id));
             }
             return result;
         }
