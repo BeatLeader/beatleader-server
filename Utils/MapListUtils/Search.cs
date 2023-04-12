@@ -26,11 +26,11 @@ public static partial class MapListUtils
                                                           ref float? techRatingTo,
                                                           ref int? dateFrom,
                                                           ref int? dateTo,
-                                                          out List<SongMatch> matches)
+                                                          out List<SongMetadata> matches)
     {
         if (string.IsNullOrEmpty(search))
         {
-            matches = new List<SongMatch>(0);
+            matches = new List<SongMetadata>(0);
 
             return sequence;
         }
@@ -53,11 +53,16 @@ public static partial class MapListUtils
                                          ref dateFrom,
                                          ref dateTo);
 
-        matches = SongSearchService.SearchSongs(search);
+        matches = SongSearchService.Search(search);
 
-        IEnumerable<string> ids = matches.Select(songMatch => songMatch.Id);
+        if (matches.Count > 0)
+        {
+            List<string> ids = matches.Select(songMetadata => songMetadata.Id).ToList();
 
-        return sequence.Where(leaderboard => ids.Contains(leaderboard.SongId));
+            return sequence.Where(leaderboard => ids.Contains(leaderboard.SongId));
+        }
+
+        return sequence;
     }
 
     public static string GetSearchFilters(this string search,
