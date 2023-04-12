@@ -1,54 +1,104 @@
 ﻿using BeatLeader_Server.Models;
-using BeatLeader_Server.Utils;
+using Lucene.Net.Analysis.Standard;
+using Lucene.Net.Documents;
+using Lucene.Net.Index;
+using Lucene.Net.QueryParsers;
+using Lucene.Net.Search;
+using Lucene.Net.Store;
+using Version = Lucene.Net.Util.Version;
 
 namespace BeatLeader_Server.Services;
 
 public static class SongSearchService
 {
-    private static readonly List<SongMetadata> Songs = new();
+    private const float SimilarityPercentage = 0.7f;
+    private const int HitsLimit = 1000;
+    private const int OptimizeCycleCount = 20; // docs recommend to optimize every once in awhile, so i just chose every 20 maps arbitrarily.
+    private static readonly string LuceneDir = Path.Combine(System.AppContext.BaseDirectory, "lucene_index_songs");
+    private static readonly string[] Fields = { nameof(SongMetadata.Id), nameof(SongMetadata.Name), nameof(SongMetadata.Hash), nameof(SongMetadata.Author), nameof(SongMetadata.Mapper) };
 
-    public static void AddSongs(AppContext context)
+    private static int optimizeCycle;
+    private static FSDirectory? directoryTemp;
+
+    private static FSDirectory Directory => directoryTemp ??= FSDirectory.Open(new DirectoryInfo(LuceneDir));
+
+    public static void AddNewSongs(IEnumerable<Song> songs)
     {
-        foreach (Song contextSong in context.Songs)
+        lock (Directory)
         {
-            AddNewSong(contextSong);
+            using StandardAnalyzer analyzer = new(Version.LUCENE_30);
+            using IndexWriter writer = new(Directory, analyzer, IndexWriter.MaxFieldLength.UNLIMITED);
+
+            foreach (SongMetadata songMetadata in songs)
+            {
+                AddToLuceneIndex(songMetadata, writer);
+            }
+
+            writer.Optimize();
         }
     }
 
-    public static void AddNewSong(Song song) => Songs.Add((SongMetadata)song);
-
-    public static List<SongMatch> SearchSongs(string query)
+    public static void AddNewSong(Song song)
     {
-        List<SongMatch> result = new();
-
-        query = query.ToLower();
-
-        foreach (SongMetadata s in Songs)
+        lock (Directory)
         {
-            int score = SearchService.MapComparisonScore(s.Id, s.Hash, s.Name, s.Author, s.Mapper, query);
+            using StandardAnalyzer analyzer = new(Version.LUCENE_30);
+            using IndexWriter writer = new(Directory, analyzer, IndexWriter.MaxFieldLength.UNLIMITED);
 
-            if (score > 70)
+            AddToLuceneIndex((SongMetadata)song, writer);
+
+            if (++optimizeCycle == OptimizeCycleCount)
             {
-                result.Add(new SongMatch
-                {
-                    Id = s.Id,
-                    Score = score,
-                });
+                writer.Optimize();
+                optimizeCycle = 0;
             }
         }
-
-        return result;
     }
 
-    public static List<ResponseUtils.LeaderboardInfoResponse> SortSongs(IEnumerable<ResponseUtils.LeaderboardInfoResponse> query, string searchQuery)
+    public static List<SongMetadata> Search(string searchQuery)
     {
-        searchQuery = searchQuery.ToLower();
+        if (string.IsNullOrEmpty(searchQuery.Replace("*", "").Replace("?", "")))
+        {
+            return new List<SongMetadata>(0);
+        }
 
-        return query.OrderByDescending(leaderboardInfoResponse => SearchService.MapComparisonScore(leaderboardInfoResponse.Song.Id.ToLower(),
-                                                                                                   leaderboardInfoResponse.Song.Hash.ToLower(),
-                                                                                                   leaderboardInfoResponse.Song.Name.ToLower(),
-                                                                                                   leaderboardInfoResponse.Song.Author.ToLower(),
-                                                                                                   leaderboardInfoResponse.Song.Mapper.ToLower(),
-                                                                                                   searchQuery)).ToList();
+        lock (Directory)
+        {
+            using IndexSearcher searcher = new(Directory, false);
+            using StandardAnalyzer analyzer = new(Version.LUCENE_30);
+            MultiFieldQueryParser parser = new(Version.LUCENE_30, Fields, analyzer);
+            Query query = parser.GetQuery(searchQuery);
+
+            TopFieldDocs topFieldDocs = searcher.Search(query, null, HitsLimit, Sort.RELEVANCE);
+            ScoreDoc[] hits = topFieldDocs.ScoreDocs;
+
+            return hits.Select(scoreDoc => (SongMetadata)searcher.Doc(scoreDoc.Doc)).ToList();
+        }
+    }
+
+    private static Query GetQuery(this QueryParser parser, string searchQuery)
+    {
+        string continuousSearch = searchQuery.Replace(" ", "+");
+
+        BooleanQuery booleanQuery = new()
+        {
+            { parser.Parse(continuousSearch), Occur.SHOULD }, // allow for multi word searching (order matters). EX: "dear maria" can find "Dear Maria, Count Me In (Japanese Cover)"
+            { new FuzzyQuery(new Term(nameof(SongMetadata.Id), searchQuery), SimilarityPercentage), Occur.SHOULD },
+            { new FuzzyQuery(new Term(nameof(SongMetadata.Name), searchQuery), SimilarityPercentage), Occur.SHOULD },
+            { new FuzzyQuery(new Term(nameof(SongMetadata.Hash), searchQuery), SimilarityPercentage), Occur.SHOULD },
+            { new FuzzyQuery(new Term(nameof(SongMetadata.Author), searchQuery), SimilarityPercentage), Occur.SHOULD },
+            { new FuzzyQuery(new Term(nameof(SongMetadata.Mapper), searchQuery), SimilarityPercentage), Occur.SHOULD },
+        };
+
+        return booleanQuery;
+    }
+
+    private static void AddToLuceneIndex(SongMetadata songMetadata, IndexWriter writer)
+    {
+        Term songMetadataTerm = new(nameof(SongMetadata.Id), songMetadata.Id);
+        TermQuery searchQuery = new(songMetadataTerm);
+        writer.DeleteDocuments(searchQuery);
+
+        writer.AddDocument((Document)songMetadata);
     }
 }
