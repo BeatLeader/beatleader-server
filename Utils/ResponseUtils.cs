@@ -206,7 +206,7 @@ namespace BeatLeader_Server.Utils
 
         public class ScoreResponseWithMyScore : ScoreResponseWithAcc
         {
-            public ScoreResponse? MyScore { get; set; }
+            public ScoreResponseWithAcc? MyScore { get; set; }
 
             public LeaderboardResponse Leaderboard { get; set; }
         }
@@ -309,6 +309,15 @@ namespace BeatLeader_Server.Utils
 
         public static ScoreResponse RemoveLeaderboard(Score s, int i) {
             return RemoveLeaderboard<ScoreResponse>(s, i);
+        }
+
+        public static ScoreResponseWithAcc ToScoreResponseWithAcc(Score s, int i) {
+            var result = RemoveLeaderboard<ScoreResponseWithAcc>(s, i);
+            result.Weight = s.Weight;
+            result.AccLeft = s.AccLeft;
+            result.AccRight = s.AccRight;
+
+            return result;
         }
 
         public static ScoreResponseWithMyScore ScoreWithMyScore(Score s, int i) {
