@@ -14,9 +14,7 @@ public static partial class MapListUtils
 {
     public static IQueryable<Leaderboard> Filter(this IQueryable<Leaderboard> source,
                                                  ReadAppContext context,
-                                                 int page,
-                                                 int count,
-                                                 ref int searchCount,
+                                                 out List<SongMetadata> matches,
                                                  string? sortBy = null,
                                                  string? order = null,
                                                  string? search = null,
@@ -39,52 +37,40 @@ public static partial class MapListUtils
                                                  int? dateTo = null,
                                                  string? currentID = null)
     {
-        IQueryable<Leaderboard> filtered = source
-                                           .FilterBySearch(search,
-                                                           ref type,
-                                                           ref mode,
-                                                           ref mapType,
-                                                           ref allTypes,
-                                                           ref mapRequirements,
-                                                           ref allRequirements,
-                                                           ref mytype,
-                                                           ref starsFrom,
-                                                           ref starsTo,
-                                                           ref accRatingFrom,
-                                                           ref accRatingTo,
-                                                           ref passRatingFrom,
-                                                           ref passRatingTo,
-                                                           ref techRatingFrom,
-                                                           ref techRatingTo,
-                                                           ref dateFrom,
-                                                           ref dateTo,
-                                                           out List<SongMatch> matches)
-                                           .WhereType(type)
-                                           .WhereMapType(mapType, allTypes)
-                                           .WhereMode(mode)
-                                           .WhereMapRequirements(mapRequirements, allRequirements)
-                                           .WhereMyType(context, mytype, currentID)
-                                           .WhereRatingFrom(RatingType.Stars, starsFrom)
-                                           .WhereRatingFrom(RatingType.Acc, accRatingFrom)
-                                           .WhereRatingFrom(RatingType.Pass, passRatingFrom)
-                                           .WhereRatingFrom(RatingType.Tech, techRatingFrom)
-                                           .WhereRatingTo(RatingType.Stars, starsTo)
-                                           .WhereRatingTo(RatingType.Acc, accRatingTo)
-                                           .WhereRatingTo(RatingType.Pass, passRatingTo)
-                                           .WhereRatingTo(RatingType.Tech, techRatingTo);
+        IQueryable<Leaderboard> filtered = source.FilterBySearch(search,
+                                                                 ref type,
+                                                                 ref mode,
+                                                                 ref mapType,
+                                                                 ref allTypes,
+                                                                 ref mapRequirements,
+                                                                 ref allRequirements,
+                                                                 ref mytype,
+                                                                 ref starsFrom,
+                                                                 ref starsTo,
+                                                                 ref accRatingFrom,
+                                                                 ref accRatingTo,
+                                                                 ref passRatingFrom,
+                                                                 ref passRatingTo,
+                                                                 ref techRatingFrom,
+                                                                 ref techRatingTo,
+                                                                 ref dateFrom,
+                                                                 ref dateTo,
+                                                                 out List<SongMetadata> innerMatches)
+                                                 .WhereType(type)
+                                                 .WhereMapType(mapType, allTypes)
+                                                 .WhereMode(mode)
+                                                 .WhereMapRequirements(mapRequirements, allRequirements)
+                                                 .WhereMyType(context, mytype, currentID)
+                                                 .WhereRatingFrom(RatingType.Stars, starsFrom)
+                                                 .WhereRatingFrom(RatingType.Acc, accRatingFrom)
+                                                 .WhereRatingFrom(RatingType.Pass, passRatingFrom)
+                                                 .WhereRatingFrom(RatingType.Tech, techRatingFrom)
+                                                 .WhereRatingTo(RatingType.Stars, starsTo)
+                                                 .WhereRatingTo(RatingType.Acc, accRatingTo)
+                                                 .WhereRatingTo(RatingType.Pass, passRatingTo)
+                                                 .WhereRatingTo(RatingType.Tech, techRatingTo);
 
-        if (matches.Count != 0)
-        {
-            List<string> matchedAndFiltered = filtered.Select(leaderboard => leaderboard.Id).ToList();
-            searchCount = matchedAndFiltered.Count;
-
-            IEnumerable<string> sorted = matchedAndFiltered
-                                         .OrderByDescending(s => matches.FirstOrDefault(songMatch => songMatch.Id == s)?.Score ?? 0)
-                                         .Skip((page - 1) * count)
-                                         .Take(count);
-
-            return filtered.Where(leaderboard => sorted.Contains(leaderboard.Id));
-        }
+        matches = innerMatches;
 
         return filtered.Sort(sortBy, order!, type, mytype, dateFrom, dateTo, currentID);
     }
