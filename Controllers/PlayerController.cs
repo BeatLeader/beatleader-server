@@ -385,12 +385,12 @@ namespace BeatLeader_Server.Controllers
                 request = request.Where((Expression<Func<Player, bool>>)Expression.Lambda(exp, player));
             }
 
-            List<PlayerMatch>? searchMatch = null;
+            List<PlayerMetadata>? searchMatch = null;
+            List<string> ids = searchMatch.Select(m => m.Id).ToList();
             if (search?.Length != 0)
             {
-                searchMatch = PlayerSearchService.SearchPlayers(search);
+                searchMatch = PlayerSearchService.Search(search);
 
-                var ids = searchMatch.Select(m => m.Id).ToArray();
                 request = request.Where(p => ids.Contains(p.Id));
             }
 
@@ -500,13 +500,11 @@ namespace BeatLeader_Server.Controllers
                 }
             };
 
-            if (searchMatch != null) {
+            if (searchMatch.Count > 0) {
                 var matchedAndFiltered = request.Select(p => p.Id).ToList();
-                var sorted = matchedAndFiltered
-                    .OrderByDescending(p => searchMatch.FirstOrDefault(m => m.Id == p)?.Score ?? 0)
-                    .Skip((page - 1) * count)
-                    .Take(count)
-                    .ToList();
+                var sorted = matchedAndFiltered.Skip((page - 1) * count)
+                                               .Take(count)
+                                               .ToList();
 
                 request = request.Where(p => sorted.Contains(p.Id));
             } else {
@@ -538,8 +536,9 @@ namespace BeatLeader_Server.Controllers
                     Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                 }).ToList().Select(PostProcessSettings);
 
-            if (search?.Length != 0) {
-                result.Data = PlayerSearchService.SortPlayers(result.Data, search);
+            if (search?.Length != 0)
+            {
+                result.Data = result.Data.OrderBy(e => ids.IndexOf(e.Id));
             }
 
             return result;

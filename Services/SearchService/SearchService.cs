@@ -28,7 +28,7 @@ public class SearchService : BackgroundService
 
         SongSearchService.AddNewSongs(context.Songs);
 
-        PlayerSearchService.AddPlayers(context);
+        PlayerSearchService.AddNewPlayers(context.Players);
 
         return Task.CompletedTask;
     }
