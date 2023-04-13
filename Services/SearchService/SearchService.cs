@@ -1,6 +1,4 @@
-﻿using FuzzySharp;
-
-namespace BeatLeader_Server.Services;
+﻿namespace BeatLeader_Server.Services;
 
 public class SearchService : BackgroundService
 {
@@ -31,33 +29,5 @@ public class SearchService : BackgroundService
         PlayerSearchService.AddNewPlayers(context.Players);
 
         return Task.CompletedTask;
-    }
-
-    public static int ComparisonScore(string value, string query) => value == query
-        ? 100
-        : Math.Max(Fuzz.WeightedRatio(value, query), value.Contains(query) ? 71 : 0);
-
-    public static int MapComparisonScore(string id, string hash, string name, string author, string mapper, string query)
-    {
-        if (id == query
-         || hash == query
-         || name == query
-         || author == query
-         || mapper == query)
-        {
-            return 100;
-        }
-
-        int nameScore = name.Length >= 4 ? Fuzz.WeightedRatio(name, query) : 0;
-        int authorScore = author.Length >= 4 ? Fuzz.WeightedRatio(author, query) : 0;
-        int mapperScore = mapper.Length >= 4 ? Fuzz.WeightedRatio(mapper, query) : 0;
-        int nameScore2 = name.Contains(query) ? 71 : 0;
-
-        int score = nameScore;
-        score = Math.Max(score, authorScore);
-        score = Math.Max(score, mapperScore);
-        score = Math.Max(score, nameScore2);
-
-        return score;
     }
 }
