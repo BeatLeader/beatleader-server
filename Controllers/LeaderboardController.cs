@@ -627,8 +627,7 @@ namespace BeatLeader_Server.Controllers
             var sequence = _readContext.Leaderboards.AsQueryable();
             string? currentID = HttpContext.CurrentUserID(_readContext);
             int searchCount = 0;
-            List<SongMetadata> matches;
-            sequence = sequence.Filter(_readContext, page, count, out matches, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
+            sequence = sequence.Filter(_readContext, page, count, out List<SongMetadata> matches, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
 
             var ids = sequence.Select(lb => lb.SongId).ToList();
 

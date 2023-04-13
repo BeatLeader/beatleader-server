@@ -12,6 +12,7 @@ public static partial class MapListUtils
                                                           string? search,
                                                           int page,
                                                           int count,
+                                                          out List<SongMetadata> matches,
                                                           ref string? type,
                                                           ref string? mode,
                                                           ref int? mapType,
@@ -28,8 +29,7 @@ public static partial class MapListUtils
                                                           ref float? techRatingFrom,
                                                           ref float? techRatingTo,
                                                           ref int? dateFrom,
-                                                          ref int? dateTo,
-                                                          out List<SongMetadata> matches)
+                                                          ref int? dateTo)
     {
         if (string.IsNullOrEmpty(search))
         {

@@ -42,6 +42,7 @@ public static partial class MapListUtils
         IQueryable<Leaderboard> filtered = source.FilterBySearch(search,
                                                                  page,
                                                                  count,
+                                                                 out List<SongMetadata> innerMatches,
                                                                  ref type,
                                                                  ref mode,
                                                                  ref mapType,
@@ -58,8 +59,7 @@ public static partial class MapListUtils
                                                                  ref techRatingFrom,
                                                                  ref techRatingTo,
                                                                  ref dateFrom,
-                                                                 ref dateTo,
-                                                                 out List<SongMetadata> innerMatches)
+                                                                 ref dateTo)
                                                  .WhereType(type)
                                                  .WhereMapType(mapType, allTypes)
                                                  .WhereMode(mode)
