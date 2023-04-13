@@ -14,6 +14,8 @@ public static partial class MapListUtils
 {
     public static IQueryable<Leaderboard> Filter(this IQueryable<Leaderboard> source,
                                                  ReadAppContext context,
+                                                 int page,
+                                                 int count,
                                                  out List<SongMetadata> matches,
                                                  string? sortBy = null,
                                                  string? order = null,
@@ -38,6 +40,8 @@ public static partial class MapListUtils
                                                  string? currentID = null)
     {
         IQueryable<Leaderboard> filtered = source.FilterBySearch(search,
+                                                                 page,
+                                                                 count,
                                                                  ref type,
                                                                  ref mode,
                                                                  ref mapType,

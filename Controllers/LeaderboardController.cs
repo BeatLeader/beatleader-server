@@ -510,7 +510,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             int searchCount = 0;
-            sequence = sequence.Filter(_readContext, out List<SongMetadata> matches, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
+            sequence = sequence.Filter(_readContext, page, count, out List<SongMetadata> matches, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
 
             var result = new ResponseWithMetadata<LeaderboardInfoResponse>()
             {
@@ -522,7 +522,8 @@ namespace BeatLeader_Server.Controllers
                 }
             };
 
-            if (search == null || search.Length == 0) {
+            if (matches.Count == 0)
+            {
                 sequence = sequence.Skip((page - 1) * count).Take(count);
             }
 
@@ -627,7 +628,7 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_readContext);
             int searchCount = 0;
             List<SongMetadata> matches;
-            sequence = sequence.Filter(_readContext, out matches, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
+            sequence = sequence.Filter(_readContext, page, count, out matches, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
 
             var ids = sequence.Select(lb => lb.SongId).ToList();
 
@@ -645,7 +646,7 @@ namespace BeatLeader_Server.Controllers
                 .Take(count).ToList();
 
             sequence = sequence
-                .Where(lb => ids.Contains(lb.SongId)).Filter(_readContext, out matches, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID)
+                .Where(lb => ids.Contains(lb.SongId)).Filter(_readContext, page, count, out matches, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID)
                 .Include(lb => lb.Difficulty)
                 .Include(lb => lb.Song);
 

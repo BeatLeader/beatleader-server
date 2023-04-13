@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.Linq.Expressions;
 using System.Text;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
@@ -9,6 +10,8 @@ public static partial class MapListUtils
 {
     private static IQueryable<Leaderboard> FilterBySearch(this IQueryable<Leaderboard> sequence,
                                                           string? search,
+                                                          int page,
+                                                          int count,
                                                           ref string? type,
                                                           ref string? mode,
                                                           ref int? mapType,
@@ -57,7 +60,10 @@ public static partial class MapListUtils
 
         if (matches.Count > 0)
         {
-            List<string> ids = matches.Select(songMetadata => songMetadata.Id).ToList();
+            List<string> ids = matches.Select(songMetadata => songMetadata.Id)
+                                      .Skip((page - 1) * count)
+                                      .Take(count)
+                                      .ToList();
 
             return sequence.Where(leaderboard => ids.Contains(leaderboard.SongId));
         }
