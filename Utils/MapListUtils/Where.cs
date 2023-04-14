@@ -131,11 +131,11 @@ public static partial class MapListUtils
     {
         if (matches.Count > 0)
         {
-            IEnumerable<string> ids = matches.Select(songMetadata => songMetadata.Id);
+            IEnumerable<string> ids = matches.Select(songMetadata => songMetadata.Id)
+                                             .Skip((page - 1) * count)
+                                             .Take(count);
 
-            return sequence.Where(leaderboard => ids.Contains(leaderboard.SongId))
-                           .Skip((page - 1) * count)
-                           .Take(count);
+            return sequence.Where(leaderboard => ids.Contains(leaderboard.SongId));
         }
 
         return sequence;
