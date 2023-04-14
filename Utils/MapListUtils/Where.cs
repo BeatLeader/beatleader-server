@@ -1,4 +1,5 @@
 ﻿using BeatLeader_Server.Models;
+using BeatLeader_Server.Services;
 
 namespace BeatLeader_Server.Utils;
 
@@ -124,5 +125,19 @@ public static partial class MapListUtils
             RatingType.Tech => sequence.Where(leaderboard => leaderboard.Difficulty.TechRating <= to),
             _ => sequence,
         };
+    }
+
+    private static IQueryable<Leaderboard> WherePage(this IQueryable<Leaderboard> sequence, int page, int count, IReadOnlyCollection<SongMetadata> matches)
+    {
+        if (matches.Count > 0)
+        {
+            IEnumerable<string> ids = matches.Select(songMetadata => songMetadata.Id);
+
+            return sequence.Where(leaderboard => ids.Contains(leaderboard.SongId))
+                           .Skip((page - 1) * count)
+                           .Take(count);
+        }
+
+        return sequence;
     }
 }

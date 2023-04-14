@@ -10,8 +10,6 @@ public static partial class MapListUtils
 {
     private static IQueryable<Leaderboard> FilterBySearch(this IQueryable<Leaderboard> sequence,
                                                           string? search,
-                                                          int page,
-                                                          int count,
                                                           out List<SongMetadata> matches,
                                                           ref string? type,
                                                           ref string? mode,
@@ -57,16 +55,6 @@ public static partial class MapListUtils
                                          ref dateTo);
 
         matches = SongSearchService.Search(search);
-
-        if (matches.Count > 0)
-        {
-            List<string> ids = matches.Select(songMetadata => songMetadata.Id)
-                                      .Skip((page - 1) * count)
-                                      .Take(count)
-                                      .ToList();
-
-            return sequence.Where(leaderboard => ids.Contains(leaderboard.SongId));
-        }
 
         return sequence;
     }

@@ -509,7 +509,6 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            int searchCount = 0;
             sequence = sequence.Filter(_readContext, page, count, out List<SongMetadata> matches, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
 
             var result = new ResponseWithMetadata<LeaderboardInfoResponse>()
@@ -518,7 +517,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     Page = page,
                     ItemsPerPage = count,
-                    Total = searchCount > 0 ? searchCount : sequence.Count()
+                    Total = matches.Count > 0 ? matches.Count : sequence.Count(),
                 }
             };
 
@@ -626,7 +625,6 @@ namespace BeatLeader_Server.Controllers
 
             var sequence = _readContext.Leaderboards.AsQueryable();
             string? currentID = HttpContext.CurrentUserID(_readContext);
-            int searchCount = 0;
             sequence = sequence.Filter(_readContext, page, count, out List<SongMetadata> matches, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
 
             var ids = sequence.Select(lb => lb.SongId).ToList();
