@@ -1,4 +1,5 @@
 ﻿using Amazon.S3;
+using BeatLeader_Server.Enums;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
@@ -575,7 +576,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<ResponseWithMetadata<ScoreResponseWithMyScore>>> FriendsScores(
             string id,
             [FromQuery] string sortBy = "date",
-            [FromQuery] string order = "desc",
+            [FromQuery] Order order = Order.Desc,
             [FromQuery] int page = 1,
             [FromQuery] int count = 8,
             [FromQuery] string? search = null,

@@ -6,6 +6,8 @@ using System.Dynamic;
 using System.Linq.Expressions;
 using System.Net;
 using System.ComponentModel;
+using BeatLeader_Server.Enums;
+using BeatLeader_Server.Utils;
 using Newtonsoft.Json.Serialization;
 
 namespace BeatLeader_Server.Extensions
@@ -136,9 +138,9 @@ namespace BeatLeader_Server.Extensions
     public static class LinqExtensions
     {
 
-        public static IOrderedQueryable<TSource> Order<TSource, TKey>(this IQueryable<TSource> source, string by, Expression<Func<TSource, TKey>> keySelector)
+        public static IOrderedQueryable<TSource> Order<TSource, TKey>(this IQueryable<TSource> source, Order by, Expression<Func<TSource, TKey>> keySelector)
         {
-            if (by == "desc")
+            if (by == Enums.Order.Desc)
             {
                 return source.OrderByDescending(keySelector);
             } else
@@ -146,9 +148,9 @@ namespace BeatLeader_Server.Extensions
                 return source.OrderBy(keySelector);
             }
         }
-        public static IOrderedQueryable<TSource> ThenOrder<TSource, TKey>(this IOrderedQueryable<TSource> source, string by, Expression<Func<TSource, TKey>> keySelector)
+        public static IOrderedQueryable<TSource> ThenOrder<TSource, TKey>(this IOrderedQueryable<TSource> source, Order by, Expression<Func<TSource, TKey>> keySelector)
         {
-            if (by == "desc")
+            if (by == Enums.Order.Desc)
             {
                 return source.ThenByDescending(keySelector);
             }
