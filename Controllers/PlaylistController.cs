@@ -5,11 +5,12 @@ using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using System.Net;
+using BeatLeader_Server.Enums;
 using BeatLeader_Server.Services;
 using static BeatLeader_Server.Utils.ResponseUtils;
+using Type = BeatLeader_Server.Enums.Type;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -460,16 +461,16 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/playlist/generate")]
         public async Task<ActionResult<string>> GetAll(
             [FromQuery] int count = 100,
-            [FromQuery] string sortBy = "stars",
-            [FromQuery] string order = "desc",
+            [FromQuery] SortBy sortBy = SortBy.Stars,
+            [FromQuery] Order order = Order.Desc,
             [FromQuery] string? search = null,
-            [FromQuery] string? type = null,
+            [FromQuery] Type type = Type.All,
             [FromQuery] string? mode = null,
             [FromQuery] int? mapType = null,
-            [FromQuery] Operation allTypes = 0,
-            [FromQuery] Requirements? mapRequirements = null,
-            [FromQuery] Operation allRequirements = 0,
-            [FromQuery] string? mytype = null,
+            [FromQuery] Operation allTypes = Operation.All,
+            [FromQuery] Requirements mapRequirements = Requirements.None,
+            [FromQuery] Operation allRequirements = Operation.All,
+            [FromQuery] MyType mytype = MyType.None,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
             [FromQuery] float? accrating_from = null,
@@ -562,12 +563,12 @@ namespace BeatLeader_Server.Controllers
 
             [FromQuery] string playerId = "1",
             [FromQuery] string sortBy = "date",
-            [FromQuery] string order = "desc",
+            [FromQuery] Order order = Order.Desc,
             [FromQuery] string? search = null,
             [FromQuery] string? diff = null,
             [FromQuery] string? type = null,
             [FromQuery] string? mode = null,
-            [FromQuery] Requirements? requirements = null,
+            [FromQuery] Requirements requirements = Requirements.None,
             [FromQuery] string? modifiers = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
@@ -903,7 +904,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int count = 10,
             [FromQuery] string? sortBy = "date",
             [FromQuery] string? search = null,
-            [FromQuery] string? order = "desc")
+            [FromQuery] Order order = Order.Desc)
         {
             IQueryable<EventRanking> query = _readAppContext.EventRankings.Include(e => e.Players);
 

@@ -1,4 +1,5 @@
-﻿using BeatLeader_Server.Extensions;
+﻿using BeatLeader_Server.Enums;
+using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Lib.AspNetCore.ServerTiming;
@@ -39,13 +40,13 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<ResponseWithMetadata<ScoreResponseWithMyScore>>> GetScores(
             string id,
             [FromQuery] string sortBy = "date",
-            [FromQuery] string order = "desc",
+            [FromQuery] Order order = Order.Desc,
             [FromQuery] int page = 1,
             [FromQuery] int count = 8,
             [FromQuery] string? search = null,
             [FromQuery] string? diff = null,
             [FromQuery] string? mode = null,
-            [FromQuery] Requirements? requirements = null,
+            [FromQuery] Requirements requirements = Requirements.None,
             [FromQuery] string? type = null,
             [FromQuery] string? modifiers = null,
             [FromQuery] float? stars_from = null,
@@ -211,7 +212,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<ResponseWithMetadata<CompactScoreResponse>>> GetCompactScores(
             string id,
             [FromQuery] string sortBy = "date",
-            [FromQuery] string order = "desc",
+            [FromQuery] Order order = Order.Desc,
             [FromQuery] int page = 1,
             [FromQuery] int count = 8,
             [FromQuery] string? search = null,
@@ -413,7 +414,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<string>> GetHistogram(
             string id,
             [FromQuery] string sortBy = "date",
-            [FromQuery] string order = "desc",
+            [FromQuery] Order order = Order.Desc,
             [FromQuery] int count = 8,
             [FromQuery] string? search = null,
             [FromQuery] string? diff = null,
@@ -525,7 +526,7 @@ namespace BeatLeader_Server.Controllers
             }
         }
 
-        public string HistogrammValuee(string order, List<int> values, int batch, int count)
+        public string HistogrammValuee(Order order, List<int> values, int batch, int count)
         {
             if (values.Count() == 0) {
                 return "";
@@ -534,7 +535,7 @@ namespace BeatLeader_Server.Controllers
             int normalizedMin = (values.Min() / batch) * batch;
             int normalizedMax = (values.Max() / batch + 1) * batch;
             int totalCount = 0;
-            if (order == "desc")
+            if (order == Order.Desc)
             {
                 for (int i = normalizedMax; i > normalizedMin; i -= batch)
                 {
@@ -556,14 +557,14 @@ namespace BeatLeader_Server.Controllers
             return JsonConvert.SerializeObject(result);
         }
 
-        public string HistogrammValuee(string order, List<float> values, float batch, int count)
+        public string HistogrammValuee(Order order, List<float> values, float batch, int count)
         {
             if (values.Count() == 0) return "";
             Dictionary<float, HistogrammValue> result = new Dictionary<float, HistogrammValue>();
             int totalCount = 0;
             float normalizedMin = (int)(values.Min() / batch) * batch;
             float normalizedMax = (int)(values.Max() / batch + 1) * batch;
-            if (order == "desc")
+            if (order == Order.Desc)
             {
                 for (float i = normalizedMax; i > normalizedMin; i -= batch)
                 {

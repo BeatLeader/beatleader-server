@@ -6,7 +6,9 @@ using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
+using BeatLeader_Server.Enums;
 using static BeatLeader_Server.Utils.ResponseUtils;
+using Type = BeatLeader_Server.Enums.Type;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -35,7 +37,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int page = 1, 
             [FromQuery] int count = 10, 
             [FromQuery] string sortBy = "rank", 
-            [FromQuery] string order = "desc", 
+            [FromQuery] Order order = Order.Desc, 
             [FromQuery] string? countries = null,
             [FromQuery] string? search = null,
             [FromQuery] string? modifiers = null,
@@ -203,7 +205,7 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
-                string oppositeOrder = order == "desc" ? "asc" : "desc";
+                Order oppositeOrder = order == Order.Desc ? Order.Asc : Order.Desc;
 
                 switch (sortBy)
                 {
@@ -478,16 +480,16 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<ResponseWithMetadata<LeaderboardInfoResponse>>> GetAll(
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
-            [FromQuery] string? sortBy = null,
-            [FromQuery] string? order = null,
+            [FromQuery] SortBy sortBy = SortBy.None,
+            [FromQuery] Order order = Order.Desc,
             [FromQuery] string? search = null,
-            [FromQuery] string? type = null,
+            [FromQuery] Type type = Type.All,
             [FromQuery] string? mode = null,
             [FromQuery] int? mapType = null,
-            [FromQuery] Operation allTypes = 0,
-            [FromQuery] Requirements? mapRequirements = null,
-            [FromQuery] Operation allRequirements = 0,
-            [FromQuery] string? mytype = null,
+            [FromQuery] Operation allTypes = Operation.All,
+            [FromQuery] Requirements mapRequirements = Requirements.None,
+            [FromQuery] Operation allRequirements = Operation.All,
+            [FromQuery] MyType mytype = MyType.None,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
             [FromQuery] float? accrating_from = null,
@@ -502,7 +504,7 @@ namespace BeatLeader_Server.Controllers
             var sequence = _readContext.Leaderboards.AsQueryable();
             string? currentID = HttpContext.CurrentUserID(_readContext);
 
-            if (currentID != null && date_from != null && type == "ranking") {
+            if (currentID != null && date_from != null && type == Type.Ranking) {
                 var lastScore = _context.Scores.Where(s => s.PlayerId == currentID).OrderByDescending(s => s.Timepost).Select(s => s.Platform).FirstOrDefault();
                 if (lastScore == null || !lastScore.Contains("1.29")) {
                     date_from = 0;
@@ -531,17 +533,17 @@ namespace BeatLeader_Server.Controllers
                 .Include(lb => lb.Song)
                 .Include(lb => lb.Reweight);
 
-            if (type == "staff") {
+            if (type == Type.Staff) {
                 sequence = sequence
                     .Include(lb => lb.Qualification)
                     .ThenInclude(q => q.Votes);
-            } else if (type == "ranking") {
+            } else if (type == Type.Ranking) {
                 sequence = sequence
                     .Include(lb => lb.Difficulty)
                     .ThenInclude(q => q.ModifierValues);
             }
 
-            bool showPlays = sortBy == "playcount";
+            bool showPlays = sortBy == SortBy.PlayCount;
 
             result.Data = sequence
                 .Select(lb => new LeaderboardInfoResponse
@@ -602,16 +604,16 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<ResponseWithMetadata<LeaderboardInfoResponse>>> GetAllGroupped(
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
-            [FromQuery] string? sortBy = null,
-            [FromQuery] string? order = null,
+            [FromQuery] SortBy sortBy = SortBy.None,
+            [FromQuery] Order order = Order.Desc,
             [FromQuery] string? search = null,
-            [FromQuery] string? type = null,
+            [FromQuery] Type type = Type.All,
             [FromQuery] string? mode = null,
             [FromQuery] int? mapType = null,
-            [FromQuery] Operation allTypes = 0,
-            [FromQuery] Requirements? mapRequirements = null,
-            [FromQuery] Operation allRequirements = 0,
-            [FromQuery] string? mytype = null,
+            [FromQuery] Operation allTypes = Operation.Any,
+            [FromQuery] Requirements mapRequirements = Requirements.None,
+            [FromQuery] Operation allRequirements = Operation.Any,
+            [FromQuery] MyType mytype = MyType.None,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
             [FromQuery] float? accrating_from = null,
@@ -647,11 +649,11 @@ namespace BeatLeader_Server.Controllers
                 .Include(lb => lb.Difficulty)
                 .Include(lb => lb.Song);
 
-            if (type == "staff") {
+            if (type == Type.Staff) {
                 sequence = sequence
                     .Include(lb => lb.Qualification)
                     .ThenInclude(q => q.Votes);
-            } else if (type == "ranking") {
+            } else if (type == Type.Ranking) {
                 sequence = sequence
                     .Include(lb => lb.Difficulty)
                     .ThenInclude(q => q.ModifierValues);

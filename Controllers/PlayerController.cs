@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Linq.Expressions;
+using BeatLeader_Server.Enums;
 using static BeatLeader_Server.Services.SearchService;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
@@ -337,7 +338,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int page = 1, 
             [FromQuery] int count = 50, 
             [FromQuery] string search = "",
-            [FromQuery] string order = "desc",
+            [FromQuery] Order order = Order.Desc,
             [FromQuery] string countries = "",
             [FromQuery] string mapsType = "ranked",
             [FromQuery] string ppType = "general",
@@ -548,7 +549,7 @@ namespace BeatLeader_Server.Controllers
             IQueryable<Player> request, 
             string sortBy, 
             string ppType,
-            string order, 
+            Order order, 
             string mapsType) {
             switch (mapsType)
             {
@@ -579,7 +580,7 @@ namespace BeatLeader_Server.Controllers
                         case "rank":
                             request = request
                                 .Where(p => p.ScoreStats.AverageRankedRank != 0)
-                                .Order(order == "desc" ? "asc" : "desc", p => Math.Round(p.ScoreStats.AverageRankedRank))
+                                .Order(order == Order.Desc ? Order.Asc : Order.Desc, p => Math.Round(p.ScoreStats.AverageRankedRank))
                                 .ThenOrder(order, p => p.ScoreStats.RankedPlayCount); 
                             break;
                         case "acc":
@@ -591,7 +592,7 @@ namespace BeatLeader_Server.Controllers
                         case "weightedRank":
                             request = request
                                 .Where(p => p.ScoreStats != null && p.ScoreStats.AverageWeightedRankedRank != 0)
-                                .Order(order == "desc" ? "asc" : "desc", p => p.ScoreStats.AverageWeightedRankedRank);
+                                .Order(order == Order.Desc ? Order.Asc : Order.Desc, p => p.ScoreStats.AverageWeightedRankedRank);
                             break;
                         case "topAcc":
                             request = request.Order(order, p => p.ScoreStats.TopRankedAccuracy);
@@ -642,7 +643,7 @@ namespace BeatLeader_Server.Controllers
                         case "rank":
                             request = request
                                 .Where(p => p.ScoreStats.AverageUnrankedRank != 0)
-                                .Order(order == "desc" ? "asc" : "desc", p => Math.Round(p.ScoreStats.AverageUnrankedRank))
+                                .Order(order == Order.Desc ? Order.Asc : Order.Desc, p => Math.Round(p.ScoreStats.AverageUnrankedRank))
                                 .ThenOrder(order, p => p.ScoreStats.UnrankedPlayCount);
                             break;
                         case "acc":
@@ -682,7 +683,7 @@ namespace BeatLeader_Server.Controllers
                         case "rank":
                             request = request
                                 .Where(p => p.ScoreStats.AverageRank != 0)
-                                .Order(order == "desc" ? "asc" : "desc", p => Math.Round(p.ScoreStats.AverageRank))
+                                .Order(order == Order.Desc ? Order.Asc : Order.Desc, p => Math.Round(p.ScoreStats.AverageRank))
                                 .ThenOrder(order, p => p.ScoreStats.TotalPlayCount);
                             break;
                         case "acc":
@@ -730,7 +731,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int page = 1, 
             [FromQuery] int count = 50, 
             [FromQuery] string search = "",
-            [FromQuery] string order = "desc",
+            [FromQuery] Order order = Order.Desc,
             [FromQuery] string countries = ""
             )
         {

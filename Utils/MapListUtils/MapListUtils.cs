@@ -1,14 +1,9 @@
-﻿using BeatLeader_Server.Models;
+﻿using BeatLeader_Server.Enums;
+using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
+using Type = BeatLeader_Server.Enums.Type;
 
 namespace BeatLeader_Server.Utils;
-
-public enum Operation
-{
-    any = 0,
-    all = 1,
-    not = 2,
-}
 
 public static partial class MapListUtils
 {
@@ -17,16 +12,16 @@ public static partial class MapListUtils
                                                  int page,
                                                  int count,
                                                  out List<SongMetadata> matches,
-                                                 string? sortBy = null,
-                                                 string? order = null,
+                                                 SortBy sortBy = SortBy.None,
+                                                 Order order = Order.Desc,
                                                  string? search = null,
-                                                 string? type = null,
+                                                 Type type = Type.All,
                                                  string? mode = null,
                                                  int? mapType = null,
-                                                 Operation allTypes = 0,
-                                                 Requirements? mapRequirements = null,
-                                                 Operation allRequirements = 0,
-                                                 string? mytype = null,
+                                                 Operation allTypes = Operation.All,
+                                                 Requirements mapRequirements = Requirements.None,
+                                                 Operation allRequirements = Operation.All,
+                                                 MyType mytype = MyType.None,
                                                  float? starsFrom = null,
                                                  float? starsTo = null,
                                                  float? accRatingFrom = null,
@@ -71,5 +66,5 @@ public static partial class MapListUtils
               .WhereRatingTo(RatingType.Pass, passRatingTo)
               .WhereRatingTo(RatingType.Tech, techRatingTo)
               .WherePage(page, count, matches)
-              .Sort(sortBy, order!, type, mytype, dateFrom, dateTo, currentID);
+              .Sort(sortBy, order, type, mytype, dateFrom, dateTo, currentID);
 }

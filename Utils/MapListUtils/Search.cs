@@ -1,8 +1,10 @@
 ﻿using System.Globalization;
 using System.Linq.Expressions;
 using System.Text;
+using BeatLeader_Server.Enums;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
+using Type = BeatLeader_Server.Enums.Type;
 
 namespace BeatLeader_Server.Utils;
 
@@ -11,13 +13,13 @@ public static partial class MapListUtils
     private static IQueryable<Leaderboard> FilterBySearch(this IQueryable<Leaderboard> sequence,
                                                           string? search,
                                                           out List<SongMetadata> matches,
-                                                          ref string? type,
+                                                          ref Type type,
                                                           ref string? mode,
                                                           ref int? mapType,
                                                           ref Operation allTypes,
-                                                          ref Requirements? mapRequirements,
+                                                          ref Requirements mapRequirements,
                                                           ref Operation allRequirements,
-                                                          ref string? mytype,
+                                                          ref MyType mytype,
                                                           ref float? starsFrom,
                                                           ref float? starsTo,
                                                           ref float? accRatingFrom,
@@ -67,13 +69,13 @@ public static partial class MapListUtils
     }
 
     public static string GetSearchFilters(this string search,
-                                          ref string? type,
+                                          ref Type type,
                                           ref string? mode,
                                           ref int? mapType,
                                           ref Operation allTypes,
-                                          ref Requirements? mapRequirements,
+                                          ref Requirements mapRequirements,
                                           ref Operation allRequirements,
-                                          ref string? mytype,
+                                          ref MyType mytype,
                                           ref float? starsFrom,
                                           ref float? starsTo,
                                           ref float? accRatingFrom,
@@ -100,7 +102,7 @@ public static partial class MapListUtils
                 continue;
             }
 
-            if (BasicFilter(filter, nameof(type), ref type))
+            if (EnumFilter(filter, nameof(type), ref type))
             {
                 continue;
             }
@@ -120,13 +122,8 @@ public static partial class MapListUtils
                 continue;
             }
 
-            // bypass because null
-            Requirements requirements = Requirements.None;
-
-            if (EnumFilter(filter, nameof(mapRequirements), ref requirements))
+            if (EnumFilter(filter, nameof(mapRequirements), ref mapRequirements))
             {
-                mapRequirements = requirements;
-
                 continue;
             }
 
@@ -135,7 +132,7 @@ public static partial class MapListUtils
                 continue;
             }
 
-            if (BasicFilter(filter, nameof(mytype), ref mytype))
+            if (EnumFilter(filter, nameof(mytype), ref mytype))
             {
                 continue;
             }
@@ -175,7 +172,7 @@ public static partial class MapListUtils
 
     private static bool BasicFilter(string filter, string name, ref string? stringValue)
     {
-        if (!filter.StartsWith(name + '=', StringComparison.OrdinalIgnoreCase))
+        if (!filter.StartsWith(name, StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
@@ -188,7 +185,7 @@ public static partial class MapListUtils
     private static bool BasicParseFilter<T>(string filter, string name, ref T? parsableValue)
         where T : struct, IParsable<T>
     {
-        if (!filter.StartsWith(name + '=', StringComparison.OrdinalIgnoreCase))
+        if (!filter.StartsWith(name, StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
@@ -204,7 +201,7 @@ public static partial class MapListUtils
     private static bool EnumFilter<T>(string filter, string name, ref T enumValue)
         where T : struct, Enum
     {
-        if (!filter.StartsWith(name + '=', StringComparison.OrdinalIgnoreCase))
+        if (!filter.StartsWith(name, StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
@@ -221,7 +218,7 @@ public static partial class MapListUtils
         where T : struct, IParsable<T>
 
     {
-        if (!filter.StartsWith(name + '=', StringComparison.OrdinalIgnoreCase))
+        if (!filter.StartsWith(name, StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
