@@ -180,7 +180,7 @@ public static partial class MapListUtils
 
     private static bool BasicFilter(string filter, string name, ref string? stringValue)
     {
-        if (!filter.StartsWith(name, StringComparison.OrdinalIgnoreCase))
+        if (!filter.StartsWith(name + '=', StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
@@ -193,7 +193,7 @@ public static partial class MapListUtils
     private static bool BasicParseFilter<T>(string filter, string name, ref T? parsableValue)
         where T : struct, IParsable<T>
     {
-        if (!filter.StartsWith(name, StringComparison.OrdinalIgnoreCase))
+        if (!filter.StartsWith(name + '=', StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
@@ -209,7 +209,7 @@ public static partial class MapListUtils
     private static bool EnumFilter<T>(string filter, string name, ref T enumValue)
         where T : struct, Enum
     {
-        if (!filter.StartsWith(name, StringComparison.OrdinalIgnoreCase))
+        if (!filter.StartsWith(name + '=', StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
@@ -226,7 +226,7 @@ public static partial class MapListUtils
         where T : struct, IParsable<T>
 
     {
-        if (!filter.StartsWith(name, StringComparison.OrdinalIgnoreCase))
+        if (!filter.StartsWith(name + '=', StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
