@@ -56,7 +56,9 @@ public static partial class MapListUtils
 
         matches = SongSearchService.Search(search);
 
-        return sequence;
+        IEnumerable<string> ids = matches.Select(songMetadata => songMetadata.Id);
+
+        return sequence.Where(leaderboard => ids.Contains(leaderboard.SongId));
     }
 
     public static string GetSearchFilters(this string search,
