@@ -78,6 +78,7 @@ public static class SongSearchService
 
     private static Query GetQuery(this QueryParser parser, string searchQuery)
     {
+        searchQuery = searchQuery.ToLower();
         string continuousSearch = searchQuery.Replace(" ", "+");
 
         BooleanQuery booleanQuery = new()

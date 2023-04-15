@@ -97,6 +97,7 @@ public static class PlayerSearchService
 
     private static Query GetQuery(this QueryParser parser, string searchQuery)
     {
+        searchQuery = searchQuery.ToLower();
         string continuousSearch = searchQuery.Replace(" ", "+");
 
         BooleanQuery booleanQuery = new()
