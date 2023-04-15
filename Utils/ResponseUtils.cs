@@ -618,5 +618,18 @@ namespace BeatLeader_Server.Utils
                 }
             }
         }
+
+        public enum FriendActivityType {
+            Achievement = 1,
+            MapLiked = 2,
+            MapRanked = 3,
+            MapPublished = 4,
+        }
+
+        public class FriendActivity {
+            public PlayerResponse Player { get; set; }
+            public FriendActivityType Type { get; set; }
+            public dynamic ActivityObject { get; set; }
+        }
     }
 }
