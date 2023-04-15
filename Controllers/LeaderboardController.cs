@@ -523,11 +523,6 @@ namespace BeatLeader_Server.Controllers
                 }
             };
 
-            if (matches.Count == 0)
-            {
-                sequence = sequence.Skip((page - 1) * count).Take(count);
-            }
-
             sequence = sequence
                 .Include(lb => lb.Difficulty)
                 .Include(lb => lb.Song)
@@ -640,9 +635,6 @@ namespace BeatLeader_Server.Controllers
                     Total = ids.Count()
                 }
             };
-
-            ids = ids.Distinct().Skip((page - 1) * count)
-                .Take(count).ToList();
 
             sequence = sequence
                 .Where(lb => ids.Contains(lb.SongId)).Filter(_readContext, page, count, out matches, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID)
