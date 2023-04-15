@@ -9,7 +9,7 @@ public static partial class MapListUtils
 {
     public static IQueryable<Leaderboard> Filter(this IQueryable<Leaderboard> source,
                                                  ReadAppContext context,
-                                                 int page,
+                                                 int? page,
                                                  int count,
                                                  out List<SongMetadata> matches,
                                                  SortBy sortBy = SortBy.None,

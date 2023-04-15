@@ -103,17 +103,24 @@ public static partial class MapListUtils
         };
     }
 
-    private static IQueryable<Leaderboard> WherePage(this IQueryable<Leaderboard> sequence, int page, int count, IReadOnlyCollection<SongMetadata> matches)
+    private static IQueryable<Leaderboard> WherePage(this IQueryable<Leaderboard> sequence, int? page, int count, IReadOnlyCollection<SongMetadata> matches)
     {
         if (matches.Count > 0)
         {
-            IEnumerable<string> ids = matches.Select(songMetadata => songMetadata.Id)
-                                             .Skip((page - 1) * count)
-                                             .Take(count);
+            IEnumerable<string> ids = matches.Select(songMetadata => songMetadata.Id);
+
+            if (page.HasValue)
+            {
+                ids = ids.Skip((page.Value - 1) * count);
+            }
+
+            ids = ids.Take(count);
 
             return sequence.Where(leaderboard => ids.Contains(leaderboard.SongId));
         }
 
-        return sequence;
+        return page.HasValue
+            ? sequence.Skip((page.Value - 1) * count).Take(count)
+            : sequence.Take(count);
     }
 }
