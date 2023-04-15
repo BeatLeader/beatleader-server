@@ -12,6 +12,7 @@ public static partial class MapListUtils
                                                  int? page,
                                                  int count,
                                                  out List<SongMetadata> matches,
+                                                 out int totalMatches,
                                                  SortBy sortBy = SortBy.None,
                                                  Order order = Order.Desc,
                                                  string? search = null,
@@ -66,5 +67,5 @@ public static partial class MapListUtils
               .WhereRatingTo(RatingType.Pass, passRatingTo)
               .WhereRatingTo(RatingType.Tech, techRatingTo)
               .Sort(sortBy, order, type, mytype, dateFrom, dateTo, currentID)
-              .WherePage(page, count, matches);
+              .WherePage(page, count, matches, out totalMatches);
 }

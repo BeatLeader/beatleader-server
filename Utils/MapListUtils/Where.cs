@@ -113,7 +113,7 @@ public static partial class MapListUtils
         };
     }
 
-    private static IQueryable<Leaderboard> WherePage(this IQueryable<Leaderboard> sequence, int? page, int count, IReadOnlyCollection<SongMetadata> matches)
+    private static IQueryable<Leaderboard> WherePage(this IQueryable<Leaderboard> sequence, int? page, int count, IReadOnlyCollection<SongMetadata> matches, out int totalMatches)
     {
         if (matches.Count > 0)
         {
@@ -126,8 +126,12 @@ public static partial class MapListUtils
 
             ids = ids.Take(count);
 
+            totalMatches = matches.Count;
+
             return sequence.Where(leaderboard => ids.Contains(leaderboard.SongId));
         }
+
+        totalMatches = sequence.Count();
 
         return page.HasValue
             ? sequence.Skip((page.Value - 1) * count).Take(count)
