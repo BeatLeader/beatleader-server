@@ -55,7 +55,6 @@ public static class PlayerSearchService
         }
     }
 
-    // not 100% sure if this works, but i think it does
     public static void PlayerChangedName(Player player)
     {
         lock (Directory)
