@@ -15,10 +15,10 @@ public class SearchService : BackgroundService
     {
         await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
 
-        await this.FetchSearchItems();
+        this.FetchSearchItems();
     }
 
-    private Task FetchSearchItems()
+    private void FetchSearchItems()
     {
         using IServiceScope scope = this.serviceScopeFactory.CreateScope();
 
@@ -27,7 +27,5 @@ public class SearchService : BackgroundService
         SongSearchService.AddNewSongs(context.Songs);
 
         PlayerSearchService.AddNewPlayers(context.Players);
-
-        return Task.CompletedTask;
     }
 }
