@@ -60,7 +60,7 @@ namespace BeatLeader_Server.Controllers
                     sequence = sequence.Where(c => c.PlayersCount > 2).Order(order, t => t.AverageAccuracy);
                     break;
                 case "rank":
-                    sequence = sequence.Where(c => c.PlayersCount > 2 && c.AverageRank > 0).Order(order == Order.Desc ? Order.Asc : Order.Desc, t => t.AverageRank);
+                    sequence = sequence.Where(c => c.PlayersCount > 2 && c.AverageRank > 0).Order(order.Reverse(), t => t.AverageRank);
                     break;
                 case "count":
                     sequence = sequence.Order(order, t => t.PlayersCount);

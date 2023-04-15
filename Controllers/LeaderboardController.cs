@@ -205,7 +205,7 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
-                Order oppositeOrder = order == Order.Desc ? Order.Asc : Order.Desc;
+                Order oppositeOrder = order.Reverse();
 
                 switch (sortBy)
                 {

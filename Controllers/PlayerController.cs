@@ -579,7 +579,7 @@ namespace BeatLeader_Server.Controllers
                         case "rank":
                             request = request
                                 .Where(p => p.ScoreStats.AverageRankedRank != 0)
-                                .Order(order == Order.Desc ? Order.Asc : Order.Desc, p => Math.Round(p.ScoreStats.AverageRankedRank))
+                                .Order(order.Reverse(), p => Math.Round(p.ScoreStats.AverageRankedRank))
                                 .ThenOrder(order, p => p.ScoreStats.RankedPlayCount); 
                             break;
                         case "acc":
@@ -591,7 +591,7 @@ namespace BeatLeader_Server.Controllers
                         case "weightedRank":
                             request = request
                                 .Where(p => p.ScoreStats != null && p.ScoreStats.AverageWeightedRankedRank != 0)
-                                .Order(order == Order.Desc ? Order.Asc : Order.Desc, p => p.ScoreStats.AverageWeightedRankedRank);
+                                .Order(order.Reverse(), p => p.ScoreStats.AverageWeightedRankedRank);
                             break;
                         case "topAcc":
                             request = request.Order(order, p => p.ScoreStats.TopRankedAccuracy);
@@ -642,7 +642,7 @@ namespace BeatLeader_Server.Controllers
                         case "rank":
                             request = request
                                 .Where(p => p.ScoreStats.AverageUnrankedRank != 0)
-                                .Order(order == Order.Desc ? Order.Asc : Order.Desc, p => Math.Round(p.ScoreStats.AverageUnrankedRank))
+                                .Order(order.Reverse(), p => Math.Round(p.ScoreStats.AverageUnrankedRank))
                                 .ThenOrder(order, p => p.ScoreStats.UnrankedPlayCount);
                             break;
                         case "acc":
@@ -682,7 +682,7 @@ namespace BeatLeader_Server.Controllers
                         case "rank":
                             request = request
                                 .Where(p => p.ScoreStats.AverageRank != 0)
-                                .Order(order == Order.Desc ? Order.Asc : Order.Desc, p => Math.Round(p.ScoreStats.AverageRank))
+                                .Order(order.Reverse(), p => Math.Round(p.ScoreStats.AverageRank))
                                 .ThenOrder(order, p => p.ScoreStats.TotalPlayCount);
                             break;
                         case "acc":
