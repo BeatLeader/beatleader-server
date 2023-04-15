@@ -162,7 +162,7 @@ namespace BeatLeader_Server.Services {
         }
 
         public static void PlayerAdded(string id, string name) {
-            players.Add(new PlayerMetadata { Id = id, Names = { name } });
+            players.Add(new PlayerMetadata { Id = id, Names = new List<string> { name } });
         }
 
         public static void PlayerChangedName(string id, string name) {

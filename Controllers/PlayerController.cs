@@ -170,7 +170,9 @@ namespace BeatLeader_Server.Controllers
                     
                     await _context.SaveChangesAsync();
 
-                    SearchService.PlayerAdded(player.Id, player.Name);
+                    if (player != null) {
+                        SearchService.PlayerAdded(player.Id, player.Name);
+                    }
                 }
             }
 

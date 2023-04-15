@@ -814,7 +814,7 @@ namespace BeatLeader_Server.Controllers
             if (accountLinks.Count == 1)
             {
                 accountLink = accountLinks[0];
-                if (fromIntID < 1000000000000000 && accountLink.PCOculusID.Length > 0)
+                if (fromIntID < 1000000000000000 && accountLink.PCOculusID.Length > 0 && accountLink.OculusID != 0)
                 {
                     migrateFromId = accountLink.PCOculusID;
                     fromIntID = long.Parse(migrateFromId);
