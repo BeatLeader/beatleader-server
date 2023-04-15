@@ -39,7 +39,17 @@ public static partial class MapListUtils
 
     private static IQueryable<Leaderboard> WhereMyType(this IQueryable<Leaderboard> sequence, ReadAppContext context, MyType mytype, string? currentId)
     {
-        int mapperId = context.Players.Find(currentId)?.MapperId ?? 0;
+        int mapperId = 0;
+
+        if (mytype != MyType.None)
+        {
+            Player? currentPlayer = context.Players.Find(currentId);
+
+            if (currentPlayer != null)
+            {
+                mapperId = currentPlayer.MapperId;
+            }
+        }
 
         return mytype switch
         {
