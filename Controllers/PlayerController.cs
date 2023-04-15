@@ -386,12 +386,11 @@ namespace BeatLeader_Server.Controllers
                 request = request.Where((Expression<Func<Player, bool>>)Expression.Lambda(exp, player));
             }
 
-            List<PlayerMetadata>? searchMatch = null;
+            List<PlayerMetadata> searchMatch = PlayerSearchService.Search(search);
             List<string> ids = searchMatch.Select(m => m.Id).ToList();
-            if (search?.Length != 0)
-            {
-                searchMatch = PlayerSearchService.Search(search);
 
+            if (searchMatch.Count > 0)
+            {
                 request = request.Where(p => ids.Contains(p.Id));
             }
 
@@ -537,7 +536,7 @@ namespace BeatLeader_Server.Controllers
                     Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                 }).ToList().Select(PostProcessSettings);
 
-            if (search?.Length != 0)
+            if (searchMatch.Count > 0)
             {
                 result.Data = result.Data.OrderBy(e => ids.IndexOf(e.Id));
             }
