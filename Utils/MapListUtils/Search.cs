@@ -1,5 +1,4 @@
 ﻿using System.Globalization;
-using System.Linq.Expressions;
 using System.Text;
 using BeatLeader_Server.Enums;
 using BeatLeader_Server.Models;
@@ -91,80 +90,32 @@ public static partial class MapListUtils
 
         foreach (string filter in search.Split(' '))
         {
-            if (!(filter.Contains('=') || filter.Contains('<') || filter.Contains('>')))
+            if (filter.Contains('=')
+             || filter.Contains('<')
+             || filter.Contains('>'))
             {
-                if (!string.IsNullOrWhiteSpace(filter))
+                if (EnumFilter(filter, nameof(type), ref type)
+                 || BasicFilter(filter, nameof(mode), ref mode)
+                 || BasicParseFilter(filter, nameof(mapType), ref mapType)
+                 || EnumFilter(filter, nameof(allTypes), ref allTypes)
+                 || EnumFilter(filter, nameof(mapRequirements), ref mapRequirements)
+                 || EnumFilter(filter, nameof(allRequirements), ref allRequirements)
+                 || EnumFilter(filter, nameof(mytype), ref mytype)
+                 || ClampFilter(filter, RatingType.Stars.ToString(), ref starsFrom, ref starsTo)
+                 || ClampFilter(filter, RatingType.Acc.ToString(), ref accRatingFrom, ref accRatingTo)
+                 || ClampFilter(filter, RatingType.Pass.ToString(), ref passRatingFrom, ref passRatingTo)
+                 || ClampFilter(filter, RatingType.Tech.ToString(), ref techRatingFrom, ref techRatingTo)
+                 || ClampFilter(filter, "date", ref dateFrom, ref dateTo))
                 {
-                    stringBuilder.Append(filter);
-                    stringBuilder.Append(' ');
+                    continue;
                 }
-
-                continue;
             }
 
-            if (EnumFilter(filter, nameof(type), ref type))
+            if (!string.IsNullOrWhiteSpace(filter))
             {
-                continue;
+                stringBuilder.Append(filter);
+                stringBuilder.Append(' ');
             }
-
-            if (BasicFilter(filter, nameof(mode), ref mode))
-            {
-                continue;
-            }
-
-            if (BasicParseFilter(filter, nameof(mapType), ref mapType))
-            {
-                continue;
-            }
-
-            if (EnumFilter(filter, nameof(allTypes), ref allTypes))
-            {
-                continue;
-            }
-
-            if (EnumFilter(filter, nameof(mapRequirements), ref mapRequirements))
-            {
-                continue;
-            }
-
-            if (EnumFilter(filter, nameof(allRequirements), ref allRequirements))
-            {
-                continue;
-            }
-
-            if (EnumFilter(filter, nameof(mytype), ref mytype))
-            {
-                continue;
-            }
-
-            if (ClampFilter(filter, RatingType.Stars.ToString(), ref starsFrom, ref starsTo))
-            {
-                continue;
-            }
-
-            if (ClampFilter(filter, RatingType.Acc.ToString(), ref accRatingFrom, ref accRatingTo))
-            {
-                continue;
-            }
-
-            if (ClampFilter(filter, RatingType.Pass.ToString(), ref passRatingFrom, ref passRatingTo))
-            {
-                continue;
-            }
-
-            if (ClampFilter(filter, RatingType.Tech.ToString(), ref techRatingFrom, ref techRatingTo))
-            {
-                continue;
-            }
-
-            if (ClampFilter(filter, "date", ref dateFrom, ref dateTo))
-            {
-                continue;
-            }
-
-            // adds string back to search if parse fails
-            stringBuilder.Append(filter);
-            stringBuilder.Append(' ');
         }
 
         return stringBuilder.ToString().Trim();
