@@ -845,6 +845,7 @@ namespace BeatLeader_Server.Controllers
                 .Include(p => p.Changes)
                 .Include(p => p.History)
                 .Include(p => p.Badges)
+                .Include(p => p.Achievements)
                 .Include(p => p.Socials)
                 .FirstOrDefault();
             Player? migratedToPlayer = _context.Players.Where(p => p.Id == migrateToId)
@@ -855,6 +856,7 @@ namespace BeatLeader_Server.Controllers
                 .Include(p => p.History)
                 .Include(p => p.Badges)
                 .Include(p => p.ScoreStats)
+                .Include(p => p.Achievements)
                 .Include(p => p.Socials)
                 .FirstOrDefault();
 
@@ -961,6 +963,17 @@ namespace BeatLeader_Server.Controllers
                 foreach (var item in currentPlayer.Socials)
                 {
                     item.PlayerId = migrateToId;
+                }
+            }
+
+            if (currentPlayer.Achievements?.Count >= 0)
+            {
+                foreach (var item in currentPlayer.Achievements)
+                {
+                    var existing = migratedToPlayer.Achievements?.FirstOrDefault(a => a.AchievementDescriptionId == item.AchievementDescriptionId);
+                    if (existing == null) {
+                        item.PlayerId = migrateToId;
+                    }
                 }
             }
 
@@ -1073,6 +1086,7 @@ namespace BeatLeader_Server.Controllers
             currentPlayer.History = null;
             currentPlayer.ProfileSettings = null;
             currentPlayer.Socials = null;
+            currentPlayer.Achievements = null;
             _context.Players.Remove(currentPlayer);
 
             await _context.SaveChangesAsync();

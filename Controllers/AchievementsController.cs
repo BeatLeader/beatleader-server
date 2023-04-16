@@ -199,7 +199,7 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [HttpGet("~/survey/achievement")]
-        public async Task<ActionResult<Achievement>> AssignAchievement() {
+        public ActionResult<Achievement> AssignAchievement() {
             string currentId = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = _context.Players
                 .Include(p => p.Achievements)
