@@ -319,9 +319,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int count = 10)
         {
-            if (page < 1) {
-                return BadRequest("Page should be greater than zero!");
-            }
+            
             ResponseWithMetadataAndSelection<ScoreResponse> result = new ResponseWithMetadataAndSelection<ScoreResponse>
             {
                 Data = new List<ScoreResponse>(),
@@ -396,7 +394,7 @@ namespace BeatLeader_Server.Controllers
 
             if (method.ToLower() == "around")
             {
-                var playerScore = query.Select(s => new { PlayerId = s.PlayerId, Rank = s.Rank }).FirstOrDefault(el => el.PlayerId == player);
+                var playerScore = query.Select(s => new { s.PlayerId, s.Rank }).FirstOrDefault(el => el.PlayerId == player);
                 if (playerScore != null)
                 {
                     int rank = query.Count(s => s.Rank < playerScore.Rank);
@@ -462,6 +460,10 @@ namespace BeatLeader_Server.Controllers
                     if (scope.ToLower() == "friends" || scope.ToLower() == "country") {
                         result.Selection.Rank = query.Count(s => s.Rank < result.Selection.Rank) + 1;
                     }
+                }
+
+                if (page < 1) {
+                    page = 1;
                 }
             }
 
