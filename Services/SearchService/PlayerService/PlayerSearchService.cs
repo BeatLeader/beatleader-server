@@ -11,7 +11,9 @@ namespace BeatLeader_Server.Services;
 
 public static class PlayerSearchService
 {
-    private const float SimilarityPercentage = 0.7f;
+    private const int PrefixLength = 4;
+    private const float PostPrefixSimilarityPercentage = 2f / 5f; // applies to the string after the prefix length
+    private const float SimilarityPercentage = 0.6f;
     private const int HitsLimit = 1000;
     private const int OptimizeCycleCount = 20; // docs recommend to optimize every once in awhile, so i just chose every 20 maps arbitrarily.
     private static readonly string LuceneDir = Path.Combine(System.AppContext.BaseDirectory, "lucene_index_players");
@@ -103,7 +105,8 @@ public static class PlayerSearchService
         BooleanQuery booleanQuery = new()
         {
             { parser.Parse(continuousSearch), Occur.SHOULD },
-            { new FuzzyQuery(new Term(nameof(PlayerMetadata.Id), searchQuery), SimilarityPercentage), Occur.SHOULD },
+            { new FuzzyQuery(new Term(nameof(PlayerMetadata.Id), searchQuery), PostPrefixSimilarityPercentage, PrefixLength), Occur.SHOULD },
+            { new FuzzyQuery(new Term(nameof(PlayerMetadata.Names), searchQuery), PostPrefixSimilarityPercentage, PrefixLength), Occur.SHOULD },
             { new FuzzyQuery(new Term(nameof(PlayerMetadata.Names), searchQuery), SimilarityPercentage), Occur.SHOULD },
         };
 
