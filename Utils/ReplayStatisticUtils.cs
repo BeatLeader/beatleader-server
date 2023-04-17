@@ -64,6 +64,7 @@ namespace BeatLeader_Server.Utils
 
         public float multiplier;
         public int totalScore;
+        public int maxScore;
         public float accuracy;
         public int combo;
     }
@@ -212,6 +213,7 @@ namespace BeatLeader_Server.Utils
             result.hitTracker.maxCombo = maxCombo;
             result.hitTracker.maxStreak = maxStreak;
             result.winTracker.totalScore = structs.Last().totalScore;
+            result.winTracker.maxScore = structs.Last().maxScore;
             result.accuracyTracker = accuracy;
             result.scoreGraphTracker = ScoreGraph(structs, (int)replay.frames.Last().time);
 
@@ -478,6 +480,7 @@ namespace BeatLeader_Server.Utils
 
                 note.multiplier = multiplier;
                 note.totalScore = score;
+                note.maxScore = maxScore;
                 note.combo = combo;
 
                 if (note.isBlock)
