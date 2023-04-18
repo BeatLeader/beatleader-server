@@ -39,15 +39,10 @@ public class PlayerMetadata
             Names = doc.Get(nameof(Names)).Split('\0').ToList(),
         };
 
-    public static explicit operator Document(PlayerMetadata playerMetadata)
-    {
-        Document document = new();
-        Field idField = new(nameof(Id), playerMetadata.Id, Field.Store.YES, Field.Index.ANALYZED);
-        Field namesField = new(nameof(Names), string.Join('\0', playerMetadata.Names), Field.Store.YES, Field.Index.ANALYZED);
-
-        document.Add(idField);
-        document.Add(namesField);
-
-        return document;
-    }
+    public static explicit operator Document(PlayerMetadata playerMetadata) =>
+        new()
+        {
+            new StringField(nameof(Id), playerMetadata.Id, Field.Store.YES),
+            new TextField(nameof(Names), string.Join('\0', playerMetadata.Names), Field.Store.YES),
+        };
 }
