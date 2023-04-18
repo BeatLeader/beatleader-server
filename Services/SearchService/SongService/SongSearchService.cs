@@ -2,20 +2,17 @@
 using Lucene.Net.Analysis.Standard;
 using Lucene.Net.Documents;
 using Lucene.Net.Index;
-using Lucene.Net.QueryParsers;
 using Lucene.Net.Search;
+using Lucene.Net.Search.Spans;
 using Lucene.Net.Store;
-using Version = Lucene.Net.Util.Version;
+using Version = Lucene.Net.Util.LuceneVersion;
 
 namespace BeatLeader_Server.Services;
 
 public static class SongSearchService
 {
-    private const float SimilarityPercentage = 0.7f;
     private const int HitsLimit = 1000;
-    private const int OptimizeCycleCount = 20; // docs recommend to optimize every once in awhile, so i just chose every 20 maps arbitrarily.
     private static readonly string LuceneDir = Path.Combine(System.AppContext.BaseDirectory, "lucene_index_songs");
-    private static readonly string[] Fields = { nameof(SongMetadata.Id), nameof(SongMetadata.Name), nameof(SongMetadata.Hash), nameof(SongMetadata.Author), nameof(SongMetadata.Mapper) };
 
     private static int optimizeCycle;
     private static FSDirectory? directoryTemp;
@@ -26,15 +23,16 @@ public static class SongSearchService
     {
         lock (Directory)
         {
-            using StandardAnalyzer analyzer = new(Version.LUCENE_30);
-            using IndexWriter writer = new(Directory, analyzer, IndexWriter.MaxFieldLength.UNLIMITED);
+            using StandardAnalyzer analyzer = new(Version.LUCENE_48);
+            IndexWriterConfig config = new(Version.LUCENE_48, analyzer);
+            using IndexWriter writer = new(Directory, config);
 
             foreach (SongMetadata songMetadata in songs)
             {
                 AddToLuceneIndex(songMetadata, writer);
             }
 
-            writer.Optimize();
+            writer.Commit();
         }
     }
 
@@ -42,16 +40,13 @@ public static class SongSearchService
     {
         lock (Directory)
         {
-            using StandardAnalyzer analyzer = new(Version.LUCENE_30);
-            using IndexWriter writer = new(Directory, analyzer, IndexWriter.MaxFieldLength.UNLIMITED);
+            using StandardAnalyzer analyzer = new(Version.LUCENE_48);
+            IndexWriterConfig config = new(Version.LUCENE_48, analyzer);
+            using IndexWriter writer = new(Directory, config);
 
             AddToLuceneIndex((SongMetadata)song, writer);
 
-            if (++optimizeCycle == OptimizeCycleCount)
-            {
-                writer.Optimize();
-                optimizeCycle = 0;
-            }
+            writer.Commit();
         }
     }
 
@@ -64,10 +59,12 @@ public static class SongSearchService
 
         lock (Directory)
         {
-            using IndexSearcher searcher = new(Directory, false);
-            using StandardAnalyzer analyzer = new(Version.LUCENE_30);
-            MultiFieldQueryParser parser = new(Version.LUCENE_30, Fields, analyzer);
-            Query query = parser.GetQuery(searchQuery);
+            using StandardAnalyzer analyzer = new(Version.LUCENE_48);
+
+            DirectoryReader directoryReader = DirectoryReader.Open(Directory);
+            IndexSearcher searcher = new(directoryReader);
+
+            Query query = GetQuery(searchQuery);
 
             TopFieldDocs topFieldDocs = searcher.Search(query, null, HitsLimit, Sort.RELEVANCE);
             ScoreDoc[] hits = topFieldDocs.ScoreDocs;
@@ -76,30 +73,40 @@ public static class SongSearchService
         }
     }
 
-    private static Query GetQuery(this QueryParser parser, string searchQuery)
+    private static Query GetQuery(string searchQuery)
     {
         searchQuery = searchQuery.ToLower();
-        string continuousSearch = searchQuery.Replace(" ", "+");
 
         BooleanQuery booleanQuery = new()
         {
-            { parser.Parse(continuousSearch), Occur.SHOULD }, // allow for multi word searching (order matters). EX: "dear maria" can find "Dear Maria, Count Me In (Japanese Cover)"
-            { new FuzzyQuery(new Term(nameof(SongMetadata.Id), searchQuery), SimilarityPercentage), Occur.SHOULD },
-            { new FuzzyQuery(new Term(nameof(SongMetadata.Name), searchQuery), SimilarityPercentage), Occur.SHOULD },
-            { new FuzzyQuery(new Term(nameof(SongMetadata.Hash), searchQuery), SimilarityPercentage), Occur.SHOULD },
-            { new FuzzyQuery(new Term(nameof(SongMetadata.Author), searchQuery), SimilarityPercentage), Occur.SHOULD },
-            { new FuzzyQuery(new Term(nameof(SongMetadata.Mapper), searchQuery), SimilarityPercentage), Occur.SHOULD },
+            { new PrefixQuery(new Term(nameof(SongMetadata.Id), searchQuery)), Occur.SHOULD },
+            { new PrefixQuery(new Term(nameof(SongMetadata.Hash), searchQuery)), Occur.SHOULD },
+            { nameof(SongMetadata.Name).GetMultiWordQuery(searchQuery), Occur.SHOULD },
+            { nameof(SongMetadata.Author).GetMultiWordQuery(searchQuery), Occur.SHOULD },
+            { nameof(SongMetadata.Mapper).GetMultiWordQuery(searchQuery), Occur.SHOULD },
         };
 
         return booleanQuery;
     }
 
+    private static Query GetMultiWordQuery(this string name, string searchQuery)
+    {
+        string[] words = searchQuery.Split(' ');
+        int wordsLength = words.Length;
+        SpanQuery[] queries = new SpanQuery[wordsLength];
+
+        for (int i = 0; i < wordsLength; i++)
+        {
+            queries[i] = new SpanMultiTermQueryWrapper<FuzzyQuery>(new FuzzyQuery(new Term(name, words[i])));
+        }
+
+        return new SpanNearQuery(queries, 2, true);
+    }
+
     private static void AddToLuceneIndex(SongMetadata songMetadata, IndexWriter writer)
     {
-        Term songMetadataTerm = new(nameof(SongMetadata.Id), songMetadata.Id);
-        TermQuery searchQuery = new(songMetadataTerm);
-        writer.DeleteDocuments(searchQuery);
+        Term playerMetadataTerm = new(nameof(SongMetadata.Id), songMetadata.Id);
 
-        writer.AddDocument((Document)songMetadata);
+        writer.UpdateDocument(playerMetadataTerm, (Document)songMetadata);
     }
 }

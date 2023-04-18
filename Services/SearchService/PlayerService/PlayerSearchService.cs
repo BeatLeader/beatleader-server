@@ -2,24 +2,18 @@
 using Lucene.Net.Analysis.Standard;
 using Lucene.Net.Documents;
 using Lucene.Net.Index;
-using Lucene.Net.QueryParsers;
+using Lucene.Net.Sandbox.Queries;
 using Lucene.Net.Search;
 using Lucene.Net.Store;
-using Version = Lucene.Net.Util.Version;
+using Version = Lucene.Net.Util.LuceneVersion;
 
 namespace BeatLeader_Server.Services;
 
 public static class PlayerSearchService
 {
-    private const int PrefixLength = 4;
-    private const float PostPrefixSimilarityPercentage = 2f / 5f; // applies to the string after the prefix length
-    private const float SimilarityPercentage = 0.6f;
     private const int HitsLimit = 1000;
-    private const int OptimizeCycleCount = 20; // docs recommend to optimize every once in awhile, so i just chose every 20 maps arbitrarily.
     private static readonly string LuceneDir = Path.Combine(System.AppContext.BaseDirectory, "lucene_index_players");
-    private static readonly string[] Fields = { nameof(PlayerMetadata.Id), nameof(PlayerMetadata.Names) };
 
-    private static int optimizeCycle;
     private static FSDirectory? directoryTemp;
 
     private static FSDirectory Directory => directoryTemp ??= FSDirectory.Open(new DirectoryInfo(LuceneDir));
@@ -28,15 +22,16 @@ public static class PlayerSearchService
     {
         lock (Directory)
         {
-            using StandardAnalyzer analyzer = new(Version.LUCENE_30);
-            using IndexWriter writer = new(Directory, analyzer, IndexWriter.MaxFieldLength.UNLIMITED);
+            using StandardAnalyzer analyzer = new(Version.LUCENE_48);
+            IndexWriterConfig config = new(Version.LUCENE_48, analyzer);
+            using IndexWriter writer = new(Directory, config);
 
             foreach (PlayerMetadata playerMetadata in players)
             {
                 AddToLuceneIndex(playerMetadata, writer);
             }
 
-            writer.Optimize();
+            writer.Commit();
         }
     }
 
@@ -44,16 +39,13 @@ public static class PlayerSearchService
     {
         lock (Directory)
         {
-            using StandardAnalyzer analyzer = new(Version.LUCENE_30);
-            using IndexWriter writer = new(Directory, analyzer, IndexWriter.MaxFieldLength.UNLIMITED);
+            using StandardAnalyzer analyzer = new(Version.LUCENE_48);
+            IndexWriterConfig config = new(Version.LUCENE_48, analyzer);
+            using IndexWriter writer = new(Directory, config);
 
             AddToLuceneIndex((PlayerMetadata)player, writer);
 
-            if (++optimizeCycle == OptimizeCycleCount)
-            {
-                writer.Optimize();
-                optimizeCycle = 0;
-            }
+            writer.Commit();
         }
     }
 
@@ -61,18 +53,23 @@ public static class PlayerSearchService
     {
         lock (Directory)
         {
-            using IndexSearcher searcher = new(Directory, false);
-            using StandardAnalyzer analyzer = new(Version.LUCENE_30);
-            using IndexWriter writer = new(Directory, analyzer, IndexWriter.MaxFieldLength.UNLIMITED);
+            using StandardAnalyzer analyzer = new(Version.LUCENE_48);
+            IndexWriterConfig config = new(Version.LUCENE_48, analyzer);
+            using IndexWriter writer = new(Directory, config);
+
+            DirectoryReader directoryReader = DirectoryReader.Open(Directory);
+            IndexSearcher searcher = new(directoryReader);
 
             Term playerMetadataTerm = new(nameof(PlayerMetadata.Id), player.Id);
             TermQuery searchQuery = new(playerMetadataTerm);
+
             TopFieldDocs topFieldDocs = searcher.Search(searchQuery, null, HitsLimit, Sort.RELEVANCE);
 
             PlayerMetadata playerMetadata = (PlayerMetadata)searcher.Doc(topFieldDocs.ScoreDocs[0].Doc);
             playerMetadata.Names.Add(player.Name);
-            writer.DeleteDocuments(searchQuery);
-            writer.AddDocument((Document)playerMetadata);
+
+            writer.UpdateDocument(playerMetadataTerm, (Document)playerMetadata);
+            writer.Commit();
         }
     }
 
@@ -85,10 +82,12 @@ public static class PlayerSearchService
 
         lock (Directory)
         {
-            using IndexSearcher searcher = new(Directory, false);
-            using StandardAnalyzer analyzer = new(Version.LUCENE_30);
-            MultiFieldQueryParser parser = new(Version.LUCENE_30, Fields, analyzer);
-            Query query = parser.GetQuery(searchQuery);
+            using StandardAnalyzer analyzer = new(Version.LUCENE_48);
+
+            DirectoryReader directoryReader = DirectoryReader.Open(Directory);
+            IndexSearcher searcher = new(directoryReader);
+
+            Query query = GetQuery(searchQuery);
 
             TopFieldDocs topFieldDocs = searcher.Search(query, null, HitsLimit, Sort.RELEVANCE);
             ScoreDoc[] hits = topFieldDocs.ScoreDocs;
@@ -97,17 +96,33 @@ public static class PlayerSearchService
         }
     }
 
-    private static Query GetQuery(this QueryParser parser, string searchQuery)
+    private static Query GetQuery(string searchQuery)
     {
         searchQuery = searchQuery.ToLower();
-        string continuousSearch = searchQuery.Replace(" ", "+");
+
+        Term namesTerm = new(nameof(PlayerMetadata.Names), searchQuery);
+
+        Query prefixQuery = new PrefixQuery(namesTerm)
+        {
+            Boost = 200f,
+        };
+
+        Query hardFuzzyQuery = new FuzzyQuery(namesTerm, 2, 3)
+        {
+            Boost = 1f,
+        };
+
+        Query softFuzzyQuery = new SlowFuzzyQuery(namesTerm, 0.6f)
+        {
+            Boost = 0.1f,
+        };
 
         BooleanQuery booleanQuery = new()
         {
-            { parser.Parse(continuousSearch), Occur.SHOULD },
-            { new FuzzyQuery(new Term(nameof(PlayerMetadata.Id), searchQuery), PostPrefixSimilarityPercentage, PrefixLength), Occur.SHOULD },
-            { new FuzzyQuery(new Term(nameof(PlayerMetadata.Names), searchQuery), PostPrefixSimilarityPercentage, PrefixLength), Occur.SHOULD },
-            { new FuzzyQuery(new Term(nameof(PlayerMetadata.Names), searchQuery), SimilarityPercentage), Occur.SHOULD },
+            { new PrefixQuery(new Term(nameof(PlayerMetadata.Id), searchQuery)), Occur.SHOULD },
+            { prefixQuery, Occur.SHOULD },
+            { hardFuzzyQuery, Occur.SHOULD },
+            { softFuzzyQuery, Occur.SHOULD },
         };
 
         return booleanQuery;
@@ -116,9 +131,7 @@ public static class PlayerSearchService
     private static void AddToLuceneIndex(PlayerMetadata playerMetadata, IndexWriter writer)
     {
         Term playerMetadataTerm = new(nameof(PlayerMetadata.Id), playerMetadata.Id);
-        TermQuery searchQuery = new(playerMetadataTerm);
-        writer.DeleteDocuments(searchQuery);
 
-        writer.AddDocument((Document)playerMetadata);
+        writer.UpdateDocument(playerMetadataTerm, (Document)playerMetadata);
     }
 }
