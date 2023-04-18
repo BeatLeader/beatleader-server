@@ -5,7 +5,7 @@ using Lucene.Net.Index;
 using Lucene.Net.Search;
 using Lucene.Net.Search.Spans;
 using Lucene.Net.Store;
-using Version = Lucene.Net.Util.LuceneVersion;
+using Lucene.Net.Util;
 
 namespace BeatLeader_Server.Services;
 
@@ -14,17 +14,14 @@ public static class SongSearchService
     private const int HitsLimit = 1000;
     private static readonly string LuceneDir = Path.Combine(System.AppContext.BaseDirectory, "lucene_index_songs");
 
-    private static int optimizeCycle;
-    private static FSDirectory? directoryTemp;
-
-    private static FSDirectory Directory => directoryTemp ??= FSDirectory.Open(new DirectoryInfo(LuceneDir));
+    private static FSDirectory Directory { get; } = FSDirectory.Open(new DirectoryInfo(LuceneDir));
 
     public static void AddNewSongs(IEnumerable<Song> songs)
     {
         lock (Directory)
         {
-            using StandardAnalyzer analyzer = new(Version.LUCENE_48);
-            IndexWriterConfig config = new(Version.LUCENE_48, analyzer);
+            using StandardAnalyzer analyzer = new(LuceneVersion.LUCENE_48);
+            IndexWriterConfig config = new(LuceneVersion.LUCENE_48, analyzer);
             using IndexWriter writer = new(Directory, config);
 
             foreach (SongMetadata songMetadata in songs)
@@ -40,8 +37,8 @@ public static class SongSearchService
     {
         lock (Directory)
         {
-            using StandardAnalyzer analyzer = new(Version.LUCENE_48);
-            IndexWriterConfig config = new(Version.LUCENE_48, analyzer);
+            using StandardAnalyzer analyzer = new(LuceneVersion.LUCENE_48);
+            IndexWriterConfig config = new(LuceneVersion.LUCENE_48, analyzer);
             using IndexWriter writer = new(Directory, config);
 
             AddToLuceneIndex((SongMetadata)song, writer);
@@ -59,9 +56,7 @@ public static class SongSearchService
 
         lock (Directory)
         {
-            using StandardAnalyzer analyzer = new(Version.LUCENE_48);
-
-            DirectoryReader directoryReader = DirectoryReader.Open(Directory);
+            using DirectoryReader directoryReader = DirectoryReader.Open(Directory);
             IndexSearcher searcher = new(directoryReader);
 
             Query query = GetQuery(searchQuery);
@@ -69,7 +64,7 @@ public static class SongSearchService
             TopFieldDocs topFieldDocs = searcher.Search(query, null, HitsLimit, Sort.RELEVANCE);
             ScoreDoc[] hits = topFieldDocs.ScoreDocs;
 
-            return hits.Select(scoreDoc => (SongMetadata)searcher.Doc(scoreDoc.Doc)).ToList();
+            return hits.Select(scoreDoc => (SongMetadata)searcher.Doc(scoreDoc.Doc)).ToList();;
         }
     }
 

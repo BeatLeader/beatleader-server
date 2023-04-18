@@ -5,7 +5,7 @@ using Lucene.Net.Index;
 using Lucene.Net.Sandbox.Queries;
 using Lucene.Net.Search;
 using Lucene.Net.Store;
-using Version = Lucene.Net.Util.LuceneVersion;
+using Lucene.Net.Util;
 
 namespace BeatLeader_Server.Services;
 
@@ -14,16 +14,14 @@ public static class PlayerSearchService
     private const int HitsLimit = 1000;
     private static readonly string LuceneDir = Path.Combine(System.AppContext.BaseDirectory, "lucene_index_players");
 
-    private static FSDirectory? directoryTemp;
-
-    private static FSDirectory Directory => directoryTemp ??= FSDirectory.Open(new DirectoryInfo(LuceneDir));
+    private static FSDirectory Directory { get; } = FSDirectory.Open(new DirectoryInfo(LuceneDir));
 
     public static void AddNewPlayers(IEnumerable<Player> players)
     {
         lock (Directory)
         {
-            using StandardAnalyzer analyzer = new(Version.LUCENE_48);
-            IndexWriterConfig config = new(Version.LUCENE_48, analyzer);
+            using StandardAnalyzer analyzer = new(LuceneVersion.LUCENE_48);
+            IndexWriterConfig config = new(LuceneVersion.LUCENE_48, analyzer);
             using IndexWriter writer = new(Directory, config);
 
             foreach (PlayerMetadata playerMetadata in players)
@@ -39,8 +37,8 @@ public static class PlayerSearchService
     {
         lock (Directory)
         {
-            using StandardAnalyzer analyzer = new(Version.LUCENE_48);
-            IndexWriterConfig config = new(Version.LUCENE_48, analyzer);
+            using StandardAnalyzer analyzer = new(LuceneVersion.LUCENE_48);
+            IndexWriterConfig config = new(LuceneVersion.LUCENE_48, analyzer);
             using IndexWriter writer = new(Directory, config);
 
             AddToLuceneIndex((PlayerMetadata)player, writer);
@@ -53,11 +51,11 @@ public static class PlayerSearchService
     {
         lock (Directory)
         {
-            using StandardAnalyzer analyzer = new(Version.LUCENE_48);
-            IndexWriterConfig config = new(Version.LUCENE_48, analyzer);
+            using StandardAnalyzer analyzer = new(LuceneVersion.LUCENE_48);
+            IndexWriterConfig config = new(LuceneVersion.LUCENE_48, analyzer);
             using IndexWriter writer = new(Directory, config);
 
-            DirectoryReader directoryReader = DirectoryReader.Open(Directory);
+            using DirectoryReader directoryReader = DirectoryReader.Open(Directory);
             IndexSearcher searcher = new(directoryReader);
 
             Term playerMetadataTerm = new(nameof(PlayerMetadata.Id), player.Id);
@@ -82,9 +80,7 @@ public static class PlayerSearchService
 
         lock (Directory)
         {
-            using StandardAnalyzer analyzer = new(Version.LUCENE_48);
-
-            DirectoryReader directoryReader = DirectoryReader.Open(Directory);
+            using DirectoryReader directoryReader = DirectoryReader.Open(Directory);
             IndexSearcher searcher = new(directoryReader);
 
             Query query = GetQuery(searchQuery);
