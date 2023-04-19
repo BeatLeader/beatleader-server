@@ -124,18 +124,19 @@ public static partial class MapListUtils
     {
         if (matches.Count > 0)
         {
-            IEnumerable<string> ids = matches.Select(songMetadata => songMetadata.Id);
+            IEnumerable<string> sortedLeaderboardIds = sequence.Select(leaderboard => leaderboard.Id)
+                                                               .AsEnumerable()
+                                                               .OrderByDescending(id => matches.FirstOrDefault(songMetadata => songMetadata.Id == id)?.Score ?? 0);
 
             if (page.HasValue)
             {
-                ids = ids.Skip((page.Value - 1) * count);
+                sortedLeaderboardIds = sortedLeaderboardIds.Skip((page.Value - 1) * count);
             }
 
-            ids = ids.Take(count);
-
+            sortedLeaderboardIds = sortedLeaderboardIds.Take(count);
             totalMatches = matches.Count;
 
-            return sequence.Where(leaderboard => ids.Contains(leaderboard.SongId));
+            return sequence.Where(leaderboard => sortedLeaderboardIds.Contains(leaderboard.Id));
         }
 
         totalMatches = sequence.Count();
