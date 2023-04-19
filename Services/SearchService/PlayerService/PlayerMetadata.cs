@@ -9,6 +9,8 @@ public class PlayerMetadata
 
     public List<string> Names { get; set; } = new();
 
+    public float Score { get; set; }
+
     public static explicit operator PlayerMetadata(Player player)
     {
         PlayerMetadata playerMetadata = new()

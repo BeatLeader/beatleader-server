@@ -15,6 +15,8 @@ public class SongMetadata
 
     public string Mapper { get; private set; }
 
+    public float Score { get; set; }
+
     public static explicit operator SongMetadata(Song song) =>
         new()
         {

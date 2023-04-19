@@ -79,8 +79,6 @@ public static class PlayerSearchService
             return new List<PlayerMetadata>(0);
         }
 
-        Console.WriteLine("searched");
-
         lock (Directory)
         {
             using DirectoryReader directoryReader = DirectoryReader.Open(Directory);
@@ -91,7 +89,13 @@ public static class PlayerSearchService
             TopFieldDocs topFieldDocs = searcher.Search(query, null, HitsLimit, Sort.RELEVANCE);
             ScoreDoc[] hits = topFieldDocs.ScoreDocs;
 
-            return hits.Select(scoreDoc => (PlayerMetadata)searcher.Doc(scoreDoc.Doc)).ToList();
+            return hits.Select(scoreDoc =>
+            {
+                PlayerMetadata result = (PlayerMetadata)searcher.Doc(scoreDoc.Doc);
+                result.Score = scoreDoc.Score;
+
+                return result;
+            }).ToList();
         }
     }
 

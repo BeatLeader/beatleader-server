@@ -64,7 +64,13 @@ public static class SongSearchService
             TopFieldDocs topFieldDocs = searcher.Search(query, null, HitsLimit, Sort.RELEVANCE);
             ScoreDoc[] hits = topFieldDocs.ScoreDocs;
 
-            return hits.Select(scoreDoc => (SongMetadata)searcher.Doc(scoreDoc.Doc)).ToList();;
+            return hits.Select(scoreDoc =>
+            {
+                SongMetadata result = (SongMetadata)searcher.Doc(scoreDoc.Doc);
+                result.Score = scoreDoc.Score;
+
+                return result;
+            }).ToList();;
         }
     }
 
