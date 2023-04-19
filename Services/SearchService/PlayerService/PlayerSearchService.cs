@@ -2,6 +2,7 @@
 using Lucene.Net.Analysis.Standard;
 using Lucene.Net.Documents;
 using Lucene.Net.Index;
+using Lucene.Net.Queries;
 using Lucene.Net.Sandbox.Queries;
 using Lucene.Net.Search;
 using Lucene.Net.Store;
@@ -78,6 +79,8 @@ public static class PlayerSearchService
             return new List<PlayerMetadata>(0);
         }
 
+        Console.WriteLine("searched");
+
         lock (Directory)
         {
             using DirectoryReader directoryReader = DirectoryReader.Open(Directory);
@@ -98,26 +101,19 @@ public static class PlayerSearchService
 
         Term namesTerm = new(nameof(PlayerMetadata.Names), searchQuery);
 
-        Query prefixQuery = new PrefixQuery(namesTerm)
-        {
-            Boost = 200f,
-        };
+        Query prefixQuery = new PrefixQuery(namesTerm);
+        Query fuzzyPrefix = new FuzzyQuery(namesTerm, 2, searchQuery.Length);
+        Query hardFuzzyQuery = new FuzzyQuery(namesTerm, 2, 3);
+        Query softFuzzyQuery = new SlowFuzzyQuery(namesTerm, 0.7f);
 
-        Query hardFuzzyQuery = new FuzzyQuery(namesTerm, 2, 3)
-        {
-            Boost = 1f,
-        };
-
-        Query softFuzzyQuery = new SlowFuzzyQuery(namesTerm, 0.6f)
-        {
-            Boost = 0.1f,
-        };
+        Query fuzzyPrefixBoost = new BoostingQuery(prefixQuery, fuzzyPrefix, 2);
+        Query hardFuzzyPrefixBoost = new BoostingQuery(fuzzyPrefixBoost, hardFuzzyQuery, 2);
+        Query softHardFuzzyPrefixBoost = new BoostingQuery(hardFuzzyPrefixBoost, softFuzzyQuery, 2);
 
         BooleanQuery booleanQuery = new()
         {
             { new PrefixQuery(new Term(nameof(PlayerMetadata.Id), searchQuery)), Occur.SHOULD },
-            { prefixQuery, Occur.SHOULD },
-            { hardFuzzyQuery, Occur.SHOULD },
+            { softHardFuzzyPrefixBoost, Occur.SHOULD },
             { softFuzzyQuery, Occur.SHOULD },
         };
 
