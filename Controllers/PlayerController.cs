@@ -502,9 +502,11 @@ namespace BeatLeader_Server.Controllers
 
             if (searchMatch.Count > 0) {
                 var matchedAndFiltered = request.Select(p => p.Id).ToList();
-                var sorted = matchedAndFiltered.Skip((page - 1) * count)
-                                               .Take(count)
-                                               .ToList();
+                var sorted = matchedAndFiltered
+                             .OrderByDescending(p => searchMatch.FirstOrDefault(m => m.Id == p)?.Score ?? 0)
+                             .Skip((page - 1) * count)
+                             .Take(count)
+                             .ToList();
 
                 request = request.Where(p => sorted.Contains(p.Id));
             } else {
