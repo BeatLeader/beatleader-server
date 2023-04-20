@@ -120,25 +120,8 @@ public static partial class MapListUtils
         };
     }
 
-    private static IQueryable<Leaderboard> WherePage(this IQueryable<Leaderboard> sequence, int page, int count, List<SongMetadata> matches, out int totalMatches)
+    private static IQueryable<Leaderboard> WherePage(this IQueryable<Leaderboard> sequence, int page, int count, out int totalMatches)
     {
-        if (matches.Count > 0)
-        {
-            IEnumerable<string> sortedLeaderboardIds = sequence.Select(leaderboard => leaderboard.Id)
-                                                               .AsEnumerable()
-                                                               .OrderBy(id => matches.FindIndex(m => m.Id == id));
-
-            if (page != 0)
-            {
-                sortedLeaderboardIds = sortedLeaderboardIds.Skip((page - 1) * count);
-            }
-
-            sortedLeaderboardIds = sortedLeaderboardIds.Take(count);
-            totalMatches = matches.Count;
-
-            return sequence.Where(leaderboard => sortedLeaderboardIds.Contains(leaderboard.Id));
-        }
-
         totalMatches = sequence.Count();
 
         return page != 0

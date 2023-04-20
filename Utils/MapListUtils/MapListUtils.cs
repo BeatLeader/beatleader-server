@@ -67,5 +67,5 @@ public static partial class MapListUtils
               .WhereRatingTo(RatingType.Pass, passRatingTo)
               .WhereRatingTo(RatingType.Tech, techRatingTo)
               .Sort(sortBy, order, type, mytype, dateFrom, dateTo, currentID)
-              .WherePage(page, count, matches, out totalMatches);
+              .WherePage(page, count, out totalMatches);
 }
