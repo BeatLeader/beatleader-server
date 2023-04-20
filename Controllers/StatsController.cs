@@ -1,6 +1,8 @@
-﻿using BeatLeader_Server.Extensions;
+﻿using BeatLeader_Server.Enums;
+using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Migrations.ReadApp;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Utils;
 using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -36,7 +38,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<ResponseWithMetadata<PlayerLeaderboardStats>>> GetScoresStats(
             string id,
             [FromQuery] string sortBy = "date",
-            [FromQuery] string order = "desc",
+            [FromQuery] Order order = Order.Desc,
             [FromQuery] int page = 1,
             [FromQuery] int count = 8,
             [FromQuery] string? search = null,

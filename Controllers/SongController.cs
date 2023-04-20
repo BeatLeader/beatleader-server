@@ -159,7 +159,7 @@ namespace BeatLeader_Server.Controllers
                     _context.Songs.Add(song);
                     await _context.SaveChangesAsync();
 
-                    SearchService.SongAdded(song.Id, song.Hash, song.Name, song.Author, song.Mapper);
+                    SongSearchService.AddNewSong(song);
                     
                     foreach (var oldSong in songsToMigrate)
                     {

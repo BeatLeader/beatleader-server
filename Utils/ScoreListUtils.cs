@@ -2,6 +2,7 @@
 using BeatLeader_Server.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
+using BeatLeader_Server.Enums;
 
 namespace BeatLeader_Server.Utils
 {
@@ -12,11 +13,11 @@ namespace BeatLeader_Server.Utils
             ReadAppContext context,
             bool excludeBanned,
             string sortBy = "date",
-            string order = "desc",
+            Order order = Order.Desc,
             string? search = null,
             string? diff = null,
             string? mode = null,
-            Requirements? requirements = null,
+            Requirements requirements = Requirements.None,
             string? type = null,
             string? modifiers = null,
             float? stars_from = null,

@@ -174,7 +174,7 @@ namespace BeatLeader_Server.Controllers
 
                     _context.Players.Add(player);
                     playerId = player.Id;
-                    SearchService.PlayerAdded(player.Id, player.Name);
+                    PlayerSearchService.AddNewPlayer(player);
 
                 } else {
                     playerId = bslink.Id;
