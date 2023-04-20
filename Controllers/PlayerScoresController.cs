@@ -102,6 +102,9 @@ namespace BeatLeader_Server.Controllers
                         Total = sequence.Count()
                     },
                     Data = sequence
+                    .Include(s => s.Leaderboard)
+                    .ThenInclude(l => l.Difficulty)
+                    .ThenInclude(d => d.ModifiersRating)
                     .Skip((page - 1) * count)
                     .Take(count)
                     .Select(s => new ScoreResponseWithMyScore

@@ -235,6 +235,7 @@ namespace BeatLeader_Server.Utils
             int Type,
             float[] Votes,
             ModifiersMap? ModifierValues,
+            ModifiersRating? ModifiersRating,
             float? PassRating,
             float? AccRating,
             float? TechRating
@@ -516,6 +517,7 @@ namespace BeatLeader_Server.Utils
                 diff.Type,
                 votes,
                 diff.ModifierValues,
+                diff.ModifiersRating,
                 diff.PassRating,
                 diff.AccRating,
                 diff.TechRating
@@ -617,6 +619,19 @@ namespace BeatLeader_Server.Utils
                     settings.LeftSaberColor = null;
                 }
             }
+        }
+
+        public enum FriendActivityType {
+            Achievement = 1,
+            MapLiked = 2,
+            MapRanked = 3,
+            MapPublished = 4,
+        }
+
+        public class FriendActivity {
+            public PlayerResponse Player { get; set; }
+            public FriendActivityType Type { get; set; }
+            public dynamic ActivityObject { get; set; }
         }
     }
 }

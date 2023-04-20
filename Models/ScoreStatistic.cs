@@ -34,6 +34,7 @@ namespace BeatLeader_Server.Models
         public float averageHeight { get; set; }
         public AveragePosition? averageHeadPosition { get; set; }    
         public int totalScore { get; set; }
+        public int maxScore { get; set; }
     }
 
     public class ScoreStatistic
