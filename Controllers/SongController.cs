@@ -52,7 +52,9 @@ namespace BeatLeader_Server.Controllers
             var resFromLB = _readContext.Leaderboards
                 .Where(lb => lb.Song.Hash == hash)
                 .Include(lb => lb.Difficulty)
-                .ThenInclude(diff => diff.ModifierValues)
+                    .ThenInclude(diff => diff.ModifierValues)
+                .Include(lb => lb.Difficulty)
+                    .ThenInclude(diff => diff.ModifiersRating)
                 .Select(lb => new { 
                     DiffModResponse = ResponseUtils.DiffModResponseFromDiffAndVotes(lb.Difficulty, lb.Scores.Where(score => score.RankVoting != null).Select(score => score.RankVoting!.Rankability).ToArray()), 
                     SongDiffs = lb.Song.Difficulties 

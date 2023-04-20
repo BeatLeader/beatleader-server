@@ -235,6 +235,7 @@ namespace BeatLeader_Server.Utils
             int Type,
             float[] Votes,
             ModifiersMap? ModifierValues,
+            ModifiersRating? ModifiersRating,
             float? PassRating,
             float? AccRating,
             float? TechRating
@@ -516,6 +517,7 @@ namespace BeatLeader_Server.Utils
                 diff.Type,
                 votes,
                 diff.ModifierValues,
+                diff.ModifiersRating,
                 diff.PassRating,
                 diff.AccRating,
                 diff.TechRating
