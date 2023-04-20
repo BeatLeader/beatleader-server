@@ -54,24 +54,21 @@ public static class SongSearchService
             return new List<SongMetadata>(0);
         }
 
-        lock (Directory)
+        using DirectoryReader directoryReader = DirectoryReader.Open(Directory);
+        IndexSearcher searcher = new(directoryReader);
+
+        Query query = GetQuery(searchQuery);
+
+        TopFieldDocs topFieldDocs = searcher.Search(query, null, HitsLimit, Sort.RELEVANCE, true, false);
+        ScoreDoc[] hits = topFieldDocs.ScoreDocs;
+
+        return hits.Select(scoreDoc =>
         {
-            using DirectoryReader directoryReader = DirectoryReader.Open(Directory);
-            IndexSearcher searcher = new(directoryReader);
+            SongMetadata result = (SongMetadata)searcher.Doc(scoreDoc.Doc);
+            result.Score = scoreDoc.Score;
 
-            Query query = GetQuery(searchQuery);
-
-            TopFieldDocs topFieldDocs = searcher.Search(query, null, HitsLimit, Sort.RELEVANCE, true, false);
-            ScoreDoc[] hits = topFieldDocs.ScoreDocs;
-
-            return hits.Select(scoreDoc =>
-            {
-                SongMetadata result = (SongMetadata)searcher.Doc(scoreDoc.Doc);
-                result.Score = scoreDoc.Score;
-
-                return result;
-            }).ToList();;
-        }
+            return result;
+        }).ToList();
     }
 
     private static Query GetQuery(string searchQuery)
