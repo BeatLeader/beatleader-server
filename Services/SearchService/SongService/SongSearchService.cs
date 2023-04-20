@@ -61,7 +61,7 @@ public static class SongSearchService
 
             Query query = GetQuery(searchQuery);
 
-            TopFieldDocs topFieldDocs = searcher.Search(query, null, HitsLimit, Sort.RELEVANCE);
+            TopFieldDocs topFieldDocs = searcher.Search(query, null, HitsLimit, Sort.RELEVANCE, true, false);
             ScoreDoc[] hits = topFieldDocs.ScoreDocs;
 
             return hits.Select(scoreDoc =>
