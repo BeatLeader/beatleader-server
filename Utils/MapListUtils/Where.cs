@@ -120,17 +120,17 @@ public static partial class MapListUtils
         };
     }
 
-    private static IQueryable<Leaderboard> WherePage(this IQueryable<Leaderboard> sequence, int? page, int count, IReadOnlyCollection<SongMetadata> matches, out int totalMatches)
+    private static IQueryable<Leaderboard> WherePage(this IQueryable<Leaderboard> sequence, int page, int count, List<SongMetadata> matches, out int totalMatches)
     {
         if (matches.Count > 0)
         {
             IEnumerable<string> sortedLeaderboardIds = sequence.Select(leaderboard => leaderboard.Id)
                                                                .AsEnumerable()
-                                                               .OrderByDescending(id => matches.FirstOrDefault(songMetadata => songMetadata.Id == id)?.Score ?? 0);
+                                                               .OrderBy(id => matches.FindIndex(m => m.Id == id));
 
-            if (page.HasValue)
+            if (page != 0)
             {
-                sortedLeaderboardIds = sortedLeaderboardIds.Skip((page.Value - 1) * count);
+                sortedLeaderboardIds = sortedLeaderboardIds.Skip((page - 1) * count);
             }
 
             sortedLeaderboardIds = sortedLeaderboardIds.Take(count);
@@ -141,8 +141,8 @@ public static partial class MapListUtils
 
         totalMatches = sequence.Count();
 
-        return page.HasValue
-            ? sequence.Skip((page.Value - 1) * count).Take(count)
+        return page != 0
+            ? sequence.Skip((page - 1) * count).Take(count)
             : sequence.Take(count);
     }
 }
