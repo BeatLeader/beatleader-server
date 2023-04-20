@@ -10,7 +10,6 @@
         vive = 2,
         vivePro = 4,
         viveCosmos = 128,
-        index = 64,
         wmr = 8,
 
         picoNeo3 = 33,
@@ -44,5 +43,7 @@
         questPro = 61,
         pimaxCrystal = 62,
         e4 = 63,
+        index = 64,
+        controllable = 65,
     }
 }

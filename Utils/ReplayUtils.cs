@@ -322,6 +322,8 @@ namespace BeatLeader_Server.Utils
             if (lowerHmd.Contains("pimax") && lowerHmd.Contains("artisan")) return HMD.pimaxArtisan;
             if (lowerHmd.Contains("pimax") && lowerHmd.Contains("crystal")) return HMD.pimaxCrystal;
 
+            if (lowerHmd.Contains("controllable")) return HMD.controllable;
+
             if (lowerHmd.Contains("hp reverb")) return HMD.hpReverb;
             if (lowerHmd.Contains("samsung windows")) return HMD.samsungWmr;
             if (lowerHmd.Contains("qiyu dream")) return HMD.qiyuDream;
@@ -379,6 +381,10 @@ namespace BeatLeader_Server.Utils
             if (lowerController.Contains("pico neo") && lowerController.Contains("2")) return ControllerEnum.picoNeo2;
             if (lowerController.Contains("knuckles")) return ControllerEnum.knuckles;
             if (lowerController.Contains("miramar")) return ControllerEnum.miramar;
+
+            if (lowerController.Contains("gamepad")) return ControllerEnum.gamepad;
+            if (lowerController.Contains("joy-con")) return ControllerEnum.joycon;
+            if (lowerController.Contains("steam deck")) return ControllerEnum.steamdeck;
             
             if (lowerController.Contains("quest pro")) return ControllerEnum.questPro;
             if (lowerController.Contains("quest2")) return ControllerEnum.quest2;
