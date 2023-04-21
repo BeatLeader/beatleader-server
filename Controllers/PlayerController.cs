@@ -389,12 +389,7 @@ namespace BeatLeader_Server.Controllers
             List<PlayerMetadata> searchMatch = PlayerSearchService.Search(search);
             List<string> ids = searchMatch.Select(m => m.Id).ToList();
 
-            if (searchMatch.Count > 0)
-            {
-                request = request.Where(p => ids.Contains(p.Id));
-            } else if (search.Length > 0) {
-                request = request.Where(p => false);
-            }
+            request = request.Where(p => ids.Contains(p.Id));
 
             if (clans != null)
             {
