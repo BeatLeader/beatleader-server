@@ -392,6 +392,8 @@ namespace BeatLeader_Server.Controllers
             if (searchMatch.Count > 0)
             {
                 request = request.Where(p => ids.Contains(p.Id));
+            } else if (search.Length > 0) {
+                request = request.Where(p => false);
             }
 
             if (clans != null)
