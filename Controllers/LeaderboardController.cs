@@ -504,13 +504,6 @@ namespace BeatLeader_Server.Controllers
             var sequence = _readContext.Leaderboards.AsQueryable();
             string? currentID = HttpContext.CurrentUserID(_readContext);
 
-            if (currentID != null && date_from != null && type == Type.Ranking) {
-                var lastScore = _context.Scores.Where(s => s.PlayerId == currentID).OrderByDescending(s => s.Timepost).Select(s => s.Platform).FirstOrDefault();
-                if (lastScore == null || !lastScore.Contains("1.29")) {
-                    date_from = 0;
-                }
-            }
-
             sequence = sequence.Filter(_readContext, page, count, out List<SongMetadata> matches, out int totalMatches, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
 
             var result = new ResponseWithMetadata<LeaderboardInfoResponse>()

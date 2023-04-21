@@ -64,7 +64,7 @@ public static partial class MapListUtils
             return sequence.Where(leaderboard => ids.Contains(leaderboard.SongId));
         }
 
-        return sequence;
+        return sequence.Where(s => false);
     }
 
     public static string GetSearchFilters(this string search,
