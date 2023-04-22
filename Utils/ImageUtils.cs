@@ -1,5 +1,6 @@
 ﻿using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
+using SixLabors.ImageSharp.Formats.Webp;
 using SixLabors.ImageSharp.Processing;
 
 namespace BeatLeader_Server.Utils
@@ -30,8 +31,16 @@ namespace BeatLeader_Server.Utils
                 image.SaveAsGif(ms);
                 extension = ".gif";
             } else {
-                image.SaveAsPng(ms);
-                extension = ".png";
+                WebpEncoder webpEncoder = new()
+                {
+                    NearLossless = true,
+                    NearLosslessQuality = 80,
+                    TransparentColorMode = WebpTransparentColorMode.Preserve,
+                    Quality = 20,
+                };
+
+                image.SaveAsWebp(ms, webpEncoder);
+                extension = ".webp";
             }
             ms.Position = 0;
 
@@ -50,8 +59,16 @@ namespace BeatLeader_Server.Utils
                 image.SaveAsGif(ms);
                 extension = ".gif";
             } else {
-                image.SaveAsPng(ms);
-                extension = ".png";
+                WebpEncoder webpEncoder = new()
+                {
+                    NearLossless = true,
+                    NearLosslessQuality = 80,
+                    TransparentColorMode = WebpTransparentColorMode.Preserve,
+                    Quality = 20,
+                };
+
+                image.SaveAsWebp(ms, webpEncoder);
+                extension = ".webp";
             }
             ms.Position = 0;
 

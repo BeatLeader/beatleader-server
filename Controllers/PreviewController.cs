@@ -17,6 +17,7 @@ using SixLabors.ImageSharp.Drawing;
 using System.Dynamic;
 using System.Net;
 using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.Formats.Webp;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -344,9 +345,17 @@ namespace BeatLeader_Server.Controllers
             image.Mutate(x => x.Draw(new Pen(new LinearGradientBrush(new Point(1, 1), new Point(100, 100), GradientRepetitionMode.Repeat, new ColorStop(0, Color.Red), new ColorStop(1, Color.BlueViolet)), 5), new Rectangle(0, 0, width, height)));
 
             MemoryStream ms = new MemoryStream();
-            image.SaveAsPng(ms);
+            WebpEncoder webpEncoder = new()
+            {
+                NearLossless = true,
+                NearLosslessQuality = 80,
+                TransparentColorMode = WebpTransparentColorMode.Preserve,
+                Quality = 20,
+            };
+
+            image.SaveAsWebp(ms, webpEncoder);
             ms.Position = 0;
-            return File(ms, "image/png");
+            return File(ms, "image/webp");
         }
 
         [HttpGet("~/preview/royale")]
@@ -460,9 +469,17 @@ namespace BeatLeader_Server.Controllers
             image.Mutate(x => x.Draw(new Pen(new LinearGradientBrush(new Point(1, 1), new Point(100, 100), GradientRepetitionMode.Repeat, new ColorStop(0, Color.Red), new ColorStop(1, Color.BlueViolet)), 5), new Rectangle(0, 0, width, height)));
 
             MemoryStream ms = new MemoryStream();
-            image.SaveAsPng(ms);
+            WebpEncoder webpEncoder = new()
+            {
+                NearLossless = true,
+                NearLosslessQuality = 80,
+                TransparentColorMode = WebpTransparentColorMode.Preserve,
+                Quality = 20,
+            };
+
+            image.SaveAsWebp(ms, webpEncoder);
             ms.Position = 0;
-            return File(ms, "image/png");
+            return File(ms, "image/webp");
         }
 
         private Task<Player?> GetPlayerFromSS(string url)
