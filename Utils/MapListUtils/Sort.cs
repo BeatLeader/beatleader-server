@@ -29,6 +29,7 @@ public static partial class MapListUtils
             SortBy.Voting     => sequence.SortByVoting(order),
             SortBy.VoteCount  => sequence.SortByVoteCount(order),
             SortBy.VoteRatio  => sequence.SortByVoteRatio(order),
+            SortBy.Duration   => sequence.SortByDuration(order),
             _                 => sequence,
         };
 
@@ -123,4 +124,7 @@ public static partial class MapListUtils
         .Where(leaderboard => leaderboard.PositiveVotes > 0 || leaderboard.NegativeVotes > 0)
         .Order(order, leaderboard => (int)(leaderboard.PositiveVotes / (leaderboard.PositiveVotes + leaderboard.NegativeVotes) * 100.0))
         .ThenOrder(order, leaderboard => leaderboard.PositiveVotes + leaderboard.NegativeVotes);
+
+    private static IQueryable<Leaderboard> SortByDuration(this IQueryable<Leaderboard> sequence, Order order) => sequence
+        .Order(order, leaderboard => leaderboard.Song.Duration);
 }
