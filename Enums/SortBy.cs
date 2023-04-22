@@ -14,4 +14,5 @@ public enum SortBy
     Voting,
     VoteCount,
     VoteRatio,
+    Duration,
 }
