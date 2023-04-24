@@ -194,7 +194,7 @@ namespace BeatLeader_Server.Utils
 
         public static async Task<ExmachinaResponse?> ExmachinaStars(string hash, int diff) {
 
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("http://localhost:8000/" + hash + "/Standard/" + diff);
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://stage.api.beatleader.net/ppai/" + hash + "/Standard/" + diff);
             request.Method = "GET";
             request.Proxy = null;
 

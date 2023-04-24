@@ -305,13 +305,9 @@ namespace BeatLeader_Server.Controllers
 
             bool isRT = true;
             bool verified = false;
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            if (currentPlayer == null || !(currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("qualityteam") || (currentPlayer.Role.Contains("rankedteam") && !currentPlayer.Role.Contains("juniorrankedteam"))))
             {
-                if (currentPlayer != null && currentPlayer.MapperId == leaderboard?.Song.MapperId) {
-                    isRT = false;
-                } else {
-                    return Unauthorized();
-                }
+                return Unauthorized();
             }
 
             if (leaderboard != null)
@@ -695,7 +691,7 @@ namespace BeatLeader_Server.Controllers
 
                                 message += FormatUtils.DescribeModifiersChanges(qualificationChange.OldModifiers, qualificationChange.NewModifiers);
                             }
-                            message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
+                            message += "\nhttps://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
 
                             await dsClient.SendMessageAsync(message);
                         }
