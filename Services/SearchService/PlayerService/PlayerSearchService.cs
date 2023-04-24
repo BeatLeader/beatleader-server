@@ -99,8 +99,6 @@ public static class PlayerSearchService
     private static Query GetQuery(string searchQuery)
     {
         searchQuery = searchQuery.ToLower();
-        Console.WriteLine(searchQuery);
-        Console.WriteLine(searchQuery.Length);
 
         Term namesTerm = new(nameof(PlayerMetadata.Names), searchQuery);
 
@@ -123,14 +121,11 @@ public static class PlayerSearchService
         if (searchQuery.Contains(' ') || searchQuery.Contains('_') || searchQuery.Contains('-'))
         {
             string[] words = searchQuery.Split(' ', '_', '-');
-            PhraseQuery phraseQuery = new();
 
-            foreach (string word in words)
-            {
-                phraseQuery.Add(new Term(nameof(PlayerMetadata.Names), word));
-            }
+            FuzzyLikeThisQuery fuzzyWordsQuery = new(words.Length, new StandardAnalyzer(LuceneVersion.LUCENE_48));
+            fuzzyWordsQuery.AddTerms(searchQuery, nameof(PlayerMetadata.Names), 0.6f, 1);
 
-            booleanQuery.Add(phraseQuery, Occur.SHOULD);
+            booleanQuery.Add(fuzzyWordsQuery, Occur.SHOULD);
         }
 
         return booleanQuery;
