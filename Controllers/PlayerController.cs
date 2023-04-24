@@ -830,7 +830,7 @@ namespace BeatLeader_Server.Controllers
             }
             catch {}
 
-            badge.Image = fileName;
+            badge.Image = "https://cdn.assets.beatleader.xyz/" + fileName;
             _context.SaveChanges();
 
             return badge;
