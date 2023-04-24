@@ -387,7 +387,7 @@ namespace BeatLeader_Server.Controllers
             catch {}
 
             if (fileName != null) {
-                player.Avatar = (_environment.IsDevelopment() ? "https://localhost:9191/assets/" : "https://cdn.assets.beatleader.xyz/") + fileName;
+                player.Avatar = "https://cdn.assets.beatleader.xyz/" + fileName;
             }
 
             PatreonFeatures? features = player.PatreonFeatures;

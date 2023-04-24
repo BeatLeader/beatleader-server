@@ -350,7 +350,7 @@ namespace BeatLeader_Server.Controllers
                 NearLossless = true,
                 NearLosslessQuality = 80,
                 TransparentColorMode = WebpTransparentColorMode.Preserve,
-                Quality = 20,
+                Quality = 75,
             };
 
             image.SaveAsWebp(ms, webpEncoder);
@@ -474,7 +474,7 @@ namespace BeatLeader_Server.Controllers
                 NearLossless = true,
                 NearLosslessQuality = 80,
                 TransparentColorMode = WebpTransparentColorMode.Preserve,
-                Quality = 20,
+                Quality = 75,
             };
 
             image.SaveAsWebp(ms, webpEncoder);

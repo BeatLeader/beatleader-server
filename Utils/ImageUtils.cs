@@ -31,16 +31,8 @@ namespace BeatLeader_Server.Utils
                 image.SaveAsGif(ms);
                 extension = ".gif";
             } else {
-                WebpEncoder webpEncoder = new()
-                {
-                    NearLossless = true,
-                    NearLosslessQuality = 80,
-                    TransparentColorMode = WebpTransparentColorMode.Preserve,
-                    Quality = 20,
-                };
-
-                image.SaveAsWebp(ms, webpEncoder);
-                extension = ".webp";
+                image.SaveAsPng(ms);
+                extension = ".png";
             }
             ms.Position = 0;
 
@@ -64,7 +56,7 @@ namespace BeatLeader_Server.Utils
                     NearLossless = true,
                     NearLosslessQuality = 80,
                     TransparentColorMode = WebpTransparentColorMode.Preserve,
-                    Quality = 20,
+                    Quality = 75,
                 };
 
                 image.SaveAsWebp(ms, webpEncoder);
