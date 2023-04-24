@@ -1,7 +1,10 @@
 ﻿using BeatLeader_Server.Models;
+using Lucene.Net.Analysis;
 using Lucene.Net.Analysis.Standard;
 using Lucene.Net.Documents;
 using Lucene.Net.Index;
+using Lucene.Net.QueryParsers.ComplexPhrase;
+using Lucene.Net.Sandbox.Queries;
 using Lucene.Net.Search;
 using Lucene.Net.Search.Spans;
 using Lucene.Net.Store;
@@ -75,30 +78,21 @@ public static class SongSearchService
     {
         searchQuery = searchQuery.ToLower();
 
+        string[] words = searchQuery.Split(' ', '_', '-');
+        int wordsLength = words.Length;
+        FuzzyLikeThisQuery fuzzyWordsQuery = new(wordsLength, new StandardAnalyzer(LuceneVersion.LUCENE_48));
+        fuzzyWordsQuery.AddTerms(searchQuery, nameof(SongMetadata.Name), 0.6f, 1);
+        fuzzyWordsQuery.AddTerms(searchQuery, nameof(SongMetadata.Author), 0.6f, 1);
+        fuzzyWordsQuery.AddTerms(searchQuery, nameof(SongMetadata.Mapper), 0.6f, 1);
+
         BooleanQuery booleanQuery = new()
         {
             { new PrefixQuery(new Term(nameof(SongMetadata.Id), searchQuery)), Occur.SHOULD },
             { new PrefixQuery(new Term(nameof(SongMetadata.Hash), searchQuery)), Occur.SHOULD },
-            { nameof(SongMetadata.Name).GetMultiWordQuery(searchQuery), Occur.SHOULD },
-            { nameof(SongMetadata.Author).GetMultiWordQuery(searchQuery), Occur.SHOULD },
-            { nameof(SongMetadata.Mapper).GetMultiWordQuery(searchQuery), Occur.SHOULD },
+            { fuzzyWordsQuery, Occur.SHOULD },
         };
 
         return booleanQuery;
-    }
-
-    private static Query GetMultiWordQuery(this string name, string searchQuery)
-    {
-        string[] words = searchQuery.Split(' ');
-        int wordsLength = words.Length;
-        SpanQuery[] queries = new SpanQuery[wordsLength];
-
-        for (int i = 0; i < wordsLength; i++)
-        {
-            queries[i] = new SpanMultiTermQueryWrapper<FuzzyQuery>(new FuzzyQuery(new Term(name, words[i])));
-        }
-
-        return new SpanNearQuery(queries, 2, true);
     }
 
     private static void AddToLuceneIndex(SongMetadata songMetadata, IndexWriter writer)
