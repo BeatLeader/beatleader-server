@@ -262,6 +262,12 @@ namespace BeatLeader_Server.Controllers
                         Timeset = s.Timeset,
                         Timepost = s.Timepost,
                         MaxStreak = s.MaxStreak,
+                        AccPP = s.AccPP,
+                        TechPP = s.TechPP,
+                        PassPP = s.PassPP,
+                        Weight = s.Weight,
+                        FcAccuracy = s.FcAccuracy,
+                        FcPp = s.FcPp, 
                         Player = new PlayerResponse
                         {
                             Id = s.Player.Id,

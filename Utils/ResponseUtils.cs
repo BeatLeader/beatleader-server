@@ -81,6 +81,7 @@ namespace BeatLeader_Server.Utils
             public string? Country { get; set; }
             public float FcAccuracy { get; set; }
             public float FcPp { get; set; }
+            public float Weight { get; set; }
             public string Replay { get; set; }
             public string Modifiers { get; set; }
             public int BadCuts { get; set; }
