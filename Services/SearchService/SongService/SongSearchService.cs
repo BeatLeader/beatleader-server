@@ -1,12 +1,9 @@
 ﻿using BeatLeader_Server.Models;
-using Lucene.Net.Analysis;
 using Lucene.Net.Analysis.Standard;
 using Lucene.Net.Documents;
 using Lucene.Net.Index;
-using Lucene.Net.QueryParsers.ComplexPhrase;
 using Lucene.Net.Sandbox.Queries;
 using Lucene.Net.Search;
-using Lucene.Net.Search.Spans;
 using Lucene.Net.Store;
 using Lucene.Net.Util;
 
