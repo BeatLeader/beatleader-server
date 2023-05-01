@@ -78,18 +78,23 @@ public static class SongSearchService
     {
         searchQuery = searchQuery.ToLower();
 
-        string[] words = searchQuery.Split(' ', '_', '-');
+        Console.WriteLine(searchQuery);
+        string[] words = searchQuery.Split(' ');
         int wordsLength = words.Length;
-        FuzzyLikeThisQuery fuzzyWordsQuery = new(wordsLength, new StandardAnalyzer(LuceneVersion.LUCENE_48));
-        fuzzyWordsQuery.AddTerms(searchQuery, nameof(SongMetadata.Name), 0.6f, 1);
-        fuzzyWordsQuery.AddTerms(searchQuery, nameof(SongMetadata.Author), 0.6f, 1);
-        fuzzyWordsQuery.AddTerms(searchQuery, nameof(SongMetadata.Mapper), 0.6f, 1);
+        FuzzyLikeThisQuery fuzzyWordsQueryName = new(wordsLength, new StandardAnalyzer(LuceneVersion.LUCENE_48));
+        fuzzyWordsQueryName.AddTerms(searchQuery, nameof(SongMetadata.Name), 0.7f, 1);
+        FuzzyLikeThisQuery fuzzyWordsQueryAuthor = new(wordsLength, new StandardAnalyzer(LuceneVersion.LUCENE_48));
+        fuzzyWordsQueryAuthor.AddTerms(searchQuery, nameof(SongMetadata.Author), 0.7f, 1);
+        FuzzyLikeThisQuery fuzzyWordsQueryMapper = new(wordsLength, new StandardAnalyzer(LuceneVersion.LUCENE_48));
+        fuzzyWordsQueryMapper.AddTerms(searchQuery, nameof(SongMetadata.Mapper), 0.7f, 1);
 
         BooleanQuery booleanQuery = new()
         {
             { new PrefixQuery(new Term(nameof(SongMetadata.Id), searchQuery)), Occur.SHOULD },
             { new PrefixQuery(new Term(nameof(SongMetadata.Hash), searchQuery)), Occur.SHOULD },
-            { fuzzyWordsQuery, Occur.SHOULD },
+            { fuzzyWordsQueryName, Occur.SHOULD },
+            { fuzzyWordsQueryAuthor, Occur.SHOULD },
+            { fuzzyWordsQueryMapper, Occur.SHOULD },
         };
 
         return booleanQuery;
