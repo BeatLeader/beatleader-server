@@ -652,6 +652,9 @@ namespace BeatLeader_Server.Controllers
             return _readContext
                     .Scores
                     .Where(s => s.PlayerId == id && s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned)
+                    .Include(s => s.Leaderboard)
+                    .ThenInclude(l => l.Difficulty)
+                    .ThenInclude(d => d.ModifiersRating)
                     .OrderBy(s => s.Metadata.Priority)
                     .Select(s => new ScoreResponseWithMyScore
                     {

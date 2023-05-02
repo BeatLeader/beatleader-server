@@ -117,7 +117,7 @@ namespace BeatLeader_Server.Controllers {
                 }
             }
 
-            return new ResponseWithMetadata<ScoreResponseWithMyScore>() {
+            var result = new ResponseWithMetadata<ScoreResponseWithMyScore>() {
                 Metadata = new Metadata() {
                     Page = page,
                     ItemsPerPage = count,
@@ -126,6 +126,9 @@ namespace BeatLeader_Server.Controllers {
                 Data = sequence
                     .Skip((page - 1) * count)
                     .Take(count)
+                    .Include(s => s.Leaderboard)
+                    .ThenInclude(l => l.Difficulty)
+                    .ThenInclude(d => d.ModifiersRating)
                     .Select(s => new ScoreResponseWithMyScore {
                         Id = s.Id,
                         BaseScore = s.BaseScore,
@@ -183,8 +186,18 @@ namespace BeatLeader_Server.Controllers {
                         AccLeft = s.AccLeft,
                         AccRight = s.AccRight,
                         MaxStreak = s.MaxStreak
-                    })
+                    }).ToList()
             };
+
+            var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
+
+            var myScores = _context.Scores.Where(s => s.PlayerId == userId && leaderboards.Contains(s.LeaderboardId)).Select(ToScoreResponseWithAcc).ToList();
+            foreach (var score in result.Data)
+            {
+                score.MyScore = myScores.FirstOrDefault(s => s.LeaderboardId == score.LeaderboardId);
+            }
+
+            return result;
         }
 
         [HttpGet("~/user/friendActivity")]
