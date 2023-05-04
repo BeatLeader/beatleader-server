@@ -441,8 +441,10 @@ namespace BeatLeader_Server.Utils
                     scoreForMaxScore = 20;
                 }
 
-                maxCounter.Increase();
-                maxScore += maxCounter.Multiplier * scoreForMaxScore;
+                if (note.isBlock) {
+                    maxCounter.Increase();
+                    maxScore += maxCounter.Multiplier * scoreForMaxScore;
+                }
 
                 if (note.score < 0)
                 {
