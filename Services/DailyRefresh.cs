@@ -26,6 +26,7 @@ namespace BeatLeader_Server.Services
                 {
                     await RefreshSteamPlayers();
                     await RefreshStats();
+                    await RefreshPatreon();
 
                     hoursUntil21 = 24;
                 }
@@ -101,6 +102,17 @@ namespace BeatLeader_Server.Services
 
                 var _playerController = scope.ServiceProvider.GetRequiredService<PlayerRefreshController>();
                 await _playerController.RefreshPlayersStats();
+            }
+        }
+
+        public async Task RefreshPatreon()
+        {
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+
+                var _patreonController = scope.ServiceProvider.GetRequiredService<PatreonController>();
+                await _patreonController.RefreshPatreon();
             }
         }
     }
