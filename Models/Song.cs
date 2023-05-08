@@ -16,6 +16,7 @@ namespace BeatLeader_Server.Models
         public string Mapper { get; set; }
         public int MapperId { get; set; }
         public string CoverImage { get; set; }
+        public string? FullCoverImage { get; set; }
         public string DownloadUrl { get; set; }
         public double Bpm { get; set; }
         public double Duration { get; set; }

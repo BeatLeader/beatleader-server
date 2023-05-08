@@ -12,10 +12,12 @@ namespace BeatLeader_Server.Services
     public class HourlyRefresh : BackgroundService
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
+        private readonly IConfiguration _configuration;
 
-        public HourlyRefresh(IServiceScopeFactory serviceScopeFactory)
+        public HourlyRefresh(IServiceScopeFactory serviceScopeFactory, IConfiguration configuration)
         {
             _serviceScopeFactory = serviceScopeFactory;
+            _configuration = configuration;
         }
         
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -67,6 +69,7 @@ namespace BeatLeader_Server.Services
             using (var scope = _serviceScopeFactory.CreateScope())
             {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+                var _s3Client = _configuration.GetS3Client();
 
                 var songs = await _context.Songs.Where(s => !s.Checked).OrderBy(s => s.Id).Include(s => s.Difficulties).ToListAsync();
 
@@ -96,6 +99,21 @@ namespace BeatLeader_Server.Services
                                     var songDiff = song.Difficulties.FirstOrDefault(d => d.DifficultyName == beatmap._difficulty && d.ModeName == set._beatmapCharacteristicName);
                                     if (songDiff != null) {
                                         songDiff.Requirements |= Models.Requirements.V3;
+                                    }
+                                }
+                            }
+                        }
+
+                        if (info._coverImageFilename != null) {
+                            var coverFile = archive.Entries.FirstOrDefault(e => e.Name.ToLower() == info._coverImageFilename.ToLower());
+                            if (coverFile != null) {
+                                using (var coverStream = coverFile.Open()) {
+                                    using (var ms = new MemoryStream(5))
+                                    {
+                                        await coverStream.CopyToAsync(ms);
+                                        var fileName = $"songcover-{song.Id}-" + info._coverImageFilename;
+                                        await _s3Client.UploadAsset(fileName, ms);
+                                        song.FullCoverImage = "https://cdn.assets.beatleader.xyz/" + fileName;
                                     }
                                 }
                             }
