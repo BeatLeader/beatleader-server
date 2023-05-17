@@ -113,7 +113,7 @@ namespace BeatLeader_Server.Services
                                         await coverStream.CopyToAsync(ms);
                                         var fileName = $"songcover-{song.Id}-" + info._coverImageFilename;
                                         await _s3Client.UploadAsset(fileName, ms);
-                                        song.FullCoverImage = "https://cdn.assets.beatleader.xyz/" + fileName;
+                                        song.FullCoverImage = "https://cdn.assets.beatleader.xyz/" + fileName.Replace(" ", "%20");
                                     }
                                 }
                             }

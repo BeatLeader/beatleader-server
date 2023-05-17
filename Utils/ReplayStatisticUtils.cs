@@ -337,7 +337,7 @@ namespace BeatLeader_Server.Utils
                 {
                     time = note.eventTime,
                     id = note.noteID,
-                    isBlock = param.colorType != 2,
+                    isBlock = note.eventType != NoteEventType.bomb,
                     score = scoreValue,
                     scoringType = param.scoringType,
                     spawnTime = note.spawnTime
