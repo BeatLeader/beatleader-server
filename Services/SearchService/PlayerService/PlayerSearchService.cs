@@ -118,6 +118,16 @@ public static class PlayerSearchService
             { softFuzzyQuery, Occur.SHOULD },
         };
 
+        if (searchQuery.Contains(' ') || searchQuery.Contains('_') || searchQuery.Contains('-'))
+        {
+            string[] words = searchQuery.Split(' ', '_', '-');
+
+            FuzzyLikeThisQuery fuzzyWordsQuery = new(words.Length, new StandardAnalyzer(LuceneVersion.LUCENE_48));
+            fuzzyWordsQuery.AddTerms(searchQuery, nameof(PlayerMetadata.Names), 0.6f, 1);
+
+            booleanQuery.Add(fuzzyWordsQuery, Occur.SHOULD);
+        }
+
         return booleanQuery;
     }
 

@@ -11,7 +11,7 @@ public static partial class MapListUtils
                                                  ReadAppContext context,
                                                  int page,
                                                  int count,
-                                                 out List<SongMetadata>? matches,
+                                                 out List<SongMetadata> matches,
                                                  out int totalMatches,
                                                  SortBy sortBy = SortBy.None,
                                                  Order order = Order.Desc,

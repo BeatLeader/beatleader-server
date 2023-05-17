@@ -510,7 +510,7 @@ namespace BeatLeader_Server.Controllers
             var sequence = _readContext.Leaderboards.AsQueryable();
             string? currentID = HttpContext.CurrentUserID(_readContext);
 
-            sequence = sequence.Filter(_readContext, page, count, out List<SongMetadata>? matches, out int totalMatches, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
+            sequence = sequence.Filter(_readContext, page, count, out List<SongMetadata> matches, out int totalMatches, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
 
             var result = new ResponseWithMetadata<LeaderboardInfoResponse>()
             {
@@ -584,7 +584,7 @@ namespace BeatLeader_Server.Controllers
                     Plays = showPlays ? lb.Scores.Count(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)) : 0
                 }).ToList();
 
-            if (matches?.Count > 0)
+            if (matches.Count > 0)
             {
                 List<string> ids = matches.Select(songMetadata => songMetadata.Id).ToList();
 

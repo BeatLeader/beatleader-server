@@ -11,7 +11,7 @@ public static partial class MapListUtils
 {
     private static IQueryable<Leaderboard> FilterBySearch(this IQueryable<Leaderboard> sequence,
                                                           string? search,
-                                                          out List<SongMetadata>? matches,
+                                                          out List<SongMetadata> matches,
                                                           ref Type type,
                                                           ref string? mode,
                                                           ref int? mapType,
@@ -30,9 +30,9 @@ public static partial class MapListUtils
                                                           ref int? dateFrom,
                                                           ref int? dateTo)
     {
-        if (string.IsNullOrEmpty(search))
+        if (string.IsNullOrEmpty(search)) // returns before search filters if truely empty
         {
-            matches = null;
+            matches = new List<SongMetadata>(0);
 
             return sequence;
         }
@@ -54,6 +54,13 @@ public static partial class MapListUtils
                                          ref techRatingTo,
                                          ref dateFrom,
                                          ref dateTo);
+
+        if (string.IsNullOrEmpty(search)) // returns after search filters to allow search filters to apply, but skips if search is truly empty
+        {
+            matches = new List<SongMetadata>(0);
+
+            return sequence;
+        }
 
         matches = SongSearchService.Search(search);
 
