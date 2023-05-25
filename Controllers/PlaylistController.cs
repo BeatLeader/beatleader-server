@@ -482,7 +482,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] float? techrating_to = null,
             [FromQuery] int? date_from = null,
             [FromQuery] int? date_to = null,
-            [FromQuery] bool duplicate_diffs = false)
+            [FromQuery] bool duplicate_diffs = false,
+            [FromQuery] string? title = null)
         {
             if (count > 2000) {
                 return Unauthorized("Count is too big. 2000 max");
@@ -555,6 +556,11 @@ namespace BeatLeader_Server.Controllers
                 owner = currentID,
                 syncURL = HttpContext.Request.GetDisplayUrl(),
             };
+
+            if (!string.IsNullOrEmpty(title))
+            {
+                playlist.playlistTitle = title;
+            }
 
             return JsonConvert.SerializeObject(playlist);
         }
