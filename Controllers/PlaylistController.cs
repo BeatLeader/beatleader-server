@@ -9,6 +9,7 @@ using Newtonsoft.Json;
 using System.Net;
 using BeatLeader_Server.Enums;
 using BeatLeader_Server.Services;
+using Microsoft.AspNetCore.Http.Extensions;
 using static BeatLeader_Server.Utils.ResponseUtils;
 using Type = BeatLeader_Server.Enums.Type;
 
@@ -551,7 +552,8 @@ namespace BeatLeader_Server.Controllers
             }
             playlist.customData = new CustomData
             {
-                owner = currentID
+                owner = currentID,
+                syncURL = HttpContext.Request.GetDisplayUrl(),
             };
 
             return JsonConvert.SerializeObject(playlist);
