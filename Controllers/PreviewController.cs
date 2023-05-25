@@ -103,6 +103,7 @@ namespace BeatLeader_Server.Controllers
             public string CoverImage { get; set; }
             public string SongName { get; set; }
             public float? Stars { get; set; }
+            public int? ScoreId { get; set; }
 
             public float Accuracy { get; set; }
             public string PlayerId { get; set; }
@@ -152,12 +153,72 @@ namespace BeatLeader_Server.Controllers
             } 
         }
 
+        [NonAction]
+        private async Task<ActionResult> GetFromScore(ScoreSelect? score) {
+            if (score == null)
+            {
+                return NotFound();
+            }
+
+            Image<Rgba32> avatarImage;
+            Image<Rgba32> coverImage;
+            Image<Rgba32>? overlayImage;
+
+            using (_serverTiming.TimeAction("images"))
+            {
+               var images = await Task.WhenAll(LoadRemoteImage(score.PlayerAvatar), LoadRemoteImage(score.CoverImage), LoadOverlayImage(score));
+               (avatarImage, coverImage, overlayImage) = (images[0], images[1], images[2]);
+            }
+
+            (Color diffColor, string diff) = DiffColorAndName(score.Difficulty);
+
+            Image<Rgba32>? result = null;
+            
+            using (_serverTiming.TimeAction("generate"))
+            {
+                result = await Task.Run(() => EmbedGenerator.Generate(
+                    score.PlayerName,
+                    score.SongName,
+                    (score.FullCombo ? "FC" : "") + (score.Modifiers.Length > 0 ? (score.FullCombo ? ", " : "") + String.Join(", ", score.Modifiers.Split(",")) : ""),
+                    diff,
+                    score.Accuracy,
+                    score.Rank,
+                    score.Pp,
+                    score.Stars ?? 0,
+                    coverImage,
+                    avatarImage,
+                    overlayImage,
+                    score.ProfileSettings?.Hue != null ? (int)score.ProfileSettings?.Hue : 0,
+                    score.ProfileSettings?.Saturation ?? 1,
+                    score.ProfileSettings?.LeftSaberColor?.Length > 0 ? Color.Parse(score.ProfileSettings.LeftSaberColor) : new Color(new Rgba32(250, 20, 255, 255)),
+                    score.ProfileSettings?.RightSaberColor?.Length > 0 ? Color.Parse(score.ProfileSettings.RightSaberColor) : new Color(new Rgba32(128, 0, 255, 255)),
+                    diffColor
+                ));
+            }
+            
+            MemoryStream ms = new MemoryStream();
+            result.SaveAsPng(ms);
+            ms.Position = 0;
+            if (score.ScoreId != null)
+            {
+                try
+                {
+                    await _s3Client.UploadPreview(score.ScoreId + "-preview.png", ms);
+                }
+                catch { }
+            }
+            ms.Position = 0;
+
+            return File(ms, "image/png");
+        }
+
         [HttpGet("~/preview/replay")]
         public async Task<ActionResult> Get(
             [FromQuery] string? playerID = null, 
             [FromQuery] string? id = null, 
             [FromQuery] string? difficulty = null, 
             [FromQuery] string? mode = null,
+            [FromQuery] string? link = null,
             [FromQuery] int? scoreId = null) {
 
             if (scoreId != null)
@@ -167,6 +228,9 @@ namespace BeatLeader_Server.Controllers
                 {
                     return File(stream, "image/png");
                 }
+            }
+            else if (link != null) {
+                return await GetLink(link);
             }
             else
             {
@@ -213,64 +277,74 @@ namespace BeatLeader_Server.Controllers
                         {
                             return await Get(scoreId: redirect.NewScoreId);
                         }
+                    } else {
+                        score.ScoreId = scoreId;
                     }
                 }
             }
 
-            if (score == null)
+            return await GetFromScore(score);
+        }
+
+        [NonAction]
+        public async Task<ActionResult> GetLink(string link) {
+            ReplayInfo? info = null;
+
+            if (!link.EndsWith("bsor")) {
+                return BadRequest("Not a BSOR");
+            }
+
+            using (var request = new HttpRequestMessage(HttpMethod.Get, link))
             {
+                try {
+                    Stream contentStream = await (await _client.SendAsync(request)).Content.ReadAsStreamAsync();
+
+                    (info, _) = await new AsyncReplayDecoder().StartDecodingStream(contentStream);
+                } catch { }
+            }
+
+            if (info == null) {
                 return NotFound();
             }
 
-            Image<Rgba32> avatarImage;
-            Image<Rgba32> coverImage;
-            Image<Rgba32>? overlayImage;
+            var score = await _context.Leaderboards
+                .Where(lb => lb.Song.Hash == info.hash && lb.Difficulty.DifficultyName == info.difficulty && lb.Difficulty.ModeName == info.mode)
+                .Include(s => s.Song)
+                .Include(s => s.Difficulty)
+                .Select(s => new ScoreSelect {
+                    SongId = s.Song.Id,
+                    CoverImage = s.Song.CoverImage,
+                    SongName = s.Song.Name,
+                    Stars = s.Difficulty.Stars,
+                    Difficulty = s.Difficulty.DifficultyName,
+                    Accuracy = s.Difficulty.MaxScore
+                })
+                .FirstOrDefaultAsync();
 
-            using (_serverTiming.TimeAction("images"))
+            var playerId = info.playerID;
+            long intId = Int64.Parse(playerId);
+            if (intId < 70000000000000000)
             {
-               var images = await Task.WhenAll(LoadRemoteImage(score.PlayerAvatar), LoadRemoteImage(score.CoverImage), LoadOverlayImage(score));
-               (avatarImage, coverImage, overlayImage) = (images[0], images[1], images[2]);
-            }
-
-            (Color diffColor, string diff) = DiffColorAndName(score.Difficulty);
-
-            Image<Rgba32>? result = null;
-            
-            using (_serverTiming.TimeAction("generate"))
-            {
-                result = await Task.Run(() => EmbedGenerator.Generate(
-                    score.PlayerName,
-                    score.SongName,
-                    (score.FullCombo ? "FC" : "") + (score.Modifiers.Length > 0 ? (score.FullCombo ? ", " : "") + String.Join(", ", score.Modifiers.Split(",")) : ""),
-                    diff,
-                    score.Accuracy,
-                    score.Rank,
-                    score.Pp,
-                    score.Stars ?? 0,
-                    coverImage,
-                    avatarImage,
-                    overlayImage,
-                    score.ProfileSettings?.Hue != null ? (int)score.ProfileSettings?.Hue : 0,
-                    score.ProfileSettings?.Saturation ?? 1,
-                    score.ProfileSettings?.LeftSaberColor?.Length > 0 ? Color.Parse(score.ProfileSettings.LeftSaberColor) : new Color(new Rgba32(250, 20, 255, 255)),
-                    score.ProfileSettings?.RightSaberColor?.Length > 0 ? Color.Parse(score.ProfileSettings.RightSaberColor) : new Color(new Rgba32(128, 0, 255, 255)),
-                    diffColor
-                ));
-            }
-            
-            MemoryStream ms = new MemoryStream();
-            result.SaveAsPng(ms);
-            ms.Position = 0;
-            if (scoreId != null)
-            {
-                try
-                {
-                    await _s3Client.UploadPreview(scoreId + "-preview.png", ms);
+                AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+                if (accountLink != null) {
+                    playerId = accountLink.SteamID.Length > 0 ? accountLink.SteamID : accountLink.PCOculusID;
                 }
-                catch { }
             }
-            ms.Position = 0;
-            return File(ms, "image/png");
+
+            var player = await _context.Players.Include(p => p.ProfileSettings).FirstOrDefaultAsync(p => p.Id == playerId);
+            if (player != null) {
+                score.PlayerAvatar = player.Avatar;
+                score.PlayerName = player.Name;
+                score.PlayerRole = player.Role;
+                score.PatreonFeatures = player.PatreonFeatures;
+                score.ProfileSettings = player.ProfileSettings;
+                score.PlayerId = playerId;
+            }
+
+            score.Accuracy = (float)info.score / score.Accuracy;
+            score.Modifiers = info.modifiers;
+
+            return await GetFromScore(score);
         }
 
         [NonAction]
