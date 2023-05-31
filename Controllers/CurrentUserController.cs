@@ -403,9 +403,7 @@ namespace BeatLeader_Server.Controllers
                 player.ProfileSettings = settings;
             }
 
-            if (Request.Query.ContainsKey("effectName")) {
-                settings.EffectName = effectName;
-            }
+            
             if (Request.Query.ContainsKey("profileAppearance"))
             {
                 settings.ProfileAppearance = profileAppearance;
@@ -417,6 +415,13 @@ namespace BeatLeader_Server.Controllers
             if (Request.Query.ContainsKey("saturation"))
             {
                 settings.Saturation = saturation;
+            }
+            if (Request.Query.ContainsKey("effectName")) {
+                settings.EffectName = effectName;
+                if (effectName?.Contains("Booster") == true) {
+                    settings.Hue = null;
+                    settings.Saturation = null;
+                }
             }
             if (Request.Query.ContainsKey("starredFriends")) {
                 settings.StarredFriends = starredFriends;

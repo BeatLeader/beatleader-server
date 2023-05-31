@@ -145,6 +145,11 @@ namespace BeatLeader_Server.Controllers
                 var username = claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
                 var discriminator = claims.FirstOrDefault(c => c.Type == "urn:discord:user:discriminator")?.Value;
 
+                ulong ulongId = 0;
+                if (!ulong.TryParse(id, out ulongId)) {
+                    return Unauthorized("Failed to parse Discord ID, please ping NSGolova");
+                }
+
                 string? token = auth?.Properties?.Items[".Token.access_token"];
                 string? refreshToken = auth?.Properties?.Items[".Token.refresh_token"];
                 string? timestamp = auth?.Properties?.Items[".Token.expires_at"];
@@ -168,6 +173,7 @@ namespace BeatLeader_Server.Controllers
                     });
 
                     await _context.SaveChangesAsync();
+                    await PlayerUtils.UpdateBoosterRole(_context, ulongId);
                 }
             }
             else
@@ -337,6 +343,7 @@ namespace BeatLeader_Server.Controllers
                     if (link4 != null)
                     {
                         _context.DiscordLinks.Remove(link4);
+                        PlayerUtils.UpdateBoosterRole(player, null);
                     }
                     break;
                 default:

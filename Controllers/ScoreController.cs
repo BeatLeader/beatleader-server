@@ -35,17 +35,60 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/score/{id}")]
-        public async Task<ActionResult<Score>> GetScore(int id)
+        public async Task<ActionResult<ScoreResponse>> GetScore(int id)
         {
             var score = _readContext
                 .Scores
                 .Where(l => l.Id == id)
-                .Include(el => el.Player).ThenInclude(el => el.PatreonFeatures)
-                .Include(el => el.Player).ThenInclude(el => el.ProfileSettings)
+                .Select(s => new ScoreResponse {
+                    Id = s.Id,
+                    PlayerId = s.PlayerId,
+                    BaseScore = s.BaseScore,
+                    ModifiedScore = s.ModifiedScore,
+                    Accuracy = s.Accuracy,
+                    Pp = s.Pp,
+                    FcAccuracy = s.FcAccuracy,
+                    FcPp = s.FcPp,
+                    Rank = s.Rank,
+                    Replay = s.Replay,
+                    Modifiers = s.Modifiers,
+                    BadCuts = s.BadCuts,
+                    MissedNotes = s.MissedNotes,
+                    BombCuts = s.BombCuts,
+                    WallsHit = s.WallsHit,
+                    Pauses = s.Pauses,
+                    FullCombo = s.FullCombo,
+                    Hmd = s.Hmd,
+                    Controller = s.Controller,
+                    MaxCombo = s.MaxCombo,
+                    Timeset = s.Timeset,
+                    Timepost = s.Timepost,
+                    Platform = s.Platform,
+                    LeaderboardId = s.LeaderboardId,
+                    Player = new PlayerResponse
+                    {
+                        Id = s.Player.Id,
+                        Name = s.Player.Name,
+                        Platform = s.Player.Platform,
+                        Avatar = s.Player.Avatar,
+                        Country = s.Player.Country,
+
+                        Pp = s.Player.Pp,
+                        Rank = s.Player.Rank,
+                        CountryRank = s.Player.CountryRank,
+                        Role = s.Player.Role,
+                        Socials = s.Player.Socials,
+                        ProfileSettings = s.Player.ProfileSettings,
+                        PatreonFeatures = s.Player.PatreonFeatures,
+                        Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                    },
+                    ScoreImprovement = s.ScoreImprovement
+                })
                 .FirstOrDefault();
 
             if (score != null)
             {
+                score.Player = PostProcessSettings(score.Player);
                 return score;
             }
             else

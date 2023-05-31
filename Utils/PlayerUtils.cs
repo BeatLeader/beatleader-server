@@ -4,6 +4,8 @@ using BeatLeader_Server.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Microsoft.EntityFrameworkCore;
+using BeatLeader_Server.Bot;
+using Discord;
 
 namespace BeatLeader_Server.Utils
 {
@@ -446,6 +448,31 @@ namespace BeatLeader_Server.Utils
             else
             {
                 return response.Item2;
+            }
+        }
+
+        public static void UpdateBoosterRole(Player player, string? role)
+        {
+            player.Role = string.Join(",", player.Role.Split(",").Where(r => r != "booster"));
+            if (role != null) {
+                player.Role += "," + role;
+            }
+        }
+
+        public static async Task UpdateBoosterRole(AppContext _context, ulong userId) {
+            var discordLink = _context.DiscordLinks.FirstOrDefault(d => d.DiscordId == userId.ToString());
+            if (discordLink != null) {
+                var player = _context.Players.FirstOrDefault(p => p.Id == discordLink.Id);
+                var user = await ((IGuild)BotService.Client.GetGuild(BotService.BLServerID)).GetUserAsync(userId, CacheMode.AllowDownload);
+
+                if (user != null && player != null) {
+                    if (user.RoleIds.Contains(BotService.BLBoosterRoleID)) {
+                        UpdateBoosterRole(player, "booster");
+                    } else {
+                        UpdateBoosterRole(player, null);
+                    }
+                    _context.SaveChanges();
+                }
             }
         }
     }
