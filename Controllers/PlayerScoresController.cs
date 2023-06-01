@@ -511,7 +511,7 @@ namespace BeatLeader_Server.Controllers
             switch (sortBy)
             {
                 case "date":
-                    return HistogrammValuee(order, sequence.Select(s => int.Parse(s.Timeset)).ToList(), (int)(batch ?? 60 * 60 * 24), count);
+                    return HistogrammValuee(order, sequence.Select(s => s.Timepost).ToList(), (int)(batch ?? 60 * 60 * 24), count);
                 case "pp":
                     return HistogrammValuee(order, sequence.Select(s => s.Pp).ToList(), batch ?? 5, count);
                 case "acc":
@@ -639,8 +639,8 @@ namespace BeatLeader_Server.Controllers
                     .ToList();
             if (result.Count == 0) {
                 var player = _context.Players.Where(p => p.Id == id).FirstOrDefault();
-
-                result = new List<PlayerScoreStatsHistory> { new PlayerScoreStatsHistory { Rank = player?.Rank ?? 0, Pp = player?.Pp ?? 0, CountryRank = player?.CountryRank ?? 0 } };
+                int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - 60 * 60 * 24;
+                result = new List<PlayerScoreStatsHistory> { new PlayerScoreStatsHistory { Timestamp = timeset, Rank = player?.Rank ?? 0, Pp = player?.Pp ?? 0, CountryRank = player?.CountryRank ?? 0 } };
             }
 
             return result;
