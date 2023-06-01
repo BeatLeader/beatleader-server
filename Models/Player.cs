@@ -44,6 +44,7 @@ namespace BeatLeader_Server.Models
         public int LastWeekCountryRank { get; set; }
 
         public bool Banned { get; set; }
+        public bool Bot { get; set; }
         public bool Inactive { get; set; }
 
         public string ExternalProfileUrl { get; set; } = "";

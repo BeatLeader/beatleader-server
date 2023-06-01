@@ -12,7 +12,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Prometheus.Client;
 using static BeatLeader_Server.Utils.ResponseUtils;
@@ -352,7 +351,7 @@ namespace BeatLeader_Server.Controllers
             
             var info = replay.info; // replayDecoder.replay.info;
 
-            if (player.Banned) return (BadRequest("You are banned!"), false);
+            if (!player.Bot && player.Banned) return (BadRequest("You are banned!"), false);
             if (resultScore.BaseScore > maxScore) return (BadRequest("Score is bigger than max possible on this map!"), false);
             if (currentScore != null && !currentScore.Modifiers.Contains("OP") &&
                     ((currentScore.Pp != 0 && currentScore.Pp >= resultScore.Pp) ||
@@ -366,6 +365,10 @@ namespace BeatLeader_Server.Controllers
             }
             
             resultScore.Player = player;
+
+            resultScore.Banned = player.Bot;
+            resultScore.Bot = player.Bot;
+
             int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             resultScore.Timepost = timeset;
             if (currentScore != null) {
@@ -480,7 +483,9 @@ namespace BeatLeader_Server.Controllers
                     player.ScoreStats.LastUnrankedScoreTime = timeset;
                 }
                 player.ScoreStats.LastScoreTime = timeset;
-                leaderboard.Plays++;
+                if (!player.Bot) {
+                    leaderboard.Plays++;
+                }
 
                 using (_serverTiming.TimeAction("db"))
                 {
@@ -499,49 +504,55 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            _context.ChangeTracker.AutoDetectChangesEnabled = false;
-            var status = leaderboard.Difficulty.Status;
-            var isRanked = status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.inevent;
+            float pp = 0; 
+            int rank = 0; 
+            int countryRank = 0;
 
-            var rankedScores = (isRanked 
-                    ?
-                _context
-                    .Scores
-                    .Where(s => s.LeaderboardId == leaderboard.Id && s.Pp <= resultScore.Pp && !s.Banned)
-                    .OrderByDescending(el => Math.Round(el.Pp, 2))
-                    .ThenByDescending(el => Math.Round(el.Accuracy, 4))
-                    .ThenBy(el => el.Timeset)
-                    .Select(s => new { Id = s.Id, Rank = s.Rank })
-                    :
-                _context
-                    .Scores
-                    .Where(s => s.LeaderboardId == leaderboard.Id && s.ModifiedScore <= resultScore.ModifiedScore && !s.Banned)
-                    .OrderByDescending(el => el.ModifiedScore)
-                    .ThenByDescending(el => Math.Round(el.Accuracy, 4))
-                    .ThenBy(el => el.Timeset)
-                    .Select(s => new { Id = s.Id, Rank = s.Rank })
-            ).ToList();
+            if (!player.Bot) {
+                _context.ChangeTracker.AutoDetectChangesEnabled = false;
+                var status = leaderboard.Difficulty.Status;
+                var isRanked = status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.inevent;
 
-            int topRank = rankedScores.Count > 0 ? rankedScores[0].Rank : _context
-                .Scores.Count(s => s.LeaderboardId == leaderboard.Id) + 1;
+                var rankedScores = (isRanked 
+                        ?
+                    _context
+                        .Scores
+                        .Where(s => s.LeaderboardId == leaderboard.Id && s.Pp <= resultScore.Pp && !s.Banned)
+                        .OrderByDescending(el => Math.Round(el.Pp, 2))
+                        .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                        .ThenBy(el => el.Timeset)
+                        .Select(s => new { Id = s.Id, Rank = s.Rank })
+                        :
+                    _context
+                        .Scores
+                        .Where(s => s.LeaderboardId == leaderboard.Id && s.ModifiedScore <= resultScore.ModifiedScore && !s.Banned)
+                        .OrderByDescending(el => el.ModifiedScore)
+                        .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                        .ThenBy(el => el.Timeset)
+                        .Select(s => new { Id = s.Id, Rank = s.Rank })
+                ).ToList();
 
-            if (currentScore?.Rank < topRank) {
-                topRank--;
-            }
+                int topRank = rankedScores.Count > 0 ? rankedScores[0].Rank : _context
+                    .Scores.Count(s => s.LeaderboardId == leaderboard.Id) + 1;
 
-            resultScore.Rank = topRank;
-            _context.Entry(resultScore).Property(x => x.Rank).IsModified = true;
-
-            foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
-            {
-                var score = _context.Scores.Local.FirstOrDefault(ls => ls.Id == s.Id);
-                if (score == null) {
-                    score = new Score() { Id = s.Id };
-                    _context.Scores.Attach(score);
+                if (currentScore?.Rank < topRank) {
+                    topRank--;
                 }
-                score.Rank = i + topRank + 1;
+
+                resultScore.Rank = topRank;
+                _context.Entry(resultScore).Property(x => x.Rank).IsModified = true;
+
+                foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
+                {
+                    var score = _context.Scores.Local.FirstOrDefault(ls => ls.Id == s.Id);
+                    if (score == null) {
+                        score = new Score() { Id = s.Id };
+                        _context.Scores.Attach(score);
+                    }
+                    score.Rank = i + topRank + 1;
                     
-                _context.Entry(score).Property(x => x.Rank).IsModified = true;
+                    _context.Entry(score).Property(x => x.Rank).IsModified = true;
+                }
             }
 
             string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
@@ -560,8 +571,9 @@ namespace BeatLeader_Server.Controllers
 
                 await transaction.CommitAsync();
             }
-
-            (float pp, int rank, int countryRank) = _context.RecalculatePPAndRankFaster(player);
+            if (!player.Bot) {
+                (pp, rank, countryRank) = _context.RecalculatePPAndRankFaster(player);
+            }
             
             context.Response.OnCompleted(async () => {
                 await PostUploadAction(
@@ -611,7 +623,7 @@ namespace BeatLeader_Server.Controllers
                 improvement.Rank = resultScore.Rank - currentScore.Rank;
             }
 
-            if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
+            if (!player.Bot && leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
                 _context.RecalculatePPAndRankFast(player);
             }
 
@@ -830,7 +842,7 @@ namespace BeatLeader_Server.Controllers
                 await ScoresSocketController.TryPublishNewScore(resultScore, _configuration, _context);
                 await GeneralSocketController.ScoreWasAccepted(resultScore, _configuration, _context);
 
-                if (leaderboard.Difficulty.Status == DifficultyStatus.ranked && resultScore.Rank == 1)
+                if (leaderboard.Difficulty.Status == DifficultyStatus.ranked && resultScore.Rank == 1 && !player.Bot)
                 {
                     var dsClient = top1DSClient();
 

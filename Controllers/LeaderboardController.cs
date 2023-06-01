@@ -46,8 +46,13 @@ namespace BeatLeader_Server.Controllers
         {
             var currentContext = _readContext;
 
-            string currentID = HttpContext.CurrentUserID(currentContext);
-            var currentPlayer = await currentContext.Players.FindAsync(currentID);
+            string? currentID = HttpContext.CurrentUserID(currentContext);
+            Player? currentPlayer = currentID != null ? await currentContext
+                .Players
+                .Include(p => p.ProfileSettings)
+                .FirstOrDefaultAsync(p => p.Id == currentID) : null;
+
+            bool showBots = currentPlayer?.ProfileSettings?.ShowBots ?? false;
 
             bool isRt = (currentPlayer != null && 
                             (currentPlayer.Role.Contains("admin") || 
@@ -159,18 +164,18 @@ namespace BeatLeader_Server.Controllers
                 if (countries == null)
                 {
                     if (friendsList != null) {
-                        scoreQuery = scoreQuery.Where(s => !s.Banned && friendsList.Contains(s.PlayerId));
+                        scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)) && friendsList.Contains(s.PlayerId));
                     } else if (voters) {
-                        scoreQuery = scoreQuery.Where(s => !s.Banned && s.RankVoting != null);
+                        scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)) && s.RankVoting != null);
                     }
                     else {
-                        scoreQuery = scoreQuery.Where(s => !s.Banned);
+                        scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)));
                     }
                 } else {
                     if (friendsList != null) {
-                        scoreQuery = scoreQuery.Where(s => !s.Banned && friendsList.Contains(s.PlayerId) && countries.ToLower().Contains(s.Player.Country.ToLower()));
+                        scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)) && friendsList.Contains(s.PlayerId) && countries.ToLower().Contains(s.Player.Country.ToLower()));
                     } else {
-                        scoreQuery = scoreQuery.Where(s => !s.Banned && countries.ToLower().Contains(s.Player.Country.ToLower()));
+                        scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)) && countries.ToLower().Contains(s.Player.Country.ToLower()));
                     }
                 }
 

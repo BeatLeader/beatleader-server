@@ -154,17 +154,25 @@ namespace BeatLeader_Server.Controllers
                 scoreStats.TopHMD = hmds.MaxBy(s => s.Value).Key;
             }
 
-            scoreStats.TotalPlayCount = allScores.Count();
-            scoreStats.UnrankedPlayCount = unrankedScores.Count();
-            scoreStats.RankedPlayCount = rankedScores.Count();
+            int allScoresCount = allScores.Count();
+            int unrankedScoresCount = unrankedScores.Count();
+            int rankedScoresCount = rankedScores.Count();
+
+            scoreStats.TotalPlayCount = allScoresCount;
+            scoreStats.UnrankedPlayCount = unrankedScoresCount;
+            scoreStats.RankedPlayCount = rankedScoresCount;
 
             if (scoreStats.TotalPlayCount > 0)
             {
-                int count = allScores.Count() / 2;
+                int middle = (int)MathF.Round(allScoresCount / 2f);
                 scoreStats.TotalScore = allScores.Sum(s => (long)s.ModifiedScore);
                 scoreStats.AverageAccuracy = allScores.Average(s => s.Accuracy);
                 scoreStats.TopAccuracy = allScores.Max(s => s.Accuracy);
-                scoreStats.MedianAccuracy = allScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
+                if (allScoresCount % 2 == 1) {
+                    scoreStats.MedianAccuracy = allScores.OrderByDescending(s => s.Accuracy).ElementAt(middle).Accuracy;
+                } else {
+                    scoreStats.MedianAccuracy = allScores.OrderByDescending(s => s.Accuracy).Skip(middle - 1).Take(2).Average(s => s.Accuracy);
+                }
                 scoreStats.AverageRank = allScores.Average(s => (float)s.Rank);
                 scoreStats.LastScoreTime = allScores.MaxBy(s => s.Timeset).Timeset;
 
@@ -182,7 +190,6 @@ namespace BeatLeader_Server.Controllers
 
             if (scoreStats.UnrankedPlayCount > 0)
             {
-                int count = unrankedScores.Count() / 2;
                 scoreStats.TotalUnrankedScore = unrankedScores.Sum(s => (long)s.ModifiedScore);
                 scoreStats.AverageUnrankedAccuracy = unrankedScores.Average(s => s.Accuracy);
                 scoreStats.TopUnrankedAccuracy = unrankedScores.Max(s => s.Accuracy);
@@ -199,7 +206,7 @@ namespace BeatLeader_Server.Controllers
 
             if (scoreStats.RankedPlayCount > 0)
             {
-                int count = rankedScores.Count() / 2;
+                int middle = (int)MathF.Round(rankedScoresCount / 2f);
                 scoreStats.TotalRankedScore = rankedScores.Sum(s => (long)s.ModifiedScore);
                 scoreStats.AverageRankedAccuracy = rankedScores.Average(s => s.Accuracy);
 
@@ -237,7 +244,12 @@ namespace BeatLeader_Server.Controllers
                 }
                 scoreStats.AverageWeightedRankedRank = sum / weights;
 
-                scoreStats.MedianRankedAccuracy = rankedScores.OrderByDescending(s => s.Accuracy).ElementAt(count).Accuracy;
+                if (rankedScoresCount % 2 == 1) {
+                    scoreStats.MedianRankedAccuracy = rankedScores.OrderByDescending(s => s.Accuracy).ElementAt(middle).Accuracy;
+                } else {
+                    scoreStats.MedianRankedAccuracy = rankedScores.OrderByDescending(s => s.Accuracy).Skip(middle - 1).Take(2).Average(s => s.Accuracy);
+                }
+
                 scoreStats.TopRankedAccuracy = rankedScores.Max(s => s.Accuracy);
                 scoreStats.TopPp = rankedScores.Max(s => s.Pp);
                 scoreStats.TopBonusPP = rankedScores.Max(s => s.BonusPp);
@@ -480,7 +492,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
             var allScores =
-                _context.Scores.Where(s => !s.Banned && !s.IgnoreForStats).Select(s => new SubScore
+                _context.Scores.Where(s => (!s.Banned || s.Bot) && !s.IgnoreForStats).Select(s => new SubScore
                 {
                     PlayerId = s.PlayerId,
                     Platform = s.Platform,
@@ -503,7 +515,7 @@ namespace BeatLeader_Server.Controllers
 
             var players = _context
                     .Players
-                    .Where(p => !p.Banned && p.ScoreStats != null)
+                    .Where(p => (!p.Banned || p.Bot) && p.ScoreStats != null)
                     .OrderBy(p => p.Rank)
                     .Select(p => new { p.Id, p.ScoreStats })
                     .ToList();

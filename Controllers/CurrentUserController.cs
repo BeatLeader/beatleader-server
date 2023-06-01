@@ -273,6 +273,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? leftSaberColor = null,
             [FromQuery] string? rightSaberColor = null,
             [FromQuery] string? starredFriends = null,
+            [FromQuery] bool? showBots = null,
             [FromQuery] string? id = null)
         {
             string userId = GetId();
@@ -486,6 +487,10 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
                 settings.RightSaberColor = rightSaberColor;
+            }
+            if (Request.Query.ContainsKey("showBots"))
+            {
+                settings.ShowBots = showBots ?? false;
             }
 
             await _context.SaveChangesAsync();
@@ -1200,7 +1205,11 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpPost("~/user/ban")]
-        public async Task<ActionResult> Ban([FromQuery] string? id = null, [FromQuery] string? reason = null, [FromQuery] int? duration = null)
+        public async Task<ActionResult> Ban(
+            [FromQuery] string? id = null, 
+            [FromQuery] string? reason = null, 
+            [FromQuery] int? duration = null,
+            [FromQuery] bool? bot = null)
         {
             string userId = GetId();
 
@@ -1234,6 +1243,9 @@ namespace BeatLeader_Server.Controllers
             }
 
             player.Banned = true;
+            if (bot != null) {
+                player.Bot = bot ?? false;
+            }
 
             Ban ban = new Ban {
                 PlayerId = player.Id,
