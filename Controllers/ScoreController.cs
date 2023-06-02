@@ -380,7 +380,25 @@ namespace BeatLeader_Server.Controllers
                 hash = hash.Substring(0, 40);
             }
 
-            PlayerResponse? currentPlayer = null;
+            PlayerResponse? currentPlayer = 
+                await _context
+                .Players
+                .Select(p => new PlayerResponse {
+                     Id = p.Id,
+                    Name = p.Name,
+                    Platform = p.Platform,
+                    Avatar = p.Avatar,
+                    Country = p.Country,
+
+                    Pp = p.Pp,
+                    Rank = p.Rank,
+                    CountryRank = p.CountryRank,
+                    Role = p.Role,
+                    Socials = p.Socials,
+                    ProfileSettings = p.ProfileSettings,
+                    Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                })
+                .FirstOrDefaultAsync(p => p.Id == player);
             var song = _readContext.Songs.Select(s => new { Id = s.Id, Hash = s.Hash }).FirstOrDefault(s => s.Hash == hash);
             if (song == null) {
                 return result;
@@ -402,9 +420,10 @@ namespace BeatLeader_Server.Controllers
 
             var leaderboardId = song.Id + SongUtils.DiffForDiffName(diff).ToString() + modeValue.ToString();
 
+            bool showBots = currentPlayer?.ProfileSettings?.ShowBots ?? false;
             IQueryable<Score> query = _readContext
                 .Scores
-                .Where(s => !s.Banned && s.LeaderboardId == leaderboardId)
+                .Where(s => (!s.Banned || (s.Bot && showBots)) && s.LeaderboardId == leaderboardId)
                 .OrderBy(p => p.Rank);
 
             
@@ -549,6 +568,7 @@ namespace BeatLeader_Server.Controllers
                         Avatar = s.Player.Avatar,
                         Country = s.Player.Country,
 
+                        Bot = s.Player.Bot,
                         Pp = s.Player.Pp,
                         Rank = s.Player.Rank,
                         CountryRank = s.Player.CountryRank,
@@ -580,14 +600,16 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            foreach (var item in resultList)
-            {
-                item.Player = PostProcessSettings(item.Player);
-            }
-
             for (int i = 0; i < resultList.Count; i++)
             {
-                resultList[i].Rank = i + (page - 1) * count + 1;
+                var score = resultList[i];
+
+                score.Player = PostProcessSettings(score.Player);
+                score.Rank = i + (page - 1) * count + 1;
+
+                if (score.Player.Bot) {
+                    score.Player.Name += " [BOT]";
+                }
             }
             result.Data = resultList;
 

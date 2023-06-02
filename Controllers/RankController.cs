@@ -422,8 +422,10 @@ namespace BeatLeader_Server.Controllers
                     await dsClient.SendMessageAsync(message);
                 }
 
-                leaderboard.Qualification.DiscordChannelId = (await _nominationsForum.OpenNomination(currentPlayer.Name, leaderboard)).ToString();
-                leaderboard.Qualification.DiscordRTChannelId = (await _rtNominationsForum.OpenNomination(currentPlayer, leaderboard)).ToString();
+                var mapper = _context.Players.Include(p => p.Socials).FirstOrDefault(p => p.MapperId == leaderboard.Song.MapperId);
+
+                leaderboard.Qualification.DiscordChannelId = (await _nominationsForum.OpenNomination(mapper?.Name ?? currentPlayer.Name, leaderboard)).ToString();
+                leaderboard.Qualification.DiscordRTChannelId = (await _rtNominationsForum.OpenNomination(mapper ?? currentPlayer, leaderboard)).ToString();
                 await _context.SaveChangesAsync();
             }
 

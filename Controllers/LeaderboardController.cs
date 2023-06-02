@@ -280,6 +280,7 @@ namespace BeatLeader_Server.Controllers
                             Avatar = s.Player.Avatar,
                             Country = s.Player.Country,
 
+                            Bot = s.Player.Bot,
                             Pp = s.Player.Pp,
                             Rank = s.Player.Rank,
                             CountryRank = s.Player.CountryRank,

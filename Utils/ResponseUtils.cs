@@ -19,6 +19,8 @@ namespace BeatLeader_Server.Utils
             public string Avatar { get; set; } = "";
             public string Country { get; set; } = "not set";
 
+            public bool Bot { get; set; }
+
             public float Pp { get; set; }
             public int Rank { get; set; }
             public int CountryRank { get; set; }
@@ -52,7 +54,7 @@ namespace BeatLeader_Server.Utils
 
             public bool Banned { get; set; }
             public bool Inactive { get; set; }
-            public bool Bot { get; set; }
+            
             public Ban? BanDescription { get; set; }
 
             public string ExternalProfileUrl { get; set; } = "";
