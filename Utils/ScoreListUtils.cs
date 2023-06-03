@@ -49,9 +49,6 @@ namespace BeatLeader_Server.Utils
                 case "timing":
                     sequence = sequence.Order(order, t => (t.LeftTiming + t.RightTiming) / 2);
                     break;
-                case "mistakes":
-                    sequence = sequence.Order(order, t => t.BadCuts + t.BombCuts + t.MissedNotes + t.WallsHit);
-                    break;
                 case "stars":
                     sequence = sequence
                                 .Include(lb => lb.Leaderboard)
