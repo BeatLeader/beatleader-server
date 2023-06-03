@@ -56,6 +56,9 @@ namespace BeatLeader_Server.Utils
                                 .Order(order, s => s.Leaderboard.Difficulty.Stars)
                                 .Where(s => s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked);
                     break;
+                case "mistakes":
+                    sequence = sequence.Order(order, t => t.BadCuts + t.BombCuts + t.MissedNotes + t.WallsHit);
+                    break;
                 default:
                     break;
             }

@@ -281,6 +281,9 @@ namespace BeatLeader_Server.Controllers
                                     .Order(order, s => s.Leaderboard.Difficulty.Stars)
                                     .Where(s => s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked);
                         break;
+                    case "mistakes":
+                        sequence = sequence.Order(order, t => t.BadCuts + t.MissedNotes + t.BombCuts + t.WallsHit);
+                        break;
                     default:
                         break;
                 }
@@ -477,6 +480,9 @@ namespace BeatLeader_Server.Controllers
                                     .Order(order, s => s.Leaderboard.Difficulty.Stars)
                                     .Where(s => s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked);
                         break;
+                    case "mistakes":
+                        sequence = sequence.Order(order, t => t.BadCuts + t.MissedNotes + t.BombCuts + t.WallsHit);
+                        break;
                     default:
                         break;
                 }
@@ -524,6 +530,8 @@ namespace BeatLeader_Server.Controllers
                     return HistogrammValuee(order, sequence.Select(s => s.Rank).ToList(), (int)(batch ?? 1), count);
                 case "stars":
                     return HistogrammValuee(order, sequence.Select(s => s.Leaderboard.Difficulty.Stars ?? 0).ToList(), batch ?? 0.15f, count);
+                case "mistakes":
+                    return HistogrammValuee(order, sequence.Select(s => s.BadCuts + s.MissedNotes + s.BombCuts + s.WallsHit).ToList(), (int)(batch ?? 1), count);    
                 default:
                     return BadRequest();
             }

@@ -93,6 +93,9 @@ namespace BeatLeader_Server.Controllers {
                     case "stars":
                         sequence = sequence.Order(order, t => t.Leaderboard.Difficulty.Stars);
                         break;
+                    case "mistakes":
+                        sequence = sequence.Order(order, t => t.BadCuts + t.BombCuts + t.MissedNotes + t.WallsHit);
+                        break;
                     default:
                         break;
                 }
