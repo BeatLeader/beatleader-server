@@ -229,9 +229,6 @@ namespace BeatLeader_Server.Controllers
                     case "rank":
                         scoreQuery = scoreQuery.Order(oppositeOrder, s => s.Rank);
                         break;
-                    case "mistakes":
-                        scoreQuery = scoreQuery.Order(order, s => s.BadCuts + s.MissedNotes + s.BombCuts + s.WallsHit);
-                        break;
                     case "maxStreak":
                         scoreQuery = scoreQuery.Order(order, s => s.MaxStreak).ThenOrder(oppositeOrder, s => s.Rank);
                         break;
