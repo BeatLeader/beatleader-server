@@ -572,6 +572,7 @@ namespace BeatLeader_Server.Controllers
                         BonusPp = s.BonusPp,
                         Rank = s.Rank,
                         Replay = s.Replay,
+                        Offsets = s.ReplayOffsets,
                         Modifiers = s.Modifiers,
                         BadCuts = s.BadCuts,
                         MissedNotes = s.MissedNotes,
