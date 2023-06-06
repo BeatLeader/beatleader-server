@@ -26,41 +26,45 @@ namespace BeatLeader_Server.Utils
             int? time_to = null,
             int? eventId = null)
         {
+            IOrderedQueryable<Score>? orderedSequence = null;
             switch (sortBy)
             {
                 case "date":
-                    sequence = sequence.Order(order, t => t.Timepost);
+                    orderedSequence = sequence.Order(order, t => t.Timepost);
                     break;
                 case "pp":
-                    sequence = sequence.Order(order, t => t.Pp);
+                    orderedSequence = sequence.Order(order, t => t.Pp);
                     break;
                 case "acc":
-                    sequence = sequence.Order(order, t => t.Accuracy);
+                    orderedSequence = sequence.Order(order, t => t.Accuracy);
                     break;
                 case "pauses":
-                    sequence = sequence.Order(order, t => t.Pauses);
+                    orderedSequence = sequence.Order(order, t => t.Pauses);
                     break;
                 case "rank":
-                    sequence = sequence.Order(order, t => t.Rank);
+                    orderedSequence = sequence.Order(order, t => t.Rank);
                     break;
                 case "maxStreak":
-                    sequence = sequence.Where(s => !s.IgnoreForStats).Order(order, t => t.MaxStreak);
+                    orderedSequence = sequence.Where(s => !s.IgnoreForStats).Order(order, t => t.MaxStreak);
                     break;
                 case "timing":
-                    sequence = sequence.Order(order, t => (t.LeftTiming + t.RightTiming) / 2);
+                    orderedSequence = sequence.Order(order, t => (t.LeftTiming + t.RightTiming) / 2);
                     break;
                 case "stars":
-                    sequence = sequence
+                    orderedSequence = sequence
                                 .Include(lb => lb.Leaderboard)
                                 .ThenInclude(lb => lb.Difficulty)
-                                .Order(order, s => s.Leaderboard.Difficulty.Stars)
-                                .Where(s => s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked);
+                                .Where(s => s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked)
+                                .Order(order, s => s.Leaderboard.Difficulty.Stars);
                     break;
                 case "mistakes":
-                    sequence = sequence.Order(order, t => t.BadCuts + t.BombCuts + t.MissedNotes + t.WallsHit);
+                    orderedSequence = sequence.Order(order, t => t.BadCuts + t.BombCuts + t.MissedNotes + t.WallsHit);
                     break;
                 default:
                     break;
+            }
+            if (orderedSequence != null) {
+                sequence = orderedSequence.ThenBy(s => s.Timepost);
             }
             if (search != null)
             {

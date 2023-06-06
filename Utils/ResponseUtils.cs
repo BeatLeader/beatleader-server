@@ -80,7 +80,6 @@ namespace BeatLeader_Server.Utils
             public float AccPP { get; set; }
             public float TechPP { get; set; }
             public int Rank { get; set; }
-            public int CountryRank { get; set; }
             public string? Country { get; set; }
             public float FcAccuracy { get; set; }
             public float FcPp { get; set; }
