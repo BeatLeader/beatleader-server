@@ -20,18 +20,22 @@ namespace BeatLeader_Server.Controllers
         private readonly IServerTiming _serverTiming;
         private readonly IConfiguration _configuration;
 
+        private readonly LeaderboardController _leaderboardController;
+
         public ScoreController(
             AppContext context,
             ReadAppContext readContext,
             IWebHostEnvironment env,
             IServerTiming serverTiming,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            LeaderboardController leaderboardController)
         {
             _context = context;
             _readContext = readContext;
             _serverTiming = serverTiming;
             _s3Client = configuration.GetS3Client();
             _configuration = configuration;
+            _leaderboardController = leaderboardController;
         }
 
         [HttpGet("~/score/{id}")]
@@ -306,6 +310,72 @@ namespace BeatLeader_Server.Controllers
                     Player = s.Player.Name
                 })
                 .ToList();
+
+            return result;
+        }
+
+        [HttpGet("~/v5/scores/{hash}/{diff}/{mode}")]
+        public async Task<ActionResult<ResponseWithMetadataAndContainer<SaverScoreResponse, SaverContainerResponse>>> GetByHash5(
+            string hash,
+            string diff,
+            string mode,
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10)
+        {
+            if (page < 1) {
+                return BadRequest("Page should be greater than zero!");
+            }
+
+            var result = new ResponseWithMetadataAndContainer<SaverScoreResponse, SaverContainerResponse>
+            {
+                Data = new List<SaverScoreResponse>(),
+                Container = new SaverContainerResponse(),
+                Metadata =
+                    {
+                        ItemsPerPage = count,
+                        Page = page,
+                        Total = 0
+                    }
+            };
+
+            if (hash.Length < 40) {
+                return BadRequest("Hash is to short");
+            } else {
+                hash = hash.Substring(0, 40);
+            }
+
+            var leaderboard = (await _leaderboardController.GetByHash(hash, diff, mode, false)).Value;
+            if (leaderboard == null) {
+                return result;
+            }
+
+            IQueryable<Score> query = _context
+                .Scores
+                .Where(s => !s.Banned && s.LeaderboardId == leaderboard.Id)
+                .OrderBy(p => p.Rank);
+
+            result.Metadata.Total = query.Count();
+            result.Data = query
+                .Skip((page - 1) * count)
+                .Take(count)
+                .Select(s => new SaverScoreResponse
+                {
+                    Id = s.Id,
+                    BaseScore = s.BaseScore,
+                    ModifiedScore = s.ModifiedScore,
+                    Accuracy = s.Accuracy,
+                    Pp = s.Pp,
+                    Rank = s.Rank,
+                    Modifiers = s.Modifiers,
+                    Timeset = s.Timeset,
+                    Timepost = s.Timepost,
+                    LeaderboardId = s.LeaderboardId,
+                    Player = s.Player.Name
+                })
+                .ToList();
+
+            result.Container.LeaderboardId = leaderboard.Id;
+            result.Container.Ranked = leaderboard.Difficulty.Status == DifficultyStatus.ranked;
 
             return result;
         }

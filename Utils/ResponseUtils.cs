@@ -123,6 +123,11 @@ namespace BeatLeader_Server.Utils
             public string Player { get; set; }
         }
 
+        public class SaverContainerResponse {
+            public string LeaderboardId { get; set; }
+            public bool Ranked { get; set; }
+        }
+
         public class LeaderboardsResponse
         {
             public Song Song { get; set; }
