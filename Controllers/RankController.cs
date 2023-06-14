@@ -4,7 +4,7 @@ using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Discord.Rest;
 using Discord.Webhook;
-using Lib.AspNetCore.ServerTiming;
+using Lib.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;

@@ -9,9 +9,9 @@ namespace BeatLeader_Server.Utils
     {
         public static (string, MemoryStream) GetFormatAndResize(MemoryStream memoryStream)
         {
-            IImageFormat format;
-            Image image = Image.Load(memoryStream, out format);
-            Size size = image.Size();
+            IImageFormat format = Image.DetectFormat(memoryStream);
+            Image image = Image.Load(memoryStream);
+            Size size = image.Size;
 
             int width = Math.Min(200, size.Width);
             int height = (int)(((float)size.Height / (float)size.Width) * (float)width);
@@ -41,8 +41,8 @@ namespace BeatLeader_Server.Utils
         
         public static (string, MemoryStream) GetFormat(MemoryStream memoryStream)
         {
-            IImageFormat format;
-            Image image = Image.Load(memoryStream, out format);
+            IImageFormat format = Image.DetectFormat(memoryStream);
+            Image image = Image.Load(memoryStream);
 
             var ms = new MemoryStream(5);
             string extension;

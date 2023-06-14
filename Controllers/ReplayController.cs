@@ -6,7 +6,7 @@ using BeatLeader_Server.Utils;
 using Dasync.Collections;
 using Discord;
 using Discord.Webhook;
-using Lib.AspNetCore.ServerTiming;
+using Lib.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
@@ -14,6 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Primitives;
 using Prometheus.Client;
+using System.Buffers;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -130,26 +131,36 @@ namespace BeatLeader_Server.Controllers
             ReplayOffsets? offsets;
             byte[] replayData;
 
-            using (var ms = new MemoryStream(5))
+            int length = 0;
+            List<byte> replayDataList = new List<byte>(); 
+            byte[] buffer = ArrayPool<byte>.Shared.Rent(4096);
+
+            while (true)
             {
-                await replayStream.CopyToAsync(ms);
-                long length = ms.Length;
-                if (length > 200000000)
+                var bytesRemaining = await Request.Body.ReadAsync(buffer, offset: 0, buffer.Length);
+                if (bytesRemaining == 0)
                 {
+                    break;
+                }
+                length += bytesRemaining;
+                if (length > 200000000) {
+                    ArrayPool<byte>.Shared.Return(buffer);
                     return BadRequest("Replay is too big to save, sorry");
                 }
-                replayData = ms.ToArray();
-                try
-                {
-                    (replay, offsets) = ReplayDecoder.Decode(replayData);
-                }
-                catch (Exception)
-                {
-                    return BadRequest("Error decoding replay");
-                }
+                replayDataList.AddRange(new Span<byte>(buffer, 0, bytesRemaining).ToArray());
             }
-            //AsyncReplayDecoder replayDecoder = new AsyncReplayDecoder();
-            //(var info, var continuing) = await replayDecoder.StartDecodingStream(replayStream);
+
+            ArrayPool<byte>.Shared.Return(buffer);
+
+            replayData = replayDataList.ToArray();
+            try
+            {
+                (replay, offsets) = ReplayDecoder.Decode(replayData);
+            }
+            catch (Exception)
+            {
+                return BadRequest("Error decoding replay");
+            }
             var info = replay?.info;
 
             if (info == null) return BadRequest("It's not a replay or it has old version.");

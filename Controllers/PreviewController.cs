@@ -1,7 +1,7 @@
 ﻿using Amazon.S3;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
-using Lib.AspNetCore.ServerTiming;
+using Lib.ServerTiming;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
