@@ -1,0 +1,3 @@
+[submodule "beatleader-server-private"]
+	path = beatleader-server-private
+	url = git@github.com:BeatLeader/beatleader-server-private.git

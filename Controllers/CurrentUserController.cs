@@ -422,8 +422,8 @@ namespace BeatLeader_Server.Controllers
             if (Request.Query.ContainsKey("effectName")) {
                 settings.EffectName = effectName;
                 if (effectName?.Contains("Booster") == true) {
-                    settings.Hue = null;
-                    settings.Saturation = null;
+                    settings.Hue = 0;
+                    settings.Saturation = 1;
                 }
             }
             if (Request.Query.ContainsKey("starredFriends")) {

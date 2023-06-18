@@ -108,11 +108,7 @@ namespace BeatLeader_Server.Controllers
         {
             using (var stream = await _s3Client.DownloadReplay(name)) {
                 if (stream != null) {
-                    MemoryStream ms = new MemoryStream(5);
-                    await stream.CopyToAsync(ms);
-                    ms.Position = 0;
-
-                    return await PostReplay(authenticatedPlayerID, ms, context);
+                    return await PostReplay(authenticatedPlayerID, stream, context);
                 } else {
                     return NotFound();
                 }
@@ -137,7 +133,7 @@ namespace BeatLeader_Server.Controllers
 
             while (true)
             {
-                var bytesRemaining = await Request.Body.ReadAsync(buffer, offset: 0, buffer.Length);
+                var bytesRemaining = await replayStream.ReadAsync(buffer, offset: 0, buffer.Length);
                 if (bytesRemaining == 0)
                 {
                     break;
@@ -1122,109 +1118,6 @@ namespace BeatLeader_Server.Controllers
         {
             var link = _configuration.GetValue<string?>("Top1DSHook");
             return link == null ? null : new DiscordWebhookClient(link);
-        }
-
-        [HttpGet("~/removeduplicatenotes")]
-        public async Task<ActionResult> removeduplicatenotes()
-        {
-            string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
-
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
-
-            var scores = _context
-                .Scores
-                .OrderBy(s => s.Id)
-                .Where(s => s.Pp > 0).Include(s => s.ReplayOffsets).Include(s => s.Leaderboard).ThenInclude(l => l.Difficulty);
-
-            var totalc = scores.Count();
-
-            for (int i = 0; i < totalc; i+=50000)
-            {
-                await scores.Skip(i).Take(50000).ParallelForEachAsync(async score => {
-                    try {
-                        string? name = score.Replay.Split("/").LastOrDefault();
-                        if (name == null || score.ReplayOffsets == null)
-                        {
-                            return;
-                        }
-
-                        var leaderboard = score.Leaderboard;
-
-                        using (var stream = await _s3Client.DownloadStreamOffset(name, S3Container.replays, score.ReplayOffsets.Notes, 4)) {
-                            if (stream == null) {
-                                return;
-                            }
-
-                            MemoryStream ms = new MemoryStream(5);
-                            await stream.CopyToAsync(ms);
-                            ms.Position = 0;
-
-                            var noteCountData = ms.ToArray();
-
-                            int noteCount = BitConverter.ToInt32(noteCountData, 0);
-
-                            if (leaderboard.Difficulty.Notes == 0 || noteCount <= leaderboard.Difficulty.Notes) {
-                                return;
-                            }
-                        }
-
-                        Replay replay;
-                        using (var stream = await _s3Client.DownloadReplay(name))
-                        {
-                            if (stream != null)
-                            {
-                                try
-                                {
-                                    MemoryStream ms = new MemoryStream(5);
-                                    await stream.CopyToAsync(ms);
-                                    ms.Position = 0;
-
-                                    var replayData = ms.ToArray();
-                                    (replay, _) = ReplayDecoder.Decode(replayData);
-                                }
-                                catch (Exception)
-                                {
-                                    return;
-                                }
-                            }
-                            else
-                            {
-                                return;
-                            }
-                        }
-
-                        if (leaderboard.Difficulty.Notes != 0 && replay.notes.Count > leaderboard.Difficulty.Notes)
-                        {
-                            string? error = ReplayUtils.RemoveDuplicates(replay, leaderboard);
-                            if (error != null)
-                            {
-                                return;
-                            }
-                        }
-
-                        (Score resultScore, int maxScore) = ReplayUtils.ProcessReplayInfo(replay.info, leaderboard.Difficulty);
-
-                        if (score.Accuracy != resultScore.Accuracy) {
-
-                            score.Accuracy = resultScore.Accuracy;
-                            score.Pp = resultScore.Pp;
-                            score.ModifiedScore = resultScore.ModifiedScore;
-                            score.BaseScore = resultScore.BaseScore;
-                            (ScoreStatistic? statistic, _) = await _scoreController.CalculateAndSaveStatistic(replay, score);
-                        }
-                    } catch (Exception e) {
-                        return;
-                    }
-                }, maxDegreeOfParallelism: 20);
-
-                _context.SaveChanges();
-            }
-
-            return Ok();
         }
     }
 }
