@@ -38,6 +38,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int count = 10, 
             [FromQuery] string sortBy = "rank", 
             [FromQuery] Order order = Order.Desc, 
+            [FromQuery] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
             [FromQuery] string? countries = null,
             [FromQuery] string? search = null,
             [FromQuery] string? modifiers = null,
@@ -234,6 +235,15 @@ namespace BeatLeader_Server.Controllers
                         break;
                     case "mistakes":
                         scoreQuery = scoreQuery.Order(order, s => s.BadCuts + s.MissedNotes + s.BombCuts + s.WallsHit);
+                        break;
+                    default:
+                        break;
+                }
+                switch (scoreStatus) {
+                    case ScoreFilterStatus.None:
+                        break;
+                    case ScoreFilterStatus.Suspicious:
+                        scoreQuery = scoreQuery.Where(s => s.Suspicious);
                         break;
                     default:
                         break;

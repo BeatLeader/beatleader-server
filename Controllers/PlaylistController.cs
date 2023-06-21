@@ -617,7 +617,7 @@ namespace BeatLeader_Server.Controllers
             IQueryable<Score> sequence = _readAppContext
                 .Scores
                 .Where(t => t.PlayerId == userId)
-                .Filter(_readAppContext, !player.Banned, sortBy, order, search, diff, mode, requirements, type, modifiers, stars_from, stars_to, time_from, time_to, eventId); 
+                .Filter(_readAppContext, !player.Banned, sortBy, order, search, diff, mode, requirements, ScoreFilterStatus.None, type, modifiers, stars_from, stars_to, time_from, time_to, eventId); 
 
             if (sequence.Count() == 0) { return NotFound(); }
 

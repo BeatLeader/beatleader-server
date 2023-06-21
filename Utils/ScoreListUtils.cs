@@ -4,12 +4,14 @@ using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 using BeatLeader_Server.Enums;
 
-namespace BeatLeader_Server.Utils
-{
-    public static class ScoreListUtils
-    {
+namespace BeatLeader_Server.Utils {
+    public enum ScoreFilterStatus {
+        None = 0,
+        Suspicious = 1
+    }
+    public static class ScoreListUtils {
         public static IQueryable<Score> Filter(
-            this IQueryable<Score> sequence, 
+            this IQueryable<Score> sequence,
             ReadAppContext context,
             bool excludeBanned,
             string sortBy = "date",
@@ -18,17 +20,16 @@ namespace BeatLeader_Server.Utils
             string? diff = null,
             string? mode = null,
             Requirements requirements = Requirements.None,
+            ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
             string? type = null,
             string? modifiers = null,
             float? stars_from = null,
             float? stars_to = null,
             int? time_from = null,
             int? time_to = null,
-            int? eventId = null)
-        {
+            int? eventId = null) {
             IOrderedQueryable<Score>? orderedSequence = null;
-            switch (sortBy)
-            {
+            switch (sortBy) {
                 case "date":
                     orderedSequence = sequence.Order(order, t => t.Timepost);
                     break;
@@ -66,8 +67,7 @@ namespace BeatLeader_Server.Utils
             if (orderedSequence != null) {
                 sequence = orderedSequence.ThenBy(s => s.Timepost);
             }
-            if (search != null)
-            {
+            if (search != null) {
                 string lowSearch = search.ToLower();
                 sequence = sequence
                     .Where(p => p.Leaderboard.Song.Id == lowSearch ||
@@ -82,46 +82,47 @@ namespace BeatLeader_Server.Utils
                     sequence = sequence.Where(s => leaderboardIds.Contains(s.LeaderboardId));
                 }
             }
-            if (diff != null)
-            {
+            if (diff != null) {
                 sequence = sequence.Where(p => p.Leaderboard.Difficulty.DifficultyName == diff);
             }
-            if (mode != null)
-            {
+            if (mode != null) {
                 sequence = sequence.Where(p => p.Leaderboard.Difficulty.ModeName == mode);
             }
-            if (requirements != null)
-            {
+            if (requirements != null) {
                 sequence = sequence.Where(p => p.Leaderboard.Difficulty.Requirements.HasFlag(requirements));
             }
-            if (type != null)
-            {
+            if (type != null) {
                 sequence = sequence.Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked : p.Leaderboard.Difficulty.Status != DifficultyStatus.ranked);
             }
-            if (stars_from != null)
-            {
+            if (stars_from != null) {
                 sequence = sequence.Where(p => p.Leaderboard.Difficulty.Stars >= stars_from);
             }
-            if (stars_to != null)
-            {
+            if (stars_to != null) {
                 sequence = sequence.Where(p => p.Leaderboard.Difficulty.Stars <= stars_to);
             }
-            if (time_from != null)
-            {
+            if (time_from != null) {
                 sequence = sequence.Where(s => s.Timepost >= time_from);
             }
-            if (time_to != null)
-            {
+            if (time_to != null) {
                 sequence = sequence.Where(s => s.Timepost <= time_to);
             }
             if (excludeBanned) {
                 sequence = sequence.Where(s => !s.Banned);
             }
+            switch (scoreStatus) {
+                case ScoreFilterStatus.None:
+                    break;
+                case ScoreFilterStatus.Suspicious:
+                    sequence = sequence.Where(s => s.Suspicious);
+                    break;
+                default:
+                    break;
+            }
 
             if (modifiers != null) {
                 if (!modifiers.Contains("none")) {
                     var score = Expression.Parameter(typeof(Score), "s");
-                
+
                     var contains = typeof(string).GetMethod("Contains", new[] { typeof(string) });
 
                     var any = modifiers.Contains("any");
@@ -130,8 +131,7 @@ namespace BeatLeader_Server.Utils
                     var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(any ? 2 : 1));
                     var modifiersList = modifiers.Split(",").Where(m => m != "any" && m != "none" && m != "not");
 
-                    foreach (var term in modifiersList)
-                    {
+                    foreach (var term in modifiersList) {
                         var subexpression = Expression.Call(Expression.Property(score, "Modifiers"), contains, Expression.Constant(term));
                         if (not) {
                             exp = Expression.And(exp, Expression.Not(subexpression));

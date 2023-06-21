@@ -47,6 +47,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? diff = null,
             [FromQuery] string? mode = null,
             [FromQuery] Requirements requirements = Requirements.None,
+            [FromQuery] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
             [FromQuery] string? type = null,
             [FromQuery] string? modifiers = null,
             [FromQuery] float? stars_from = null,
@@ -88,7 +89,7 @@ namespace BeatLeader_Server.Controllers
             IQueryable<Score> sequence = _readContext
                 .Scores
                 .Where(t => t.PlayerId == userId)
-                .Filter(_readContext, !player.Banned, sortBy, order, search, diff, mode, requirements, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);    
+                .Filter(_readContext, !player.Banned, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);    
 
             ResponseWithMetadata<ScoreResponseWithMyScore> result; 
             using (_serverTiming.TimeAction("db"))

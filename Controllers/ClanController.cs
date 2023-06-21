@@ -359,8 +359,8 @@ namespace BeatLeader_Server.Controllers
 
                 clan.Color = color;
             }
-
-            string fileName = clan.Tag + "clan";
+            Random rnd = new Random();
+            string fileName = clan.Tag + "R" + rnd.Next(1, 50) + "clan";
             try
             {
                 var ms = new MemoryStream(5);
