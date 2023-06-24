@@ -49,6 +49,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/map/modinterface/{hash}")]
         public async Task<ActionResult<IEnumerable<DiffModResponse>>> GetModSongInfos(string hash)
         {
+
             var resFromLB = _readContext.Leaderboards
                 .Where(lb => lb.Song.Hash == hash)
                 .Include(lb => lb.Difficulty)
@@ -80,9 +81,24 @@ namespace BeatLeader_Server.Controllers
             }
 
             // Now we need to return the LB DiffModResponses. If there are diffs in the song, that have no leaderboard we return the diffs without votes, as no leaderboard = no scores = no votes
-            return difficulties.Select(diff =>
+            var result = difficulties.Select(diff =>
                 resFromLB.FirstOrDefault(element => element.DiffModResponse.DifficultyName == diff.DifficultyName && element.DiffModResponse.ModeName == diff.ModeName)?.DiffModResponse
                 ?? ResponseUtils.DiffModResponseFromDiffAndVotes(diff, Array.Empty<float>())).ToArray();
+            
+            string? currentID = HttpContext.CurrentUserID(_context);
+            bool showRatings = currentID != null ? _context
+                .Players
+                .Include(p => p.ProfileSettings)
+                .Where(p => p.Id == currentID)
+                .Select(p => p.ProfileSettings.ShowAllRatings)
+                .FirstOrDefault() : false;
+            foreach (var item in result) {
+                if (!showRatings && !item.Status.WithRating()) {
+                    item.HideRatings();
+                }
+            }
+
+            return result;
         }
 
         [NonAction]

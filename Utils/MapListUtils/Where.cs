@@ -37,14 +37,13 @@ public static partial class MapListUtils
         };
     }
 
-    private static IQueryable<Leaderboard> WhereMyType(this IQueryable<Leaderboard> sequence, ReadAppContext context, MyType mytype, string? currentId)
+    private static IQueryable<Leaderboard> WhereMyType(this IQueryable<Leaderboard> sequence, MyType mytype, Player? currentPlayer)
     {
         int mapperId = 0;
+        string? currentId = currentPlayer?.Id;
 
         if (mytype != MyType.None)
         {
-            Player? currentPlayer = context.Players.Find(currentId);
-
             if (currentPlayer != null)
             {
                 mapperId = currentPlayer.MapperId;

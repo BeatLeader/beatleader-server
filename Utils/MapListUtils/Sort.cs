@@ -15,16 +15,16 @@ public static partial class MapListUtils
                                                 MyType mytype,
                                                 int? dateFrom,
                                                 int? dateTo,
-                                                string? currentId) =>
+                                                Player? currentPlayer) =>
         sortBy switch
         {
             SortBy.Timestamp  => sequence.SortByTimestamp(order, type, dateFrom, dateTo),
             SortBy.Name       => sequence.SortByName(order, dateFrom, dateTo),
-            SortBy.Stars      => sequence.SortByStars(order, dateFrom, dateTo),
-            SortBy.PassRating => sequence.SortByPassRating(order, dateFrom, dateTo),
-            SortBy.AccRating  => sequence.SortByAccRating(order, dateFrom, dateTo),
-            SortBy.TechRating => sequence.SortByTechRating(order, dateFrom, dateTo),
-            SortBy.ScoreTime  => sequence.SortByScoreTime(order, mytype, dateFrom, dateTo, currentId),
+            SortBy.Stars      => sequence.SortByStars(order, dateFrom, dateTo, currentPlayer),
+            SortBy.PassRating => sequence.SortByPassRating(order, dateFrom, dateTo, currentPlayer),
+            SortBy.AccRating  => sequence.SortByAccRating(order, dateFrom, dateTo, currentPlayer),
+            SortBy.TechRating => sequence.SortByTechRating(order, dateFrom, dateTo, currentPlayer),
+            SortBy.ScoreTime  => sequence.SortByScoreTime(order, mytype, dateFrom, dateTo, currentPlayer?.Id),
             SortBy.PlayCount  => sequence.SortByPlayCount(order, dateFrom, dateTo),
             SortBy.Voting     => sequence.SortByVoting(order),
             SortBy.VoteCount  => sequence.SortByVoteCount(order),
@@ -70,21 +70,45 @@ public static partial class MapListUtils
         sequence.Where(leaderboard => (dateFrom == null || leaderboard.Song.UploadTime >= dateFrom) && (dateTo == null || leaderboard.Song.UploadTime <= dateTo))
                 .Order(order, leaderboard => leaderboard.Song.Name);
 
-    private static IQueryable<Leaderboard> SortByStars(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo) =>
-        sequence.FilterRated(dateFrom, dateTo)
-                .Order(order, leaderboard => leaderboard.Difficulty.Stars);
+    private static IQueryable<Leaderboard> SortByStars(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo, Player? player) {
+        bool showRatings = player?.ProfileSettings?.ShowAllRatings ?? false;
+        return sequence.FilterRated(dateFrom, dateTo)
+                .Order(order, leaderboard => (
+                    showRatings || 
+                    leaderboard.Difficulty.Status == DifficultyStatus.nominated || 
+                    leaderboard.Difficulty.Status == DifficultyStatus.qualified || 
+                    leaderboard.Difficulty.Status == DifficultyStatus.ranked) ? leaderboard.Difficulty.Stars : 0);
+    }
 
-    private static IQueryable<Leaderboard> SortByPassRating(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo) =>
-        sequence.FilterRated(dateFrom, dateTo)
-                .Order(order, leaderboard => leaderboard.Difficulty.PassRating);
+    private static IQueryable<Leaderboard> SortByPassRating(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo, Player? player) {
+        bool showRatings = player?.ProfileSettings?.ShowAllRatings ?? false;
+        return sequence.FilterRated(dateFrom, dateTo)
+                .Order(order, leaderboard => (
+                    showRatings || 
+                    leaderboard.Difficulty.Status == DifficultyStatus.nominated || 
+                    leaderboard.Difficulty.Status == DifficultyStatus.qualified || 
+                    leaderboard.Difficulty.Status == DifficultyStatus.ranked) ? leaderboard.Difficulty.PassRating : 0);
+    }
 
-    private static IQueryable<Leaderboard> SortByAccRating(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo) =>
-        sequence.FilterRated(dateFrom, dateTo)
-                .Order(order, leaderboard => leaderboard.Difficulty.AccRating);
+    private static IQueryable<Leaderboard> SortByAccRating(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo, Player? player) {
+        bool showRatings = player?.ProfileSettings?.ShowAllRatings ?? false;
+        return sequence.FilterRated(dateFrom, dateTo)
+                .Order(order, leaderboard => (
+                    showRatings || 
+                    leaderboard.Difficulty.Status == DifficultyStatus.nominated || 
+                    leaderboard.Difficulty.Status == DifficultyStatus.qualified || 
+                    leaderboard.Difficulty.Status == DifficultyStatus.ranked) ? leaderboard.Difficulty.AccRating : 0);
+    }
 
-    private static IQueryable<Leaderboard> SortByTechRating(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo) =>
-        sequence.FilterRated(dateFrom, dateTo)
-                .Order(order, leaderboard => leaderboard.Difficulty.TechRating);
+    private static IQueryable<Leaderboard> SortByTechRating(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo, Player? player) {
+        bool showRatings = player?.ProfileSettings?.ShowAllRatings ?? false;
+        return sequence.FilterRated(dateFrom, dateTo)
+                .Order(order, leaderboard => (
+                    showRatings || 
+                    leaderboard.Difficulty.Status == DifficultyStatus.nominated || 
+                    leaderboard.Difficulty.Status == DifficultyStatus.qualified || 
+                    leaderboard.Difficulty.Status == DifficultyStatus.ranked) ? leaderboard.Difficulty.TechRating : 0);
+    }
 
     private static IQueryable<Leaderboard> FilterRated(this IQueryable<Leaderboard> sequence, int? dateFrom, int? dateTo) => sequence
         .Where(leaderboard => (dateFrom == null

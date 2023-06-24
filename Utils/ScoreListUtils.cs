@@ -12,8 +12,9 @@ namespace BeatLeader_Server.Utils {
     public static class ScoreListUtils {
         public static IQueryable<Score> Filter(
             this IQueryable<Score> sequence,
-            ReadAppContext context,
+            AppContext context,
             bool excludeBanned,
+            bool showAllRatings,
             string sortBy = "date",
             Order order = Order.Desc,
             string? search = null,
@@ -34,7 +35,7 @@ namespace BeatLeader_Server.Utils {
                     orderedSequence = sequence.Order(order, t => t.Timepost);
                     break;
                 case "pp":
-                    orderedSequence = sequence.Order(order, t => t.Pp);
+                    orderedSequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.Pp);
                     break;
                 case "acc":
                     orderedSequence = sequence.Order(order, t => t.Accuracy);
@@ -52,11 +53,11 @@ namespace BeatLeader_Server.Utils {
                     orderedSequence = sequence.Order(order, t => (t.LeftTiming + t.RightTiming) / 2);
                     break;
                 case "stars":
-                    orderedSequence = sequence
-                                .Include(lb => lb.Leaderboard)
-                                .ThenInclude(lb => lb.Difficulty)
-                                .Where(s => s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked)
-                                .Order(order, s => s.Leaderboard.Difficulty.Stars);
+                    orderedSequence = sequence.Order(order, s => 
+                        showAllRatings || 
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked ? s.Leaderboard.Difficulty.Stars : 0);
                     break;
                 case "mistakes":
                     orderedSequence = sequence.Order(order, t => t.BadCuts + t.BombCuts + t.MissedNotes + t.WallsHit);
@@ -95,10 +96,14 @@ namespace BeatLeader_Server.Utils {
                 sequence = sequence.Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked : p.Leaderboard.Difficulty.Status != DifficultyStatus.ranked);
             }
             if (stars_from != null) {
-                sequence = sequence.Where(p => p.Leaderboard.Difficulty.Stars >= stars_from);
+                sequence = sequence.Where(p => (p.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
+                        p.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
+                        p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) && p.Leaderboard.Difficulty.Stars >= stars_from);
             }
             if (stars_to != null) {
-                sequence = sequence.Where(p => p.Leaderboard.Difficulty.Stars <= stars_to);
+                sequence = sequence.Where(p => (p.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
+                        p.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
+                        p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) && p.Leaderboard.Difficulty.Stars <= stars_to);
             }
             if (time_from != null) {
                 sequence = sequence.Where(s => s.Timepost >= time_from);

@@ -25,5 +25,6 @@
         public string? StarredFriends { get; set; }
 
         public bool ShowBots { get; set; }
+        public bool ShowAllRatings { get; set; }
     }
 }

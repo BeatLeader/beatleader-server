@@ -1,10 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
-namespace BeatLeader_Server.Models
-{
-    public class PlayerChange
-    {
+namespace BeatLeader_Server.Models {
+    public class PlayerChange {
         public int Id { get; set; }
         public int Timestamp { get; set; }
         public string? PlayerId { get; set; }
@@ -19,8 +17,7 @@ namespace BeatLeader_Server.Models
     }
 
     [Index(nameof(Banned), IsUnique = false)]
-    public class Player
-    {
+    public class Player {
         [Key]
         public string Id { get; set; }
         public string Name { get; set; } = "";
@@ -65,9 +62,19 @@ namespace BeatLeader_Server.Models
         public ICollection<PlayerSocial>? Socials { get; set; }
         public ICollection<Achievement>? Achievements { get; set; }
 
-        public void SetDefaultAvatar()
-        {
+        public void SetDefaultAvatar() {
             this.Avatar = "https://cdn.assets.beatleader.xyz/" + this.Platform + "avatar.png";
+        }
+
+        public bool AnySupporter() {
+            return Role.Contains("tipper") ||
+                Role.Contains("supporter") ||
+                Role.Contains("sponsor") ||
+                Role.Contains("booster") ||
+                Role.Contains("creator") ||
+                Role.Contains("rankedteam") || 
+                Role.Contains("qualityteam");
+
         }
     }
 }

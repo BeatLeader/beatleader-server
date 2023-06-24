@@ -455,7 +455,7 @@ namespace BeatLeader_Server.Controllers
                 await _context
                 .Players
                 .Select(p => new PlayerResponse {
-                     Id = p.Id,
+                    Id = p.Id,
                     Name = p.Name,
                     Platform = p.Platform,
                     Avatar = p.Avatar,

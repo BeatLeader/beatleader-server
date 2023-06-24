@@ -12,6 +12,13 @@ using Newtonsoft.Json.Serialization;
 
 namespace BeatLeader_Server.Extensions
 {
+    public static class ModelExtensions {
+
+        public static bool WithRating(this DifficultyStatus context) {
+            return context == DifficultyStatus.ranked || context == DifficultyStatus.qualified || context == DifficultyStatus.nominated;
+        }
+    }
+
     public static class JsonExtensions
     {
         static DefaultContractResolver contractResolver = new DefaultContractResolver {
