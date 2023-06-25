@@ -44,11 +44,12 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] float? stars_to = null) {
 
             string userId = HttpContext.CurrentUserID(_context);
-            var player = await _context.Players.FindAsync(userId);
+            var player = await _context.Players.Include(p => p.ProfileSettings).FirstOrDefaultAsync(p => p.Id == userId);
             if (player == null) {
                 return NotFound();
             }
 
+            bool showAllRatings = player.ProfileSettings?.ShowAllRatings ?? false; 
             IQueryable<Score> sequence;
 
             using (_serverTiming.TimeAction("sequence")) {
@@ -82,16 +83,28 @@ namespace BeatLeader_Server.Controllers {
                         sequence = sequence.Order(order, t => t.Rank);
                         break;
                     case "predictedAcc":
-                        sequence = sequence.Order(order, t => t.Leaderboard.Difficulty.PredictedAcc);
+                        sequence = sequence.Order(order, s => showAllRatings || 
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked ? s.Leaderboard.Difficulty.PredictedAcc : 0);
                         break;
                     case "passRating":
-                        sequence = sequence.Order(order, t => t.Leaderboard.Difficulty.PassRating);
+                        sequence = sequence.Order(order, s => showAllRatings || 
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked ? s.Leaderboard.Difficulty.PassRating : 0);
                         break;
                     case "techRating":
-                        sequence = sequence.Order(order, t => t.Leaderboard.Difficulty.TechRating);
+                        sequence = sequence.Order(order, s => showAllRatings || 
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked ? s.Leaderboard.Difficulty.TechRating : 0);
                         break;
                     case "stars":
-                        sequence = sequence.Order(order, t => t.Leaderboard.Difficulty.Stars);
+                        sequence = sequence.Order(order, s => showAllRatings || 
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked ? s.Leaderboard.Difficulty.Stars : 0);
                         break;
                     case "mistakes":
                         sequence = sequence.Order(order, t => t.BadCuts + t.BombCuts + t.MissedNotes + t.WallsHit);
@@ -113,20 +126,18 @@ namespace BeatLeader_Server.Controllers {
                     sequence = sequence.Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked : p.Leaderboard.Difficulty.Status != DifficultyStatus.ranked);
                 }
                 if (stars_from != null) {
-                    sequence = sequence.Where(p => p.Leaderboard.Difficulty.Stars >= stars_from);
+                    sequence = sequence.Where(p => (p.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
+                        p.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
+                        p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) && p.Leaderboard.Difficulty.Stars >= stars_from);
                 }
                 if (stars_to != null) {
-                    sequence = sequence.Where(p => p.Leaderboard.Difficulty.Stars <= stars_to);
+                    sequence = sequence.Where(p => (p.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
+                        p.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
+                        p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) && p.Leaderboard.Difficulty.Stars <= stars_to);
                 }
             }
 
-            var result = new ResponseWithMetadata<ScoreResponseWithMyScore>() {
-                Metadata = new Metadata() {
-                    Page = page,
-                    ItemsPerPage = count,
-                    Total = sequence.Count()
-                },
-                Data = sequence
+            var resultList = sequence
                     .Skip((page - 1) * count)
                     .Take(count)
                     .Include(s => s.Leaderboard)
@@ -189,7 +200,21 @@ namespace BeatLeader_Server.Controllers {
                         AccLeft = s.AccLeft,
                         AccRight = s.AccRight,
                         MaxStreak = s.MaxStreak
-                    }).ToList()
+                    }).ToList();
+
+            foreach (var resultScore in resultList) {
+                if (!showAllRatings && !resultScore.Leaderboard.Difficulty.Status.WithRating()) {
+                    resultScore.Leaderboard.HideRatings();
+                }
+            }
+
+            var result = new ResponseWithMetadata<ScoreResponseWithMyScore>() {
+                Metadata = new Metadata() {
+                    Page = page,
+                    ItemsPerPage = count,
+                    Total = sequence.Count()
+                },
+                Data = resultList
             };
 
             var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
