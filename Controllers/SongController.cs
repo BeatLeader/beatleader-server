@@ -86,12 +86,7 @@ namespace BeatLeader_Server.Controllers
                 ?? ResponseUtils.DiffModResponseFromDiffAndVotes(diff, Array.Empty<float>())).ToArray();
             
             string? currentID = HttpContext.CurrentUserID(_context);
-            bool showRatings = currentID != null ? _context
-                .Players
-                .Include(p => p.ProfileSettings)
-                .Where(p => p.Id == currentID)
-                .Select(p => p.ProfileSettings.ShowAllRatings)
-                .FirstOrDefault() : false;
+            bool showRatings = currentID != null ? _context.Players.Include(p => p.ProfileSettings).Where(p => p.Id == currentID).Select(p => p.ProfileSettings).FirstOrDefault()?.ShowAllRatings ?? false : false;
             foreach (var item in result) {
                 if (!showRatings && !item.Status.WithRating()) {
                     item.HideRatings();

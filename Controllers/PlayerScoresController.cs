@@ -48,12 +48,13 @@ namespace BeatLeader_Server.Controllers {
             int? time_to = null,
             int? eventId = null) {
             string? currentID = HttpContext.CurrentUserID(_context);
-            bool showRatings = currentID != null ? _context
+            bool showRatings = currentID != null ? (_context
                 .Players
                 .Include(p => p.ProfileSettings)
                 .Where(p => p.Id == currentID)
-                .Select(p => p.ProfileSettings.ShowAllRatings)
-                .FirstOrDefault() : false;
+                .Select(p => p.ProfileSettings)
+                .FirstOrDefault()
+                ?.ShowAllRatings ?? false) : false;
 
             Int64 oculusId = 0;
             try {
@@ -428,8 +429,8 @@ namespace BeatLeader_Server.Controllers {
                 .Players
                 .Include(p => p.ProfileSettings)
                 .Where(p => p.Id == currentID)
-                .Select(p => p.ProfileSettings.ShowAllRatings)
-                .FirstOrDefault() : false;
+                .Select(p => p.ProfileSettings)
+                .FirstOrDefault()?.ShowAllRatings ?? false : false;
 
             return _context
                 .Scores
@@ -473,12 +474,7 @@ namespace BeatLeader_Server.Controllers {
         [HttpGet("~/player/{id}/pinnedScores")]
         public async Task<ActionResult<ICollection<ScoreResponseWithMyScore>>> GetPinnedScores(string id) {
             string? currentID = HttpContext.CurrentUserID(_context);
-            bool showRatings = currentID != null ? _context
-                .Players
-                .Include(p => p.ProfileSettings)
-                .Where(p => p.Id == currentID)
-                .Select(p => p.ProfileSettings.ShowAllRatings)
-                .FirstOrDefault() : false;
+            bool showRatings = currentID != null ? _context.Players.Include(p => p.ProfileSettings).Where(p => p.Id == currentID).Select(p => p.ProfileSettings).FirstOrDefault()?.ShowAllRatings ?? false : false;
 
             var result = _context
                     .Scores
