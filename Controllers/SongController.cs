@@ -102,10 +102,7 @@ namespace BeatLeader_Server.Controllers
             var newLeaderboard = await NewLeaderboard(newSong, baseSong, diff.DifficultyName, diff.ModeName);
             if (newLeaderboard != null && diff.Status != DifficultyStatus.ranked && diff.Status != DifficultyStatus.outdated) {
                 newLeaderboard.Difficulty.Status = diff.Status;
-                newLeaderboard.Difficulty.Stars = diff.Stars;
-                newLeaderboard.Difficulty.AccRating = diff.AccRating;
-                newLeaderboard.Difficulty.PassRating = diff.PassRating;
-                newLeaderboard.Difficulty.TechRating = diff.TechRating;
+                await RatingUtils.SetRating(diff, newSong);
                 newLeaderboard.Difficulty.Type = diff.Type;
                 newLeaderboard.Difficulty.NominatedTime = diff.NominatedTime;
                 newLeaderboard.Difficulty.ModifierValues = diff.ModifierValues;
