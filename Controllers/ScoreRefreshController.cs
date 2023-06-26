@@ -262,7 +262,9 @@ namespace BeatLeader_Server.Controllers
                         newScores.Add(score);
                     }
 
-                    var rankedScores = hasPp ? newScores.OrderByDescending(el => el.Pp).ToList() : newScores.OrderByDescending(el => el.ModifiedScore).ToList();
+                    var rankedScores = hasPp 
+                        ? newScores.OrderByDescending(el => el.Pp).ThenByDescending(el => el.Accuracy).ToList() 
+                        : newScores.OrderByDescending(el => el.ModifiedScore).ThenByDescending(el => el.Accuracy).ToList();
                     foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
                     {
                         s.Rank = i + 1;

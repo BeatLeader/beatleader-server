@@ -346,9 +346,7 @@ namespace BeatLeader_Server.Controllers
                     return BadRequest("Already qualified or ranked");
                 }
 
-                ModifiersMap? modifierValues = new ModifiersMap();
-                modifierValues.FS *= 2; modifierValues.SF *= 2; modifierValues.DA *= 2; modifierValues.GN *= 2; modifierValues.NF = -1.0f;
-
+                ModifiersMap? modifierValues = ModifiersMap.RankedMap();
                 difficulty.Status = DifficultyStatus.nominated;
                 difficulty.NominatedTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
@@ -566,7 +564,7 @@ namespace BeatLeader_Server.Controllers
                         leaderboard.Difficulty.AccRating = 0;
                         leaderboard.Difficulty.PassRating = 0;
                         leaderboard.Difficulty.TechRating = 0;
-                        leaderboard.Difficulty.ModifierValues = new ModifiersMap();
+                        leaderboard.Difficulty.ModifierValues = null;
                     } else {
                         if (accRating != null)
                         {
@@ -1520,7 +1518,7 @@ namespace BeatLeader_Server.Controllers
                 leaderboard.Difficulty.NominatedTime = 0;
                 leaderboard.Difficulty.QualifiedTime = 0;
                 leaderboard.Difficulty.Stars = 0;
-                leaderboard.Difficulty.ModifierValues = new ModifiersMap();
+                leaderboard.Difficulty.ModifierValues = null;
 
                 qualificationChange.NewRankability = 0;
 
