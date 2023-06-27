@@ -12,7 +12,7 @@ namespace BeatLeader_Server.Utils {
         }
         public static async Task SetRating(DifficultyDescription diff, Song song) {
             if (!diff.Status.WithRating() && !diff.Requirements.HasFlag(Requirements.Noodles) && !diff.Requirements.HasFlag(Requirements.MappingExtensions)) {
-                var response = await SongUtils.ExmachinaStars(song.Hash, diff.Value);
+                var response = await SongUtils.ExmachinaStars(song.Hash, diff.Value, diff.ModeName);
                 if (response != null) {
                     diff.PassRating = toPass(response.none.lack_map_calculation.balanced_pass_diff);
                     diff.TechRating = response.none.lack_map_calculation.balanced_tech * 10;
@@ -49,6 +49,12 @@ namespace BeatLeader_Server.Utils {
                             rating.SFPassRating,
                             rating.SFTechRating);
                     rating.SFStars = ReplayUtils.ToStars(rating.SFPredictedAcc, rating.SFPassRating, rating.SFTechRating);
+                } else {
+                    diff.PassRating = null;
+                    diff.PredictedAcc = null;
+                    diff.TechRating = null;
+                    diff.AccRating = null;
+                    diff.ModifiersRating = null;
                 }
             }
 

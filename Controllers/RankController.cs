@@ -350,7 +350,7 @@ namespace BeatLeader_Server.Controllers
                 difficulty.Status = DifficultyStatus.nominated;
                 difficulty.NominatedTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
-                var response = await SongUtils.ExmachinaStars(leaderboard.Song.Hash, difficulty.Value);
+                var response = await SongUtils.ExmachinaStars(leaderboard.Song.Hash, difficulty.Value, difficulty.ModeName);
                 if (response != null) {
                     difficulty.PassRating = response.none.lack_map_calculation.balanced_pass_diff;
                     difficulty.TechRating = response.none.lack_map_calculation.balanced_tech * 10;

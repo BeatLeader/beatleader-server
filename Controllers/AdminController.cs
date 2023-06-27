@@ -513,7 +513,7 @@ namespace BeatLeader_Server.Controllers
                 foreach (var diff in song.Difficulties)
                 {
                     if (diff.Status == DifficultyStatus.ranked || diff.Status == DifficultyStatus.qualified || diff.Status == DifficultyStatus.nominated) {
-                        var response = await SongUtils.ExmachinaStars(song.Hash, diff.Value);
+                        var response = await SongUtils.ExmachinaStars(song.Hash, diff.Value, diff.ModeName);
                         if (response != null)
                         {
                             diff.PassRating = response.none.lack_map_calculation.balanced_pass_diff;
@@ -636,7 +636,7 @@ namespace BeatLeader_Server.Controllers
                         {
                             var diff = lb.Difficulty;
                             lb.Difficulty.Status = DifficultyStatus.ranked;
-                            var response = await SongUtils.ExmachinaStars(lb.Song.Hash, diff.Value);
+                            var response = await SongUtils.ExmachinaStars(lb.Song.Hash, diff.Value, diff.ModeName);
                             if (response != null) {
                                 diff.PassRating = response.none.lack_map_calculation.balanced_pass_diff;
                                 diff.TechRating = response.none.lack_map_calculation.balanced_tech * 10;
