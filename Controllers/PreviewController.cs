@@ -254,7 +254,10 @@ namespace BeatLeader_Server.Controllers
                             SongId = s.Leaderboard.Song.Id,
                             CoverImage = s.Leaderboard.Song.CoverImage,
                             SongName = s.Leaderboard.Song.Name,
-                            Stars = s.Leaderboard.Difficulty.Stars,
+                            Stars = 
+                                (s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
+                                s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
+                                s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) ? s.Leaderboard.Difficulty.Stars : null,
 
                             Accuracy = s.Accuracy,
                             PlayerId = s.PlayerId,

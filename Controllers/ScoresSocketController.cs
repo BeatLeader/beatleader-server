@@ -1,4 +1,5 @@
-﻿using BeatLeader_Server.Models;
+﻿using BeatLeader_Server.Extensions;
+using BeatLeader_Server.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
@@ -136,6 +137,9 @@ namespace BeatLeader_Server.Controllers
                 var scoreToPublish = ScoreWithMyScore(score, 0);
                 if (scoreToPublish.Leaderboard.Song == null) {
                     scoreToPublish.Leaderboard.Song = await context.Songs.Where(s => s.Id == score.Leaderboard.SongId).FirstOrDefaultAsync();
+                }
+                if (scoreToPublish.Leaderboard.Difficulty != null && scoreToPublish.Leaderboard.Difficulty.Status.WithRating()) {
+                    scoreToPublish.Leaderboard.HideRatings();
                 }
                 await PublishNewScore(scoreToPublish);
             }
