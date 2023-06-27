@@ -156,10 +156,11 @@ namespace BeatLeader_Server.Controllers
 
                 if (discriminator != null && id != null && username != null && token != null)
                 {
+                    var usertag = discriminator == "0" ? "@" + username : username + "#" + discriminator;
                     player.Socials.Add(new PlayerSocial
                     {
                         Service = "Discord",
-                        User = username + "#" + discriminator,
+                        User = usertag,
                         UserId = id,
                         Link = "https://discordapp.com/users/" + id
                     });
