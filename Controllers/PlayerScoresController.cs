@@ -342,7 +342,7 @@ namespace BeatLeader_Server.Controllers {
 
             switch (sortBy) {
                 case "date":
-                    return HistogrammValuee(order, sequence.Select(s => s.Timepost).ToList(), (int)(batch ?? 60 * 60 * 24), count);
+                    return HistogrammValuee(order, sequence.Select(s => s.Timepost > 0 ? s.Timepost.ToString() : s.Timeset).Select(s => Int32.Parse(s)).ToList(), (int)(batch > 60 * 60 ? batch : 60 * 60 * 24), count);
                 case "pp":
                     return HistogrammValuee(order, sequence.Select(s => s.Pp).ToList(), batch ?? 5, count);
                 case "acc":

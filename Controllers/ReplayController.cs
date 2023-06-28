@@ -942,13 +942,17 @@ namespace BeatLeader_Server.Controllers
                 _context
                     .Scores
                     .Where(s => s.LeaderboardId == leaderboard.Id && !s.Banned)
-                    .OrderByDescending(el => el.Pp)
+                    .OrderByDescending(el => Math.Round(el.Pp, 2))
+                    .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                    .ThenBy(el => el.Timeset)
                     .Select(s => new { Id = s.Id, Rank = s.Rank })
                     :
                 _context
                     .Scores
                     .Where(s => s.LeaderboardId == leaderboard.Id && !s.Banned)
                     .OrderByDescending(el => el.ModifiedScore)
+                    .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                    .ThenBy(el => el.Timeset)
                     .Select(s => new { Id = s.Id, Rank = s.Rank })
             ).ToList();
 
@@ -965,35 +969,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
-                _context.RecalculatePPFast(player);
-                _context.BulkSaveChanges();
-
-                Dictionary<string, int> countries = new Dictionary<string, int>();
-                var ranked = _context.Players
-                    .Where(p => p.Pp > 0)
-                    .OrderByDescending(t => t.Pp)
-                    .Select(p => new { Id = p.Id, Country = p.Country })
-                    .ToList();
-                foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
-                {
-                    var p = _context.Players.Local.FirstOrDefault(lp => lp.Id == pp.Id);
-                    if (p == null) {
-                        p = new Player { Id = pp.Id, Country = pp.Country };
-                        _context.Players.Attach(p);
-                    }
-
-                    p.Rank = i + 1;
-                    _context.Entry(p).Property(x => x.Rank).IsModified = true;
-                    if (!countries.ContainsKey(p.Country))
-                    {
-                        countries[p.Country] = 1;
-                    }
-
-                    p.CountryRank = countries[p.Country];
-                    _context.Entry(p).Property(x => x.CountryRank).IsModified = true;
-
-                    countries[p.Country]++;
-                }
+                _context.RecalculatePPAndRankFast(player);
             }
 
             _context.BulkSaveChanges();
