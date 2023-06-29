@@ -770,7 +770,7 @@ namespace BeatLeader_Server.Controllers
 
                 if (!leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles)) {
                     double scoreRatio = (double)resultScore.BaseScore / (double)statistic.winTracker.totalScore;
-                    if (scoreRatio > 1.02 || scoreRatio < 0.98)
+                    if (scoreRatio > 1.01 || scoreRatio < 0.99)
                     {
                         SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Calculated on server score is too different: " + statistic.winTracker.totalScore + ". You probably need to update the mod.");
 

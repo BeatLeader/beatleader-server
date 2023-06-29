@@ -106,6 +106,7 @@ public static class PlayerSearchService
         Query fuzzyPrefix = new FuzzyQuery(namesTerm, 2, searchQuery.Length);
         Query hardFuzzyQuery = new FuzzyQuery(namesTerm, 2, 3);
         Query softFuzzyQuery = new SlowFuzzyQuery(namesTerm, 0.7f);
+        Query wildcardQuery = new WildcardQuery(new Term(nameof(PlayerMetadata.Names), "*" + searchQuery + "*"));
 
         Query fuzzyPrefixBoost = new BoostingQuery(prefixQuery, fuzzyPrefix, 2);
         Query hardFuzzyPrefixBoost = new BoostingQuery(fuzzyPrefixBoost, hardFuzzyQuery, 2);
@@ -116,6 +117,7 @@ public static class PlayerSearchService
             { new PrefixQuery(new Term(nameof(PlayerMetadata.Id), searchQuery)), Occur.SHOULD },
             { softHardFuzzyPrefixBoost, Occur.SHOULD },
             { softFuzzyQuery, Occur.SHOULD },
+            { wildcardQuery, Occur.SHOULD },
         };
 
         if (searchQuery.Contains(' ') || searchQuery.Contains('_') || searchQuery.Contains('-'))
