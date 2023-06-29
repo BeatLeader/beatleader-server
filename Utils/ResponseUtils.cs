@@ -636,7 +636,8 @@ namespace BeatLeader_Server.Utils {
                         !role.Contains("rankedteam") &&
                         !role.Contains("qualityteam") &&
                         !role.Contains("juniorrankedteam") &&
-                        !role.Contains("admin")) {
+                        !role.Contains("admin") &&
+                        !role.Contains("booster")) {
                         settings.EffectName = "";
                     }
                 } else if (settings.EffectName?.Contains("Tier2") == true) {
