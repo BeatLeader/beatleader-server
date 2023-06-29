@@ -66,15 +66,18 @@ namespace BeatLeader_Server.Models {
             this.Avatar = "https://cdn.assets.beatleader.xyz/" + this.Platform + "avatar.png";
         }
 
-        public bool AnySupporter() {
-            return Role.Contains("tipper") ||
-                Role.Contains("supporter") ||
-                Role.Contains("sponsor") ||
-                Role.Contains("booster") ||
-                Role.Contains("creator") ||
-                Role.Contains("rankedteam") || 
-                Role.Contains("qualityteam");
+        public static bool RoleIsAnySupporter(string role) {
+            return role.Contains("tipper") ||
+            role.Contains("supporter") ||
+            role.Contains("sponsor") ||
+            role.Contains("booster") ||
+            role.Contains("creator") ||
+            role.Contains("rankedteam") || 
+            role.Contains("qualityteam");
+        }
 
+        public bool AnySupporter() {
+            return RoleIsAnySupporter(Role);
         }
     }
 }

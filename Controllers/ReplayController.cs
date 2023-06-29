@@ -191,10 +191,8 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (type != EndType.Unknown && type != EndType.Clear) {
-                await CollectStats(info.score, authenticatedPlayerID, leaderboard, time, type);
+                await CollectStats(replay, replayData, null, authenticatedPlayerID, leaderboard, time, type);
                 return Ok();
-            } else {
-                await CollectStats(replay.info.score, authenticatedPlayerID, leaderboard, replay.frames.Last().time, EndType.Clear);
             }
 
             if (replay.frames.Count == 0) {
@@ -337,6 +335,8 @@ namespace BeatLeader_Server.Controllers
 
                 transaction.Commit();
             }
+
+            await CollectStats(replay, replayData, result.Value?.Replay, authenticatedPlayerID, leaderboard, replay.frames.Last().time, EndType.Clear);
 
             return result;
         }
@@ -760,9 +760,9 @@ namespace BeatLeader_Server.Controllers
             var transaction3 = await _context.Database.BeginTransactionAsync();
             try
             {
-                //if (currentScore != null && stats != null) {
-                //    await MigrateOldReplay(currentScore, stats);
-                //}
+                if (currentScore != null) {
+                    await MigrateOldReplay(currentScore, leaderboard.Id);
+                }
 
                 string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
                 resultScore.Replay = "https://cdn.replays.beatleader.xyz/" + fileName;
@@ -1026,47 +1026,66 @@ namespace BeatLeader_Server.Controllers
 
         [NonAction]
         private async Task CollectStats(
-            int score,
+            Replay replay,
+            byte[] replayData,
+            string? fileName,
             string playerId,
             Leaderboard leaderboard,
             float time = 0, 
             EndType type = 0) {
 
-            if (leaderboard.PlayerStats == null)
-            {
-                leaderboard.PlayerStats = new List<PlayerLeaderboardStats>();
-            }
-
-            if (leaderboard.PlayerStats.Count > 0 && 
-                leaderboard.PlayerStats.FirstOrDefault(s => s.PlayerId == playerId && s.Score == score) != null) {
-                return;
-            }
-            leaderboard.PlayCount++;
-
             int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-            var stats = new PlayerLeaderboardStats
-            {
-                Timeset = timeset,
-                Time = time,
-                Score = score,
-                Type = type,
-                PlayerId = playerId,
-            };
+            LeaderboardPlayerStatsService.AddJob(new PlayerStatsJob {
+                replayData = fileName != null ? null : replayData,
+                fileName = fileName ?? $"{replay.info.playerID}-{timeset}{(replay.info.speed != 0 ? "-practice" : "")}{(replay.info.failTime != 0 ? "-fail" : "")}-{replay.info.difficulty}-{replay.info.mode}-{replay.info.hash}.bsor",
+                playerId = playerId,
+                leaderboardId = leaderboard.Id,
+                time = time,
+                type = type,
+                score = replay.info.score,
+                saveReplay = replay.frames.Count > 0 && replay.info.score > 0 
+            });
+        }
 
-            var currentScore = _context
-                    .Scores
-                    .Where(s =>
-                        s.LeaderboardId == leaderboard.Id &&
-                        s.PlayerId == playerId)
-                    .FirstOrDefault();
-            if (currentScore != null) {
-                currentScore.PlayCount++;
-            }
+        private async Task MigrateOldReplay(Score score, string leaderboardId) {
+            if (score.Replay == null) return;
+            var stats = await _context.PlayerLeaderboardStats
+                .Where(s => s.LeaderboardId == leaderboardId && s.Score == score.BaseScore && s.PlayerId == score.PlayerId && (s.Replay == null || s.Replay == score.Replay))
+                .FirstOrDefaultAsync();
+            
+            string? name = score.Replay.Split("/").LastOrDefault();
+            if (name == null) return;
 
+            string fileName = $"{score.Id}.bsor";
+            bool uploaded = false;
             try {
-                leaderboard.PlayerStats.Add(stats);
-                await _context.SaveChangesAsync();
-            } catch { }
+                using (var stream = await _s3Client.DownloadReplay(name)) {
+                    if (stream == null) return;
+                    using (var ms = new MemoryStream()) {
+                        await stream.CopyToAsync(ms);
+                        ms.Position = 0;
+                        await _s3Client.UploadOtherReplayStream(fileName, ms);
+
+                        uploaded = true;
+                    }
+                }
+            } catch {}
+
+            if (uploaded) {
+                if (stats != null) {
+                    stats.Replay = "https://api.beatleader.xyz/otherreplays/" + fileName;
+                } else {
+                     LeaderboardPlayerStatsService.AddJob(new PlayerStatsJob {
+                        fileName = "https://api.beatleader.xyz/otherreplays/" + fileName,
+                        playerId = score.PlayerId,
+                        leaderboardId = leaderboardId,
+                        timeset = score.Timepost > 0 ? score.Timepost : int.Parse(score.Timeset),
+                        type = EndType.Clear,
+                        time = 0,
+                        score = score.BaseScore
+                    });
+                }
+            }
         }
 
         [NonAction]

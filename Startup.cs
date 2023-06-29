@@ -308,6 +308,8 @@ namespace BeatLeader_Server {
                 services.AddHostedService<BotService>();
             }
 
+            services.AddHostedService<LeaderboardPlayerStatsService>();
+
             services.AddHostedService<SearchService>();
             services.AddHostedService<OauthService>();
 

@@ -55,6 +55,16 @@ namespace BeatLeader_Server.Utils
 	        await client.UploadStream(filename, S3Container.replays, new BinaryData(data).ToStream());
         }
 
+        public static async Task UploadOtherReplay(this IAmazonS3 client, string filename, byte[] data)
+        {   
+	        await client.UploadStream(filename, S3Container.otherreplays, new BinaryData(data).ToStream());
+        }
+
+        public static async Task UploadOtherReplayStream(this IAmazonS3 client, string filename, Stream data)
+        {   
+	        await client.UploadStream(filename, S3Container.otherreplays, data);
+        }
+
         public static async Task UploadAsset(this IAmazonS3 client, string filename, Stream data)
         {
             await client.UploadStream(filename, S3Container.assets, data);
@@ -113,6 +123,11 @@ namespace BeatLeader_Server.Utils
         public static async Task<Stream?> DownloadReplay(this IAmazonS3 client, string filename)
         {
             return await client.DownloadStream(filename, S3Container.replays);
+        }
+
+        public static async Task<Stream?> DownloadOtherReplay(this IAmazonS3 client, string filename)
+        {
+            return await client.DownloadStream(filename, S3Container.otherreplays);
         }
 
 		public static async Task<Stream?> DownloadAsset(this IAmazonS3 client, string filename)
