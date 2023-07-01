@@ -178,15 +178,18 @@ namespace BeatLeader_Server.Controllers
             return player;
         }
 
-        [HttpDelete("~/player/{id}")]
-        [Authorize]
+        //[HttpDelete("~/player/{id}")]
+        //[Authorize]
+        [NonAction]
         public async Task<ActionResult> DeletePlayer(string id)
         {
-            string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = await _context.Players.FindAsync(currentId);
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
+            if (HttpContext != null) {
+                string currentId = HttpContext.CurrentUserID(_context);
+                Player? currentPlayer = await _context.Players.FindAsync(currentId);
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
             }
             var bslink = _context.BeatSaverLinks.FirstOrDefault(link => link.Id == id);
             if (bslink != null) {
@@ -196,6 +199,14 @@ namespace BeatLeader_Server.Controllers
             var plink = _context.PatreonLinks.FirstOrDefault(l => l.Id == id);
             if (plink != null) {
                 _context.PatreonLinks.Remove(plink);
+            }
+
+            var scores = _context.Scores.Where(s => s.PlayerId == id).ToList();
+            foreach (var score in scores) {
+                string? name = score.Replay.Split("/").LastOrDefault();
+                if (name != null) {
+                    await _assetsS3Client.DeleteReplay(name);
+                }
             }
 
             Player? player = _context.Players.Where(p => p.Id == id)
