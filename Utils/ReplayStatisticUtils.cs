@@ -426,7 +426,7 @@ namespace BeatLeader_Server.Utils
             int score = 0, noteIndex = 0;
             int combo = 0, maxCombo = 0;
             int maxScore = 0;
-            int fcScore = 0; float currentFcAcc = 0;
+            int fcScore = 0; float currentFcAcc = 1;
             int streak = 0, maxStreak = 0; 
             MultiplierCounter maxCounter = new MultiplierCounter();
             MultiplierCounter normalCounter = new MultiplierCounter();

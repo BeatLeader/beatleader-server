@@ -1131,7 +1131,7 @@ namespace BeatLeader_Server.Controllers {
             var player = await _context.Players.FindAsync(userId);
             bool adminUnban = false;
 
-            if (id != null && player != null && player.Role.Contains("admin")) {
+            if ((id != null && player != null && player.Role.Contains("admin")) || HttpContext == null) {
                 adminUnban = true;
                 player = await _context.Players.FindAsync(id);
             }
@@ -1164,14 +1164,21 @@ namespace BeatLeader_Server.Controllers {
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
-
-            HttpContext.Response.OnCompleted(async () => {
+            if (HttpContext != null) {
+                HttpContext.Response.OnCompleted(async () => {
+                    foreach (var item in leaderboardsToUpdate) {
+                        await _scoreRefreshController.RefreshScores(item);
+                    }
+                    await _playerRefreshController.RefreshPlayer(player);
+                    await _playerRefreshController.RefreshRanks();
+                });
+            } else {
                 foreach (var item in leaderboardsToUpdate) {
                     await _scoreRefreshController.RefreshScores(item);
                 }
                 await _playerRefreshController.RefreshPlayer(player);
                 await _playerRefreshController.RefreshRanks();
-            });
+            }
 
             return Ok();
         }

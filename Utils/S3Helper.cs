@@ -166,5 +166,9 @@ namespace BeatLeader_Server.Utils
         public static async Task DeleteStats(this IAmazonS3 client, string filename) {
             await client.DeleteFile(filename, S3Container.scorestats);
         }
+
+        public static async Task DeleteReplay(this IAmazonS3 client, string filename) {
+            await client.DeleteFile(filename, S3Container.replays);
+        }
     }
 }

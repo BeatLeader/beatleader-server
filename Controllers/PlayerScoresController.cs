@@ -420,6 +420,17 @@ namespace BeatLeader_Server.Controllers {
             public float Acc { get; set; }
             public string Timeset { get; set; }
             public float? Stars { get; set; }
+
+            [JsonIgnore]
+            public ModifiersRating? ModifiersRating { get; set; }
+            [JsonIgnore]
+            public ModifiersMap? ModifierValues { get; set; }
+            [JsonIgnore]
+            public float? PassRating { get; set; }
+            [JsonIgnore]
+            public float? AccRating { get; set; }
+            [JsonIgnore]
+            public float? TechRating { get; set; }
         }
 
         [HttpGet("~/player/{id}/accgraph")]
@@ -432,13 +443,9 @@ namespace BeatLeader_Server.Controllers {
                 .Select(p => p.ProfileSettings)
                 .FirstOrDefault()?.ShowAllRatings ?? false : false;
 
-            return _context
+            var result = _context
                 .Scores
-                .Include(s => s.Leaderboard)
-                .ThenInclude(l => l.Difficulty)
-                .Include(s => s.Leaderboard)
-                .ThenInclude(l => l.Song)
-                .Where(s => s.PlayerId == id && ((showRatings && s.Leaderboard.Difficulty.Stars != null) || s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked))
+                .Where(s => s.PlayerId == id && !s.IgnoreForStats && ((showRatings && s.Leaderboard.Difficulty.Stars != null) || s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked))
                 .Select(s => new GraphResponse {
                     LeaderboardId = s.Leaderboard.Id,
                     Diff = s.Leaderboard.Difficulty.DifficultyName,
@@ -448,9 +455,46 @@ namespace BeatLeader_Server.Controllers {
                     Stars = s.Leaderboard.Difficulty.Stars,
                     Acc = s.Accuracy,
                     Timeset = s.Timeset,
-                    Modifiers = s.Modifiers
+                    Modifiers = s.Modifiers,
+
+                    ModifiersRating = s.Leaderboard.Difficulty.ModifiersRating,
+                    ModifierValues = s.Leaderboard.Difficulty.ModifierValues,
+                    AccRating = s.Leaderboard.Difficulty.AccRating,
+                    PassRating = s.Leaderboard.Difficulty.PassRating,
+                    TechRating = s.Leaderboard.Difficulty.TechRating,
                 })
                 .ToList();
+            var defaultModifiers = new ModifiersMap();
+
+            foreach (var score in result) {
+                if (score.Modifiers.Length > 0) {
+                    var modifierValues = score.ModifierValues ?? defaultModifiers; 
+                    var modifiersRating = score.ModifiersRating;
+                    float mp = modifierValues.GetTotalMultiplier(score.Modifiers, modifiersRating == null);
+
+                    if (modifiersRating != null) {
+                        var modifiersMap = modifiersRating.ToDictionary<float>();
+                        foreach (var modifier in score.Modifiers.ToUpper().Split(","))
+                        {
+                            if (modifiersMap.ContainsKey(modifier + "AccRating")) { 
+                                score.AccRating = modifiersMap[modifier + "AccRating"]; 
+                                score.PassRating = modifiersMap[modifier + "PassRating"]; 
+                                score.TechRating = modifiersMap[modifier + "TechRating"]; 
+
+                                break;
+                            }
+                        }
+                    }
+
+                    score.AccRating *= mp;
+                    score.PassRating *= mp;
+                    score.TechRating *= mp;
+
+                    score.Stars = ReplayUtils.ToStars(score.AccRating ?? 0, score.PassRating ?? 0, score.TechRating ?? 0);
+                }
+            }
+
+            return result;
 
         }
 
