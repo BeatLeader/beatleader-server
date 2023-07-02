@@ -40,7 +40,7 @@ namespace BeatLeader_Server.Services {
                     await ProcessJobs();
                 } catch { }
 
-                await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+                await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken);
             }
             while (!stoppingToken.IsCancellationRequested);
         }
