@@ -56,35 +56,18 @@ namespace BeatLeader_Server.Controllers {
                 .FirstOrDefault()
                 ?.ShowAllRatings ?? false) : false;
 
-            Int64 oculusId = 0;
-            try {
-                oculusId = Int64.Parse(id);
-            } catch {
-                return (null, false, "", "");
-            }
-            AccountLink? link = null;
-            if (oculusId < 1000000000000000) {
-                using (_serverTiming.TimeAction("link")) {
-                    link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
-                }
-            }
-            if (link == null && oculusId < 70000000000000000) {
-                using (_serverTiming.TimeAction("link")) {
-                    link = _context.AccountLinks.FirstOrDefault(el => el.PCOculusID == id);
-                }
-            }
-            string userId = (link != null ? (link.SteamID.Length > 0 ? link.SteamID : link.PCOculusID) : id);
+            id = _context.PlayerIdToMain(id);
 
-            var player = _context.Players.FirstOrDefault(p => p.Id == userId);
+            var player = _context.Players.FirstOrDefault(p => p.Id == id);
             if (player == null) {
                 return (null, false, "", "");
             }
 
             return (_context
                .Scores
-               .Where(t => t.PlayerId == userId)
+               .Where(t => t.PlayerId == id)
                .Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId),
-               showRatings, currentID, userId);
+               showRatings, currentID, id);
         }
 
         [HttpGet("~/player/{id}/scores")]
@@ -435,6 +418,7 @@ namespace BeatLeader_Server.Controllers {
 
         [HttpGet("~/player/{id}/accgraph")]
         public ActionResult<ICollection<GraphResponse>> GetScoreValue(string id) {
+            id = _context.PlayerIdToMain(id);
             string? currentID = HttpContext.CurrentUserID(_context);
             bool showRatings = currentID != null ? _context
                 .Players
@@ -500,6 +484,7 @@ namespace BeatLeader_Server.Controllers {
 
         [HttpGet("~/player/{id}/history")]
         public async Task<ActionResult<ICollection<PlayerScoreStatsHistory>>> GetHistory(string id, [FromQuery] int count = 50) {
+            id = _context.PlayerIdToMain(id);
             var result = _context
                     .PlayerScoreStatsHistory
                     .Where(p => p.PlayerId == id)
@@ -517,6 +502,7 @@ namespace BeatLeader_Server.Controllers {
 
         [HttpGet("~/player/{id}/pinnedScores")]
         public async Task<ActionResult<ICollection<ScoreResponseWithMyScore>>> GetPinnedScores(string id) {
+            id = _context.PlayerIdToMain(id);
             string? currentID = HttpContext.CurrentUserID(_context);
             bool showRatings = currentID != null ? _context.Players.Include(p => p.ProfileSettings).Where(p => p.Id == currentID).Select(p => p.ProfileSettings).FirstOrDefault()?.ShowAllRatings ?? false : false;
 

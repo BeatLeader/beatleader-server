@@ -43,32 +43,9 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/player/{id}")]
-        public async Task<ActionResult<PlayerResponseFull>> Get(string id, bool stats = true)
+        public async Task<ActionResult<PlayerResponseFull>> Get(string id, bool stats = true, [FromQuery] bool keepOriginalId = false)
         {
-            Int64 oculusId = 0;
-            try
-            {
-                oculusId = Int64.Parse(id);
-            }
-            catch { 
-                return BadRequest("Id should be a number");
-            }
-            AccountLink? link = null;
-            if (oculusId < 1000000000000000)
-            {
-                using (_serverTiming.TimeAction("link"))
-                {
-                    link = _readContext.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
-                }
-            }
-            if (link == null && oculusId < 70000000000000000)
-            {
-                using (_serverTiming.TimeAction("link"))
-                {
-                    link = _readContext.AccountLinks.FirstOrDefault(el => el.PCOculusID == id);
-                }
-            }
-            string userId = (link != null ? (link.SteamID.Length > 0 ? link.SteamID : link.PCOculusID) : id);
+            string userId = _context.PlayerIdToMain(id);
             Player? player;
             using (_serverTiming.TimeAction("player"))
             {
@@ -101,6 +78,10 @@ namespace BeatLeader_Server.Controllers
                 var result = ResponseFullFromPlayer(player);
                 if (result.Banned) {
                     result.BanDescription = _context.Bans.OrderByDescending(b => b.Timeset).FirstOrDefault(b => b.PlayerId == player.Id);
+                }
+
+                if (keepOriginalId && result.Id != id) {
+                    result.Id = id;
                 }
 
                 return PostProcessSettings(result);

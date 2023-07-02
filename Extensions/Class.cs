@@ -115,6 +115,23 @@ namespace BeatLeader_Server.Extensions
 
         }
 
+        public static string PlayerIdToMain(this AppContext _context, string id) {
+            Int64 oculusId = 0;
+            try {
+                oculusId = Int64.Parse(id);
+            } catch {
+                return "-1";
+            }
+            AccountLink? link = null;
+            if (oculusId < 1000000000000000) {
+                link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
+            }
+            if (link == null && oculusId < 70000000000000000) {
+                link = _context.AccountLinks.FirstOrDefault(el => el.PCOculusID == id);
+            }
+            return (link != null ? (link.SteamID.Length > 0 ? link.SteamID : link.PCOculusID) : id);
+        }
+
         public static string? CurrentUserID(this HttpContext context, ReadAppContext dbcontext)
         {
             try
