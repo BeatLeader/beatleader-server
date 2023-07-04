@@ -5,25 +5,24 @@
 namespace BeatLeader_Server.Migrations
 {
     /// <inheritdoc />
-    public partial class RankedPoolPercentCaptured : Migration
+    public partial class ReplayLinkInStats : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<int>(
-                name: "RankedPoolPercentCaptured",
-                table: "Clans",
-                type: "int",
-                nullable: false,
-                defaultValue: 0);
+            migrationBuilder.AddColumn<string>(
+                name: "Replay",
+                table: "PlayerLeaderboardStats",
+                type: "nvarchar(max)",
+                nullable: true);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "RankedPoolPercentCaptured",
-                table: "Clans");
+                name: "Replay",
+                table: "PlayerLeaderboardStats");
         }
     }
 }

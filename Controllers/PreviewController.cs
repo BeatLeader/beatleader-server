@@ -1,7 +1,7 @@
 ﻿using Amazon.S3;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
-using Lib.AspNetCore.ServerTiming;
+using Lib.ServerTiming;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -17,6 +17,7 @@ using SixLabors.ImageSharp.Drawing;
 using System.Dynamic;
 using System.Net;
 using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.Formats.Webp;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -102,6 +103,7 @@ namespace BeatLeader_Server.Controllers
             public string CoverImage { get; set; }
             public string SongName { get; set; }
             public float? Stars { get; set; }
+            public int? ScoreId { get; set; }
 
             public float Accuracy { get; set; }
             public string PlayerId { get; set; }
@@ -151,71 +153,8 @@ namespace BeatLeader_Server.Controllers
             } 
         }
 
-        [HttpGet("~/preview/replay")]
-        public async Task<ActionResult> Get(
-            [FromQuery] string? playerID = null, 
-            [FromQuery] string? id = null, 
-            [FromQuery] string? difficulty = null, 
-            [FromQuery] string? mode = null,
-            [FromQuery] int? scoreId = null) {
-
-            if (scoreId != null)
-            {
-                var stream = await _s3Client.DownloadPreview(scoreId + "-preview.png");
-                if (stream != null)
-                {
-                    return File(stream, "image/png");
-                }
-            }
-            else
-            {
-                return await GetOld(playerID, id, difficulty, mode);
-            }
-
-            ScoreSelect? score = null;
-
-            using (_serverTiming.TimeAction("db"))
-            {
-                if (scoreId != null) {
-                    score = await _readContext.Scores
-                        .Where(s => s.Id == scoreId)
-                        .Include(s => s.Player)
-                            .ThenInclude(p => p.ProfileSettings)
-                        .Include(s => s.Leaderboard)
-                            .ThenInclude(l => l.Song)
-                        .Include(s => s.Leaderboard)
-                            .ThenInclude(l => l.Difficulty)
-                        .Select(s => new ScoreSelect {
-                            SongId = s.Leaderboard.Song.Id,
-                            CoverImage = s.Leaderboard.Song.CoverImage,
-                            SongName = s.Leaderboard.Song.Name,
-                            Stars = s.Leaderboard.Difficulty.Stars,
-
-                            Accuracy = s.Accuracy,
-                            PlayerId = s.PlayerId,
-                            Pp = s.Pp,
-                            Rank = s.Rank,
-                            Modifiers = s.Modifiers,
-                            FullCombo = s.FullCombo,
-                            Difficulty = s.Leaderboard.Difficulty.DifficultyName,
-
-                            PlayerAvatar = s.Player.Avatar,
-                            PlayerName = s.Player.Name,
-                            PlayerRole = s.Player.Role,
-                            PatreonFeatures = s.Player.PatreonFeatures,
-                            ProfileSettings = s.Player.ProfileSettings,
-                        })
-                        .FirstOrDefaultAsync();
-                    if (score == null) {
-                        var redirect = _readContext.ScoreRedirects.FirstOrDefault(sr => sr.OldScoreId == scoreId);
-                        if (redirect != null && redirect.NewScoreId != scoreId)
-                        {
-                            return await Get(scoreId: redirect.NewScoreId);
-                        }
-                    }
-                }
-            }
-
+        [NonAction]
+        private async Task<ActionResult> GetFromScore(ScoreSelect? score) {
             if (score == null)
             {
                 return NotFound();
@@ -260,16 +199,155 @@ namespace BeatLeader_Server.Controllers
             MemoryStream ms = new MemoryStream();
             result.SaveAsPng(ms);
             ms.Position = 0;
-            if (scoreId != null)
+            if (score.ScoreId != null)
             {
                 try
                 {
-                    await _s3Client.UploadPreview(scoreId + "-preview.png", ms);
+                    await _s3Client.UploadPreview(score.ScoreId + "-preview.png", ms);
                 }
                 catch { }
             }
             ms.Position = 0;
+
             return File(ms, "image/png");
+        }
+
+        [HttpGet("~/preview/replay")]
+        public async Task<ActionResult> Get(
+            [FromQuery] string? playerID = null, 
+            [FromQuery] string? id = null, 
+            [FromQuery] string? difficulty = null, 
+            [FromQuery] string? mode = null,
+            [FromQuery] string? link = null,
+            [FromQuery] int? scoreId = null) {
+
+            if (scoreId != null)
+            {
+                var stream = await _s3Client.DownloadPreview(scoreId + "-preview.png");
+                if (stream != null)
+                {
+                    return File(stream, "image/png");
+                }
+            }
+            else if (link != null) {
+                return await GetLink(link);
+            }
+            else
+            {
+                return await GetOld(playerID, id, difficulty, mode);
+            }
+
+            ScoreSelect? score = null;
+
+            using (_serverTiming.TimeAction("db"))
+            {
+                if (scoreId != null) {
+                    score = await _readContext.Scores
+                        .Where(s => s.Id == scoreId)
+                        .Include(s => s.Player)
+                            .ThenInclude(p => p.ProfileSettings)
+                        .Include(s => s.Leaderboard)
+                            .ThenInclude(l => l.Song)
+                        .Include(s => s.Leaderboard)
+                            .ThenInclude(l => l.Difficulty)
+                        .Select(s => new ScoreSelect {
+                            SongId = s.Leaderboard.Song.Id,
+                            CoverImage = s.Leaderboard.Song.CoverImage,
+                            SongName = s.Leaderboard.Song.Name,
+                            Stars = 
+                                (s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
+                                s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
+                                s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) ? s.Leaderboard.Difficulty.Stars : null,
+
+                            Accuracy = s.Accuracy,
+                            PlayerId = s.PlayerId,
+                            Pp = s.Pp,
+                            Rank = s.Rank,
+                            Modifiers = s.Modifiers,
+                            FullCombo = s.FullCombo,
+                            Difficulty = s.Leaderboard.Difficulty.DifficultyName,
+
+                            PlayerAvatar = s.Player.Avatar,
+                            PlayerName = s.Player.Name,
+                            PlayerRole = s.Player.Role,
+                            PatreonFeatures = s.Player.PatreonFeatures,
+                            ProfileSettings = s.Player.ProfileSettings,
+                        })
+                        .FirstOrDefaultAsync();
+                    if (score == null) {
+                        var redirect = _readContext.ScoreRedirects.FirstOrDefault(sr => sr.OldScoreId == scoreId);
+                        if (redirect != null && redirect.NewScoreId != scoreId)
+                        {
+                            return await Get(scoreId: redirect.NewScoreId);
+                        }
+                    } else {
+                        score.ScoreId = scoreId;
+                    }
+                }
+            }
+
+            return await GetFromScore(score);
+        }
+
+        [NonAction]
+        public async Task<ActionResult> GetLink(string link) {
+            ReplayInfo? info = null;
+
+            if (!link.EndsWith("bsor")) {
+                return BadRequest("Not a BSOR");
+            }
+
+            using (var request = new HttpRequestMessage(HttpMethod.Get, link))
+            {
+                try {
+                    Stream contentStream = await (await _client.SendAsync(request)).Content.ReadAsStreamAsync();
+
+                    (info, _) = await new AsyncReplayDecoder().StartDecodingStream(contentStream);
+                } catch { }
+            }
+
+            if (info == null) {
+                return NotFound();
+            }
+
+            var score = await _context.Leaderboards
+                .Where(lb => lb.Song.Hash == info.hash && lb.Difficulty.DifficultyName == info.difficulty && lb.Difficulty.ModeName == info.mode)
+                .Include(s => s.Song)
+                .Include(s => s.Difficulty)
+                .Select(s => new ScoreSelect {
+                    SongId = s.Song.Id,
+                    CoverImage = s.Song.CoverImage,
+                    SongName = s.Song.Name,
+                    Stars = s.Difficulty.Stars,
+                    Difficulty = s.Difficulty.DifficultyName,
+                    Accuracy = s.Difficulty.MaxScore
+                })
+                .FirstOrDefaultAsync();
+
+            var playerId = info.playerID;
+            long intId = Int64.Parse(playerId);
+            if (intId < 70000000000000000)
+            {
+                AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+                if (accountLink != null) {
+                    playerId = accountLink.SteamID.Length > 0 ? accountLink.SteamID : accountLink.PCOculusID;
+                }
+            }
+
+            var player = await _context.Players.Include(p => p.ProfileSettings).FirstOrDefaultAsync(p => p.Id == playerId);
+            if (player != null) {
+                score.PlayerAvatar = player.Avatar;
+                score.PlayerName = player.Name;
+                score.PlayerRole = player.Role;
+                score.PatreonFeatures = player.PatreonFeatures;
+                score.ProfileSettings = player.ProfileSettings;
+                score.PlayerId = playerId;
+            }
+
+            score.Accuracy = (float)info.score / score.Accuracy;
+            score.Modifiers = info.modifiers;
+
+            return await GetFromScore(score);
         }
 
         [NonAction]
@@ -344,9 +422,17 @@ namespace BeatLeader_Server.Controllers
             image.Mutate(x => x.Draw(new Pen(new LinearGradientBrush(new Point(1, 1), new Point(100, 100), GradientRepetitionMode.Repeat, new ColorStop(0, Color.Red), new ColorStop(1, Color.BlueViolet)), 5), new Rectangle(0, 0, width, height)));
 
             MemoryStream ms = new MemoryStream();
-            image.SaveAsPng(ms);
+            WebpEncoder webpEncoder = new()
+            {
+                NearLossless = true,
+                NearLosslessQuality = 80,
+                TransparentColorMode = WebpTransparentColorMode.Preserve,
+                Quality = 75,
+            };
+
+            image.SaveAsWebp(ms, webpEncoder);
             ms.Position = 0;
-            return File(ms, "image/png");
+            return File(ms, "image/webp");
         }
 
         [HttpGet("~/preview/royale")]
@@ -460,9 +546,17 @@ namespace BeatLeader_Server.Controllers
             image.Mutate(x => x.Draw(new Pen(new LinearGradientBrush(new Point(1, 1), new Point(100, 100), GradientRepetitionMode.Repeat, new ColorStop(0, Color.Red), new ColorStop(1, Color.BlueViolet)), 5), new Rectangle(0, 0, width, height)));
 
             MemoryStream ms = new MemoryStream();
-            image.SaveAsPng(ms);
+            WebpEncoder webpEncoder = new()
+            {
+                NearLossless = true,
+                NearLosslessQuality = 80,
+                TransparentColorMode = WebpTransparentColorMode.Preserve,
+                Quality = 75,
+            };
+
+            image.SaveAsWebp(ms, webpEncoder);
             ms.Position = 0;
-            return File(ms, "image/png");
+            return File(ms, "image/webp");
         }
 
         private Task<Player?> GetPlayerFromSS(string url)

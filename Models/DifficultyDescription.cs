@@ -17,6 +17,7 @@ namespace BeatLeader_Server.Models
     [Flags]
     public enum Requirements
     {
+        Ignore = -1,
         None = 0,
         Chroma = 1 << 1,
         Noodles = 1 << 2,

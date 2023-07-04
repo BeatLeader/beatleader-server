@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace BeatLeaderServer.Migrations.ReadApp
+namespace BeatLeader_Server.Migrations.ReadApp
 {
     [DbContext(typeof(ReadAppContext))]
     partial class ReadAppContextModelSnapshot : ModelSnapshot
@@ -579,9 +579,6 @@ namespace BeatLeaderServer.Migrations.ReadApp
 
                     b.Property<int>("NegativeVotes")
                         .HasColumnType("int");
-
-                    b.Property<string>("OwningClan")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Plays")
                         .HasColumnType("int");

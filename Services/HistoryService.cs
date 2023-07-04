@@ -51,7 +51,7 @@ namespace BeatLeader_Server.Services
                     var ranked = _context
                         .Players
                         .OrderBy(p => p.Id)
-                        .Where(p => !p.Banned)
+                        .Where(p => !p.Banned || p.Bot)
                         .Include(p => p.ScoreStats)
                         .Skip(i)
                         .Take(5000)

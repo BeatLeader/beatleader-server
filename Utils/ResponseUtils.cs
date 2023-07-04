@@ -1,23 +1,21 @@
 ﻿using BeatLeader_Server.Models;
 
-namespace BeatLeader_Server.Utils
-{
-    public class ResponseUtils
-    {
-        public class ClanResponse
-        {
+namespace BeatLeader_Server.Utils {
+    public class ResponseUtils {
+        public class ClanResponse {
             public int Id { get; set; }
             public string Tag { get; set; }
             public string Color { get; set; }
         }
 
-        public class PlayerResponse
-        {
+        public class PlayerResponse {
             public string Id { get; set; }
             public string Name { get; set; } = "";
             public string Platform { get; set; } = "";
             public string Avatar { get; set; } = "";
             public string Country { get; set; } = "not set";
+
+            public bool Bot { get; set; }
 
             public float Pp { get; set; }
             public int Rank { get; set; }
@@ -29,33 +27,31 @@ namespace BeatLeader_Server.Utils
             public ProfileSettings? ProfileSettings { get; set; }
             public IEnumerable<ClanResponse>? Clans { get; set; }
         }
-        public class PlayerResponseWithFriends : PlayerResponse
-        {
+        public class PlayerResponseWithFriends : PlayerResponse {
             public ICollection<string>? Friends { get; set; }
         }
 
-        public class PlayerResponseWithStats : PlayerResponse
-        {
+        public class PlayerResponseWithStats : PlayerResponse {
             public float AccPp { get; set; }
             public float PassPp { get; set; }
             public float TechPp { get; set; }
             public PlayerScoreStats? ScoreStats { get; set; }
             public float LastWeekPp { get; set; }
             public int LastWeekRank { get; set; }
-            public int LastWeekCountryRank { get; set; } 
+            public int LastWeekCountryRank { get; set; }
             public IEnumerable<EventPlayer>? EventsParticipating { get; set; }
         }
 
-        public class PlayerResponseFull : PlayerResponseWithStats
-        {
+        public class PlayerResponseFull : PlayerResponseWithStats {
             public int MapperId { get; set; }
 
             public bool Banned { get; set; }
             public bool Inactive { get; set; }
+
             public Ban? BanDescription { get; set; }
 
             public string ExternalProfileUrl { get; set; } = "";
-            
+
 
             public ICollection<PlayerScoreStatsHistory>? History { get; set; }
 
@@ -64,8 +60,7 @@ namespace BeatLeader_Server.Utils
             public ICollection<PlayerChange>? Changes { get; set; }
         }
 
-        public class ScoreResponse
-        {
+        public class ScoreResponse {
             public int Id { get; set; }
             public int BaseScore { get; set; }
             public int ModifiedScore { get; set; }
@@ -77,10 +72,10 @@ namespace BeatLeader_Server.Utils
             public float AccPP { get; set; }
             public float TechPP { get; set; }
             public int Rank { get; set; }
-            public int CountryRank { get; set; }
             public string? Country { get; set; }
             public float FcAccuracy { get; set; }
             public float FcPp { get; set; }
+            public float Weight { get; set; }
             public string Replay { get; set; }
             public string Modifiers { get; set; }
             public int BadCuts { get; set; }
@@ -120,8 +115,12 @@ namespace BeatLeader_Server.Utils
             public string Player { get; set; }
         }
 
-        public class LeaderboardsResponse
-        {
+        public class SaverContainerResponse {
+            public string LeaderboardId { get; set; }
+            public bool Ranked { get; set; }
+        }
+
+        public class LeaderboardsResponse {
             public Song Song { get; set; }
             public ICollection<LeaderboardsInfoResponse> Leaderboards { get; set; }
         }
@@ -133,10 +132,18 @@ namespace BeatLeader_Server.Utils
             public RankUpdate? Reweight { get; set; }
             public bool ClanRankingContested { get; set; }
             public ClanRanking? ClanRanking { get; set; }
+
+            public void HideRatings() {
+                this.Difficulty.AccRating = null;
+                this.Difficulty.TechRating = null;
+                this.Difficulty.PassRating = null;
+                this.Difficulty.Stars = null;
+
+                this.Difficulty.ModifiersRating = null;
+            }
         }
 
-        public class ClanReturn
-        {
+        public class ClanReturn {
             public int Id { get; set; }
             public string Name { get; set; }
             public string Color { get; set; }
@@ -156,15 +163,13 @@ namespace BeatLeader_Server.Utils
             public ICollection<string> PendingInvites { get; set; } = new List<string>();
         }
 
-        public class BanReturn
-        {
+        public class BanReturn {
             public string Reason { get; set; }
             public int Timeset { get; set; }
             public int Duration { get; set; }
         }
 
-        public class UserReturn
-        {
+        public class UserReturn {
             public PlayerResponseFull Player { get; set; }
 
             public ClanReturn? Clan { get; set; }
@@ -181,6 +186,36 @@ namespace BeatLeader_Server.Utils
             public bool Patreoned { get; set; }
         }
 
+        public class DifficultyDescriptionResponse {
+            public int Id { get; set; }
+            public int Value { get; set; }
+            public int Mode { get; set; }
+            public string DifficultyName { get; set; }
+            public string ModeName { get; set; }
+            public DifficultyStatus Status { get; set; }
+            public ModifiersMap? ModifierValues { get; set; } = new ModifiersMap();
+            public ModifiersRating? ModifiersRating { get; set; }
+            public int NominatedTime { get; set; }
+            public int QualifiedTime { get; set; }
+            public int RankedTime { get; set; }
+
+            public float? Stars { get; set; }
+            public float? PassRating { get; set; }
+            public float? AccRating { get; set; }
+            public float? TechRating { get; set; }
+            public int Type { get; set; }
+
+            public float Njs { get; set; }
+            public float Nps { get; set; }
+            public int Notes { get; set; }
+            public int Bombs { get; set; }
+            public int Walls { get; set; }
+            public int MaxScore { get; set; }
+            public double Duration { get; set; }
+
+            public Requirements Requirements { get; set; }
+        }
+
         public class LeaderboardResponse {
             public string? Id { get; set; }
             public Song? Song { get; set; }
@@ -190,11 +225,21 @@ namespace BeatLeader_Server.Utils
 
             public RankQualification? Qualification { get; set; }
             public RankUpdate? Reweight { get; set; }
-            
+
             public IEnumerable<LeaderboardGroupEntry>? LeaderboardGroup { get; set; }
             public int Plays { get; set; }
+
             public ICollection<ClanRankingResponse>? ClanRanking { get; set; }
             public bool ClanRankingContested { get; set; }
+            public void HideRatings()
+            {
+                this.Difficulty.AccRating = null;
+                this.Difficulty.TechRating = null;
+                this.Difficulty.PassRating = null;
+                this.Difficulty.Stars = null;
+
+                this.Difficulty.ModifiersRating = null;
+            }
         }
 
         public class ClanRankingResponse
@@ -218,23 +263,20 @@ namespace BeatLeader_Server.Utils
             public long Timestamp { get; set; }
         }
 
-        public class ScoreResponseWithAcc : ScoreResponse
-        {
+        public class ScoreResponseWithAcc : ScoreResponse {
             public float Weight { get; set; }
 
             public float AccLeft { get; set; }
             public float AccRight { get; set; }
         }
 
-        public class ScoreResponseWithMyScore : ScoreResponseWithAcc
-        {
-            public ScoreResponse? MyScore { get; set; }
+        public class ScoreResponseWithMyScore : ScoreResponseWithAcc {
+            public ScoreResponseWithAcc? MyScore { get; set; }
 
             public LeaderboardResponse Leaderboard { get; set; }
         }
 
-        public class LeaderboardInfoResponse
-        {
+        public class LeaderboardInfoResponse {
             public string Id { get; set; }
             public Song Song { get; set; }
             public DifficultyDescription Difficulty { get; set; }
@@ -249,10 +291,18 @@ namespace BeatLeader_Server.Utils
             public ScoreResponseWithAcc? MyScore { get; set; }
             public RankQualification? Qualification { get; set; }
             public RankUpdate? Reweight { get; set; }
+
+            public void HideRatings() {
+                this.Difficulty.AccRating = null;
+                this.Difficulty.TechRating = null;
+                this.Difficulty.PassRating = null;
+                this.Difficulty.Stars = null;
+
+                this.Difficulty.ModifiersRating = null;
+            }
         }
 
-        public class DiffModResponse
-        {
+        public class DiffModResponse {
             public string DifficultyName { get; set; }
             public string ModeName { get; set; }
             public float? Stars { get; set; }
@@ -260,10 +310,43 @@ namespace BeatLeader_Server.Utils
             public int Type { get; set; }
             public float[] Votes { get; set; }
             public ModifiersMap? ModifierValues { get; set; }
+            public ModifiersRating? ModifiersRating { get; set; }
+            public float? PassRating { get; set; }
+            public float? AccRating { get; set; }
+            public float? TechRating { get; set; }
+
+            public void HideRatings() {
+                this.AccRating = null;
+                this.TechRating = null;
+                this.PassRating = null;
+                this.Stars = null;
+
+                this.ModifiersRating = null;
+            }
         }
 
-        public class EventResponse
-        {
+        public class CompactScore {
+            public int BaseScore { get; set; }
+            public int ModifiedScore { get; set; }
+            public int MaxCombo { get; set; }
+            public int MissedNotes { get; set; }
+            public int BadCuts { get; set; }
+            public HMD Hmd { get; set; }
+
+            public int EpochTime { get; set; }
+        }
+
+        public class CompactLeaderboard {
+            public string SongHash { get; set; }
+            public int Difficulty { get; set; }
+        }
+
+        public class CompactScoreResponse {
+            public CompactScore Score { get; set; }
+            public CompactLeaderboard Leaderboard { get; set; }
+        }
+
+        public class EventResponse {
             public int Id { get; set; }
             public string Name { get; set; }
             public int EndDate { get; set; }
@@ -274,10 +357,8 @@ namespace BeatLeader_Server.Utils
             public PlayerResponse Leader { get; set; }
         }
 
-        public static T RemoveLeaderboard<T>  (Score s, int i) where T : ScoreResponse, new()
-        {
-            return new T
-            {
+        public static T RemoveLeaderboard<T>(Score s, int i) where T : ScoreResponse, new() {
+            return new T {
                 Id = s.Id,
                 BaseScore = s.BaseScore,
                 ModifiedScore = s.ModifiedScore,
@@ -304,8 +385,7 @@ namespace BeatLeader_Server.Utils
                 Timepost = s.Timepost,
                 LeaderboardId = s.LeaderboardId,
                 Platform = s.Platform,
-                Player = s.Player != null ? new PlayerResponse
-                {
+                Player = s.Player != null ? new PlayerResponse {
                     Id = s.Player.Id,
                     Name = s.Player.Name,
                     Platform = s.Player.Platform,
@@ -333,10 +413,18 @@ namespace BeatLeader_Server.Utils
             return RemoveLeaderboard<ScoreResponse>(s, i);
         }
 
+        public static ScoreResponseWithAcc ToScoreResponseWithAcc(Score s, int i) {
+            var result = RemoveLeaderboard<ScoreResponseWithAcc>(s, i);
+            result.Weight = s.Weight;
+            result.AccLeft = s.AccLeft;
+            result.AccRight = s.AccRight;
+
+            return result;
+        }
+
         public static ScoreResponseWithMyScore ScoreWithMyScore(Score s, int i) {
 
-            return new ScoreResponseWithMyScore
-            {
+            return new ScoreResponseWithMyScore {
                 Id = s.Id,
                 BaseScore = s.BaseScore,
                 ModifiedScore = s.ModifiedScore,
@@ -363,8 +451,7 @@ namespace BeatLeader_Server.Utils
                 Timepost = s.Timepost,
                 LeaderboardId = s.LeaderboardId,
                 Platform = s.Platform,
-                Player = s.Player != null ? new PlayerResponse
-                {
+                Player = s.Player != null ? new PlayerResponse {
                     Id = s.Player.Id,
                     Name = s.Player.Name,
                     Platform = s.Player.Platform,
@@ -385,8 +472,7 @@ namespace BeatLeader_Server.Utils
                 Metadata = s.Metadata,
                 Country = s.Country,
                 Offsets = s.ReplayOffsets,
-                Leaderboard = new LeaderboardResponse
-                {
+                Leaderboard = new LeaderboardResponse {
                     Id = s.LeaderboardId,
                     Song = s.Leaderboard?.Song,
                     Difficulty = s.Leaderboard?.Difficulty
@@ -398,12 +484,10 @@ namespace BeatLeader_Server.Utils
             };
         }
 
-        public static T? GeneralResponseFromPlayer<T>(Player? p) where T : PlayerResponse, new()
-        {
+        public static T? GeneralResponseFromPlayer<T>(Player? p) where T : PlayerResponse, new() {
             if (p == null) return null;
 
-            return new T
-            {
+            return new T {
                 Id = p.Id,
                 Name = p.Name,
                 Platform = p.Platform,
@@ -421,8 +505,7 @@ namespace BeatLeader_Server.Utils
             };
         }
 
-        public static PlayerResponse? ResponseFromPlayer(Player? p)
-        {
+        public static PlayerResponse? ResponseFromPlayer(Player? p) {
             return GeneralResponseFromPlayer<PlayerResponse>(p);
         }
 
@@ -446,10 +529,8 @@ namespace BeatLeader_Server.Utils
             };
         }
 
-        public static PlayerResponseWithStats ResponseWithStatsFromPlayer(Player p)
-        {
-            return new PlayerResponseWithStats
-            {
+        public static PlayerResponseWithStats ResponseWithStatsFromPlayer(Player p) {
+            return new PlayerResponseWithStats {
                 Id = p.Id,
                 Name = p.Name,
                 Platform = p.Platform,
@@ -471,17 +552,14 @@ namespace BeatLeader_Server.Utils
             };
         }
 
-        public static PlayerResponseFull? ResponseFullFromPlayerNullable(Player? p)
-        {
+        public static PlayerResponseFull? ResponseFullFromPlayerNullable(Player? p) {
             if (p == null) return null;
 
             return ResponseFullFromPlayer(p);
         }
 
-        public static PlayerResponseFull ResponseFullFromPlayer(Player p)
-        {
-            return new PlayerResponseFull
-            {
+        public static PlayerResponseFull ResponseFullFromPlayer(Player p) {
+            return new PlayerResponseFull {
                 Id = p.Id,
                 Name = p.Name,
                 Platform = p.Platform,
@@ -493,6 +571,7 @@ namespace BeatLeader_Server.Utils
 
                 Banned = p.Banned,
                 Inactive = p.Inactive,
+                Bot = p.Bot,
 
                 ExternalProfileUrl = p.ExternalProfileUrl,
 
@@ -518,23 +597,29 @@ namespace BeatLeader_Server.Utils
                 Clans = p.Clans?.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
             };
         }
-        
-        public static DiffModResponse DiffModResponseFromDiffAndVotes(DifficultyDescription diff, float[] votes)
-        {
-            return new DiffModResponse
-            {
+
+        public static DiffModResponse DiffModResponseFromDiffAndVotes(DifficultyDescription diff, float[] votes) {
+            return new DiffModResponse {
                 DifficultyName = diff.DifficultyName,
                 ModeName = diff.ModeName,
                 Stars = diff.Stars,
                 Status = diff.Status,
                 Type = diff.Type,
                 Votes = votes,
-                ModifierValues = diff.ModifierValues
+                ModifierValues = diff.ModifierValues,
+                ModifiersRating = diff.ModifiersRating,
+                PassRating = diff.PassRating,
+                AccRating = diff.AccRating,
+                TechRating = diff.TechRating
             };
         }
 
-        public static T PostProcessSettings<T>(T input) where T: PlayerResponse? {
+        public static T PostProcessSettings<T>(T input) where T : PlayerResponse? {
             if (input == null) return null;
+
+            if (input.ProfileSettings == null) {
+                input.ProfileSettings = new ProfileSettings();
+            }
 
             PostProcessSettings(input.Role, input.ProfileSettings, input.PatreonFeatures);
 
@@ -546,6 +631,10 @@ namespace BeatLeader_Server.Utils
                 settings.StarredFriends = "";
             }
 
+            if (settings != null && settings.ProfileAppearance == null) {
+                settings.ProfileAppearance = "topPp,averageRankedAccuracy,topPlatform,topHMD";
+            }
+
             if (!role.Contains("sponsor")) {
                 if (settings != null) {
                     settings.Message = null;
@@ -554,57 +643,48 @@ namespace BeatLeader_Server.Utils
                     patreonFeatures.Message = "";
                 }
             }
-            
+
             if (settings != null) {
-                if (settings.EffectName?.Contains("Special") == true)
-                {
+                if (settings.EffectName?.Contains("Special") == true) {
                     if (!role.Contains("creator") &&
                         !role.Contains("rankedteam") &&
                         !role.Contains("qualityteam") &&
                         !role.Contains("juniorrankedteam") &&
-                        !role.Contains("admin"))
-                    {
-                        settings.EffectName = "";
-                    }
-                }
-                else if (settings.EffectName?.Contains("Tier1") == true) {
-                    if (!role.Contains("tipper") && 
-                        !role.Contains("supporter") && 
-                        !role.Contains("sponsor") && 
-                        !role.Contains("creator") && 
-                        !role.Contains("rankedteam") &&
-                        !role.Contains("qualityteam") &&
-                        !role.Contains("juniorrankedteam") && 
                         !role.Contains("admin")) {
                         settings.EffectName = "";
                     }
-                }
-                else if (settings.EffectName?.Contains("Tier2") == true)
-                {
+                } else if (settings.EffectName?.Contains("Tier1") == true) {
+                    if (!role.Contains("tipper") &&
+                        !role.Contains("supporter") &&
+                        !role.Contains("sponsor") &&
+                        !role.Contains("creator") &&
+                        !role.Contains("rankedteam") &&
+                        !role.Contains("qualityteam") &&
+                        !role.Contains("juniorrankedteam") &&
+                        !role.Contains("admin") &&
+                        !role.Contains("booster")) {
+                        settings.EffectName = "";
+                    }
+                } else if (settings.EffectName?.Contains("Tier2") == true) {
                     if (!role.Contains("supporter") &&
                         !role.Contains("sponsor") &&
                         !role.Contains("creator") &&
                         !role.Contains("rankedteam") &&
                         !role.Contains("qualityteam") &&
                         !role.Contains("juniorrankedteam") &&
-                        !role.Contains("admin"))
-                    {
+                        !role.Contains("admin")) {
                         settings.EffectName = "";
                     }
-                }
-                else if (settings.EffectName?.Contains("Tier3") == true)
-                {
+                } else if (settings.EffectName?.Contains("Tier3") == true) {
                     if (!role.Contains("sponsor") &&
                         !role.Contains("creator") &&
                         !role.Contains("rankedteam") &&
                         !role.Contains("qualityteam") &&
                         !role.Contains("juniorrankedteam") &&
-                        !role.Contains("admin"))
-                    {
+                        !role.Contains("admin")) {
                         settings.EffectName = "";
                     }
-                }
-                else {
+                } else {
                     settings.EffectName = "";
                 }
 
@@ -620,6 +700,19 @@ namespace BeatLeader_Server.Utils
                     settings.LeftSaberColor = null;
                 }
             }
+        }
+
+        public enum FriendActivityType {
+            Achievement = 1,
+            MapLiked = 2,
+            MapRanked = 3,
+            MapPublished = 4,
+        }
+
+        public class FriendActivity {
+            public PlayerResponse Player { get; set; }
+            public FriendActivityType Type { get; set; }
+            public dynamic ActivityObject { get; set; }
         }
     }
 }

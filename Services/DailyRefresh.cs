@@ -26,6 +26,9 @@ namespace BeatLeader_Server.Services
                 {
                     await RefreshSteamPlayers();
                     await RefreshStats();
+                    await RefreshPatreon();
+                    await RefreshBoosters();
+                    await RefreshBanned();
 
                     hoursUntil21 = 24;
                 }
@@ -101,6 +104,73 @@ namespace BeatLeader_Server.Services
 
                 var _playerController = scope.ServiceProvider.GetRequiredService<PlayerRefreshController>();
                 await _playerController.RefreshPlayersStats();
+            }
+        }
+
+        public async Task RefreshPatreon()
+        {
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+
+                var _patreonController = scope.ServiceProvider.GetRequiredService<PatreonController>();
+                await _patreonController.RefreshPatreon();
+            }
+        }
+
+        public async Task RefreshBoosters()
+        {
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+
+                var players = _context.Players.Where(p => p.Socials.FirstOrDefault(s => s.Service == "Discord") != null).ToList();
+                foreach (var player in players) {
+                    var link = _context.DiscordLinks.FirstOrDefault(l => l.Id == player.Id);
+                    if (link != null) {
+                        ulong ulongId = 0;
+                        if (ulong.TryParse(link.DiscordId, out ulongId)) {
+                            await PlayerUtils.RefreshBoosterRole(_context, player, ulongId);
+                        }
+                    }
+                }
+            }
+        }
+
+        public async Task RefreshBanned() 
+        {
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+
+                var bannedPlayers = _context.Players.Where(p => p.Banned && !p.Bot).ToList();
+                var deletionList = new List<string>();
+                var unbanlist = new List<string>();
+
+                var currentTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+                var threshold = currentTime - 60 * 60 * 24 * 30 * 6;
+                foreach (var player in bannedPlayers) {
+                    var ban = _context.Bans.OrderByDescending(b => b.Timeset).Where(b => b.PlayerId == player.Id).FirstOrDefault();
+                    if (ban == null) continue;
+
+                    if (ban.PlayerId == ban.BannedBy && ban.Timeset < threshold) {
+                        deletionList.Add(ban.PlayerId);
+                    }
+
+                    if (ban.PlayerId != ban.BannedBy && ban.Timeset + ban.Duration > currentTime) {
+                        unbanlist.Add(ban.PlayerId);
+                    }
+                }
+
+                var playerController = scope.ServiceProvider.GetRequiredService<PlayerController>();
+                foreach (var playerToDelete in deletionList) {
+                    await playerController.DeletePlayer(playerToDelete);
+                }
+
+                var userController = scope.ServiceProvider.GetRequiredService<CurrentUserController>();
+                foreach (var playerToUnban in unbanlist) {
+                    await userController.Unban(playerToUnban);
+                }
             }
         }
     }

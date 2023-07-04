@@ -6,26 +6,24 @@ using System.Net;
 using BeatLeader_Server.Extensions;
 using BeatMapEvaluator;
 using BeatLeader_Server.BeatMapEvaluator;
+using BeatLeader_Server.Models;
 
-namespace BeatLeader_Server.Services
-{
-    public class HourlyRefresh : BackgroundService
-    {
+namespace BeatLeader_Server.Services {
+    public class HourlyRefresh : BackgroundService {
         private readonly IServiceScopeFactory _serviceScopeFactory;
+        private readonly IConfiguration _configuration;
 
-        public HourlyRefresh(IServiceScopeFactory serviceScopeFactory)
-        {
+        public HourlyRefresh(IServiceScopeFactory serviceScopeFactory, IConfiguration configuration) {
             _serviceScopeFactory = serviceScopeFactory;
+            _configuration = configuration;
         }
-        
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-        {
+
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
             do {
                 int minuteSpan = 60 - DateTime.Now.Minute;
                 int numberOfMinutes = minuteSpan;
 
-                if (minuteSpan == 60)
-                {
+                if (minuteSpan == 60) {
                     await RefreshClans();
                     await CheckMaps();
 
@@ -38,18 +36,15 @@ namespace BeatLeader_Server.Services
             while (!stoppingToken.IsCancellationRequested);
         }
 
-        public async Task RefreshClans()
-        {
-            using (var scope = _serviceScopeFactory.CreateScope())
-            {
+        public async Task RefreshClans() {
+            using (var scope = _serviceScopeFactory.CreateScope()) {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
                 var clans = _context
                     .Clans
                     .Include(c => c.Players.Where(p => !p.Banned))
                     .ThenInclude(p => p.ScoreStats)
                     .ToList();
-                foreach (var clan in clans)
-                {
+                foreach (var clan in clans) {
                     if (clan.Players.Count > 0) {
                         clan.AverageAccuracy = clan.Players.Average(p => p.ScoreStats.AverageRankedAccuracy);
                         clan.AverageRank = (float)clan.Players.Average(p => p.Rank);
@@ -57,23 +52,21 @@ namespace BeatLeader_Server.Services
                         clan.Pp = _context.RecalculateClanPP(clan.Id);
                     }
                 }
-            
+
                 await _context.SaveChangesAsync();
             }
         }
 
-        public async Task CheckMaps()
-        {
-            using (var scope = _serviceScopeFactory.CreateScope())
-            {
+        public async Task CheckMaps() {
+            using (var scope = _serviceScopeFactory.CreateScope()) {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+                var _s3Client = _configuration.GetS3Client();
 
                 var songs = await _context.Songs.Where(s => !s.Checked).OrderBy(s => s.Id).Include(s => s.Difficulties).ToListAsync();
 
-                foreach (var song in songs)
-                {
+                foreach (var song in songs) {
                     try {
-                        HttpWebResponse res = (HttpWebResponse) await WebRequest.Create(song.DownloadUrl).GetResponseAsync();
+                        HttpWebResponse res = (HttpWebResponse)await WebRequest.Create(song.DownloadUrl).GetResponseAsync();
                         if (res.StatusCode != HttpStatusCode.OK) continue;
 
                         var archive = new ZipArchive(res.GetResponseStream());
@@ -84,10 +77,8 @@ namespace BeatLeader_Server.Services
                         var info = infoFile.Open().ObjectFromStream<json_MapInfo>();
                         if (info == null) continue;
 
-                        foreach (var set in info.beatmapSets)
-                        {
-                            foreach (var beatmap in set._diffMaps)
-                            {
+                        foreach (var set in info.beatmapSets) {
+                            foreach (var beatmap in set._diffMaps) {
                                 var diffFile = archive.Entries.FirstOrDefault(e => e.Name == beatmap._beatmapFilename);
                                 if (diffFile == null) continue;
 
@@ -100,7 +91,26 @@ namespace BeatLeader_Server.Services
                                 }
                             }
                         }
+
+                        if (info._coverImageFilename != null) {
+                            var coverFile = archive.Entries.FirstOrDefault(e => e.Name.ToLower() == info._coverImageFilename.ToLower());
+                            if (coverFile != null) {
+                                using (var coverStream = coverFile.Open()) {
+                                    using (var ms = new MemoryStream(5)) {
+                                        await coverStream.CopyToAsync(ms);
+                                        var fileName = $"songcover-{song.Id}-" + info._coverImageFilename;
+                                        await _s3Client.UploadAsset(fileName, ms);
+                                        song.FullCoverImage = "https://cdn.assets.beatleader.xyz/" + fileName.Replace(" ", "%20");
+                                    }
+                                }
+                            }
+                        }
                     } catch { }
+
+                    foreach (var diff in song.Difficulties) {
+                        await RatingUtils.SetRating(diff, song);
+                    }
+
                     song.Checked = true;
                 }
 

@@ -192,9 +192,9 @@ namespace BeatLeader_Server.Utils
             public ExmachinaRating none { get; set; }
         }
 
-        public static async Task<ExmachinaResponse?> ExmachinaStars(string hash, int diff) {
+        public static async Task<ExmachinaResponse?> ExmachinaStars(string hash, int diff, string mode) {
 
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("http://localhost:8000/" + hash + "/Standard/" + diff);
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"https://stage.api.beatleader.net/ppai/{hash}/{mode}/{diff}");
             request.Method = "GET";
             request.Proxy = null;
 

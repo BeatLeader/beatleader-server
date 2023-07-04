@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using System.Text.RegularExpressions;
+using BeatLeader_Server.Enums;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -40,7 +41,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
             [FromQuery] string sort = "captures",
-            [FromQuery] string order = "desc",
+            [FromQuery] Order order = Order.Desc,
             [FromQuery] string? search = null,
             [FromQuery] string? type = null,
             [FromQuery] string? sortBy = null)
@@ -61,7 +62,7 @@ namespace BeatLeader_Server.Controllers
                     sequence = sequence.Where(c => c.PlayersCount > 2).Order(order, t => t.AverageAccuracy);
                     break;
                 case "rank":
-                    sequence = sequence.Where(c => c.PlayersCount > 2 && c.AverageRank > 0).Order(order == "desc" ? "asc" : "desc", t => t.AverageRank);
+                    sequence = sequence.Where(c => c.PlayersCount > 2 && c.AverageRank > 0).Order(order.Reverse(), t => t.AverageRank);
                     break;
                 case "count":
                     sequence = sequence.Order(order, t => t.PlayersCount);
@@ -98,7 +99,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
             [FromQuery] string sort = "pp",
-            [FromQuery] string order = "desc",
+            [FromQuery] Order order = Order.Desc,
             [FromQuery] string? search = null,
             [FromQuery] string? capturedLeaderboards = null)
         {
@@ -434,8 +435,8 @@ namespace BeatLeader_Server.Controllers
 
                 clan.Color = color;
             }
-
-            string fileName = clan.Tag + "clan";
+            Random rnd = new Random();
+            string fileName = clan.Tag + "R" + rnd.Next(1, 50) + "clan";
             try
             {
                 var ms = new MemoryStream(5);

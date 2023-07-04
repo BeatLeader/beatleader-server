@@ -4,6 +4,8 @@ using BeatLeader_Server.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Microsoft.EntityFrameworkCore;
+using BeatLeader_Server.Bot;
+using Discord;
 
 namespace BeatLeader_Server.Utils
 {
@@ -120,33 +122,41 @@ namespace BeatLeader_Server.Utils
             context.Entry(player).Property(x => x.TechPp).IsModified = true;
             context.Entry(player).Property(x => x.PassPp).IsModified = true;
 
+            int rankOffset = 0;
+
+            if (oldPp > resultPP) {
+                var temp = oldPp;
+                oldPp = resultPP;
+                resultPP = temp;
+                rankOffset = -1;
+            }
+
             var rankedPlayers = context
                 .Players
                 .Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned)
-                .OrderByDescending(t => t.Pp)
                 .Select(p => new {
                     Id = p.Id,
                     Rank = p.Rank,
                     Country = p.Country,
-                    CountryRank = p.CountryRank
+                    CountryRank = p.CountryRank,
+                    Pp = p.Pp,
                 })
+                .ToList()
+                .Append(new {
+                    Id = player.Id,
+                    Rank = player.Rank,
+                    Country = player.Country,
+                    CountryRank = player.CountryRank,
+                    Pp = player.Pp,
+                })
+                .OrderByDescending(t => t.Pp)
                 .ToList();
 
-            if (rankedPlayers.Count() > 0)
+            if (rankedPlayers.Count() > 1)
             {
                 var country = player.Country;
-                int topRank = rankedPlayers.First().Rank; 
-                int? topCountryRank = rankedPlayers.Where(p => p.Country == country).FirstOrDefault()?.CountryRank;
-                player.Rank = topRank;
-                context.Entry(player).Property(x => x.Rank).IsModified = true;
-                if (topCountryRank != null)
-                {
-                    player.CountryRank = (int)topCountryRank;
-                    context.Entry(player).Property(x => x.CountryRank).IsModified = true;
-                    topCountryRank++;
-                }
-
-                topRank++;
+                int topRank = rankedPlayers.Where(p => p.Id != player.Id).First().Rank + rankOffset; 
+                int? topCountryRank = rankedPlayers.Where(p => p.Country == country && p.Id != player.Id).FirstOrDefault()?.CountryRank + rankOffset;
 
                 foreach ((int i, var p) in rankedPlayers.Select((value, i) => (i, value)))
                 {
@@ -446,6 +456,35 @@ namespace BeatLeader_Server.Utils
             else
             {
                 return response.Item2;
+            }
+        }
+
+        public static void UpdateBoosterRole(Player player, string? role)
+        {
+            player.Role = string.Join(",", player.Role.Split(",").Where(r => r != "booster"));
+            if (role != null) {
+                player.Role += "," + role;
+            }
+        }
+
+        public static async Task RefreshBoosterRole(AppContext _context, Player? player, ulong userId) {
+            var user = await ((IGuild)BotService.Client.GetGuild(BotService.BLServerID)).GetUserAsync(userId, CacheMode.AllowDownload);
+
+            if (user != null && player != null) {
+                if (user.RoleIds.Contains(BotService.BLBoosterRoleID)) {
+                    UpdateBoosterRole(player, "booster");
+                } else {
+                    UpdateBoosterRole(player, null);
+                }
+                _context.SaveChanges();
+            }
+        }
+
+        public static async Task UpdateBoosterRole(AppContext _context, ulong userId) {
+            var discordLink = _context.DiscordLinks.FirstOrDefault(d => d.DiscordId == userId.ToString());
+            if (discordLink != null) {
+                var player = _context.Players.FirstOrDefault(p => p.Id == discordLink.Id);
+                await RefreshBoosterRole(_context, player, userId);
             }
         }
     }

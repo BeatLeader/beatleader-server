@@ -10,7 +10,7 @@ internal static class DrawingUtils {
 
     public static Image<Rgba32> Resized(this Image<Rgba32> source, Size newSize)
     {
-        if (newSize == source.Size()) return source;
+        if (newSize == source.Size) return source;
 
         var resizedImage = source.Clone();
         resizedImage.Mutate(x => x.Resize(newSize.Width, newSize.Height));

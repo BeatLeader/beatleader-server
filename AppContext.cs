@@ -57,6 +57,10 @@ namespace BeatLeader_Server
         public DbSet<CriteriaCommentary> CriteriaCommentary { get; set; }
         public DbSet<QualificationVote> QualificationVote { get; set; }
         public DbSet<PlayerSocial> PlayerSocial { get; set; }
+        public DbSet<AchievementDescription> AchievementDescriptions { get; set; }
+        public DbSet<Achievement> Achievements { get; set; }
+        public DbSet<AchievementLevel> AchievementLevels { get; set; }
+        public DbSet<SurveyPassed> SurveyResponses { get; set; }
 
         public DbSet<VoterFeedback> VoterFeedback { get; set; }
 

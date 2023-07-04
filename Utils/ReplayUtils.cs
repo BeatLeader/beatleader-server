@@ -42,6 +42,40 @@ namespace BeatLeader_Server.Utils
                 (0.6, 0.217),
                 (0.0, 0.000) };
 
+        static List<(double, double)> pointList2 = new List<(double, double)> { 
+                (1.0, 7.424),
+                (0.999, 6.241),
+                (0.9975, 5.158),
+                (0.995, 4.010),
+                (0.9925, 3.241),
+                (0.99, 2.700),
+                (0.9875, 2.303),
+                (0.985, 2.007),
+                (0.9825, 1.786),
+                (0.98, 1.618),
+                (0.9775, 1.490),
+                (0.975, 1.392),
+                (0.9725, 1.315),
+                (0.97, 1.256),
+                (0.965, 1.167),
+                (0.96, 1.094),
+                (0.955, 1.039),
+                (0.95, 1.000),
+                (0.94, 0.931),
+                (0.93, 0.867),
+                (0.92, 0.813),
+                (0.91, 0.768),
+                (0.9, 0.729),
+                (0.875, 0.650),
+                (0.85, 0.581),
+                (0.825, 0.522),
+                (0.8, 0.473),
+                (0.75, 0.404),
+                (0.7, 0.345),
+                (0.65, 0.296),
+                (0.6, 0.256),
+                (0.0, 0.000), };
+
         public static float Curve(float acc)
         {
             int i = 0;
@@ -58,6 +92,24 @@ namespace BeatLeader_Server.Utils
     
             double middle_dis = (acc - pointList[i-1].Item1) / (pointList[i].Item1 - pointList[i-1].Item1);
             return (float)(pointList[i-1].Item2 + middle_dis * (pointList[i].Item2 - pointList[i-1].Item2));
+        }
+
+        public static float Curve2(float acc)
+        {
+            int i = 0;
+            for (; i < pointList2.Count; i++)
+            {
+                if (pointList2[i].Item1 <= acc) {
+                    break;
+                }
+            }
+    
+            if (i == 0) {
+                i = 1;
+            }
+    
+            double middle_dis = (acc - pointList2[i-1].Item1) / (pointList2[i].Item1 - pointList2[i-1].Item1);
+            return (float)(pointList2[i-1].Item2 + middle_dis * (pointList2[i].Item2 - pointList2[i-1].Item2));
         }
 
         public static float AccRating(float? predictedAcc, float? passRating, float? techRating) {
@@ -85,8 +137,8 @@ namespace BeatLeader_Server.Utils
             {
                 passPP = 0;
             }
-            float accPP = Curve(accuracy) * accRating * 34f;
-            float techPP = MathF.Exp(1.9f * accuracy) * techRating;
+            float accPP = Curve2(accuracy) * accRating * 34f;
+            float techPP = MathF.Exp(1.9f * accuracy) * 1.08f * techRating;
             
             return (passPP, accPP, techPP);
         }
@@ -224,7 +276,7 @@ namespace BeatLeader_Server.Utils
             score.Qualification = qualification;
             score.Platform = info.platform + "," + info.gameVersion + "," + info.version;
             score.Timeset = info.timestamp;
-            score.IgnoreForStats = difficulty.ModeName.ToLower() == "rhythmgamestandard" || info.modifiers.Contains("NF");
+            score.IgnoreForStats = difficulty.ModeName.ToLower() == "rhythmgamestandard" || difficulty.ModeName.ToLower().Contains("controllable") || info.modifiers.Contains("NF");
             score.Migrated = true;
             
             return (score, maxScore);
@@ -269,6 +321,8 @@ namespace BeatLeader_Server.Utils
             if (lowerHmd.Contains("pimax") && lowerHmd.Contains("5k")) return HMD.pimax5k;
             if (lowerHmd.Contains("pimax") && lowerHmd.Contains("artisan")) return HMD.pimaxArtisan;
             if (lowerHmd.Contains("pimax") && lowerHmd.Contains("crystal")) return HMD.pimaxCrystal;
+
+            if (lowerHmd.Contains("controllable")) return HMD.controllable;
 
             if (lowerHmd.Contains("hp reverb")) return HMD.hpReverb;
             if (lowerHmd.Contains("samsung windows")) return HMD.samsungWmr;
@@ -327,6 +381,10 @@ namespace BeatLeader_Server.Utils
             if (lowerController.Contains("pico neo") && lowerController.Contains("2")) return ControllerEnum.picoNeo2;
             if (lowerController.Contains("knuckles")) return ControllerEnum.knuckles;
             if (lowerController.Contains("miramar")) return ControllerEnum.miramar;
+
+            if (lowerController.Contains("gamepad")) return ControllerEnum.gamepad;
+            if (lowerController.Contains("joy-con")) return ControllerEnum.joycon;
+            if (lowerController.Contains("steam deck")) return ControllerEnum.steamdeck;
             
             if (lowerController.Contains("quest pro")) return ControllerEnum.questPro;
             if (lowerController.Contains("quest2")) return ControllerEnum.quest2;
@@ -365,8 +423,8 @@ namespace BeatLeader_Server.Utils
         }
 
         public static float GetTotalMultiplier(this ModifiersMap modifiersObject, string modifiers, bool speedModifiers)
-		{
-			float multiplier = 1;
+        {
+            float multiplier = 1;
 
             var modifiersMap = modifiersObject.ToDictionary<float>();
             foreach (var modifier in modifiersMap.Keys)
@@ -377,8 +435,8 @@ namespace BeatLeader_Server.Utils
             }
             
 
-			return multiplier;
-		}
+            return multiplier;
+        }
 
         public static float GetPositiveMultiplier(this ModifiersMap modifiersObject, string modifiers)
         {

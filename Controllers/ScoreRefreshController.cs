@@ -165,6 +165,7 @@ namespace BeatLeader_Server.Controllers
                             LeaderboardId = s.LeaderboardId,
                             BaseScore = s.BaseScore,
                             Modifiers = s.Modifiers,
+                            s.FcAccuracy
                         })
                     }).ToList();
                 await allLeaderboards.ParallelForEachAsync(async leaderboard => {
@@ -209,7 +210,16 @@ namespace BeatLeader_Server.Controllers
                         if (hasPp)
                         {
                             (score.Pp, score.BonusPp, score.PassPP, score.AccPP, score.TechPP) = ReplayUtils.PpFromScore(
-                                score.Accuracy, 
+                                score.Accuracy,
+                                s.Modifiers,
+                                leaderboard.Difficulty.ModifierValues,
+                                leaderboard.Difficulty.ModifiersRating,
+                                leaderboard.Difficulty.AccRating ?? 0,
+                                leaderboard.Difficulty.PassRating ?? 0,
+                                leaderboard.Difficulty.TechRating ?? 0,
+                                leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard");
+                            (score.FcPp, _, _, _, _) = ReplayUtils.PpFromScore(
+                                s.FcAccuracy, 
                                 s.Modifiers, 
                                 leaderboard.Difficulty.ModifierValues, 
                                 leaderboard.Difficulty.ModifiersRating, 
@@ -242,6 +252,7 @@ namespace BeatLeader_Server.Controllers
                         _context.Entry(score).Property(x => x.ModifiedScore).IsModified = true;
                         _context.Entry(score).Property(x => x.Accuracy).IsModified = true;
                         _context.Entry(score).Property(x => x.Pp).IsModified = true;
+                        _context.Entry(score).Property(x => x.FcPp).IsModified = true;
                         _context.Entry(score).Property(x => x.BonusPp).IsModified = true;
                         _context.Entry(score).Property(x => x.PassPP).IsModified = true;
                         _context.Entry(score).Property(x => x.AccPP).IsModified = true;
@@ -251,7 +262,9 @@ namespace BeatLeader_Server.Controllers
                         newScores.Add(score);
                     }
 
-                    var rankedScores = hasPp ? newScores.OrderByDescending(el => el.Pp).ToList() : newScores.OrderByDescending(el => el.ModifiedScore).ToList();
+                    var rankedScores = hasPp 
+                        ? newScores.OrderByDescending(el => el.Pp).ThenByDescending(el => el.Accuracy).ToList() 
+                        : newScores.OrderByDescending(el => el.ModifiedScore).ThenByDescending(el => el.Accuracy).ToList();
                     foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
                     {
                         s.Rank = i + 1;

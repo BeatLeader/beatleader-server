@@ -5,10 +5,13 @@ using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using System.Net;
+using BeatLeader_Server.Enums;
+using BeatLeader_Server.Services;
+using Microsoft.AspNetCore.Http.Extensions;
 using static BeatLeader_Server.Utils.ResponseUtils;
+using Type = BeatLeader_Server.Enums.Type;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -17,7 +20,6 @@ namespace BeatLeader_Server.Controllers
     public class PlaylistController : Controller
     {
         private readonly AppContext _context;
-        private readonly ReadAppContext _readAppContext;
 
         IAmazonS3 _s3Client;
         ScoreRefreshController _scoreRefreshController;
@@ -25,13 +27,11 @@ namespace BeatLeader_Server.Controllers
 
         public PlaylistController(
             AppContext context,
-            ReadAppContext readAppContext,
             ScoreRefreshController scoreRefreshController,
             IWebHostEnvironment env,
             IConfiguration configuration)
         {
             _context = context;
-            _readAppContext = readAppContext;
             _scoreRefreshController = scoreRefreshController;
             _s3Client = configuration.GetS3Client();
             _environment = env;
@@ -41,7 +41,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/user/oneclickplaylist")]
         public async Task<ActionResult> GetOneClickPlaylist()
         {
-            string? currentID = HttpContext.CurrentUserID(_readAppContext);
+            string? currentID = HttpContext.CurrentUserID(_context);
             if (currentID == null) return Unauthorized();
 
             var stream = await _s3Client.DownloadPlaylist(currentID + "oneclick.bplist");
@@ -140,7 +140,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/playlists")]
         public ActionResult<IEnumerable<Playlist>> Get()
         {
-            return _readAppContext.Playlists.Where(t=>t.IsShared).ToList();
+            return _context.Playlists.Where(t=>t.IsShared).ToList();
         }
 
         [HttpGet("~/playlist/{id}")]
@@ -179,10 +179,10 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/user/playlists")]
         public ActionResult<IEnumerable<Playlist>> GetAllPlaylists()
         {
-            string? currentID = HttpContext.CurrentUserID(_readAppContext);
+            string? currentID = HttpContext.CurrentUserID(_context);
             if (currentID == null) return Unauthorized();
 
-            return _readAppContext.Playlists.Where(t => t.OwnerId == currentID).ToList();
+            return _context.Playlists.Where(t => t.OwnerId == currentID).ToList();
         }
 
         [HttpPost("~/user/playlist")]
@@ -459,16 +459,16 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/playlist/generate")]
         public async Task<ActionResult<string>> GetAll(
             [FromQuery] int count = 100,
-            [FromQuery] string sortBy = "stars",
-            [FromQuery] string order = "desc",
+            [FromQuery] SortBy sortBy = SortBy.Stars,
+            [FromQuery] Order order = Order.Desc,
             [FromQuery] string? search = null,
-            [FromQuery] string? type = null,
+            [FromQuery] Type type = Type.All,
             [FromQuery] string? mode = null,
             [FromQuery] int? mapType = null,
-            [FromQuery] Operation allTypes = 0,
-            [FromQuery] Requirements? mapRequirements = null,
-            [FromQuery] Operation allRequirements = 0,
-            [FromQuery] string? mytype = null,
+            [FromQuery] Operation allTypes = Operation.Any,
+            [FromQuery] Requirements mapRequirements = Requirements.Ignore,
+            [FromQuery] Operation allRequirements = Operation.Any,
+            [FromQuery] MyType mytype = MyType.None,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
             [FromQuery] float? accrating_from = null,
@@ -479,17 +479,22 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] float? techrating_to = null,
             [FromQuery] int? date_from = null,
             [FromQuery] int? date_to = null,
-            [FromQuery] bool duplicate_diffs = false)
+            [FromQuery] bool duplicate_diffs = false,
+            [FromQuery] string? title = null)
         {
             if (count > 2000) {
                 return Unauthorized("Count is too big. 2000 max");
             }
 
-            var sequence = _readAppContext.Leaderboards.AsQueryable();
-            string? currentID = HttpContext.CurrentUserID(_readAppContext);
+            var sequence = _context.Leaderboards.AsQueryable();
+            string? currentID = HttpContext.CurrentUserID(_context);
+            Player? currentPlayer = currentID != null ? await _context
+                .Players
+                .Include(p => p.ProfileSettings)
+                .FirstOrDefaultAsync(p => p.Id == currentID) : null;
 
             int searchCount = 0;
-            sequence = sequence.Filter(_readAppContext, 1, count, ref searchCount, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentID);
+            sequence = sequence.Filter(0, count, out List<SongMetadata> matches, out int totalMatches, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
 
             var diffsList = sequence.Select(s => s.Song.Hash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash);
 
@@ -549,8 +554,14 @@ namespace BeatLeader_Server.Controllers
             }
             playlist.customData = new CustomData
             {
-                owner = currentID
+                owner = currentID,
+                syncURL = HttpContext.Request.GetDisplayUrl(),
             };
+
+            if (!string.IsNullOrEmpty(title))
+            {
+                playlist.playlistTitle = title;
+            }
 
             return JsonConvert.SerializeObject(playlist);
         }
@@ -561,12 +572,12 @@ namespace BeatLeader_Server.Controllers
 
             [FromQuery] string playerId = "1",
             [FromQuery] string sortBy = "date",
-            [FromQuery] string order = "desc",
+            [FromQuery] Order order = Order.Desc,
             [FromQuery] string? search = null,
             [FromQuery] string? diff = null,
             [FromQuery] string? type = null,
             [FromQuery] string? mode = null,
-            [FromQuery] Requirements? requirements = null,
+            [FromQuery] Requirements requirements = Requirements.None,
             [FromQuery] string? modifiers = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
@@ -591,11 +602,11 @@ namespace BeatLeader_Server.Controllers
             AccountLink? link = null;
             if (oculusId < 1000000000000000)
             {
-                link = _readAppContext.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
+                link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
             }
             if (link == null && oculusId < 70000000000000000)
             {
-                link = _readAppContext.AccountLinks.FirstOrDefault(el => el.PCOculusID == playerId);
+                link = _context.AccountLinks.FirstOrDefault(el => el.PCOculusID == playerId);
             }
             string userId = (link != null ? (link.SteamID.Length > 0 ? link.SteamID : link.PCOculusID) : playerId);
 
@@ -604,10 +615,10 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            IQueryable<Score> sequence = _readAppContext
+            IQueryable<Score> sequence = _context
                 .Scores
                 .Where(t => t.PlayerId == userId)
-                .Filter(_readAppContext, !player.Banned, sortBy, order, search, diff, mode, requirements, type, modifiers, stars_from, stars_to, time_from, time_to, eventId); 
+                .Filter(_context, !player.Banned, false, sortBy, order, search, diff, mode, requirements, ScoreFilterStatus.None, type, modifiers, stars_from, stars_to, time_from, time_to, eventId); 
 
             if (sequence.Count() == 0) { return NotFound(); }
 
@@ -661,7 +672,7 @@ namespace BeatLeader_Server.Controllers
             }
             playlist.customData = new CustomData
             {
-                owner = HttpContext.CurrentUserID(_readAppContext) ?? ""
+                owner = HttpContext.CurrentUserID(_context) ?? ""
             };
 
             return JsonConvert.SerializeObject(playlist);
@@ -893,7 +904,7 @@ namespace BeatLeader_Server.Controllers
 
         [HttpGet("~/event/{id}")]
         public ActionResult<EventRanking?> GetEvent(int id) {
-            return _readAppContext.EventRankings.FirstOrDefault(e => e.Id == id);
+            return _context.EventRankings.FirstOrDefault(e => e.Id == id);
         }
 
         [HttpGet("~/events")]
@@ -902,9 +913,9 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int count = 10,
             [FromQuery] string? sortBy = "date",
             [FromQuery] string? search = null,
-            [FromQuery] string? order = "desc")
+            [FromQuery] Order order = Order.Desc)
         {
-            IQueryable<EventRanking> query = _readAppContext.EventRankings.Include(e => e.Players);
+            IQueryable<EventRanking> query = _context.EventRankings.Include(e => e.Players);
 
             switch (sortBy)
             {

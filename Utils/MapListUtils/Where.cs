@@ -1,29 +1,25 @@
-﻿using BeatLeader_Server.Models;
+﻿using BeatLeader_Server.Enums;
+using BeatLeader_Server.Models;
+using BeatLeader_Server.Services;
+using Type = BeatLeader_Server.Enums.Type;
 
 namespace BeatLeader_Server.Utils;
 
 public static partial class MapListUtils
 {
-    private static IQueryable<Leaderboard> WhereType(this IQueryable<Leaderboard> sequence, string? type)
-    {
-        if (string.IsNullOrEmpty(type))
+    private static IQueryable<Leaderboard> WhereType(this IQueryable<Leaderboard> sequence, Type type) =>
+        type switch
         {
-            return sequence;
-        }
-
-        return type switch
-        {
-            "ranked"      => sequence.Where(leaderboard => leaderboard.Difficulty.Status == DifficultyStatus.ranked),
-            "ranking"     => sequence.Where(leaderboard => leaderboard.Difficulty.Status != DifficultyStatus.unranked && leaderboard.Difficulty.Status != DifficultyStatus.outdated),
-            "nominated"   => sequence.Where(leaderboard => leaderboard.Difficulty.Status == DifficultyStatus.nominated),
-            "qualified"   => sequence.Where(leaderboard => leaderboard.Difficulty.Status == DifficultyStatus.qualified),
-            "staff"       => sequence.Where(leaderboard => leaderboard.Difficulty.Status == DifficultyStatus.qualified || leaderboard.Difficulty.Status == DifficultyStatus.nominated),
-            "reweighting" => sequence.Where(leaderboard => leaderboard.Reweight != null && !leaderboard.Reweight.Finished),
-            "reweighted"  => sequence.Where(leaderboard => leaderboard.Reweight != null && leaderboard.Reweight.Finished),
-            "unranked"    => sequence.Where(leaderboard => leaderboard.Difficulty.Status == DifficultyStatus.unranked),
-            _             => sequence,
+            Type.Ranked      => sequence.Where(leaderboard => leaderboard.Difficulty.Status == DifficultyStatus.ranked),
+            Type.Ranking     => sequence.Where(leaderboard => leaderboard.Difficulty.Status != DifficultyStatus.unranked && leaderboard.Difficulty.Status != DifficultyStatus.outdated),
+            Type.Nominated   => sequence.Where(leaderboard => leaderboard.Difficulty.Status == DifficultyStatus.nominated),
+            Type.Qualified   => sequence.Where(leaderboard => leaderboard.Difficulty.Status == DifficultyStatus.qualified),
+            Type.Staff       => sequence.Where(leaderboard => leaderboard.Difficulty.Status == DifficultyStatus.qualified || leaderboard.Difficulty.Status == DifficultyStatus.nominated),
+            Type.Reweighting => sequence.Where(leaderboard => leaderboard.Reweight != null && !leaderboard.Reweight.Finished),
+            Type.Reweighted  => sequence.Where(leaderboard => leaderboard.Reweight != null && leaderboard.Reweight.Finished),
+            Type.Unranked    => sequence.Where(leaderboard => leaderboard.Difficulty.Status == DifficultyStatus.unranked),
+            _                => sequence,
         };
-    }
 
     private static IQueryable<Leaderboard> WhereMapType(this IQueryable<Leaderboard> sequence, int? mapType, Operation allTypes)
     {
@@ -34,30 +30,34 @@ public static partial class MapListUtils
 
         return allTypes switch
         {
-            Operation.any => sequence.Where(leaderboard => (leaderboard.Difficulty.Type & mapType) != 0),
-            Operation.all => sequence.Where(leaderboard => leaderboard.Difficulty.Type == mapType),
-            Operation.not => sequence.Where(leaderboard => (leaderboard.Difficulty.Type & mapType) == 0),
+            Operation.Any => sequence.Where(leaderboard => (leaderboard.Difficulty.Type & mapType) != 0),
+            Operation.All => sequence.Where(leaderboard => leaderboard.Difficulty.Type == mapType),
+            Operation.Not => sequence.Where(leaderboard => (leaderboard.Difficulty.Type & mapType) == 0),
             _             => sequence,
         };
     }
 
-    private static IQueryable<Leaderboard> WhereMyType(this IQueryable<Leaderboard> sequence, ReadAppContext context, string? mytype, string? currentId)
+    private static IQueryable<Leaderboard> WhereMyType(this IQueryable<Leaderboard> sequence, MyType mytype, Player? currentPlayer)
     {
-        if (string.IsNullOrEmpty(mytype))
-        {
-            return sequence;
-        }
+        int mapperId = 0;
+        string? currentId = currentPlayer?.Id;
 
-        var mapperId = context.Players.Find(currentId)?.MapperId ?? 0;
+        if (mytype != MyType.None)
+        {
+            if (currentPlayer != null)
+            {
+                mapperId = currentPlayer.MapperId;
+            }
+        }
 
         return mytype switch
         {
-            "played"          => sequence.Where(leaderboard => leaderboard.Scores.FirstOrDefault(score => score.PlayerId == currentId) != null),
-            "unplayed"        => sequence.Where(leaderboard => leaderboard.Scores.FirstOrDefault(score => score.PlayerId == currentId) == null),
-            "mynominated"     => sequence.Where(leaderboard => leaderboard.Qualification != null && leaderboard.Qualification.RTMember == currentId),
-            "othersnominated" => sequence.Where(leaderboard => leaderboard.Qualification != null && leaderboard.Qualification.RTMember != currentId),
-            "mymaps"          => sequence.Where(leaderboard => leaderboard.Song.MapperId == mapperId),
-            _                 => sequence,
+            MyType.Played          => sequence.Where(leaderboard => leaderboard.Scores.FirstOrDefault(score => score.PlayerId == currentId) != null),
+            MyType.Unplayed        => sequence.Where(leaderboard => leaderboard.Scores.FirstOrDefault(score => score.PlayerId == currentId) == null),
+            MyType.MyNominated     => sequence.Where(leaderboard => leaderboard.Qualification != null && leaderboard.Qualification.RTMember == currentId),
+            MyType.OthersNominated => sequence.Where(leaderboard => leaderboard.Qualification != null && leaderboard.Qualification.RTMember != currentId),
+            MyType.MyMaps          => sequence.Where(leaderboard => leaderboard.Song.MapperId == mapperId),
+            _                      => sequence,
         };
     }
 
@@ -71,27 +71,20 @@ public static partial class MapListUtils
         return sequence.Where(leaderboard => leaderboard.Difficulty.ModeName == mode);
     }
 
-    private static IQueryable<Leaderboard> WhereMapRequirements(this IQueryable<Leaderboard> sequence, Requirements? mapRequirements, Operation allRequirements)
+    private static IQueryable<Leaderboard> WhereMapRequirements(this IQueryable<Leaderboard> sequence, Requirements mapRequirements, Operation allRequirements)
     {
-        if (mapRequirements == null)
+        if (mapRequirements == Requirements.Ignore)
         {
             return sequence;
         }
 
         return allRequirements switch
         {
-            Operation.any => sequence.Where(leaderboard => (leaderboard.Difficulty.Requirements & mapRequirements) != 0),
-            Operation.all => sequence.Where(leaderboard => leaderboard.Difficulty.Requirements == mapRequirements),
-            Operation.not => sequence.Where(leaderboard => (leaderboard.Difficulty.Requirements & mapRequirements) == 0),
+            Operation.Any => sequence.Where(leaderboard => (leaderboard.Difficulty.Requirements & mapRequirements) != 0),
+            Operation.All => sequence.Where(leaderboard => leaderboard.Difficulty.Requirements == mapRequirements),
+            Operation.Not => sequence.Where(leaderboard => (leaderboard.Difficulty.Requirements & mapRequirements) == 0),
             _             => sequence,
         };
-    }
-
-    public enum RatingType {
-        Stars,
-        Acc,
-        Pass,
-        Tech
     }
 
     private static IQueryable<Leaderboard> WhereRatingFrom(this IQueryable<Leaderboard> sequence, RatingType rating, float? from)
@@ -124,5 +117,30 @@ public static partial class MapListUtils
             RatingType.Tech => sequence.Where(leaderboard => leaderboard.Difficulty.TechRating <= to),
             _ => sequence,
         };
+    }
+
+    private static IQueryable<Leaderboard> WherePage(this IQueryable<Leaderboard> sequence, int page, int count, List<SongMetadata> matches, string search, out int totalMatches)
+    {
+        if (page <= 0) {
+            page = 1;
+        }
+
+        totalMatches = sequence.Count();
+
+        if (matches.Count > 0) {
+            List<string> ids = matches.Select(songMetadata => songMetadata.Id).ToList();
+
+            var moreIds = sequence.Select(s => new { Id = s.Song.Id, Name = s.Song.Name }).ToList();
+
+            var filteredIds = moreIds
+                .OrderBy(x => search.ToLower() == x.Name.ToLower() ? -1 : ids.IndexOf(x.Id))
+                .Skip((page - 1) * count)
+                .Take(count)
+                .Select(s => s.Id)
+                .ToList();
+            return sequence.Where(l => filteredIds.Contains(l.Song.Id)).Take(count);
+        }
+
+        return sequence.Skip((page - 1) * count).Take(count);
     }
 }

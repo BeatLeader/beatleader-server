@@ -1,7 +1,5 @@
-﻿namespace BeatLeader_Server.Models
-{
-    public enum EndType
-    {
+﻿namespace BeatLeader_Server.Models {
+    public enum EndType {
         Unknown = 0,
         Clear = 1,
         Fail = 2,
@@ -9,21 +7,20 @@
         Quit = 4
     }
 
-    public class PlayerLeaderboardStats
-    {
+    public class PlayerLeaderboardStats {
         public int Id { get; set; }
         public string PlayerId { get; set; }
         public EndType Type { get; set; }
         public int Timeset { get; set; }
         public float Time { get; set; }
         public int Score { get; set; }
+        public string? Replay { get; set; }
 
         public string? LeaderboardId { get; set; }
         public Leaderboard? Leaderboard { get; set; }
     }
 
-    public class Leaderboard
-    {
+    public class Leaderboard {
         public string Id { get; set; }
         public string? SongId { get; set; }
         public Song Song { get; set; }
@@ -31,7 +28,7 @@
         public ICollection<Score> Scores { get; set; }
         public RankQualification? Qualification { get; set; }
         public RankUpdate? Reweight { get; set; }
-        
+
         public long Timestamp { get; set; }
 
         public LeaderboardGroup? LeaderboardGroup { get; set; }
@@ -50,10 +47,17 @@
 
         public ICollection<ClanRanking>? ClanRanking { get; set; }
         public bool ClanRankingContested { get; set; }
+        public void HideRatings() {
+            this.Difficulty.AccRating = null;
+            this.Difficulty.TechRating = null;
+            this.Difficulty.PassRating = null;
+            this.Difficulty.Stars = null;
+
+            this.Difficulty.ModifiersRating = null;
+        }
     }
 
-    public enum LeaderboardType
-    {
+    public enum LeaderboardType {
         standard = 1,
         nomodifiers = 2,
         nopause = 3,
@@ -61,8 +65,7 @@
         precision = 5
     }
 
-    public class AltBoard 
-    {
+    public class AltBoard {
         public int Id { get; set; }
         public LeaderboardType LeaderboardType { get; set; } = LeaderboardType.standard;
         public ICollection<AltScore> Scores { get; set; }

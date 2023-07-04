@@ -2,17 +2,17 @@
 
 #nullable disable
 
-namespace BeatLeader_Server.Migrations.ReadApp
+namespace BeatLeader_Server.Migrations
 {
     /// <inheritdoc />
-    public partial class OwningClanLeaderboard : Migration
+    public partial class FullSongCover : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
-                name: "OwningClan",
-                table: "Leaderboards",
+                name: "FullCoverImage",
+                table: "Songs",
                 type: "nvarchar(max)",
                 nullable: true);
         }
@@ -21,8 +21,8 @@ namespace BeatLeader_Server.Migrations.ReadApp
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "OwningClan",
-                table: "Leaderboards");
+                name: "FullCoverImage",
+                table: "Songs");
         }
     }
 }

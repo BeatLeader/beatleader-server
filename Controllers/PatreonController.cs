@@ -158,12 +158,14 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/refreshPatreon")]
         public async Task<ActionResult> RefreshPatreon()
         {
-            string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
+            if (HttpContext != null) {
+                string currentID = HttpContext.CurrentUserID(_context);
+                var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
             }
 
             var links = _context.PatreonLinks.ToList();
@@ -186,6 +188,121 @@ namespace BeatLeader_Server.Controllers
 
                     if (tier != link.Tier) {
                         var player = _context.Players.FirstOrDefault(p => p.Id == link.Id);
+                        if (player == null) {
+                            long intId = Int64.Parse(link.Id);
+                            if (intId < 70000000000000000) {
+                                AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+                                if (accountLink != null) {
+                                    string playerId = accountLink.SteamID.Length > 0 ? accountLink.SteamID : accountLink.PCOculusID;
+
+                                    player = _context.Players.FirstOrDefault(p => p.Id == playerId);
+                                }
+                            }
+                        }
+                        if (player != null) {
+                            if (tier != null) {
+                                if (tier.Contains("tipper"))
+                                {
+                                    UpdatePatreonRole(player, "tipper");
+                                }
+                                else if (tier.Contains("supporter"))
+                                {
+                                    UpdatePatreonRole(player, "supporter");
+                                }
+                                else if (tier.Contains("sponsor"))
+                                {
+                                    UpdatePatreonRole(player, "sponsor");
+                                }
+                                else {
+                                    UpdatePatreonRole(player, null);
+                                }
+                                link.Tier = tier;
+                            } else {
+                                UpdatePatreonRole(player, null);
+                                link.Tier = "";
+                            }
+                        }
+                    }
+                } else {
+                    var newToken = await RefreshToken(link.RefreshToken);
+                    if (newToken != null) {
+                        link.Token = newToken.access_token;
+                        link.RefreshToken = newToken.refresh_token;
+                    } else {
+                        var player = _context.Players.FirstOrDefault(p => p.Id == link.Id);
+                        if (player == null) {
+                            long intId = Int64.Parse(link.Id);
+                            if (intId < 70000000000000000) {
+                                AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+                                if (accountLink != null) {
+                                    string playerId = accountLink.SteamID.Length > 0 ? accountLink.SteamID : accountLink.PCOculusID;
+
+                                    player = _context.Players.FirstOrDefault(p => p.Id == playerId);
+                                }
+                            }
+                        }
+                        _context.PatreonLinks.Remove(link);
+
+                        if (player != null) {
+                            UpdatePatreonRole(player, null);
+                        }
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+            }
+
+            return Ok();
+        }
+
+        [HttpGet("~/refreshmypatreon")]
+        public async Task<ActionResult> RefreshMyPatreon()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null)
+            {
+                return Unauthorized();
+            }
+
+            var link = _context.PatreonLinks.Where(p => p.Id == currentPlayer.Id).FirstOrDefault();
+
+            if (link == null) {
+                return BadRequest("No existing Patreon link");
+            }
+
+            var user = await GetPatreonUser(link.Token);
+
+            if (user != null) {
+                string? tier = null;
+
+                foreach (var item in user.included)
+                {
+                    if (ExpandantoObject.HasProperty(item.attributes, "title"))
+                    {
+                        tier = item.attributes.title.ToLower();
+                        break;
+                    }
+                }
+
+                if (tier != link.Tier) {
+                    var player = _context.Players.FirstOrDefault(p => p.Id == link.Id);
+                    if (player == null) {
+                        long intId = Int64.Parse(link.Id);
+                        if (intId < 70000000000000000) {
+                            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+                            if (accountLink != null) {
+                                string playerId = accountLink.SteamID.Length > 0 ? accountLink.SteamID : accountLink.PCOculusID;
+
+                                player = _context.Players.FirstOrDefault(p => p.Id == playerId);
+                            }
+                        }
+                    }
+                    if (player != null) {
                         if (tier != null) {
                             if (tier.Contains("tipper"))
                             {
@@ -208,13 +325,30 @@ namespace BeatLeader_Server.Controllers
                             link.Tier = "";
                         }
                     }
+                }
+            } else {
+                var newToken = await RefreshToken(link.RefreshToken);
+                if (newToken != null) {
+                    link.Token = newToken.access_token;
+                    link.RefreshToken = newToken.refresh_token;
                 } else {
-                    var newToken = await RefreshToken(link.RefreshToken);
-                    if (newToken != null) {
-                        link.Token = newToken.access_token;
-                        link.RefreshToken = newToken.refresh_token;
-                    } else {
-                        _context.PatreonLinks.Remove(link);
+                    var player = _context.Players.FirstOrDefault(p => p.Id == link.Id);
+                    if (player == null) {
+                        long intId = Int64.Parse(link.Id);
+                        if (intId < 70000000000000000) {
+                            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+                            if (accountLink != null) {
+                                string playerId = accountLink.SteamID.Length > 0 ? accountLink.SteamID : accountLink.PCOculusID;
+
+                                player = _context.Players.FirstOrDefault(p => p.Id == playerId);
+                            }
+                        }
+                    }
+                    _context.PatreonLinks.Remove(link);
+
+                    if (player != null) {
+                        UpdatePatreonRole(player, null);
                     }
                 }
             }
@@ -223,7 +357,6 @@ namespace BeatLeader_Server.Controllers
 
             return Ok();
         }
-
         [NonAction]
         public Task<dynamic?> GetPatreonUser(string token)
         {

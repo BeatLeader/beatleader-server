@@ -49,10 +49,13 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/map/modinterface/{hash}")]
         public async Task<ActionResult<IEnumerable<DiffModResponse>>> GetModSongInfos(string hash)
         {
+
             var resFromLB = _readContext.Leaderboards
                 .Where(lb => lb.Song.Hash == hash)
                 .Include(lb => lb.Difficulty)
-                .ThenInclude(diff => diff.ModifierValues)
+                    .ThenInclude(diff => diff.ModifierValues)
+                .Include(lb => lb.Difficulty)
+                    .ThenInclude(diff => diff.ModifiersRating)
                 .Select(lb => new { 
                     DiffModResponse = ResponseUtils.DiffModResponseFromDiffAndVotes(lb.Difficulty, lb.Scores.Where(score => score.RankVoting != null).Select(score => score.RankVoting!.Rankability).ToArray()), 
                     SongDiffs = lb.Song.Difficulties 
@@ -78,9 +81,19 @@ namespace BeatLeader_Server.Controllers
             }
 
             // Now we need to return the LB DiffModResponses. If there are diffs in the song, that have no leaderboard we return the diffs without votes, as no leaderboard = no scores = no votes
-            return difficulties.Select(diff =>
+            var result = difficulties.Select(diff =>
                 resFromLB.FirstOrDefault(element => element.DiffModResponse.DifficultyName == diff.DifficultyName && element.DiffModResponse.ModeName == diff.ModeName)?.DiffModResponse
                 ?? ResponseUtils.DiffModResponseFromDiffAndVotes(diff, Array.Empty<float>())).ToArray();
+            
+            string? currentID = HttpContext.CurrentUserID(_context);
+            bool showRatings = currentID != null ? _context.Players.Include(p => p.ProfileSettings).Where(p => p.Id == currentID).Select(p => p.ProfileSettings).FirstOrDefault()?.ShowAllRatings ?? false : false;
+            foreach (var item in result) {
+                if (!showRatings && !item.Status.WithRating()) {
+                    item.HideRatings();
+                }
+            }
+
+            return result;
         }
 
         [NonAction]
@@ -89,10 +102,7 @@ namespace BeatLeader_Server.Controllers
             var newLeaderboard = await NewLeaderboard(newSong, baseSong, diff.DifficultyName, diff.ModeName);
             if (newLeaderboard != null && diff.Status != DifficultyStatus.ranked && diff.Status != DifficultyStatus.outdated) {
                 newLeaderboard.Difficulty.Status = diff.Status;
-                newLeaderboard.Difficulty.Stars = diff.Stars;
-                newLeaderboard.Difficulty.AccRating = diff.AccRating;
-                newLeaderboard.Difficulty.PassRating = diff.PassRating;
-                newLeaderboard.Difficulty.TechRating = diff.TechRating;
+                await RatingUtils.SetRating(diff, newSong);
                 newLeaderboard.Difficulty.Type = diff.Type;
                 newLeaderboard.Difficulty.NominatedTime = diff.NominatedTime;
                 newLeaderboard.Difficulty.ModifierValues = diff.ModifierValues;
@@ -157,7 +167,7 @@ namespace BeatLeader_Server.Controllers
                     _context.Songs.Add(song);
                     await _context.SaveChangesAsync();
 
-                    SearchService.SongAdded(song.Id, song.Hash, song.Name, song.Author, song.Mapper);
+                    SongSearchService.AddNewSong(song);
                     
                     foreach (var oldSong in songsToMigrate)
                     {
@@ -308,7 +318,14 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         private Song? GetSongWithDiffsFromHash(string hash)
         {
-            return _context.Songs.Where(el => el.Hash == hash).Include(song => song.Difficulties).ThenInclude(d => d.ModifierValues).FirstOrDefault();
+            return _context
+                .Songs
+                .Where(el => el.Hash == hash)
+                .Include(song => song.Difficulties)
+                .ThenInclude(d => d.ModifierValues)
+                .Include(song => song.Difficulties)
+                .ThenInclude(d => d.ModifiersRating)
+                .FirstOrDefault();
         }
     }
 }

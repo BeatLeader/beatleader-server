@@ -1,4 +1,5 @@
-﻿using BeatLeader_Server.Extensions;
+﻿using Amazon.S3;
+using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Dasync.Collections;
@@ -19,19 +20,22 @@ namespace BeatLeader_Server.Controllers
         ScoreRefreshController _scoreRefreshController;
         ReplayController _replayController;
         IWebHostEnvironment _environment;
+        private readonly IAmazonS3 _s3Client;
 
         public AdminController(
             AppContext context,
             IWebHostEnvironment env,
             CurrentUserController currentUserController,
             ScoreRefreshController scoreRefreshController,
-            ReplayController replayController)
+            ReplayController replayController,
+            IConfiguration configuration)
         {
             _context = context;
             _currentUserController = currentUserController;
             _scoreRefreshController = scoreRefreshController;
             _replayController = replayController;
             _environment = env;
+            _s3Client = configuration.GetS3Client();
         }
 
         [HttpPost("~/admin/role")]
@@ -509,7 +513,7 @@ namespace BeatLeader_Server.Controllers
                 foreach (var diff in song.Difficulties)
                 {
                     if (diff.Status == DifficultyStatus.ranked || diff.Status == DifficultyStatus.qualified || diff.Status == DifficultyStatus.nominated) {
-                        var response = await SongUtils.ExmachinaStars(song.Hash, diff.Value);
+                        var response = await SongUtils.ExmachinaStars(song.Hash, diff.Value, diff.ModeName);
                         if (response != null)
                         {
                             diff.PassRating = response.none.lack_map_calculation.balanced_pass_diff;
@@ -632,7 +636,7 @@ namespace BeatLeader_Server.Controllers
                         {
                             var diff = lb.Difficulty;
                             lb.Difficulty.Status = DifficultyStatus.ranked;
-                            var response = await SongUtils.ExmachinaStars(lb.Song.Hash, diff.Value);
+                            var response = await SongUtils.ExmachinaStars(lb.Song.Hash, diff.Value, diff.ModeName);
                             if (response != null) {
                                 diff.PassRating = response.none.lack_map_calculation.balanced_pass_diff;
                                 diff.TechRating = response.none.lack_map_calculation.balanced_tech * 10;
@@ -696,6 +700,67 @@ namespace BeatLeader_Server.Controllers
             }
 
             return result;
+        }
+
+        [HttpGet("~/admin/refreshv3")]
+        public async Task<ActionResult> refreshv3()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var leaderboards = _context
+                .Leaderboards
+                .Where(lb => lb.Difficulty.Requirements.HasFlag(Requirements.V3))
+                .Include(lb => lb.Scores.OrderBy(s => s.Rank).Take(3))
+                .Include(lb => lb.Difficulty)
+                .ToList();
+
+            foreach (var item in leaderboards) {
+                var maxScores = new List<int>();
+
+                foreach (var score in item.Scores) {
+                    string fileName = score.Replay.Split("/").Last();
+                    if (fileName.Length == 0) continue;
+                    Replay? replay;
+                    using (var replayStream = await _s3Client.DownloadReplay(fileName))
+                    {
+                        if (replayStream == null) continue;
+
+                        using (var ms = new MemoryStream(5))
+                        {
+                            await replayStream.CopyToAsync(ms);
+                            long length = ms.Length;
+                            try
+                            {
+                                (replay, _) = ReplayDecoder.Decode(ms.ToArray());
+                            }
+                            catch (Exception)
+                            {
+                                continue;
+                            }
+                        }
+                    }
+
+                    (var statistic, string? error) = ReplayStatisticUtils.ProcessReplay(replay, item);
+                    if (statistic != null) {
+                        maxScores.Add(statistic.winTracker.maxScore);
+                    }
+                }
+
+                if (maxScores.Count > 0 && maxScores.Max() != item.Difficulty.MaxScore) {
+                    item.Difficulty.MaxScore = maxScores.Max();
+                }
+                
+            }
+
+            _context.SaveChanges();
+
+            return Ok();
         }
 
         [HttpGet("~/admin/maps/newranking2")]

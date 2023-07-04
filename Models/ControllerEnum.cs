@@ -32,6 +32,9 @@
         tundra = 72,
         cry = 73,
         e4 = 74,
+        gamepad = 75,
+        joycon = 76,
+        steamdeck = 77,
         viveCosmos = 128,
     }
 }

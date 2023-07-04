@@ -16,6 +16,7 @@
         public int OldType { get; set; } = 0;
         public int OldCriteriaMet { get; set; } = 0;
         public ModifiersMap? OldModifiers { get; set; }
+        public ModifiersRating? OldModifiersRating { get; set; }
 
 
         public float NewRankability { get; set; } = 0;
@@ -26,6 +27,7 @@
         public int NewType { get; set; } = 0;
         public int NewCriteriaMet { get; set; } = 0;
         public ModifiersMap? NewModifiers { get; set; }
+        public ModifiersRating? NewModifiersRating { get; set; }
     }
 
     public class QualificationChange

@@ -1,10 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
-namespace BeatLeader_Server.Models
-{
-    public class PlayerChange
-    {
+namespace BeatLeader_Server.Models {
+    public class PlayerChange {
         public int Id { get; set; }
         public int Timestamp { get; set; }
         public string? PlayerId { get; set; }
@@ -19,8 +17,7 @@ namespace BeatLeader_Server.Models
     }
 
     [Index(nameof(Banned), IsUnique = false)]
-    public class Player
-    {
+    public class Player {
         [Key]
         public string Id { get; set; }
         public string Name { get; set; } = "";
@@ -44,6 +41,7 @@ namespace BeatLeader_Server.Models
         public int LastWeekCountryRank { get; set; }
 
         public bool Banned { get; set; }
+        public bool Bot { get; set; }
         public bool Inactive { get; set; }
 
         public string ExternalProfileUrl { get; set; } = "";
@@ -62,10 +60,24 @@ namespace BeatLeader_Server.Models
 
         public ICollection<EventPlayer>? EventsParticipating { get; set; }
         public ICollection<PlayerSocial>? Socials { get; set; }
+        public ICollection<Achievement>? Achievements { get; set; }
 
-        public void SetDefaultAvatar()
-        {
+        public void SetDefaultAvatar() {
             this.Avatar = "https://cdn.assets.beatleader.xyz/" + this.Platform + "avatar.png";
+        }
+
+        public static bool RoleIsAnySupporter(string role) {
+            return role.Contains("tipper") ||
+            role.Contains("supporter") ||
+            role.Contains("sponsor") ||
+            role.Contains("booster") ||
+            role.Contains("creator") ||
+            role.Contains("rankedteam") || 
+            role.Contains("qualityteam");
+        }
+
+        public bool AnySupporter() {
+            return RoleIsAnySupporter(Role);
         }
     }
 }

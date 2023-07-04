@@ -134,6 +134,7 @@ namespace BeatLeader_Server {
             .AddOculus(options => {})
             .AddSteam (options => {
                 options.ApplicationKey = steamKey;
+                options.UserInformationEndpoint = $"{steamApi}/ISteamUser/GetPlayerSummaries/v0002/";
                 options.Events.OnAuthenticated = ctx => {
                     /* ... */
                     return Task.CompletedTask;
@@ -307,6 +308,8 @@ namespace BeatLeader_Server {
                 }
                 services.AddHostedService<BotService>();
             }
+
+            services.AddHostedService<LeaderboardPlayerStatsService>();
 
             services.AddHostedService<SearchService>();
             services.AddHostedService<OauthService>();

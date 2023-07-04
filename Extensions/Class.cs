@@ -6,10 +6,19 @@ using System.Dynamic;
 using System.Linq.Expressions;
 using System.Net;
 using System.ComponentModel;
+using BeatLeader_Server.Enums;
+using BeatLeader_Server.Utils;
 using Newtonsoft.Json.Serialization;
 
 namespace BeatLeader_Server.Extensions
 {
+    public static class ModelExtensions {
+
+        public static bool WithRating(this DifficultyStatus context) {
+            return context == DifficultyStatus.ranked || context == DifficultyStatus.qualified || context == DifficultyStatus.nominated;
+        }
+    }
+
     public static class JsonExtensions
     {
         static DefaultContractResolver contractResolver = new DefaultContractResolver {
@@ -106,6 +115,23 @@ namespace BeatLeader_Server.Extensions
 
         }
 
+        public static string PlayerIdToMain(this AppContext _context, string id) {
+            Int64 oculusId = 0;
+            try {
+                oculusId = Int64.Parse(id);
+            } catch {
+                return "-1";
+            }
+            AccountLink? link = null;
+            if (oculusId < 1000000000000000) {
+                link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
+            }
+            if (link == null && oculusId < 70000000000000000) {
+                link = _context.AccountLinks.FirstOrDefault(el => el.PCOculusID == id);
+            }
+            return (link != null ? (link.SteamID.Length > 0 ? link.SteamID : link.PCOculusID) : id);
+        }
+
         public static string? CurrentUserID(this HttpContext context, ReadAppContext dbcontext)
         {
             try
@@ -136,9 +162,9 @@ namespace BeatLeader_Server.Extensions
     public static class LinqExtensions
     {
 
-        public static IOrderedQueryable<TSource> Order<TSource, TKey>(this IQueryable<TSource> source, string by, Expression<Func<TSource, TKey>> keySelector)
+        public static IOrderedQueryable<TSource> Order<TSource, TKey>(this IQueryable<TSource> source, Order by, Expression<Func<TSource, TKey>> keySelector)
         {
-            if (by == "desc")
+            if (by == Enums.Order.Desc)
             {
                 return source.OrderByDescending(keySelector);
             } else
@@ -146,9 +172,9 @@ namespace BeatLeader_Server.Extensions
                 return source.OrderBy(keySelector);
             }
         }
-        public static IOrderedQueryable<TSource> ThenOrder<TSource, TKey>(this IOrderedQueryable<TSource> source, string by, Expression<Func<TSource, TKey>> keySelector)
+        public static IOrderedQueryable<TSource> ThenOrder<TSource, TKey>(this IOrderedQueryable<TSource> source, Order by, Expression<Func<TSource, TKey>> keySelector)
         {
-            if (by == "desc")
+            if (by == Enums.Order.Desc)
             {
                 return source.ThenByDescending(keySelector);
             }

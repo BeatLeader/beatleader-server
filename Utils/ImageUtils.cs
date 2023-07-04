@@ -1,5 +1,6 @@
 ﻿using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
+using SixLabors.ImageSharp.Formats.Webp;
 using SixLabors.ImageSharp.Processing;
 
 namespace BeatLeader_Server.Utils
@@ -8,9 +9,9 @@ namespace BeatLeader_Server.Utils
     {
         public static (string, MemoryStream) GetFormatAndResize(MemoryStream memoryStream)
         {
-            IImageFormat format;
-            Image image = Image.Load(memoryStream, out format);
-            Size size = image.Size();
+            IImageFormat format = Image.DetectFormat(memoryStream);
+            Image image = Image.Load(memoryStream);
+            Size size = image.Size;
 
             int width = Math.Min(200, size.Width);
             int height = (int)(((float)size.Height / (float)size.Width) * (float)width);
@@ -40,8 +41,8 @@ namespace BeatLeader_Server.Utils
         
         public static (string, MemoryStream) GetFormat(MemoryStream memoryStream)
         {
-            IImageFormat format;
-            Image image = Image.Load(memoryStream, out format);
+            IImageFormat format = Image.DetectFormat(memoryStream);
+            Image image = Image.Load(memoryStream);
 
             var ms = new MemoryStream(5);
             string extension;
@@ -50,8 +51,16 @@ namespace BeatLeader_Server.Utils
                 image.SaveAsGif(ms);
                 extension = ".gif";
             } else {
-                image.SaveAsPng(ms);
-                extension = ".png";
+                WebpEncoder webpEncoder = new()
+                {
+                    NearLossless = true,
+                    NearLosslessQuality = 80,
+                    TransparentColorMode = WebpTransparentColorMode.Preserve,
+                    Quality = 75,
+                };
+
+                image.SaveAsWebp(ms, webpEncoder);
+                extension = ".webp";
             }
             ms.Position = 0;
 

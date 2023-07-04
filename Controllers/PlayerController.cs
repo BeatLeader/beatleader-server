@@ -3,12 +3,13 @@ using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
-using Lib.AspNetCore.ServerTiming;
+using Lib.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Linq.Expressions;
+using BeatLeader_Server.Enums;
 using static BeatLeader_Server.Services.SearchService;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
@@ -42,32 +43,9 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/player/{id}")]
-        public async Task<ActionResult<PlayerResponseFull>> Get(string id, bool stats = true)
+        public async Task<ActionResult<PlayerResponseFull>> Get(string id, bool stats = true, [FromQuery] bool keepOriginalId = false)
         {
-            Int64 oculusId = 0;
-            try
-            {
-                oculusId = Int64.Parse(id);
-            }
-            catch { 
-                return BadRequest("Id should be a number");
-            }
-            AccountLink? link = null;
-            if (oculusId < 1000000000000000)
-            {
-                using (_serverTiming.TimeAction("link"))
-                {
-                    link = _readContext.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
-                }
-            }
-            if (link == null && oculusId < 70000000000000000)
-            {
-                using (_serverTiming.TimeAction("link"))
-                {
-                    link = _readContext.AccountLinks.FirstOrDefault(el => el.PCOculusID == id);
-                }
-            }
-            string userId = (link != null ? (link.SteamID.Length > 0 ? link.SteamID : link.PCOculusID) : id);
+            string userId = _context.PlayerIdToMain(id);
             Player? player;
             using (_serverTiming.TimeAction("player"))
             {
@@ -100,6 +78,10 @@ namespace BeatLeader_Server.Controllers
                 var result = ResponseFullFromPlayer(player);
                 if (result.Banned) {
                     result.BanDescription = _context.Bans.OrderByDescending(b => b.Timeset).FirstOrDefault(b => b.PlayerId == player.Id);
+                }
+
+                if (keepOriginalId && result.Id != id) {
+                    result.Id = id;
                 }
 
                 return PostProcessSettings(result);
@@ -170,22 +152,25 @@ namespace BeatLeader_Server.Controllers
                     
                     await _context.SaveChangesAsync();
 
-                    SearchService.PlayerAdded(player.Id, player.Name);
+                    PlayerSearchService.AddNewPlayer(player);
                 }
             }
 
             return player;
         }
 
-        [HttpDelete("~/player/{id}")]
-        [Authorize]
+        //[HttpDelete("~/player/{id}")]
+        //[Authorize]
+        [NonAction]
         public async Task<ActionResult> DeletePlayer(string id)
         {
-            string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = await _context.Players.FindAsync(currentId);
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
+            if (HttpContext != null) {
+                string currentId = HttpContext.CurrentUserID(_context);
+                Player? currentPlayer = await _context.Players.FindAsync(currentId);
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
             }
             var bslink = _context.BeatSaverLinks.FirstOrDefault(link => link.Id == id);
             if (bslink != null) {
@@ -195,6 +180,14 @@ namespace BeatLeader_Server.Controllers
             var plink = _context.PatreonLinks.FirstOrDefault(l => l.Id == id);
             if (plink != null) {
                 _context.PatreonLinks.Remove(plink);
+            }
+
+            var scores = _context.Scores.Where(s => s.PlayerId == id).ToList();
+            foreach (var score in scores) {
+                string? name = score.Replay.Split("/").LastOrDefault();
+                if (name != null) {
+                    await _assetsS3Client.DeleteReplay(name);
+                }
             }
 
             Player? player = _context.Players.Where(p => p.Id == id)
@@ -337,7 +330,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int page = 1, 
             [FromQuery] int count = 50, 
             [FromQuery] string search = "",
-            [FromQuery] string order = "desc",
+            [FromQuery] Order order = Order.Desc,
             [FromQuery] string countries = "",
             [FromQuery] string mapsType = "ranked",
             [FromQuery] string ppType = "general",
@@ -384,13 +377,12 @@ namespace BeatLeader_Server.Controllers
                 }
                 request = request.Where((Expression<Func<Player, bool>>)Expression.Lambda(exp, player));
             }
+            List<string>? ids = null;
+            List<PlayerMetadata>? searchMatch = null;
+            if (search?.Length > 0) {
+                searchMatch = PlayerSearchService.Search(search);
+                ids = searchMatch.Select(m => m.Id).ToList();
 
-            List<PlayerMatch>? searchMatch = null;
-            if (search?.Length != 0)
-            {
-                searchMatch = SearchService.SearchPlayers(search);
-
-                var ids = searchMatch.Select(m => m.Id).ToArray();
                 request = request.Where(p => ids.Contains(p.Id));
             }
 
@@ -500,13 +492,13 @@ namespace BeatLeader_Server.Controllers
                 }
             };
 
-            if (searchMatch != null) {
+            if (searchMatch?.Count > 0) {
                 var matchedAndFiltered = request.Select(p => p.Id).ToList();
                 var sorted = matchedAndFiltered
-                    .OrderByDescending(p => searchMatch.FirstOrDefault(m => m.Id == p)?.Score ?? 0)
-                    .Skip((page - 1) * count)
-                    .Take(count)
-                    .ToList();
+                             .OrderByDescending(p => searchMatch.First(m => m.Id == p).Score)
+                             .Skip((page - 1) * count)
+                             .Take(count)
+                             .ToList();
 
                 request = request.Where(p => sorted.Contains(p.Id));
             } else {
@@ -538,8 +530,9 @@ namespace BeatLeader_Server.Controllers
                     Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                 }).ToList().Select(PostProcessSettings);
 
-            if (search?.Length != 0) {
-                result.Data = SearchService.SortPlayers(result.Data, search);
+            if (ids?.Count > 0)
+            {
+                result.Data = result.Data.OrderBy(e => ids.IndexOf(e.Id));
             }
 
             return result;
@@ -549,38 +542,54 @@ namespace BeatLeader_Server.Controllers
             IQueryable<Player> request, 
             string sortBy, 
             string ppType,
-            string order, 
+            Order order, 
             string mapsType) {
+            if (sortBy == "pp") {
+                switch (ppType)
+                {
+                    case "acc":
+                        request = request.Order(order, p => p.AccPp);
+                        break;
+                    case "tech":
+                        request = request.Order(order, p => p.TechPp);
+                        break;
+                    case "pass":
+                        request = request.Order(order, p => p.PassPp);
+                        break;
+                    default:
+                        request = request.Order(order, p => p.Pp);
+                        break;
+                }
+            } else if (sortBy == "topPp") {
+                switch (ppType)
+                {
+                    case "acc":
+                        request = request.Order(order, p => p.ScoreStats.TopAccPP);
+                        break;
+                    case "tech":
+                        request = request.Order(order, p => p.ScoreStats.TopTechPP);
+                        break;
+                    case "pass":
+                        request = request.Order(order, p => p.ScoreStats.TopPassPP);
+                        break;
+                    default:
+                        request = request.Order(order, p => p.ScoreStats.TopPp);
+                        break;
+                }
+            }
+
             switch (mapsType)
             {
                 case "ranked":
                     switch (sortBy)
                     {
-                        case "pp":
-                            switch (ppType)
-                            {
-                                case "acc":
-                                    request = request.Order(order, p => p.AccPp);
-                                    break;
-                                case "tech":
-                                    request = request.Order(order, p => p.TechPp);
-                                    break;
-                                case "pass":
-                                    request = request.Order(order, p => p.PassPp);
-                                    break;
-                                default:
-                                    request = request.Order(order, p => p.Pp);
-                                    break;
-                            }
-                            
-                            break;
                         case "name":
                             request = request.Order(order, p => p.Name);
                             break;
                         case "rank":
                             request = request
                                 .Where(p => p.ScoreStats.AverageRankedRank != 0)
-                                .Order(order == "desc" ? "asc" : "desc", p => Math.Round(p.ScoreStats.AverageRankedRank))
+                                .Order(order.Reverse(), p => Math.Round(p.ScoreStats.AverageRankedRank))
                                 .ThenOrder(order, p => p.ScoreStats.RankedPlayCount); 
                             break;
                         case "acc":
@@ -592,28 +601,10 @@ namespace BeatLeader_Server.Controllers
                         case "weightedRank":
                             request = request
                                 .Where(p => p.ScoreStats != null && p.ScoreStats.AverageWeightedRankedRank != 0)
-                                .Order(order == "desc" ? "asc" : "desc", p => p.ScoreStats.AverageWeightedRankedRank);
+                                .Order(order.Reverse(), p => p.ScoreStats.AverageWeightedRankedRank);
                             break;
                         case "topAcc":
                             request = request.Order(order, p => p.ScoreStats.TopRankedAccuracy);
-                            break;
-                        case "topPp":
-                            switch (ppType)
-                            {
-                                case "acc":
-                                    request = request.Order(order, p => p.ScoreStats.TopAccPP);
-                                    break;
-                                case "tech":
-                                    request = request.Order(order, p => p.ScoreStats.TopTechPP);
-                                    break;
-                                case "pass":
-                                    request = request.Order(order, p => p.ScoreStats.TopPassPP);
-                                    break;
-                                default:
-                                    request = request.Order(order, p => p.ScoreStats.TopPp);
-                                    break;
-                            }
-
                             break;
                         case "hmd":
                             request = request.Order(order, p => p.ScoreStats.TopHMD);
@@ -643,7 +634,7 @@ namespace BeatLeader_Server.Controllers
                         case "rank":
                             request = request
                                 .Where(p => p.ScoreStats.AverageUnrankedRank != 0)
-                                .Order(order == "desc" ? "asc" : "desc", p => Math.Round(p.ScoreStats.AverageUnrankedRank))
+                                .Order(order.Reverse(), p => Math.Round(p.ScoreStats.AverageUnrankedRank))
                                 .ThenOrder(order, p => p.ScoreStats.UnrankedPlayCount);
                             break;
                         case "acc":
@@ -674,16 +665,13 @@ namespace BeatLeader_Server.Controllers
                 case "all":
                     switch (sortBy)
                     {
-                        case "pp":
-                            request = request.Order(order, p => p.Pp);
-                            break;
                         case "name":
                             request = request.Order(order, p => p.Name);
                             break;
                         case "rank":
                             request = request
                                 .Where(p => p.ScoreStats.AverageRank != 0)
-                                .Order(order == "desc" ? "asc" : "desc", p => Math.Round(p.ScoreStats.AverageRank))
+                                .Order(order.Reverse(), p => Math.Round(p.ScoreStats.AverageRank))
                                 .ThenOrder(order, p => p.ScoreStats.TotalPlayCount);
                             break;
                         case "acc":
@@ -691,9 +679,6 @@ namespace BeatLeader_Server.Controllers
                             break;
                         case "topAcc":
                             request = request.Order(order, p => p.ScoreStats.TopAccuracy);
-                            break;
-                        case "topPp":
-                            request = request.Order(order, p => p.ScoreStats.TopPp);
                             break;
                         case "hmd":
                             request = request.Order(order, p => p.ScoreStats.TopHMD);
@@ -731,7 +716,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int page = 1, 
             [FromQuery] int count = 50, 
             [FromQuery] string search = "",
-            [FromQuery] string order = "desc",
+            [FromQuery] Order order = Order.Desc,
             [FromQuery] string countries = ""
             )
         {
@@ -832,7 +817,7 @@ namespace BeatLeader_Server.Controllers
             }
             catch {}
 
-            badge.Image = fileName;
+            badge.Image = "https://cdn.assets.beatleader.xyz/" + fileName;
             _context.SaveChanges();
 
             return badge;

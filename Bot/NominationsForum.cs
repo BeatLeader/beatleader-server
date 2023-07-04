@@ -16,6 +16,9 @@ namespace BeatLeader_Server.Bot
 
         public const ulong NominationForumID = 1075436060139597886;
 
+        public const ulong ReviewHubForumID = 1034817071894237194;
+        public const ulong NQTRoleId = 1064783598206599258;
+
         private readonly RTNominationsForum _rtNominationsForum;
 
         public NominationsForum(RTNominationsForum rtNominationsForum) {
@@ -363,6 +366,21 @@ namespace BeatLeader_Server.Bot
             Cacheable<IMessageChannel, ulong> channel, 
             SocketReaction reaction)
         {
+            SocketThreadChannel? thread;
+            if ((thread = await channel.GetOrDownloadAsync() as SocketThreadChannel) != null) {
+                if (ReviewHubForumID == thread.ParentChannel.Id) {
+                    ulong? userId = reaction.User.GetValueOrDefault()?.Id;
+                    if (userId != null) {
+                        var user = await ((IGuild)BotService.Client.GetGuild(BotService.BLServerID)).GetUserAsync(userId ?? 0, CacheMode.AllowDownload);
+                        if (!user.RoleIds.Contains(NQTRoleId)) {
+                            var fullmessage = await thread.GetMessageAsync(message.Id);
+                            await fullmessage.RemoveReactionAsync(reaction.Emote, user);
+                        }
+                    }
+                    return null;
+                }
+            }
+
             var vote = EmoteNameToVote(reaction.Emote.ToString() ?? "");
             if (vote != null) {
                 var qualification = await context.RankQualification.Include(q => q.Votes).FirstOrDefaultAsync(q => q.DiscordChannelId == message.Id.ToString());

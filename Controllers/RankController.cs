@@ -4,7 +4,7 @@ using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Discord.Rest;
 using Discord.Webhook;
-using Lib.AspNetCore.ServerTiming;
+using Lib.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -305,13 +305,9 @@ namespace BeatLeader_Server.Controllers
 
             bool isRT = true;
             bool verified = false;
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            if (currentPlayer == null || !(currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("qualityteam") || (currentPlayer.Role.Contains("rankedteam") && !currentPlayer.Role.Contains("juniorrankedteam"))))
             {
-                if (currentPlayer != null && currentPlayer.MapperId == leaderboard?.Song.MapperId) {
-                    isRT = false;
-                } else {
-                    return Unauthorized();
-                }
+                return Unauthorized();
             }
 
             if (leaderboard != null)
@@ -350,13 +346,11 @@ namespace BeatLeader_Server.Controllers
                     return BadRequest("Already qualified or ranked");
                 }
 
-                ModifiersMap? modifierValues = new ModifiersMap();
-                modifierValues.FS *= 2; modifierValues.SF *= 2; modifierValues.DA *= 2; modifierValues.GN *= 2; modifierValues.NF = -1.0f;
-
+                ModifiersMap? modifierValues = ModifiersMap.RankedMap();
                 difficulty.Status = DifficultyStatus.nominated;
                 difficulty.NominatedTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
-                var response = await SongUtils.ExmachinaStars(leaderboard.Song.Hash, difficulty.Value);
+                var response = await SongUtils.ExmachinaStars(leaderboard.Song.Hash, difficulty.Value, difficulty.ModeName);
                 if (response != null) {
                     difficulty.PassRating = response.none.lack_map_calculation.balanced_pass_diff;
                     difficulty.TechRating = response.none.lack_map_calculation.balanced_tech * 10;
@@ -426,8 +420,10 @@ namespace BeatLeader_Server.Controllers
                     await dsClient.SendMessageAsync(message);
                 }
 
-                leaderboard.Qualification.DiscordChannelId = (await _nominationsForum.OpenNomination(currentPlayer.Name, leaderboard)).ToString();
-                leaderboard.Qualification.DiscordRTChannelId = (await _rtNominationsForum.OpenNomination(currentPlayer, leaderboard)).ToString();
+                var mapper = _context.Players.Include(p => p.Socials).FirstOrDefault(p => p.MapperId == leaderboard.Song.MapperId);
+
+                leaderboard.Qualification.DiscordChannelId = (await _nominationsForum.OpenNomination(mapper?.Name ?? currentPlayer.Name, leaderboard)).ToString();
+                leaderboard.Qualification.DiscordRTChannelId = (await _rtNominationsForum.OpenNomination(mapper ?? currentPlayer, leaderboard)).ToString();
                 await _context.SaveChangesAsync();
             }
 
@@ -568,7 +564,7 @@ namespace BeatLeader_Server.Controllers
                         leaderboard.Difficulty.AccRating = 0;
                         leaderboard.Difficulty.PassRating = 0;
                         leaderboard.Difficulty.TechRating = 0;
-                        leaderboard.Difficulty.ModifierValues = new ModifiersMap();
+                        leaderboard.Difficulty.ModifierValues = null;
                     } else {
                         if (accRating != null)
                         {
@@ -695,7 +691,7 @@ namespace BeatLeader_Server.Controllers
 
                                 message += FormatUtils.DescribeModifiersChanges(qualificationChange.OldModifiers, qualificationChange.NewModifiers);
                             }
-                            message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
+                            message += "\nhttps://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
 
                             await dsClient.SendMessageAsync(message);
                         }
@@ -1528,7 +1524,7 @@ namespace BeatLeader_Server.Controllers
                 leaderboard.Difficulty.NominatedTime = 0;
                 leaderboard.Difficulty.QualifiedTime = 0;
                 leaderboard.Difficulty.Stars = 0;
-                leaderboard.Difficulty.ModifierValues = new ModifiersMap();
+                leaderboard.Difficulty.ModifierValues = null;
 
                 qualificationChange.NewRankability = 0;
 
