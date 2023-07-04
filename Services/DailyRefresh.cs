@@ -27,6 +27,7 @@ namespace BeatLeader_Server.Services
                     await RefreshSteamPlayers();
                     await RefreshStats();
                     await RefreshPatreon();
+                    await RefreshBoosters();
                     await RefreshBanned();
 
                     hoursUntil21 = 24;
@@ -114,6 +115,25 @@ namespace BeatLeader_Server.Services
 
                 var _patreonController = scope.ServiceProvider.GetRequiredService<PatreonController>();
                 await _patreonController.RefreshPatreon();
+            }
+        }
+
+        public async Task RefreshBoosters()
+        {
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+
+                var players = _context.Players.Where(p => p.Socials.FirstOrDefault(s => s.Service == "Discord") != null).ToList();
+                foreach (var player in players) {
+                    var link = _context.DiscordLinks.FirstOrDefault(l => l.Id == player.Id);
+                    if (link != null) {
+                        ulong ulongId = 0;
+                        if (ulong.TryParse(link.DiscordId, out ulongId)) {
+                            await PlayerUtils.RefreshBoosterRole(_context, player, ulongId);
+                        }
+                    }
+                }
             }
         }
 

@@ -467,20 +467,24 @@ namespace BeatLeader_Server.Utils
             }
         }
 
+        public static async Task RefreshBoosterRole(AppContext _context, Player? player, ulong userId) {
+            var user = await ((IGuild)BotService.Client.GetGuild(BotService.BLServerID)).GetUserAsync(userId, CacheMode.AllowDownload);
+
+            if (user != null && player != null) {
+                if (user.RoleIds.Contains(BotService.BLBoosterRoleID)) {
+                    UpdateBoosterRole(player, "booster");
+                } else {
+                    UpdateBoosterRole(player, null);
+                }
+                _context.SaveChanges();
+            }
+        }
+
         public static async Task UpdateBoosterRole(AppContext _context, ulong userId) {
             var discordLink = _context.DiscordLinks.FirstOrDefault(d => d.DiscordId == userId.ToString());
             if (discordLink != null) {
                 var player = _context.Players.FirstOrDefault(p => p.Id == discordLink.Id);
-                var user = await ((IGuild)BotService.Client.GetGuild(BotService.BLServerID)).GetUserAsync(userId, CacheMode.AllowDownload);
-
-                if (user != null && player != null) {
-                    if (user.RoleIds.Contains(BotService.BLBoosterRoleID)) {
-                        UpdateBoosterRole(player, "booster");
-                    } else {
-                        UpdateBoosterRole(player, null);
-                    }
-                    _context.SaveChanges();
-                }
+                await RefreshBoosterRole(_context, player, userId);
             }
         }
     }
