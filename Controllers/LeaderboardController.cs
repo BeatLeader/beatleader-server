@@ -600,12 +600,6 @@ namespace BeatLeader_Server.Controllers {
                     Plays = showPlays ? lb.Scores.Count(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)) : 0
                 }).ToList();
 
-            if (matches.Count > 0) {
-                List<string> ids = matches.Select(songMetadata => songMetadata.Id).ToList();
-
-                resultList = resultList.OrderBy(x => ids.IndexOf(x.Song.Id)).ToList();
-            }
-
             if (resultList.Count > 0) {
                 bool showRatings = currentPlayer?.ProfileSettings?.ShowAllRatings ?? false;
                 foreach (var leaderboard in resultList) {
@@ -690,11 +684,6 @@ namespace BeatLeader_Server.Controllers {
                     StarVotes = lb.StarVotes
                 }).ToList();
 
-            if (matches.Count > 0) {
-                List<string> songMatchIds = matches.Select(songMetadata => songMetadata.Id).ToList();
-
-                result.Data = result.Data.OrderBy(x => songMatchIds.IndexOf(x.Song.Id));
-            }
             return result;
         }
 
