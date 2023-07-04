@@ -2,7 +2,7 @@
 
 Server for the BeatLeader website and Beat Saber mod.
 
-Currently deployed here: https://api.beatleader.xyz/
+Deployed here: https://api.beatleader.xyz/
 
 I don't know what I'm doing, so there can be very stupid mistakes!
 
@@ -18,26 +18,19 @@ To start this thing you need to install several tools:
 
 - Visual Studio 2022
 - Docker
-- NodeJS
 
 For testing use Postman.
 
 After everything is installed:
 
 1) Change working directory to project.
-2) `npm install -g azurite`
-3) `sudo docker run --cap-add SYS_PTRACE -e 'ACCEPT_EULA=Y' -e 'MSSQL_SA_PASSWORD=SuperStrong!' -p 1433:1433 --name sqledge -d mcr.microsoft.com/azure-sql-edge` (On Windows use " instead of ')
-4) `dotnet tool install --global dotnet-ef`
-5) `dotnet tool restore`
-6) `dotnet ef database update --context AppContext`
-7) `azurite -s -l azstorage -d azstorage\debug.log`
-8) Open the .sln in Visual Studio and run the project.
+2) `dotnet tool install --global dotnet-ef`
+3) `dotnet tool restore`
+4) `dotnet ef database update --context AppContext`
+5) `sudo docker run --cap-add SYS_PTRACE -e 'ACCEPT_EULA=Y' -e 'MSSQL_SA_PASSWORD=SuperStrong!' -p 1433:1433 --name sqledge -d mcr.microsoft.com/azure-sql-edge` (On Windows use " instead of ')
+6) Open the .sln in Visual Studio and run the server with "IIS Express".
 
-The server should be accessible at https://localhost:7040/
-
-### Release build
-
-This project uses Azure to deploy. You will be needed to create SQL server and blob storage in order to deploy.
+The server should be accessible at https://localhost:44313/
 
 ## API 
 
@@ -49,14 +42,17 @@ http://api.beatleader.xyz/swagger/index.html
 
 ### Using Oauth2.0 on BeatLeader
 
-First off you need to dm `nsgolova` on Discord and send him the service information, the icon for the service and the callback endpoint for your website and local development (for example: `https://api.example-site.com/beatleader-login` and `http://localhost:3000/beatleader-login`). You will get a client id and client secret.
+Oauth2.0 is Supported only for server-to-server authorization, it will work only if you have server side as well.
+First off you need to dm [nsgolova](https://discordapp.com/users/698212038106677259) on Discord and send him the service information, the icon for the service and the callback endpoint for your website and local development (for example: `https://api.example-site.com/beatleader-login` and `http://localhost:3000/beatleader-login`). You will get a client id and client secret.
 
 For this example, we'll use these variables:
 - Client ID = exampleID
 - Client Secret = exampleSecret
 - Callback URL = http://localhost:3000/beatleader-login
 
-Now you need to construct a URL for the oauth2. If we use the variables above, the URL should look something like this: `https://api.beatleader.xyz/oauth2/authorize?client_id=exampleID&response_type=code&redirect_uri=http://localhost:3000/beatleader-login`.
+Disclaimer! It will be much easier to use a library for that, for example with AspNet.Security.OpenId. There is a C# example [here](/Auth/Beatleader/BeatLeaderAuthenticationDefaults.cs)
+
+Now you need to construct a URL for the oauth2. If we use the variables above, the URL should look something like this: `https://api.beatleader.xyz/oauth2/authorize?client_id=exampleID&response_type=code&redirect_uri=http://localhost:3000/beatleader-login&scope=profile`.
 
 When the person authorizes access to their account information, BeatLeader will redirect the user to your callback URL with a `code` and `iss` query parameter.
 
