@@ -82,6 +82,7 @@ namespace BeatLeader_Server.Models
         public int PlayCount { get; set; } = 1;
         public float LeftTiming { get; set; }
         public float RightTiming { get; set; }
+        public int Priority { get; set; } = 0;
 
         public ScoreImprovement? ScoreImprovement { get; set; }
         public bool Banned { get; set; } = false;

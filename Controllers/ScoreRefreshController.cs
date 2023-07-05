@@ -62,6 +62,14 @@ namespace BeatLeader_Server.Controllers
                             s.ModifiedScore = (int)((s.BaseScore + (int)((float)(maxScore - s.BaseScore) * (modifiers.GetPositiveMultiplier(s.Modifiers) - 1))) * modifiers.GetNegativeMultiplier(s.Modifiers));
                         }
 
+                        if (s.Modifiers.Contains("NF")) {
+                            s.Priority = 3;
+                        } else if (s.Modifiers.Contains("NB") || s.Modifiers.Contains("NA")) {
+                            s.Priority = 2;
+                        } else if (s.Modifiers.Contains("NO")) {
+                            s.Priority = 1;
+                        }
+
                         s.Accuracy = (float)s.BaseScore / (float)maxScore;
 
                         if (s.Accuracy > 1.29f)
@@ -95,7 +103,18 @@ namespace BeatLeader_Server.Controllers
                         counter++;
                     }
 
-                    var rankedScores = hasPp ? allScores.OrderByDescending(el => el.Pp).ToList() : allScores.OrderByDescending(el => el.ModifiedScore).ToList();
+                    var rankedScores = hasPp 
+                        ? allScores
+                            .OrderByDescending(el => Math.Round(el.Pp, 2))
+                            .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                            .ThenBy(el => el.Timeset)
+                            .ToList() 
+                        : allScores
+                            .OrderBy(el => el.Priority)
+                            .ThenByDescending(el => el.ModifiedScore)
+                            .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                            .ThenBy(el => el.Timeset)
+                            .ToList();
                     foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
                     {
                         s.Rank = i + 1;
@@ -192,6 +211,13 @@ namespace BeatLeader_Server.Controllers
                         }
 
                         score.Accuracy = (float)s.BaseScore / (float)maxScore;
+                        if (s.Modifiers.Contains("NF")) {
+                            score.Priority = 3;
+                        } else if (s.Modifiers.Contains("NB") || s.Modifiers.Contains("NA")) {
+                            score.Priority = 2;
+                        } else if (s.Modifiers.Contains("NO")) {
+                            score.Priority = 1;
+                        }
 
                         if (score.Accuracy > 1f)
                         {
@@ -258,13 +284,23 @@ namespace BeatLeader_Server.Controllers
                         _context.Entry(score).Property(x => x.AccPP).IsModified = true;
                         _context.Entry(score).Property(x => x.TechPP).IsModified = true;
                         _context.Entry(score).Property(x => x.Qualification).IsModified = true;
+                        _context.Entry(score).Property(x => x.Priority).IsModified = true;
 
                         newScores.Add(score);
                     }
 
                     var rankedScores = hasPp 
-                        ? newScores.OrderByDescending(el => el.Pp).ThenByDescending(el => el.Accuracy).ToList() 
-                        : newScores.OrderByDescending(el => el.ModifiedScore).ThenByDescending(el => el.Accuracy).ToList();
+                        ? newScores
+                            .OrderByDescending(el => Math.Round(el.Pp, 2))
+                            .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                            .ThenBy(el => el.Timeset)
+                            .ToList() 
+                        : newScores
+                            .OrderBy(el => el.Priority)
+                            .ThenByDescending(el => el.ModifiedScore)
+                            .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                            .ThenBy(el => el.Timeset)
+                            .ToList();
                     foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
                     {
                         s.Rank = i + 1;

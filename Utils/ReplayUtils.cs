@@ -278,6 +278,14 @@ namespace BeatLeader_Server.Utils
             score.Timeset = info.timestamp;
             score.IgnoreForStats = difficulty.ModeName.ToLower() == "rhythmgamestandard" || difficulty.ModeName.ToLower().Contains("controllable") || info.modifiers.Contains("NF");
             score.Migrated = true;
+
+            if (info.modifiers.Contains("NF")) {
+                score.Priority = 3;
+            } else if (info.modifiers.Contains("NB") || info.modifiers.Contains("NA")) {
+                score.Priority = 2;
+            } else if (info.modifiers.Contains("NO")) {
+                score.Priority = 1;
+            }
             
             return (score, maxScore);
         }
@@ -571,6 +579,28 @@ namespace BeatLeader_Server.Utils
             }
 
             return true;
+        }
+
+        public static bool IsNewScoreBetter(Score? oldScore, Score newScore) {
+            if (oldScore == null) return true;
+            if (oldScore.Modifiers.Contains("OP")) return true;
+            if (newScore.Pp != 0) {
+                if (newScore.Pp > oldScore.Pp) return true;
+            } else {
+                if (newScore.ModifiedScore > oldScore.ModifiedScore) return true;
+
+                if (oldScore.Modifiers.Contains("NF") || 
+                    oldScore.Modifiers.Contains("NA") ||
+                    oldScore.Modifiers.Contains("NB") ||
+                    oldScore.Modifiers.Contains("NO")) {
+                    if (!newScore.Modifiers.Contains("NF") && 
+                    !newScore.Modifiers.Contains("NA") &&
+                    !newScore.Modifiers.Contains("NB") &&
+                    !newScore.Modifiers.Contains("NO")) return true;
+                }
+            }
+
+            return false;
         }
     }
 }
