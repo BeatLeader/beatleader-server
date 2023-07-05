@@ -44,7 +44,7 @@ namespace BeatLeader_Server.Controllers
             foreach (Player p in players)
             {
                 if (Int64.Parse(p.Id) <= 70000000000000000) { continue; }
-                Player? update = await PlayerUtils.GetPlayerFromSteam(p.Id, _configuration.GetValue<string>("SteamKey"));
+                Player? update = await PlayerUtils.GetPlayerFromSteam(_configuration.GetValue<string>("SteamApi"), p.Id, _configuration.GetValue<string>("SteamKey"));
 
                 if (update != null)
                 {
