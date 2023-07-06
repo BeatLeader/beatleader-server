@@ -8,10 +8,11 @@ namespace BeatLeader_Server.Utils;
 public static partial class MapListUtils
 {
     public static IQueryable<Leaderboard> Filter(this IQueryable<Leaderboard> source,
+                                                 AppContext _context,
                                                  int page,
                                                  int count,
-                                                 out List<SongMetadata> matches,
                                                  out int totalMatches,
+                                                 out int? searchId,
                                                  SortBy sortBy = SortBy.None,
                                                  Order order = Order.Desc,
                                                  string? search = null,
@@ -34,7 +35,8 @@ public static partial class MapListUtils
                                                  int? dateTo = null,
                                                  Player? currentPlayer = null) =>
         source.FilterBySearch(search,
-                              out matches,
+                              _context,
+                              out searchId,
                               ref type,
                               ref mode,
                               ref mapType,
@@ -65,7 +67,6 @@ public static partial class MapListUtils
               .WhereRatingTo(RatingType.Acc, accRatingTo)
               .WhereRatingTo(RatingType.Pass, passRatingTo)
               .WhereRatingTo(RatingType.Tech, techRatingTo)
-              .Sort(sortBy, order, type, mytype, dateFrom, dateTo, currentPlayer)
-              .WherePage(page, count, matches, search, out totalMatches)
-              .Sort(sortBy, order, type, mytype, dateFrom, dateTo, currentPlayer);
+              .Sort(sortBy, order, type, mytype, dateFrom, dateTo, searchId, currentPlayer)
+              .WherePage(page, count, out totalMatches);
 }

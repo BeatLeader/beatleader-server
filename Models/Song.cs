@@ -29,5 +29,8 @@ namespace BeatLeader_Server.Models
 
         [JsonIgnore]
         public bool Checked { get; set; }
+
+        [JsonIgnore]
+        public ICollection<SongSearch> Searches { get; set; }
     }
 }
