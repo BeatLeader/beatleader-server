@@ -361,9 +361,7 @@ namespace BeatLeader_Server.Controllers
 
             if (!player.Bot && player.Banned) return (BadRequest("You are banned!"), false);
             if (resultScore.BaseScore > maxScore) return (BadRequest("Score is bigger than max possible on this map!"), false);
-            if (currentScore != null && !currentScore.Modifiers.Contains("OP") &&
-                    ((currentScore.Pp != 0 && currentScore.Pp >= resultScore.Pp) ||
-                    (currentScore.Pp == 0 && currentScore.ModifiedScore >= resultScore.ModifiedScore)))
+            if (!ReplayUtils.IsNewScoreBetter(currentScore, resultScore))
             {
                 return (BadRequest("Score is lower than existing one"), true);
             }
@@ -533,8 +531,9 @@ namespace BeatLeader_Server.Controllers
                         :
                     _context
                         .Scores
-                        .Where(s => s.LeaderboardId == leaderboard.Id && s.ModifiedScore <= resultScore.ModifiedScore && !s.Banned)
-                        .OrderByDescending(el => el.ModifiedScore)
+                        .Where(s => s.LeaderboardId == leaderboard.Id && (s.ModifiedScore <= resultScore.ModifiedScore || s.Priority <= resultScore.Priority) && !s.Banned)
+                        .OrderBy(el => el.Priority)
+                        .ThenByDescending(el => el.ModifiedScore)
                         .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                         .ThenBy(el => el.Timeset)
                         .Select(s => new { Id = s.Id, Rank = s.Rank })
@@ -957,7 +956,8 @@ namespace BeatLeader_Server.Controllers
                 _context
                     .Scores
                     .Where(s => s.LeaderboardId == leaderboard.Id && !s.Banned)
-                    .OrderByDescending(el => el.ModifiedScore)
+                    .OrderBy(el => el.Priority)
+                    .ThenByDescending(el => el.ModifiedScore)
                     .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                     .ThenBy(el => el.Timeset)
                     .Select(s => new { Id = s.Id, Rank = s.Rank })

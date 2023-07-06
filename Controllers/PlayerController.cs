@@ -115,7 +115,7 @@ namespace BeatLeader_Server.Controllers
             if (player == null) {
                 Int64 userId = long.Parse(id);
                 if (userId > 70000000000000000) {
-                    player = await PlayerUtils.GetPlayerFromSteam(id, _configuration.GetValue<string>("SteamKey"));
+                    player = await PlayerUtils.GetPlayerFromSteam(_configuration.GetValue<string>("SteamApi"), id, _configuration.GetValue<string>("SteamKey"));
                     if (player == null) {
                         return NotFound();
                     }
@@ -363,7 +363,7 @@ namespace BeatLeader_Server.Controllers
 
                 request = request.Where(p => p.Banned == bannedUnwrapped);
             } else {
-                request = request.Where(p => !p.Banned);
+                request = request.Where(p => !p.Banned || p.Bot);
             }
             if (countries.Length != 0)
             {

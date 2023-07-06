@@ -693,6 +693,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/score/{playerID}/{hash}/{diff}/{mode}")]
         public async Task<ActionResult<Score>> GetPlayer(string playerID, string hash, string diff, string mode)
         {
+            playerID = _context.PlayerIdToMain(playerID);
             var score = _readContext
                 .Scores
                 .Where(l => l.Leaderboard.Song.Hash == hash && l.Leaderboard.Difficulty.DifficultyName == diff && l.Leaderboard.Difficulty.ModeName == mode && l.PlayerId == playerID)

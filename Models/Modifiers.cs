@@ -34,10 +34,10 @@ namespace BeatLeader_Server.Models
         public float SF { get; set; } = 0.36f;
         public float SS { get; set; } = -0.3f;
         public float GN { get; set; } = 0.04f;
-        public float NA { get; set; } = -1.0f;
-        public float NB { get; set; } = -1.0f;
-        public float NF { get; set; } = -1.0f;
-        public float NO { get; set; } = -1.0f;
+        public float NA { get; set; } = -0.3f;
+        public float NB { get; set; } = -0.2f;
+        public float NF { get; set; } = -0.5f;
+        public float NO { get; set; } = -0.2f;
         public float PM { get; set; } = 0.0f;
         public float SC { get; set; } = 0.0f;
         public float SA { get; set; } = 0.0f;

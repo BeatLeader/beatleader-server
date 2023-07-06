@@ -5,7 +5,7 @@
 namespace BeatLeader_Server.Migrations
 {
     /// <inheritdoc />
-    public partial class ClanRankingCapturedLeaderboards : Migration
+    public partial class ClanRanking : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

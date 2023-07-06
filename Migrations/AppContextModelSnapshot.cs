@@ -2362,6 +2362,9 @@ namespace BeatLeader_Server.Migrations
                     b.Property<float>("Pp")
                         .HasColumnType("real");
 
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
+
                     b.Property<bool>("Qualification")
                         .HasColumnType("bit");
 

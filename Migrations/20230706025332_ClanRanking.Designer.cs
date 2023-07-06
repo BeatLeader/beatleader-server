@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    [Migration("20230704212421_ClanRankingCapturedLeaderboards")]
-    partial class ClanRankingCapturedLeaderboards
+    [Migration("20230706025332_ClanRanking")]
+    partial class ClanRanking
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -2364,6 +2364,9 @@ namespace BeatLeader_Server.Migrations
 
                     b.Property<float>("Pp")
                         .HasColumnType("real");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
 
                     b.Property<bool>("Qualification")
                         .HasColumnType("bit");

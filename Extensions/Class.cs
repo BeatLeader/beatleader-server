@@ -120,7 +120,7 @@ namespace BeatLeader_Server.Extensions
             try {
                 oculusId = Int64.Parse(id);
             } catch {
-                return "-1";
+                return id;
             }
             AccountLink? link = null;
             if (oculusId < 1000000000000000) {
