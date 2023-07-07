@@ -174,6 +174,13 @@ namespace BeatLeader_Server.Controllers {
                     })
                     .ToList();
 
+            foreach (var resultScore in resultList) {
+                if (!showRatings && !resultScore.Leaderboard.Difficulty.Status.WithRating()) {
+                    resultScore.Leaderboard.HideRatings();
+                }
+            }
+            result.Data = resultList;
+
             if (currentID != null && currentID != userId) {
                 var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
 
@@ -182,13 +189,6 @@ namespace BeatLeader_Server.Controllers {
                     score.MyScore = myScores.FirstOrDefault(s => s.LeaderboardId == score.LeaderboardId);
                 }
             }
-
-            foreach (var resultScore in resultList) {
-                if (!showRatings && !resultScore.Leaderboard.Difficulty.Status.WithRating()) {
-                    resultScore.Leaderboard.HideRatings();
-                }
-            }
-            result.Data = resultList;
 
             return result;
         }
