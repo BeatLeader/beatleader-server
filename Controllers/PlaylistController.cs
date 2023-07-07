@@ -494,7 +494,7 @@ namespace BeatLeader_Server.Controllers
                 .FirstOrDefaultAsync(p => p.Id == currentID) : null;
 
             int searchCount = 0;
-            sequence = sequence.Filter(0, count, out List<SongMetadata> matches, out int totalMatches, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
+            sequence = sequence.Filter(_context, 0, count, out int totalMatches, out int? searchId, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
 
             var diffsList = sequence.Select(s => s.Song.Hash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash);
 
@@ -517,6 +517,13 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
             }).ToList();
+
+            if (searchId != null) {
+                var searchRecords = _context.SongSearches.Where(s => s.SearchId == searchId).ToList();
+                foreach (var item in searchRecords) {
+                    _context.SongSearches.Remove(item);
+                }
+            }
 
             dynamic? playlist = null;
 

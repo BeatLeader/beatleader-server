@@ -119,27 +119,13 @@ public static partial class MapListUtils
         };
     }
 
-    private static IQueryable<Leaderboard> WherePage(this IQueryable<Leaderboard> sequence, int page, int count, List<SongMetadata> matches, string search, out int totalMatches)
+    private static IQueryable<Leaderboard> WherePage(this IQueryable<Leaderboard> sequence, int page, int count, out int totalMatches)
     {
         if (page <= 0) {
             page = 1;
         }
 
         totalMatches = sequence.Count();
-
-        if (matches.Count > 0) {
-            List<string> ids = matches.Select(songMetadata => songMetadata.Id).ToList();
-
-            var moreIds = sequence.Select(s => new { Id = s.Song.Id, Name = s.Song.Name }).ToList();
-
-            var filteredIds = moreIds
-                .OrderBy(x => search.ToLower() == x.Name.ToLower() ? -1 : ids.IndexOf(x.Id))
-                .Skip((page - 1) * count)
-                .Take(count)
-                .Select(s => s.Id)
-                .ToList();
-            return sequence.Where(l => filteredIds.Contains(l.Song.Id)).Take(count);
-        }
 
         return sequence.Skip((page - 1) * count).Take(count);
     }

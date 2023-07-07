@@ -65,7 +65,7 @@ public static class SongSearchService
         return hits.Select(scoreDoc =>
         {
             SongMetadata result = (SongMetadata)searcher.Doc(scoreDoc.Doc);
-            result.Score = scoreDoc.Score;
+            result.Score = (int)(scoreDoc.Score * 100.0f);
 
             return result;
         }).ToList();
@@ -92,6 +92,9 @@ public static class SongSearchService
             { fuzzyWordsQueryName, Occur.SHOULD },
             { fuzzyWordsQueryAuthor, Occur.SHOULD },
             { fuzzyWordsQueryMapper, Occur.SHOULD },
+            { new PrefixQuery(new Term(nameof(SongMetadata.Name), searchQuery)), Occur.SHOULD },
+            { new PrefixQuery(new Term(nameof(SongMetadata.Author), searchQuery)), Occur.SHOULD },
+            { new PrefixQuery(new Term(nameof(SongMetadata.Mapper), searchQuery)), Occur.SHOULD }
         };
 
         return booleanQuery;

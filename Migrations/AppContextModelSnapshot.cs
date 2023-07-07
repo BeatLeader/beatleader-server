@@ -2629,6 +2629,30 @@ namespace BeatLeader_Server.Migrations
                     b.ToTable("Songs");
                 });
 
+            modelBuilder.Entity("BeatLeader_Server.Models.SongSearch", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Score")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SearchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SongId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SongId");
+
+                    b.ToTable("SongSearches");
+                });
+
             modelBuilder.Entity("BeatLeader_Server.Models.SurveyPassed", b =>
                 {
                     b.Property<int>("Id")
@@ -3449,6 +3473,15 @@ namespace BeatLeader_Server.Migrations
                     b.Navigation("ScoreImprovement");
                 });
 
+            modelBuilder.Entity("BeatLeader_Server.Models.SongSearch", b =>
+                {
+                    b.HasOne("BeatLeader_Server.Models.Song", "Song")
+                        .WithMany("Searches")
+                        .HasForeignKey("SongId");
+
+                    b.Navigation("Song");
+                });
+
             modelBuilder.Entity("BeatLeader_Server.Models.User", b =>
                 {
                     b.HasOne("BeatLeader_Server.Models.Player", "Player")
@@ -3648,6 +3681,8 @@ namespace BeatLeader_Server.Migrations
             modelBuilder.Entity("BeatLeader_Server.Models.Song", b =>
                 {
                     b.Navigation("Difficulties");
+
+                    b.Navigation("Searches");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.User", b =>

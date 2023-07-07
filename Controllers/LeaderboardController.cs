@@ -605,14 +605,14 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] int? date_from = null,
             [FromQuery] int? date_to = null) {
 
-            var sequence = _readContext.Leaderboards.AsQueryable();
-            string? currentID = HttpContext.CurrentUserID(_readContext);
+            var sequence = _context.Leaderboards.AsQueryable();
+            string? currentID = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = currentID != null ? await _context
                 .Players
                 .Include(p => p.ProfileSettings)
                 .FirstOrDefaultAsync(p => p.Id == currentID) : null;
 
-            sequence = sequence.Filter(page, count, out List<SongMetadata> matches, out int totalMatches, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
+            sequence = sequence.Filter(_context, page, count, out int totalMatches, out int? searchId, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
 
             var result = new ResponseWithMetadata<LeaderboardInfoResponse>() {
                 Metadata = new Metadata() {
@@ -696,6 +696,15 @@ namespace BeatLeader_Server.Controllers {
                     }
                 }
             }
+            if (searchId != null) {
+                HttpContext.Response.OnCompleted(async () => {
+                    var searchRecords = _context.SongSearches.Where(s => s.SearchId == searchId).ToList();
+                    foreach (var item in searchRecords) {
+                        _context.SongSearches.Remove(item);
+                    }
+                    await _context.BulkSaveChangesAsync();
+                });
+            }
 
             result.Data = resultList;
 
@@ -727,15 +736,22 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] int? date_from = null,
             [FromQuery] int? date_to = null) {
 
-            var sequence = _readContext.Leaderboards.AsQueryable();
-            string? currentID = HttpContext.CurrentUserID(_readContext);
+            var sequence = _context.Leaderboards.AsQueryable();
+            string? currentID = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = currentID != null ? await _context
                 .Players
                 .Include(p => p.ProfileSettings)
                 .FirstOrDefaultAsync(p => p.Id == currentID) : null;
-            sequence = sequence.Filter(page, count, out List<SongMetadata> matches, out int totalMatches, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
+            sequence = sequence.Filter(_context, page, count, out int totalMatches, out int? searchId, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
 
             var ids = sequence.Select(lb => lb.SongId).ToList();
+
+            if (searchId != null) {
+                var searchRecords = _context.SongSearches.Where(s => s.SearchId == searchId).ToList();
+                foreach (var item in searchRecords) {
+                    _context.SongSearches.Remove(item);
+                }
+            }
 
             var result = new ResponseWithMetadata<LeaderboardInfoResponse>() {
                 Metadata = new Metadata() {
@@ -746,7 +762,7 @@ namespace BeatLeader_Server.Controllers {
             };
 
             sequence = sequence
-                .Where(lb => ids.Contains(lb.SongId)).Filter(page, count, out matches, out totalMatches, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer)
+                .Where(lb => ids.Contains(lb.SongId)).Filter(_context, page, count, out totalMatches, out searchId, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer)
                 .Include(lb => lb.Difficulty)
                 .Include(lb => lb.Song);
 
@@ -771,6 +787,13 @@ namespace BeatLeader_Server.Controllers {
                     VoteStars = lb.VoteStars,
                     StarVotes = lb.StarVotes
                 }).ToList();
+
+            if (searchId != null) {
+                var searchRecords = _context.SongSearches.Where(s => s.SearchId == searchId).ToList();
+                foreach (var item in searchRecords) {
+                    _context.SongSearches.Remove(item);
+                }
+            }
 
             return result;
         }
