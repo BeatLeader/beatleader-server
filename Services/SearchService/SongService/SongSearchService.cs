@@ -11,7 +11,7 @@ namespace BeatLeader_Server.Services;
 
 public static class SongSearchService
 {
-    private const int HitsLimit = 1000;
+    private const int HitsLimit = 5000;
     private static readonly string LuceneDir = Path.Combine(System.AppContext.BaseDirectory, "lucene_index_songs");
 
     private static FSDirectory Directory { get; } = FSDirectory.Open(new DirectoryInfo(LuceneDir));
@@ -65,7 +65,7 @@ public static class SongSearchService
         return hits.Select(scoreDoc =>
         {
             SongMetadata result = (SongMetadata)searcher.Doc(scoreDoc.Doc);
-            result.Score = scoreDoc.Score;
+            result.Score = (int)(scoreDoc.Score * 100.0f);
 
             return result;
         }).ToList();
@@ -92,6 +92,9 @@ public static class SongSearchService
             { fuzzyWordsQueryName, Occur.SHOULD },
             { fuzzyWordsQueryAuthor, Occur.SHOULD },
             { fuzzyWordsQueryMapper, Occur.SHOULD },
+            { new PrefixQuery(new Term(nameof(SongMetadata.Name), searchQuery)), Occur.SHOULD },
+            { new PrefixQuery(new Term(nameof(SongMetadata.Author), searchQuery)), Occur.SHOULD },
+            { new PrefixQuery(new Term(nameof(SongMetadata.Mapper), searchQuery)), Occur.SHOULD }
         };
 
         return booleanQuery;

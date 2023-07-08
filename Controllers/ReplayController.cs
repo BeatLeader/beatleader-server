@@ -531,7 +531,7 @@ namespace BeatLeader_Server.Controllers
                         :
                     _context
                         .Scores
-                        .Where(s => s.LeaderboardId == leaderboard.Id && (s.ModifiedScore <= resultScore.ModifiedScore || s.Priority <= resultScore.Priority) && !s.Banned)
+                        .Where(s => s.LeaderboardId == leaderboard.Id && ((s.ModifiedScore <= resultScore.ModifiedScore && s.Priority == resultScore.Priority) || s.Priority > resultScore.Priority) && !s.Banned)
                         .OrderBy(el => el.Priority)
                         .ThenByDescending(el => el.ModifiedScore)
                         .ThenByDescending(el => Math.Round(el.Accuracy, 4))

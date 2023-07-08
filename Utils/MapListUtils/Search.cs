@@ -11,7 +11,8 @@ public static partial class MapListUtils
 {
     private static IQueryable<Leaderboard> FilterBySearch(this IQueryable<Leaderboard> sequence,
                                                           string? search,
-                                                          out List<SongMetadata> matches,
+                                                          AppContext _context,
+                                                          out int? searchId,
                                                           ref Type type,
                                                           ref string? mode,
                                                           ref int? mapType,
@@ -32,7 +33,7 @@ public static partial class MapListUtils
     {
         if (string.IsNullOrEmpty(search)) // returns before search filters if truely empty
         {
-            matches = new List<SongMetadata>(0);
+            searchId = null;
 
             return sequence;
         }
@@ -57,12 +58,25 @@ public static partial class MapListUtils
 
         if (string.IsNullOrEmpty(search)) // returns after search filters to allow search filters to apply, but skips if search is truly empty
         {
-            matches = new List<SongMetadata>(0);
+            searchId = null;
 
             return sequence;
         }
 
-        matches = SongSearchService.Search(search);
+        List<SongMetadata> matches = SongSearchService.Search(search);
+        Random rnd = new Random();
+
+        int searchIdentifier = rnd.Next(1, 10000);
+        searchId = searchIdentifier;
+
+        foreach (var item in matches) {
+            _context.SongSearches.Add(new SongSearch {
+                SongId = item.Id,
+                Score = item.Score,
+                SearchId = searchIdentifier
+            });
+        }
+        _context.BulkSaveChanges();
 
         IEnumerable<string> ids = matches.Select(songMetadata => songMetadata.Id);
 
