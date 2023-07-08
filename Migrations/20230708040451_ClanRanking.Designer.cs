@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    [Migration("20230707001849_ClanRanking")]
+    [Migration("20230708040451_ClanRanking")]
     partial class ClanRanking
     {
         /// <inheritdoc />

@@ -11,7 +11,7 @@ namespace BeatLeader_Server.Services;
 
 public static class SongSearchService
 {
-    private const int HitsLimit = 1000;
+    private const int HitsLimit = 5000;
     private static readonly string LuceneDir = Path.Combine(System.AppContext.BaseDirectory, "lucene_index_songs");
 
     private static FSDirectory Directory { get; } = FSDirectory.Open(new DirectoryInfo(LuceneDir));
