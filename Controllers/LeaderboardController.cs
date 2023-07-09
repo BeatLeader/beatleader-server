@@ -299,7 +299,7 @@ namespace BeatLeader_Server.Controllers {
                 }
                 if (clanRanking)
                 {
-                    // SSnowy - Is there a better way to do this? There's no way this is the right way to do this...
+                    // REVERT BEFORE PROD - Is there a better way to do this? There's no way this is the right way to do this...
                     leaderboard.ClanRanking = currentContext
                     .ClanRanking
                     .Include(cr => cr.Clan)
