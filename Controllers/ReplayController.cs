@@ -104,13 +104,27 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task<ActionResult<ScoreResponse>> PostReplayFromCDN(string authenticatedPlayerID, string name, HttpContext context)
+        public async Task<ActionResult<ScoreResponse>> PostReplayFromCDN(string authenticatedPlayerID, string name, bool backup, HttpContext context)
         {
-            using (var stream = await _s3Client.DownloadReplay(name)) {
-                if (stream != null) {
-                    return await PostReplay(authenticatedPlayerID, stream, context);
-                } else {
+            if (backup) {
+                string directoryPath = Path.Combine("/root/replays");
+                string filePath = Path.Combine(directoryPath, name);
+
+                if (!System.IO.File.Exists(filePath)) {
                     return NotFound();
+                }
+
+                // Use FileMode.Create to overwrite the file if it already exists.
+                using (FileStream stream = new FileStream(filePath, FileMode.Open)) {
+                    return await PostReplay(authenticatedPlayerID, stream, context);
+                }
+            } else {
+                using (var stream = await _s3Client.DownloadReplay(name)) {
+                    if (stream != null) {
+                        return await PostReplay(authenticatedPlayerID, stream, context);
+                    } else {
+                        return NotFound();
+                    }
                 }
             }
         }
@@ -313,9 +327,7 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsortemp";
-                resultScore.Replay = "https://cdn.replays.beatleader.xyz/" + fileName;
-                
-                await _s3Client.UploadReplay(fileName, replayData);
+                resultScore.Replay = await _s3Client.UploadReplay(fileName, replayData);
 
                 FailedScore failedScore = new FailedScore {
                     Error = e.Message,
@@ -764,8 +776,7 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
-                resultScore.Replay = "https://cdn.replays.beatleader.xyz/" + fileName;
-                await _s3Client.UploadReplay(fileName, replayData);
+                resultScore.Replay = await _s3Client.UploadReplay(fileName, replayData);
 
                 if (!leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles)) {
                     double scoreRatio = (double)resultScore.BaseScore / (double)statistic.winTracker.totalScore;

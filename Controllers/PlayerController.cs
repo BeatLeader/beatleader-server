@@ -134,9 +134,7 @@ namespace BeatLeader_Server.Controllers
                         (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(readStream);
                         fileName += extension;
 
-                        await _assetsS3Client.UploadAsset(fileName, stream);
-
-                        player.Avatar = (_environment.IsDevelopment() ? "https://localhost:9191/assets/" : "https://cdn.assets.beatleader.xyz/") + fileName;
+                        player.Avatar = await _assetsS3Client.UploadAsset(fileName, stream);
                     }
                 } else {
                     player = await GetPlayerFromBL(id);
@@ -813,11 +811,10 @@ namespace BeatLeader_Server.Controllers
                 Random rnd = new Random();
                 fileName = "badge-" + badge.Id + "R" + rnd.Next(1, 50) + extension;
 
-                await _assetsS3Client.UploadAsset(fileName, stream);
+                badge.Image = await _assetsS3Client.UploadAsset(fileName, stream);
             }
             catch {}
 
-            badge.Image = "https://cdn.assets.beatleader.xyz/" + fileName;
             _context.SaveChanges();
 
             return badge;

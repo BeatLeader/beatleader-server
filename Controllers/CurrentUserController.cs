@@ -356,12 +356,8 @@ namespace BeatLeader_Server.Controllers {
                 Random rnd = new Random();
                 fileName = userId + "R" + rnd.Next(1, 50) + extension;
 
-                await _s3Client.UploadAsset(fileName, stream);
+                player.Avatar = await _s3Client.UploadAsset(fileName, stream);
             } catch { }
-
-            if (fileName != null) {
-                player.Avatar = "https://cdn.assets.beatleader.xyz/" + fileName;
-            }
 
             PatreonFeatures? features = player.PatreonFeatures;
             ProfileSettings? settings = player.ProfileSettings;
@@ -480,6 +476,12 @@ namespace BeatLeader_Server.Controllers {
                 return BadRequest("You are banned!");
             }
 
+            ProfileSettings? settings = player.ProfileSettings;
+            if (settings == null) {
+                settings = new ProfileSettings();
+                player.ProfileSettings = settings;
+            }
+
             string? fileName = null;
             try {
                 var ms = new MemoryStream(5);
@@ -490,18 +492,8 @@ namespace BeatLeader_Server.Controllers {
                 Random rnd = new Random();
                 fileName = "cover-" + userId + "R" + rnd.Next(1, 50) + extension;
 
-                await _s3Client.UploadAsset(fileName, stream);
+                player.ProfileSettings.ProfileCover = await _s3Client.UploadAsset(fileName, stream);
             } catch { }
-
-            ProfileSettings? settings = player.ProfileSettings;
-            if (settings == null) {
-                settings = new ProfileSettings();
-                player.ProfileSettings = settings;
-            }
-
-            if (fileName != null) {
-                player.ProfileSettings.ProfileCover = "https://cdn.assets.beatleader.xyz/" + fileName;
-            }
 
             await _context.SaveChangesAsync();
 
@@ -1055,8 +1047,7 @@ namespace BeatLeader_Server.Controllers {
             if (name == null) {
                 return Ok();
             }
-
-            var result = await _replayController.PostReplayFromCDN(score.PlayerId, name, HttpContext);
+            var result = await _replayController.PostReplayFromCDN(score.PlayerId, name, score.Replay.Contains("/backup/file"), HttpContext);
             _context.FailedScores.Remove(score);
             await _context.SaveChangesAsync();
 

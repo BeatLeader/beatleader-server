@@ -98,9 +98,9 @@ namespace BeatLeader_Server.Services {
                                 using (var coverStream = coverFile.Open()) {
                                     using (var ms = new MemoryStream(5)) {
                                         await coverStream.CopyToAsync(ms);
-                                        var fileName = $"songcover-{song.Id}-" + info._coverImageFilename;
-                                        await _s3Client.UploadAsset(fileName, ms);
-                                        song.FullCoverImage = "https://cdn.assets.beatleader.xyz/" + fileName.Replace(" ", "%20");
+                                        var fileName = ($"songcover-{song.Id}-" + info._coverImageFilename).Replace(" ", "");
+                                        
+                                        song.FullCoverImage = await _s3Client.UploadAsset(fileName, ms);
                                     }
                                 }
                             }

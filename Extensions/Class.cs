@@ -7,8 +7,9 @@ using System.Linq.Expressions;
 using System.Net;
 using System.ComponentModel;
 using BeatLeader_Server.Enums;
-using BeatLeader_Server.Utils;
 using Newtonsoft.Json.Serialization;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 
 namespace BeatLeader_Server.Extensions
 {
@@ -351,6 +352,17 @@ namespace BeatLeader_Server.Extensions
         private static void ThrowExceptionWhenSourceArgumentIsNull()
         {
             throw new ArgumentNullException("source", "Unable to convert object to a dictionary. The source object is null.");
+        }
+    }
+
+    public static class ServiceProviderExtenstion {
+        public static ICollection<string> GetApplicationUrls(this IServiceProvider services)
+        {
+            var server = services.GetService<IServer>();
+
+            var addresses = server?.Features.Get<IServerAddressesFeature>();
+
+            return addresses?.Addresses ?? Array.Empty<string>();
         }
     }
 }
