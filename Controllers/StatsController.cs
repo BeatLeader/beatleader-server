@@ -48,11 +48,28 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] float? stars_to = null,
             [FromQuery] int? eventId = null)
         {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            bool admin = currentID != null ? (_context
+                .Players
+                .Where(p => p.Id == currentID)
+                .Select(p => p.Role)
+                .FirstOrDefault()
+                ?.Contains("admin") ?? false) : false;
+
+            id = _context.PlayerIdToMain(id);
+
+            if (currentID != id && !admin) {
+                return Unauthorized();
+            }
+
             IQueryable<PlayerLeaderboardStats> sequence;
 
             using (_serverTiming.TimeAction("sequence"))
             {
-                sequence = _readContext.PlayerLeaderboardStats.Include(pl => pl.Leaderboard).Where(t => t.PlayerId == id);
+                sequence = _context
+                    .PlayerLeaderboardStats
+                    .Include(pl => pl.Leaderboard)
+                    .Where(t => t.PlayerId == id);
                 switch (sortBy)
                 {
                     case "date":
@@ -130,12 +147,12 @@ namespace BeatLeader_Server.Controllers
                     Data = sequence
                             .Skip((page - 1) * count)
                             .Take(count)
-                            //.Include(lb => lb.Leaderboard)
-                            //    .ThenInclude(lb => lb.Song)
-                            //    .ThenInclude(lb => lb.Difficulties)
-                            //.Include(lb => lb.Leaderboard)
-                            //    .ThenInclude(lb => lb.Difficulty)
-                            //    .ThenInclude(d => d.ModifierValues)
+                            .Include(lb => lb.Leaderboard)
+                                .ThenInclude(lb => lb.Song)
+                                .ThenInclude(lb => lb.Difficulties)
+                            .Include(lb => lb.Leaderboard)
+                                .ThenInclude(lb => lb.Difficulty)
+                                .ThenInclude(d => d.ModifierValues)
                             //.Include(sc => sc.ScoreImprovement)
                             //.Select(ScoreWithMyScore)
                             .ToList()

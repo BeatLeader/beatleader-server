@@ -39,9 +39,9 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/score/{id}")]
-        public async Task<ActionResult<ScoreResponse>> GetScore(int id)
+        public async Task<ActionResult<ScoreResponse>> GetScore(int id, [FromQuery] bool fallbackToRedirect = false)
         {
-            var score = _readContext
+            var score = _context
                 .Scores
                 .Where(l => l.Id == id)
                 .Select(s => new ScoreResponse {
@@ -84,10 +84,8 @@ namespace BeatLeader_Server.Controllers
                         Role = s.Player.Role,
                         Socials = s.Player.Socials,
                         ProfileSettings = s.Player.ProfileSettings,
-                        PatreonFeatures = s.Player.PatreonFeatures,
-                        Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                    },
-                    ScoreImprovement = s.ScoreImprovement
+                        PatreonFeatures = s.Player.PatreonFeatures
+                    }
                 })
                 .FirstOrDefault();
 
@@ -98,7 +96,7 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
-                var redirect = _readContext.ScoreRedirects.FirstOrDefault(sr => sr.OldScoreId == id);
+                var redirect = fallbackToRedirect ? _context.ScoreRedirects.FirstOrDefault(sr => sr.OldScoreId == id) : null;
                 if (redirect != null && redirect.NewScoreId != id) {
                     return await GetScore(redirect.NewScoreId);
                 } else {

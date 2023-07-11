@@ -412,7 +412,7 @@ namespace BeatLeader_Server.Utils
                 var ordered = group.OrderBy(g => g.time).ToList();
                 for (int i = 1; i < ordered.Count; i++)
                 {
-                    if ((ordered[i].time - ordered[i - 1].time) < 0.04) {
+                    if ((ordered[i].time - ordered[i - 1].time) < 0.02 && ordered[i].scoringType != ScoringType.BurstSliderElement && ordered[i - 1].scoringType != ScoringType.BurstSliderElement) {
                         potentiallyPoodle = true;
                         break;
                     }
@@ -464,7 +464,7 @@ namespace BeatLeader_Server.Utils
                     fcScore += maxCounter.Multiplier * note.score;
                 }
 
-                if (!potentiallyPoodle) {
+                if (!potentiallyPoodle && note.scoringType != ScoringType.BurstSliderElement) {
                     if (note.score == 115) {
                         streak++;
                     } else if (note.isBlock) {
