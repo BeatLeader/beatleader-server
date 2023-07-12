@@ -209,7 +209,7 @@ namespace BeatLeader_Server.Utils
                 return (null, error);
             }
 
-            (AccuracyTracker accuracy, List<NoteStruct> structs, int maxCombo, int maxStreak) = Accuracy(replay);
+            (AccuracyTracker accuracy, List<NoteStruct> structs, int maxCombo, int? maxStreak) = Accuracy(replay);
             result.hitTracker.maxCombo = maxCombo;
             result.hitTracker.maxStreak = maxStreak;
             result.winTracker.totalScore = structs.Last().totalScore;
@@ -250,7 +250,7 @@ namespace BeatLeader_Server.Utils
             return null;
         }
 
-        public static (AccuracyTracker, List<NoteStruct>, int, int) Accuracy(Replay replay)
+        public static (AccuracyTracker, List<NoteStruct>, int, int?) Accuracy(Replay replay)
         {
             AccuracyTracker result = new AccuracyTracker();
             result.gridAcc = new List<float>(new float[12]);
@@ -412,7 +412,7 @@ namespace BeatLeader_Server.Utils
                 var ordered = group.OrderBy(g => g.time).ToList();
                 for (int i = 1; i < ordered.Count; i++)
                 {
-                    if ((ordered[i].time - ordered[i - 1].time) < 0.02 && ordered[i].scoringType != ScoringType.BurstSliderElement && ordered[i - 1].scoringType != ScoringType.BurstSliderElement) {
+                    if ((ordered[i].time - ordered[i - 1].time) < 0.01 && ordered[i].scoringType != ScoringType.BurstSliderElement && ordered[i - 1].scoringType != ScoringType.BurstSliderElement) {
                         potentiallyPoodle = true;
                         break;
                     }
@@ -502,7 +502,7 @@ namespace BeatLeader_Server.Utils
             }
             result.fcAcc = currentFcAcc;
 
-            return (result, allStructs, maxCombo, maxStreak);
+            return (result, allStructs, maxCombo, potentiallyPoodle ? null : maxStreak);
         }
 
         public static ScoreGraphTracker ScoreGraph(List<NoteStruct> structs, int replayLength)

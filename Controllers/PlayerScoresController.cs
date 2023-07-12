@@ -333,7 +333,7 @@ namespace BeatLeader_Server.Controllers {
                 case "pauses":
                     return HistogrammValuee(order, sequence.Select(s => s.Pauses).ToList(), (int)(batch ?? 1), count);
                 case "maxStreak":
-                    return HistogrammValuee(order, sequence.Select(s => s.MaxStreak).ToList(), (int)(batch ?? 1), count);
+                    return HistogrammValuee(order, sequence.Select(s => s.MaxStreak ?? 0).ToList(), (int)(batch ?? 1), count);
                 case "rank":
                     return HistogrammValuee(order, sequence.Select(s => s.Rank).ToList(), (int)(batch ?? 1), count);
                 case "stars":
@@ -351,18 +351,18 @@ namespace BeatLeader_Server.Controllers {
             }
             Dictionary<int, HistogrammValue> result = new Dictionary<int, HistogrammValue>();
             int normalizedMin = (values.Min() / batch) * batch;
-            int normalizedMax = (values.Max() / batch + 1) * batch;
+            int normalizedMax = (values.Max() / batch) * batch;
             int totalCount = 0;
             if (order == Order.Desc) {
-                for (int i = normalizedMax; i > normalizedMin; i -= batch) {
-                    int value = values.Count(s => s <= i && s >= i - batch);
-                    result[i - batch] = new HistogrammValue { Value = value, Page = totalCount / count };
+                for (int i = normalizedMax; i >= normalizedMin; i -= batch) {
+                    int value = values.Count(s => s <= i && s > i - batch);
+                    result[i] = new HistogrammValue { Value = value, Page = totalCount / count };
                     totalCount += value;
                 }
             } else {
-                for (int i = normalizedMin; i < normalizedMax; i += batch) {
-                    int value = values.Count(s => s >= i && s <= i + batch);
-                    result[i + batch] = new HistogrammValue { Value = value, Page = totalCount / count };
+                for (int i = normalizedMin; i <= normalizedMax; i += batch) {
+                    int value = values.Count(s => s >= i && s < i + batch);
+                    result[i] = new HistogrammValue { Value = value, Page = totalCount / count };
                     totalCount += value;
                 }
             }

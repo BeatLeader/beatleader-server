@@ -6,7 +6,7 @@ namespace BeatLeader_Server.Models
     public class HitTracker
     {
         public int maxCombo { get; set; }
-        public int maxStreak { get; set; }
+        public int? maxStreak { get; set; }
         public float leftTiming { get; set; }
         public float rightTiming { get; set; }
         public int leftMiss { get; set; }

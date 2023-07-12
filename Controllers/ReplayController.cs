@@ -815,7 +815,7 @@ namespace BeatLeader_Server.Controllers
                 resultScore.FcAccuracy = statistic.accuracyTracker.fcAcc;
                 resultScore.MaxStreak = statistic.hitTracker.maxStreak;
                 if (!resultScore.IgnoreForStats && resultScore.MaxStreak > player.ScoreStats.MaxStreak) {
-                    player.ScoreStats.MaxStreak = resultScore.MaxStreak;
+                    player.ScoreStats.MaxStreak = resultScore.MaxStreak ?? 0;
                 }
 
                 resultScore.LeftTiming = statistic.hitTracker.leftTiming;

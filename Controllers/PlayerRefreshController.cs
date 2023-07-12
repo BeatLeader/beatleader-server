@@ -83,7 +83,7 @@ namespace BeatLeader_Server.Controllers
             public int Timeset;
             public float Weight;
             public bool Qualification;
-            public int MaxStreak;
+            public int? MaxStreak;
             public float LeftTiming { get; set; }
             public float RightTiming { get; set; }
         }
@@ -176,7 +176,7 @@ namespace BeatLeader_Server.Controllers
                 scoreStats.AverageRank = allScores.Average(s => (float)s.Rank);
                 scoreStats.LastScoreTime = allScores.MaxBy(s => s.Timeset).Timeset;
 
-                scoreStats.MaxStreak = allScores.Max(s => s.MaxStreak);
+                scoreStats.MaxStreak = allScores.Max(s => s.MaxStreak) ?? 0;
                 scoreStats.AverageLeftTiming = allScores.Average(s => s.LeftTiming);
                 scoreStats.AverageRightTiming = allScores.Average(s => s.RightTiming);
             } else {
@@ -195,7 +195,7 @@ namespace BeatLeader_Server.Controllers
                 scoreStats.TopUnrankedAccuracy = unrankedScores.Max(s => s.Accuracy);
                 scoreStats.AverageUnrankedRank = unrankedScores.Average(s => (float)s.Rank);
                 scoreStats.LastUnrankedScoreTime = unrankedScores.MaxBy(s => s.Timeset).Timeset;
-                scoreStats.UnrankedMaxStreak = unrankedScores.Max(s => s.MaxStreak);
+                scoreStats.UnrankedMaxStreak = unrankedScores.Max(s => s.MaxStreak) ?? 0;
             } else {
                 scoreStats.TotalUnrankedScore = 0;
                 scoreStats.AverageUnrankedAccuracy = 0;
@@ -258,7 +258,7 @@ namespace BeatLeader_Server.Controllers
                 scoreStats.TopTechPP = rankedScores.Max(s => s.TechPP);
                 scoreStats.AverageRankedRank = rankedScores.Average(s => (float)s.Rank);
                 scoreStats.LastRankedScoreTime = rankedScores.MaxBy(s => s.Timeset).Timeset;
-                scoreStats.RankedMaxStreak = rankedScores.Max(s => s.MaxStreak);
+                scoreStats.RankedMaxStreak = rankedScores.Max(s => s.MaxStreak) ?? 0;
 
                 scoreStats.SSPPlays = rankedScores.Count(s => s.Accuracy > 0.95);
                 scoreStats.SSPlays = rankedScores.Count(s => 0.9 < s.Accuracy && s.Accuracy < 0.95);
