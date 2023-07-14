@@ -109,6 +109,9 @@ namespace BeatLeader_Server.Controllers {
                     .Include(s => s.Leaderboard)
                     .ThenInclude(l => l.Difficulty)
                     .ThenInclude(d => d.ModifiersRating)
+                    .Include(s => s.Leaderboard)
+                    .ThenInclude(l => l.Difficulty)
+                    .ThenInclude(d => d.ModifierValues)
                     .Skip((page - 1) * count)
                     .Take(count)
                     .Select(s => new ScoreResponseWithMyScore {

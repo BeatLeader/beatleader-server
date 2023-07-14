@@ -21,7 +21,7 @@ namespace BeatLeader_Server.Bot
         public const ulong ReviewHubForumID = 1034817071894237194;
         public const ulong NQTRoleId = 1064783598206599258;
 
-        public const ulong ReviewSeekerMessageID = 1115451888096264193;
+        public const ulong ReviewSeekerMessageID = 1128760870000918619;
         public const ulong ReviewSeekerRoleId = 1128065797126881280;
 
         private readonly RTNominationsForum _rtNominationsForum;
