@@ -368,7 +368,6 @@ namespace BeatLeader_Server.Controllers {
                         .ToList(),
                 })
                 .ToList();
-
             }
 
             if (leaderboard == null) {
