@@ -10,19 +10,51 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace BeatLeader_Server.Utils
 {
+    public class ClanRankingData
+    {
+        public int numberOfScores;
+        public float weight;
+        public int lastUpdateTime;
+        public float clanPP;
+        public float totalAcc;
+        public int totalRank;
+        public int totalScore;
+        public List<Score> Scores;
+
+        public ClanRankingData(
+            int numberOfScores,
+            float weight,
+            int lastUpdateTime,
+            float clanPP,
+            float totalAcc,
+            int totalRank,
+            int totalScore,
+            List<Score> Scores)
+        {
+            this.numberOfScores = numberOfScores;
+            this.weight = weight;
+            this.lastUpdateTime = lastUpdateTime;
+            this.clanPP = clanPP;
+            this.totalAcc = totalAcc;
+            this.totalRank = totalRank;
+            this.totalScore = totalScore;
+            this.Scores = Scores;
+        }
+    };
+
     public static class ClanUtils
     {
-        public struct ClanRankingData
-        {
-            public int numberOfScores;
-            public float weight;
-            public int lastUpdateTime;
-            public float clanPP;
-            public float totalAcc;
-            public int totalRank;
-            public int totalScore;
-            public List<Score> Scores;
-        };
+        //public struct ClanRankingData
+        //{
+        //    public int numberOfScores;
+        //    public float weight;
+        //    public int lastUpdateTime;
+        //    public float clanPP;
+        //    public float totalAcc;
+        //    public int totalRank;
+        //    public int totalScore;
+        //    public List<Score> Scores;
+        //};
 
 
         public static float RecalculateClanPP(this AppContext context, int clanId)
@@ -77,39 +109,60 @@ namespace BeatLeader_Server.Utils
                 {
                     if (newClanRankingData.ContainsKey(clan))
                     {
-                        int numberOfScores = newClanRankingData[clan].numberOfScores + 1;
-                        float weight = MathF.Pow(0.965f, newClanRankingData[clan].weight);
-                        int totalRank = newClanRankingData[clan].totalRank + score.Rank;
-                        float clanPP = newClanRankingData[clan].clanPP + (score.Pp * weight);
-                        float totalAcc = newClanRankingData[clan].clanPP + score.Accuracy;
-                        int totalScore = newClanRankingData[clan].totalScore + score.ModifiedScore;
-                        int lastUpdateTime = Math.Max(Int32.Parse(score.Timeset), newClanRankingData[clan].lastUpdateTime);
-                        newClanRankingData[clan] = new ClanRankingData
-                        {
-                            numberOfScores = numberOfScores,
-                            weight = weight,
-                            lastUpdateTime = lastUpdateTime,
-                            clanPP = clanPP,
-                            totalAcc = totalAcc,
-                            totalRank = totalRank,
-                            totalScore = totalScore,
-                        };
-                        // Can we do this in the initializer somehow?
+                        //int numberOfScores = newClanRankingData[clan].numberOfScores + 1;
+                        //float weight = MathF.Pow(0.965f, newClanRankingData[clan].weight);
+                        //int totalRank = newClanRankingData[clan].totalRank + score.Rank;
+                        //float clanPP = newClanRankingData[clan].clanPP + (score.Pp * weight);
+                        //float totalAcc = newClanRankingData[clan].clanPP + score.Accuracy;
+                        //int totalScore = newClanRankingData[clan].totalScore + score.ModifiedScore;
+                        //int lastUpdateTime = Math.Max(Int32.Parse(score.Timeset), newClanRankingData[clan].lastUpdateTime);
+
+                        // Update the data already in the newClanRankingData dictionary
+                        newClanRankingData[clan].numberOfScores = newClanRankingData[clan].numberOfScores + 1;
+                        newClanRankingData[clan].weight = MathF.Pow(0.965f, newClanRankingData[clan].weight);
+                        newClanRankingData[clan].lastUpdateTime = newClanRankingData[clan].totalRank + score.Rank;
+                        newClanRankingData[clan].clanPP = newClanRankingData[clan].clanPP + (score.Pp * newClanRankingData[clan].weight);
+                        newClanRankingData[clan].totalAcc = newClanRankingData[clan].clanPP + score.Accuracy;
+                        newClanRankingData[clan].totalRank = newClanRankingData[clan].totalScore + score.ModifiedScore;
+                        newClanRankingData[clan].totalScore = Math.Max(Int32.Parse(score.Timeset), newClanRankingData[clan].lastUpdateTime);
                         newClanRankingData[clan].Scores.Add(score);
+
+                        //newClanRankingData[clan] = new ClanRankingData()
+                        //{
+                        //    numberOfScores = numberOfScores,
+                        //    weight = weight,
+                        //    lastUpdateTime = lastUpdateTime,
+                        //    clanPP = clanPP,
+                        //    totalAcc = totalAcc,
+                        //    totalRank = totalRank,
+                        //    totalScore = totalScore,
+
+                        //};
+                        // Can we do this in the initializer somehow?
+                        //newClanRankingData[clan].Scores.Add(score);
                     }
                     else
                     {
-                        newClanRankingData.Add(clan, new ClanRankingData
-                        {
-                            numberOfScores = 1,
-                            weight = 1.0f,
-                            lastUpdateTime = Int32.Parse(score.Timeset),
-                            clanPP = score.Pp,
-                            totalAcc = score.Accuracy,
-                            totalRank = score.Rank,
-                            totalScore = score.ModifiedScore,
-                            Scores = new List<Score> { score }
-                        });
+                        newClanRankingData.Add(clan, new ClanRankingData(
+                            1,
+                            1.0f,
+                            Int32.Parse(score.Timeset),
+                            score.Pp,
+                            score.Accuracy,
+                            score.Rank,
+                            score.ModifiedScore,
+                            new List<Score> { score }
+                            ));
+                        //{
+                        //    numberOfScores = 1,
+                        //    weight = 1.0f,
+                        //    lastUpdateTime = Int32.Parse(score.Timeset),
+                        //    clanPP = score.Pp,
+                        //    totalAcc = score.Accuracy,
+                        //    totalRank = score.Rank,
+                        //    totalScore = score.ModifiedScore,
+                        //    Scores = new List<Score> { score }
+                        //});
                     }
                 }
             }
@@ -129,7 +182,7 @@ namespace BeatLeader_Server.Utils
             if (!newClanRankingData.IsNullOrEmpty())
             {
                 // Sort newClanRankingData and clanRanking by PP
-                newClanRankingData = newClanRankingData.OrderBy(x => x.Value.clanPP).ToDictionary(x => x.Key, x => x.Value);
+                newClanRankingData = newClanRankingData.OrderByDescending(x => x.Value.clanPP).ToDictionary(x => x.Key, x => x.Value);
                 leaderboard.ClanRanking ??= new List<ClanRanking>();
                 var clanRanking = leaderboard.ClanRanking;
 

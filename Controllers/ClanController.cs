@@ -828,11 +828,11 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
-        [HttpPut("~/clan/clanRanking")]
-        public async Task<ActionResult> RecalculateClanRanking()
+        [HttpPut("~/clan/clanRankingAll")]
+        public async Task<ActionResult> RecalculateClanRankings()
         {
             /// <summary>
-            /// RecalculateClanRanking: Http Put endpoint that recalculates the clan rankings for all ranked leaderboards.
+            /// RecalculateClanRankings: Http Put endpoint that recalculates the clan rankings for all ranked leaderboards.
             /// Only accessible to admins.
             /// </summary>
 
@@ -854,6 +854,42 @@ namespace BeatLeader_Server.Controllers
                     .ToList();
                 leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
             } catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+
+            await _context.BulkSaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpPut("~/clan/clanRankingSingle")]
+        public async Task<ActionResult> RecalculateClanRanking([FromQuery] string id)
+        {
+            /// <summary>
+            /// RecalculateClanRanking: Http Put endpoint that recalculates the clan rankings on a single leaderboard
+            /// Only accessible to admins.
+            /// </summary>
+
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            //if (!currentPlayer.Role.Contains("admin"))
+            //{
+            //    return Unauthorized();
+            //}
+
+            // Recalculate Clan Ranking for leaderboard with id == id
+            try
+            {
+                var leaderboardsRecalc = _context
+                    .Leaderboards
+                    .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked && lb.Id == id)
+                    .Include(lb => lb.ClanRanking)
+                    .ToList();
+                leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
+            }
+            catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
             }
