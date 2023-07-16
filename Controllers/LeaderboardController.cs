@@ -297,75 +297,78 @@ namespace BeatLeader_Server.Controllers {
                 foreach (var score in leaderboard.Scores) {
                     score.Player = PostProcessSettings(score.Player);
                 }
-                if (clanRanking)
+                //if (clanRanking)
+                //{
+                //}
+                // REVERT BEFORE PROD - Is there a better way to do this? There's no way this is the right way to do this...
+                leaderboard.ClanRanking = currentContext
+                .ClanRanking
+                .Include(cr => cr.Clan)
+                .Where(cr => cr.LeaderboardId == leaderboard.Id)
+                .OrderByDescending(cr => cr.ClanPP)
+                .Skip((page - 1) * count)
+                .Take(count)
+                .Select(cr => new ClanRankingResponse
                 {
-                    // REVERT BEFORE PROD - Is there a better way to do this? There's no way this is the right way to do this...
-                    leaderboard.ClanRanking = currentContext
-                    .ClanRanking
-                    .Include(cr => cr.Clan)
-                    .Where(cr => cr.LeaderboardId == leaderboard.Id)
-                    .OrderBy(cr => cr.ClanPP)
-                    .Skip((page - 1) * count)
-                    .Take(count)
-                    .Select(cr => new ClanRankingResponse
-                    {
-                        Id = cr.Id,
-                        Clan = cr.Clan,
-                        LastUpdateTime = cr.LastUpdateTime,
-                        ClanRank = cr.ClanRank,
-                        ClanAverageRank = cr.ClanAverageRank,
-                        ClanPP = cr.ClanPP,
-                        ClanAverageAccuracy = cr.ClanAverageAccuracy,
-                        ClanTotalScore = cr.ClanTotalScore,
-                        LeaderboardId = cr.LeaderboardId,
-                        Leaderboard = cr.Leaderboard,
-                        AssociatedScores = scoreQuery
-                            .Include(sc => sc.Player)
-                            .ThenInclude(p => p.ProfileSettings)
-                            .Include(s => s.Player)
-                            .ThenInclude(s => s.Clans)
-                            .OrderBy(s => s.Rank)
-                            .Skip((page - 1) * count)
-                            .Take(count)
-                            .Select(s => new ScoreResponse
+                    Id = cr.Id,
+                    Clan = cr.Clan,
+                    LastUpdateTime = cr.LastUpdateTime,
+                    ClanRank = cr.ClanRank,
+                    ClanAverageRank = cr.ClanAverageRank,
+                    ClanPP = cr.ClanPP,
+                    ClanAverageAccuracy = cr.ClanAverageAccuracy,
+                    ClanTotalScore = cr.ClanTotalScore,
+                    LeaderboardId = cr.LeaderboardId,
+                    Leaderboard = cr.Leaderboard,
+                    AssociatedScores = currentContext
+                        .Scores
+                        .Where(s => s.LeaderboardId == leaderboard.Id && s.Player.Clans.Contains(cr.Clan))
+                        .Include(sc => sc.Player)
+                        .ThenInclude(p => p.ProfileSettings)
+                        .Include(s => s.Player)
+                        .ThenInclude(s => s.Clans)
+                        .OrderBy(s => s.Rank)
+                        .Skip((page - 1) * count)
+                        .Take(count)
+                        .Select(s => new ScoreResponse
+                        {
+                            Id = s.Id,
+                            BaseScore = s.BaseScore,
+                            ModifiedScore = s.ModifiedScore,
+                            PlayerId = s.PlayerId,
+                            Accuracy = s.Accuracy,
+                            Pp = s.Pp,
+                            Rank = s.Rank,
+                            Modifiers = s.Modifiers,
+                            BadCuts = s.BadCuts,
+                            MissedNotes = s.MissedNotes,
+                            BombCuts = s.BombCuts,
+                            WallsHit = s.WallsHit,
+                            Pauses = s.Pauses,
+                            FullCombo = s.FullCombo,
+                            Timeset = s.Timeset,
+                            Timepost = s.Timepost,
+                            Player = new PlayerResponse
                             {
-                                Id = s.Id,
-                                BaseScore = s.BaseScore,
-                                ModifiedScore = s.ModifiedScore,
-                                PlayerId = s.PlayerId,
-                                Accuracy = s.Accuracy,
-                                Pp = s.Pp,
-                                Rank = s.Rank,
-                                Modifiers = s.Modifiers,
-                                BadCuts = s.BadCuts,
-                                MissedNotes = s.MissedNotes,
-                                BombCuts = s.BombCuts,
-                                WallsHit = s.WallsHit,
-                                Pauses = s.Pauses,
-                                FullCombo = s.FullCombo,
-                                Timeset = s.Timeset,
-                                Timepost = s.Timepost,
-                                Player = new PlayerResponse
-                                {
-                                    Id = s.Player.Id,
-                                    Name = s.Player.Name,
-                                    Avatar = s.Player.Avatar,
-                                    Country = s.Player.Country,
+                                Id = s.Player.Id,
+                                Name = s.Player.Name,
+                                Avatar = s.Player.Avatar,
+                                Country = s.Player.Country,
 
-                                    Pp = s.Player.Pp,
-                                    Rank = s.Player.Rank,
-                                    CountryRank = s.Player.CountryRank,
-                                    Role = s.Player.Role,
-                                    ProfileSettings = s.Player.ProfileSettings,
-                                    Clans = s.Player.Clans
-                                        .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                                },
-                                RankVoting = showVoters ? s.RankVoting : null,
-                            })
-                            .ToList(),
-                    })
-                    .ToList();
-                }
+                                Pp = s.Player.Pp,
+                                Rank = s.Player.Rank,
+                                CountryRank = s.Player.CountryRank,
+                                Role = s.Player.Role,
+                                ProfileSettings = s.Player.ProfileSettings,
+                                Clans = s.Player.Clans
+                                    .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                            },
+                            RankVoting = showVoters ? s.RankVoting : null,
+                        })
+                        .ToList(),
+                })
+                .ToList();
+
             }
 
             if (leaderboard == null) {

@@ -109,37 +109,15 @@ namespace BeatLeader_Server.Utils
                 {
                     if (newClanRankingData.ContainsKey(clan))
                     {
-                        //int numberOfScores = newClanRankingData[clan].numberOfScores + 1;
-                        //float weight = MathF.Pow(0.965f, newClanRankingData[clan].weight);
-                        //int totalRank = newClanRankingData[clan].totalRank + score.Rank;
-                        //float clanPP = newClanRankingData[clan].clanPP + (score.Pp * weight);
-                        //float totalAcc = newClanRankingData[clan].clanPP + score.Accuracy;
-                        //int totalScore = newClanRankingData[clan].totalScore + score.ModifiedScore;
-                        //int lastUpdateTime = Math.Max(Int32.Parse(score.Timeset), newClanRankingData[clan].lastUpdateTime);
-
                         // Update the data already in the newClanRankingData dictionary
                         newClanRankingData[clan].numberOfScores = newClanRankingData[clan].numberOfScores + 1;
                         newClanRankingData[clan].weight = MathF.Pow(0.965f, newClanRankingData[clan].weight);
-                        newClanRankingData[clan].lastUpdateTime = newClanRankingData[clan].totalRank + score.Rank;
+                        newClanRankingData[clan].lastUpdateTime = Math.Max(Int32.Parse(score.Timeset), newClanRankingData[clan].lastUpdateTime);
                         newClanRankingData[clan].clanPP = newClanRankingData[clan].clanPP + (score.Pp * newClanRankingData[clan].weight);
                         newClanRankingData[clan].totalAcc = newClanRankingData[clan].clanPP + score.Accuracy;
-                        newClanRankingData[clan].totalRank = newClanRankingData[clan].totalScore + score.ModifiedScore;
-                        newClanRankingData[clan].totalScore = Math.Max(Int32.Parse(score.Timeset), newClanRankingData[clan].lastUpdateTime);
+                        newClanRankingData[clan].totalRank = newClanRankingData[clan].totalRank + score.Rank;
+                        newClanRankingData[clan].totalScore = newClanRankingData[clan].totalScore + score.ModifiedScore;
                         newClanRankingData[clan].Scores.Add(score);
-
-                        //newClanRankingData[clan] = new ClanRankingData()
-                        //{
-                        //    numberOfScores = numberOfScores,
-                        //    weight = weight,
-                        //    lastUpdateTime = lastUpdateTime,
-                        //    clanPP = clanPP,
-                        //    totalAcc = totalAcc,
-                        //    totalRank = totalRank,
-                        //    totalScore = totalScore,
-
-                        //};
-                        // Can we do this in the initializer somehow?
-                        //newClanRankingData[clan].Scores.Add(score);
                     }
                     else
                     {
@@ -153,16 +131,6 @@ namespace BeatLeader_Server.Utils
                             score.ModifiedScore,
                             new List<Score> { score }
                             ));
-                        //{
-                        //    numberOfScores = 1,
-                        //    weight = 1.0f,
-                        //    lastUpdateTime = Int32.Parse(score.Timeset),
-                        //    clanPP = score.Pp,
-                        //    totalAcc = score.Accuracy,
-                        //    totalRank = score.Rank,
-                        //    totalScore = score.ModifiedScore,
-                        //    Scores = new List<Score> { score }
-                        //});
                     }
                 }
             }
