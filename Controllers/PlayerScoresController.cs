@@ -341,6 +341,8 @@ namespace BeatLeader_Server.Controllers {
                     return HistogrammValuee(order, sequence.Select(s => s.Rank).ToList(), (int)(batch ?? 1), count);
                 case "stars":
                     return HistogrammValuee(order, sequence.Select(s => s.Leaderboard.Difficulty.Stars ?? 0).ToList(), batch ?? 0.15f, count);
+                case "replaysWatched":
+                    return HistogrammValuee(order, sequence.Select(s => s.AnonimusReplayWatched + s.AuthorizedReplayWatched).ToList(), (int)(batch ?? 1), count);
                 case "mistakes":
                     return HistogrammValuee(order, sequence.Select(s => s.BadCuts + s.MissedNotes + s.BombCuts + s.WallsHit).ToList(), (int)(batch ?? 1), count);
                 default:

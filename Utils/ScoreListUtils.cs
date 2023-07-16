@@ -62,6 +62,9 @@ namespace BeatLeader_Server.Utils {
                 case "mistakes":
                     orderedSequence = sequence.Order(order, t => t.BadCuts + t.BombCuts + t.MissedNotes + t.WallsHit);
                     break;
+                case "replaysWatched":
+                    orderedSequence = sequence.Order(order, t => t.AnonimusReplayWatched + t.AuthorizedReplayWatched);
+                    break;
                 default:
                     break;
             }

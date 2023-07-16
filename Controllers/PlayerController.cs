@@ -619,6 +619,9 @@ namespace BeatLeader_Server.Controllers
                         case "maxStreak":
                             request = request.Order(order, p => p.ScoreStats.RankedMaxStreak);
                             break;
+                        case "replaysWatched":
+                            request = request.Order(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
+                            break;
                         default:
                             break;
                     }
@@ -655,6 +658,9 @@ namespace BeatLeader_Server.Controllers
                             break;
                         case "maxStreak":
                             request = request.Order(order, p => p.ScoreStats.UnrankedMaxStreak);
+                            break;
+                        case "replaysWatched":
+                            request = request.Order(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
                             break;
                         default:
                             break;
@@ -695,6 +701,9 @@ namespace BeatLeader_Server.Controllers
                             break;
                         case "timing":
                             request = request.Order(order, p => (p.ScoreStats.AverageLeftTiming + p.ScoreStats.AverageRightTiming) / 2);
+                            break;
+                        case "replaysWatched":
+                            request = request.Order(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
                             break;
                         default:
                             break;

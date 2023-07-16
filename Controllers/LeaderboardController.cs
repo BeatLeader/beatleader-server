@@ -225,6 +225,12 @@ namespace BeatLeader_Server.Controllers {
                     case "mistakes":
                         scoreQuery = scoreQuery.Order(order, s => s.BadCuts + s.MissedNotes + s.BombCuts + s.WallsHit);
                         break;
+                    case "weight":
+                        scoreQuery = scoreQuery.Order(order, s => s.Weight);
+                        break;
+                    case "weightedPp":
+                        scoreQuery = scoreQuery.Order(order, s => s.Weight * s.Pp);
+                        break;
                     default:
                         break;
                 }
