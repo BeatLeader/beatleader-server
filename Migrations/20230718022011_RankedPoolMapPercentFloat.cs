@@ -5,7 +5,7 @@
 namespace BeatLeader_Server.Migrations
 {
     /// <inheritdoc />
-    public partial class ClanRanking : Migration
+    public partial class RankedPoolMapPercentFloat : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -29,12 +29,12 @@ namespace BeatLeader_Server.Migrations
                 nullable: false,
                 defaultValue: false);
 
-            migrationBuilder.AddColumn<int>(
+            migrationBuilder.AddColumn<float>(
                 name: "RankedPoolPercentCaptured",
                 table: "Clans",
-                type: "int",
+                type: "real",
                 nullable: false,
-                defaultValue: 0);
+                defaultValue: 0f);
 
             migrationBuilder.CreateTable(
                 name: "ClanRanking",

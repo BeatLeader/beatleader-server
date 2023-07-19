@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    [Migration("20230708040451_ClanRanking")]
-    partial class ClanRanking
+    [Migration("20230718022011_RankedPoolMapPercentFloat")]
+    partial class RankedPoolMapPercentFloat
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -361,8 +361,8 @@ namespace BeatLeader_Server.Migrations
                     b.Property<float>("Pp")
                         .HasColumnType("real");
 
-                    b.Property<int>("RankedPoolPercentCaptured")
-                        .HasColumnType("int");
+                    b.Property<float>("RankedPoolPercentCaptured")
+                        .HasColumnType("real");
 
                     b.Property<string>("Tag")
                         .IsRequired()

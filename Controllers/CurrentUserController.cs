@@ -175,6 +175,7 @@ namespace BeatLeader_Server.Controllers {
                 .Include(u => u.Player)
                 .ThenInclude(p => p.ProfileSettings)
                 .Include(u => u.ClanRequest)
+                .ThenInclude(cr => cr.CapturedLeaderboards)
                 .Include(u => u.BannedClans)
                 .FirstOrDefault();
             if (user == null) {

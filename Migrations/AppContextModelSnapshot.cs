@@ -358,8 +358,8 @@ namespace BeatLeader_Server.Migrations
                     b.Property<float>("Pp")
                         .HasColumnType("real");
 
-                    b.Property<int>("RankedPoolPercentCaptured")
-                        .HasColumnType("int");
+                    b.Property<float>("RankedPoolPercentCaptured")
+                        .HasColumnType("real");
 
                     b.Property<string>("Tag")
                         .IsRequired()

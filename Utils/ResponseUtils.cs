@@ -156,7 +156,7 @@ namespace BeatLeader_Server.Utils {
             public float AverageRank { get; set; }
             public float AverageAccuracy { get; set; }
 
-            public int RankedPoolPercentCaptured { get; set; }
+            public float RankedPoolPercentCaptured { get; set; }
             public ICollection<Leaderboard> CapturedLeaderboards { get; set; } = new List<Leaderboard>();
 
             public ICollection<string> Players { get; set; } = new List<string>();

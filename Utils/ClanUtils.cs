@@ -87,8 +87,6 @@ namespace BeatLeader_Server.Utils
 
             // Calculate owning clan on this leaderboard
             var newClanRankingData = new Dictionary<Clan, ClanRankingData>();
-            // Why can't I put a Where clause of: ".Where(s => s.LeaderboardId == leaderboardId && !s.Banned && s.Player.Clans != null)"
-            // I want to ignore all players who aren't in any clans
             var leaderboardClans =
                 context
                     .Scores
@@ -114,7 +112,7 @@ namespace BeatLeader_Server.Utils
                         newClanRankingData[clan].weight = MathF.Pow(0.965f, newClanRankingData[clan].weight);
                         newClanRankingData[clan].lastUpdateTime = Math.Max(Int32.Parse(score.Timeset), newClanRankingData[clan].lastUpdateTime);
                         newClanRankingData[clan].clanPP = newClanRankingData[clan].clanPP + (score.Pp * newClanRankingData[clan].weight);
-                        newClanRankingData[clan].totalAcc = newClanRankingData[clan].clanPP + score.Accuracy;
+                        newClanRankingData[clan].totalAcc = newClanRankingData[clan].totalAcc + score.Accuracy;
                         newClanRankingData[clan].totalRank = newClanRankingData[clan].totalRank + score.Rank;
                         newClanRankingData[clan].totalScore = newClanRankingData[clan].totalScore + score.ModifiedScore;
                         newClanRankingData[clan].Scores.Add(score);
@@ -270,9 +268,9 @@ namespace BeatLeader_Server.Utils
                 .Leaderboards
                 .Include(lb => lb.Difficulty)
                 .Count(lb => lb.Difficulty.Status == DifficultyStatus.ranked);
-
-            newClanRankingData.First().Key.RankedPoolPercentCaptured =
-                newClanRankingData.First().Key.CapturedLeaderboards?.Count / rankedMapCount ?? 0;
+            if (rankedMapCount != 0) {
+                newClanRankingData.First().Key.RankedPoolPercentCaptured = (float)newClanRankingData.First().Key.CapturedLeaderboards?.Count / (float)rankedMapCount;
+            }
         }
 
         private static void RemoveCapturedLeaderboard(ref Clan prevCaptor, Leaderboard leaderboard)
