@@ -226,13 +226,16 @@ namespace BeatLeader_Server.Utils
         public static string? CheckReplay(Replay replay, Leaderboard leaderboard) {
             float endTime = replay.notes.Count > 0 ? replay.notes.Last().eventTime : 0;
 
+            if (leaderboard.Difficulty.Notes / 3 != 0 && 
+                replay.notes.Count < leaderboard.Difficulty.Notes / 3 && 
+                !leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles))
+            {
+                return "Too few notes in the replay";
+            }
+
             if (leaderboard.Difficulty.Status == DifficultyStatus.ranked || 
                 leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
                 leaderboard.Difficulty.Status == DifficultyStatus.nominated) {
-                if (replay.notes.Count < leaderboard.Difficulty.Notes && (leaderboard.Difficulty.Duration - endTime) > 1)
-                {
-                    return "Too few notes in the replay";
-                }
 
                 foreach (var note in replay.notes)
                 {

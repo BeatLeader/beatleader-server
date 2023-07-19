@@ -1027,7 +1027,7 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [HttpPost("~/user/failedscore/retry")]
-        public async Task<ActionResult<ScoreResponse>> RetryFailedScore([FromQuery] int id) {
+        public async Task<ActionResult<ScoreResponse>> RetryFailedScore([FromQuery] int id, [FromQuery] bool allow = false) {
             string? playerId = GetId();
             if (playerId == null) {
                 return NotFound();
@@ -1038,6 +1038,7 @@ namespace BeatLeader_Server.Controllers {
                 score = _context.FailedScores.FirstOrDefault(t => t.Id == id);
             } else {
                 score = _context.FailedScores.FirstOrDefault(t => t.PlayerId == playerId && t.Id == id);
+                allow = false;
             }
             if (score == null) {
                 return NotFound();
@@ -1047,7 +1048,7 @@ namespace BeatLeader_Server.Controllers {
             if (name == null) {
                 return Ok();
             }
-            var result = await _replayController.PostReplayFromCDN(score.PlayerId, name, score.Replay.Contains("/backup/file"), HttpContext);
+            var result = await _replayController.PostReplayFromCDN(score.PlayerId, name, score.Replay.Contains("/backup/file"), allow, HttpContext);
             _context.FailedScores.Remove(score);
             await _context.SaveChangesAsync();
 
