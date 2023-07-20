@@ -70,8 +70,8 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
         if (iPAddress == null)
         {
             Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await Context.Response.WriteAsync("You don't have an IP adress? Tell #NSGolova how you get this error.");
-            return AuthenticateResult.Fail("You don't have an IP adress? Tell #NSGolova how you get this error.");
+            await Context.Response.WriteAsync("You don't have an IP address? Tell #NSGolova how you get this error.");
+            return AuthenticateResult.Fail("You don't have an IP address? Tell #NSGolova how you get this error.");
         }
 
         if (action == "login")
@@ -81,8 +81,8 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
 
             if (loginAttempt != null && loginAttempt.Count == 10 && (timestamp - loginAttempt.Timestamp) < 60 * 60 * 24) {
                 Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await Context.Response.WriteAsync("To much login attempts in one day");
-                return AuthenticateResult.Fail("To much login attempts in one day");
+                await Context.Response.WriteAsync("Too many login attempts in one day");
+                return AuthenticateResult.Fail("Too many login attempts in one day");
             }
             AuthInfo? authInfo = dbContext.Auths.FirstOrDefault(el => el.Login == login);
             if (authInfo == null || authInfo.Password != password)

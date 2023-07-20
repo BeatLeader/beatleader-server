@@ -258,7 +258,7 @@ namespace BeatLeader_Server.Controllers
             };
 
             if (hash.Length < 40) {
-                return BadRequest("Hash is to short");
+                return BadRequest("Hash is too short");
             } else {
                 hash = hash.Substring(0, 40);
             }
@@ -337,7 +337,7 @@ namespace BeatLeader_Server.Controllers
             };
 
             if (hash.Length < 40) {
-                return BadRequest("Hash is to short");
+                return BadRequest("Hash is too short");
             } else {
                 hash = hash.Substring(0, 40);
             }
@@ -444,7 +444,7 @@ namespace BeatLeader_Server.Controllers
             };
 
             if (hash.Length < 40) {
-                return BadRequest("Hash is to short");
+                return BadRequest("Hash is too short");
             } else {
                 hash = hash.Substring(0, 40);
             }

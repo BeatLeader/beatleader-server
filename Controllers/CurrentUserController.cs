@@ -540,14 +540,14 @@ namespace BeatLeader_Server.Controllers {
         public ActionResult ChangePassword([FromForm] string login, [FromForm] string oldPassword, [FromForm] string newPassword) {
             string? iPAddress = Request.HttpContext.GetIpAddress();
             if (iPAddress == null) {
-                return Unauthorized("You don't have an IP adress? Tell #NSGolova how you get this error.");
+                return Unauthorized("You don't have an IP address? Tell #NSGolova how you get this error.");
             }
 
             LoginAttempt? loginAttempt = _context.LoginAttempts.FirstOrDefault(el => el.IP == iPAddress);
             int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
             if (loginAttempt is { Count: 10 } && (timestamp - loginAttempt.Timestamp) < 60 * 60 * 24) {
-                return Unauthorized("To much login attempts in one day");
+                return Unauthorized("Too many login attempts in one day");
             }
 
             string? currentID = HttpContext.User.Claims.FirstOrDefault()?.Value.Split("/").LastOrDefault();
@@ -611,14 +611,14 @@ namespace BeatLeader_Server.Controllers {
         public ActionResult ChangeLogin([FromForm] string newLogin) {
             string? iPAddress = Request.HttpContext.GetIpAddress();
             if (iPAddress == null) {
-                return Unauthorized("You don't have an IP adress? Tell #NSGolova how you got this error.");
+                return Unauthorized("You don't have an IP address? Tell #NSGolova how you got this error.");
             }
 
             LoginAttempt? loginAttempt = _context.LoginAttempts.FirstOrDefault(el => el.IP == iPAddress);
             int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
             if (loginAttempt is { Count: 10 } && (timestamp - loginAttempt.Timestamp) < 60 * 60 * 24) {
-                return Unauthorized("To much login changes attempts in one day");
+                return Unauthorized("Too many login changes attempts in one day");
             }
 
             string userId = GetId();
@@ -719,7 +719,7 @@ namespace BeatLeader_Server.Controllers {
         [NonAction]
         public async Task<ActionResult<int>> MigratePrivate(string migrateToId, string migrateFromId) {
             if (migrateToId == migrateFromId) {
-                return Unauthorized("Something went completly wrong");
+                return Unauthorized("Something went completely wrong");
             }
             if (long.Parse(migrateToId) < 1000000000000000) {
                 return Unauthorized("You need to be logged in with Steam or Oculus");
@@ -1140,7 +1140,7 @@ namespace BeatLeader_Server.Controllers {
 
             var timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             if (ban != null && ban.BannedBy == userId && !adminUnban && (timeset - ban.Timeset) < 60 * 60 * 24 * 7) {
-                return BadRequest("You will can unban yourself after: " + (24 * 7 - (timeset - ban.Timeset) / (60 * 60)) + "hours");
+                return BadRequest("You can unban yourself after: " + (24 * 7 - (timeset - ban.Timeset) / (60 * 60)) + "hours");
             }
 
             var scores = _context.Scores.Where(s => s.PlayerId == player.Id).ToList();
