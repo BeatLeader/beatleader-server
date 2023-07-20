@@ -385,7 +385,7 @@ namespace BeatLeader_Server.Controllers {
         [HttpGet("~/leaderboards/hash/{hash}")]
         public async Task<ActionResult<LeaderboardsResponse>> GetLeaderboardsByHash(string hash) {
             if (hash.Length < 40) {
-                return BadRequest("Hash is to short");
+                return BadRequest("Hash is too short");
             } else {
                 hash = hash.Substring(0, 40);
             }

@@ -178,7 +178,7 @@ namespace BeatLeader_Server.Controllers
             if (replay.notes.Count == 0) {
                 return BadRequest("Replay is broken, update your mod please.");
             }
-            if (info.hash.Length < 40) return BadRequest("Hash is to short");
+            if (info.hash.Length < 40) return BadRequest("Hash is too short");
 
             var gameversion = replay.info.gameVersion.Split(".");
             if (replay.info.mode.EndsWith("OldDots") || (gameversion.Length == 3 && int.Parse(gameversion[1]) < 20)) {
