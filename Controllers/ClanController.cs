@@ -121,14 +121,14 @@ namespace BeatLeader_Server.Controllers
                         .Where(c => c.LeaderID == currentID)
                         .Include(c => c.Players)
                         .ThenInclude(p => p.ProfileSettings)
-                        .Include(c => c.CapturedLeaderboards)
-                        .ThenInclude(cr => cr.ClanRanking)
-                        .ThenInclude(s => s.AssociatedScores)
-                        .ThenInclude(p => p.Player)
+                        //.Include(c => c.CapturedLeaderboards)
+                        //.ThenInclude(cr => cr.ClanRanking)
+                        //.ThenInclude(s => s.AssociatedScores)
+                        //.ThenInclude(p => p.Player)
                         .Include(c => c.CapturedLeaderboards)
                         .ThenInclude(s => s.Song)
-                        .Include(c => c.CapturedLeaderboards)
-                        .ThenInclude(d => d.Difficulty)
+                        //.Include(c => c.CapturedLeaderboards)
+                        //.ThenInclude(d => d.Difficulty)
                         .FirstOrDefault();
                 } else
                 {
@@ -145,19 +145,20 @@ namespace BeatLeader_Server.Controllers
             {
                 if (capturedLeaderboards != null)
                 {
+
                     clan = _readContext
                         .Clans
                         .Where(c => c.Tag == tag)
                         .Include(p => p.Players)
                         .ThenInclude(pr => pr.ProfileSettings)
-                        .Include(c => c.CapturedLeaderboards)
-                        .ThenInclude(cr => cr.ClanRanking)
-                        .ThenInclude(s => s.AssociatedScores)
-                        .ThenInclude(p => p.Player)
+                        //.Include(c => c.CapturedLeaderboards)
+                        //.ThenInclude(cr => cr.ClanRanking)
+                        //.ThenInclude(s => s.AssociatedScores)
+                        //.ThenInclude(p => p.Player)
                         .Include(c => c.CapturedLeaderboards)
                         .ThenInclude(s => s.Song)
-                        .Include(c => c.CapturedLeaderboards)
-                        .ThenInclude(d => d.Difficulty)
+                        //.Include(c => c.CapturedLeaderboards)
+                        //.ThenInclude(d => d.Difficulty)
                         .FirstOrDefault();
                 }
                 else
