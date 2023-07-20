@@ -109,7 +109,7 @@ namespace BeatLeader_Server.Utils
                     {
                         // Update the data already in the newClanRankingData dictionary
                         newClanRankingData[clan].numberOfScores = newClanRankingData[clan].numberOfScores + 1;
-                        newClanRankingData[clan].weight = MathF.Pow(0.965f, newClanRankingData[clan].weight);
+                        newClanRankingData[clan].weight = MathF.Pow(0.8f, newClanRankingData[clan].weight);
                         newClanRankingData[clan].lastUpdateTime = Math.Max(Int32.Parse(score.Timeset), newClanRankingData[clan].lastUpdateTime);
                         newClanRankingData[clan].clanPP = newClanRankingData[clan].clanPP + (score.Pp * newClanRankingData[clan].weight);
                         newClanRankingData[clan].totalAcc = newClanRankingData[clan].totalAcc + score.Accuracy;
