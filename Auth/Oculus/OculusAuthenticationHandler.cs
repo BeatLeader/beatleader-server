@@ -145,14 +145,13 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
             }
             string ip = iPAddress.ToString();
             int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-            // TODO: REVERT BEFORE PROD
-            //if (dbContext.AuthIPs.FirstOrDefault(el => el.IP == ip && (timestamp - el.Timestamp) < 60 * 60 * 24) != null)
-            //{
-            //    Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            //    await Context.Response.WriteAsync("You can create only one account a day, sorry");
-            //    return AuthenticateResult.Fail("You can create only one account a day, sorry");
-            //}
-            
+            if (dbContext.AuthIPs.FirstOrDefault(el => el.IP == ip && (timestamp - el.Timestamp) < 60 * 60 * 24) != null)
+            {
+                Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await Context.Response.WriteAsync("You can create only one account a day, sorry");
+                return AuthenticateResult.Fail("You can create only one account a day, sorry");
+            }
+
             authInfo = new AuthInfo
             {
                 Password = password,

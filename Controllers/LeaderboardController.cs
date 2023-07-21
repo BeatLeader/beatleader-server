@@ -1,8 +1,6 @@
 ﻿using Amazon.S3;
 using BeatLeader_Server.Extensions;
-using BeatLeader_Server.Migrations;
 using BeatLeader_Server.Models;
-using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -303,10 +301,8 @@ namespace BeatLeader_Server.Controllers {
                 foreach (var score in leaderboard.Scores) {
                     score.Player = PostProcessSettings(score.Player);
                 }
-                //if (clanRanking)
-                //{
-                //}
-                // REVERT BEFORE PROD - Is there a better way to do this? There's no way this is the right way to do this...
+
+                // TODO: IS THIS THE RIGHT WAY TO DO THIS?
                 leaderboard.ClanRanking = currentContext
                 .ClanRanking
                 .Include(cr => cr.Clan)
@@ -464,8 +460,7 @@ namespace BeatLeader_Server.Controllers {
                 hash = hash.Substring(0, 40);
             }
 
-            // TODO: Do I need to sort ClanRanking here to get the clan that has captured the leaderboard?
-            // Or should I just add a field to the leaderboard table called: "Captor Clan" or something like that, even though that data is already in the ClanRanking.
+            // TODO: THIS MIGHT BE SOMETHING WONKY
             var leaderboards = _readContext.Leaderboards
                  .Where(lb => lb.Song.Hash == hash)
                  .Include(lb => lb.Song)
@@ -558,7 +553,6 @@ namespace BeatLeader_Server.Controllers {
         public async Task<ActionResult<Leaderboard>> GetByHash(string hash, string diff, string mode, bool recursive = true) {
             Leaderboard? leaderboard;
 
-            // Added ClanRanking to leaderboardController to return ClanRankings with leaderboard
             leaderboard = _context
                 .Leaderboards
                 .Include(lb => lb.Difficulty)

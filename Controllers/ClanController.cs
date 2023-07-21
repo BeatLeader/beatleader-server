@@ -2,11 +2,9 @@
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
-using Lib.AspNetCore.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using System.Text.RegularExpressions;
 using BeatLeader_Server.Enums;
 using static BeatLeader_Server.Utils.ResponseUtils;
@@ -69,7 +67,6 @@ namespace BeatLeader_Server.Controllers
                     break;
                 case "captures":
                     sequence = sequence.Order(order, c => c.CapturedLeaderboards.Count);
-                    //sequence = sequence.Order(order, c => c.CapturedLeaderboards != null ? c.CapturedLeaderboards.Count : 0);
                     break;
                 default:
                     break;
@@ -114,63 +111,21 @@ namespace BeatLeader_Server.Controllers
                 {
                     return NotFound();
                 }
-                if (capturedLeaderboards != null)
-                {
-                    clan = _readContext
-                        .Clans
-                        .Where(c => c.LeaderID == currentID)
-                        .Include(c => c.Players)
-                        .ThenInclude(p => p.ProfileSettings)
-                        //.Include(c => c.CapturedLeaderboards)
-                        //.ThenInclude(cr => cr.ClanRanking)
-                        //.ThenInclude(s => s.AssociatedScores)
-                        //.ThenInclude(p => p.Player)
-                        .Include(c => c.CapturedLeaderboards)
-                        .ThenInclude(s => s.Song)
-                        //.Include(c => c.CapturedLeaderboards)
-                        //.ThenInclude(d => d.Difficulty)
-                        .FirstOrDefault();
-                } else
-                {
-                    clan = _readContext
-                        .Clans
-                        .Where(c => c.LeaderID == currentID)
-                        .Include(c => c.Players)
-                        .ThenInclude(p => p.ProfileSettings)
-                        .Include(c => c.CapturedLeaderboards)
-                        .FirstOrDefault();
-                }
+                clan = _readContext
+                    .Clans
+                    .Where(c => c.LeaderID == currentID)
+                    .Include(c => c.Players)
+                    .ThenInclude(p => p.ProfileSettings)
+                    .FirstOrDefault();
             }
             else
             {
-                if (capturedLeaderboards != null)
-                {
-
-                    clan = _readContext
-                        .Clans
-                        .Where(c => c.Tag == tag)
-                        .Include(p => p.Players)
-                        .ThenInclude(pr => pr.ProfileSettings)
-                        //.Include(c => c.CapturedLeaderboards)
-                        //.ThenInclude(cr => cr.ClanRanking)
-                        //.ThenInclude(s => s.AssociatedScores)
-                        //.ThenInclude(p => p.Player)
-                        .Include(c => c.CapturedLeaderboards)
-                        .ThenInclude(s => s.Song)
-                        //.Include(c => c.CapturedLeaderboards)
-                        //.ThenInclude(d => d.Difficulty)
-                        .FirstOrDefault();
-                }
-                else
-                {
-                    clan = _readContext
-                        .Clans
-                        .Where(c => c.Tag == tag)
-                        .Include(c => c.Players)
-                        .ThenInclude(p => p.ProfileSettings)
-                        .Include(c => c.CapturedLeaderboards)
-                        .FirstOrDefault();
-                }
+                clan = _readContext
+                    .Clans
+                    .Where(c => c.Tag == tag)
+                    .Include(c => c.Players)
+                    .ThenInclude(p => p.ProfileSettings)
+                    .FirstOrDefault();
             }
             if (clan == null)
             {
@@ -376,14 +331,13 @@ namespace BeatLeader_Server.Controllers
             // Remove the clanRankings
             leaderboardsRecalc.ForEach(leaderboard =>
             {
-                //    // TODO: Do we need to remove the clanRanking from both the leaderboard and the ClanRanking table?
-                //    // TODO: This probably doesn't need to be in a loop. Just testing
                 var crToRemove =
                     leaderboard.ClanRanking?
                     .Where(cr => cr.Clan == clan)
                     .FirstOrDefault();
                 if (crToRemove != null)
                 {
+                    // Do we need to remove the clanRanking from both the leaderboard and the ClanRanking table?
                     leaderboard.ClanRanking?.Remove(crToRemove);
                     // Sever the relationship between clanRanking and scores, if we don't, deleting the clan throws an error
                     // https://learn.microsoft.com/en-us/ef/core/saving/cascade-delete
@@ -875,6 +829,7 @@ namespace BeatLeader_Server.Controllers
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
+            // TODO: REVERT BEFORE PROD
             //if (!currentPlayer.Role.Contains("admin"))
             //{
             //    return Unauthorized();
@@ -910,6 +865,7 @@ namespace BeatLeader_Server.Controllers
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
+            // TODO: REVERT BEFORE PROD
             //if (!currentPlayer.Role.Contains("admin"))
             //{
             //    return Unauthorized();

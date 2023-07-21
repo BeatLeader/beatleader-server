@@ -442,7 +442,6 @@ namespace BeatLeader_Server.Utils
                 if (modifiers.Contains(modifier)) { multiplier += modifiersMap[modifier]; }
             }
             
-
             return multiplier;
         }
 

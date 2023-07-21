@@ -34,19 +34,19 @@ namespace BeatLeader_Server.Utils
             });
         }
 
-		public static async Task<string> UploadStream(this IAmazonS3 client, string filename, S3Container container, Stream data, bool closeStream = true)
+        public static async Task<string> UploadStream(this IAmazonS3 client, string filename, S3Container container, Stream data, bool closeStream = true)
         {
             try {
                 var request = new PutObjectRequest
                 {
                     InputStream = data,
-		            Key = filename,
+                    Key = filename,
                     BucketName = "ssnowy-beatleader-testing",
-		            DisablePayloadSigning = true,
+                    DisablePayloadSigning = true,
                     AutoCloseStream = false
-	            };
+                };
             
-	            await client.PutObjectAsync(request);
+                await client.PutObjectAsync(request);
 
                 if (closeStream) {
                     data.Close();
@@ -74,17 +74,17 @@ namespace BeatLeader_Server.Utils
         }	
         public static async Task<string> UploadReplay(this IAmazonS3 client, string filename, byte[] data)
         {   
-	        return await client.UploadStream(filename, S3Container.replays, new BinaryData(data).ToStream());
+            return await client.UploadStream(filename, S3Container.replays, new BinaryData(data).ToStream());
         }
 
         public static async Task<string> UploadOtherReplay(this IAmazonS3 client, string filename, byte[] data)
         {   
-	        return await client.UploadStream(filename, S3Container.otherreplays, new BinaryData(data).ToStream());
+            return await client.UploadStream(filename, S3Container.otherreplays, new BinaryData(data).ToStream());
         }
 
         public static async Task<string> UploadOtherReplayStream(this IAmazonS3 client, string filename, Stream data)
         {   
-	        return await client.UploadStream(filename, S3Container.otherreplays, data);
+            return await client.UploadStream(filename, S3Container.otherreplays, data);
         }
 
         public static async Task<string> UploadAsset(this IAmazonS3 client, string filename, Stream data)
@@ -92,12 +92,12 @@ namespace BeatLeader_Server.Utils
             return await client.UploadStream(filename, S3Container.assets, data);
         }
 
-		public static async Task<string> UploadPreview(this IAmazonS3 client, string filename, Stream data)
+        public static async Task<string> UploadPreview(this IAmazonS3 client, string filename, Stream data)
         {
-			return await client.UploadStream(filename, S3Container.previews, data, false);
+            return await client.UploadStream(filename, S3Container.previews, data, false);
         }
 
-		public static async Task<string> UploadScoreStats(this IAmazonS3 client, string filename, ScoreStatistic scoreStats)
+        public static async Task<string> UploadScoreStats(this IAmazonS3 client, string filename, ScoreStatistic scoreStats)
         {
             return await client.UploadStream(filename, S3Container.scorestats, new BinaryData(JsonConvert.SerializeObject(scoreStats)).ToStream());
         }

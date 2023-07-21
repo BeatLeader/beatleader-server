@@ -1,12 +1,6 @@
-﻿using BeatLeader_Server.Migrations.ReadApp;
-using BeatLeader_Server.Models;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
+﻿using BeatLeader_Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using System;
-using System.Numerics;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace BeatLeader_Server.Utils
 {
@@ -44,19 +38,6 @@ namespace BeatLeader_Server.Utils
 
     public static class ClanUtils
     {
-        //public struct ClanRankingData
-        //{
-        //    public int numberOfScores;
-        //    public float weight;
-        //    public int lastUpdateTime;
-        //    public float clanPP;
-        //    public float totalAcc;
-        //    public int totalRank;
-        //    public int totalScore;
-        //    public List<Score> Scores;
-        //};
-
-
         public static float RecalculateClanPP(this AppContext context, int clanId)
         {
             Clan clan = context.Clans.Where(c => c.Id == clanId).Include(c => c.Players).FirstOrDefault();
@@ -72,14 +53,9 @@ namespace BeatLeader_Server.Utils
 
         public static ICollection<ClanRanking> CalculateClanRanking(this AppContext context, Leaderboard leaderboard)
         {
-            /// <summary>
-            /// CalculateClanRanking: Function that calculates the clanRanking given a leaderboard
-            /// This function is called on relevant leaderboards whenever a user sets a new score, a clan is created, a user leaves a clan,
-            /// a user joins a clan, a map is ranked, or a clan is deleted.
-            /// </summary>
-            /// <param name="context">The read/write db context</param>
-            /// <param name="leaderboard">The leaderboard for which we will calculate the clan ranking</param>
-
+            // CalculateClanRanking: Function that calculates the clanRanking given a leaderboard
+            // This function is called on relevant leaderboards whenever a user sets a new score, a clan is created, a user leaves a clan,
+            // a user joins a clan, a map is ranked, or a clan is deleted.
             if (leaderboard == null) 
             {
                 return null;
@@ -262,7 +238,7 @@ namespace BeatLeader_Server.Utils
                 }
             }
 
-            // SSnowy - Calculate the number of ranked maps, I feel like this should be a static global or something
+            // Calculate the number of ranked maps, I feel like this should be a static global or something
             // We will use this to tell what % of the entire ranked map pool a clan has captured.
             int rankedMapCount = context
                 .Leaderboards
