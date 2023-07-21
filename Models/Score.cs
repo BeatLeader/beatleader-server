@@ -142,5 +142,6 @@ namespace BeatLeader_Server.Models
         public Player Player { get; set; }
         public Leaderboard Leaderboard { get; set; }
         public string Error { get; set; }
+        public bool FalsePositive { get; set; }
     }
 }

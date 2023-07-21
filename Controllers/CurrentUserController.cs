@@ -988,6 +988,8 @@ namespace BeatLeader_Server.Controllers {
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin")) {
                 query = query.Where(t => t.PlayerId == id);
+            } else {
+                query = query.OrderByDescending(s => s.FalsePositive ? 1 : 0);
             }
 
             return new ResponseWithMetadata<FailedScore> {
@@ -1002,6 +1004,28 @@ namespace BeatLeader_Server.Controllers {
 
                         .ToList()
             };
+        }
+
+        [HttpPost("~/user/failedscore/falsepositive")]
+        public async Task<ActionResult> MarkFailedScore([FromQuery] int id) {
+            string? playerId = GetId();
+            if (playerId == null) {
+                return NotFound();
+            }
+            Player? currentPlayer = await _context.Players.FindAsync(playerId);
+            FailedScore? score;
+            if (currentPlayer != null && currentPlayer.Role.Contains("admin")) {
+                score = _context.FailedScores.FirstOrDefault(t => t.Id == id);
+            } else {
+                score = _context.FailedScores.FirstOrDefault(t => t.PlayerId == playerId && t.Id == id);
+            }
+            if (score == null) {
+                return NotFound();
+            }
+
+            score.FalsePositive = true;
+            await _context.SaveChangesAsync();
+            return Ok();
         }
 
         [HttpPost("~/user/failedscore/remove")]
