@@ -109,6 +109,9 @@ namespace BeatLeader_Server.Controllers {
                     .Include(s => s.Leaderboard)
                     .ThenInclude(l => l.Difficulty)
                     .ThenInclude(d => d.ModifiersRating)
+                    .Include(s => s.Leaderboard)
+                    .ThenInclude(l => l.Difficulty)
+                    .ThenInclude(d => d.ModifierValues)
                     .Skip((page - 1) * count)
                     .Take(count)
                     .Select(s => new ScoreResponseWithMyScore {
@@ -333,11 +336,13 @@ namespace BeatLeader_Server.Controllers {
                 case "pauses":
                     return HistogrammValuee(order, sequence.Select(s => s.Pauses).ToList(), (int)(batch ?? 1), count);
                 case "maxStreak":
-                    return HistogrammValuee(order, sequence.Select(s => s.MaxStreak).ToList(), (int)(batch ?? 1), count);
+                    return HistogrammValuee(order, sequence.Select(s => s.MaxStreak ?? 0).ToList(), (int)(batch ?? 1), count);
                 case "rank":
                     return HistogrammValuee(order, sequence.Select(s => s.Rank).ToList(), (int)(batch ?? 1), count);
                 case "stars":
                     return HistogrammValuee(order, sequence.Select(s => s.Leaderboard.Difficulty.Stars ?? 0).ToList(), batch ?? 0.15f, count);
+                case "replaysWatched":
+                    return HistogrammValuee(order, sequence.Select(s => s.AnonimusReplayWatched + s.AuthorizedReplayWatched).ToList(), (int)(batch ?? 1), count);
                 case "mistakes":
                     return HistogrammValuee(order, sequence.Select(s => s.BadCuts + s.MissedNotes + s.BombCuts + s.WallsHit).ToList(), (int)(batch ?? 1), count);
                 default:
@@ -351,18 +356,18 @@ namespace BeatLeader_Server.Controllers {
             }
             Dictionary<int, HistogrammValue> result = new Dictionary<int, HistogrammValue>();
             int normalizedMin = (values.Min() / batch) * batch;
-            int normalizedMax = (values.Max() / batch + 1) * batch;
+            int normalizedMax = (values.Max() / batch) * batch;
             int totalCount = 0;
             if (order == Order.Desc) {
-                for (int i = normalizedMax; i > normalizedMin; i -= batch) {
-                    int value = values.Count(s => s <= i && s >= i - batch);
-                    result[i - batch] = new HistogrammValue { Value = value, Page = totalCount / count };
+                for (int i = normalizedMax; i >= normalizedMin; i -= batch) {
+                    int value = values.Count(s => s <= i && s > i - batch);
+                    result[i] = new HistogrammValue { Value = value, Page = totalCount / count };
                     totalCount += value;
                 }
             } else {
-                for (int i = normalizedMin; i < normalizedMax; i += batch) {
-                    int value = values.Count(s => s >= i && s <= i + batch);
-                    result[i + batch] = new HistogrammValue { Value = value, Page = totalCount / count };
+                for (int i = normalizedMin; i <= normalizedMax; i += batch) {
+                    int value = values.Count(s => s >= i && s < i + batch);
+                    result[i] = new HistogrammValue { Value = value, Page = totalCount / count };
                     totalCount += value;
                 }
             }

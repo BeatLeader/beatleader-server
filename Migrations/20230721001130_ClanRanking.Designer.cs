@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    [Migration("20230718022011_RankedPoolMapPercentFloat")]
-    partial class RankedPoolMapPercentFloat
+    [Migration("20230721001130_ClanRanking")]
+    partial class ClanRanking
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -2327,7 +2327,7 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int>("MaxCombo")
                         .HasColumnType("int");
 
-                    b.Property<int>("MaxStreak")
+                    b.Property<int?>("MaxStreak")
                         .HasColumnType("int");
 
                     b.Property<int?>("MetadataId")

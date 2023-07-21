@@ -70,7 +70,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? player = null)
         {
             if (hash.Length < 40) {
-                return BadRequest("Hash is to short");
+                return BadRequest("Hash is too short");
             } else {
                 hash = hash.Substring(0, 40);
             }
@@ -115,7 +115,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int type = 0)
         {
             if (hash.Length < 40) {
-                return BadRequest("Hash is to short");
+                return BadRequest("Hash is too short");
             } else {
                 hash = hash.Substring(0, 40);
             }
@@ -151,7 +151,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int type = 0)
         {
             if (hash.Length < 40) {
-                return BadRequest("Hash is to short");
+                return BadRequest("Hash is too short");
             } else {
                 hash = hash.Substring(0, 40);
             }
@@ -265,10 +265,10 @@ namespace BeatLeader_Server.Controllers
                 return NotFound("No such voting");
             }
             if (voting.PlayerId == userId) {
-                return BadRequest("You can't feedback yourself");
+                return BadRequest("You may not provided feedback on yourself");
             }
             if (voting.Feedbacks?.Where(f => f.RTMember == userId).FirstOrDefault() != null) {
-                return BadRequest("Feedback from this member already exist");
+                return BadRequest("Feedback from this member already exists");
             }
 
             if (voting.Feedbacks == null) {
@@ -293,7 +293,7 @@ namespace BeatLeader_Server.Controllers
             string mode)
         {
             if (hash.Length < 40) {
-                return BadRequest("Hash is to short");
+                return BadRequest("Hash is too short");
             } else {
                 hash = hash.Substring(0, 40);
             }
@@ -446,7 +446,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? modifiers = null)
         {
             if (hash.Length < 40) {
-                return BadRequest("Hash is to short");
+                return BadRequest("Hash is too short");
             } else {
                 hash = hash.Substring(0, 40);
             }
@@ -721,7 +721,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? modifiers)
         {
             if (hash.Length < 40) {
-                return BadRequest("Hash is to short");
+                return BadRequest("Hash is too short");
             } else {
                 hash = hash.Substring(0, 40);
             }
@@ -861,7 +861,7 @@ namespace BeatLeader_Server.Controllers
             string mode)
         {
             if (hash.Length < 40) {
-                return BadRequest("Hash is to short");
+                return BadRequest("Hash is too short");
             } else {
                 hash = hash.Substring(0, 40);
             }
@@ -985,7 +985,7 @@ namespace BeatLeader_Server.Controllers
             string mode)
         {
             if (hash.Length < 40) {
-                return BadRequest("Hash is to short");
+                return BadRequest("Hash is too short");
             } else {
                 hash = hash.Substring(0, 40);
             }
@@ -1042,7 +1042,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int type = 0)
         {
             if (hash.Length < 40) {
-                return BadRequest("Hash is to short");
+                return BadRequest("Hash is too short");
             } else {
                 hash = hash.Substring(0, 40);
             }

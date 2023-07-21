@@ -134,9 +134,10 @@ namespace BeatLeader_Server.Controllers
                         (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(readStream);
                         fileName += extension;
 
+                        // TODO: REVERT BEFORE PROD
                         await _assetsS3Client.UploadAsset(fileName, stream);
-
                         player.Avatar = (_environment.IsDevelopment() ? "https://ssnowy-beatleader-testing.s3.us-east-2.amazonaws.com/" : "https://cdn.assets.beatleader.xyz/") + fileName;
+                        //player.Avatar = await _assetsS3Client.UploadAsset(fileName, stream);
                     }
                 } else {
                     player = await GetPlayerFromBL(id);
@@ -621,6 +622,9 @@ namespace BeatLeader_Server.Controllers
                         case "maxStreak":
                             request = request.Order(order, p => p.ScoreStats.RankedMaxStreak);
                             break;
+                        case "replaysWatched":
+                            request = request.Order(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
+                            break;
                         default:
                             break;
                     }
@@ -657,6 +661,9 @@ namespace BeatLeader_Server.Controllers
                             break;
                         case "maxStreak":
                             request = request.Order(order, p => p.ScoreStats.UnrankedMaxStreak);
+                            break;
+                        case "replaysWatched":
+                            request = request.Order(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
                             break;
                         default:
                             break;
@@ -697,6 +704,9 @@ namespace BeatLeader_Server.Controllers
                             break;
                         case "timing":
                             request = request.Order(order, p => (p.ScoreStats.AverageLeftTiming + p.ScoreStats.AverageRightTiming) / 2);
+                            break;
+                        case "replaysWatched":
+                            request = request.Order(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
                             break;
                         default:
                             break;
@@ -813,11 +823,10 @@ namespace BeatLeader_Server.Controllers
                 Random rnd = new Random();
                 fileName = "badge-" + badge.Id + "R" + rnd.Next(1, 50) + extension;
 
-                await _assetsS3Client.UploadAsset(fileName, stream);
+                badge.Image = await _assetsS3Client.UploadAsset(fileName, stream);
             }
             catch {}
 
-            badge.Image = "https://cdn.assets.beatleader.xyz/" + fileName;
             _context.SaveChanges();
 
             return badge;

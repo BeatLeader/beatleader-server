@@ -55,19 +55,21 @@ namespace BeatLeader_Server.Controllers
                         int maxScore = leaderboard.Difficulty.MaxScore > 0 ? leaderboard.Difficulty.MaxScore : ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
                         if (hasPp)
                         {
-                            s.ModifiedScore = (int)(s.BaseScore * modifiers.GetNegativeMultiplier(s.Modifiers));
+                            s.ModifiedScore = (int)(s.BaseScore * modifiers.GetNegativeMultiplier(s.Modifiers ?? ""));
                         }
                         else
                         {
                             s.ModifiedScore = (int)((s.BaseScore + (int)((float)(maxScore - s.BaseScore) * (modifiers.GetPositiveMultiplier(s.Modifiers) - 1))) * modifiers.GetNegativeMultiplier(s.Modifiers));
                         }
 
-                        if (s.Modifiers.Contains("NF")) {
-                            s.Priority = 3;
-                        } else if (s.Modifiers.Contains("NB") || s.Modifiers.Contains("NA")) {
-                            s.Priority = 2;
-                        } else if (s.Modifiers.Contains("NO")) {
-                            s.Priority = 1;
+                        if (s.Modifiers != null) {
+                            if (s.Modifiers.Contains("NF")) {
+                                s.Priority = 3;
+                            } else if (s.Modifiers.Contains("NB") || s.Modifiers.Contains("NA")) {
+                                s.Priority = 2;
+                            } else if (s.Modifiers.Contains("NO")) {
+                                s.Priority = 1;
+                            }
                         }
 
                         s.Accuracy = (float)s.BaseScore / (float)maxScore;

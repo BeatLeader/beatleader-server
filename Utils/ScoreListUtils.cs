@@ -47,7 +47,7 @@ namespace BeatLeader_Server.Utils {
                     orderedSequence = sequence.Order(order, t => t.Rank);
                     break;
                 case "maxStreak":
-                    orderedSequence = sequence.Where(s => !s.IgnoreForStats).Order(order, t => t.MaxStreak);
+                    orderedSequence = sequence.Where(s => !s.IgnoreForStats && s.MaxStreak != null).Order(order, t => t.MaxStreak);
                     break;
                 case "timing":
                     orderedSequence = sequence.Order(order, t => (t.LeftTiming + t.RightTiming) / 2);
@@ -61,6 +61,9 @@ namespace BeatLeader_Server.Utils {
                     break;
                 case "mistakes":
                     orderedSequence = sequence.Order(order, t => t.BadCuts + t.BombCuts + t.MissedNotes + t.WallsHit);
+                    break;
+                case "replaysWatched":
+                    orderedSequence = sequence.Order(order, t => t.AnonimusReplayWatched + t.AuthorizedReplayWatched);
                     break;
                 default:
                     break;

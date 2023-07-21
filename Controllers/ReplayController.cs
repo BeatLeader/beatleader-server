@@ -104,13 +104,27 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task<ActionResult<ScoreResponse>> PostReplayFromCDN(string authenticatedPlayerID, string name, HttpContext context)
+        public async Task<ActionResult<ScoreResponse>> PostReplayFromCDN(string authenticatedPlayerID, string name, bool backup, bool allow, HttpContext context)
         {
-            using (var stream = await _s3Client.DownloadReplay(name)) {
-                if (stream != null) {
-                    return await PostReplay(authenticatedPlayerID, stream, context);
-                } else {
+            if (backup) {
+                string directoryPath = Path.Combine("/root/replays");
+                string filePath = Path.Combine(directoryPath, name);
+
+                if (!System.IO.File.Exists(filePath)) {
                     return NotFound();
+                }
+
+                // Use FileMode.Create to overwrite the file if it already exists.
+                using (FileStream stream = new FileStream(filePath, FileMode.Open)) {
+                    return await PostReplay(authenticatedPlayerID, stream, context, allow: allow);
+                }
+            } else {
+                using (var stream = await _s3Client.DownloadReplay(name)) {
+                    if (stream != null) {
+                        return await PostReplay(authenticatedPlayerID, stream, context, allow: allow);
+                    } else {
+                        return NotFound();
+                    }
                 }
             }
         }
@@ -121,7 +135,8 @@ namespace BeatLeader_Server.Controllers
             Stream replayStream,
             HttpContext context,
             float time = 0, 
-            EndType type = 0)
+            EndType type = 0,
+            bool allow = false)
         {
             Replay? replay;
             ReplayOffsets? offsets;
@@ -163,7 +178,7 @@ namespace BeatLeader_Server.Controllers
             if (replay.notes.Count == 0) {
                 return BadRequest("Replay is broken, update your mod please.");
             }
-            if (info.hash.Length < 40) return BadRequest("Hash is to short");
+            if (info.hash.Length < 40) return BadRequest("Hash is too short");
 
             var gameversion = replay.info.gameVersion.Split(".");
             if (replay.info.mode.EndsWith("OldDots") || (gameversion.Length == 3 && int.Parse(gameversion[1]) < 20)) {
@@ -301,7 +316,8 @@ namespace BeatLeader_Server.Controllers
                     //continuing, 
                     context, 
                     transaction,
-                    maxScore);
+                    maxScore,
+                    allow);
             } catch (Exception e) {
 
                  _context.RejectChanges();
@@ -313,10 +329,11 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsortemp";
-                //resultScore.Replay = "https://cdn.replays.beatleader.xyz/" + fileName;
+
+                // TODO: REVERT BEFORE PROD
                 resultScore.Replay = "https://ssnowy-beatleader-testing.s3.us-east-2.amazonaws.com/" + fileName;
-                
                 await _s3Client.UploadReplay(fileName, replayData);
+                //resultScore.Replay = await _s3Client.UploadReplay(fileName, replayData);
 
                 FailedScore failedScore = new FailedScore {
                     Error = e.Message,
@@ -355,7 +372,8 @@ namespace BeatLeader_Server.Controllers
             //Task<Replay?> continuing,
             HttpContext context,
             IDbContextTransaction transaction,
-            int maxScore) {
+            int maxScore,
+            bool allow = false) {
             
             var info = replay.info; // replayDecoder.replay.info;
 
@@ -599,7 +617,8 @@ namespace BeatLeader_Server.Controllers
                     resultScore, 
                     currentScore,
                     context, 
-                    offsets);
+                    offsets,
+                    allow);
             });
 
             var result = RemoveLeaderboard(resultScore, resultScore.Rank);
@@ -621,7 +640,8 @@ namespace BeatLeader_Server.Controllers
             Score resultScore,
             Score? currentScore,
             HttpContext context,
-            ReplayOffsets offsets) {
+            ReplayOffsets offsets,
+            bool allow = false) {
 
             await _s3Client.DeleteStats(leaderboard.Id + "-leaderboard.json");
 
@@ -771,10 +791,9 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
-                resultScore.Replay = "https://cdn.replays.beatleader.xyz/" + fileName;
-                await _s3Client.UploadReplay(fileName, replayData);
+                resultScore.Replay = await _s3Client.UploadReplay(fileName, replayData);
 
-                if (!leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles)) {
+                if (!leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles) && !allow) {
                     double scoreRatio = (double)resultScore.BaseScore / (double)statistic.winTracker.totalScore;
                     if (scoreRatio > 1.01 || scoreRatio < 0.99)
                     {
@@ -784,7 +803,7 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
-                if (leaderboard.Difficulty.Notes > 30)
+                if (leaderboard.Difficulty.Notes > 30 && !allow)
                 {
                     var sameAccScore = _context
                         .Scores
@@ -811,7 +830,7 @@ namespace BeatLeader_Server.Controllers
                 resultScore.FcAccuracy = statistic.accuracyTracker.fcAcc;
                 resultScore.MaxStreak = statistic.hitTracker.maxStreak;
                 if (!resultScore.IgnoreForStats && resultScore.MaxStreak > player.ScoreStats.MaxStreak) {
-                    player.ScoreStats.MaxStreak = resultScore.MaxStreak;
+                    player.ScoreStats.MaxStreak = resultScore.MaxStreak ?? 0;
                 }
 
                 resultScore.LeftTiming = statistic.hitTracker.leftTiming;

@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using BeatLeader_Server.Extensions;
+using Microsoft.EntityFrameworkCore;
 using Prometheus.Client;
 using System.Net;
 
@@ -13,6 +14,8 @@ namespace BeatLeader_Server.Services
 
         private readonly IGauge _playerCounter;
         private readonly IGauge _scoreCounter;
+
+        public static string CurrentHost = "";
 
         public MinuteRefresh(IServiceScopeFactory serviceScopeFactory, IMetricFactory metricFactory)
         {
@@ -40,6 +43,7 @@ namespace BeatLeader_Server.Services
         {
             using (var scope = _serviceScopeFactory.CreateScope())
             {
+                CurrentHost = scope.ServiceProvider.GetApplicationUrls().FirstOrDefault(s => s.Contains("https")) ?? "";
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
 
                 int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - 60 * 60 * 24 * 30 * 3;

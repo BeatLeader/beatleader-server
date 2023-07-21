@@ -86,7 +86,7 @@ namespace BeatLeader_Server.Utils {
             public bool FullCombo { get; set; }
             public string Platform { get; set; }
             public int MaxCombo { get; set; }
-            public int MaxStreak { get; set; }
+            public int? MaxStreak { get; set; }
             public HMD Hmd { get; set; }
             public ControllerEnum Controller { get; set; }
             public string LeaderboardId { get; set; }

@@ -358,10 +358,10 @@ namespace BeatLeader_Server.Controllers {
                 Random rnd = new Random();
                 fileName = userId + "R" + rnd.Next(1, 50) + extension;
 
-                await _s3Client.UploadAsset(fileName, stream);
+                player.Avatar = await _s3Client.UploadAsset(fileName, stream);
             } catch { }
 
-            // TODO: CHANGE IT BACK BEFORE PRODUCTION
+            // TODO: REVERT BEFORE PROD (REMOVE)
             if (fileName != null) {
                 player.Avatar = (_environment.IsDevelopment() ? "https://ssnowy-beatleader-testing.s3.us-east-2.amazonaws.com/" : "https://cdn.assets.beatleader.xyz/") + fileName;
             }
@@ -483,6 +483,12 @@ namespace BeatLeader_Server.Controllers {
                 return BadRequest("You are banned!");
             }
 
+            ProfileSettings? settings = player.ProfileSettings;
+            if (settings == null) {
+                settings = new ProfileSettings();
+                player.ProfileSettings = settings;
+            }
+
             string? fileName = null;
             try {
                 var ms = new MemoryStream(5);
@@ -493,18 +499,8 @@ namespace BeatLeader_Server.Controllers {
                 Random rnd = new Random();
                 fileName = "cover-" + userId + "R" + rnd.Next(1, 50) + extension;
 
-                await _s3Client.UploadAsset(fileName, stream);
+                player.ProfileSettings.ProfileCover = await _s3Client.UploadAsset(fileName, stream);
             } catch { }
-
-            ProfileSettings? settings = player.ProfileSettings;
-            if (settings == null) {
-                settings = new ProfileSettings();
-                player.ProfileSettings = settings;
-            }
-
-            if (fileName != null) {
-                player.ProfileSettings.ProfileCover = "https://cdn.assets.beatleader.xyz/" + fileName;
-            }
 
             await _context.SaveChangesAsync();
 
@@ -551,14 +547,14 @@ namespace BeatLeader_Server.Controllers {
         public ActionResult ChangePassword([FromForm] string login, [FromForm] string oldPassword, [FromForm] string newPassword) {
             string? iPAddress = Request.HttpContext.GetIpAddress();
             if (iPAddress == null) {
-                return Unauthorized("You don't have an IP adress? Tell #NSGolova how you get this error.");
+                return Unauthorized("You don't have an IP address? Tell #NSGolova how you get this error.");
             }
 
             LoginAttempt? loginAttempt = _context.LoginAttempts.FirstOrDefault(el => el.IP == iPAddress);
             int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
             if (loginAttempt is { Count: 10 } && (timestamp - loginAttempt.Timestamp) < 60 * 60 * 24) {
-                return Unauthorized("To much login attempts in one day");
+                return Unauthorized("Too many login attempts in one day");
             }
 
             string? currentID = HttpContext.User.Claims.FirstOrDefault()?.Value.Split("/").LastOrDefault();
@@ -622,14 +618,14 @@ namespace BeatLeader_Server.Controllers {
         public ActionResult ChangeLogin([FromForm] string newLogin) {
             string? iPAddress = Request.HttpContext.GetIpAddress();
             if (iPAddress == null) {
-                return Unauthorized("You don't have an IP adress? Tell #NSGolova how you got this error.");
+                return Unauthorized("You don't have an IP address? Tell #NSGolova how you got this error.");
             }
 
             LoginAttempt? loginAttempt = _context.LoginAttempts.FirstOrDefault(el => el.IP == iPAddress);
             int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
             if (loginAttempt is { Count: 10 } && (timestamp - loginAttempt.Timestamp) < 60 * 60 * 24) {
-                return Unauthorized("To much login changes attempts in one day");
+                return Unauthorized("Too many login changes attempts in one day");
             }
 
             string userId = GetId();
@@ -730,7 +726,7 @@ namespace BeatLeader_Server.Controllers {
         [NonAction]
         public async Task<ActionResult<int>> MigratePrivate(string migrateToId, string migrateFromId) {
             if (migrateToId == migrateFromId) {
-                return Unauthorized("Something went completly wrong");
+                return Unauthorized("Something went completely wrong");
             }
             if (long.Parse(migrateToId) < 1000000000000000) {
                 return Unauthorized("You need to be logged in with Steam or Oculus");
@@ -1038,7 +1034,7 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [HttpPost("~/user/failedscore/retry")]
-        public async Task<ActionResult<ScoreResponse>> RetryFailedScore([FromQuery] int id) {
+        public async Task<ActionResult<ScoreResponse>> RetryFailedScore([FromQuery] int id, [FromQuery] bool allow = false) {
             string? playerId = GetId();
             if (playerId == null) {
                 return NotFound();
@@ -1049,6 +1045,7 @@ namespace BeatLeader_Server.Controllers {
                 score = _context.FailedScores.FirstOrDefault(t => t.Id == id);
             } else {
                 score = _context.FailedScores.FirstOrDefault(t => t.PlayerId == playerId && t.Id == id);
+                allow = false;
             }
             if (score == null) {
                 return NotFound();
@@ -1058,8 +1055,7 @@ namespace BeatLeader_Server.Controllers {
             if (name == null) {
                 return Ok();
             }
-
-            var result = await _replayController.PostReplayFromCDN(score.PlayerId, name, HttpContext);
+            var result = await _replayController.PostReplayFromCDN(score.PlayerId, name, score.Replay.Contains("/backup/file"), allow, HttpContext);
             _context.FailedScores.Remove(score);
             await _context.SaveChangesAsync();
 
@@ -1151,7 +1147,7 @@ namespace BeatLeader_Server.Controllers {
 
             var timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             if (ban != null && ban.BannedBy == userId && !adminUnban && (timeset - ban.Timeset) < 60 * 60 * 24 * 7) {
-                return BadRequest("You will can unban yourself after: " + (24 * 7 - (timeset - ban.Timeset) / (60 * 60)) + "hours");
+                return BadRequest("You can unban yourself after: " + (24 * 7 - (timeset - ban.Timeset) / (60 * 60)) + "hours");
             }
 
             var scores = _context.Scores.Where(s => s.PlayerId == player.Id).ToList();

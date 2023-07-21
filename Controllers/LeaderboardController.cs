@@ -228,6 +228,12 @@ namespace BeatLeader_Server.Controllers {
                     case "mistakes":
                         scoreQuery = scoreQuery.Order(order, s => s.BadCuts + s.MissedNotes + s.BombCuts + s.WallsHit);
                         break;
+                    case "weight":
+                        scoreQuery = scoreQuery.Order(order, s => s.Weight);
+                        break;
+                    case "weightedPp":
+                        scoreQuery = scoreQuery.Order(order, s => s.Weight * s.Pp);
+                        break;
                     default:
                         break;
                 }
@@ -453,7 +459,7 @@ namespace BeatLeader_Server.Controllers {
         [HttpGet("~/leaderboards/hash/{hash}")]
         public async Task<ActionResult<LeaderboardsResponse>> GetLeaderboardsByHash(string hash) {
             if (hash.Length < 40) {
-                return BadRequest("Hash is to short");
+                return BadRequest("Hash is too short");
             } else {
                 hash = hash.Substring(0, 40);
             }

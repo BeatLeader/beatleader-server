@@ -716,6 +716,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             string fileName = id + "-event";
+            string? imageUrl = null;
             try
             {
 
@@ -726,7 +727,7 @@ namespace BeatLeader_Server.Controllers
                 (string extension, MemoryStream stream2) = ImageUtils.GetFormatAndResize(ms);
                 fileName += extension;
 
-                await _s3Client.UploadAsset(fileName, stream2);
+                imageUrl = await _s3Client.UploadAsset(fileName, stream2);
             }
             catch (Exception)
             {
@@ -823,7 +824,7 @@ namespace BeatLeader_Server.Controllers
                 Players = players,
                 EndDate = endDate,
                 PlaylistId = id,
-                Image = "https://cdn.assets.beatleader.xyz/" + fileName
+                Image = imageUrl ?? ""
             };
 
             _context.EventRankings.Add(eventRanking);

@@ -2324,7 +2324,7 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int>("MaxCombo")
                         .HasColumnType("int");
 
-                    b.Property<int>("MaxStreak")
+                    b.Property<int?>("MaxStreak")
                         .HasColumnType("int");
 
                     b.Property<int?>("MetadataId")

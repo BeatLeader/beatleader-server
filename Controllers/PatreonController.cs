@@ -288,42 +288,30 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
-                if (tier != link.Tier) {
-                    var player = _context.Players.FirstOrDefault(p => p.Id == link.Id);
-                    if (player == null) {
-                        long intId = Int64.Parse(link.Id);
-                        if (intId < 70000000000000000) {
-                            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+                string userId = _context.PlayerIdToMain(link.Id);
 
-                            if (accountLink != null) {
-                                string playerId = accountLink.SteamID.Length > 0 ? accountLink.SteamID : accountLink.PCOculusID;
-
-                                player = _context.Players.FirstOrDefault(p => p.Id == playerId);
-                            }
+                var player = _context.Players.FirstOrDefault(p => p.Id == userId);
+                if (player != null) {
+                    if (tier != null) {
+                        if (tier.Contains("tipper"))
+                        {
+                            UpdatePatreonRole(player, "tipper");
                         }
-                    }
-                    if (player != null) {
-                        if (tier != null) {
-                            if (tier.Contains("tipper"))
-                            {
-                                UpdatePatreonRole(player, "tipper");
-                            }
-                            else if (tier.Contains("supporter"))
-                            {
-                                UpdatePatreonRole(player, "supporter");
-                            }
-                            else if (tier.Contains("sponsor"))
-                            {
-                                UpdatePatreonRole(player, "sponsor");
-                            }
-                            else {
-                                UpdatePatreonRole(player, null);
-                            }
-                            link.Tier = tier;
-                        } else {
+                        else if (tier.Contains("supporter"))
+                        {
+                            UpdatePatreonRole(player, "supporter");
+                        }
+                        else if (tier.Contains("sponsor"))
+                        {
+                            UpdatePatreonRole(player, "sponsor");
+                        }
+                        else {
                             UpdatePatreonRole(player, null);
-                            link.Tier = "";
                         }
+                        link.Tier = tier;
+                    } else {
+                        UpdatePatreonRole(player, null);
+                        link.Tier = "";
                     }
                 }
             } else {

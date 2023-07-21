@@ -145,18 +145,16 @@ namespace BeatLeader_Server.Services
 
                     await _scoreController.RefreshScores(leaderboard.Id);
                     (float totalpp, int totalRanks) = RefreshLeaderboardPlayers(leaderboard.Id, _context);
+                    await _context.SaveChangesAsync();
 
                     if (dsClient != null)
                     {
                         string message = "The **" + difficulty.DifficultyName + "** diff of **" + leaderboard.Song.Name + "** was ranked! \n";
-                        message += "★ " + difficulty.Stars + "  ";
-                        message += " **T**  ";
-                        message += FormatUtils.DescribeType(leaderboard.Difficulty.Type);
-                        message += "\n";
+                        message += $"**{difficulty.Stars:0.00}★**\n";
                         message += "Mapped by: **" + leaderboard.Song.Mapper
-                              + "** Nominated: **" + (await _context.Players.FindAsync(leaderboard.Qualification.RTMember)).Name
-                              + "** Criteria: **" + (await _context.Players.FindAsync(leaderboard.Qualification.CriteriaChecker)).Name + "**\n";
-                        message += Math.Round(totalpp, 2) + "pp and " + totalRanks * -1 + " ranks were acquired \n";
+                              + "** Nominated: **" + ((await _context.Players.FindAsync(leaderboard.Qualification.RTMember))?.Name ?? "None")
+                              + "** Criteria: **" + ((await _context.Players.FindAsync(leaderboard.Qualification.CriteriaChecker))?.Name ?? "None") + "**\n";
+                        message += $"{totalpp:0.00} total pp and {totalRanks * -1} total ranks were acquired \n";
 
                         await dsClient.SendMessageAsync(message, embeds: new List<Embed> { 
                             new EmbedBuilder()

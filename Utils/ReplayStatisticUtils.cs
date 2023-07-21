@@ -209,7 +209,7 @@ namespace BeatLeader_Server.Utils
                 return (null, error);
             }
 
-            (AccuracyTracker accuracy, List<NoteStruct> structs, int maxCombo, int maxStreak) = Accuracy(replay);
+            (AccuracyTracker accuracy, List<NoteStruct> structs, int maxCombo, int? maxStreak) = Accuracy(replay);
             result.hitTracker.maxCombo = maxCombo;
             result.hitTracker.maxStreak = maxStreak;
             result.winTracker.totalScore = structs.Last().totalScore;
@@ -226,13 +226,16 @@ namespace BeatLeader_Server.Utils
         public static string? CheckReplay(Replay replay, Leaderboard leaderboard) {
             float endTime = replay.notes.Count > 0 ? replay.notes.Last().eventTime : 0;
 
+            if (leaderboard.Difficulty.Notes / 3 != 0 && 
+                replay.notes.Count < leaderboard.Difficulty.Notes / 3 && 
+                !leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles))
+            {
+                return "Too few notes in the replay";
+            }
+
             if (leaderboard.Difficulty.Status == DifficultyStatus.ranked || 
                 leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
                 leaderboard.Difficulty.Status == DifficultyStatus.nominated) {
-                if (replay.notes.Count < leaderboard.Difficulty.Notes && (leaderboard.Difficulty.Duration - endTime) > 1)
-                {
-                    return "Too few notes in the replay";
-                }
 
                 foreach (var note in replay.notes)
                 {
@@ -250,7 +253,7 @@ namespace BeatLeader_Server.Utils
             return null;
         }
 
-        public static (AccuracyTracker, List<NoteStruct>, int, int) Accuracy(Replay replay)
+        public static (AccuracyTracker, List<NoteStruct>, int, int?) Accuracy(Replay replay)
         {
             AccuracyTracker result = new AccuracyTracker();
             result.gridAcc = new List<float>(new float[12]);
@@ -412,7 +415,7 @@ namespace BeatLeader_Server.Utils
                 var ordered = group.OrderBy(g => g.time).ToList();
                 for (int i = 1; i < ordered.Count; i++)
                 {
-                    if ((ordered[i].time - ordered[i - 1].time) < 0.04) {
+                    if ((ordered[i].time - ordered[i - 1].time) < 0.01 && ordered[i].scoringType != ScoringType.BurstSliderElement && ordered[i - 1].scoringType != ScoringType.BurstSliderElement) {
                         potentiallyPoodle = true;
                         break;
                     }
@@ -464,7 +467,7 @@ namespace BeatLeader_Server.Utils
                     fcScore += maxCounter.Multiplier * note.score;
                 }
 
-                if (!potentiallyPoodle) {
+                if (!potentiallyPoodle && note.scoringType != ScoringType.BurstSliderElement) {
                     if (note.score == 115) {
                         streak++;
                     } else if (note.isBlock) {
@@ -502,7 +505,7 @@ namespace BeatLeader_Server.Utils
             }
             result.fcAcc = currentFcAcc;
 
-            return (result, allStructs, maxCombo, maxStreak);
+            return (result, allStructs, maxCombo, potentiallyPoodle ? null : maxStreak);
         }
 
         public static ScoreGraphTracker ScoreGraph(List<NoteStruct> structs, int replayLength)

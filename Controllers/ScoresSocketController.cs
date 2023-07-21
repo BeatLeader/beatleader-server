@@ -138,7 +138,7 @@ namespace BeatLeader_Server.Controllers
                 if (scoreToPublish.Leaderboard.Song == null) {
                     scoreToPublish.Leaderboard.Song = await context.Songs.Where(s => s.Id == score.Leaderboard.SongId).FirstOrDefaultAsync();
                 }
-                if (scoreToPublish.Leaderboard.Difficulty != null && scoreToPublish.Leaderboard.Difficulty.Status.WithRating()) {
+                if (scoreToPublish.Leaderboard.Difficulty != null && !scoreToPublish.Leaderboard.Difficulty.Status.WithRating()) {
                     scoreToPublish.Leaderboard.HideRatings();
                 }
                 await PublishNewScore(scoreToPublish);
