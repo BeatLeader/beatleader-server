@@ -102,6 +102,18 @@ namespace BeatLeader_Server.Controllers
             return await Get(social.PlayerId, true);
         }
 
+        [HttpGet("~/player/beatsaver/{id}")]
+        public async Task<ActionResult<PlayerResponseFull>> GetBeatSaver(string id)
+        {
+            var social = _context.PlayerSocial.Where(s => s.Service == "BeatSaver" && s.UserId == id && s.PlayerId != null).FirstOrDefault();
+
+            if (social == null || social.PlayerId == null) {
+                return NotFound();
+            }
+
+            return await Get(social.PlayerId, true);
+        }
+
         [NonAction]
         public async Task<ActionResult<Player>> GetLazy(string id, bool addToBase = true)
         {
