@@ -27,11 +27,11 @@ public static partial class MapListUtils
             SortBy.TechRating => sequence.SortByTechRating(order, dateFrom, dateTo, searchId, currentPlayer),
             SortBy.ScoreTime  => sequence.SortByScoreTime(order, mytype, dateFrom, searchId, dateTo, currentPlayer?.Id),
             SortBy.PlayCount  => sequence.SortByPlayCount(order, dateFrom, dateTo, searchId),
-            SortBy.Voting     => sequence.SortByVoting(order, searchId),
-            SortBy.VoteCount  => sequence.SortByVoteCount(order, searchId),
-            SortBy.VoteRatio  => sequence.SortByVoteRatio(order, searchId),
-            SortBy.Duration   => sequence.SortByDuration(order, searchId),
-            _                 => sequence,
+            SortBy.Voting     => sequence.SortByVoting(order, dateFrom, dateTo, searchId),
+            SortBy.VoteCount  => sequence.SortByVoteCount(order, dateFrom, dateTo, searchId),
+            SortBy.VoteRatio  => sequence.SortByVoteRatio(order, dateFrom, dateTo, searchId),
+            SortBy.Duration   => sequence.SortByDuration(order, dateFrom, dateTo, searchId),
+            _                 => sequence.SortByName(order, dateFrom, dateTo, searchId),
         };
 
     private static IQueryable<Leaderboard> SortByTimestamp(this IQueryable<Leaderboard> sequence, Order order, Type type, int? dateFrom, int? dateTo, int? searchId) =>
@@ -151,24 +151,24 @@ public static partial class MapListUtils
         .OrderByDescending(l => searchId != null ? l.Song.Searches.FirstOrDefault(s => s.Id == searchId)!.Score : 0)
         .ThenOrder(order, leaderboard => leaderboard.Scores.Count(score => (dateFrom == null || score.Timepost >= dateFrom) && (dateTo == null || score.Timepost <= dateTo)));
 
-    private static IQueryable<Leaderboard> SortByVoting(this IQueryable<Leaderboard> sequence, Order order, int? searchId) => 
+    private static IQueryable<Leaderboard> SortByVoting(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo, int? searchId) => 
         sequence
         .OrderByDescending(l => searchId != null ? l.Song.Searches.FirstOrDefault(s => s.Id == searchId)!.Score : 0)
         .ThenOrder(order, leaderboard => leaderboard.PositiveVotes - leaderboard.NegativeVotes);
 
-    private static IQueryable<Leaderboard> SortByVoteCount(this IQueryable<Leaderboard> sequence, Order order, int? searchId) => 
+    private static IQueryable<Leaderboard> SortByVoteCount(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo, int? searchId) => 
         sequence
         .OrderByDescending(l => searchId != null ? l.Song.Searches.FirstOrDefault(s => s.Id == searchId)!.Score : 0)
         .ThenOrder(order, leaderboard => leaderboard.PositiveVotes + leaderboard.NegativeVotes);
 
-    private static IQueryable<Leaderboard> SortByVoteRatio(this IQueryable<Leaderboard> sequence, Order order, int? searchId) => 
+    private static IQueryable<Leaderboard> SortByVoteRatio(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo, int? searchId) => 
         sequence
         .Where(leaderboard => leaderboard.PositiveVotes > 0 || leaderboard.NegativeVotes > 0)
         .OrderByDescending(l => searchId != null ? l.Song.Searches.FirstOrDefault(s => s.Id == searchId)!.Score : 0)
         .ThenOrder(order, leaderboard => (int)(leaderboard.PositiveVotes / (leaderboard.PositiveVotes + leaderboard.NegativeVotes) * 100.0))
         .ThenOrder(order, leaderboard => leaderboard.PositiveVotes + leaderboard.NegativeVotes);
 
-    private static IQueryable<Leaderboard> SortByDuration(this IQueryable<Leaderboard> sequence, Order order, int? searchId) => 
+    private static IQueryable<Leaderboard> SortByDuration(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo, int? searchId) => 
         sequence
         .OrderByDescending(l => searchId != null ? l.Song.Searches.FirstOrDefault(s => s.Id == searchId)!.Score : 0)
         .ThenOrder(order, leaderboard => leaderboard.Song.Duration);
