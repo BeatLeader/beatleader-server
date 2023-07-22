@@ -27,10 +27,7 @@ namespace BeatLeader_Server.Utils
             config.GetValue<string>("S3AccessSecret"));
             return new AmazonS3Client(credentials, new AmazonS3Config
             {
-                // TODO: CHANGE BACK BEFORE PROD
-                RegionEndpoint = RegionEndpoint.USEast2
-                //ServiceURL = "https://" + config.GetValue<string>("S3AccountID") + ".r2.cloudflarestorage.com",
-                //ServiceURL = "https://0eabd091b5ad7e4a48bac26d0ed8a127.r2.cloudflarestorage.com/ssnowy-beatleader-testing",
+                ServiceURL = "https://" + config.GetValue<string>("S3AccountID") + ".r2.cloudflarestorage.com",
             });
         }
 
@@ -41,7 +38,7 @@ namespace BeatLeader_Server.Utils
                 {
                     InputStream = data,
                     Key = filename,
-                    BucketName = "ssnowy-beatleader-testing",
+                    BucketName = container.ToString(),
                     DisablePayloadSigning = true,
                     AutoCloseStream = false
                 };
