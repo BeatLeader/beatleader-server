@@ -1,4 +1,13 @@
 {
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "iisSettings": {
+    "windowsAuthentication": false,
+    "anonymousAuthentication": true,
+    "iisExpress": {
+      "applicationUrl": "http://localhost:9727",
+      "sslPort": 44313
+    }
+  },
   "profiles": {
     "BeatLeader_Server": {
       "commandName": "Project",
@@ -24,15 +33,6 @@
         "ASPNETCORE_URLS": "http://localhost:7040"
       },
       "distributionName": ""
-    }
-  },
-  "$schema": "https://json.schemastore.org/launchsettings.json",
-  "iisSettings": {
-    "windowsAuthentication": false,
-    "anonymousAuthentication": true,
-    "iisExpress": {
-      "applicationUrl": "http://localhost:9727",
-      "sslPort": 44313
     }
   }
 }

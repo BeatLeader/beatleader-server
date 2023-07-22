@@ -246,10 +246,7 @@ namespace BeatLeader_Server.Controllers
                 (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(ms);
                 fileName += extension;
 
-                // TODO: REVERT BEFORE PROD
-                await _assetsS3Client.UploadAsset(fileName, stream);
-                icon = (_environment.IsDevelopment() ? "https://ssnowy-beatleader-testing.s3.us-east-2.amazonaws.com/" : "https://cdn.assets.beatleader.xyz/") + fileName;
-                //icon = await _assetsS3Client.UploadAsset(fileName, stream);
+                icon = await _assetsS3Client.UploadAsset(fileName, stream);
             }
             catch (Exception e)
             {
@@ -437,10 +434,7 @@ namespace BeatLeader_Server.Controllers
                     (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(ms);
                     fileName += extension;
 
-                    // TODO: REVERT BEFORE PROD
-                    await _assetsS3Client.UploadAsset(fileName, stream);
-                    clan.Icon = (_environment.IsDevelopment() ? "https://ssnowy-beatleader-testing.s3.us-east-2.amazonaws.com/" : "https://cdn.assets.beatleader.xyz/") + fileName;
-                    //clan.Icon = await _assetsS3Client.UploadAsset(fileName, stream);
+                    clan.Icon = await _assetsS3Client.UploadAsset(fileName, stream);
                 }
             }
             catch (Exception)

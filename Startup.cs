@@ -243,8 +243,7 @@ namespace BeatLeader_Server {
 
             // TODO: REVERT BEFORE PROD (TIMEOUT OPTION)
             services.AddDbContext<AppContext>(options => { 
-                options.UseSqlServer(Configuration.GetValue<string>("DefaultConnection"), sqlServerOptions => sqlServerOptions.CommandTimeout(300));
-                
+                options.UseSqlServer(Configuration.GetValue<string>("DefaultConnection"));
                 options.UseOpenIddict();
             });
             services.AddDbContext<ReadAppContext>(options => options.UseSqlServer(Configuration.GetValue<string>("ReadOnlyConnection")));

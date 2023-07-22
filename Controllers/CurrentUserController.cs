@@ -361,11 +361,6 @@ namespace BeatLeader_Server.Controllers {
                 player.Avatar = await _s3Client.UploadAsset(fileName, stream);
             } catch { }
 
-            // TODO: REVERT BEFORE PROD (REMOVE)
-            if (fileName != null) {
-                player.Avatar = (_environment.IsDevelopment() ? "https://ssnowy-beatleader-testing.s3.us-east-2.amazonaws.com/" : "https://cdn.assets.beatleader.xyz/") + fileName;
-            }
-
             PatreonFeatures? features = player.PatreonFeatures;
             ProfileSettings? settings = player.ProfileSettings;
             if (features == null) {
