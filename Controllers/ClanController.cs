@@ -823,11 +823,10 @@ namespace BeatLeader_Server.Controllers
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            // TODO: REVERT BEFORE PROD
-            //if (!currentPlayer.Role.Contains("admin"))
-            //{
-            //    return Unauthorized();
-            //}
+            if (!currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
 
             // Recalculate Clan Ranking for all ranked maps - For testing
             try
@@ -859,11 +858,10 @@ namespace BeatLeader_Server.Controllers
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            // TODO: REVERT BEFORE PROD
-            //if (!currentPlayer.Role.Contains("admin"))
-            //{
-            //    return Unauthorized();
-            //}
+            if (!currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
 
             // Recalculate Clan Ranking for leaderboard with id == id
             try
