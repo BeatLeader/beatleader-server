@@ -1061,6 +1061,7 @@ namespace BeatLeader_Server.Controllers
                 .Include(l => l.Song)
                 .Include(l => l.Qualification)
                 .Include(l => l.Changes)
+                .Include(l => l.ClanRanking)
                 .FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             if (leaderboard != null)
@@ -1089,6 +1090,9 @@ namespace BeatLeader_Server.Controllers
                     NewType = type
                 };
                 leaderboard.Changes.Add(rankChange);
+
+                // Calculate clanRanking for this map because it has just been ranked
+                leaderboard.ClanRanking = _context.CalculateClanRanking(leaderboard);
 
                 bool updatePlaylists = (difficulty.Status == DifficultyStatus.ranked) != (rankability > 0); 
 
@@ -1182,6 +1186,8 @@ namespace BeatLeader_Server.Controllers
                 }
 
             }
+            // TODO: Do we need to add something here for calculating clan ranking?
+
             await _context.SaveChangesAsync();
             return Ok();
 

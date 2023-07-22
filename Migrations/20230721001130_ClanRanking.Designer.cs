@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20230721001130_ClanRanking")]
+    partial class ClanRanking
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -43,7 +46,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AccountLinks", (string)null);
+                    b.ToTable("AccountLinks");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.AccountLinkRequest", b =>
@@ -67,7 +70,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AccountLinkRequests", (string)null);
+                    b.ToTable("AccountLinkRequests");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Achievement", b =>
@@ -102,7 +105,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("Achievements", (string)null);
+                    b.ToTable("Achievements");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.AchievementDescription", b =>
@@ -126,7 +129,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AchievementDescriptions", (string)null);
+                    b.ToTable("AchievementDescriptions");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.AchievementLevel", b =>
@@ -171,7 +174,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("AchievementDescriptionId");
 
-                    b.ToTable("AchievementLevels", (string)null);
+                    b.ToTable("AchievementLevels");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.AuthID", b =>
@@ -184,7 +187,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AuthIDs", (string)null);
+                    b.ToTable("AuthIDs");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.AuthIP", b =>
@@ -204,7 +207,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AuthIPs", (string)null);
+                    b.ToTable("AuthIPs");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.AuthInfo", b =>
@@ -225,7 +228,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Auths", (string)null);
+                    b.ToTable("Auths");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Badge", b =>
@@ -254,7 +257,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("Badges", (string)null);
+                    b.ToTable("Badges");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Ban", b =>
@@ -285,7 +288,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Bans", (string)null);
+                    b.ToTable("Bans");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.BeatSaverLink", b =>
@@ -311,7 +314,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("BeatSaverLinks", (string)null);
+                    b.ToTable("BeatSaverLinks");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Clan", b =>
@@ -367,7 +370,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Clans", (string)null);
+                    b.ToTable("Clans");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ClanRanking", b =>
@@ -410,7 +413,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("LeaderboardId");
 
-                    b.ToTable("ClanRanking", (string)null);
+                    b.ToTable("ClanRanking");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.CountryChange", b =>
@@ -431,7 +434,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CountryChanges", (string)null);
+                    b.ToTable("CountryChanges");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.CountryChangeBan", b =>
@@ -451,7 +454,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CountryChangeBans", (string)null);
+                    b.ToTable("CountryChangeBans");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.CriteriaCommentary", b =>
@@ -490,7 +493,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("RankQualificationId");
 
-                    b.ToTable("CriteriaCommentary", (string)null);
+                    b.ToTable("CriteriaCommentary");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.CronTimestamps", b =>
@@ -506,7 +509,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("cronTimestamps", (string)null);
+                    b.ToTable("cronTimestamps");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.CustomMode", b =>
@@ -523,7 +526,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CustomModes", (string)null);
+                    b.ToTable("CustomModes");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.DifficultyDescription", b =>
@@ -621,7 +624,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("Status");
 
-                    b.ToTable("DifficultyDescription", (string)null);
+                    b.ToTable("DifficultyDescription");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.DiscordLink", b =>
@@ -647,7 +650,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("DiscordLinks", (string)null);
+                    b.ToTable("DiscordLinks");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.EventPlayer", b =>
@@ -691,7 +694,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("EventPlayer", (string)null);
+                    b.ToTable("EventPlayer");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.EventRanking", b =>
@@ -718,7 +721,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("EventRankings", (string)null);
+                    b.ToTable("EventRankings");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.FailedScore", b =>
@@ -800,7 +803,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("FailedScores", (string)null);
+                    b.ToTable("FailedScores");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Headset", b =>
@@ -821,7 +824,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Headsets", (string)null);
+                    b.ToTable("Headsets");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Leaderboard", b =>
@@ -885,7 +888,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("SongId");
 
-                    b.ToTable("Leaderboards", (string)null);
+                    b.ToTable("Leaderboards");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.LeaderboardChange", b =>
@@ -972,7 +975,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("OldModifiersRatingId");
 
-                    b.ToTable("LeaderboardChange", (string)null);
+                    b.ToTable("LeaderboardChange");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.LeaderboardGroup", b =>
@@ -985,7 +988,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("LeaderboardGroup", (string)null);
+                    b.ToTable("LeaderboardGroup");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.LoginAttempt", b =>
@@ -1008,7 +1011,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("LoginAttempts", (string)null);
+                    b.ToTable("LoginAttempts");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.LoginChange", b =>
@@ -1035,7 +1038,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("LoginChanges", (string)null);
+                    b.ToTable("LoginChanges");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ModifiersMap", b =>
@@ -1087,7 +1090,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("ModifierId");
 
-                    b.ToTable("Modifiers", (string)null);
+                    b.ToTable("Modifiers");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ModifiersRating", b =>
@@ -1145,7 +1148,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ModifiersRating", (string)null);
+                    b.ToTable("ModifiersRating");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.PatreonFeatures", b =>
@@ -1174,7 +1177,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("PatreonFeatures", (string)null);
+                    b.ToTable("PatreonFeatures");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.PatreonLink", b =>
@@ -1204,7 +1207,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("PatreonLinks", (string)null);
+                    b.ToTable("PatreonLinks");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Player", b =>
@@ -1294,7 +1297,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("ScoreStatsId");
 
-                    b.ToTable("Players", (string)null);
+                    b.ToTable("Players");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.PlayerChange", b =>
@@ -1330,7 +1333,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("PlayerChange", (string)null);
+                    b.ToTable("PlayerChange");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.PlayerFriends", b =>
@@ -1340,7 +1343,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Friends", (string)null);
+                    b.ToTable("Friends");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.PlayerLeaderboardStats", b =>
@@ -1377,7 +1380,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("LeaderboardId");
 
-                    b.ToTable("PlayerLeaderboardStats", (string)null);
+                    b.ToTable("PlayerLeaderboardStats");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.PlayerScoreStats", b =>
@@ -1523,7 +1526,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Stats", (string)null);
+                    b.ToTable("Stats");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.PlayerScoreStatsHistory", b =>
@@ -1668,7 +1671,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("PlayerScoreStatsHistory", (string)null);
+                    b.ToTable("PlayerScoreStatsHistory");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.PlayerSocial", b =>
@@ -1702,7 +1705,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("PlayerSocial", (string)null);
+                    b.ToTable("PlayerSocial");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Playlist", b =>
@@ -1731,7 +1734,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Playlists", (string)null);
+                    b.ToTable("Playlists");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ProfileSettings", b =>
@@ -1780,7 +1783,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ProfileSettings", (string)null);
+                    b.ToTable("ProfileSettings");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.QualificationChange", b =>
@@ -1863,7 +1866,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("RankQualificationId");
 
-                    b.ToTable("QualificationChange", (string)null);
+                    b.ToTable("QualificationChange");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.QualificationCommentary", b =>
@@ -1902,7 +1905,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("RankQualificationId");
 
-                    b.ToTable("QualificationCommentary", (string)null);
+                    b.ToTable("QualificationCommentary");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.QualificationVote", b =>
@@ -1939,7 +1942,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("RankQualificationId");
 
-                    b.ToTable("QualificationVote", (string)null);
+                    b.ToTable("QualificationVote");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.RankQualification", b =>
@@ -2013,7 +2016,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("ModifiersRatingId");
 
-                    b.ToTable("RankQualification", (string)null);
+                    b.ToTable("RankQualification");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.RankUpdate", b =>
@@ -2070,7 +2073,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("ModifiersRatingId");
 
-                    b.ToTable("RankUpdate", (string)null);
+                    b.ToTable("RankUpdate");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.RankUpdateChange", b =>
@@ -2135,7 +2138,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("RankUpdateId");
 
-                    b.ToTable("RankUpdateChange", (string)null);
+                    b.ToTable("RankUpdateChange");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.RankVoting", b =>
@@ -2173,7 +2176,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("ScoreId");
 
-                    b.ToTable("RankVotings", (string)null);
+                    b.ToTable("RankVotings");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ReplayOffsets", b =>
@@ -2201,7 +2204,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ReplayOffsets", (string)null);
+                    b.ToTable("ReplayOffsets");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ReplayWatchingSession", b =>
@@ -2223,7 +2226,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("WatchingSessions", (string)null);
+                    b.ToTable("WatchingSessions");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ReservedClanTag", b =>
@@ -2240,7 +2243,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ReservedTags", (string)null);
+                    b.ToTable("ReservedTags");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Score", b =>
@@ -2422,7 +2425,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("PlayerId", "Banned", "Qualification", "Pp");
 
-                    b.ToTable("Scores", (string)null);
+                    b.ToTable("Scores");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ScoreImprovement", b =>
@@ -2484,7 +2487,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ScoreImprovement", (string)null);
+                    b.ToTable("ScoreImprovement");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ScoreMetadata", b =>
@@ -2515,7 +2518,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ScoreMetadata", (string)null);
+                    b.ToTable("ScoreMetadata");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ScoreRedirect", b =>
@@ -2534,7 +2537,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ScoreRedirects", (string)null);
+                    b.ToTable("ScoreRedirects");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ScoreRemovalLog", b =>
@@ -2558,7 +2561,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ScoreRemovalLogs", (string)null);
+                    b.ToTable("ScoreRemovalLogs");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Song", b =>
@@ -2626,7 +2629,7 @@ namespace BeatLeader_Server.Migrations
                     b.HasIndex("Hash")
                         .IsUnique();
 
-                    b.ToTable("Songs", (string)null);
+                    b.ToTable("Songs");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.SongSearch", b =>
@@ -2650,7 +2653,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("SongId");
 
-                    b.ToTable("SongSearches", (string)null);
+                    b.ToTable("SongSearches");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.SurveyPassed", b =>
@@ -2674,7 +2677,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("SurveyResponses", (string)null);
+                    b.ToTable("SurveyResponses");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.TwitchLink", b =>
@@ -2700,7 +2703,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("TwitchLinks", (string)null);
+                    b.ToTable("TwitchLinks");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.TwitterLink", b =>
@@ -2726,7 +2729,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("TwitterLinks", (string)null);
+                    b.ToTable("TwitterLinks");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.User", b =>
@@ -2742,7 +2745,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.VRController", b =>
@@ -2763,7 +2766,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("VRControllers", (string)null);
+                    b.ToTable("VRControllers");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.VoterFeedback", b =>
@@ -2788,7 +2791,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("RankVotingScoreId");
 
-                    b.ToTable("VoterFeedback", (string)null);
+                    b.ToTable("VoterFeedback");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.YouTubeLink", b =>
@@ -2810,7 +2813,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("YouTubeLinks", (string)null);
+                    b.ToTable("YouTubeLinks");
                 });
 
             modelBuilder.Entity("ClanPlayer", b =>
@@ -2825,7 +2828,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("PlayersId");
 
-                    b.ToTable("ClanPlayer", (string)null);
+                    b.ToTable("ClanPlayer");
                 });
 
             modelBuilder.Entity("ClanUser", b =>
@@ -2840,7 +2843,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("BannedId");
 
-                    b.ToTable("ClanUser", (string)null);
+                    b.ToTable("ClanUser");
                 });
 
             modelBuilder.Entity("ClanUser1", b =>
@@ -2855,7 +2858,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("RequestsId");
 
-                    b.ToTable("ClanUser1", (string)null);
+                    b.ToTable("ClanUser1");
                 });
 
             modelBuilder.Entity("EventRankingLeaderboard", b =>
@@ -2870,7 +2873,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("LeaderboardsId");
 
-                    b.ToTable("EventRankingLeaderboard", (string)null);
+                    b.ToTable("EventRankingLeaderboard");
                 });
 
             modelBuilder.Entity("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreApplication", b =>
@@ -3086,7 +3089,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("PlayerFriendsId");
 
-                    b.ToTable("PlayerPlayerFriends", (string)null);
+                    b.ToTable("PlayerPlayerFriends");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Achievement", b =>

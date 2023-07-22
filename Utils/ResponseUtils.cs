@@ -130,6 +130,8 @@ namespace BeatLeader_Server.Utils {
             public DifficultyDescription Difficulty { get; set; }
             public RankQualification? Qualification { get; set; }
             public RankUpdate? Reweight { get; set; }
+            public bool ClanRankingContested { get; set; }
+            public ClanRanking? ClanRanking { get; set; }
 
             public void HideRatings() {
                 this.Difficulty.AccRating = null;
@@ -153,6 +155,9 @@ namespace BeatLeader_Server.Utils {
             public float Pp { get; set; }
             public float AverageRank { get; set; }
             public float AverageAccuracy { get; set; }
+
+            public float RankedPoolPercentCaptured { get; set; }
+            public ICollection<Leaderboard> CapturedLeaderboards { get; set; } = new List<Leaderboard>();
 
             public ICollection<string> Players { get; set; } = new List<string>();
             public ICollection<string> PendingInvites { get; set; } = new List<string>();
@@ -224,7 +229,10 @@ namespace BeatLeader_Server.Utils {
             public IEnumerable<LeaderboardGroupEntry>? LeaderboardGroup { get; set; }
             public int Plays { get; set; }
 
-            public void HideRatings() {
+            public ICollection<ClanRankingResponse>? ClanRanking { get; set; }
+            public bool ClanRankingContested { get; set; }
+            public void HideRatings()
+            {
                 this.Difficulty.AccRating = null;
                 this.Difficulty.TechRating = null;
                 this.Difficulty.PassRating = null;
@@ -232,6 +240,21 @@ namespace BeatLeader_Server.Utils {
 
                 this.Difficulty.ModifiersRating = null;
             }
+        }
+
+        public class ClanRankingResponse
+        {
+            public int Id { get; set; }
+            public Clan Clan { get; set; }
+            public string LastUpdateTime { get; set; }
+            public int ClanRank { get; set; }
+            public float ClanAverageRank { get; set; }
+            public float ClanPP { get; set; }
+            public float ClanAverageAccuracy { get; set; }
+            public float ClanTotalScore { get; set; }
+            public string LeaderboardId { get; set; }
+            public Leaderboard Leaderboard { get; set; }
+            public ICollection<ScoreResponse> AssociatedScores { get; set; }
         }
 
         public class LeaderboardGroupEntry {
@@ -262,7 +285,9 @@ namespace BeatLeader_Server.Utils {
             public int StarVotes { get; set; }
             public int NegativeVotes { get; set; }
             public float VoteStars { get; set; }
+            public bool ClanRankingContested { get; set; }
 
+            public ClanRanking? ClanRanking { get; set; }
             public ScoreResponseWithAcc? MyScore { get; set; }
             public RankQualification? Qualification { get; set; }
             public RankUpdate? Reweight { get; set; }
