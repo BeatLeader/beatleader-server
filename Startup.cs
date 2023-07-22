@@ -241,7 +241,6 @@ namespace BeatLeader_Server {
                 options.SuppressXFrameOptionsHeader = false;
             });
 
-            // TODO: REVERT BEFORE PROD (TIMEOUT OPTION)
             services.AddDbContext<AppContext>(options => { 
                 options.UseSqlServer(Configuration.GetValue<string>("DefaultConnection"));
                 options.UseOpenIddict();
