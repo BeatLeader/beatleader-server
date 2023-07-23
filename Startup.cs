@@ -243,6 +243,7 @@ namespace BeatLeader_Server {
 
             services.AddDbContext<AppContext>(options => { 
                 options.UseSqlServer(Configuration.GetValue<string>("DefaultConnection"));
+
                 options.UseOpenIddict();
             });
             services.AddDbContext<ReadAppContext>(options => options.UseSqlServer(Configuration.GetValue<string>("ReadOnlyConnection")));
