@@ -1167,33 +1167,6 @@ namespace BeatLeader_Server.Controllers
         }
 
         [Authorize]
-        [HttpPost("~/rankabunch/")]
-        public async Task<ActionResult> SetStarValues([FromBody] Dictionary<string, float> values) {
-            string? userId = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(userId);
-
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
-
-            var allKeys = values.Keys.Select(k => k.Split(",").First());
-            var leaderboards = _context.Leaderboards.Where(lb => allKeys.Contains(lb.Song.Hash.ToUpper())).Include(lb => lb.Song).Include(lb => lb.Difficulty).ToList();
-            foreach (var lb in leaderboards)
-            {
-                if (lb.Difficulty.Status == DifficultyStatus.ranked && values.ContainsKey(lb.Song.Hash.ToUpper() + "," + lb.Difficulty.DifficultyName + "," + lb.Difficulty.ModeName)) {
-                    lb.Difficulty.Stars = values[lb.Song.Hash.ToUpper() + "," + lb.Difficulty.DifficultyName + "," + lb.Difficulty.ModeName];
-                }
-
-            }
-            // TODO: Do we need to add something here for calculating clan ranking?
-
-            await _context.SaveChangesAsync();
-            return Ok();
-
-        }
-
-        [Authorize]
         [HttpGet("~/voting/spread")]
         public ActionResult<Dictionary<int, int>> Spread() {
             string? currentID = HttpContext.CurrentUserID(_readContext);

@@ -8,6 +8,7 @@ using System.Linq.Expressions;
 using BeatLeader_Server.Enums;
 using static BeatLeader_Server.Utils.ResponseUtils;
 using Type = BeatLeader_Server.Enums.Type;
+using System.Diagnostics.Eventing.Reader;
 
 namespace BeatLeader_Server.Controllers {
     public class LeaderboardController : Controller {
@@ -302,75 +303,101 @@ namespace BeatLeader_Server.Controllers {
                     score.Player = PostProcessSettings(score.Player);
                 }
 
-                // TODO: IS THIS THE RIGHT WAY TO DO THIS?
-                leaderboard.ClanRanking = currentContext
-                .ClanRanking
-                .Include(cr => cr.Clan)
-                .Where(cr => cr.LeaderboardId == leaderboard.Id)
-                .OrderByDescending(cr => cr.ClanPP)
-                .Skip((page - 1) * count)
-                .Take(count)
-                .Select(cr => new ClanRankingResponse
+                // clanRanking is set true when user clicks on the Clan Rankings tab on the website
+                if (clanRanking)
                 {
-                    Id = cr.Id,
-                    Clan = cr.Clan,
-                    LastUpdateTime = cr.LastUpdateTime,
-                    ClanRank = cr.ClanRank,
-                    ClanAverageRank = cr.ClanAverageRank,
-                    ClanPP = cr.ClanPP,
-                    ClanAverageAccuracy = cr.ClanAverageAccuracy,
-                    ClanTotalScore = cr.ClanTotalScore,
-                    LeaderboardId = cr.LeaderboardId,
-                    Leaderboard = cr.Leaderboard,
-                    AssociatedScores = currentContext
-                        .Scores
-                        .Where(s => s.LeaderboardId == leaderboard.Id && s.Player.Clans.Contains(cr.Clan))
-                        .Include(sc => sc.Player)
-                        .ThenInclude(p => p.ProfileSettings)
-                        .Include(s => s.Player)
-                        .ThenInclude(s => s.Clans)
-                        .OrderBy(s => s.Rank)
+                    leaderboard.ClanRanking = currentContext
+                        .ClanRanking
+                        .Include(cr => cr.Clan)
+                        .Where(cr => cr.LeaderboardId == leaderboard.Id)
+                        .OrderByDescending(cr => cr.Pp)
                         .Skip((page - 1) * count)
                         .Take(count)
-                        .Select(s => new ScoreResponse
+                        .Select(cr => new ClanRankingResponse
                         {
-                            Id = s.Id,
-                            BaseScore = s.BaseScore,
-                            ModifiedScore = s.ModifiedScore,
-                            PlayerId = s.PlayerId,
-                            Accuracy = s.Accuracy,
-                            Pp = s.Pp,
-                            Rank = s.Rank,
-                            Modifiers = s.Modifiers,
-                            BadCuts = s.BadCuts,
-                            MissedNotes = s.MissedNotes,
-                            BombCuts = s.BombCuts,
-                            WallsHit = s.WallsHit,
-                            Pauses = s.Pauses,
-                            FullCombo = s.FullCombo,
-                            Timeset = s.Timeset,
-                            Timepost = s.Timepost,
-                            Player = new PlayerResponse
-                            {
-                                Id = s.Player.Id,
-                                Name = s.Player.Name,
-                                Avatar = s.Player.Avatar,
-                                Country = s.Player.Country,
+                            Id = cr.Id,
+                            Clan = cr.Clan,
+                            LastUpdateTime = cr.LastUpdateTime,
+                            AverageRank = cr.AverageRank,
+                            Pp = cr.Pp,
+                            AverageAccuracy = cr.AverageAccuracy,
+                            TotalScore = cr.TotalScore,
+                            LeaderboardId = cr.LeaderboardId,
+                            Leaderboard = cr.Leaderboard,
+                            AssociatedScores = currentContext
+                                .Scores
+                                .Where(s => s.LeaderboardId == leaderboard.Id && s.Player.Clans.Contains(cr.Clan))
+                                .Include(sc => sc.Player)
+                                .ThenInclude(p => p.ProfileSettings)
+                                .Include(s => s.Player)
+                                .ThenInclude(s => s.Clans)
+                                .OrderBy(s => s.Rank)
+                                .Skip((page - 1) * count)
+                                .Take(count)
+                                .Select(s => new ScoreResponse
+                                {
+                                    Id = s.Id,
+                                    BaseScore = s.BaseScore,
+                                    ModifiedScore = s.ModifiedScore,
+                                    PlayerId = s.PlayerId,
+                                    Accuracy = s.Accuracy,
+                                    Pp = s.Pp,
+                                    Rank = s.Rank,
+                                    Modifiers = s.Modifiers,
+                                    BadCuts = s.BadCuts,
+                                    MissedNotes = s.MissedNotes,
+                                    BombCuts = s.BombCuts,
+                                    WallsHit = s.WallsHit,
+                                    Pauses = s.Pauses,
+                                    FullCombo = s.FullCombo,
+                                    Timeset = s.Timeset,
+                                    Timepost = s.Timepost,
+                                    Player = new PlayerResponse
+                                    {
+                                        Id = s.Player.Id,
+                                        Name = s.Player.Name,
+                                        Avatar = s.Player.Avatar,
+                                        Country = s.Player.Country,
 
-                                Pp = s.Player.Pp,
-                                Rank = s.Player.Rank,
-                                CountryRank = s.Player.CountryRank,
-                                Role = s.Player.Role,
-                                ProfileSettings = s.Player.ProfileSettings,
-                                Clans = s.Player.Clans
-                                    .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                            },
-                            RankVoting = showVoters ? s.RankVoting : null,
+                                        Pp = s.Player.Pp,
+                                        Rank = s.Player.Rank,
+                                        CountryRank = s.Player.CountryRank,
+                                        Role = s.Player.Role,
+                                        ProfileSettings = s.Player.ProfileSettings,
+                                        Clans = s.Player.Clans
+                                            .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                                    },
+                                    RankVoting = showVoters ? s.RankVoting : null,
+                                })
+                                .ToList(),
                         })
-                        .ToList(),
-                })
-                .ToList();
+                        .ToList();
+                } else
+                {
+                    // Required for the leaderboard header on the website to declare who has captured the leaderboard
+                    leaderboard.ClanRanking = currentContext
+                        .ClanRanking
+                        .Include(cr => cr.Clan)
+                        .Where(cr => cr.LeaderboardId == leaderboard.Id)
+                        .OrderByDescending(cr => cr.Pp)
+                        .Take(1)
+                        .Select(cr => new ClanRankingResponse
+                        {
+                            Id = cr.Id,
+                            Clan = cr.Clan,
+                            LastUpdateTime = cr.LastUpdateTime,
+                            AverageRank = cr.AverageRank,
+                            Pp = cr.Pp,
+                            AverageAccuracy = cr.AverageAccuracy,
+                            TotalScore = cr.TotalScore,
+                            LeaderboardId = cr.LeaderboardId,
+                            Leaderboard = cr.Leaderboard,
+                            AssociatedScores = null
+                        })
+                        .ToList();
+                }
             }
+
 
             if (leaderboard == null) {
                 Song? song = currentContext.Songs.Include(s => s.Difficulties).FirstOrDefault(s => s.Difficulties.FirstOrDefault(d => s.Id + d.Value + d.Mode == id) != null);

@@ -469,6 +469,38 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpPut("~/admin/refreshClanRankings")]
+        public async Task<ActionResult> RefreshClanRankings()
+        {
+            // RecalculateClanRankings: Http Put endpoint that recalculates the clan rankings for all ranked leaderboards.
+
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (!currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            try
+            {
+                var leaderboardsRecalc = _context
+                    .Leaderboards
+                    .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
+                    .Include(lb => lb.ClanRanking)
+                    .ToList();
+                leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+
+            await _context.BulkSaveChangesAsync();
+
+            return Ok();
+        }
+
         [HttpPost("~/admin/ban/countrychanges")]
         public async Task<ActionResult> BanCountrychanges([FromQuery] string playerId)
         {

@@ -9,7 +9,7 @@ namespace BeatLeader_Server.Utils
         public int numberOfScores;
         public float weight;
         public int lastUpdateTime;
-        public float clanPP;
+        public float Pp;
         public float totalAcc;
         public int totalRank;
         public int totalScore;
@@ -19,7 +19,7 @@ namespace BeatLeader_Server.Utils
             int numberOfScores,
             float weight,
             int lastUpdateTime,
-            float clanPP,
+            float Pp,
             float totalAcc,
             int totalRank,
             int totalScore,
@@ -28,7 +28,7 @@ namespace BeatLeader_Server.Utils
             this.numberOfScores = numberOfScores;
             this.weight = weight;
             this.lastUpdateTime = lastUpdateTime;
-            this.clanPP = clanPP;
+            this.Pp = Pp;
             this.totalAcc = totalAcc;
             this.totalRank = totalRank;
             this.totalScore = totalScore;
@@ -51,7 +51,7 @@ namespace BeatLeader_Server.Utils
             return resultPP;
         }
 
-        public static ICollection<ClanRanking> CalculateClanRanking(this AppContext context, Leaderboard leaderboard)
+        public static ICollection<ClanRanking>? CalculateClanRanking(this AppContext context, Leaderboard? leaderboard)
         {
             // CalculateClanRanking: Function that calculates the clanRanking given a leaderboard
             // This function is called on relevant leaderboards whenever a user sets a new score, a clan is created, a user leaves a clan,
@@ -86,8 +86,8 @@ namespace BeatLeader_Server.Utils
                         // Update the data already in the newClanRankingData dictionary
                         newClanRankingData[clan].numberOfScores = newClanRankingData[clan].numberOfScores + 1;
                         newClanRankingData[clan].weight = MathF.Pow(0.8f, newClanRankingData[clan].weight);
-                        newClanRankingData[clan].lastUpdateTime = Math.Max(Int32.Parse(score.Timeset), newClanRankingData[clan].lastUpdateTime);
-                        newClanRankingData[clan].clanPP = newClanRankingData[clan].clanPP + (score.Pp * newClanRankingData[clan].weight);
+                        newClanRankingData[clan].lastUpdateTime = Math.Max(score.Timepost, newClanRankingData[clan].lastUpdateTime);
+                        newClanRankingData[clan].Pp = newClanRankingData[clan].Pp + (score.Pp * newClanRankingData[clan].weight);
                         newClanRankingData[clan].totalAcc = newClanRankingData[clan].totalAcc + score.Accuracy;
                         newClanRankingData[clan].totalRank = newClanRankingData[clan].totalRank + score.Rank;
                         newClanRankingData[clan].totalScore = newClanRankingData[clan].totalScore + score.ModifiedScore;
@@ -98,7 +98,7 @@ namespace BeatLeader_Server.Utils
                         newClanRankingData.Add(clan, new ClanRankingData(
                             1,
                             1.0f,
-                            Int32.Parse(score.Timeset),
+                            score.Timepost,
                             score.Pp,
                             score.Accuracy,
                             score.Rank,
@@ -124,17 +124,17 @@ namespace BeatLeader_Server.Utils
             if (!newClanRankingData.IsNullOrEmpty())
             {
                 // Sort newClanRankingData and clanRanking by PP
-                newClanRankingData = newClanRankingData.OrderByDescending(x => x.Value.clanPP).ToDictionary(x => x.Key, x => x.Value);
+                newClanRankingData = newClanRankingData.OrderByDescending(x => x.Value.Pp).ToDictionary(x => x.Key, x => x.Value);
                 leaderboard.ClanRanking ??= new List<ClanRanking>();
                 var clanRanking = leaderboard.ClanRanking;
 
                 if (clanRanking.Count != 0)
                 {
-                    clanRanking = clanRanking.OrderByDescending(cr => cr.ClanPP).ToList();
+                    clanRanking = clanRanking.OrderByDescending(cr => cr.Pp).ToList();
                     var prevCaptor = clanRanking.First().Clan;
 
                     // If we are introducing a tie, remove captor from the clanRanking, if there is one
-                    if (newClanRankingData.Count > 1 && newClanRankingData.ElementAt(0).Value.clanPP == newClanRankingData.ElementAt(1).Value.clanPP)
+                    if (newClanRankingData.Count > 1 && newClanRankingData.ElementAt(0).Value.Pp == newClanRankingData.ElementAt(1).Value.Pp)
                     {
                         // The reason this has to be in a loop is because of n-way ties.
                         // If an n-way tie existed in the clanRanking, the previous captor could be anywhere in the clanRanking list.
@@ -168,7 +168,7 @@ namespace BeatLeader_Server.Utils
                 {
                     // If clanRanking was empty:
                     // Empty --> Tie : Set leaderboard as contested
-                    if (newClanRankingData.Count > 1 && newClanRankingData.ElementAt(0).Value.clanPP == newClanRankingData.ElementAt(1).Value.clanPP) {
+                    if (newClanRankingData.Count > 1 && newClanRankingData.ElementAt(0).Value.Pp == newClanRankingData.ElementAt(1).Value.Pp) {
                         leaderboard.ClanRankingContested = true;
                     } 
                     else
@@ -180,36 +180,32 @@ namespace BeatLeader_Server.Utils
 
                 // Recalculate pp on clans
                 // TODO : Maybe have function that only needs to do these operations for the clans affected by a new score set?
-                int clanRankCounter = 1;
                 foreach (var clan in newClanRankingData)
                 {
                     var updateClan = clanRanking.Where(cr => cr.Clan == clan.Key).FirstOrDefault();
                     if (updateClan != null)
                     {
-                        updateClan.LastUpdateTime = clan.Value.lastUpdateTime.ToString();
-                        updateClan.ClanPP = clan.Value.clanPP;
-                        updateClan.ClanRank = clanRankCounter;
-                        updateClan.ClanAverageRank = clan.Value.totalRank / clan.Value.numberOfScores;
-                        updateClan.ClanAverageAccuracy = clan.Value.totalAcc / clan.Value.numberOfScores;
-                        updateClan.ClanTotalScore = clan.Value.totalScore;
+                        updateClan.LastUpdateTime = clan.Value.lastUpdateTime;
+                        updateClan.Pp = clan.Value.Pp;
+                        updateClan.AverageRank = clan.Value.totalRank / clan.Value.numberOfScores;
+                        updateClan.AverageAccuracy = clan.Value.totalAcc / clan.Value.numberOfScores;
+                        updateClan.TotalScore = clan.Value.totalScore;
                         updateClan.AssociatedScores = clan.Value.Scores;
                     }
                     else
                     {
                         clanRanking.Add(new ClanRanking { 
                             Clan = clan.Key,
-                            LastUpdateTime = clan.Value.lastUpdateTime.ToString(),
-                            ClanPP = clan.Value.clanPP,
-                            ClanRank = clanRankCounter,
-                            ClanAverageRank = clan.Value.totalRank / clan.Value.numberOfScores,
-                            ClanAverageAccuracy = clan.Value.totalAcc / clan.Value.numberOfScores,
-                            ClanTotalScore = clan.Value.totalScore,
+                            LastUpdateTime = clan.Value.lastUpdateTime,
+                            Pp = clan.Value.Pp,
+                            AverageRank = clan.Value.totalRank / clan.Value.numberOfScores,
+                            AverageAccuracy = clan.Value.totalAcc / clan.Value.numberOfScores,
+                            TotalScore = clan.Value.totalScore,
                             LeaderboardId = leaderboard.Id,
                             Leaderboard = leaderboard,
                             AssociatedScores = clan.Value.Scores
                         });
                     }
-                    clanRankCounter++;
                 }
             }
 
