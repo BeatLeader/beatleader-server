@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 ﻿using Amazon.S3;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
