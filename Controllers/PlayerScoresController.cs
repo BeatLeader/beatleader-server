@@ -144,25 +144,7 @@ namespace BeatLeader_Server.Controllers {
                         Timepost = s.Timepost,
                         LeaderboardId = s.LeaderboardId,
                         Platform = s.Platform,
-                        Player = new PlayerResponse {
-                            Id = s.Player.Id,
-                            Name = s.Player.Name,
-                            Platform = s.Player.Platform,
-                            Avatar = s.Player.Avatar,
-                            Country = s.Player.Country,
-
-                            Pp = s.Player.Pp,
-                            Rank = s.Player.Rank,
-                            CountryRank = s.Player.CountryRank,
-                            Role = s.Player.Role,
-                            Socials = s.Player.Socials,
-                            PatreonFeatures = s.Player.PatreonFeatures,
-                            ProfileSettings = s.Player.ProfileSettings,
-                            Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                        },
                         ScoreImprovement = s.ScoreImprovement,
-                        RankVoting = s.RankVoting,
-                        Metadata = s.Metadata,
                         Country = s.Country,
                         Offsets = s.ReplayOffsets,
                         Leaderboard = new LeaderboardResponse {
