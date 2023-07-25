@@ -608,6 +608,12 @@ namespace BeatLeader_Server.Controllers
                         case "weightedAcc":
                             request = request.Order(order, p => p.ScoreStats.AverageWeightedRankedAccuracy);
                             break;
+                        case "top1Count":
+                            request = request.Order(order, p => p.ScoreStats.RankedTop1Count);
+                            break;
+                        case "top1Score":
+                            request = request.Order(order, p => p.ScoreStats.RankedTop1Score);
+                            break;
                         case "weightedRank":
                             request = request
                                 .Where(p => p.ScoreStats != null && p.ScoreStats.AverageWeightedRankedRank != 0)
@@ -650,6 +656,12 @@ namespace BeatLeader_Server.Controllers
                                 .Order(order.Reverse(), p => Math.Round(p.ScoreStats.AverageUnrankedRank))
                                 .ThenOrder(order, p => p.ScoreStats.UnrankedPlayCount);
                             break;
+                        case "top1Count":
+                            request = request.Order(order, p => p.ScoreStats.UnrankedTop1Count);
+                            break;
+                        case "top1Score":
+                            request = request.Order(order, p => p.ScoreStats.UnrankedTop1Score);
+                            break;
                         case "acc":
                             request = request.Order(order, p => p.ScoreStats.AverageUnrankedAccuracy);
                             break;
@@ -689,6 +701,12 @@ namespace BeatLeader_Server.Controllers
                                 .Where(p => p.ScoreStats.AverageRank != 0)
                                 .Order(order.Reverse(), p => Math.Round(p.ScoreStats.AverageRank))
                                 .ThenOrder(order, p => p.ScoreStats.TotalPlayCount);
+                            break;
+                        case "top1Count":
+                            request = request.Order(order, p => p.ScoreStats.Top1Count);
+                            break;
+                        case "top1Score":
+                            request = request.Order(order, p => p.ScoreStats.Top1Score);
                             break;
                         case "acc":
                             request = request.Order(order, p => p.ScoreStats.AverageAccuracy);

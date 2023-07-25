@@ -989,7 +989,7 @@ namespace BeatLeader_Server.Controllers {
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin")) {
                 query = query.Where(t => t.PlayerId == id);
             } else {
-                query = query.OrderByDescending(s => s.FalsePositive ? 1 : 0);
+                query = query.OrderByDescending(s => s.FalsePositive ? 1 : 0).ThenBy(s => s.Timeset);
             }
 
             return new ResponseWithMetadata<FailedScore> {

@@ -179,6 +179,8 @@ namespace BeatLeader_Server.Controllers
                 scoreStats.MaxStreak = allScores.Max(s => s.MaxStreak) ?? 0;
                 scoreStats.AverageLeftTiming = allScores.Average(s => s.LeftTiming);
                 scoreStats.AverageRightTiming = allScores.Average(s => s.RightTiming);
+                scoreStats.Top1Count = allScores.Where(s => s.Rank == 1).Count();
+                scoreStats.Top1Score = allScores.Select(s => ReplayUtils.ScoreForRank(s.Rank)).Sum();
             } else {
                 scoreStats.TotalScore = 0;
                 scoreStats.AverageAccuracy = 0;
@@ -196,6 +198,8 @@ namespace BeatLeader_Server.Controllers
                 scoreStats.AverageUnrankedRank = unrankedScores.Average(s => (float)s.Rank);
                 scoreStats.LastUnrankedScoreTime = unrankedScores.MaxBy(s => s.Timeset).Timeset;
                 scoreStats.UnrankedMaxStreak = unrankedScores.Max(s => s.MaxStreak) ?? 0;
+                scoreStats.UnrankedTop1Count = unrankedScores.Where(s => s.Rank == 1).Count();
+                scoreStats.UnrankedTop1Score = unrankedScores.Select(s => ReplayUtils.ScoreForRank(s.Rank)).Sum();
             } else {
                 scoreStats.TotalUnrankedScore = 0;
                 scoreStats.AverageUnrankedAccuracy = 0;
@@ -259,6 +263,8 @@ namespace BeatLeader_Server.Controllers
                 scoreStats.AverageRankedRank = rankedScores.Average(s => (float)s.Rank);
                 scoreStats.LastRankedScoreTime = rankedScores.MaxBy(s => s.Timeset).Timeset;
                 scoreStats.RankedMaxStreak = rankedScores.Max(s => s.MaxStreak) ?? 0;
+                scoreStats.RankedTop1Count = rankedScores.Where(s => s.Rank == 1).Count();
+                scoreStats.RankedTop1Score = rankedScores.Select(s => ReplayUtils.ScoreForRank(s.Rank)).Sum();
 
                 scoreStats.SSPPlays = rankedScores.Count(s => s.Accuracy > 0.95);
                 scoreStats.SSPlays = rankedScores.Count(s => 0.9 < s.Accuracy && s.Accuracy < 0.95);
@@ -279,6 +285,8 @@ namespace BeatLeader_Server.Controllers
                 scoreStats.TopTechPP = 0;
                 scoreStats.AverageRankedRank = 0;
                 scoreStats.LastRankedScoreTime = 0;
+                scoreStats.RankedTop1Count = 0;
+                scoreStats.RankedTop1Score = 0;
                 
                 scoreStats.SSPPlays = 0;
                 scoreStats.SSPlays = 0;

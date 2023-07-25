@@ -693,6 +693,12 @@ namespace BeatLeader_Server.Controllers
                     {
                         player.ScoreStats.TopPp = resultScore.Pp;
                     }
+                    if (resultScore.Rank == 1 && (currentScore == null || currentScore.Rank != 1)) {
+                        player.ScoreStats.RankedTop1Count++;
+                        player.ScoreStats.Top1Count++;
+                    }
+                    player.ScoreStats.RankedTop1Score = ReplayUtils.UpdateRankScore(player.ScoreStats.RankedTop1Score, currentScore?.Rank, resultScore.Rank);
+                    player.ScoreStats.Top1Score = ReplayUtils.UpdateRankScore(player.ScoreStats.Top1Score, currentScore?.Rank, resultScore.Rank);
 
                     if (resultScore.BonusPp > player.ScoreStats.TopBonusPP)
                     {
@@ -730,6 +736,17 @@ namespace BeatLeader_Server.Controllers
                             player.ScoreStats.APlays++;
                             break;
                     }
+                } else {
+                    if (resultScore.Rank == 1 && (currentScore == null || currentScore.Rank != 1)) {
+                        player.ScoreStats.UnrankedTop1Count++;
+                        player.ScoreStats.Top1Count++;
+                    }
+                    player.ScoreStats.UnrankedTop1Score = ReplayUtils.UpdateRankScore(player.ScoreStats.UnrankedTop1Score, currentScore?.Rank, resultScore.Rank);
+                    player.ScoreStats.Top1Score = ReplayUtils.UpdateRankScore(player.ScoreStats.Top1Score, currentScore?.Rank, resultScore.Rank);
+                }
+
+                if (resultScore.Rank < 4) {
+                    await UpdateTop4(leaderboard.Id, leaderboard.Difficulty.Status == DifficultyStatus.ranked, player.Id);
                 }
             }
 
@@ -1123,6 +1140,44 @@ namespace BeatLeader_Server.Controllers
         {
         }
 
+        [NonAction]
+        private async Task UpdateTop4(
+            string leaderboardId, 
+            bool ranked,
+            string currentPlayerId) {
+
+            var scores = _context
+                .Scores
+                .Where(s => 
+                    s.LeaderboardId == leaderboardId && 
+                    (s.Rank == 2 || s.Rank == 3 || s.Rank == 4) &&
+                    s.PlayerId != currentPlayerId)
+                .Select(s => new {
+                    s.Rank,
+                    s.Player.ScoreStats
+                })
+                .ToList();
+            foreach (var score in scores) {
+                if (score.ScoreStats == null) continue;
+                var scoreStats = score.ScoreStats;
+                if (score.Rank == 2) {
+                    if (ranked) {
+                        scoreStats.RankedTop1Count--;
+                    } else {
+                        scoreStats.UnrankedTop1Count--;
+                    }
+                    scoreStats.Top1Count--;
+                }
+                if (ranked) {
+                    scoreStats.RankedTop1Score = ReplayUtils.UpdateRankScore(scoreStats.RankedTop1Score, score.Rank - 1, score.Rank);
+                } else {
+                    scoreStats.UnrankedTop1Score = ReplayUtils.UpdateRankScore(scoreStats.UnrankedTop1Score, score.Rank - 1, score.Rank);
+                }
+                scoreStats.Top1Score = ReplayUtils.UpdateRankScore(scoreStats.Top1Score, score.Rank - 1, score.Rank);
+            }
+
+            await _context.SaveChangesAsync();
+        }
 
         [NonAction]
         public DiscordWebhookClient? top1DSClient()
