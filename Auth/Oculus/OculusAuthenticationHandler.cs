@@ -151,7 +151,7 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
                 await Context.Response.WriteAsync("You can create only one account a day, sorry");
                 return AuthenticateResult.Fail("You can create only one account a day, sorry");
             }
-
+            
             authInfo = new AuthInfo
             {
                 Password = password,

@@ -431,8 +431,8 @@ namespace BeatLeader_Server.Utils
         }
 
         public static float GetTotalMultiplier(this ModifiersMap modifiersObject, string modifiers, bool speedModifiers)
-        {
-            float multiplier = 1;
+		{
+			float multiplier = 1;
 
             var modifiersMap = modifiersObject.ToDictionary<float>();
             foreach (var modifier in modifiersMap.Keys)
@@ -442,8 +442,9 @@ namespace BeatLeader_Server.Utils
                 if (modifiers.Contains(modifier)) { multiplier += modifiersMap[modifier]; }
             }
             
-            return multiplier;
-        }
+
+			return multiplier;
+		}
 
         public static float GetPositiveMultiplier(this ModifiersMap modifiersObject, string modifiers)
         {

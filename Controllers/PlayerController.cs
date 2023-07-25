@@ -146,10 +146,7 @@ namespace BeatLeader_Server.Controllers
                         (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(readStream);
                         fileName += extension;
 
-                        // TODO: REVERT BEFORE PROD
-                        await _assetsS3Client.UploadAsset(fileName, stream);
-                        player.Avatar = (_environment.IsDevelopment() ? "https://ssnowy-beatleader-testing.s3.us-east-2.amazonaws.com/" : "https://cdn.assets.beatleader.xyz/") + fileName;
-                        //player.Avatar = await _assetsS3Client.UploadAsset(fileName, stream);
+                        player.Avatar = await _assetsS3Client.UploadAsset(fileName, stream);
                     }
                 } else {
                     player = await GetPlayerFromBL(id);

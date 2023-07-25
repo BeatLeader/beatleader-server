@@ -12,7 +12,6 @@ namespace BeatLeader_Server.Models
         public Metadata Metadata { get; set; } = new Metadata();
         public IEnumerable<T> Data { get; set; } = new List<T>();
     }
-
     public class ResponseWithMetadataAndSelection<T>
     {
         public Metadata Metadata { get; set; } = new Metadata();

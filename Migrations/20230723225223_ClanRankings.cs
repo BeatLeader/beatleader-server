@@ -5,7 +5,7 @@
 namespace BeatLeader_Server.Migrations
 {
     /// <inheritdoc />
-    public partial class ClanRanking : Migration
+    public partial class ClanRankings : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -43,12 +43,11 @@ namespace BeatLeader_Server.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     ClanId = table.Column<int>(type: "int", nullable: false),
-                    LastUpdateTime = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    ClanRank = table.Column<int>(type: "int", nullable: false),
-                    ClanAverageRank = table.Column<float>(type: "real", nullable: false),
-                    ClanPP = table.Column<float>(type: "real", nullable: false),
-                    ClanAverageAccuracy = table.Column<float>(type: "real", nullable: false),
-                    ClanTotalScore = table.Column<float>(type: "real", nullable: false),
+                    LastUpdateTime = table.Column<int>(type: "int", nullable: false),
+                    AverageRank = table.Column<float>(type: "real", nullable: false),
+                    Pp = table.Column<float>(type: "real", nullable: false),
+                    AverageAccuracy = table.Column<float>(type: "real", nullable: false),
+                    TotalScore = table.Column<float>(type: "real", nullable: false),
                     LeaderboardId = table.Column<string>(type: "nvarchar(450)", nullable: false)
                 },
                 constraints: table =>

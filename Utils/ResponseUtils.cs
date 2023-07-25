@@ -246,15 +246,14 @@ namespace BeatLeader_Server.Utils {
         {
             public int Id { get; set; }
             public Clan Clan { get; set; }
-            public string LastUpdateTime { get; set; }
-            public int ClanRank { get; set; }
-            public float ClanAverageRank { get; set; }
-            public float ClanPP { get; set; }
-            public float ClanAverageAccuracy { get; set; }
-            public float ClanTotalScore { get; set; }
+            public int LastUpdateTime { get; set; }
+            public float AverageRank { get; set; }
+            public float Pp { get; set; }
+            public float AverageAccuracy { get; set; }
+            public float TotalScore { get; set; }
             public string LeaderboardId { get; set; }
             public Leaderboard Leaderboard { get; set; }
-            public ICollection<ScoreResponse> AssociatedScores { get; set; }
+            public ICollection<ScoreResponse>? AssociatedScores { get; set; }
         }
 
         public class LeaderboardGroupEntry {
@@ -286,7 +285,6 @@ namespace BeatLeader_Server.Utils {
             public int NegativeVotes { get; set; }
             public float VoteStars { get; set; }
             public bool ClanRankingContested { get; set; }
-
             public ClanRanking? ClanRanking { get; set; }
             public ScoreResponseWithAcc? MyScore { get; set; }
             public RankQualification? Qualification { get; set; }

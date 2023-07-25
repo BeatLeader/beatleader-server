@@ -45,7 +45,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? sortBy = null)
         {
             var sequence = _readContext.Clans.Include(cl => cl.CapturedLeaderboards).AsQueryable();
-            if (sortBy != null) {
+            if (sortBy != null)
+            {
                 sort = sortBy;
             }
             switch (sort)
@@ -246,10 +247,7 @@ namespace BeatLeader_Server.Controllers
                 (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(ms);
                 fileName += extension;
 
-                // TODO: REVERT BEFORE PROD
-                await _assetsS3Client.UploadAsset(fileName, stream);
-                icon = (_environment.IsDevelopment() ? "https://ssnowy-beatleader-testing.s3.us-east-2.amazonaws.com/" : "https://cdn.assets.beatleader.xyz/") + fileName;
-                //icon = await _assetsS3Client.UploadAsset(fileName, stream);
+                icon = await _assetsS3Client.UploadAsset(fileName, stream);
             }
             catch (Exception e)
             {
@@ -323,8 +321,8 @@ namespace BeatLeader_Server.Controllers
                 .Leaderboards
                 .Include(lb => lb.ClanRanking)
                 .ThenInclude(cr => cr.AssociatedScores)
-                .Where(lb => lb.ClanRanking != null ? 
-                lb.ClanRanking.Any(lbClan => lbClan.Clan.Tag == clan.Tag) && lb.Difficulty.Status == DifficultyStatus.ranked : 
+                .Where(lb => lb.ClanRanking != null ?
+                lb.ClanRanking.Any(lbClan => lbClan.Clan.Tag == clan.Tag) && lb.Difficulty.Status == DifficultyStatus.ranked :
                 lb.Difficulty.Status == DifficultyStatus.ranked)
                 .ToList();
 
@@ -337,7 +335,6 @@ namespace BeatLeader_Server.Controllers
                     .FirstOrDefault();
                 if (crToRemove != null)
                 {
-                    // Do we need to remove the clanRanking from both the leaderboard and the ClanRanking table?
                     leaderboard.ClanRanking?.Remove(crToRemove);
                     // Sever the relationship between clanRanking and scores, if we don't, deleting the clan throws an error
                     // https://learn.microsoft.com/en-us/ef/core/saving/cascade-delete
@@ -437,10 +434,7 @@ namespace BeatLeader_Server.Controllers
                     (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(ms);
                     fileName += extension;
 
-                    // TODO: REVERT BEFORE PROD
-                    await _assetsS3Client.UploadAsset(fileName, stream);
-                    clan.Icon = (_environment.IsDevelopment() ? "https://ssnowy-beatleader-testing.s3.us-east-2.amazonaws.com/" : "https://cdn.assets.beatleader.xyz/") + fileName;
-                    //clan.Icon = await _assetsS3Client.UploadAsset(fileName, stream);
+                    clan.Icon = await _assetsS3Client.UploadAsset(fileName, stream);
                 }
             }
             catch (Exception)
@@ -616,6 +610,17 @@ namespace BeatLeader_Server.Controllers
 
             clan.Pp = _context.RecalculateClanPP(clan.Id);
             await _context.SaveChangesAsync();
+
+            // Recalculate owning clan on leaderboards the clan owns if a user is kicked from the clan on any leaderboard where this user has a score
+            var leaderboardsRecalc = _context
+                .Leaderboards
+                .Include(lb => lb.ClanRanking)
+                .Include(lb => lb.Scores)
+                .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked && lb.Scores.Any(s => s.PlayerId == player))
+                .ToList();
+
+            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
+            await _context.BulkSaveChangesAsync();
 
             return Ok();
         }
@@ -814,79 +819,6 @@ namespace BeatLeader_Server.Controllers
 
             _context.ReservedTags.Remove(rt);
             await _context.SaveChangesAsync();
-
-            return Ok();
-        }
-
-        [HttpPut("~/clan/clanRankingAll")]
-        public async Task<ActionResult> RecalculateClanRankings()
-        {
-            /// <summary>
-            /// RecalculateClanRankings: Http Put endpoint that recalculates the clan rankings for all ranked leaderboards.
-            /// Only accessible to admins.
-            /// </summary>
-
-            string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
-
-            // TODO: REVERT BEFORE PROD
-            //if (!currentPlayer.Role.Contains("admin"))
-            //{
-            //    return Unauthorized();
-            //}
-
-            // Recalculate Clan Ranking for all ranked maps - For testing
-            try
-            {
-                var leaderboardsRecalc = _context
-                    .Leaderboards
-                    .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
-                    .Include(lb => lb.ClanRanking)
-                    .ToList();
-                leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
-            } catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
-
-            await _context.BulkSaveChangesAsync();
-
-            return Ok();
-        }
-
-        [HttpPut("~/clan/clanRankingSingle")]
-        public async Task<ActionResult> RecalculateClanRanking([FromQuery] string id)
-        {
-            /// <summary>
-            /// RecalculateClanRanking: Http Put endpoint that recalculates the clan rankings on a single leaderboard
-            /// Only accessible to admins.
-            /// </summary>
-
-            string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
-
-            // TODO: REVERT BEFORE PROD
-            //if (!currentPlayer.Role.Contains("admin"))
-            //{
-            //    return Unauthorized();
-            //}
-
-            // Recalculate Clan Ranking for leaderboard with id == id
-            try
-            {
-                var leaderboardsRecalc = _context
-                    .Leaderboards
-                    .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked && lb.Id == id)
-                    .Include(lb => lb.ClanRanking)
-                    .ToList();
-                leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
-
-            await _context.BulkSaveChangesAsync();
 
             return Ok();
         }

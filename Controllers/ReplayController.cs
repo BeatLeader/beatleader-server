@@ -330,10 +330,7 @@ namespace BeatLeader_Server.Controllers
 
                 string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsortemp";
 
-                // TODO: REVERT BEFORE PROD
-                resultScore.Replay = "https://ssnowy-beatleader-testing.s3.us-east-2.amazonaws.com/" + fileName;
-                await _s3Client.UploadReplay(fileName, replayData);
-                //resultScore.Replay = await _s3Client.UploadReplay(fileName, replayData);
+                resultScore.Replay = await _s3Client.UploadReplay(fileName, replayData);
 
                 FailedScore failedScore = new FailedScore {
                     Error = e.Message,

@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    [Migration("20230721001130_ClanRanking")]
-    partial class ClanRanking
+    [Migration("20230723225223_ClanRankings")]
+    partial class ClanRankings
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -381,31 +381,27 @@ namespace BeatLeader_Server.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<float>("ClanAverageAccuracy")
+                    b.Property<float>("AverageAccuracy")
                         .HasColumnType("real");
 
-                    b.Property<float>("ClanAverageRank")
+                    b.Property<float>("AverageRank")
                         .HasColumnType("real");
 
                     b.Property<int>("ClanId")
                         .HasColumnType("int");
 
-                    b.Property<float>("ClanPP")
-                        .HasColumnType("real");
-
-                    b.Property<int>("ClanRank")
+                    b.Property<int>("LastUpdateTime")
                         .HasColumnType("int");
-
-                    b.Property<float>("ClanTotalScore")
-                        .HasColumnType("real");
-
-                    b.Property<string>("LastUpdateTime")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("LeaderboardId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<float>("Pp")
+                        .HasColumnType("real");
+
+                    b.Property<float>("TotalScore")
+                        .HasColumnType("real");
 
                     b.HasKey("Id");
 
@@ -750,6 +746,9 @@ namespace BeatLeader_Server.Migrations
                     b.Property<string>("Error")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("FalsePositive")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("FullCombo")
                         .HasColumnType("bit");
