@@ -937,6 +937,79 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpGet("~/admin/removescoreduplicates/{id}")]
+        public async Task<ActionResult<ScoreStatistic?>> RemoveDuplicates(string id)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            Score? score = _context.Scores.Where(s => s.Id == Int64.Parse(id)).Include(s => s.Leaderboard).ThenInclude(l => l.Song).Include(s => s.Leaderboard).ThenInclude(l => l.Difficulty).FirstOrDefault();
+            if (score == null)
+            {
+                return NotFound("Score not found");
+            }
+
+            string fileName = score.Replay.Split("/").Last();
+            Replay? replay;
+
+            using (var replayStream = await _s3Client.DownloadReplay(fileName))
+            {
+                if (replayStream == null) return NotFound();
+
+                using (var ms = new MemoryStream(5))
+                {
+                    await replayStream.CopyToAsync(ms);
+                    long length = ms.Length;
+                    try
+                    {
+                        (replay, _) = ReplayDecoder.Decode(ms.ToArray());
+                    }
+                    catch (Exception)
+                    {
+                        return BadRequest("Error decoding replay");
+                    }
+                }
+            }
+
+            string? error = ReplayUtils.RemoveDuplicates(replay, score.Leaderboard);
+            if (error != null) {
+                return BadRequest("Failed to delete duplicate note: " + error);
+            }
+
+            ScoreStatistic? statistic = null;
+            try
+            {
+                (statistic, error) = ReplayStatisticUtils.ProcessReplay(replay, score.Leaderboard);
+                if (statistic == null && error != null) {
+                    return BadRequest(error);
+                }
+            } catch (Exception e) {
+                return BadRequest(e.ToString());
+            }
+
+            if (statistic.winTracker.totalScore == score.BaseScore) {
+                return BadRequest("Recalculated score is the same");
+            }
+
+            await _s3Client.UploadScoreStats(score.Id + ".json", statistic);
+
+            score.BaseScore = statistic.winTracker.totalScore;
+            score.Accuracy = statistic.scoreGraphTracker.graph.Last();
+
+            _context.SaveChanges();
+
+            HttpContext.Response.OnCompleted(async () => {
+                await _scoreRefreshController.RefreshScores(score.LeaderboardId);
+            });
+
+            return statistic;
+        }
+
         [NonAction]
         //[HttpPost("~/admin/cleandb")]
         public async Task<ActionResult> CleanDb()
