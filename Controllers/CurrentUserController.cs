@@ -303,6 +303,14 @@ namespace BeatLeader_Server.Controllers {
                 if (name != null) {
                     name = Regex.Replace(name, "<(/)?(align|alpha|color|b|i|cspace|font|indent|line-height|line-indent|link|lowercase|uppercase|smallcaps|margin|mark|mspace|noparse|nobr|page|pos|size|space|sprite|s|u|style|sub|sup|voffset|width)(.*?)>|<#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6}|[A-Fa-f0-9]{8})>", string.Empty);
 
+                    foreach (var superWideCharacter in new string[] { "FDFD", "1242B", "12219", "2E3B", "A9C5", "102A", "0BF5", "0BF8", "E0021" }) {
+                        int code = int.Parse(superWideCharacter, System.Globalization.NumberStyles.HexNumber);
+                        string unicodeString = char.ConvertFromUtf32(code);
+                        name = name.Replace(unicodeString, "");
+                    }
+
+                    name = name.Trim();
+
                     if (name.Length is < 3 or > 30) {
                         return BadRequest("Use name between the 3 and 30 symbols");
                     }

@@ -355,6 +355,7 @@ namespace BeatLeader_Server.Utils
             result.Name = playerInfo.personaname;
             result.Avatar = playerInfo.avatarfull;
             result.Platform = "steam";
+            result.SanitizeName();
             if (ExpandantoObject.HasProperty(playerInfo, "loccountrycode"))
             {
                 result.Country = playerInfo.loccountrycode;
@@ -378,6 +379,7 @@ namespace BeatLeader_Server.Utils
             result.Id = info.id;
             result.Platform = "oculuspc";
             result.Country = "not set";
+            result.SanitizeName();
             if (ExpandantoObject.HasProperty(info, "avatar_v2") && ExpandantoObject.HasProperty(info.avatar_v2, "avatar_image"))
             {
                 result.Avatar = info.avatar_v2.avatar_image.uri;
@@ -405,6 +407,7 @@ namespace BeatLeader_Server.Utils
             result.Country = "not set";
             result.Avatar = info.avatar;
             result.ExternalProfileUrl = bslink + "profile/" + playerID;
+            result.SanitizeName();
 
             return (result, ExpandantoObject.HasProperty(info, "verifiedMapper") && info.verifiedMapper);
         }

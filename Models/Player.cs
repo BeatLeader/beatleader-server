@@ -66,6 +66,20 @@ namespace BeatLeader_Server.Models {
             this.Avatar = "https://cdn.assets.beatleader.xyz/" + this.Platform + "avatar.png";
         }
 
+        public void SanitizeName() {
+            var characters = (new string[] { "FDFD", "1242B", "12219", "2E3B", "A9C5", "102A", "0BF5", "0BF8", "E0021" }).Select(
+                superWideCharacter => char.ConvertFromUtf32(int.Parse(superWideCharacter, System.Globalization.NumberStyles.HexNumber)))
+                .ToList();
+            Name = Name.Trim();
+            foreach (var character in characters) {
+                Name = Name.Replace(character, "");
+                if (Name.Replace(" ", "").Length == 0) {
+                    Random rnd = new Random();
+                    Name = "RenamedPlayer" + rnd.Next(1, 100);
+                }
+            }
+        }
+
         public static bool RoleIsAnySupporter(string role) {
             return role.Contains("tipper") ||
             role.Contains("supporter") ||

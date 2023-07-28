@@ -131,13 +131,15 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
                 await Context.Response.WriteAsync("User with such login already exists");
                 return AuthenticateResult.Fail("User with such login already exists");
             }
-            if (login.Trim().Length < 2)
+            login = login.Trim();
+            password = password.Trim();
+            if (login.Replace(" ", "").Length < 2)
             {
                 Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 await Context.Response.WriteAsync("Use two or more symbols for the login");
                 return AuthenticateResult.Fail("Use two or more symbols for the login");
             }
-            if (password.Trim().Length < 8)
+            if (password.Replace(" ", "").Length < 8)
             {
                 Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 await Context.Response.WriteAsync("Come on, type at least 8 symbols password");

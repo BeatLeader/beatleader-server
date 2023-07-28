@@ -251,6 +251,7 @@ namespace BeatLeader_Server.Controllers
                     player.Platform = info.platform;
                     player.ScoreStats = new PlayerScoreStats();
                     player.SetDefaultAvatar();
+                    player.SanitizeName();
 
                     _context.Players.Add(player);
 
