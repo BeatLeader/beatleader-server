@@ -386,6 +386,7 @@ namespace BeatLeader_Server.Controllers {
             public string Mode { get; set; }
             public string Modifiers { get; set; }
             public string SongName { get; set; }
+            public string Hash { get; set; }
             public string Mapper { get; set; }
             public float Acc { get; set; }
             public string Timeset { get; set; }
@@ -421,6 +422,7 @@ namespace BeatLeader_Server.Controllers {
                     LeaderboardId = s.Leaderboard.Id,
                     Diff = s.Leaderboard.Difficulty.DifficultyName,
                     SongName = s.Leaderboard.Song.Name,
+                    Hash = s.Leaderboard.Song.Hash,
                     Mapper = s.Leaderboard.Song.Author,
                     Mode = s.Leaderboard.Difficulty.ModeName,
                     Stars = s.Leaderboard.Difficulty.Stars,
