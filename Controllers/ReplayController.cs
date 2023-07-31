@@ -737,6 +737,11 @@ namespace BeatLeader_Server.Controllers
                             player.ScoreStats.APlays++;
                             break;
                     }
+
+                    if (currentScore != null) {
+                        player.ScoreStats.RankedImprovementsCount++;
+                        player.ScoreStats.TotalImprovementsCount++;
+                    }
                 } else {
                     if (resultScore.Rank == 1 && (currentScore == null || currentScore.Rank != 1)) {
                         player.ScoreStats.UnrankedTop1Count++;
@@ -744,6 +749,10 @@ namespace BeatLeader_Server.Controllers
                     }
                     player.ScoreStats.UnrankedTop1Score = ReplayUtils.UpdateRankScore(player.ScoreStats.UnrankedTop1Score, currentScore?.Rank, resultScore.Rank);
                     player.ScoreStats.Top1Score = ReplayUtils.UpdateRankScore(player.ScoreStats.Top1Score, currentScore?.Rank, resultScore.Rank);
+                    if (currentScore != null) {
+                        player.ScoreStats.UnrankedImprovementsCount++;
+                        player.ScoreStats.TotalImprovementsCount++;
+                    }
                 }
 
                 if (resultScore.Rank < 4) {
