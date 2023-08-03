@@ -41,7 +41,9 @@ namespace BeatLeader_Server.Controllers
         private FontFamily FontFamily;
         private FontFamily AudiowideFontFamily;
         private IReadOnlyList<FontFamily> FallbackFamilies;
-        private EmbedGenerator EmbedGenerator;
+
+        private EmbedGenerator _generalEmbedGenerator;
+        private EmbedGenerator _twitterEmbedGenerator;
 
         public PreviewController(
             AppContext context,
@@ -78,8 +80,21 @@ namespace BeatLeader_Server.Controllers
 
             FallbackFamilies = fallbackCollection.Families.ToList();
 
-            EmbedGenerator = new EmbedGenerator(
+            _generalEmbedGenerator = new EmbedGenerator(
                 new Size(500, 300),
+                StarImage,
+                AvatarMask,
+                AvatarShadow,
+                GradientMask,
+                GradientMaskBlurred,
+                CoverMask,
+                FinalMask,
+                FontFamily,
+                FallbackFamilies
+            );
+
+            _twitterEmbedGenerator = new EmbedGenerator(
+                new Size(512, 268),
                 StarImage,
                 AvatarMask,
                 AvatarShadow,
@@ -154,7 +169,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        private async Task<ActionResult> GetFromScore(ScoreSelect? score) {
+        private async Task<ActionResult> GetFromScore(ScoreSelect? score, bool twitter) {
             if (score == null)
             {
                 return NotFound();
@@ -176,7 +191,7 @@ namespace BeatLeader_Server.Controllers
             
             using (_serverTiming.TimeAction("generate"))
             {
-                result = await Task.Run(() => EmbedGenerator.Generate(
+                result = await Task.Run(() => (twitter ? _twitterEmbedGenerator : _generalEmbedGenerator).Generate(
                     score.PlayerName,
                     score.SongName,
                     (score.FullCombo ? "FC" : "") + (score.Modifiers.Length > 0 ? (score.FullCombo ? ", " : "") + String.Join(", ", score.Modifiers.Split(",")) : ""),
@@ -203,7 +218,7 @@ namespace BeatLeader_Server.Controllers
             {
                 try
                 {
-                    await _s3Client.UploadPreview(score.ScoreId + "-preview.png", ms);
+                    await _s3Client.UploadPreview($"{score.ScoreId}-{(twitter ? "twitter" : "")}preview.png", ms);
                 }
                 catch { }
             }
@@ -219,18 +234,19 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? difficulty = null, 
             [FromQuery] string? mode = null,
             [FromQuery] string? link = null,
-            [FromQuery] int? scoreId = null) {
+            [FromQuery] int? scoreId = null,
+            [FromQuery] bool twitter = false) {
 
             if (scoreId != null)
             {
-                var stream = await _s3Client.DownloadPreview(scoreId + "-preview.png");
+                var stream = await _s3Client.DownloadPreview($"{scoreId}-{(twitter ? "twitter" : "")}preview.png");
                 if (stream != null)
                 {
                     return File(stream, "image/png");
                 }
             }
             else if (link != null) {
-                return await GetLink(link);
+                return await GetLink(link, twitter);
             }
             else
             {
@@ -286,11 +302,11 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            return await GetFromScore(score);
+            return await GetFromScore(score, twitter);
         }
 
         [NonAction]
-        public async Task<ActionResult> GetLink(string link) {
+        public async Task<ActionResult> GetLink(string link, bool twitter) {
             ReplayInfo? info = null;
 
             if (!link.EndsWith("bsor")) {
@@ -347,7 +363,7 @@ namespace BeatLeader_Server.Controllers
             score.Accuracy = (float)info.score / score.Accuracy;
             score.Modifiers = info.modifiers;
 
-            return await GetFromScore(score);
+            return await GetFromScore(score, twitter);
         }
 
         [NonAction]
