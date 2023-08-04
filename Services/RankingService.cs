@@ -12,6 +12,7 @@ namespace BeatLeader_Server.Services
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly IConfiguration _configuration;
+        public static int RankedMapCount { get; private set; }
 
         public RankingService(
             IServiceScopeFactory serviceScopeFactory, 
@@ -23,6 +24,12 @@ namespace BeatLeader_Server.Services
         
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            // Calculate global initial ranked map count as of server start
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+                RankedMapCount = RefreshRankedMapCount(scope.ServiceProvider.GetRequiredService<AppContext>());
+            }
+
             do {
                 DateTime today = DateTime.Today;
                 int daysUntilFriday = ((int)DayOfWeek.Friday - (int)today.DayOfWeek + 7) % 7;
@@ -87,6 +94,13 @@ namespace BeatLeader_Server.Services
             }
 
             return (pp, ranks);
+        }
+
+        private int RefreshRankedMapCount(AppContext _context)
+        {
+            return _context
+                .Leaderboards
+                .Count(lb => lb.Difficulty.Status == DifficultyStatus.ranked);
         }
 
         private async Task RankMaps()
@@ -179,6 +193,7 @@ namespace BeatLeader_Server.Services
                         }
                     }
                 }
+                RankedMapCount = RefreshRankedMapCount(_context);
 
                 var _playerController = scope.ServiceProvider.GetRequiredService<PlayerRefreshController>();
                 await _playerController.RefreshRanks();

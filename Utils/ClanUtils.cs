@@ -1,4 +1,5 @@
 ﻿using BeatLeader_Server.Models;
+using BeatLeader_Server.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -61,7 +62,7 @@ namespace BeatLeader_Server.Utils
                 return null;
             }
 
-            // Calculate owning clan on this leaderboard
+            // Calculate clan captor on this leaderboard
             var newClanRankingData = new Dictionary<Clan, ClanRankingData>();
             var leaderboardClans =
                 context
@@ -234,14 +235,9 @@ namespace BeatLeader_Server.Utils
                 }
             }
 
-            // Calculate the number of ranked maps, I feel like this should be a static global or something
-            // We will use this to tell what % of the entire ranked map pool a clan has captured.
-            int rankedMapCount = context
-                .Leaderboards
-                .Include(lb => lb.Difficulty)
-                .Count(lb => lb.Difficulty.Status == DifficultyStatus.ranked);
-            if (rankedMapCount != 0) {
-                newClanRankingData.First().Key.RankedPoolPercentCaptured = (float)newClanRankingData.First().Key.CapturedLeaderboards?.Count / (float)rankedMapCount;
+            // Determine what % of the map pool this clan now owns
+            if (RankingService.RankedMapCount != 0) {
+                newClanRankingData.First().Key.RankedPoolPercentCaptured = (float)(newClanRankingData.First().Key.CapturedLeaderboards?.Count ?? 0) / RankingService.RankedMapCount;
             }
         }
 
