@@ -421,7 +421,8 @@ namespace BeatLeader_Server.Controllers
             var query = _context.Players
                 .OrderByDescending(p => p.Pp)
                 .Where(p => p.Pp != 0 && !p.Banned)
-                .Select(p => new { p.Id, p.Country });
+                .Select(p => new { p.Id, p.Country })
+                .ToList();
 
             var allPlayers = new List<Player>();
             await query.ParallelForEachAsync(async p => {

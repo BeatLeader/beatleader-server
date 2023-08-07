@@ -101,8 +101,8 @@ namespace BeatLeader_Server.Controllers
         {
             var newLeaderboard = await NewLeaderboard(newSong, baseSong, diff.DifficultyName, diff.ModeName);
             if (newLeaderboard != null && diff.Status != DifficultyStatus.ranked && diff.Status != DifficultyStatus.outdated) {
+                await RatingUtils.SetRating(newLeaderboard.Difficulty, newSong);
                 newLeaderboard.Difficulty.Status = diff.Status;
-                await RatingUtils.SetRating(diff, newSong);
                 newLeaderboard.Difficulty.Type = diff.Type;
                 newLeaderboard.Difficulty.NominatedTime = diff.NominatedTime;
                 newLeaderboard.Difficulty.ModifierValues = diff.ModifierValues;
@@ -289,16 +289,22 @@ namespace BeatLeader_Server.Controllers
                 .Songs
                 .Include(s => s.Difficulties)
                 .ThenInclude(d => d.ModifierValues)
+                .Include(s => s.Difficulties)
+                .ThenInclude(d => d.ModifiersRating)
                 .FirstOrDefault(i => i.Id == baseSongId);
             Song? oldSong = _context
                 .Songs
                 .Include(s => s.Difficulties)
                 .ThenInclude(d => d.ModifierValues)
+                .Include(s => s.Difficulties)
+                .ThenInclude(d => d.ModifiersRating)
                 .FirstOrDefault(i => i.Id == oldSongId);
             Song? newSong = _context
                 .Songs
                 .Include(s => s.Difficulties)
                 .ThenInclude(d => d.ModifierValues)
+                .Include(s => s.Difficulties)
+                .ThenInclude(d => d.ModifiersRating)
                 .FirstOrDefault(i => i.Id == newSongId);
 
             if (baseSong == null || oldSong == null || newSong == null) return NotFound();

@@ -26,7 +26,6 @@ namespace BeatLeader_Server.Bot
             await Client.StartAsync();
 
             Client.ReactionAdded += OnReactionAdded;
-            Client.ReactionRemoved += OnReactionRemoved;
 
             Client.UserUpdated += OnUserUpdated;
 
@@ -55,16 +54,6 @@ namespace BeatLeader_Server.Bot
                     var _rankController = scope.ServiceProvider.GetRequiredService<RankController>();
                     await _rankController.QualityUnnominate(qualification);
                 }
-            }
-        }
-
-        private async Task OnReactionRemoved(Cacheable<IUserMessage, ulong> message, Cacheable<IMessageChannel, ulong> channel, SocketReaction reaction) {
-            using (var scope = _serviceScopeFactory.CreateScope())
-            {
-                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
-                var _nominationForum = scope.ServiceProvider.GetRequiredService<NominationsForum>();
-
-                await _nominationForum.OnReactionRemoved(_context, message, channel, reaction);
             }
         }
     }

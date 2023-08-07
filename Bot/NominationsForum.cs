@@ -14,15 +14,10 @@ namespace BeatLeader_Server.Bot
         public const string NeutralEmoteName = "<:shrugge:1069820114326786079>";
         public const string NegativeEmoteName = "<:pepeNo:923357263157166110>";
 
-        public const string AgreeEmoteName = "<:Okayge:934225600896438292>";
-
         public const ulong NominationForumID = 1075436060139597886;
 
         public const ulong ReviewHubForumID = 1034817071894237194;
         public const ulong NQTRoleId = 1064783598206599258;
-
-        public const ulong ReviewSeekerMessageID = 1128760870000918619;
-        public const ulong ReviewSeekerRoleId = 1128065797126881280;
 
         private readonly RTNominationsForum _rtNominationsForum;
 
@@ -377,18 +372,9 @@ namespace BeatLeader_Server.Bot
                     ulong? userId = reaction.User.GetValueOrDefault()?.Id;
                     if (userId != null) {
                         var user = await ((IGuild)BotService.Client.GetGuild(BotService.BLServerID)).GetUserAsync(userId ?? 0, CacheMode.AllowDownload);
-                        if (message.Id == ReviewSeekerMessageID) {
-                            try {
-                                if (reaction.Emote.ToString() == AgreeEmoteName && !user.RoleIds.Contains(ReviewSeekerRoleId)) {
-                                    await user.AddRoleAsync(ReviewSeekerRoleId);
-                                }
-                            } catch (Exception ex) {
-                            }
-                        } else {
-                            if (!user.RoleIds.Contains(NQTRoleId)) {
-                                var fullmessage = await thread.GetMessageAsync(message.Id);
-                                await fullmessage.RemoveReactionAsync(reaction.Emote, user);
-                            }
+                        if (!user.RoleIds.Contains(NQTRoleId)) {
+                            var fullmessage = await thread.GetMessageAsync(message.Id);
+                            await fullmessage.RemoveReactionAsync(reaction.Emote, user);
                         }
                     }
                     return null;
@@ -412,31 +398,6 @@ namespace BeatLeader_Server.Bot
             }
 
             return null;
-        }
-
-        public async Task OnReactionRemoved(
-            AppContext context,
-            Cacheable<IUserMessage, ulong> message, 
-            Cacheable<IMessageChannel, ulong> channel, 
-            SocketReaction reaction)
-        {
-            SocketThreadChannel? thread;
-            if ((thread = await channel.GetOrDownloadAsync() as SocketThreadChannel) != null) {
-                if (ReviewHubForumID == thread.ParentChannel.Id) {
-                    ulong? userId = reaction.User.GetValueOrDefault()?.Id;
-                    if (userId != null) {
-                        var user = await ((IGuild)BotService.Client.GetGuild(BotService.BLServerID)).GetUserAsync(userId ?? 0, CacheMode.AllowDownload);
-                        if (message.Id == ReviewSeekerMessageID) {
-                            try {
-                                if (reaction.Emote.ToString() == AgreeEmoteName && user.RoleIds.Contains(ReviewSeekerRoleId)) {
-                                    await user.RemoveRoleAsync(ReviewSeekerRoleId);
-                                }
-                            } catch (Exception ex) {
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 }
