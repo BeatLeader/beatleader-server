@@ -380,7 +380,8 @@ namespace BeatLeader_Server.Utils {
                 RankVoting = s.RankVoting,
                 Metadata = s.Metadata,
                 Country = s.Country,
-                Offsets = s.ReplayOffsets
+                Offsets = s.ReplayOffsets,
+                MaxStreak = s.MaxStreak
             };
         }
 

@@ -19,14 +19,11 @@ namespace BeatLeader_Server.Controllers
     {
         private readonly AppContext _context;
         private readonly ReadAppContext _readContext;
-
-        private readonly NominationsForum _nominationsForum;
         private readonly RTNominationsForum _rtNominationsForum;
-        public SongController(AppContext context, ReadAppContext readContext, NominationsForum nominationsForum, RTNominationsForum rtNominationsForum)
+        public SongController(AppContext context, ReadAppContext readContext, RTNominationsForum rtNominationsForum)
         {
             _context = context;      
             _readContext = readContext;
-            _nominationsForum = nominationsForum;
             _rtNominationsForum = rtNominationsForum;
         }
 
@@ -112,14 +109,10 @@ namespace BeatLeader_Server.Controllers
             var oldLeaderboard = await _context.Leaderboards.Where(lb => lb.Id == oldLeaderboardId).Include(lb => lb.Qualification).FirstOrDefaultAsync();
 
             if (oldLeaderboard?.Qualification != null) {
-
                 newLeaderboard.Qualification = oldLeaderboard.Qualification;
                 newLeaderboard.NegativeVotes = oldLeaderboard.NegativeVotes;
                 newLeaderboard.PositiveVotes = oldLeaderboard.PositiveVotes;
-                if (oldLeaderboard.Qualification.DiscordChannelId.Length > 0) {
-                    await _nominationsForum.NominationReuploaded(_context, oldLeaderboard.Qualification, oldLeaderboardId);
-                }
-                if (oldLeaderboard.Qualification.DiscordRTChannelId.Length > 0) {
+                if (oldLeaderboard.Qualification.DiscordRTChannelId.Length > 0 && diff.Status.WithRating()) {
                     await _rtNominationsForum.NominationReuploaded(_context, oldLeaderboard.Qualification, oldLeaderboardId);
                 }
                 oldLeaderboard.Qualification = null;

@@ -154,6 +154,7 @@ namespace BeatLeader_Server.Bot
             if (channel != null) {
                 await channel.SendMessageAsync("**RANKED <a:saberege:961310724787929168> **");
                 await channel.ModifyAsync(props => {
+                    props.Archived = true;
                     props.AppliedTags = new List<ulong> { ForumChannel.Tags.First(t => t.Name == "Ranked").Id };
                 });
             }
@@ -230,6 +231,77 @@ namespace BeatLeader_Server.Bot
                 return;
             }
             await channel.DeleteMessageAsync(ulong.Parse(id));
+        }
+
+        public async Task<List<QualificationVote>> AddVote(
+            AppContext context,
+            RankQualification qualification,
+            Player player,
+            MapQuality vote) {
+            Leaderboard leaderboard = await context
+                .Leaderboards
+                .Include(lb => lb.Difficulty)
+                .Include(lb => lb.Song)
+                .FirstAsync(lb => lb.Qualification == qualification);
+
+            if (qualification.Votes == null) {
+                qualification.Votes = new List<QualificationVote>();
+            }
+
+            var qualificationVote = qualification.Votes.FirstOrDefault(v => v.PlayerId == player.Id);
+            if (qualificationVote == null) {
+                qualificationVote = new QualificationVote {
+                    PlayerId = player.Id,
+                    Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds
+                };
+                qualification.Votes.Add(qualificationVote);
+            } else if (qualificationVote.Value == vote) {
+                if (qualificationVote.Value == MapQuality.Good) {
+                    qualification.QualityVote--;
+                    leaderboard.PositiveVotes -= 8;
+                } else if (qualificationVote.Value == MapQuality.Bad) {
+                    qualification.QualityVote++;
+                    leaderboard.NegativeVotes -= 8;
+                }
+                qualification.Votes.Remove(qualificationVote);
+                if (qualificationVote.DiscordRTMessageId != null) {
+                    await VoteRemoved(qualification.DiscordRTChannelId, qualificationVote.DiscordRTMessageId);
+                }
+                qualificationVote = null;
+            } else {
+                if (qualificationVote.Value == MapQuality.Good) {
+                    qualification.QualityVote--;
+                    leaderboard.PositiveVotes -= 8;
+                } else if (qualificationVote.Value == MapQuality.Bad) {
+                    qualification.QualityVote++;
+                    leaderboard.NegativeVotes -= 8;
+                }
+                qualificationVote.Edited = true;
+                qualificationVote.EditTimeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+                if (qualificationVote.DiscordRTMessageId != null) {
+                    await VoteRemoved(qualification.DiscordRTChannelId, qualificationVote.DiscordRTMessageId);
+                }
+            }
+
+            if (qualificationVote != null) {
+                qualificationVote.Value = vote;
+
+                if (vote == MapQuality.Good) {
+                    qualification.QualityVote++;
+                    leaderboard.PositiveVotes += 8;
+                } else if (vote == MapQuality.Bad) {
+                    qualification.QualityVote--;
+                    leaderboard.NegativeVotes += 8;
+                }
+
+                if (qualification.DiscordRTChannelId.Length > 0) {
+                    qualificationVote.DiscordRTMessageId = await VoteAdded(qualification.DiscordRTChannelId, player, vote);
+                }
+            }
+
+            context.SaveChanges();
+
+            return qualification.Votes.ToList();
         }
     }
 }
