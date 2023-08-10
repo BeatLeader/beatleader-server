@@ -361,9 +361,15 @@ namespace BeatLeader_Server.Controllers
                 .Include(p => p.Clans)
                 .Include(p => p.ProfileSettings);
 
+            string? currentID = HttpContext.CurrentUserID(_context);
+            bool showBots = currentID != null ? _context
+                .Players
+                .Where(p => p.Id == currentID)
+                .Select(p => p.ProfileSettings != null ? p.ProfileSettings.ShowBots : false)
+                .FirstOrDefault() : false;
+
             if (banned != null) {
-                string userId = HttpContext.CurrentUserID(_readContext);
-                var player = await _readContext.Players.FindAsync(userId);
+                var player = await _readContext.Players.FindAsync(currentID);
                 if (player == null || !player.Role.Contains("admin"))
                 {
                     return NotFound();
@@ -373,7 +379,7 @@ namespace BeatLeader_Server.Controllers
 
                 request = request.Where(p => p.Banned == bannedUnwrapped);
             } else {
-                request = request.Where(p => !p.Banned || p.Bot);
+                request = request.Where(p => !p.Banned || ((showBots || search.Length > 0) && p.Bot));
             }
             if (countries.Length != 0)
             {
