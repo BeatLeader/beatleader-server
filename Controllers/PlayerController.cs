@@ -826,6 +826,20 @@ namespace BeatLeader_Server.Controllers
             };
         }
 
+        [HttpGet("~/players/count")]
+        public async Task<ActionResult<int>> Count([FromQuery] string? country, [FromQuery] bool includeBots = false) {
+
+            var query = _context.Players.AsQueryable();
+
+            if (country != null)
+                query = query.Where(p => p.Country == country);
+
+            if (!includeBots)
+                query = query.Where(p => !p.Bot);
+            
+            return Ok(await query.CountAsync());
+        }
+        
         [HttpPut("~/badge")]
         [Authorize]
         public async Task<ActionResult<Badge>> CreateBadge([FromQuery] string description, [FromQuery] string? link = null) {
