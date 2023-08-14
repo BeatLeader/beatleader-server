@@ -546,6 +546,9 @@ namespace BeatLeader_Server.Controllers {
 
             sequence = sequence
                 .Include(lb => lb.Difficulty)
+                .ThenInclude(d => d.ModifierValues)
+                .Include(lb => lb.Difficulty)
+                .ThenInclude(d => d.ModifiersRating)
                 .Include(lb => lb.Song)
                 .Include(lb => lb.Reweight);
 
@@ -553,10 +556,6 @@ namespace BeatLeader_Server.Controllers {
                 sequence = sequence
                     .Include(lb => lb.Qualification)
                     .ThenInclude(q => q.Votes);
-            } else if (type == Type.Ranking) {
-                sequence = sequence
-                    .Include(lb => lb.Difficulty)
-                    .ThenInclude(q => q.ModifierValues);
             }
 
             bool showPlays = sortBy == SortBy.PlayCount;
