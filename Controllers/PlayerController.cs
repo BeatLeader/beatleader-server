@@ -54,7 +54,7 @@ namespace BeatLeader_Server.Controllers
                         .Players
                         .Where(p => p.Id == userId)
                         .Include(p => p.ScoreStats)
-                        .Include(p => p.Badges)
+                        .Include(p => p.Badges.OrderBy(b => b.Timeset))
                         .Include(p => p.Clans)
                         .Include(p => p.PatreonFeatures)
                         .Include(p => p.ProfileSettings)
@@ -828,7 +828,12 @@ namespace BeatLeader_Server.Controllers
 
         [HttpPut("~/badge")]
         [Authorize]
-        public async Task<ActionResult<Badge>> CreateBadge([FromQuery] string description, [FromQuery] string? link = null) {
+        public async Task<ActionResult<Badge>> CreateBadge(
+                [FromQuery] string description, 
+                [FromQuery] string? link = null,
+                [FromQuery] string? image = null,
+                [FromQuery] int? timeset = null,
+                [FromQuery] string? playerId = null) {
             string currentId = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = _context.Players.Find(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
@@ -838,29 +843,36 @@ namespace BeatLeader_Server.Controllers
 
             Badge badge = new Badge {
                 Description = description,
-                Image = "",
-                Link = link
+                Image = image ?? "",
+                Link = link,
+                Timeset = timeset ?? (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds
             };
 
             _context.Badges.Add(badge);
             _context.SaveChanges();
 
-            string? fileName = null;
-            try
-            {
-                var ms = new MemoryStream(5);
-                await Request.Body.CopyToAsync(ms);
-                ms.Position = 0;
+            if (image == null) {
+                string? fileName = null;
+                try
+                {
+                    var ms = new MemoryStream(5);
+                    await Request.Body.CopyToAsync(ms);
+                    ms.Position = 0;
 
-                (string extension, MemoryStream stream) = ImageUtils.GetFormat(ms);
-                Random rnd = new Random();
-                fileName = "badge-" + badge.Id + "R" + rnd.Next(1, 50) + extension;
+                    (string extension, MemoryStream stream) = ImageUtils.GetFormat(ms);
+                    Random rnd = new Random();
+                    fileName = "badge-" + badge.Id + "R" + rnd.Next(1, 50) + extension;
 
-                badge.Image = await _assetsS3Client.UploadAsset(fileName, stream);
+                    badge.Image = await _assetsS3Client.UploadAsset(fileName, stream);
+                }
+                catch {}
             }
-            catch {}
 
             _context.SaveChanges();
+
+            if (playerId != null) {
+                await AddBadge(playerId, badge.Id);
+            }
 
             return badge;
         }
@@ -904,11 +916,13 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult<Player>> AddBadge(string playerId, int badgeId)
         {
-            string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = await _context.Players.FindAsync(currentId);
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
+            if (HttpContext != null) {
+                string currentId = HttpContext.CurrentUserID(_context);
+                Player? currentPlayer = await _context.Players.FindAsync(currentId);
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
             }
 
             Player? player = _context.Players.Include(p => p.Badges).FirstOrDefault(p => p.Id == playerId);
