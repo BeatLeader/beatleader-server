@@ -1,4 +1,5 @@
 ﻿using BeatLeader_Server.Models;
+using Newtonsoft.Json;
 
 namespace BeatLeader_Server.Utils {
     public class ResponseUtils {
@@ -94,6 +95,8 @@ namespace BeatLeader_Server.Utils {
             public int Timepost { get; set; }
             public int ReplaysWatched { get; set; }
             public int PlayCount { get; set; }
+            [JsonIgnore]
+            public int Priority { get; set; }
             public PlayerResponse? Player { get; set; }
             public ScoreImprovement? ScoreImprovement { get; set; }
             public RankVoting? RankVoting { get; set; }

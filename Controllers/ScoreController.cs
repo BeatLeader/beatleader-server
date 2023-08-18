@@ -630,6 +630,7 @@ namespace BeatLeader_Server.Controllers
                     Timeset = s.Timeset,
                     Timepost = s.Timepost,
                     Platform = s.Platform,
+                    Priority = s.Priority,
                     LeaderboardId = s.LeaderboardId,
                     Player = new PlayerResponse
                     {
@@ -670,6 +671,17 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
             }
+
+            resultList = (resultList.FirstOrDefault()?.Pp > 0 
+                        ? resultList
+                            .OrderByDescending(el => Math.Round(el.Pp, 2))
+                            .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                            .ThenBy(el => el.Timeset)
+                        : resultList
+                            .OrderBy(el => el.Priority)
+                            .ThenByDescending(el => el.ModifiedScore)
+                            .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                            .ThenBy(el => el.Timeset)).ToList();
 
             for (int i = 0; i < resultList.Count; i++)
             {

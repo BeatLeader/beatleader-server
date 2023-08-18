@@ -217,7 +217,16 @@ namespace BeatLeader_Server.Controllers {
                         scoreQuery = scoreQuery.Order(order, s => s.Pauses).ThenOrder(oppositeOrder, s => s.Rank);
                         break;
                     case "rank":
-                        scoreQuery = scoreQuery.Order(oppositeOrder, s => s.Rank);
+                        scoreQuery = leaderboard.Difficulty.Status.WithPP() 
+                                ? scoreQuery
+                                    .Order(order, el => Math.Round(el.Pp, 2))
+                                    .ThenOrder(order, el => Math.Round(el.Accuracy, 4))
+                                    .ThenOrder(oppositeOrder, el => el.Timeset)
+                                : scoreQuery
+                                    .Order(oppositeOrder, el => el.Priority)
+                                    .ThenOrder(order, el => el.ModifiedScore)
+                                    .ThenOrder(order, el => Math.Round(el.Accuracy, 4))
+                                    .ThenOrder(oppositeOrder, el => el.Timeset);
                         break;
                     case "maxStreak":
                         scoreQuery = scoreQuery.Order(order, s => s.MaxStreak).ThenOrder(oppositeOrder, s => s.Rank);
