@@ -301,7 +301,8 @@ namespace BeatLeader_Server {
                 if (Configuration.GetValue<string>("ServicesHost") == "YES")
                 {
                     services.AddHostedService<HourlyRefresh>();
-                    services.AddHostedService<DailyService>();
+                    services.AddHostedService<DailyRefresh>();
+                    services.AddHostedService<HistoryService>();
                     services.AddHostedService<RankingService>();
                     services.AddHostedService<BotService>();
                 }
