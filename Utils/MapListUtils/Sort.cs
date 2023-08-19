@@ -40,6 +40,7 @@ public static partial class MapListUtils
             Type.Nominated => sequence.SortByNominated(order, dateFrom, dateTo, searchId),
             Type.Qualified => sequence.SortByQualified(order, dateFrom, dateTo, searchId),
             Type.Ranking   => sequence.SortByRanking(dateFrom, dateTo, searchId),
+            Type.Ranked    => sequence.SortByRanked(order, dateFrom, dateTo, searchId),
             _ => sequence.SortByDate(order, dateFrom, dateTo, searchId),
         };
 
@@ -50,6 +51,10 @@ public static partial class MapListUtils
     private static IOrderedQueryable<Leaderboard> SortByQualified(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo, int? searchId) =>
         sequence.Where(leaderboard => (dateFrom == null || leaderboard.Difficulty.QualifiedTime >= dateFrom) && (dateTo == null || leaderboard.Difficulty.QualifiedTime <= dateTo))
                 .Order(order, leaderboard => leaderboard.Difficulty.QualifiedTime);
+
+    private static IOrderedQueryable<Leaderboard> SortByRanked(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo, int? searchId) =>
+        sequence.Where(leaderboard => (dateFrom == null || leaderboard.Difficulty.RankedTime >= dateFrom) && (dateTo == null || leaderboard.Difficulty.RankedTime <= dateTo))
+                .Order(order, leaderboard => leaderboard.Difficulty.RankedTime);
 
     private static IQueryable<Leaderboard> SortByRanking(this IQueryable<Leaderboard> sequence, int? dateFrom, int? dateTo, int? searchId) =>
         sequence.Where(leaderboard => (dateFrom == null
@@ -64,9 +69,9 @@ public static partial class MapListUtils
                                     || leaderboard.Changes!.OrderByDescending(leaderboardChange => leaderboardChange.Timeset).FirstOrDefault()!.Timeset <= dateTo));
 
     private static IOrderedQueryable<Leaderboard> SortByDate(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo, int? searchId) =>
-        sequence.Where(leaderboard => (dateFrom == null || leaderboard.Difficulty.RankedTime >= dateFrom) && (dateTo == null || leaderboard.Difficulty.RankedTime <= dateTo))
+        sequence.Where(leaderboard => (dateFrom == null || leaderboard.Song.UploadTime >= dateFrom) && (dateTo == null || leaderboard.Song.UploadTime <= dateTo))
                 .OrderByDescending(l => searchId != null ? l.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                .ThenOrder(order, leaderboard => leaderboard.Difficulty.RankedTime);
+                .ThenOrder(order, leaderboard => leaderboard.Song.UploadTime);
 
     private static IQueryable<Leaderboard> SortByName(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo, int? searchId) =>
         sequence.Where(leaderboard => (dateFrom == null || leaderboard.Song.UploadTime >= dateFrom) && (dateTo == null || leaderboard.Song.UploadTime <= dateTo))
