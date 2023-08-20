@@ -117,6 +117,10 @@ namespace BeatLeader_Server.Services
                             UnrankedPlayCount = p.ScoreStats.UnrankedPlayCount,
                             TotalPlayCount = p.ScoreStats.TotalPlayCount,
 
+                            RankedImprovementsCount = p.ScoreStats.RankedImprovementsCount,
+                            UnrankedImprovementsCount = p.ScoreStats.UnrankedImprovementsCount,
+                            TotalImprovementsCount = p.ScoreStats.TotalImprovementsCount,
+
                             AverageRankedRank = p.ScoreStats.AverageRankedRank,
                             AverageWeightedRankedRank = p.ScoreStats.AverageWeightedRankedRank,
                             AverageUnrankedRank = p.ScoreStats.AverageUnrankedRank,
