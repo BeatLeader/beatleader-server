@@ -9,6 +9,7 @@ using System.Linq.Expressions;
 using BeatLeader_Server.Enums;
 using static BeatLeader_Server.Utils.ResponseUtils;
 using Type = BeatLeader_Server.Enums.Type;
+using Lib.ServerTiming;
 
 namespace BeatLeader_Server.Controllers {
     public class LeaderboardController : Controller {
@@ -16,16 +17,19 @@ namespace BeatLeader_Server.Controllers {
         private readonly ReadAppContext _readContext;
         private readonly SongController _songController;
         private readonly IAmazonS3 _s3Client;
+        private readonly IServerTiming _serverTiming;
 
         public LeaderboardController(
             AppContext context,
             ReadAppContext readContext,
             IConfiguration configuration,
-            SongController songController) {
+            SongController songController,
+            IServerTiming serverTiming) {
             _context = context;
             _readContext = readContext;
             _songController = songController;
             _s3Client = configuration.GetS3Client();
+            _serverTiming = serverTiming;
         }
 
         [HttpGet("~/leaderboard/{id}")]
@@ -44,12 +48,13 @@ namespace BeatLeader_Server.Controllers {
             var currentContext = _readContext;
 
             string? currentID = HttpContext.CurrentUserID(currentContext);
-            Player? currentPlayer = currentID != null ? await currentContext
+            var currentPlayer = currentID != null ? await currentContext
                 .Players
-                .Include(p => p.ProfileSettings)
-                .FirstOrDefaultAsync(p => p.Id == currentID) : null;
+                .Where(p => p.Id == currentID)
+                .Select(p => new { p.Role, p.ProfileSettings.ShowBots, p.ProfileSettings.ShowAllRatings, p.MapperId })
+                .FirstOrDefaultAsync() : null;
 
-            bool showBots = currentPlayer?.ProfileSettings?.ShowBots ?? false;
+            bool showBots = currentPlayer?.ShowBots ?? false;
 
             bool isRt = (currentPlayer != null &&
                             (currentPlayer.Role.Contains("admin") ||
@@ -95,7 +100,11 @@ namespace BeatLeader_Server.Controllers {
 
 
 
-            LeaderboardResponse? leaderboard = query.Select(l => new LeaderboardResponse {
+            LeaderboardResponse? leaderboard;
+            using (_serverTiming.TimeAction("leaderboard")) {
+                leaderboard = query
+                .AsSplitQuery()
+                .Select(l => new LeaderboardResponse {
                 Id = l.Id,
                 Song = l.Song,
                 Difficulty = l.Difficulty,
@@ -112,6 +121,7 @@ namespace BeatLeader_Server.Controllers {
                    ),
             })
                .FirstOrDefault();
+            }
 
             if (leaderboard != null) {
 
@@ -119,7 +129,7 @@ namespace BeatLeader_Server.Controllers {
                     leaderboard.Qualification.Comments = _context.QualificationCommentary.Where(c => c.RankQualificationId == leaderboard.Qualification.Id).ToList();
                 }
 
-                bool showRatings = currentPlayer?.ProfileSettings?.ShowAllRatings ?? false;
+                bool showRatings = currentPlayer?.ShowAllRatings ?? false;
                 if (!showRatings && !leaderboard.Difficulty.Status.WithRating()) {
                     leaderboard.HideRatings();
                 }
@@ -141,6 +151,7 @@ namespace BeatLeader_Server.Controllers {
                     if (currentID == null) {
                         return NotFound();
                     }
+                    using (_serverTiming.TimeAction("friends")) {
                     var friendsContainer = currentContext
                         .Friends
                         .Where(f => f.Id == currentID)
@@ -152,6 +163,7 @@ namespace BeatLeader_Server.Controllers {
                         friendsList.Add(currentID);
                     } else {
                         friendsList = new List<string> { currentID };
+                    }
                     }
                 }
 
@@ -259,11 +271,14 @@ namespace BeatLeader_Server.Controllers {
                                     s.Player.Clans.FirstOrDefault(c => c.Name.ToLower().Contains(lowSearch)) != null ||
                                     s.Player.Clans.FirstOrDefault(c => c.Tag.ToLower().Contains(lowSearch)) != null);
                 }
-
+                using (_serverTiming.TimeAction("scorecount")) {
                 leaderboard.Plays = scoreQuery.Count();
+                }
+                using (_serverTiming.TimeAction("scorelist")) {
                 leaderboard.Scores = scoreQuery
                     .Skip((page - 1) * count)
                     .Take(count)
+                    .AsSplitQuery()
                     .Select(s => new ScoreResponse {
                         Id = s.Id,
                         BaseScore = s.BaseScore,
@@ -306,6 +321,7 @@ namespace BeatLeader_Server.Controllers {
                         RankVoting = showVoters ? s.RankVoting : null,
                     })
                     .ToList();
+                }
                 foreach (var score in leaderboard.Scores) {
                     score.Player = PostProcessSettings(score.Player);
                 }

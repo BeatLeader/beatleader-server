@@ -47,18 +47,17 @@ namespace BeatLeader_Server.Controllers {
             int? time_from = null,
             int? time_to = null,
             int? eventId = null) {
+
             string? currentID = HttpContext.CurrentUserID(_context);
-            bool showRatings = currentID != null ? (_context
+            bool showRatings = currentID != null ? _context
                 .Players
-                .Include(p => p.ProfileSettings)
                 .Where(p => p.Id == currentID)
-                .Select(p => p.ProfileSettings)
-                .FirstOrDefault()
-                ?.ShowAllRatings ?? false) : false;
+                .Select(p => p.ProfileSettings.ShowAllRatings)
+                .FirstOrDefault() : false;
 
             id = _context.PlayerIdToMain(id);
 
-            var player = _context.Players.FirstOrDefault(p => p.Id == id);
+            var player = await _context.Players.Where(p => p.Id == id).Select(p => new { p.Banned }).FirstOrDefaultAsync();
             if (player == null) {
                 return (null, false, "", "");
             }
@@ -95,7 +94,7 @@ namespace BeatLeader_Server.Controllers {
             }
 
             ResponseWithMetadata<ScoreResponseWithMyScore> result;
-            using (_serverTiming.TimeAction("db")) {
+            using (_serverTiming.TimeAction("count")) {
                 result = new ResponseWithMetadata<ScoreResponseWithMyScore>() {
                     Metadata = new Metadata() {
                         Page = page,
@@ -105,7 +104,9 @@ namespace BeatLeader_Server.Controllers {
                 };
             }
 
-            var resultList = sequence
+            List<ScoreResponseWithMyScore> resultList;
+            using (_serverTiming.TimeAction("list")) {
+                resultList = sequence
                     .Include(s => s.Leaderboard)
                     .ThenInclude(l => l.Difficulty)
                     .ThenInclude(d => d.ModifiersRating)
@@ -157,21 +158,25 @@ namespace BeatLeader_Server.Controllers {
                         AccRight = s.AccRight,
                         MaxStreak = s.MaxStreak,
                     })
+                    .AsSplitQuery()
                     .ToList();
-
-            foreach (var resultScore in resultList) {
-                if (!showRatings && !resultScore.Leaderboard.Difficulty.Status.WithRating()) {
-                    resultScore.Leaderboard.HideRatings();
-                }
             }
-            result.Data = resultList;
 
-            if (currentID != null && currentID != userId) {
-                var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
+            using (_serverTiming.TimeAction("postprocess")) {
+                foreach (var resultScore in resultList) {
+                    if (!showRatings && !resultScore.Leaderboard.Difficulty.Status.WithRating()) {
+                        resultScore.Leaderboard.HideRatings();
+                    }
+                }
+                result.Data = resultList;
 
-                var myScores = _context.Scores.Where(s => s.PlayerId == currentID && leaderboards.Contains(s.LeaderboardId)).Select(ToScoreResponseWithAcc).ToList();
-                foreach (var score in result.Data) {
-                    score.MyScore = myScores.FirstOrDefault(s => s.LeaderboardId == score.LeaderboardId);
+                if (currentID != null && currentID != userId) {
+                    var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
+
+                    var myScores = _context.Scores.Where(s => s.PlayerId == currentID && leaderboards.Contains(s.LeaderboardId)).Select(ToScoreResponseWithAcc).ToList();
+                    foreach (var score in result.Data) {
+                        score.MyScore = myScores.FirstOrDefault(s => s.LeaderboardId == score.LeaderboardId);
+                    }
                 }
             }
 

@@ -62,7 +62,7 @@ namespace BeatLeader_Server.Services {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
                 var _s3Client = _configuration.GetS3Client();
 
-                var songs = await _context.Songs.Where(s => !s.Checked).OrderBy(s => s.Id).Take(100).Include(s => s.Difficulties).ToListAsync();
+                var songs = await _context.Songs.Where(s => !s.Checked).OrderByDescending(s => s.UploadTime).Take(50).Include(s => s.Difficulties).ToListAsync();
 
                 foreach (var song in songs) {
                     try {

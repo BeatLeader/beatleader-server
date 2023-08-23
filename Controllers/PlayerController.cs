@@ -56,11 +56,10 @@ namespace BeatLeader_Server.Controllers
                         .Include(p => p.ScoreStats)
                         .Include(p => p.Badges.OrderBy(b => b.Timeset))
                         .Include(p => p.Clans)
-                        .Include(p => p.PatreonFeatures)
                         .Include(p => p.ProfileSettings)
                         .Include(p => p.Socials)
-                        .Include(p => p.EventsParticipating)
                         .Include(p => p.Changes)
+                        .AsSplitQuery()
                         .FirstOrDefault();
                 } else {
                     player = await _readContext.Players.FindAsync(userId);
@@ -75,7 +74,39 @@ namespace BeatLeader_Server.Controllers
                 }
             }
             if (player != null) {
-                var result = ResponseFullFromPlayer(player);
+                var result = new PlayerResponseFull {
+                    Id = player.Id,
+                    Name = player.Name,
+                    Platform = player.Platform,
+                    Avatar = player.Avatar,
+                    Country = player.Country,
+                    ScoreStats = player.ScoreStats,
+
+                    MapperId = player.MapperId,
+
+                    Banned = player.Banned,
+                    Inactive = player.Inactive,
+                    Bot = player.Bot,
+
+                    ExternalProfileUrl = player.ExternalProfileUrl,
+
+                    Badges = player.Badges,
+                    Changes = player.Changes,
+
+                    Pp = player.Pp,
+                    AccPp = player.AccPp,
+                    TechPp = player.TechPp,
+                    PassPp = player.PassPp,
+                    Rank = player.Rank,
+                    CountryRank = player.CountryRank,
+                    LastWeekPp = player.LastWeekPp,
+                    LastWeekRank = player.LastWeekRank,
+                    LastWeekCountryRank = player.LastWeekCountryRank,
+                    Role = player.Role,
+                    Socials = player.Socials,
+                    ProfileSettings = player.ProfileSettings,
+                    Clans = stats ? player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color }) : null
+                };
                 if (result.Banned) {
                     result.BanDescription = _context.Bans.OrderByDescending(b => b.Timeset).FirstOrDefault(b => b.PlayerId == player.Id);
                 }
@@ -521,7 +552,9 @@ namespace BeatLeader_Server.Controllers
                 request = Sorted(request, sortBy, ppType, order, mapsType).Skip((page - 1) * count).Take(count);
             }
 
-            result.Data = request.Select(p => new PlayerResponseWithStats
+            result.Data = request
+                .AsSplitQuery()
+                .Select(p => new PlayerResponseWithStats
                 {
                     Id = p.Id,
                     Name = p.Name,
@@ -540,8 +573,6 @@ namespace BeatLeader_Server.Controllers
                     LastWeekRank = p.LastWeekRank,
                     LastWeekCountryRank = p.LastWeekCountryRank,
                     Role = p.Role,
-                    EventsParticipating = p.EventsParticipating,
-                    PatreonFeatures = p.PatreonFeatures,
                     ProfileSettings = p.ProfileSettings,
                     Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                 }).ToList().Select(PostProcessSettings);
