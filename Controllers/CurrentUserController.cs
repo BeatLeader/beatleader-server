@@ -1087,6 +1087,46 @@ namespace BeatLeader_Server.Controllers {
             return result;
         }
 
+        [HttpGet("~/user/config")]
+        public async Task<ActionResult> GetConfig() {
+            string? userId = GetId();
+            if (userId == null) {
+                return Unauthorized();
+            }
+
+            var configStream = await _s3Client.DownloadStream(userId + "-config.json", S3Container.configs);
+            if (configStream == null) {
+                return NotFound();
+            }
+            return File(configStream, "application/json");
+        }
+
+        [HttpPost("~/user/config")]
+        public async Task<ActionResult> PostConfig() {
+            string? userId = GetId();
+            if (userId == null) {
+                return Unauthorized();
+            }
+
+            var ms = new MemoryStream(5);
+            await Request.Body.CopyToAsync(ms);
+            ms.Position = 0;
+
+            var ms2 = new MemoryStream(5);
+            await ms.CopyToAsync(ms2);
+            ms.Position = 0;
+
+            dynamic? mapscontainer = ms.ObjectFromStream();
+            if (mapscontainer == null) {
+                return BadRequest("Can't decode config");
+            }
+            ms2.Position = 0;
+
+            await _s3Client.UploadStream(userId + "-config.json", S3Container.configs, ms2);
+
+            return Ok();
+        }
+
         [HttpPost("~/user/ban")]
         public async Task<ActionResult> Ban(
             [FromQuery] string? id = null,
