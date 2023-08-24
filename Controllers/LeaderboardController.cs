@@ -51,7 +51,11 @@ namespace BeatLeader_Server.Controllers {
             var currentPlayer = currentID != null ? await currentContext
                 .Players
                 .Where(p => p.Id == currentID)
-                .Select(p => new { p.Role, p.ProfileSettings.ShowBots, p.ProfileSettings.ShowAllRatings, p.MapperId })
+                .Select(p => new { 
+                    p.Role, 
+                    ShowBots = p.ProfileSettings != null ? p.ProfileSettings.ShowBots : false, 
+                    ShowAllRatings = p.ProfileSettings != null ? p.ProfileSettings.ShowAllRatings : false, 
+                    p.MapperId })
                 .FirstOrDefaultAsync() : null;
 
             bool showBots = currentPlayer?.ShowBots ?? false;

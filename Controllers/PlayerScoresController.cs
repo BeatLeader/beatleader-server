@@ -51,7 +51,7 @@ namespace BeatLeader_Server.Controllers {
             string? currentID = HttpContext.CurrentUserID(_context);
             bool showRatings = currentID != null ? _context
                 .Players
-                .Where(p => p.Id == currentID)
+                .Where(p => p.Id == currentID && p.ProfileSettings != null)
                 .Select(p => p.ProfileSettings.ShowAllRatings)
                 .FirstOrDefault() : false;
 
