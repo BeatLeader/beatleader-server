@@ -377,7 +377,8 @@ namespace BeatLeader_Server.Utils {
                     Socials = s.Player.Socials,
                     PatreonFeatures = s.Player.PatreonFeatures,
                     ProfileSettings = s.Player.ProfileSettings,
-                    Clans = s.Player.Clans?.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                    Clans = s.Player.Clans?.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                 } : null,
                 ScoreImprovement = s.ScoreImprovement,
                 RankVoting = s.RankVoting,
@@ -444,7 +445,8 @@ namespace BeatLeader_Server.Utils {
                     Socials = s.Player.Socials,
                     PatreonFeatures = s.Player.PatreonFeatures,
                     ProfileSettings = s.Player.ProfileSettings,
-                    Clans = s.Player.Clans?.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                    Clans = s.Player.Clans?.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                 } : null,
                 ScoreImprovement = s.ScoreImprovement,
                 RankVoting = s.RankVoting,
@@ -480,7 +482,8 @@ namespace BeatLeader_Server.Utils {
                 Socials = p.Socials,
                 PatreonFeatures = p.PatreonFeatures,
                 ProfileSettings = p.ProfileSettings,
-                Clans = p.Clans?.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                Clans = p.Clans?.OrderBy(c => p.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
             };
         }
 
@@ -527,7 +530,8 @@ namespace BeatLeader_Server.Utils {
                 EventsParticipating = p.EventsParticipating,
                 PatreonFeatures = p.PatreonFeatures,
                 ProfileSettings = p.ProfileSettings,
-                Clans = p.Clans?.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                Clans = p.Clans?.OrderBy(c => p.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
             };
         }
 
@@ -573,7 +577,8 @@ namespace BeatLeader_Server.Utils {
                 EventsParticipating = p.EventsParticipating,
                 PatreonFeatures = p.PatreonFeatures,
                 ProfileSettings = p.ProfileSettings,
-                Clans = p.Clans?.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                Clans = p.Clans?.OrderBy(c => p.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
             };
         }
 

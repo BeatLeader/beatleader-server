@@ -105,7 +105,13 @@ namespace BeatLeader_Server.Controllers
                     Role = player.Role,
                     Socials = player.Socials,
                     ProfileSettings = player.ProfileSettings,
-                    Clans = stats ? player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color }) : null
+                    Clans = stats 
+                        ? player
+                            .Clans
+                            .OrderBy(c => player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id)
+                            .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color }) 
+                        : null
                 };
                 if (result.Banned) {
                     result.BanDescription = _context.Bans.OrderByDescending(b => b.Timeset).FirstOrDefault(b => b.PlayerId == player.Id);
@@ -574,7 +580,11 @@ namespace BeatLeader_Server.Controllers
                     LastWeekCountryRank = p.LastWeekCountryRank,
                     Role = p.Role,
                     ProfileSettings = p.ProfileSettings,
-                    Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                    Clans = p
+                            .Clans
+                            .OrderBy(c => p.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id)
+                            .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                 }).ToList().Select(PostProcessSettings);
 
             if (ids?.Count > 0)

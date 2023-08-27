@@ -256,6 +256,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] string? leftSaberColor = null,
             [FromQuery] string? rightSaberColor = null,
             [FromQuery] string? starredFriends = null,
+            [FromQuery] string? clanOrder = null,
             [FromQuery] bool? showBots = null,
             [FromQuery] bool? showAllRatings = null,
             [FromQuery] string? id = null) {
@@ -377,7 +378,9 @@ namespace BeatLeader_Server.Controllers {
                 settings = new ProfileSettings();
                 player.ProfileSettings = settings;
             }
-
+            if (Request.Query.ContainsKey("clanOrder")) {
+                player.ClanOrder = clanOrder ?? "";
+            }
 
             if (Request.Query.ContainsKey("profileAppearance")) {
                 settings.ProfileAppearance = profileAppearance;

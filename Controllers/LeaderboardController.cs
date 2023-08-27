@@ -319,7 +319,8 @@ namespace BeatLeader_Server.Controllers {
                             CountryRank = s.Player.CountryRank,
                             Role = s.Player.Role,
                             ProfileSettings = s.Player.ProfileSettings,
-                            Clans = s.Player.Clans
+                            Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id)
                                 .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                         },
                         RankVoting = showVoters ? s.RankVoting : null,

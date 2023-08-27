@@ -48,6 +48,7 @@ namespace BeatLeader_Server.Models {
 
         public PlayerScoreStats? ScoreStats { get; set; }
         public ICollection<Clan>? Clans { get; set; }
+        public string ClanOrder { get; set; } = "";
         public ICollection<PlayerFriends>? Friends { get; set; }
 
         public ICollection<Badge>? Badges { get; set; }
