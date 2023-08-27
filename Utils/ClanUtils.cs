@@ -72,7 +72,7 @@ namespace BeatLeader_Server.Utils
             if (leaderboard != null && 
                (newScore.Player.Clans != null) &&
                (newScore.Player.Clans.Count > 0) &&
-               (leaderboard.Difficulty.Status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.inevent))
+               (leaderboard.Difficulty.Status is DifficultyStatus.ranked))
             {
                 /*
                  * Any new score can have multiple clans associated with it
@@ -110,7 +110,6 @@ namespace BeatLeader_Server.Utils
                         .Select(s => new { Id = s.Id, Pp = s.Pp, AverageAccuracy = s.AverageAccuracy })
                         .ToList();
 
-                    int minIndex = int.MaxValue;
                     var crList = nonAffectedClanRankings.Select(cr => new Tuple<int, float>(cr.Id, cr.Pp)).ToList();
                     var prevCRCaptorId = crList[0].Item1;
 
@@ -184,19 +183,16 @@ namespace BeatLeader_Server.Utils
                         if (cr.Pp >= crList[0].Item2)
                         {
                             crList.Insert(0, new Tuple<int, float>(clanRanking.Id, clanRanking.Pp));
-                            //minIndex = Math.Min(minIndex, 0);
                         }
                         else if (newScore.Pp == 0.0f)
                         {
                             // Scores with zero pp mess up the binary search because there are duplicate zeros.
                             // Zeros contribute nothing for this pp calculation, so just throw it at the botom of the pile.
                             crList.Add(new Tuple<int, float>(clanRanking.Id, clanRanking.Pp));
-                            //minIndex = Math.Min(minIndex, crList.Count() - 1);
                         } else
                         {
                             // Calculate new ClanRanking ranks with the new clan updated
                             index = crList.BinarySearch(new Tuple<int, float>(clanRanking.Id, clanRanking.Pp), new ClanRankingComparer());
-                            //minIndex = Math.Min(minIndex, index >= 0 ? index : ~index);
                             if (index >= 0 && index != ~crList.Count())
                             {
                                 // Found a score with the exact same pp value, should be fine, just add it
@@ -219,20 +215,6 @@ namespace BeatLeader_Server.Utils
                         }
                     }
 
-                    // Don't need a rank calculation when the leaderboardController sorts anyway.
-                    // It has to eventually be sorted no matter what.
-                    // Starting from the lowest index that was inserted ('best' rank), update all the ranks to match the indexes
-                    //for (int i = minIndex; i < crList.Count(); i++)
-                    //{
-                    //    var cr = context.ClanRanking.Local.FirstOrDefault(cr => cr.Id == crList[i].Item1);
-                    //    if (cr == null)
-                    //    {
-                    //        cr = new ClanRanking() { Id = crList[i].Item1 };
-                    //        context.ClanRanking.Attach(cr);
-                    //    }
-                    //    cr.Rank = i + 1;
-                    //    context.Entry(cr).Property(x => x.Rank).IsModified = true;
-                    //}
 
                     // Captured leaderboard cases covered -------
                     // Null -> Null : Good
@@ -316,9 +298,9 @@ namespace BeatLeader_Server.Utils
             }
         }
 
-        public static ICollection<ClanRanking>? CalculateClanRanking(this AppContext context, Leaderboard? leaderboard)
+        public static ICollection<ClanRanking>? CalculateClanRankingSlow(this AppContext context, Leaderboard? leaderboard)
         {
-            // CalculateClanRanking: Function that calculates the clanRanking given a leaderboard
+            // CalculateClanRankingSlow: Function that calculates the clanRanking given a leaderboard
             // This function is called on relevant leaderboards whenever a user sets a new score, a clan is created, a user leaves a clan,
             // a user joins a clan, a map is ranked, or a clan is deleted.
             if (leaderboard == null)

@@ -472,7 +472,7 @@ namespace BeatLeader_Server.Controllers
         [HttpPut("~/admin/refreshClanRankings")]
         public async Task<ActionResult> RefreshClanRankings()
         {
-            // RecalculateClanRankings: Http Put endpoint that recalculates the clan rankings for all ranked leaderboards.
+            // refreshClanRankings: Http Put endpoint that recalculates the clan rankings for all ranked leaderboards.
 
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
@@ -489,7 +489,7 @@ namespace BeatLeader_Server.Controllers
                     .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
                     .Include(lb => lb.ClanRanking)
                     .ToList();
-                leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
+                leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
             }
             catch (Exception ex)
             {

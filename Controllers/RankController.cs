@@ -1092,7 +1092,7 @@ namespace BeatLeader_Server.Controllers
                 leaderboard.Changes.Add(rankChange);
 
                 // Calculate clanRanking for this map because it has just been ranked
-                leaderboard.ClanRanking = _context.CalculateClanRanking(leaderboard);
+                leaderboard.ClanRanking = _context.CalculateClanRankingSlow(leaderboard);
 
                 bool updatePlaylists = (difficulty.Status == DifficultyStatus.ranked) != (rankability > 0); 
 

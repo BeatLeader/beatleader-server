@@ -284,7 +284,7 @@ namespace BeatLeader_Server.Controllers
                 .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked && lb.Scores.Any(s => s.PlayerId == currentID))
                 .ToList();
 
-            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
+            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
             await _context.BulkSaveChangesAsync();
 
             return newClan;
@@ -348,7 +348,7 @@ namespace BeatLeader_Server.Controllers
             await _context.BulkSaveChangesAsync();
 
             // Recalculate the clanRankings on each leaderboard where this clan had an impact
-            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
+            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
             await _context.BulkSaveChangesAsync();
 
             return Ok();
@@ -619,7 +619,7 @@ namespace BeatLeader_Server.Controllers
                 .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked && lb.Scores.Any(s => s.PlayerId == player))
                 .ToList();
 
-            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
+            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
             await _context.BulkSaveChangesAsync();
 
             return Ok();
@@ -674,7 +674,7 @@ namespace BeatLeader_Server.Controllers
                 .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked && lb.Scores.Any(s => s.PlayerId == currentID))
                 .ToList();
 
-            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
+            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
             await _context.BulkSaveChangesAsync();
 
             return Ok();
@@ -772,7 +772,7 @@ namespace BeatLeader_Server.Controllers
                 .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked && lb.Scores.Any(s => s.PlayerId == currentID))
                 .ToList();
 
-            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
+            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
             await _context.BulkSaveChangesAsync();
 
             return Ok();
@@ -824,10 +824,10 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpPut("~/clan/clanRankingAll")]
-        public async Task<ActionResult> RecalculateClanRankings()
+        public async Task<ActionResult> ReCalculateClanRankingSlows()
         {
             /// <summary>
-            /// RecalculateClanRankings: Http Put endpoint that recalculates the clan rankings for all ranked leaderboards.
+            /// ReCalculateClanRankingSlows: Http Put endpoint that recalculates the clan rankings for all ranked leaderboards.
             /// Only accessible to admins.
             /// </summary>
 
@@ -848,7 +848,7 @@ namespace BeatLeader_Server.Controllers
                     .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
                     .Include(lb => lb.ClanRanking)
                     .ToList();
-                leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
+                leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
             }
             catch (Exception ex)
             {
@@ -861,10 +861,10 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpPut("~/clan/clanRankingSingle")]
-        public async Task<ActionResult> RecalculateClanRanking([FromQuery] string id)
+        public async Task<ActionResult> ReCalculateClanRankingSlow([FromQuery] string id)
         {
             /// <summary>
-            /// RecalculateClanRanking: Http Put endpoint that recalculates the clan rankings on a single leaderboard
+            /// ReCalculateClanRankingSlow: Http Put endpoint that recalculates the clan rankings on a single leaderboard
             /// Only accessible to admins.
             /// </summary>
 
@@ -885,7 +885,7 @@ namespace BeatLeader_Server.Controllers
                     .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked && lb.Id == id)
                     .Include(lb => lb.ClanRanking)
                     .ToList();
-                leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
+                leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
             }
             catch (Exception ex)
             {
