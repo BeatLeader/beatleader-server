@@ -480,7 +480,6 @@ namespace BeatLeader_Server.Controllers
                     && leaderboard.Difficulty.Type == type
                     && (criteriaCheck == null || criteriaCheck == 1)
                     && qualification.CriteriaChecker != currentID
-                    && qualification.RTMember != currentID
                     && qualification.CriteriaMet == 1
                     && newModifiers?.EqualTo(qualification.Modifiers) != false
                     && !currentPlayer.Role.Contains("juniorrankedteam"))
