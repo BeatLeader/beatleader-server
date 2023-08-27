@@ -311,6 +311,8 @@ namespace BeatLeader_Server.Controllers {
                         .Include(cr => cr.Clan)
                         .Where(cr => cr.LeaderboardId == leaderboard.Id)
                         .OrderByDescending(cr => cr.Pp)
+                        .ThenByDescending(cr  => cr.AverageAccuracy)
+                        .ThenByDescending(cr => cr.LastUpdateTime)
                         .Skip((page - 1) * count)
                         .Take(count)
                         .Select(cr => new ClanRankingResponse
@@ -380,6 +382,8 @@ namespace BeatLeader_Server.Controllers {
                         .Include(cr => cr.Clan)
                         .Where(cr => cr.LeaderboardId == leaderboard.Id)
                         .OrderByDescending(cr => cr.Pp)
+                        .ThenByDescending(cr => cr.AverageAccuracy)
+                        .ThenByDescending(cr => cr.LastUpdateTime)
                         .Take(1)
                         .Select(cr => new ClanRankingResponse
                         {

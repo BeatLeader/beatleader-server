@@ -15,4 +15,12 @@ namespace BeatLeader_Server.Models
         public Leaderboard Leaderboard { get; set; } // Leaderboard associated with this clanRanking.
         public ICollection<Score> AssociatedScores { get; set; } // A list of scores associated with this clan
     }
+
+    //public class ClanRankingScore
+    //{
+    //    public int Id { get; set; } // Unique ID for this clanRankingScore
+    //    public Score AssociatedScore { get; set; } // The score associated with this clanRankingScore
+    //    public int Rank { get; set; } // The rank of this score in the list of associated scores for a clan Ranking
+    //    public float Weight { get; set; } // The weight applied to the PP of this score when calculating ClanRanking PP.
+    //}
 }

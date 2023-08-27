@@ -896,5 +896,47 @@ namespace BeatLeader_Server.Controllers
 
             return Ok();
         }
+
+        [HttpPut("~/clan/updateClanRanking")]
+        public async Task<ActionResult> UpdateClanRanking(
+            [FromQuery] string userID,
+            [FromQuery] string leaderboardId)
+        {
+            //string currentID = HttpContext.CurrentUserID(_context);
+            string currentID = "76561198043191643";
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            string leaderboardID = "1a45991";
+
+            // Lookup valid score
+            var score = _context
+                .Scores
+                .Where(s => s.PlayerId == currentID && s.LeaderboardId == leaderboardID)
+                .Include(s => s.Player)
+                .ThenInclude(p => p.Clans)
+                .Select(sel => new { Score = sel, Clans = sel.Player.Clans })
+                .FirstOrDefault();
+
+            var leaderboard = _context
+                .Leaderboards
+                .Where(lb => lb.Id == leaderboardID)
+                .Include(lb => lb.Difficulty)
+                .Include(cr => cr.ClanRanking)
+                .ThenInclude(cr => cr.Clan)
+
+                .FirstOrDefault();
+
+            Score tempScore = new Score();
+            tempScore.Timepost = score.Score.Timepost + 1;
+            tempScore.Pp = score.Score.Pp + 1;
+            tempScore.Accuracy = score.Score.Accuracy + .03f;
+            tempScore.Rank = score.Score.Rank - 1;
+            tempScore.Player = score.Score.Player;
+
+            _context.ChangeTracker.AutoDetectChangesEnabled = false;
+            _context.UpdateClanRanking(leaderboard, score.Score, tempScore);
+
+            return Ok();
+        }
     }
 }

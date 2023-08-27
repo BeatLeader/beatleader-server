@@ -12,18 +12,26 @@ namespace BeatLeader_Server.Services
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly IConfiguration _configuration;
+        public static int RankedMapCount { get; private set; }
 
         public RankingService(
-            IServiceScopeFactory serviceScopeFactory, 
+            IServiceScopeFactory serviceScopeFactory,
             IConfiguration configuration)
         {
             _serviceScopeFactory = serviceScopeFactory;
             _configuration = configuration;
         }
-        
+
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            do {
+            // Calculate global initial ranked map count as of server start
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+                RankedMapCount = RefreshRankedMapCount(scope.ServiceProvider.GetRequiredService<AppContext>());
+            }
+
+            do
+            {
                 DateTime today = DateTime.Today;
                 int daysUntilFriday = ((int)DayOfWeek.Friday - (int)today.DayOfWeek + 7) % 7;
 
@@ -46,7 +54,8 @@ namespace BeatLeader_Server.Services
         private (float, int) RefreshPlayer(
                 Player player,
                 Score? score,
-                AppContext _context) {
+                AppContext _context)
+        {
 
             var oldPp = player.Pp;
             var oldRank = player.Rank;
@@ -56,7 +65,8 @@ namespace BeatLeader_Server.Services
             player.Rank = newRank;
             player.Pp = newPp;
 
-            if (score != null && score.ScoreImprovement != null) {
+            if (score != null && score.ScoreImprovement != null)
+            {
                 score.ScoreImprovement.TotalRank = player.Rank - oldRank;
                 score.ScoreImprovement.TotalPp = player.Pp - oldPp;
             }
@@ -89,6 +99,13 @@ namespace BeatLeader_Server.Services
             return (pp, ranks);
         }
 
+        private int RefreshRankedMapCount(AppContext _context)
+        {
+            return _context
+                .Leaderboards
+                .Count(lb => lb.Difficulty.Status == DifficultyStatus.ranked);
+        }
+
         private async Task RankMaps()
         {
             DiscordWebhookClient? dsClient;
@@ -104,8 +121,8 @@ namespace BeatLeader_Server.Services
 
                 var leaderboards = await _context
                     .Leaderboards
-                    .Where(lb => 
-                        lb.Difficulty.Status == DifficultyStatus.qualified 
+                    .Where(lb =>
+                        lb.Difficulty.Status == DifficultyStatus.qualified
                         && lb.Qualification.ApprovalTimeset < timeset)
                     .Include(l => l.Difficulty)
                     .ThenInclude(d => d.ModifierValues)
@@ -156,7 +173,7 @@ namespace BeatLeader_Server.Services
                               + "** Criteria: **" + ((await _context.Players.FindAsync(leaderboard.Qualification.CriteriaChecker))?.Name ?? "None") + "**\n";
                         message += $"{totalpp:0.00} total pp and {totalRanks * -1} total ranks were acquired \n";
 
-                        await dsClient.SendMessageAsync(message, embeds: new List<Embed> { 
+                        await dsClient.SendMessageAsync(message, embeds: new List<Embed> {
                             new EmbedBuilder()
                               .WithThumbnailUrl(leaderboard.Song.CoverImage)
                               .WithTitle("Leaderboard")
@@ -164,21 +181,28 @@ namespace BeatLeader_Server.Services
                               .Build()
                         });
 
-                        if (leaderboard.Qualification.DiscordChannelId.Length > 0) {
-                            try {
-                            var forum = scope.ServiceProvider.GetRequiredService<NominationsForum>();
-                            await forum.NominationRanked(leaderboard.Qualification.DiscordChannelId);
-                            } catch { }
+                        if (leaderboard.Qualification.DiscordChannelId.Length > 0)
+                        {
+                            try
+                            {
+                                var forum = scope.ServiceProvider.GetRequiredService<NominationsForum>();
+                                await forum.NominationRanked(leaderboard.Qualification.DiscordChannelId);
+                            }
+                            catch { }
                         }
 
-                        if (leaderboard.Qualification.DiscordRTChannelId.Length > 0) {
-                            try {
-                            var forum = scope.ServiceProvider.GetRequiredService<RTNominationsForum>();
-                            await forum.NominationRanked(leaderboard.Qualification.DiscordRTChannelId);
-                            } catch { }
+                        if (leaderboard.Qualification.DiscordRTChannelId.Length > 0)
+                        {
+                            try
+                            {
+                                var forum = scope.ServiceProvider.GetRequiredService<RTNominationsForum>();
+                                await forum.NominationRanked(leaderboard.Qualification.DiscordRTChannelId);
+                            }
+                            catch { }
                         }
                     }
                 }
+                RankedMapCount = RefreshRankedMapCount(_context);
 
                 var _playerController = scope.ServiceProvider.GetRequiredService<PlayerRefreshController>();
                 await _playerController.RefreshRanks();
@@ -188,7 +212,7 @@ namespace BeatLeader_Server.Services
                 await _playlistController.RefreshQualifiedPlaylist();
                 await _playlistController.RefreshRankedPlaylist();
 
-                
+
                 await _playerController.RefreshPlayers();
                 await _playerController.RefreshPlayersStats();
             }
