@@ -410,31 +410,31 @@ namespace BeatLeader_Server.Utils
 
                 // Recalculate pp on clans
                 // TODO : Maybe have function that only needs to do these operations for the clans affected by a new score set?
-                foreach (var clan in newClanRankingData.Select((data, index) => new { index, data }))
+                foreach (var clan in newClanRankingData)
                 {
-                    var updateClan = clanRanking.Where(cr => cr.Clan == clan.data.Key).FirstOrDefault();
+                    var updateClan = clanRanking.Where(cr => cr.Clan == clan.Key).FirstOrDefault();
                     if (updateClan != null)
                     {
-                        updateClan.LastUpdateTime = clan.data.Value.lastUpdateTime;
-                        updateClan.Pp = clan.data.Value.Pp;
-                        updateClan.AverageRank = clan.data.Value.totalRank / clan.data.Value.numberOfScores;
-                        updateClan.AverageAccuracy = clan.data.Value.totalAcc / clan.data.Value.numberOfScores;
-                        updateClan.TotalScore = clan.data.Value.totalScore;
-                        updateClan.AssociatedScores = clan.data.Value.Scores;
+                        updateClan.LastUpdateTime = clan.Value.lastUpdateTime;
+                        updateClan.Pp = clan.Value.Pp;
+                        updateClan.AverageRank = clan.Value.totalRank / clan.Value.numberOfScores;
+                        updateClan.AverageAccuracy = clan.Value.totalAcc / clan.Value.numberOfScores;
+                        updateClan.TotalScore = clan.Value.totalScore;
+                        updateClan.AssociatedScores = clan.Value.Scores;
                     }
                     else
                     {
                         clanRanking.Add(new ClanRanking
                         {
-                            Clan = clan.data.Key,
-                            LastUpdateTime = clan.data.Value.lastUpdateTime,
-                            Pp = clan.data.Value.Pp,
-                            AverageRank = clan.data.Value.totalRank / clan.data.Value.numberOfScores,
-                            AverageAccuracy = clan.data.Value.totalAcc / clan.data.Value.numberOfScores,
-                            TotalScore = clan.data.Value.totalScore,
+                            Clan = clan.Key,
+                            LastUpdateTime = clan.Value.lastUpdateTime,
+                            Pp = clan.Value.Pp,
+                            AverageRank = clan.Value.totalRank / clan.Value.numberOfScores,
+                            AverageAccuracy = clan.Value.totalAcc / clan.Value.numberOfScores,
+                            TotalScore = clan.Value.totalScore,
                             LeaderboardId = leaderboard.Id,
                             Leaderboard = leaderboard,
-                            AssociatedScores = clan.data.Value.Scores
+                            AssociatedScores = clan.Value.Scores
                         });
                     }
                 }
