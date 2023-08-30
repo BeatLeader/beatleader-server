@@ -8,7 +8,6 @@ using System.Linq.Expressions;
 using BeatLeader_Server.Enums;
 using static BeatLeader_Server.Utils.ResponseUtils;
 using Type = BeatLeader_Server.Enums.Type;
-using System.Diagnostics.Eventing.Reader;
 
 namespace BeatLeader_Server.Controllers {
     public class LeaderboardController : Controller {
@@ -255,57 +254,85 @@ namespace BeatLeader_Server.Controllers {
 
                 leaderboard.Plays = scoreQuery.Count();
                 leaderboard.Scores = scoreQuery
-                    .Skip((page - 1) * count)
-                    .Take(count)
-                    .Select(s => new ScoreResponse {
-                        Id = s.Id,
-                        BaseScore = s.BaseScore,
-                        ModifiedScore = s.ModifiedScore,
-                        PlayerId = s.PlayerId,
-                        Accuracy = s.Accuracy,
-                        Pp = s.Pp,
-                        Rank = s.Rank,
-                        Modifiers = s.Modifiers,
-                        BadCuts = s.BadCuts,
-                        MissedNotes = s.MissedNotes,
-                        BombCuts = s.BombCuts,
-                        WallsHit = s.WallsHit,
-                        Pauses = s.Pauses,
-                        FullCombo = s.FullCombo,
-                        Timeset = s.Timeset,
-                        Timepost = s.Timepost,
-                        MaxStreak = s.MaxStreak,
-                        AccPP = s.AccPP,
-                        TechPP = s.TechPP,
-                        PassPP = s.PassPP,
-                        Weight = s.Weight,
-                        FcAccuracy = s.FcAccuracy,
-                        FcPp = s.FcPp,
-                        Player = new PlayerResponse {
-                            Id = s.Player.Id,
-                            Name = s.Player.Name,
-                            Avatar = s.Player.Avatar,
-                            Country = s.Player.Country,
+                .Skip((page - 1) * count)
+                .Take(count)
+                .Select(s => new ScoreResponse
+                {
+                    Id = s.Id,
+                    BaseScore = s.BaseScore,
+                    ModifiedScore = s.ModifiedScore,
+                    PlayerId = s.PlayerId,
+                    Accuracy = s.Accuracy,
+                    Pp = s.Pp,
+                    Rank = s.Rank,
+                    Modifiers = s.Modifiers,
+                    BadCuts = s.BadCuts,
+                    MissedNotes = s.MissedNotes,
+                    BombCuts = s.BombCuts,
+                    WallsHit = s.WallsHit,
+                    Pauses = s.Pauses,
+                    FullCombo = s.FullCombo,
+                    Timeset = s.Timeset,
+                    Timepost = s.Timepost,
+                    MaxStreak = s.MaxStreak,
+                    AccPP = s.AccPP,
+                    TechPP = s.TechPP,
+                    PassPP = s.PassPP,
+                    Weight = s.Weight,
+                    FcAccuracy = s.FcAccuracy,
+                    FcPp = s.FcPp,
+                    Player = new PlayerResponse
+                    {
+                        Id = s.Player.Id,
+                        Name = s.Player.Name,
+                        Avatar = s.Player.Avatar,
+                        Country = s.Player.Country,
 
-                            Bot = s.Player.Bot,
-                            Pp = s.Player.Pp,
-                            Rank = s.Player.Rank,
-                            CountryRank = s.Player.CountryRank,
-                            Role = s.Player.Role,
-                            ProfileSettings = s.Player.ProfileSettings,
-                            Clans = s.Player.Clans
-                                .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                        },
-                        RankVoting = showVoters ? s.RankVoting : null,
-                    })
-                    .ToList();
-                foreach (var score in leaderboard.Scores) {
+                        Bot = s.Player.Bot,
+                        Pp = s.Player.Pp,
+                        Rank = s.Player.Rank,
+                        CountryRank = s.Player.CountryRank,
+                        Role = s.Player.Role,
+                        ProfileSettings = s.Player.ProfileSettings,
+                        Clans = s.Player.Clans
+                            .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                    },
+                    RankVoting = showVoters ? s.RankVoting : null,
+                })
+                .ToList();
+                foreach (var score in leaderboard.Scores)
+                {
                     score.Player = PostProcessSettings(score.Player);
                 }
 
-                // clanRanking is set true when user clicks on the Clan Rankings tab on the website
-                if (clanRanking)
+                if (!clanRanking)
                 {
+                    // This clanRanking data is required for the leaderboard header on the website
+                    // to declare who has captured the leaderboard
+                    leaderboard.ClanRanking = currentContext
+                        .ClanRanking
+                        .Include(cr => cr.Clan)
+                        .Where(cr => cr.LeaderboardId == leaderboard.Id)
+                        .OrderByDescending(cr => cr.Pp)
+                        .Take(1)
+                        .Select(cr => new ClanRankingResponse
+                        {
+                            Id = cr.Id,
+                            Clan = cr.Clan,
+                            LastUpdateTime = cr.LastUpdateTime,
+                            AverageRank = cr.AverageRank,
+                            Pp = cr.Pp,
+                            AverageAccuracy = cr.AverageAccuracy,
+                            TotalScore = cr.TotalScore,
+                            LeaderboardId = cr.LeaderboardId,
+                            Leaderboard = cr.Leaderboard,
+                            AssociatedScores = null
+                        })
+                        .ToList();
+                }
+                else
+                {
+                    // This clanRanking data is required for displaying clanRankings on each leaderboard
                     leaderboard.ClanRanking = currentContext
                         .ClanRanking
                         .Include(cr => cr.Clan)
@@ -360,7 +387,6 @@ namespace BeatLeader_Server.Controllers {
                                         Name = s.Player.Name,
                                         Avatar = s.Player.Avatar,
                                         Country = s.Player.Country,
-
                                         Pp = s.Player.Pp,
                                         Rank = s.Player.Rank,
                                         CountryRank = s.Player.CountryRank,
@@ -374,34 +400,8 @@ namespace BeatLeader_Server.Controllers {
                                 .ToList(),
                         })
                         .ToList();
-                } else
-                {
-                    // Required for the leaderboard header on the website to declare who has captured the leaderboard
-                    leaderboard.ClanRanking = currentContext
-                        .ClanRanking
-                        .Include(cr => cr.Clan)
-                        .Where(cr => cr.LeaderboardId == leaderboard.Id)
-                        .OrderByDescending(cr => cr.Pp)
-                        .ThenByDescending(cr => cr.AverageAccuracy)
-                        .ThenByDescending(cr => cr.LastUpdateTime)
-                        .Take(1)
-                        .Select(cr => new ClanRankingResponse
-                        {
-                            Id = cr.Id,
-                            Clan = cr.Clan,
-                            LastUpdateTime = cr.LastUpdateTime,
-                            AverageRank = cr.AverageRank,
-                            Pp = cr.Pp,
-                            AverageAccuracy = cr.AverageAccuracy,
-                            TotalScore = cr.TotalScore,
-                            LeaderboardId = cr.LeaderboardId,
-                            Leaderboard = cr.Leaderboard,
-                            AssociatedScores = null
-                        })
-                        .ToList();
                 }
             }
-
 
             if (leaderboard == null) {
                 Song? song = currentContext.Songs.Include(s => s.Difficulties).FirstOrDefault(s => s.Difficulties.FirstOrDefault(d => s.Id + d.Value + d.Mode == id) != null);
@@ -476,7 +476,7 @@ namespace BeatLeader_Server.Controllers {
                 }
             }
 
-            for (int i = 0; i < leaderboard.Scores.Count; i++) {
+            for (int i = 0; i < leaderboard.Scores?.Count; i++) {
                 leaderboard.Scores[i].Rank = i + (page - 1) * count + 1;
             }
 
@@ -491,7 +491,6 @@ namespace BeatLeader_Server.Controllers {
                 hash = hash.Substring(0, 40);
             }
 
-            // TODO: THIS MIGHT BE SOMETHING WONKY
             var leaderboards = _readContext.Leaderboards
                  .Where(lb => lb.Song.Hash == hash)
                  .Include(lb => lb.Song)
@@ -511,7 +510,7 @@ namespace BeatLeader_Server.Controllers {
                      Difficulty = lb.Difficulty,
                      Reweight = lb.Reweight,
                      ClanRankingContested = lb.ClanRankingContested,
-                     ClanRanking = lb.ClanRanking.FirstOrDefault()
+                     Clan = lb.ClanRanking.FirstOrDefault().Clan
                  })
                 .ToList();
 
@@ -526,7 +525,7 @@ namespace BeatLeader_Server.Controllers {
                 Difficulty = lb.Difficulty,
                 Reweight = lb.Reweight,
                 ClanRankingContested = lb.ClanRankingContested,
-                ClanRanking = lb.ClanRanking
+                Clan = lb.Clan
             }).ToList();
 
             if (resultList.Count > 0) {
@@ -682,7 +681,7 @@ namespace BeatLeader_Server.Controllers {
                     Qualification = lb.Qualification,
                     Reweight = lb.Reweight,
                     ClanRankingContested = lb.ClanRankingContested,
-                    ClanRanking = lb.ClanRanking.FirstOrDefault(),
+                    Clan = lb.ClanRanking.FirstOrDefault().Clan,
                     PositiveVotes = lb.PositiveVotes,
                     NegativeVotes = lb.NegativeVotes,
                     VoteStars = lb.VoteStars,
