@@ -242,10 +242,9 @@ namespace BeatLeader_Server {
             });
 
             services.AddDbContext<AppContext>(options => {
-            //options.UseSqlServer(Configuration.GetValue<string>("DefaultConnection"));
-            options.UseSqlServer(Configuration.GetValue<string>("DefaultConnection"), a => a.CommandTimeout(500));
+                options.UseSqlServer(Configuration.GetValue<string>("DefaultConnection"));
 
-            options.UseOpenIddict();
+                options.UseOpenIddict();
             });
             services.AddDbContext<ReadAppContext>(options => options.UseSqlServer(Configuration.GetValue<string>("ReadOnlyConnection")));
 
@@ -309,7 +308,6 @@ namespace BeatLeader_Server {
                 }
                 
             }
-            services.AddHostedService<RankingService>();
             services.AddHostedService<LeaderboardPlayerStatsService>();
             services.AddHostedService<MinuteRefresh>();
 

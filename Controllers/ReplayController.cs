@@ -83,12 +83,12 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpPut("~/replayoculus"), DisableRequestSizeLimit]
-        //[Authorize]
+        [Authorize]
         public async Task<ActionResult<ScoreResponse>> PostOculusReplay(
             [FromQuery] float time = 0,
             [FromQuery] EndType type = 0)
         {
-            string? userId = "76561198043191643";//HttpContext.CurrentUserID(_context);
+            string? userId = HttpContext.CurrentUserID(_context);
             if (userId == null)
             {
                 return Unauthorized("User is not authorized");
@@ -296,7 +296,7 @@ namespace BeatLeader_Server.Controllers
 
             resultScore.PlayerId = info.playerID;
             resultScore.LeaderboardId = leaderboard.Id;
-            //GeneralSocketController.ScoreWasUploaded(resultScore, _configuration, _context);
+            GeneralSocketController.ScoreWasUploaded(resultScore, _configuration, _context);
             resultScore.LeaderboardId = null;
 
             var transaction = await _context.Database.BeginTransactionAsync();
