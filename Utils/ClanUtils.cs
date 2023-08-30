@@ -1,13 +1,7 @@
-﻿using BeatLeader_Server.Migrations;
-using BeatLeader_Server.Models;
+﻿using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
-using J2N.Collections.Generic.Extensions;
-using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using System.Linq;
-using System.Reflection.Metadata;
-using static Lucene.Net.Queries.Function.ValueSources.MultiFunction;
 
 namespace BeatLeader_Server.Utils
 {
