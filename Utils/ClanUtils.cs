@@ -187,8 +187,9 @@ namespace BeatLeader_Server.Utils
                         // Update clanRanking fields
                         clanRanking.Pp = calculatedPp;
                         clanRanking.LastUpdateTime = newScore.Timepost;
-                        clanRanking.AverageAccuracy = MathUtils.AddToAverage(clanRanking.AverageAccuracy, clanRanking.AssociatedScores.Count(), newScore.Accuracy);
                         clanRanking.AverageRank = MathUtils.AddToAverage(clanRanking.AverageRank, clanRanking.AssociatedScores.Count(), newScore.Rank);
+                        clanRanking.AverageAccuracy = MathUtils.AddToAverage(clanRanking.AverageAccuracy, clanRanking.AssociatedScores.Count(), newScore.Accuracy);
+                        clanRanking.TotalScore += newScore.ModifiedScore;
                         clanRanking.AssociatedScores.Add(newScore);
                         context.Entry(clanRanking).Property(x => x.Pp).IsModified = true;
                         context.Entry(clanRanking).Property(x => x.LastUpdateTime).IsModified = true;
