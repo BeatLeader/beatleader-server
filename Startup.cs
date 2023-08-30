@@ -241,7 +241,7 @@ namespace BeatLeader_Server {
                 options.SuppressXFrameOptionsHeader = false;
             });
 
-            services.AddDbContext<AppContext>(options => {
+            services.AddDbContext<AppContext>(options => { 
                 options.UseSqlServer(Configuration.GetValue<string>("DefaultConnection"));
 
                 options.UseOpenIddict();
@@ -308,6 +308,7 @@ namespace BeatLeader_Server {
                 }
                 
             }
+
             services.AddHostedService<LeaderboardPlayerStatsService>();
             services.AddHostedService<MinuteRefresh>();
 
