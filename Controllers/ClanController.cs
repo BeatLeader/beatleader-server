@@ -907,6 +907,7 @@ namespace BeatLeader_Server.Controllers
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
             string leaderboardID = "1a45991";
+            //string leaderboardID = "1021791";
 
             // Lookup valid score
             var score = _context
@@ -928,13 +929,16 @@ namespace BeatLeader_Server.Controllers
 
             Score tempScore = new Score();
             tempScore.Timepost = score.Score.Timepost + 1;
-            tempScore.Pp = score.Score.Pp + 1;
-            tempScore.Accuracy = score.Score.Accuracy + .03f;
-            tempScore.Rank = score.Score.Rank - 1;
+            tempScore.Pp = score.Score.Pp + 0.1f;
+            tempScore.Accuracy = score.Score.Accuracy + .0001f;
+            tempScore.Rank = score.Score.Rank;
+            tempScore.ModifiedScore = score.Score.ModifiedScore + 1;
             tempScore.Player = score.Score.Player;
 
             _context.ChangeTracker.AutoDetectChangesEnabled = false;
             _context.UpdateClanRanking(leaderboard, score.Score, tempScore);
+
+            //await _context.BulkSaveChangesAsync();
 
             return Ok();
         }

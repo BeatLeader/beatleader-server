@@ -5,6 +5,7 @@ using J2N.Collections.Generic.Extensions;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Linq;
 using System.Reflection.Metadata;
 using static Lucene.Net.Queries.Function.ValueSources.MultiFunction;
 
@@ -76,62 +77,74 @@ namespace BeatLeader_Server.Utils
             {
                 /*
                  * Any new score can have multiple clans associated with it
-                 * Therefore, any new score that is posted where the player is in clans will have some kind of impact to the
-                 * pp of each clan's clanRanking on that leaderboard.
-                 * We need to compare the new score to all the 'associated scores' on each clan the player is in and recaculate the clanPP from that.
-                 * With that new clanPP calculation, we can then recalculate clanRankings
-                 * for each clan in the score:
-                 * calculate the pp increase of the clan, take that new clanpp value, and update the clanRanking ranks
+                 * Therefore, any new score that is posted where the player is in clans will have some kind of change to the
+                 * pp of each clan's clanRanking on that leaderboard. (because a leaderboard has a list of clanRankings, and each clanRanking maps to a single clan)
+                 * We need to compare the new score to all the 'associated scores' on each clanRanking the player is affecting by posting this new score
+                 * and recaculate the weighted clanRanking pp from that list.
                  *
                  * Procure list of clanRankings not affected by this new score (The player who posted the score is not in the clan)
                  * Binary search and place all the Affected ClanRankings in the right spot in the list of nonAffectedClanRankings with their
                  * new pp values.
-                 * Starting from the best index that was inserted, update all lower ranks to match the indexes
+                 * 
+                 * Update the map status and captured leaderboard status for whatever clan owns the leaderboard now
                  */
-                var affectedClanRankings =
-                    context
-                    .ClanRanking
-                    .Where(s => s.LeaderboardId == leaderboard.Id && newScore.Player.Clans.Contains(s.Clan))
-                    .Include(s => s.AssociatedScores
-                             .OrderByDescending(a => Math.Round(a.Pp, 2))
-                             .ThenByDescending(a => Math.Round(a.Accuracy, 4))
-                             .ThenBy(a => a.Timeset))
-                    .ToList();
 
-                if (affectedClanRankings.Count() != 0)
+                if (newScore.Player.Clans.Count() != 0)
                 {
-                    var nonAffectedClanRankings =
+                    var affectedClanRankings =
+                        context
+                        .ClanRanking
+                        .Where(s => s.LeaderboardId == leaderboard.Id && newScore.Player.Clans.Contains(s.Clan))
+                        .Include(s => s.AssociatedScores
+                                 .OrderByDescending(a => Math.Round(a.Pp, 2))
+                                 .ThenByDescending(a => Math.Round(a.Accuracy, 4))
+                                 .ThenBy(a => a.Timeset))
+                        .ToList();
+
+                    var topClanRanking =
                         context
                         .ClanRanking
                         .Where(s => s.LeaderboardId == leaderboard.Id && !newScore.Player.Clans.Contains(s.Clan))
                         .OrderByDescending(el => Math.Round(el.Pp, 2))
                         .ThenByDescending(el => Math.Round(el.AverageAccuracy, 4))
                         .ThenByDescending(el => el.LastUpdateTime)
-                        .Select(s => new { Id = s.Id, Pp = s.Pp, AverageAccuracy = s.AverageAccuracy })
-                        .ToList();
+                        .Select(cr => new Tuple<int, float>(cr.Id, cr.Pp))
+                        .FirstOrDefault();
 
-                    var crList = nonAffectedClanRankings.Select(cr => new Tuple<int, float>(cr.Id, cr.Pp)).ToList();
-                    var prevCRCaptorId = crList[0].Item1;
+                    var newCRCaptorId = topClanRanking?.Item1 ?? null;
+                    var newCRCaptorPp = topClanRanking?.Item2 ?? 0;
 
-                    foreach (var clanRanking in affectedClanRankings)
+                    foreach (var clan in newScore.Player.Clans)
                     {
-                        var cr = context.ClanRanking.Local.FirstOrDefault(c => c.Id == clanRanking.Id);
-                        if (cr == null)
+                        var clanRanking = affectedClanRankings.Where(cr => cr.Clan.Id == clan.Id).FirstOrDefault();
+                        if (clanRanking == null)
                         {
-                            cr = new ClanRanking() { Id = clanRanking.Id };
-                            context.ClanRanking.Attach(cr);
+                            clanRanking = new ClanRanking
+                            {
+                                Clan = clan,
+                                LastUpdateTime = 0,
+                                Pp = 0,
+                                AverageRank = 0,
+                                AverageAccuracy = 0,
+                                TotalScore = 0,
+                                LeaderboardId = leaderboard.Id,
+                                Leaderboard = leaderboard,
+                                AssociatedScores = new List<Score>()
+                            };
+                            context.ClanRanking.Attach(clanRanking);
                         }
-                        // Remove current score from clanRanking
-                        if (currentScore != null)
+
+                        // Remove current score from clanRanking if the currentScore was in the clanRanking
+                        // Which, it should, because joining a clan recalculates clanRankings
+                        if (clanRanking.AssociatedScores.Contains(currentScore))
                         {
                             clanRanking.AverageAccuracy = MathUtils.RemoveFromAverage(clanRanking.AverageAccuracy, clanRanking.AssociatedScores.Count(), currentScore.Accuracy);
                             clanRanking.AverageRank = MathUtils.RemoveFromAverage(clanRanking.AverageRank, clanRanking.AssociatedScores.Count(), currentScore.Rank);
-                            cr.TotalScore -= currentScore.ModifiedScore;
+                            clanRanking.TotalScore -= currentScore.ModifiedScore;
                             clanRanking.AssociatedScores.Remove(currentScore);
-                            context.Entry(cr).Property(x => x.AverageAccuracy).IsModified = true;
-                            context.Entry(cr).Property(x => x.AverageRank).IsModified = true;
-                            context.Entry(cr).Property(x => x.TotalScore).IsModified = true;
-                            //context.Entry(cr).Property(x => x.AssociatedScores).IsModified = true;
+                            context.Entry(clanRanking).Property(x => x.AverageAccuracy).IsModified = true;
+                            context.Entry(clanRanking).Property(x => x.AverageRank).IsModified = true;
+                            context.Entry(clanRanking).Property(x => x.TotalScore).IsModified = true;
                         }
 
                         // Binary search to insert new score into the sorted list
@@ -172,52 +185,25 @@ namespace BeatLeader_Server.Utils
                             weightPower++;
                         }
                         // Update clanRanking fields
-                        cr.Pp = calculatedPp;
-                        cr.LastUpdateTime = newScore.Timepost;
-                        cr.AverageAccuracy = MathUtils.AddToAverage(clanRanking.AverageAccuracy, clanRanking.AssociatedScores.Count(), newScore.Accuracy);
-                        cr.AverageRank = MathUtils.AddToAverage(clanRanking.AverageRank, clanRanking.AssociatedScores.Count(), newScore.Rank);
-                        cr.AssociatedScores.Add(newScore);
-                        context.Entry(cr).Property(x => x.Pp).IsModified = true;
-                        context.Entry(cr).Property(x => x.LastUpdateTime).IsModified = true;
+                        clanRanking.Pp = calculatedPp;
+                        clanRanking.LastUpdateTime = newScore.Timepost;
+                        clanRanking.AverageAccuracy = MathUtils.AddToAverage(clanRanking.AverageAccuracy, clanRanking.AssociatedScores.Count(), newScore.Accuracy);
+                        clanRanking.AverageRank = MathUtils.AddToAverage(clanRanking.AverageRank, clanRanking.AssociatedScores.Count(), newScore.Rank);
+                        clanRanking.AssociatedScores.Add(newScore);
+                        context.Entry(clanRanking).Property(x => x.Pp).IsModified = true;
+                        context.Entry(clanRanking).Property(x => x.LastUpdateTime).IsModified = true;
 
-                        if (cr.Pp >= crList[0].Item2)
+
+                        if (topClanRanking == null || clanRanking.Pp >= newCRCaptorPp)
                         {
-                            crList.Insert(0, new Tuple<int, float>(clanRanking.Id, clanRanking.Pp));
-                        }
-                        else if (newScore.Pp == 0.0f)
-                        {
-                            // Scores with zero pp mess up the binary search because there are duplicate zeros.
-                            // Zeros contribute nothing for this pp calculation, so just throw it at the botom of the pile.
-                            crList.Add(new Tuple<int, float>(clanRanking.Id, clanRanking.Pp));
-                        } else
-                        {
-                            // Calculate new ClanRanking ranks with the new clan updated
-                            index = crList.BinarySearch(new Tuple<int, float>(clanRanking.Id, clanRanking.Pp), new ClanRankingComparer());
-                            if (index >= 0 && index != ~crList.Count())
-                            {
-                                // Found a score with the exact same pp value, should be fine, just add it
-                                // either before or after for the purposes of the pp calculation
-                                crList.Insert(index, new Tuple<int, float>(clanRanking.Id, clanRanking.Pp));
-                            }
-                            else
-                            {
-                                // newScore has the highest Pp of all the existing clanRankings
-                                if (index == ~crList.Count())
-                                {
-                                    crList.Insert(0, new Tuple<int, float>(clanRanking.Id, clanRanking.Pp));
-                                }
-                                else
-                                {
-                                    // newScore is a totally unique pp value
-                                    crList.Insert(~index, new Tuple<int, float>(clanRanking.Id, clanRanking.Pp));
-                                }
-                            }
+                            newCRCaptorId = clanRanking.Id;
+                            newCRCaptorPp = clanRanking.Pp;
                         }
                     }
 
 
                     // Captured leaderboard cases covered -------
-                    // Null -> Null : Good
+                    // Null -> Null : Impossible
                     // Null -> Won : Good
                     // Null -> Tied : Good
                     // Won -> Null : Impossible (unranked ranked map?)
@@ -228,70 +214,71 @@ namespace BeatLeader_Server.Utils
                     // Tied -> Tied : Good
                     // Tied -> Null : Impossible
                     // ------------------------------------------
-                    if (!crList.IsNullOrEmpty())
+                    if (topClanRanking != null)
                     {
-                        if (nonAffectedClanRankings.Count() != 0)
+                        // Check if we're introducing a tie
+                        if (topClanRanking.Item1 != newCRCaptorId && topClanRanking.Item2 == newCRCaptorPp)
                         {
-                            // Check if we're introducing a tie
-                            if (crList.Count() > 1 && crList[0].Item2 == crList[1].Item2)
+                            // If the map was contested before, and its still contested, don't do anything
+                            if (leaderboard.ClanRankingContested == false)
                             {
-                                // If the map was contested before, and its still contested, don't do anything
-                                if (leaderboard.ClanRankingContested == false)
-                                {
-                                    // Remove captured Leaderboard from previous owner because now leaderboard is tied.
-                                    var prevCaptor = context.ClanRanking.Where(c => c.Id == prevCRCaptorId).Include(cl => cl.Clan).ThenInclude(cl => cl.CapturedLeaderboards).FirstOrDefault();
-                                    prevCaptor.Clan.CapturedLeaderboards.Remove(leaderboard);
-                                    leaderboard.ClanRankingContested = true;
-                                    context.Entry(leaderboard).Property(x => x.ClanRankingContested).IsModified = true;
-                                }
-                            }
-                            else
-                            {
-                                // If the leaderboard was previously tied, and now it is captured, we don't want to remove captor (there wasn't one)
-                                if (crList.Count() > 1 && leaderboard.ClanRankingContested)
-                                {
-                                    // Add captured leaderboard to new owner
-                                    var newCaptor = context.ClanRanking.Where(c => c.Id == crList[0].Item1).Include(cl => cl.Clan).ThenInclude(cl => cl.CapturedLeaderboards).FirstOrDefault();
-                                    newCaptor.Clan.CapturedLeaderboards.Add(leaderboard);
-                                    newCaptor.Clan.RankedPoolPercentCaptured =
-                                        RankingService.RankedMapCount != 0 ? (float)(newCaptor.Clan.CapturedLeaderboards?.Count() ?? 0) / RankingService.RankedMapCount : 0;
-                                    leaderboard.ClanRankingContested = false;
-                                    context.Entry(leaderboard).Property(x => x.ClanRankingContested).IsModified = true;
-                                    context.Entry(newCaptor.Clan).Property(x => x.RankedPoolPercentCaptured).IsModified = true;
-                                }
-                                else
-                                {
-                                    // If the leaderboard was previously won, and now it is won by a different clan,
-                                    // Remove board from old captor, add board to new captor
-                                    if (prevCRCaptorId != crList[0].Item1)
-                                    {
-                                        // Remove captured Leaderboard from previous owner because now leaderboard is tied.
-                                        var prevCaptor = context.ClanRanking.Where(c => c.Id == prevCRCaptorId).Include(cl => cl.Clan).ThenInclude(cl => cl.CapturedLeaderboards).FirstOrDefault();
-                                        prevCaptor.Clan.CapturedLeaderboards.Remove(leaderboard);
-                                        // Add captured leaderboard to new owner
-                                        var newCaptor = context.ClanRanking.Where(c => c.Id == crList[0].Item1).Include(cl => cl.Clan).ThenInclude(cl => cl.CapturedLeaderboards).FirstOrDefault();
-                                        newCaptor.Clan.CapturedLeaderboards.Add(leaderboard);
-                                        newCaptor.Clan.RankedPoolPercentCaptured =
-                                            RankingService.RankedMapCount != 0 ? (float)(newCaptor.Clan.CapturedLeaderboards?.Count() ?? 0) / RankingService.RankedMapCount : 0;
-                                        context.Entry(newCaptor.Clan).Property(x => x.RankedPoolPercentCaptured).IsModified = true;
-                                    }
-                                }
+                                // Remove captured Leaderboard from previous owner because now leaderboard is tied.
+                                var prevCaptor = context.ClanRanking.Where(c => c.Id == topClanRanking.Item1).Include(cl => cl.Clan).ThenInclude(cl => cl.CapturedLeaderboards).FirstOrDefault();
+                                prevCaptor.Clan.CapturedLeaderboards.Remove(leaderboard);
+                                leaderboard.ClanRankingContested = true;
+                                context.Entry(leaderboard).Property(x => x.ClanRankingContested).IsModified = true;
                             }
                         }
                         else
                         {
-                            // If clanRanking was empty:
-                            // Empty --> Tie : Set leaderboard as contested
-                            if (crList.Count() > 1 && crList[0].Item2 == crList[1].Item2)
+                            // If the leaderboard was previously tied, and now it is captured, we don't want to remove captor (there wasn't one)
+                            if (leaderboard.ClanRankingContested)
                             {
-                                leaderboard.ClanRankingContested = true;
+                                // Add captured leaderboard to new owner
+                                var newCaptor = context.ClanRanking.Where(c => c.Id == newCRCaptorId).Include(cl => cl.Clan).ThenInclude(cl => cl.CapturedLeaderboards).FirstOrDefault();
+                                newCaptor.Clan.CapturedLeaderboards.Add(leaderboard);
+                                newCaptor.Clan.RankedPoolPercentCaptured =
+                                    RankingService.RankedMapCount != 0 ? (float)(newCaptor.Clan.CapturedLeaderboards?.Count() ?? 0) / RankingService.RankedMapCount : 0;
+                                leaderboard.ClanRankingContested = false;
                                 context.Entry(leaderboard).Property(x => x.ClanRankingContested).IsModified = true;
+                                context.Entry(newCaptor.Clan).Property(x => x.RankedPoolPercentCaptured).IsModified = true;
                             }
                             else
                             {
-                                var newCaptor = context.ClanRanking.Where(c => c.Id == crList[0].Item1).Include(cl => cl.Clan).ThenInclude(cl => cl.CapturedLeaderboards).FirstOrDefault();
-                                newCaptor.Clan.CapturedLeaderboards.Add(leaderboard);
+                                // If the leaderboard was previously won, and now it is won by a different clan,
+                                // Remove board from old captor, add board to new captor
+                                if (topClanRanking.Item1 != newCRCaptorId)
+                                {
+                                    // Remove captured Leaderboard from previous owner.
+                                    var prevCaptor = context.ClanRanking.Where(c => c.Id == topClanRanking.Item1).Include(cl => cl.Clan).ThenInclude(cl => cl.CapturedLeaderboards).FirstOrDefault();
+                                    prevCaptor.Clan.CapturedLeaderboards.Remove(leaderboard);
+                                    // Add captured leaderboard to new owner
+                                    var newCaptor = context.ClanRanking.Where(c => c.Id == newCRCaptorId).Include(cl => cl.Clan).ThenInclude(cl => cl.CapturedLeaderboards).FirstOrDefault();
+                                    newCaptor.Clan.CapturedLeaderboards.Add(leaderboard);
+                                    newCaptor.Clan.RankedPoolPercentCaptured =
+                                        RankingService.RankedMapCount != 0 ? (float)(newCaptor.Clan.CapturedLeaderboards?.Count() ?? 0) / RankingService.RankedMapCount : 0;
+                                    context.Entry(newCaptor.Clan).Property(x => x.RankedPoolPercentCaptured).IsModified = true;
+                                }
                             }
+                        }
+                    }
+                    else
+                    {
+                        // If clanRanking was empty:
+                        if (newScore.Player.Clans.Count() > 1)
+                        {
+                            // Empty --> Tie : Set leaderboard as contested; If the clanRankings were empty,
+                            // then any new singular score with more than 1 clan will be contested immediately.
+                            leaderboard.ClanRankingContested = true;
+                            context.Entry(leaderboard).Property(x => x.ClanRankingContested).IsModified = true;
+                        }
+                        else
+                        {
+                            var newCaptor = context.ClanRanking.Where(c => c.Id == affectedClanRankings[0].Id).Include(cl => cl.Clan).ThenInclude(cl => cl.CapturedLeaderboards).FirstOrDefault();
+                            newCaptor.Clan.CapturedLeaderboards.Add(leaderboard);
+                            newCaptor.Clan.RankedPoolPercentCaptured =
+                                RankingService.RankedMapCount != 0 ? (float)(newCaptor.Clan.CapturedLeaderboards?.Count() ?? 0) / RankingService.RankedMapCount : 0;
+                            context.Entry(newCaptor.Clan).Property(x => x.RankedPoolPercentCaptured).IsModified = true;
                         }
                     }
                 }
