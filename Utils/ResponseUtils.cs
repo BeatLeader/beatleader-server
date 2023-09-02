@@ -104,6 +104,21 @@ namespace BeatLeader_Server.Utils {
             public ReplayOffsets? Offsets { get; set; }
         }
 
+        public class ScoreSongResponse {
+            public string Id { get; set; }
+            public string Hash { get; set; }
+            public string Cover { get; set; }
+            public string Name { get; set; }
+            public string? SubName { get; set; }
+            public string Author { get; set; }
+            public string Mapper { get; set; }
+        }
+
+        public class ScoreResponseWithDifficulty : ScoreResponse {
+            public DifficultyDescription Difficulty { get; set; }
+            public ScoreSongResponse Song { get; set; }
+        }
+
         public class SaverScoreResponse {
             public int Id { get; set; }
             public int BaseScore { get; set; }
