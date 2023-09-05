@@ -921,12 +921,9 @@ namespace BeatLeader_Server.Controllers
 
                         await dsClient.SendMessageAsync(message,
                             embeds: new List<Embed> { new EmbedBuilder()
-                                    .WithTitle("Leaderboard")
+                                    .WithTitle("Open leaderboard ↗")
                                     .WithUrl("https://beatleader.xyz/leaderboard/global/" + leaderboard.Id)
-                                    .Build(),
-                                new EmbedBuilder()
-                                    .WithTitle("Watch Replay")
-                                    .WithUrl("https://replay.beatleader.xyz?scoreId=" + resultScore.Id)
+                                    .WithDescription("[Watch replay with BL](" + "https://replay.beatleader.xyz?scoreId=" + resultScore.Id + ") | [Watch replay with ArcViewer](" +"https://allpoland.github.io/ArcViewer/?scoreID=" + resultScore.Id + ")" )
                                     .WithImageUrl("https://api.beatleader.xyz/preview/replay?scoreId=" + resultScore.Id)
                                     .Build()
                             });
