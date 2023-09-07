@@ -886,37 +886,32 @@ namespace BeatLeader_Server.Controllers
                     .Include(lb => lb.ClanRanking)
                     .ToList();
                 leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
+                await _context.BulkSaveChangesAsync();
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
             }
 
-            await _context.BulkSaveChangesAsync();
-
             return Ok();
         }
 
         [HttpPut("~/clan/updateClanRanking")]
         public async Task<ActionResult> UpdateClanRanking(
-            [FromQuery] string userID,
-            [FromQuery] string leaderboardId)
+            [FromQuery] int mode)
         {
             //string currentID = HttpContext.CurrentUserID(_context);
             string currentID = "76561198043191643";
-            var currentPlayer = await _context.Players.FindAsync(currentID);
-
-            string leaderboardID = "1a45991";
-            //string leaderboardID = "1021791";
-
-            // Lookup valid score
-            var score = _context
-                .Scores
-                .Where(s => s.PlayerId == currentID && s.LeaderboardId == leaderboardID)
-                .Include(s => s.Player)
-                .ThenInclude(p => p.Clans)
-                .Select(sel => new { Score = sel, Clans = sel.Player.Clans })
+            //var currentPlayer = await _context.Players.FindAsync(currentID);
+            var currentPlayer = _context
+                .Players
+                .Where(p => p.Id == currentID)
+                .Include(p => p.Clans)
                 .FirstOrDefault();
+
+            //string leaderboardID = "1a45991"; // Freedom Dive
+            string leaderboardID = "293f4xx91"; // Tau
+            //string leaderboardID = "1021791";
 
             var leaderboard = _context
                 .Leaderboards
@@ -924,21 +919,59 @@ namespace BeatLeader_Server.Controllers
                 .Include(lb => lb.Difficulty)
                 .Include(cr => cr.ClanRanking)
                 .ThenInclude(cr => cr.Clan)
-
                 .FirstOrDefault();
 
-            Score tempScore = new Score();
-            tempScore.Timepost = score.Score.Timepost + 1;
-            tempScore.Pp = score.Score.Pp + 0.1f;
-            tempScore.Accuracy = score.Score.Accuracy + .0001f;
-            tempScore.Rank = score.Score.Rank;
-            tempScore.ModifiedScore = score.Score.ModifiedScore + 1;
-            tempScore.Player = score.Score.Player;
+            if (mode == 0)
+            {
+                // Lookup valid score
+                var score = _context
+                    .Scores
+                    .Where(s => s.PlayerId == currentID && s.LeaderboardId == leaderboardID)
+                    .Include(s => s.Player)
+                    .ThenInclude(p => p.Clans)
+                    .Select(sel => new { Score = sel, Clans = sel.Player.Clans })
+                    .FirstOrDefault();
 
-            _context.ChangeTracker.AutoDetectChangesEnabled = false;
-            _context.UpdateClanRanking(leaderboard, score.Score, tempScore);
+                Score tempScore = new Score();
+                tempScore.Timepost = score.Score.Timepost + 1;
+                tempScore.Pp = score.Score.Pp + 0.1f;
+                tempScore.Accuracy = score.Score.Accuracy + .0001f;
+                tempScore.Rank = score.Score.Rank;
+                tempScore.ModifiedScore = score.Score.ModifiedScore + 1;
+                tempScore.Player = score.Score.Player;
 
-            //await _context.BulkSaveChangesAsync();
+                _context.UpdateClanRanking(leaderboard, score.Score, tempScore); // Test score overrides
+            }
+            else
+            {
+                var topScore = _context
+                    .Scores
+                    .Where(s => s.LeaderboardId == leaderboardID)
+                    .Include(s => s.Player)
+                    .ThenInclude(p => p.Clans)
+                    .OrderBy(s => s.Rank)
+                    .FirstOrDefault();
+
+                Score tempTopScore = new Score();
+                tempTopScore.Timepost = topScore.Timepost + 1;
+                tempTopScore.Pp = topScore.Pp + 0.1f;
+                tempTopScore.Accuracy = topScore.Accuracy + .0001f;
+                tempTopScore.Rank = topScore.Rank;
+                tempTopScore.ModifiedScore = topScore.ModifiedScore + 1;
+                tempTopScore.Player = currentPlayer; // Subsitute me in lol
+                _context.UpdateClanRanking(leaderboard, null, tempTopScore); // Test new score sets
+            }
+
+            try
+            {
+                await _context.BulkSaveChangesAsync();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.StackTrace);
+            }
+
+            await _context.BulkSaveChangesAsync();
 
             return Ok();
         }

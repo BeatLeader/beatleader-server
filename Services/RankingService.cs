@@ -164,6 +164,9 @@ namespace BeatLeader_Server.Services
                     (float totalpp, int totalRanks) = RefreshLeaderboardPlayers(leaderboard.Id, _context);
                     await _context.SaveChangesAsync();
 
+                    _context.CalculateClanRankingSlow(leaderboard);
+                    await _context.BulkSaveChangesAsync();
+
                     if (dsClient != null)
                     {
                         string message = "The **" + difficulty.DifficultyName + "** diff of **" + leaderboard.Song.Name + "** was ranked! \n";
