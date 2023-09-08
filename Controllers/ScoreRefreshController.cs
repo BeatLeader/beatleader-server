@@ -336,7 +336,7 @@ namespace BeatLeader_Server.Controllers
             var allLeaderboards = _context.Leaderboards
                 .Select(lb => new {
                     lb.Difficulty,
-                    Scores = lb.Scores.Select(s => new { s.Id, s.Banned, s.Pp, s.Accuracy, s.Timeset, s.ModifiedScore })
+                    Scores = lb.Scores.Select(s => new { s.Id, s.Banned, s.Pp, s.Accuracy, s.Timeset, s.ModifiedScore, s.Priority })
                 }).ToList();
                 await allLeaderboards.ParallelForEachAsync(async leaderboard => {
                     var allScores = leaderboard.Scores.Where(s => !s.Banned).ToList();
@@ -347,7 +347,7 @@ namespace BeatLeader_Server.Controllers
 
                     foreach (var s in allScores)
                     {
-                        var score = new Score() { Id = s.Id, Pp = s.Pp, Accuracy = s.Accuracy, Timeset = s.Timeset, ModifiedScore = s.ModifiedScore };
+                        var score = new Score() { Id = s.Id, Pp = s.Pp, Accuracy = s.Accuracy, Timeset = s.Timeset, ModifiedScore = s.ModifiedScore, Priority = s.Priority };
                         _context.Scores.Attach(score);
 
                         newScores.Add(score);
@@ -359,6 +359,7 @@ namespace BeatLeader_Server.Controllers
                             .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                             .ThenBy(el => el.Timeset).ToList() 
                         : newScores
+                            .OrderBy(el => el.Priority)
                             .OrderByDescending(el => el.ModifiedScore)
                             .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                             .ThenBy(el => el.Timeset).ToList();
