@@ -11,12 +11,6 @@ namespace BeatLeader_Server.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<int>(
-                name: "ClanRankingId",
-                table: "Scores",
-                type: "int",
-                nullable: true);
-
-            migrationBuilder.AddColumn<int>(
                 name: "ClanId",
                 table: "Leaderboards",
                 type: "int",
@@ -42,13 +36,13 @@ namespace BeatLeader_Server.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    ClanId = table.Column<int>(type: "int", nullable: false),
+                    ClanId = table.Column<int>(type: "int", nullable: true),
                     LastUpdateTime = table.Column<int>(type: "int", nullable: false),
                     AverageRank = table.Column<float>(type: "real", nullable: false),
                     Pp = table.Column<float>(type: "real", nullable: false),
                     AverageAccuracy = table.Column<float>(type: "real", nullable: false),
                     TotalScore = table.Column<float>(type: "real", nullable: false),
-                    LeaderboardId = table.Column<string>(type: "nvarchar(450)", nullable: false)
+                    LeaderboardId = table.Column<string>(type: "nvarchar(450)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -57,20 +51,37 @@ namespace BeatLeader_Server.Migrations
                         name: "FK_ClanRanking_Clans_ClanId",
                         column: x => x.ClanId,
                         principalTable: "Clans",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_ClanRanking_Leaderboards_LeaderboardId",
                         column: x => x.LeaderboardId,
                         principalTable: "Leaderboards",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ClanRankingScore",
+                columns: table => new
+                {
+                    AssociatedClanRankingsId = table.Column<int>(type: "int", nullable: false),
+                    AssociatedScoresId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ClanRankingScore", x => new { x.AssociatedClanRankingsId, x.AssociatedScoresId });
+                    table.ForeignKey(
+                        name: "FK_ClanRankingScore_ClanRanking_AssociatedClanRankingsId",
+                        column: x => x.AssociatedClanRankingsId,
+                        principalTable: "ClanRanking",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ClanRankingScore_Scores_AssociatedScoresId",
+                        column: x => x.AssociatedScoresId,
+                        principalTable: "Scores",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Scores_ClanRankingId",
-                table: "Scores",
-                column: "ClanRankingId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Leaderboards_ClanId",
@@ -87,18 +98,16 @@ namespace BeatLeader_Server.Migrations
                 table: "ClanRanking",
                 column: "LeaderboardId");
 
+            migrationBuilder.CreateIndex(
+                name: "IX_ClanRankingScore_AssociatedScoresId",
+                table: "ClanRankingScore",
+                column: "AssociatedScoresId");
+
             migrationBuilder.AddForeignKey(
                 name: "FK_Leaderboards_Clans_ClanId",
                 table: "Leaderboards",
                 column: "ClanId",
                 principalTable: "Clans",
-                principalColumn: "Id");
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_Scores_ClanRanking_ClanRankingId",
-                table: "Scores",
-                column: "ClanRankingId",
-                principalTable: "ClanRanking",
                 principalColumn: "Id");
         }
 
@@ -109,24 +118,15 @@ namespace BeatLeader_Server.Migrations
                 name: "FK_Leaderboards_Clans_ClanId",
                 table: "Leaderboards");
 
-            migrationBuilder.DropForeignKey(
-                name: "FK_Scores_ClanRanking_ClanRankingId",
-                table: "Scores");
+            migrationBuilder.DropTable(
+                name: "ClanRankingScore");
 
             migrationBuilder.DropTable(
                 name: "ClanRanking");
 
             migrationBuilder.DropIndex(
-                name: "IX_Scores_ClanRankingId",
-                table: "Scores");
-
-            migrationBuilder.DropIndex(
                 name: "IX_Leaderboards_ClanId",
                 table: "Leaderboards");
-
-            migrationBuilder.DropColumn(
-                name: "ClanRankingId",
-                table: "Scores");
 
             migrationBuilder.DropColumn(
                 name: "ClanId",

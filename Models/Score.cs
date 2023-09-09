@@ -83,6 +83,7 @@ namespace BeatLeader_Server.Models
         public float LeftTiming { get; set; }
         public float RightTiming { get; set; }
         public int Priority { get; set; } = 0;
+        public ICollection<ClanRanking>? AssociatedClanRankings { get; set; }
 
         public ScoreImprovement? ScoreImprovement { get; set; }
         public bool Banned { get; set; } = false;

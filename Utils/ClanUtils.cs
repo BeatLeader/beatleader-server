@@ -82,10 +82,10 @@ namespace BeatLeader_Server.Utils
 
                 if (newScore.Player.Clans.Count() != 0)
                 {
-                    //var newScoreFromDb = context
-                    //    .Scores
-                    //    .Where(s => s.Id == newScore.Id)
-                    //    .FirstOrDefault();
+                    if (leaderboard.ClanRanking == null)
+                    {
+                        leaderboard.ClanRanking = new List<ClanRanking>();
+                    }
 
                     var topClanRanking =
                         context
@@ -113,6 +113,7 @@ namespace BeatLeader_Server.Utils
 
                         if (clanRanking == null)
                         {
+                            context.Leaderboards.Attach(leaderboard);
                             clanRanking = new ClanRanking
                             {
                                 Clan = clan,
@@ -126,7 +127,9 @@ namespace BeatLeader_Server.Utils
                                 AssociatedScores = new List<Score>()
                             };
                             leaderboard.ClanRanking.Add(clanRanking);
+                            context.SaveChanges();
                         }
+                        context.ClanRanking.Attach(clanRanking);
 
                         // Remove current score from clanRanking if the currentScore was in the clanRanking
                         // Which, it should, because joining a clan recalculates clanRankings
@@ -190,13 +193,11 @@ namespace BeatLeader_Server.Utils
                         clanRanking.AverageAccuracy = MathUtils.AddToAverage(clanRanking.AverageAccuracy, clanRanking.AssociatedScores.Count(), newScore.Accuracy);
                         clanRanking.TotalScore += newScore.ModifiedScore;
 
-                        //ICollection<Score> newAssociatedScores = new List<Score>();
-                        //newAssociatedScores = clanRanking.AssociatedScores;
-                        ////newAssociatedScores.Add(newScoreFromDb);
-                        //clanRanking.AssociatedScores = newAssociatedScores;
-
                         // This doesn't work. Changes aren't tracked by efcore. Why?
                         clanRanking.AssociatedScores.Add(newScore);
+                        context.ClanRanking.Entry(clanRanking).State = EntityState.Modified;
+
+                        context.SaveChanges();
 
                         if (topClanRanking == null || clanRanking.Pp >= newCRCaptorPp)
                         {
