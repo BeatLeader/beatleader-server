@@ -195,9 +195,12 @@ namespace BeatLeader_Server.Utils
 
                         // This doesn't work. Changes aren't tracked by efcore. Why?
                         clanRanking.AssociatedScores.Add(newScore);
-                        context.ClanRanking.Entry(clanRanking).State = EntityState.Modified;
 
-                        context.SaveChanges();
+                        // Putting this here didn't work
+                        //context.ClanRanking.Entry(clanRanking).State = EntityState.Modified;
+
+                        // Ensuring it got saved didn't work either
+                        //context.SaveChanges();
 
                         if (topClanRanking == null || clanRanking.Pp >= newCRCaptorPp)
                         {
