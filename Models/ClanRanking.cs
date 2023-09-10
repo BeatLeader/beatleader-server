@@ -13,6 +13,5 @@ namespace BeatLeader_Server.Models
         public float TotalScore { get; set; } // Total score of scores from this clan on this leaderboard.
         public string? LeaderboardId { get; set; } // ID of the leaderboard, useful for quick filtering.
         public Leaderboard? Leaderboard { get; set; } // Leaderboard associated with this clanRanking.
-        public ICollection<Score>? AssociatedScores { get; set; } // A list of scores associated with this clan
     }
 }

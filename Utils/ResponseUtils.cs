@@ -131,7 +131,7 @@ namespace BeatLeader_Server.Utils {
             public RankQualification? Qualification { get; set; }
             public RankUpdate? Reweight { get; set; }
             public bool ClanRankingContested { get; set; }
-            public ClanRanking? ClanRanking { get; set; }
+            public Clan Clan { get; set; }
 
             public void HideRatings() {
                 this.Difficulty.AccRating = null;
@@ -284,8 +284,8 @@ namespace BeatLeader_Server.Utils {
             public int StarVotes { get; set; }
             public int NegativeVotes { get; set; }
             public float VoteStars { get; set; }
+            public Clan? Clan { get; set; }
             public bool ClanRankingContested { get; set; }
-            public ClanRanking? ClanRanking { get; set; }
             public ScoreResponseWithAcc? MyScore { get; set; }
             public RankQualification? Qualification { get; set; }
             public RankUpdate? Reweight { get; set; }

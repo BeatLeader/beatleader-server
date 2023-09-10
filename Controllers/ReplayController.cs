@@ -651,9 +651,6 @@ namespace BeatLeader_Server.Controllers
 
             if (!player.Bot && leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
                 _context.RecalculatePPAndRankFast(player);
-
-                // Calculate clan ranking for this leaderboard
-                _context.UpdateClanRanking(leaderboard, currentScore, resultScore);
             }
 
             try
@@ -670,6 +667,9 @@ namespace BeatLeader_Server.Controllers
 
             _context.ChangeTracker.AutoDetectChangesEnabled = true;
             transaction2 = await _context.Database.BeginTransactionAsync();
+
+            // Calculate clan ranking for this leaderboard
+            _context.UpdateClanRanking(leaderboard, currentScore, resultScore);
 
             ScoreStatistic? statistic;
             try {

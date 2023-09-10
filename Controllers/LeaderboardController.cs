@@ -491,7 +491,6 @@ namespace BeatLeader_Server.Controllers {
                 hash = hash.Substring(0, 40);
             }
 
-            // TODO: THIS MIGHT BE SOMETHING WONKY
             var leaderboards = _readContext.Leaderboards
                  .Where(lb => lb.Song.Hash == hash)
                  .Include(lb => lb.Song)
@@ -525,8 +524,8 @@ namespace BeatLeader_Server.Controllers {
                 Qualification = lb.Qualification,
                 Difficulty = lb.Difficulty,
                 Reweight = lb.Reweight,
+                Clan = lb.ClanRanking?.Clan,
                 ClanRankingContested = lb.ClanRankingContested,
-                ClanRanking = lb.ClanRanking
             }).ToList();
 
             if (resultList.Count > 0) {
@@ -658,8 +657,7 @@ namespace BeatLeader_Server.Controllers {
             sequence = sequence
                 .Include(lb => lb.Difficulty)
                 .Include(lb => lb.Song)
-                .Include(lb => lb.ClanRanking)
-                .ThenInclude(cr => cr.Clan)
+                .Include(lb => lb.ClanRanking.OrderByDescending(cr => cr.Pp))
                 .Include(lb => lb.Reweight);
 
             if (type == Type.Staff) {
@@ -682,7 +680,7 @@ namespace BeatLeader_Server.Controllers {
                     Qualification = lb.Qualification,
                     Reweight = lb.Reweight,
                     ClanRankingContested = lb.ClanRankingContested,
-                    ClanRanking = lb.ClanRanking.FirstOrDefault(),
+                    Clan = lb.ClanRanking.Count() != 0 ? lb.ClanRanking.FirstOrDefault().Clan : null,
                     PositiveVotes = lb.PositiveVotes,
                     NegativeVotes = lb.NegativeVotes,
                     VoteStars = lb.VoteStars,

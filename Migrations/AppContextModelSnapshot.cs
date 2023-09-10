@@ -2821,21 +2821,6 @@ namespace BeatLeader_Server.Migrations
                     b.ToTable("ClanPlayer");
                 });
 
-            modelBuilder.Entity("ClanRankingScore", b =>
-                {
-                    b.Property<int>("AssociatedClanRankingsId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("AssociatedScoresId")
-                        .HasColumnType("int");
-
-                    b.HasKey("AssociatedClanRankingsId", "AssociatedScoresId");
-
-                    b.HasIndex("AssociatedScoresId");
-
-                    b.ToTable("ClanRankingScore");
-                });
-
             modelBuilder.Entity("ClanUser", b =>
                 {
                     b.Property<int>("BannedClansId")
@@ -3511,21 +3496,6 @@ namespace BeatLeader_Server.Migrations
                     b.HasOne("BeatLeader_Server.Models.Player", null)
                         .WithMany()
                         .HasForeignKey("PlayersId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("ClanRankingScore", b =>
-                {
-                    b.HasOne("BeatLeader_Server.Models.ClanRanking", null)
-                        .WithMany()
-                        .HasForeignKey("AssociatedClanRankingsId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("BeatLeader_Server.Models.Score", null)
-                        .WithMany()
-                        .HasForeignKey("AssociatedScoresId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

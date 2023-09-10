@@ -59,30 +59,6 @@ namespace BeatLeader_Server.Migrations
                         principalColumn: "Id");
                 });
 
-            migrationBuilder.CreateTable(
-                name: "ClanRankingScore",
-                columns: table => new
-                {
-                    AssociatedClanRankingsId = table.Column<int>(type: "int", nullable: false),
-                    AssociatedScoresId = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ClanRankingScore", x => new { x.AssociatedClanRankingsId, x.AssociatedScoresId });
-                    table.ForeignKey(
-                        name: "FK_ClanRankingScore_ClanRanking_AssociatedClanRankingsId",
-                        column: x => x.AssociatedClanRankingsId,
-                        principalTable: "ClanRanking",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_ClanRankingScore_Scores_AssociatedScoresId",
-                        column: x => x.AssociatedScoresId,
-                        principalTable: "Scores",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
             migrationBuilder.CreateIndex(
                 name: "IX_Leaderboards_ClanId",
                 table: "Leaderboards",
@@ -98,11 +74,6 @@ namespace BeatLeader_Server.Migrations
                 table: "ClanRanking",
                 column: "LeaderboardId");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_ClanRankingScore_AssociatedScoresId",
-                table: "ClanRankingScore",
-                column: "AssociatedScoresId");
-
             migrationBuilder.AddForeignKey(
                 name: "FK_Leaderboards_Clans_ClanId",
                 table: "Leaderboards",
@@ -117,9 +88,6 @@ namespace BeatLeader_Server.Migrations
             migrationBuilder.DropForeignKey(
                 name: "FK_Leaderboards_Clans_ClanId",
                 table: "Leaderboards");
-
-            migrationBuilder.DropTable(
-                name: "ClanRankingScore");
 
             migrationBuilder.DropTable(
                 name: "ClanRanking");

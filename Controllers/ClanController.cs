@@ -320,7 +320,6 @@ namespace BeatLeader_Server.Controllers
             var leaderboardsRecalc = _context
                 .Leaderboards
                 .Include(lb => lb.ClanRanking)
-                .ThenInclude(cr => cr.AssociatedScores)
                 .Where(lb => lb.ClanRanking != null ?
                 lb.ClanRanking.Any(lbClan => lbClan.Clan.Tag == clan.Tag) && lb.Difficulty.Status == DifficultyStatus.ranked :
                 lb.Difficulty.Status == DifficultyStatus.ranked)
@@ -336,9 +335,6 @@ namespace BeatLeader_Server.Controllers
                 if (crToRemove != null)
                 {
                     leaderboard.ClanRanking?.Remove(crToRemove);
-                    // Sever the relationship between clanRanking and scores, if we don't, deleting the clan throws an error
-                    // https://learn.microsoft.com/en-us/ef/core/saving/cascade-delete
-                    crToRemove.AssociatedScores?.Clear();
                     _context.ClanRanking.Remove(crToRemove);
                 }
             });
@@ -975,5 +971,38 @@ namespace BeatLeader_Server.Controllers
 
             return Ok();
         }
+
+        [HttpPut("~/clan/removeScores")]
+        public async Task<ActionResult> RemoveScores(
+        [FromQuery] string leaderboardID)
+        {
+            string currentID = "76561198043191643";
+
+            //string leaderboardID = "1a45991"; // Freedom Dive
+            //string leaderboardID = "293f4xx91"; // Tau
+                                                //string leaderboardID = "1021791";
+
+            var leaderboard = _context
+                .Leaderboards
+                .Where(lb => lb.Id == leaderboardID)
+                .Include(lb => lb.Scores)
+                .FirstOrDefault();
+
+            // Lookup valid score
+            var score = _context
+                .Scores
+                .Where(s => s.PlayerId == currentID && s.LeaderboardId == leaderboardID)
+                .FirstOrDefault();
+
+            if (score != null && leaderboard != null)
+            {
+                leaderboard.Scores.Remove(score);
+            }
+
+            await _context.BulkSaveChangesAsync();
+
+            return Ok();
+        }
     }
 }
+
