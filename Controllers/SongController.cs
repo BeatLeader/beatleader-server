@@ -19,14 +19,11 @@ namespace BeatLeader_Server.Controllers
     {
         private readonly AppContext _context;
         private readonly ReadAppContext _readContext;
-
-        private readonly NominationsForum _nominationsForum;
         private readonly RTNominationsForum _rtNominationsForum;
-        public SongController(AppContext context, ReadAppContext readContext, NominationsForum nominationsForum, RTNominationsForum rtNominationsForum)
+        public SongController(AppContext context, ReadAppContext readContext, RTNominationsForum rtNominationsForum)
         {
             _context = context;      
             _readContext = readContext;
-            _nominationsForum = nominationsForum;
             _rtNominationsForum = rtNominationsForum;
         }
 
@@ -101,8 +98,8 @@ namespace BeatLeader_Server.Controllers
         {
             var newLeaderboard = await NewLeaderboard(newSong, baseSong, diff.DifficultyName, diff.ModeName);
             if (newLeaderboard != null && diff.Status != DifficultyStatus.ranked && diff.Status != DifficultyStatus.outdated) {
+                await RatingUtils.SetRating(newLeaderboard.Difficulty, newSong);
                 newLeaderboard.Difficulty.Status = diff.Status;
-                await RatingUtils.SetRating(diff, newSong);
                 newLeaderboard.Difficulty.Type = diff.Type;
                 newLeaderboard.Difficulty.NominatedTime = diff.NominatedTime;
                 newLeaderboard.Difficulty.ModifierValues = diff.ModifierValues;
@@ -112,14 +109,10 @@ namespace BeatLeader_Server.Controllers
             var oldLeaderboard = await _context.Leaderboards.Where(lb => lb.Id == oldLeaderboardId).Include(lb => lb.Qualification).FirstOrDefaultAsync();
 
             if (oldLeaderboard?.Qualification != null) {
-
                 newLeaderboard.Qualification = oldLeaderboard.Qualification;
                 newLeaderboard.NegativeVotes = oldLeaderboard.NegativeVotes;
                 newLeaderboard.PositiveVotes = oldLeaderboard.PositiveVotes;
-                if (oldLeaderboard.Qualification.DiscordChannelId.Length > 0) {
-                    await _nominationsForum.NominationReuploaded(_context, oldLeaderboard.Qualification, oldLeaderboardId);
-                }
-                if (oldLeaderboard.Qualification.DiscordRTChannelId.Length > 0) {
+                if (oldLeaderboard.Qualification.DiscordRTChannelId.Length > 0 && diff.Status.WithRating()) {
                     await _rtNominationsForum.NominationReuploaded(_context, oldLeaderboard.Qualification, oldLeaderboardId);
                 }
                 oldLeaderboard.Qualification = null;
@@ -289,16 +282,22 @@ namespace BeatLeader_Server.Controllers
                 .Songs
                 .Include(s => s.Difficulties)
                 .ThenInclude(d => d.ModifierValues)
+                .Include(s => s.Difficulties)
+                .ThenInclude(d => d.ModifiersRating)
                 .FirstOrDefault(i => i.Id == baseSongId);
             Song? oldSong = _context
                 .Songs
                 .Include(s => s.Difficulties)
                 .ThenInclude(d => d.ModifierValues)
+                .Include(s => s.Difficulties)
+                .ThenInclude(d => d.ModifiersRating)
                 .FirstOrDefault(i => i.Id == oldSongId);
             Song? newSong = _context
                 .Songs
                 .Include(s => s.Difficulties)
                 .ThenInclude(d => d.ModifierValues)
+                .Include(s => s.Difficulties)
+                .ThenInclude(d => d.ModifiersRating)
                 .FirstOrDefault(i => i.Id == newSongId);
 
             if (baseSong == null || oldSong == null || newSong == null) return NotFound();

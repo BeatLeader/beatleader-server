@@ -39,12 +39,18 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/score/{id}")]
-        public async Task<ActionResult<ScoreResponse>> GetScore(int id, [FromQuery] bool fallbackToRedirect = false)
+        public async Task<ActionResult<ScoreResponseWithDifficulty>> GetScore(int id, [FromQuery] bool fallbackToRedirect = false)
         {
             var score = _context
                 .Scores
                 .Where(l => l.Id == id)
-                .Select(s => new ScoreResponse {
+                .Include(s => s.Leaderboard)
+                .ThenInclude(l => l.Difficulty)
+                .ThenInclude(d => d.ModifiersRating)
+                .Include(s => s.Leaderboard)
+                .ThenInclude(l => l.Difficulty)
+                .ThenInclude(d => d.ModifierValues)
+                .Select(s => new ScoreResponseWithDifficulty {
                     Id = s.Id,
                     PlayerId = s.PlayerId,
                     BaseScore = s.BaseScore,
@@ -70,6 +76,16 @@ namespace BeatLeader_Server.Controllers
                     Timepost = s.Timepost,
                     Platform = s.Platform,
                     LeaderboardId = s.LeaderboardId,
+                    Difficulty = s.Leaderboard.Difficulty,
+                    Song = new ScoreSongResponse {
+                        Id = s.Leaderboard.Song.Id,
+                        Hash = s.Leaderboard.Song.Hash,
+                        Cover = s.Leaderboard.Song.CoverImage,
+                        Name = s.Leaderboard.Song.Name,
+                        SubName = s.Leaderboard.Song.SubName,
+                        Author = s.Leaderboard.Song.Author,
+                        Mapper = s.Leaderboard.Song.Mapper,
+                    },
                     Player = new PlayerResponse
                     {
                         Id = s.Player.Id,
@@ -87,6 +103,7 @@ namespace BeatLeader_Server.Controllers
                         PatreonFeatures = s.Player.PatreonFeatures
                     }
                 })
+                .AsSplitQuery()
                 .FirstOrDefault();
 
             if (score != null)
@@ -465,7 +482,8 @@ namespace BeatLeader_Server.Controllers
                     Role = p.Role,
                     Socials = p.Socials,
                     ProfileSettings = p.ProfileSettings,
-                    Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                    Clans = p.Clans.OrderBy(c => p.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                 })
                 .FirstOrDefaultAsync(p => p.Id == player);
             var song = _readContext.Songs.Select(s => new { Id = s.Id, Hash = s.Hash }).FirstOrDefault(s => s.Hash == hash);
@@ -581,7 +599,8 @@ namespace BeatLeader_Server.Controllers
                         Socials = s.Player.Socials,
                         ProfileSettings = s.Player.ProfileSettings,
                         PatreonFeatures = s.Player.PatreonFeatures,
-                        Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                        Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                     },
                     ScoreImprovement = s.ScoreImprovement
                 }).FirstOrDefault();
@@ -630,6 +649,7 @@ namespace BeatLeader_Server.Controllers
                     Timeset = s.Timeset,
                     Timepost = s.Timepost,
                     Platform = s.Platform,
+                    Priority = s.Priority,
                     LeaderboardId = s.LeaderboardId,
                     Player = new PlayerResponse
                     {
@@ -647,7 +667,8 @@ namespace BeatLeader_Server.Controllers
                         Socials = s.Player.Socials,
                         ProfileSettings = s.Player.ProfileSettings,
                         PatreonFeatures = s.Player.PatreonFeatures,
-                        Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                        Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                     },
                     ScoreImprovement = s.ScoreImprovement
                 })
@@ -670,6 +691,17 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
             }
+
+            resultList = (resultList.FirstOrDefault()?.Pp > 0 
+                        ? resultList
+                            .OrderByDescending(el => Math.Round(el.Pp, 2))
+                            .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                            .ThenBy(el => el.Timeset)
+                        : resultList
+                            .OrderBy(el => el.Priority)
+                            .ThenByDescending(el => el.ModifiedScore)
+                            .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                            .ThenBy(el => el.Timeset)).ToList();
 
             for (int i = 0; i < resultList.Count; i++)
             {

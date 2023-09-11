@@ -24,8 +24,6 @@ namespace BeatLeader_Server.Controllers
         private readonly MapEvaluationController _mapEvaluationController;
         private readonly PlayerRefreshController _playerRefreshController;
         private readonly PlaylistController _playlistController;
-
-        private readonly NominationsForum _nominationsForum;
         private readonly RTNominationsForum _rtNominationsForum;
 
         public RankController(
@@ -38,7 +36,6 @@ namespace BeatLeader_Server.Controllers
             MapEvaluationController mapEvaluationController,
             PlayerRefreshController playerRefreshController,
             PlaylistController playlistController,
-            NominationsForum nominationsForum,
             RTNominationsForum rtNominationsForum)
         {
             _context = context;
@@ -50,8 +47,6 @@ namespace BeatLeader_Server.Controllers
             _mapEvaluationController = mapEvaluationController;
             _playerRefreshController = playerRefreshController;
             _playlistController = playlistController;
-
-            _nominationsForum = nominationsForum;
             _rtNominationsForum = rtNominationsForum;
         }
 
@@ -422,7 +417,6 @@ namespace BeatLeader_Server.Controllers
 
                 var mapper = _context.Players.Include(p => p.Socials).FirstOrDefault(p => p.MapperId == leaderboard.Song.MapperId);
 
-                leaderboard.Qualification.DiscordChannelId = (await _nominationsForum.OpenNomination(mapper?.Name ?? currentPlayer.Name, leaderboard)).ToString();
                 leaderboard.Qualification.DiscordRTChannelId = (await _rtNominationsForum.OpenNomination(mapper ?? currentPlayer, leaderboard)).ToString();
                 await _context.SaveChangesAsync();
             }
@@ -486,7 +480,6 @@ namespace BeatLeader_Server.Controllers
                     && leaderboard.Difficulty.Type == type
                     && (criteriaCheck == null || criteriaCheck == 1)
                     && qualification.CriteriaChecker != currentID
-                    && qualification.RTMember != currentID
                     && qualification.CriteriaMet == 1
                     && newModifiers?.EqualTo(qualification.Modifiers) != false
                     && !currentPlayer.Role.Contains("juniorrankedteam"))
@@ -499,10 +492,6 @@ namespace BeatLeader_Server.Controllers
                         leaderboard.Difficulty.QualifiedTime = qualification.ApprovalTimeset;
 
                         var dsClient = qualificationDSClient();
-
-                        if (qualification.DiscordChannelId.Length > 0) {
-                            await _nominationsForum.NominationQualified(qualification.DiscordChannelId);
-                        }
 
                         if (qualification.DiscordRTChannelId.Length > 0) {
                             await _rtNominationsForum.NominationQualified(qualification.DiscordRTChannelId);
@@ -635,11 +624,6 @@ namespace BeatLeader_Server.Controllers
                         }
 
                         qualification.Changes.Add(qualificationChange);
-
-                        if (qualificationChange.NewRankability <= 0 && qualification.DiscordChannelId.Length > 0)
-                        {
-                            await _nominationsForum.CloseNomination(qualification.DiscordChannelId);
-                        }
 
                         if (qualificationChange.NewRankability <= 0 && qualification.DiscordRTChannelId.Length > 0)
                         {
@@ -1293,7 +1277,7 @@ namespace BeatLeader_Server.Controllers
             _context.SaveChanges();
 
             try {
-            result.DiscordMessageId = await _nominationsForum.PostComment(qualification.DiscordChannelId, result.Value, currentPlayer);
+            result.DiscordMessageId = await _rtNominationsForum.PostComment(qualification.DiscordRTChannelId, result.Value, currentPlayer);
             _context.SaveChanges();
             } catch { }
 
@@ -1327,7 +1311,7 @@ namespace BeatLeader_Server.Controllers
             _context.SaveChanges();
 
             try {
-            comment.DiscordMessageId = await _nominationsForum.UpdateComment(comment.RankQualification.DiscordChannelId, comment.DiscordMessageId, comment.Value, currentPlayer);
+            comment.DiscordMessageId = await _rtNominationsForum.UpdateComment(comment.RankQualification.DiscordRTChannelId, comment.DiscordMessageId, comment.Value, currentPlayer);
             _context.SaveChanges();
             } catch { }
 
@@ -1352,7 +1336,7 @@ namespace BeatLeader_Server.Controllers
             _context.SaveChanges();
 
             try {
-            await _nominationsForum.DeleteComment(comment.RankQualification.DiscordChannelId, comment.DiscordMessageId);
+            await _rtNominationsForum.DeleteComment(comment.RankQualification.DiscordRTChannelId, comment.DiscordMessageId);
             } catch { }
 
             return Ok();
@@ -1508,11 +1492,6 @@ namespace BeatLeader_Server.Controllers
 
                 qualification.Changes.Add(qualificationChange);
 
-                if (qualification.DiscordChannelId.Length > 0)
-                {
-                    await _nominationsForum.CloseNomination(qualification.DiscordChannelId);
-                }
-
                 if (qualification.DiscordRTChannelId.Length > 0)
                 {
                     await _rtNominationsForum.CloseNomination(qualification.DiscordRTChannelId);
@@ -1556,7 +1535,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            var result = await _nominationsForum.AddVote(_context, qualification, currentPlayer, vote);
+            var result = await _rtNominationsForum.AddVote(_context, qualification, currentPlayer, vote);
             if (qualification.QualityVote == -3) {
                 await QualityUnnominate(qualification);
             }

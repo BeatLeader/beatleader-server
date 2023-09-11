@@ -54,13 +54,12 @@ namespace BeatLeader_Server.Controllers
                         .Players
                         .Where(p => p.Id == userId)
                         .Include(p => p.ScoreStats)
-                        .Include(p => p.Badges)
+                        .Include(p => p.Badges.OrderBy(b => b.Timeset))
                         .Include(p => p.Clans)
-                        .Include(p => p.PatreonFeatures)
                         .Include(p => p.ProfileSettings)
                         .Include(p => p.Socials)
-                        .Include(p => p.EventsParticipating)
                         .Include(p => p.Changes)
+                        .AsSplitQuery()
                         .FirstOrDefault();
                 } else {
                     player = await _readContext.Players.FindAsync(userId);
@@ -75,7 +74,45 @@ namespace BeatLeader_Server.Controllers
                 }
             }
             if (player != null) {
-                var result = ResponseFullFromPlayer(player);
+                var result = new PlayerResponseFull {
+                    Id = player.Id,
+                    Name = player.Name,
+                    Platform = player.Platform,
+                    Avatar = player.Avatar,
+                    Country = player.Country,
+                    ScoreStats = player.ScoreStats,
+
+                    MapperId = player.MapperId,
+
+                    Banned = player.Banned,
+                    Inactive = player.Inactive,
+                    Bot = player.Bot,
+
+                    ExternalProfileUrl = player.ExternalProfileUrl,
+
+                    Badges = player.Badges,
+                    Changes = player.Changes,
+
+                    Pp = player.Pp,
+                    AccPp = player.AccPp,
+                    TechPp = player.TechPp,
+                    PassPp = player.PassPp,
+                    Rank = player.Rank,
+                    CountryRank = player.CountryRank,
+                    LastWeekPp = player.LastWeekPp,
+                    LastWeekRank = player.LastWeekRank,
+                    LastWeekCountryRank = player.LastWeekCountryRank,
+                    Role = player.Role,
+                    Socials = player.Socials,
+                    ProfileSettings = player.ProfileSettings,
+                    Clans = stats 
+                        ? player
+                            .Clans
+                            .OrderBy(c => player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id)
+                            .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color }) 
+                        : null
+                };
                 if (result.Banned) {
                     result.BanDescription = _context.Bans.OrderByDescending(b => b.Timeset).FirstOrDefault(b => b.PlayerId == player.Id);
                 }
@@ -362,9 +399,15 @@ namespace BeatLeader_Server.Controllers
                 .Include(p => p.Clans)
                 .Include(p => p.ProfileSettings);
 
+            string? currentID = HttpContext.CurrentUserID(_context);
+            bool showBots = currentID != null ? _context
+                .Players
+                .Where(p => p.Id == currentID)
+                .Select(p => p.ProfileSettings != null ? p.ProfileSettings.ShowBots : false)
+                .FirstOrDefault() : false;
+
             if (banned != null) {
-                string userId = HttpContext.CurrentUserID(_readContext);
-                var player = await _readContext.Players.FindAsync(userId);
+                var player = await _readContext.Players.FindAsync(currentID);
                 if (player == null || !player.Role.Contains("admin"))
                 {
                     return NotFound();
@@ -374,7 +417,7 @@ namespace BeatLeader_Server.Controllers
 
                 request = request.Where(p => p.Banned == bannedUnwrapped);
             } else {
-                request = request.Where(p => !p.Banned || p.Bot);
+                request = request.Where(p => !p.Banned || ((showBots || search.Length > 0) && p.Bot));
             }
             if (countries.Length != 0)
             {
@@ -516,7 +559,9 @@ namespace BeatLeader_Server.Controllers
                 request = Sorted(request, sortBy, ppType, order, mapsType).Skip((page - 1) * count).Take(count);
             }
 
-            result.Data = request.Select(p => new PlayerResponseWithStats
+            result.Data = request
+                .AsSplitQuery()
+                .Select(p => new PlayerResponseWithStats
                 {
                     Id = p.Id,
                     Name = p.Name,
@@ -535,10 +580,12 @@ namespace BeatLeader_Server.Controllers
                     LastWeekRank = p.LastWeekRank,
                     LastWeekCountryRank = p.LastWeekCountryRank,
                     Role = p.Role,
-                    EventsParticipating = p.EventsParticipating,
-                    PatreonFeatures = p.PatreonFeatures,
                     ProfileSettings = p.ProfileSettings,
-                    Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                    Clans = p
+                            .Clans
+                            .OrderBy(c => p.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id)
+                            .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                 }).ToList().Select(PostProcessSettings);
 
             if (ids?.Count > 0)
@@ -609,6 +656,12 @@ namespace BeatLeader_Server.Controllers
                         case "weightedAcc":
                             request = request.Order(order, p => p.ScoreStats.AverageWeightedRankedAccuracy);
                             break;
+                        case "top1Count":
+                            request = request.Order(order, p => p.ScoreStats.RankedTop1Count);
+                            break;
+                        case "top1Score":
+                            request = request.Order(order, p => p.ScoreStats.RankedTop1Score);
+                            break;
                         case "weightedRank":
                             request = request
                                 .Where(p => p.ScoreStats != null && p.ScoreStats.AverageWeightedRankedRank != 0)
@@ -651,6 +704,12 @@ namespace BeatLeader_Server.Controllers
                                 .Order(order.Reverse(), p => Math.Round(p.ScoreStats.AverageUnrankedRank))
                                 .ThenOrder(order, p => p.ScoreStats.UnrankedPlayCount);
                             break;
+                        case "top1Count":
+                            request = request.Order(order, p => p.ScoreStats.UnrankedTop1Count);
+                            break;
+                        case "top1Score":
+                            request = request.Order(order, p => p.ScoreStats.UnrankedTop1Score);
+                            break;
                         case "acc":
                             request = request.Order(order, p => p.ScoreStats.AverageUnrankedAccuracy);
                             break;
@@ -690,6 +749,12 @@ namespace BeatLeader_Server.Controllers
                                 .Where(p => p.ScoreStats.AverageRank != 0)
                                 .Order(order.Reverse(), p => Math.Round(p.ScoreStats.AverageRank))
                                 .ThenOrder(order, p => p.ScoreStats.TotalPlayCount);
+                            break;
+                        case "top1Count":
+                            request = request.Order(order, p => p.ScoreStats.Top1Count);
+                            break;
+                        case "top1Score":
+                            request = request.Order(order, p => p.ScoreStats.Top1Score);
                             break;
                         case "acc":
                             request = request.Order(order, p => p.ScoreStats.AverageAccuracy);
@@ -805,7 +870,12 @@ namespace BeatLeader_Server.Controllers
 
         [HttpPut("~/badge")]
         [Authorize]
-        public async Task<ActionResult<Badge>> CreateBadge([FromQuery] string description, [FromQuery] string? link = null) {
+        public async Task<ActionResult<Badge>> CreateBadge(
+                [FromQuery] string description, 
+                [FromQuery] string? link = null,
+                [FromQuery] string? image = null,
+                [FromQuery] int? timeset = null,
+                [FromQuery] string? playerId = null) {
             string currentId = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = _context.Players.Find(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
@@ -815,29 +885,36 @@ namespace BeatLeader_Server.Controllers
 
             Badge badge = new Badge {
                 Description = description,
-                Image = "",
-                Link = link
+                Image = image ?? "",
+                Link = link,
+                Timeset = timeset ?? (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds
             };
 
             _context.Badges.Add(badge);
             _context.SaveChanges();
 
-            string? fileName = null;
-            try
-            {
-                var ms = new MemoryStream(5);
-                await Request.Body.CopyToAsync(ms);
-                ms.Position = 0;
+            if (image == null) {
+                string? fileName = null;
+                try
+                {
+                    var ms = new MemoryStream(5);
+                    await Request.Body.CopyToAsync(ms);
+                    ms.Position = 0;
 
-                (string extension, MemoryStream stream) = ImageUtils.GetFormat(ms);
-                Random rnd = new Random();
-                fileName = "badge-" + badge.Id + "R" + rnd.Next(1, 50) + extension;
+                    (string extension, MemoryStream stream) = ImageUtils.GetFormat(ms);
+                    Random rnd = new Random();
+                    fileName = "badge-" + badge.Id + "R" + rnd.Next(1, 50) + extension;
 
-                badge.Image = await _assetsS3Client.UploadAsset(fileName, stream);
+                    badge.Image = await _assetsS3Client.UploadAsset(fileName, stream);
+                }
+                catch {}
             }
-            catch {}
 
             _context.SaveChanges();
+
+            if (playerId != null) {
+                await AddBadge(playerId, badge.Id);
+            }
 
             return badge;
         }
@@ -881,11 +958,13 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult<Player>> AddBadge(string playerId, int badgeId)
         {
-            string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = await _context.Players.FindAsync(currentId);
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
+            if (HttpContext != null) {
+                string currentId = HttpContext.CurrentUserID(_context);
+                Player? currentPlayer = await _context.Players.FindAsync(currentId);
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
             }
 
             Player? player = _context.Players.Include(p => p.Badges).FirstOrDefault(p => p.Id == playerId);

@@ -42,6 +42,18 @@ namespace BeatLeader_Server.Models
         public int UnrankedPlayCount { get; set; }
         public int TotalPlayCount { get; set; }
 
+        public int RankedImprovementsCount { get; set; }
+        public int UnrankedImprovementsCount { get; set; }
+        public int TotalImprovementsCount { get; set; }
+
+        public int RankedTop1Count { get; set; }
+        public int UnrankedTop1Count { get; set; }
+        public int Top1Count { get; set; }
+
+        public int RankedTop1Score { get; set; }
+        public int UnrankedTop1Score { get; set; }
+        public int Top1Score { get; set; }
+
         public float AverageRankedRank { get; set; }
         public float AverageWeightedRankedRank { get; set; }
         public float AverageUnrankedRank { get; set; }
@@ -104,6 +116,10 @@ namespace BeatLeader_Server.Models
         public int RankedPlayCount { get; set; }
         public int UnrankedPlayCount { get; set; }
         public int TotalPlayCount { get; set; }
+
+        public int RankedImprovementsCount { get; set; }
+        public int UnrankedImprovementsCount { get; set; }
+        public int TotalImprovementsCount { get; set; }
 
         public float AverageRankedRank { get; set; }
         public float AverageWeightedRankedRank { get; set; }

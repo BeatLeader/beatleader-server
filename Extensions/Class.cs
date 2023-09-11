@@ -18,6 +18,10 @@ namespace BeatLeader_Server.Extensions
         public static bool WithRating(this DifficultyStatus context) {
             return context == DifficultyStatus.ranked || context == DifficultyStatus.qualified || context == DifficultyStatus.nominated;
         }
+
+        public static bool WithPP(this DifficultyStatus context) {
+            return context == DifficultyStatus.ranked || context == DifficultyStatus.qualified;
+        }
     }
 
     public static class JsonExtensions

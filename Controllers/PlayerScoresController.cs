@@ -47,18 +47,17 @@ namespace BeatLeader_Server.Controllers {
             int? time_from = null,
             int? time_to = null,
             int? eventId = null) {
+
             string? currentID = HttpContext.CurrentUserID(_context);
-            bool showRatings = currentID != null ? (_context
+            bool showRatings = currentID != null ? _context
                 .Players
-                .Include(p => p.ProfileSettings)
-                .Where(p => p.Id == currentID)
-                .Select(p => p.ProfileSettings)
-                .FirstOrDefault()
-                ?.ShowAllRatings ?? false) : false;
+                .Where(p => p.Id == currentID && p.ProfileSettings != null)
+                .Select(p => p.ProfileSettings.ShowAllRatings)
+                .FirstOrDefault() : false;
 
             id = _context.PlayerIdToMain(id);
 
-            var player = _context.Players.FirstOrDefault(p => p.Id == id);
+            var player = await _context.Players.Where(p => p.Id == id).Select(p => new { p.Banned }).FirstOrDefaultAsync();
             if (player == null) {
                 return (null, false, "", "");
             }
@@ -95,7 +94,7 @@ namespace BeatLeader_Server.Controllers {
             }
 
             ResponseWithMetadata<ScoreResponseWithMyScore> result;
-            using (_serverTiming.TimeAction("db")) {
+            using (_serverTiming.TimeAction("count")) {
                 result = new ResponseWithMetadata<ScoreResponseWithMyScore>() {
                     Metadata = new Metadata() {
                         Page = page,
@@ -105,7 +104,9 @@ namespace BeatLeader_Server.Controllers {
                 };
             }
 
-            var resultList = sequence
+            List<ScoreResponseWithMyScore> resultList;
+            using (_serverTiming.TimeAction("list")) {
+                resultList = sequence
                     .Include(s => s.Leaderboard)
                     .ThenInclude(l => l.Difficulty)
                     .ThenInclude(d => d.ModifiersRating)
@@ -144,25 +145,7 @@ namespace BeatLeader_Server.Controllers {
                         Timepost = s.Timepost,
                         LeaderboardId = s.LeaderboardId,
                         Platform = s.Platform,
-                        Player = new PlayerResponse {
-                            Id = s.Player.Id,
-                            Name = s.Player.Name,
-                            Platform = s.Player.Platform,
-                            Avatar = s.Player.Avatar,
-                            Country = s.Player.Country,
-
-                            Pp = s.Player.Pp,
-                            Rank = s.Player.Rank,
-                            CountryRank = s.Player.CountryRank,
-                            Role = s.Player.Role,
-                            Socials = s.Player.Socials,
-                            PatreonFeatures = s.Player.PatreonFeatures,
-                            ProfileSettings = s.Player.ProfileSettings,
-                            Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                        },
                         ScoreImprovement = s.ScoreImprovement,
-                        RankVoting = s.RankVoting,
-                        Metadata = s.Metadata,
                         Country = s.Country,
                         Offsets = s.ReplayOffsets,
                         Leaderboard = new LeaderboardResponse {
@@ -175,21 +158,25 @@ namespace BeatLeader_Server.Controllers {
                         AccRight = s.AccRight,
                         MaxStreak = s.MaxStreak,
                     })
+                    .AsSplitQuery()
                     .ToList();
-
-            foreach (var resultScore in resultList) {
-                if (!showRatings && !resultScore.Leaderboard.Difficulty.Status.WithRating()) {
-                    resultScore.Leaderboard.HideRatings();
-                }
             }
-            result.Data = resultList;
 
-            if (currentID != null && currentID != userId) {
-                var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
+            using (_serverTiming.TimeAction("postprocess")) {
+                foreach (var resultScore in resultList) {
+                    if (!showRatings && !resultScore.Leaderboard.Difficulty.Status.WithRating()) {
+                        resultScore.Leaderboard.HideRatings();
+                    }
+                }
+                result.Data = resultList;
 
-                var myScores = _context.Scores.Where(s => s.PlayerId == currentID && leaderboards.Contains(s.LeaderboardId)).Select(ToScoreResponseWithAcc).ToList();
-                foreach (var score in result.Data) {
-                    score.MyScore = myScores.FirstOrDefault(s => s.LeaderboardId == score.LeaderboardId);
+                if (currentID != null && currentID != userId) {
+                    var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
+
+                    var myScores = _context.Scores.Where(s => s.PlayerId == currentID && leaderboards.Contains(s.LeaderboardId)).Select(ToScoreResponseWithAcc).ToList();
+                    foreach (var score in result.Data) {
+                        score.MyScore = myScores.FirstOrDefault(s => s.LeaderboardId == score.LeaderboardId);
+                    }
                 }
             }
 
@@ -404,6 +391,7 @@ namespace BeatLeader_Server.Controllers {
             public string Mode { get; set; }
             public string Modifiers { get; set; }
             public string SongName { get; set; }
+            public string Hash { get; set; }
             public string Mapper { get; set; }
             public float Acc { get; set; }
             public string Timeset { get; set; }
@@ -439,6 +427,7 @@ namespace BeatLeader_Server.Controllers {
                     LeaderboardId = s.Leaderboard.Id,
                     Diff = s.Leaderboard.Difficulty.DifficultyName,
                     SongName = s.Leaderboard.Song.Name,
+                    Hash = s.Leaderboard.Song.Hash,
                     Mapper = s.Leaderboard.Song.Author,
                     Mode = s.Leaderboard.Difficulty.ModeName,
                     Stars = s.Leaderboard.Difficulty.Stars,
@@ -562,7 +551,8 @@ namespace BeatLeader_Server.Controllers {
                             Socials = s.Player.Socials,
                             PatreonFeatures = s.Player.PatreonFeatures,
                             ProfileSettings = s.Player.ProfileSettings,
-                            Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                            Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                         },
                         ScoreImprovement = s.ScoreImprovement,
                         RankVoting = s.RankVoting,
