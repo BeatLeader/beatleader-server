@@ -184,7 +184,8 @@ namespace BeatLeader_Server.Controllers {
                             Socials = s.Player.Socials,
                             PatreonFeatures = s.Player.PatreonFeatures,
                             ProfileSettings = s.Player.ProfileSettings,
-                            Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                            Clans = s.Player.Clans.OrderBy(c => player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                         },
                         ScoreImprovement = s.ScoreImprovement,
                         RankVoting = s.RankVoting,
@@ -295,7 +296,8 @@ namespace BeatLeader_Server.Controllers {
                         Socials = a.Player.Socials,
                         PatreonFeatures = a.Player.PatreonFeatures,
                         ProfileSettings = a.Player.ProfileSettings,
-                        Clans = a.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                        Clans = a.Player.Clans.OrderBy(c => player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                     },
                     Achievement = a
                 })

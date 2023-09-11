@@ -11,7 +11,7 @@ namespace BeatLeader_Server.Services {
         public string fileName { get; set; }
         public string playerId { get; set; }
         public string leaderboardId { get; set; }
-        public int score { get; set; }
+        public Score score { get; set; }
         public float time { get; set; }
         public int? timeset { get; set; }
         public EndType type { get; set; }
@@ -70,7 +70,7 @@ namespace BeatLeader_Server.Services {
                     }
 
                     if (leaderboard.PlayerStats.Count > 0 &&
-                        leaderboard.PlayerStats.FirstOrDefault(s => s.PlayerId == job.playerId && s.Score == score) != null) {
+                        leaderboard.PlayerStats.FirstOrDefault(s => s.PlayerId == job.playerId && s.Score == score.BaseScore) != null) {
                         continue;
                     }
                     leaderboard.PlayCount++;
@@ -95,11 +95,12 @@ namespace BeatLeader_Server.Services {
                     var stats = new PlayerLeaderboardStats {
                         Timeset = timeset,
                         Time = job.time,
-                        Score = score,
+                        Score = score.BaseScore,
                         Type = job.type,
                         PlayerId = job.playerId,
                         Replay = replayLink
                     };
+                    stats.FromScore(score);
 
                     var currentScore = _context
                             .Scores

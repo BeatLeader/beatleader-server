@@ -61,11 +61,22 @@ public static class SongSearchService
 
         TopFieldDocs topFieldDocs = searcher.Search(query, null, HitsLimit, Sort.RELEVANCE, true, false);
         ScoreDoc[] hits = topFieldDocs.ScoreDocs;
+        string lowerQuery = searchQuery.ToLower();
 
         return hits.Select(scoreDoc =>
         {
             SongMetadata result = (SongMetadata)searcher.Doc(scoreDoc.Doc);
-            result.Score = (int)(scoreDoc.Score * 100.0f);
+            if (result.Hash == lowerQuery ||
+                result.Mapper == lowerQuery ||
+                result.Name == lowerQuery ||
+                result.Author == lowerQuery) {
+                result.Score = 500;
+            } else {
+                result.Score = (int)(scoreDoc.Score * 100.0f);
+            }
+            if (result.Mapper == "beat sage") {
+                result.Score -= 500;
+            }
 
             return result;
         }).ToList();

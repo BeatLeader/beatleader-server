@@ -602,5 +602,28 @@ namespace BeatLeader_Server.Utils
 
             return false;
         }
+
+        public static int ScoreForRank(int rank) {
+            switch (rank) {
+                case 1:
+                    return 5;
+                case 2:
+                    return 3;
+                case 3:
+                    return 1;
+                default:
+                    return 0;
+            }
+        }
+
+        public static int UpdateRankScore(int oldScore, int? oldRank, int newRank) {
+            int result = oldScore;
+            if (oldRank != null) {
+                result -= ScoreForRank(oldRank ?? 4);
+            }
+            result += ScoreForRank(newRank);
+
+            return result; 
+        }
     }
 }

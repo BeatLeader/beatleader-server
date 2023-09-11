@@ -251,6 +251,7 @@ namespace BeatLeader_Server.Controllers
                     player.Platform = info.platform;
                     player.ScoreStats = new PlayerScoreStats();
                     player.SetDefaultAvatar();
+                    player.SanitizeName();
 
                     _context.Players.Add(player);
 
@@ -350,8 +351,6 @@ namespace BeatLeader_Server.Controllers
 
                 transaction.Commit();
             }
-
-            await CollectStats(replay, replayData, result.Value?.Replay, authenticatedPlayerID, leaderboard, replay.frames.Last().time, EndType.Clear);
 
             return result;
         }
@@ -700,6 +699,12 @@ namespace BeatLeader_Server.Controllers
                     {
                         player.ScoreStats.TopPp = resultScore.Pp;
                     }
+                    if (resultScore.Rank == 1 && (currentScore == null || currentScore.Rank != 1)) {
+                        player.ScoreStats.RankedTop1Count++;
+                        player.ScoreStats.Top1Count++;
+                    }
+                    player.ScoreStats.RankedTop1Score = ReplayUtils.UpdateRankScore(player.ScoreStats.RankedTop1Score, currentScore?.Rank, resultScore.Rank);
+                    player.ScoreStats.Top1Score = ReplayUtils.UpdateRankScore(player.ScoreStats.Top1Score, currentScore?.Rank, resultScore.Rank);
 
                     if (resultScore.BonusPp > player.ScoreStats.TopBonusPP)
                     {
@@ -737,6 +742,26 @@ namespace BeatLeader_Server.Controllers
                             player.ScoreStats.APlays++;
                             break;
                     }
+
+                    if (currentScore != null) {
+                        player.ScoreStats.RankedImprovementsCount++;
+                        player.ScoreStats.TotalImprovementsCount++;
+                    }
+                } else {
+                    if (resultScore.Rank == 1 && (currentScore == null || currentScore.Rank != 1)) {
+                        player.ScoreStats.UnrankedTop1Count++;
+                        player.ScoreStats.Top1Count++;
+                    }
+                    player.ScoreStats.UnrankedTop1Score = ReplayUtils.UpdateRankScore(player.ScoreStats.UnrankedTop1Score, currentScore?.Rank, resultScore.Rank);
+                    player.ScoreStats.Top1Score = ReplayUtils.UpdateRankScore(player.ScoreStats.Top1Score, currentScore?.Rank, resultScore.Rank);
+                    if (currentScore != null) {
+                        player.ScoreStats.UnrankedImprovementsCount++;
+                        player.ScoreStats.TotalImprovementsCount++;
+                    }
+                }
+
+                if (resultScore.Rank < 4) {
+                    await UpdateTop4(leaderboard.Id, leaderboard.Difficulty.Status == DifficultyStatus.ranked, player.Id);
                 }
             }
 
@@ -826,10 +851,6 @@ namespace BeatLeader_Server.Controllers
                 resultScore.MaxCombo = statistic.hitTracker.maxCombo;
                 resultScore.FcAccuracy = statistic.accuracyTracker.fcAcc;
                 resultScore.MaxStreak = statistic.hitTracker.maxStreak;
-                if (!resultScore.IgnoreForStats && resultScore.MaxStreak > player.ScoreStats.MaxStreak) {
-                    player.ScoreStats.MaxStreak = resultScore.MaxStreak ?? 0;
-                }
-
                 resultScore.LeftTiming = statistic.hitTracker.leftTiming;
                 resultScore.RightTiming = statistic.hitTracker.rightTiming;
                 if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
@@ -842,6 +863,10 @@ namespace BeatLeader_Server.Controllers
                         leaderboard.Difficulty.PassRating ?? 0, 
                         leaderboard.Difficulty.TechRating ?? 0, 
                         leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
+                }
+
+                if (!resultScore.IgnoreForStats && resultScore.MaxStreak > player.ScoreStats.MaxStreak) {
+                    player.ScoreStats.MaxStreak = resultScore.MaxStreak ?? 0;
                 }
                 resultScore.Country = context.Request.Headers["cf-ipcountry"] == StringValues.Empty ? "not set" : context.Request.Headers["cf-ipcountry"].ToString();
 
@@ -864,6 +889,8 @@ namespace BeatLeader_Server.Controllers
                         Player = replay.info.playerID,
                     });
                 }
+
+                await CollectStats(replay, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, resultScore);
 
                 await _context.SaveChangesAsync();
                 await transaction3.CommitAsync();
@@ -901,12 +928,9 @@ namespace BeatLeader_Server.Controllers
 
                         await dsClient.SendMessageAsync(message,
                             embeds: new List<Embed> { new EmbedBuilder()
-                                    .WithTitle("Leaderboard")
+                                    .WithTitle("Open leaderboard ↗")
                                     .WithUrl("https://beatleader.xyz/leaderboard/global/" + leaderboard.Id)
-                                    .Build(),
-                                new EmbedBuilder()
-                                    .WithTitle("Watch Replay")
-                                    .WithUrl("https://replay.beatleader.xyz?scoreId=" + resultScore.Id)
+                                    .WithDescription("[Watch replay with BL](" + "https://replay.beatleader.xyz?scoreId=" + resultScore.Id + ") | [Watch replay with ArcViewer](" +"https://allpoland.github.io/ArcViewer/?scoreID=" + resultScore.Id + ")" )
                                     .WithImageUrl("https://api.beatleader.xyz/preview/replay?scoreId=" + resultScore.Id)
                                     .Build()
                             });
@@ -1055,9 +1079,45 @@ namespace BeatLeader_Server.Controllers
             string playerId,
             Leaderboard leaderboard,
             float time = 0, 
-            EndType type = 0) {
+            EndType type = 0,
+            Score? resultScore = null) {
 
             int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+
+            if (resultScore == null) {
+                (resultScore, int maxScore) = ReplayUtils.ProcessReplayInfo(replay.info, leaderboard.Difficulty);
+                ReplayUtils.PostProcessReplay(resultScore, replay);
+
+                if (type == EndType.Clear) {
+                    ScoreStatistic? statistic = null;
+
+                    try
+                    {
+                        (statistic, string? error) = ReplayStatisticUtils.ProcessReplay(replay, leaderboard);
+                    } catch (Exception e) {
+                    }
+                    if (statistic != null) {
+                        resultScore.AccLeft = statistic.accuracyTracker.accLeft;
+                        resultScore.AccRight = statistic.accuracyTracker.accRight;
+                        resultScore.MaxCombo = statistic.hitTracker.maxCombo;
+                        resultScore.FcAccuracy = statistic.accuracyTracker.fcAcc;
+                        resultScore.MaxStreak = statistic.hitTracker.maxStreak;
+                        resultScore.LeftTiming = statistic.hitTracker.leftTiming;
+                        resultScore.RightTiming = statistic.hitTracker.rightTiming;
+                        if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
+                            resultScore.FcPp = ReplayUtils.PpFromScore(
+                                resultScore.FcAccuracy, 
+                                resultScore.Modifiers, 
+                                leaderboard.Difficulty.ModifierValues, 
+                                leaderboard.Difficulty.ModifiersRating, 
+                                leaderboard.Difficulty.AccRating ?? 0, 
+                                leaderboard.Difficulty.PassRating ?? 0, 
+                                leaderboard.Difficulty.TechRating ?? 0, 
+                                leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
+                        }
+                    }
+                }
+            }
             LeaderboardPlayerStatsService.AddJob(new PlayerStatsJob {
                 replayData = fileName != null ? null : replayData,
                 fileName = fileName ?? $"{replay.info.playerID}-{timeset}{(replay.info.speed != 0 ? "-practice" : "")}{(replay.info.failTime != 0 ? "-fail" : "")}-{replay.info.difficulty}-{replay.info.mode}-{replay.info.hash}.bsor",
@@ -1065,7 +1125,7 @@ namespace BeatLeader_Server.Controllers
                 leaderboardId = leaderboard.Id,
                 time = time,
                 type = type,
-                score = replay.info.score,
+                score = resultScore,
                 saveReplay = replay.frames.Count > 0 && replay.info.score > 0 
             });
         }
@@ -1105,7 +1165,7 @@ namespace BeatLeader_Server.Controllers
                         timeset = score.Timepost > 0 ? score.Timepost : int.Parse(score.Timeset),
                         type = EndType.Clear,
                         time = 0,
-                        score = score.BaseScore
+                        score = score
                     });
                 }
             }
@@ -1130,6 +1190,44 @@ namespace BeatLeader_Server.Controllers
         {
         }
 
+        [NonAction]
+        private async Task UpdateTop4(
+            string leaderboardId, 
+            bool ranked,
+            string currentPlayerId) {
+
+            var scores = _context
+                .Scores
+                .Where(s => 
+                    s.LeaderboardId == leaderboardId && 
+                    (s.Rank == 2 || s.Rank == 3 || s.Rank == 4) &&
+                    s.PlayerId != currentPlayerId)
+                .Select(s => new {
+                    s.Rank,
+                    s.Player.ScoreStats
+                })
+                .ToList();
+            foreach (var score in scores) {
+                if (score.ScoreStats == null) continue;
+                var scoreStats = score.ScoreStats;
+                if (score.Rank == 2) {
+                    if (ranked) {
+                        scoreStats.RankedTop1Count--;
+                    } else {
+                        scoreStats.UnrankedTop1Count--;
+                    }
+                    scoreStats.Top1Count--;
+                }
+                if (ranked) {
+                    scoreStats.RankedTop1Score = ReplayUtils.UpdateRankScore(scoreStats.RankedTop1Score, score.Rank - 1, score.Rank);
+                } else {
+                    scoreStats.UnrankedTop1Score = ReplayUtils.UpdateRankScore(scoreStats.UnrankedTop1Score, score.Rank - 1, score.Rank);
+                }
+                scoreStats.Top1Score = ReplayUtils.UpdateRankScore(scoreStats.Top1Score, score.Rank - 1, score.Rank);
+            }
+
+            await _context.SaveChangesAsync();
+        }
 
         [NonAction]
         public DiscordWebhookClient? top1DSClient()

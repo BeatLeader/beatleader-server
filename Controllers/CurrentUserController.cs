@@ -258,6 +258,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] string? leftSaberColor = null,
             [FromQuery] string? rightSaberColor = null,
             [FromQuery] string? starredFriends = null,
+            [FromQuery] string? clanOrder = null,
             [FromQuery] bool? showBots = null,
             [FromQuery] bool? showAllRatings = null,
             [FromQuery] string? id = null) {
@@ -304,6 +305,14 @@ namespace BeatLeader_Server.Controllers {
 
                 if (name != null) {
                     name = Regex.Replace(name, "<(/)?(align|alpha|color|b|i|cspace|font|indent|line-height|line-indent|link|lowercase|uppercase|smallcaps|margin|mark|mspace|noparse|nobr|page|pos|size|space|sprite|s|u|style|sub|sup|voffset|width)(.*?)>|<#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6}|[A-Fa-f0-9]{8})>", string.Empty);
+
+                    foreach (var superWideCharacter in new string[] { "FDFD", "1242B", "12219", "2E3B", "A9C5", "102A", "0BF5", "0BF8", "E0021" }) {
+                        int code = int.Parse(superWideCharacter, System.Globalization.NumberStyles.HexNumber);
+                        string unicodeString = char.ConvertFromUtf32(code);
+                        name = name.Replace(unicodeString, "");
+                    }
+
+                    name = name.Trim();
 
                     if (name.Length is < 3 or > 30) {
                         return BadRequest("Use name between the 3 and 30 symbols");
@@ -371,7 +380,9 @@ namespace BeatLeader_Server.Controllers {
                 settings = new ProfileSettings();
                 player.ProfileSettings = settings;
             }
-
+            if (Request.Query.ContainsKey("clanOrder")) {
+                player.ClanOrder = clanOrder ?? "";
+            }
 
             if (Request.Query.ContainsKey("profileAppearance")) {
                 settings.ProfileAppearance = profileAppearance;
@@ -991,7 +1002,7 @@ namespace BeatLeader_Server.Controllers {
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin")) {
                 query = query.Where(t => t.PlayerId == id);
             } else {
-                query = query.OrderByDescending(s => s.FalsePositive ? 1 : 0);
+                query = query.OrderByDescending(s => s.FalsePositive ? 1 : 0).ThenBy(s => s.Timeset);
             }
 
             return new ResponseWithMetadata<FailedScore> {
@@ -1079,6 +1090,46 @@ namespace BeatLeader_Server.Controllers {
             await _context.SaveChangesAsync();
 
             return result;
+        }
+
+        [HttpGet("~/user/config")]
+        public async Task<ActionResult> GetConfig() {
+            string? userId = GetId();
+            if (userId == null) {
+                return Unauthorized();
+            }
+
+            var configStream = await _s3Client.DownloadStream(userId + "-config.json", S3Container.configs);
+            if (configStream == null) {
+                return NotFound();
+            }
+            return File(configStream, "application/json");
+        }
+
+        [HttpPost("~/user/config")]
+        public async Task<ActionResult> PostConfig() {
+            string? userId = GetId();
+            if (userId == null) {
+                return Unauthorized();
+            }
+
+            var ms = new MemoryStream(5);
+            await Request.Body.CopyToAsync(ms);
+            ms.Position = 0;
+
+            var ms2 = new MemoryStream(5);
+            await ms.CopyToAsync(ms2);
+            ms.Position = 0;
+
+            dynamic? mapscontainer = ms.ObjectFromStream();
+            if (mapscontainer == null) {
+                return BadRequest("Can't decode config");
+            }
+            ms2.Position = 0;
+
+            await _s3Client.UploadStream(userId + "-config.json", S3Container.configs, ms2);
+
+            return Ok();
         }
 
         [HttpPost("~/user/ban")]

@@ -15,7 +15,8 @@ namespace BeatLeader_Server.Utils
         previews,
         scorestats,
         playlists,
-        unicode
+        unicode,
+        configs
     }
 
     public static class S3Helper

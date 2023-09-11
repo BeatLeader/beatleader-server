@@ -38,17 +38,17 @@ namespace BeatLeader_Server.Utils {
                             rating.SSPredictedAcc,
                             rating.SSPassRating,
                             rating.SSTechRating);
-                    rating.SSStars = ReplayUtils.ToStars(rating.SSPredictedAcc, rating.SSPassRating, rating.SSTechRating);
+                    rating.SSStars = ReplayUtils.ToStars(rating.SSAccRating, rating.SSPassRating, rating.SSTechRating);
                     rating.FSAccRating = ReplayUtils.AccRating(
                             rating.FSPredictedAcc,
                             rating.FSPassRating,
                             rating.FSTechRating);
-                    rating.FSStars = ReplayUtils.ToStars(rating.FSPredictedAcc, rating.FSPassRating, rating.FSTechRating);
+                    rating.FSStars = ReplayUtils.ToStars(rating.FSAccRating, rating.FSPassRating, rating.FSTechRating);
                     rating.SFAccRating = ReplayUtils.AccRating(
                             rating.SFPredictedAcc,
                             rating.SFPassRating,
                             rating.SFTechRating);
-                    rating.SFStars = ReplayUtils.ToStars(rating.SFPredictedAcc, rating.SFPassRating, rating.SFTechRating);
+                    rating.SFStars = ReplayUtils.ToStars(rating.SFAccRating, rating.SFPassRating, rating.SFTechRating);
                 } else {
                     diff.PassRating = null;
                     diff.PredictedAcc = null;

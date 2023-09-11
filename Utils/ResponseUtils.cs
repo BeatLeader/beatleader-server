@@ -1,4 +1,5 @@
 ﻿using BeatLeader_Server.Models;
+using Newtonsoft.Json;
 
 namespace BeatLeader_Server.Utils {
     public class ResponseUtils {
@@ -94,11 +95,28 @@ namespace BeatLeader_Server.Utils {
             public int Timepost { get; set; }
             public int ReplaysWatched { get; set; }
             public int PlayCount { get; set; }
+            [JsonIgnore]
+            public int Priority { get; set; }
             public PlayerResponse? Player { get; set; }
             public ScoreImprovement? ScoreImprovement { get; set; }
             public RankVoting? RankVoting { get; set; }
             public ScoreMetadata? Metadata { get; set; }
             public ReplayOffsets? Offsets { get; set; }
+        }
+
+        public class ScoreSongResponse {
+            public string Id { get; set; }
+            public string Hash { get; set; }
+            public string Cover { get; set; }
+            public string Name { get; set; }
+            public string? SubName { get; set; }
+            public string Author { get; set; }
+            public string Mapper { get; set; }
+        }
+
+        public class ScoreResponseWithDifficulty : ScoreResponse {
+            public DifficultyDescription Difficulty { get; set; }
+            public ScoreSongResponse Song { get; set; }
         }
 
         public class SaverScoreResponse {
@@ -397,13 +415,15 @@ namespace BeatLeader_Server.Utils {
                     Socials = s.Player.Socials,
                     PatreonFeatures = s.Player.PatreonFeatures,
                     ProfileSettings = s.Player.ProfileSettings,
-                    Clans = s.Player.Clans?.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                    Clans = s.Player.Clans?.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                 } : null,
                 ScoreImprovement = s.ScoreImprovement,
                 RankVoting = s.RankVoting,
                 Metadata = s.Metadata,
                 Country = s.Country,
-                Offsets = s.ReplayOffsets
+                Offsets = s.ReplayOffsets,
+                MaxStreak = s.MaxStreak
             };
         }
 
@@ -463,7 +483,8 @@ namespace BeatLeader_Server.Utils {
                     Socials = s.Player.Socials,
                     PatreonFeatures = s.Player.PatreonFeatures,
                     ProfileSettings = s.Player.ProfileSettings,
-                    Clans = s.Player.Clans?.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                    Clans = s.Player.Clans?.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                 } : null,
                 ScoreImprovement = s.ScoreImprovement,
                 RankVoting = s.RankVoting,
@@ -499,7 +520,8 @@ namespace BeatLeader_Server.Utils {
                 Socials = p.Socials,
                 PatreonFeatures = p.PatreonFeatures,
                 ProfileSettings = p.ProfileSettings,
-                Clans = p.Clans?.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                Clans = p.Clans?.OrderBy(c => p.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
             };
         }
 
@@ -546,7 +568,8 @@ namespace BeatLeader_Server.Utils {
                 EventsParticipating = p.EventsParticipating,
                 PatreonFeatures = p.PatreonFeatures,
                 ProfileSettings = p.ProfileSettings,
-                Clans = p.Clans?.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                Clans = p.Clans?.OrderBy(c => p.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
             };
         }
 
@@ -592,7 +615,8 @@ namespace BeatLeader_Server.Utils {
                 EventsParticipating = p.EventsParticipating,
                 PatreonFeatures = p.PatreonFeatures,
                 ProfileSettings = p.ProfileSettings,
-                Clans = p.Clans?.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                Clans = p.Clans?.OrderBy(c => p.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
             };
         }
 
