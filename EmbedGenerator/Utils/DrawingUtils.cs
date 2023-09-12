@@ -20,7 +20,7 @@ internal static class DrawingUtils {
     public static SizeF MeasureString(string value, Font font) {
         var options = new TextOptions(font);
         options.Dpi = 96;
-        var measurement = TextMeasurer.Measure(value, options);
+        var measurement = TextMeasurer.MeasureSize(value, options);
         return new SizeF(measurement.Width, measurement.Height);
     }
 
@@ -43,7 +43,7 @@ internal static class DrawingUtils {
             rectangle.Location.Y + (rectangle.Height - measurement.Height * 0.8f) / 2
         );
 
-        var options = new TextOptions(font);
+        var options = new RichTextOptions(font);
         options.Dpi = 96;
         options.Origin = point;
         options.FallbackFontFamilies = fallbackFamilies;
@@ -83,7 +83,7 @@ internal static class DrawingUtils {
             rectangle.Location.Y + rectangle.Height / 2
         );
 
-        var options = new TextOptions(fittingFont);
+        var options = new RichTextOptions(fittingFont);
         options.Dpi = 96;
         options.Origin = point;
         options.FallbackFontFamilies = fallbackFamilies;

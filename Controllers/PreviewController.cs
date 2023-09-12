@@ -75,8 +75,12 @@ namespace BeatLeader_Server.Controllers
             AudiowideFontFamily = fontCollection2.Families.First();
 
             var fallbackCollection = new FontCollection();
-            fallbackCollection.Add(_webHostEnvironment.WebRootPath + "/fonts/Cyberbit.ttf");
-            fallbackCollection.Add(_webHostEnvironment.WebRootPath + "/fonts/seguiemj.ttf");
+
+            var fonts = Directory.GetFiles(_webHostEnvironment.WebRootPath + "/fonts/", "*.ttf", SearchOption.AllDirectories);
+            foreach (var f in fonts)
+            {
+                fallbackCollection.Add(f);
+            }
 
             FallbackFamilies = fallbackCollection.Families.ToList();
 
@@ -414,7 +418,7 @@ namespace BeatLeader_Server.Controllers
 
             var font = new Font(AudiowideFontFamily, 26 - (player.Name.Length / 5) - (player.Name.Length > 15 ? 3 : 0));
             var color = ColorFromHSV((Math.Max(0, player.Pp - 1000) / 18000) * 360, 1.0, 1.0);
-            var textOptions = new TextOptions(font);
+            var textOptions = new RichTextOptions(font);
             textOptions.TextAlignment = TextAlignment.Center;
             textOptions.HorizontalAlignment = HorizontalAlignment.Center;
             textOptions.Dpi = 96;
@@ -425,7 +429,7 @@ namespace BeatLeader_Server.Controllers
             image.Mutate(x => x.DrawText(textOptions, player.Name, color));
 
             var songNameFont = new Font(AudiowideFontFamily, 26 -song.Name.Length / 5);
-            textOptions = new TextOptions(songNameFont);
+            textOptions = new RichTextOptions(songNameFont);
             textOptions.TextAlignment = TextAlignment.Center;
             textOptions.HorizontalAlignment = HorizontalAlignment.Center;
             textOptions.Dpi = 96;
@@ -435,7 +439,7 @@ namespace BeatLeader_Server.Controllers
             textOptions.FallbackFontFamilies = FallbackFamilies;
 
             image.Mutate(x => x.DrawText(textOptions, song.Name, Color.White));
-            image.Mutate(x => x.Draw(new Pen(new LinearGradientBrush(new Point(1, 1), new Point(100, 100), GradientRepetitionMode.Repeat, new ColorStop(0, Color.Red), new ColorStop(1, Color.BlueViolet)), 5), new Rectangle(0, 0, width, height)));
+            image.Mutate(x => x.Draw(new SolidPen(new LinearGradientBrush(new Point(1, 1), new Point(100, 100), GradientRepetitionMode.Repeat, new ColorStop(0, Color.Red), new ColorStop(1, Color.BlueViolet)), 5), new Rectangle(0, 0, width, height)));
 
             MemoryStream ms = new MemoryStream();
             WebpEncoder webpEncoder = new()
@@ -493,7 +497,7 @@ namespace BeatLeader_Server.Controllers
                 .DrawImage(Image.Load<Rgba32>(_webHostEnvironment.WebRootPath + "/images/royale.png").Resized(new Size(90, 90)), new Point(width - 130, 20), 1)
             );
 
-            var textOptions = new TextOptions(new Font(AudiowideFontFamily, 9));
+            var textOptions = new RichTextOptions(new Font(AudiowideFontFamily, 9));
             textOptions.TextAlignment = TextAlignment.Center;
             textOptions.Dpi = 96;
             textOptions.Origin = new PointF(width - 120, 12);
@@ -518,7 +522,7 @@ namespace BeatLeader_Server.Controllers
                     image.Mutate(x => x.DrawImage(avatar.Resized(new Size(20, 20)), new Point(18, 15 + i * 27), 1));
                 }
 
-                var nameOptions = new TextOptions(new Font(AudiowideFontFamily, 14 - (player.Name.Length / 5) - (player.Name.Length > 15 ? 3 : 0)));
+                var nameOptions = new RichTextOptions(new Font(AudiowideFontFamily, 14 - (player.Name.Length / 5) - (player.Name.Length > 15 ? 3 : 0)));
                 nameOptions.Dpi = 96;
                 nameOptions.Origin = new PointF(40, 15 + i * 27);
                 nameOptions.WrappingLength = width / 2;
@@ -536,7 +540,7 @@ namespace BeatLeader_Server.Controllers
                 image.Mutate(x => x.DrawImage(cover.Resized(new Size(135, 135)), new Point(width / 2 - 40, 15), 1));
             }
 
-            var left = new TextOptions(new Font(AudiowideFontFamily, 12));
+            var left = new RichTextOptions(new Font(AudiowideFontFamily, 12));
             left.TextAlignment = TextAlignment.Start;
             left.Dpi = 96;
             left.Origin = new PointF((int)(width / 2 - 44), 160);
@@ -549,7 +553,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             var songNameFont = new Font(AudiowideFontFamily, 26 -song.Name.Length / 5);
-            textOptions = new TextOptions(songNameFont);
+            textOptions = new RichTextOptions(songNameFont);
             textOptions.TextAlignment = TextAlignment.Center;
             textOptions.HorizontalAlignment = HorizontalAlignment.Center;
             textOptions.Dpi = 96;
@@ -559,7 +563,7 @@ namespace BeatLeader_Server.Controllers
             textOptions.FallbackFontFamilies = FallbackFamilies;
 
             image.Mutate(x => x.DrawText(textOptions, song.Name, Color.White));
-            image.Mutate(x => x.Draw(new Pen(new LinearGradientBrush(new Point(1, 1), new Point(100, 100), GradientRepetitionMode.Repeat, new ColorStop(0, Color.Red), new ColorStop(1, Color.BlueViolet)), 5), new Rectangle(0, 0, width, height)));
+            image.Mutate(x => x.Draw(new SolidPen(new LinearGradientBrush(new Point(1, 1), new Point(100, 100), GradientRepetitionMode.Repeat, new ColorStop(0, Color.Red), new ColorStop(1, Color.BlueViolet)), 5), new Rectangle(0, 0, width, height)));
 
             MemoryStream ms = new MemoryStream();
             WebpEncoder webpEncoder = new()
