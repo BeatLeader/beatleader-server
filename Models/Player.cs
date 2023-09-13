@@ -17,7 +17,7 @@ namespace BeatLeader_Server.Models {
     }
 
     public interface IPlayer {
-        //public string Name { get; set; }
+        public string Name { get; set; }
         public string Country { get; set; }
         public float Pp { get; set; }
         public float AccPp { get; set; }

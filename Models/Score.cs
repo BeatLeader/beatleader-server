@@ -62,7 +62,7 @@ namespace BeatLeader_Server.Models
         public float Weight { get; set; }
         public int Rank { get; set; }
         public int CountryRank { get; set; }
-        public string? Replay { get; set; }
+        public string? Replay { get; set; } = "";
         public string? Modifiers { get; set; }
         public int BadCuts { get; set; }
         public int MissedNotes { get; set; }

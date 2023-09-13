@@ -42,6 +42,9 @@ namespace BeatLeader_Server.Services
 
                 var _playerController = scope.ServiceProvider.GetRequiredService<PlayerRefreshController>();
                 await _playerController.RefreshPlayersStats();
+
+                var _playerContextController = scope.ServiceProvider.GetRequiredService<PlayerStatsRefreshController>();
+                await _playerContextController.RefreshPlayersStatsAllContexts();
             }
         }
         public async Task SetHistories()

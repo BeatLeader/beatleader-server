@@ -773,6 +773,7 @@ namespace BeatLeader_Server.Controllers {
                 .Include(p => p.Badges)
                 .Include(p => p.Achievements)
                 .Include(p => p.Socials)
+                .Include(p => p.ContextExtensions)
                 .FirstOrDefault();
             Player? migratedToPlayer = _context.Players.Where(p => p.Id == migrateToId)
                 .Include(p => p.Clans)
@@ -934,39 +935,76 @@ namespace BeatLeader_Server.Controllers {
 
             migratedToPlayer.Role += currentPlayer.Role;
 
-            List<Score> scores = _context.Scores
+            var scoresGroups = _context.Scores
                 .Include(el => el.Player)
                 .Include(el => el.ContextExtensions)
-                .Where(el => el.Player.Id == currentPlayer.Id)
+                .Where(el => el.Player.Id == currentPlayer.Id || el.Player.Id == migrateToId)
                 .Include(el => el.Leaderboard)
-                .ThenInclude(el => el.Scores).ToList();
-            if (scores.Count() > 0) {
-                foreach (Score score in scores) {
-                    Score? migScore = score.Leaderboard.Scores.FirstOrDefault(el => el.PlayerId == migrateToId);
-                    if (migScore != null) {
-                        if (migScore.ModifiedScore >= score.ModifiedScore) {
-                            foreach (var ce in score.ContextExtensions) {
-                                _context.ScoreContextExtensions.Remove(ce);
-                            }
-                            score.Leaderboard.Scores.Remove(score);
-                        } else {
-                            foreach (var ce in migScore.ContextExtensions) {
-                                _context.ScoreContextExtensions.Remove(ce);
-                            }
-                            score.Leaderboard.Scores.Remove(migScore);
-                            score.Player = migratedToPlayer;
-                            score.PlayerId = migrateToId;
+                .ThenInclude(el => el.Difficulty)
+                .ToList()
+                .GroupBy(el => el.LeaderboardId)
+                .ToList();
+
+            var contextsList = new List<LeaderboardContexts>() { LeaderboardContexts.NoMods, LeaderboardContexts.NoPause, LeaderboardContexts.Golf  };
+
+            if (scoresGroups.Count() > 0) {
+                foreach (var group in scoresGroups) {
+                    var scores = group.ToList();
+                    foreach (var score in scores) {
+                        var difficulty = score.Leaderboard.Difficulty;
+                        score.ContextExtensions = new List<ScoreContextExtension>();
+                        score.ValidContexts = LeaderboardContexts.None;
+                        var noModsExtension = ReplayUtils.NoModsContextExtension(score, difficulty);
+                        if (noModsExtension != null) {
+                            noModsExtension.LeaderboardId = score.LeaderboardId;
+                            noModsExtension.PlayerId = migrateToId;
+                            score.ContextExtensions.Add(noModsExtension);
+                        }
+                        var noPauseExtenstion = ReplayUtils.NoPauseContextExtension(score);
+                        if (noPauseExtenstion != null) {
+                            noPauseExtenstion.LeaderboardId = score.LeaderboardId;
+                            noPauseExtenstion.PlayerId = migrateToId;
+                            score.ContextExtensions.Add(noPauseExtenstion);
+                        }
+                        var golfExtension = ReplayUtils.GolfContextExtension(score, difficulty);
+                        if (golfExtension != null) {
+                            golfExtension.LeaderboardId = score.LeaderboardId;
+                            golfExtension.PlayerId = migrateToId;
+                            score.ContextExtensions.Add(golfExtension);
+                        }
+                    }
+
+                    scores.Sort((item1, item2) => ReplayUtils.IsNewScoreBetter(item1, item2) ? -1 : 1);
+                    scores[0].ValidContexts |= LeaderboardContexts.General;
+
+                    foreach (var context in contextsList) {
+                        var extensions = scores
+                            .Select(s => new { 
+                                Context = s.ContextExtensions.FirstOrDefault(ce => ce.Context == context),
+                                Score = s
+                            })
+                            .Where(e => e.Context != null)
+                            .ToList();
+                        if (extensions.Count == 0) {
+                            continue;
                         }
 
-                        var rankedScores = score.Leaderboard.Scores.Where(sc => sc != null).OrderByDescending(el => el.ModifiedScore).ToList();
-                        foreach ((int i, Score? s) in rankedScores.Select((value, i) => (i, value))) {
-                            if (s != null) {
-                                s.Rank = i + 1;
+                        extensions.Sort((item1, item2) => ReplayUtils.IsNewScoreExtensionBetter(item1.Context, item2.Context) ? -1 : 1);
+                        extensions[0].Score.ValidContexts |= context;
+                    }
+
+                    foreach (var score in scores) {
+                        if (score.ValidContexts == LeaderboardContexts.None) {
+                            _context.Scores.Remove(score);
+                        } else {
+                            score.Player = migratedToPlayer;
+                            score.PlayerId = migrateToId;
+                            foreach (var ce in score.ContextExtensions) {
+                                if (!score.ValidContexts.HasFlag(ce.Context)) {
+                                    score.ContextExtensions.Remove(ce);
+                                }
                             }
                         }
-                    } else {
-                        score.Player = migratedToPlayer;
-                        score.PlayerId = migrateToId;
                     }
                 }
             }
@@ -987,9 +1025,17 @@ namespace BeatLeader_Server.Controllers {
             currentPlayer.ContextExtensions = null;
             _context.Players.Remove(currentPlayer);
 
-            await _context.SaveChangesAsync();
+            await _context.BulkSaveChangesAsync();
+
+            if (scoresGroups.Count() > 0) {
+                foreach (var group in scoresGroups) {
+                    await _scoreRefreshController.RefreshScores(group.Key);
+                    await _scoreRefreshController.BulkRefreshScoresAllContexts(group.Key);
+                }
+            }
+
             await _playerRefreshController.RefreshPlayer(migratedToPlayer);
-            await _context.SaveChangesAsync();
+            await _context.BulkSaveChangesAsync();
 
             return Ok();
         }

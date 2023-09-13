@@ -12,6 +12,7 @@ using static BeatLeader_Server.Utils.ResponseUtils;
 namespace BeatLeader_Server.Controllers {
     public class PlayerScoresController : Controller {
         private readonly AppContext _context;
+        private readonly PlayerContextScoresController _playerContextScoresController;
 
         private readonly IConfiguration _configuration;
         IWebHostEnvironment _environment;
@@ -22,12 +23,14 @@ namespace BeatLeader_Server.Controllers {
             AppContext context,
             IConfiguration configuration,
             IServerTiming serverTiming,
-            IWebHostEnvironment env) {
+            IWebHostEnvironment env,
+            PlayerContextScoresController playerContextScoresController) {
             _context = context;
 
             _configuration = configuration;
             _serverTiming = serverTiming;
             _environment = env;
+            _playerContextScoresController = playerContextScoresController;
         }
 
         [NonAction]
@@ -40,6 +43,7 @@ namespace BeatLeader_Server.Controllers {
             string? mode = null,
             Requirements requirements = Requirements.None,
             ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
+            LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             string? type = null,
             string? modifiers = null,
             float? stars_from = null,
@@ -64,7 +68,7 @@ namespace BeatLeader_Server.Controllers {
 
             return (_context
                .Scores
-               .Where(t => t.PlayerId == id)
+               .Where(t => t.PlayerId == id && t.ValidContexts.HasFlag(leaderboardContext))
                .Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId),
                showRatings, currentID, id);
         }
@@ -81,6 +85,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] string? mode = null,
             [FromQuery] Requirements requirements = Requirements.None,
             [FromQuery] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
+            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery] string? type = null,
             [FromQuery] string? modifiers = null,
             [FromQuery] float? stars_from = null,
@@ -88,7 +93,16 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] int? time_from = null,
             [FromQuery] int? time_to = null,
             [FromQuery] int? eventId = null) {
-            (IQueryable<Score>? sequence, bool showRatings, string currentID, string userId) = await ScoresQuery(id, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+            if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
+                return await _playerContextScoresController.GetScores(id, sortBy, order, page, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+            }
+
+            (
+                IQueryable<Score>? sequence, 
+                bool showRatings, 
+                string currentID, 
+                string userId
+            ) = await ScoresQuery(id, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             if (sequence == null) {
                 return NotFound();
             }
@@ -157,6 +171,7 @@ namespace BeatLeader_Server.Controllers {
                         AccLeft = s.AccLeft,
                         AccRight = s.AccRight,
                         MaxStreak = s.MaxStreak,
+                        ContextExtensions = s.ContextExtensions
                     })
                     .AsSplitQuery()
                     .ToList();
@@ -197,6 +212,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] string? mode = null,
             [FromQuery] Requirements requirements = Requirements.None,
             [FromQuery] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
+            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery] string? type = null,
             [FromQuery] string? modifiers = null,
             [FromQuery] float? stars_from = null,
@@ -204,7 +220,10 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] int? time_from = null,
             [FromQuery] int? time_to = null,
             [FromQuery] int? eventId = null) {
-            (IQueryable<Score>? sequence, bool showRatings, string currentID, string userId) = await ScoresQuery(id, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+            if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
+                return await _playerContextScoresController.GetCompactScores(id, sortBy, order, page, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+            }
+            (IQueryable<Score>? sequence, bool showRatings, string currentID, string userId) = await ScoresQuery(id, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             if (sequence == null) {
                 return NotFound();
             }
@@ -300,6 +319,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] string? mode = null,
             [FromQuery] Requirements requirements = Requirements.None,
             [FromQuery] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
+            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery] string? type = null,
             [FromQuery] string? modifiers = null,
             [FromQuery] float? stars_from = null,
@@ -308,7 +328,11 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] int? time_to = null,
             [FromQuery] int? eventId = null,
             [FromQuery] float? batch = null) {
-            (IQueryable<Score>? sequence, bool showRatings, string currentID, string userId) = await ScoresQuery(id, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+
+            if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
+                return await _playerContextScoresController.GetHistogram(id, sortBy, order, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId, batch); 
+            }
+            (IQueryable<Score>? sequence, bool showRatings, string currentID, string userId) = await ScoresQuery(id, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             if (sequence == null) {
                 return NotFound();
             }
@@ -385,32 +409,11 @@ namespace BeatLeader_Server.Controllers {
             return JsonConvert.SerializeObject(result);
         }
 
-        public class GraphResponse {
-            public string LeaderboardId { get; set; }
-            public string Diff { get; set; }
-            public string Mode { get; set; }
-            public string Modifiers { get; set; }
-            public string SongName { get; set; }
-            public string Hash { get; set; }
-            public string Mapper { get; set; }
-            public float Acc { get; set; }
-            public string Timeset { get; set; }
-            public float? Stars { get; set; }
-
-            [JsonIgnore]
-            public ModifiersRating? ModifiersRating { get; set; }
-            [JsonIgnore]
-            public ModifiersMap? ModifierValues { get; set; }
-            [JsonIgnore]
-            public float? PassRating { get; set; }
-            [JsonIgnore]
-            public float? AccRating { get; set; }
-            [JsonIgnore]
-            public float? TechRating { get; set; }
-        }
-
         [HttpGet("~/player/{id}/accgraph")]
-        public ActionResult<ICollection<GraphResponse>> GetScoreValue(string id) {
+        public ActionResult<ICollection<GraphResponse>> AccGraph(string id, [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General) {
+            if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
+                return _playerContextScoresController.AccGraph(id, leaderboardContext); 
+            }
             id = _context.PlayerIdToMain(id);
             string? currentID = HttpContext.CurrentUserID(_context);
             bool showRatings = currentID != null ? _context
@@ -422,7 +425,7 @@ namespace BeatLeader_Server.Controllers {
 
             var result = _context
                 .Scores
-                .Where(s => s.PlayerId == id && !s.IgnoreForStats && ((showRatings && s.Leaderboard.Difficulty.Stars != null) || s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked))
+                .Where(s => s.PlayerId == id && s.ValidContexts.HasFlag(leaderboardContext) && !s.IgnoreForStats && ((showRatings && s.Leaderboard.Difficulty.Stars != null) || s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked))
                 .Select(s => new GraphResponse {
                     LeaderboardId = s.Leaderboard.Id,
                     Diff = s.Leaderboard.Difficulty.DifficultyName,
@@ -477,11 +480,14 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [HttpGet("~/player/{id}/history")]
-        public async Task<ActionResult<ICollection<PlayerScoreStatsHistory>>> GetHistory(string id, [FromQuery] int count = 50) {
+        public async Task<ActionResult<ICollection<PlayerScoreStatsHistory>>> GetHistory(string id, [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General, [FromQuery] int count = 50) {
+            if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
+                return await _playerContextScoresController.GetHistory(id, leaderboardContext, count); 
+            }
             id = _context.PlayerIdToMain(id);
             var result = _context
                     .PlayerScoreStatsHistory
-                    .Where(p => p.PlayerId == id)
+                    .Where(p => p.PlayerId == id && p.Context == leaderboardContext)
                     .OrderByDescending(s => s.Timestamp)
                     .Take(count)
                     .ToList();

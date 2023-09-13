@@ -244,7 +244,8 @@ namespace BeatLeader_Server.Utils
             return PpFromScore(s.Accuracy, s.Modifiers, diff.ModifierValues, diff.ModifiersRating, diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0, false);
         }
 
-        public static (Score, int) ProcessReplayInfo(ReplayInfo info, DifficultyDescription difficulty) {
+        public static (Score, int) ProcessReplay(Replay replay, DifficultyDescription difficulty) {
+            ReplayInfo info = replay.info;
             Score score = new Score();
             
             score.BaseScore = info.score;
@@ -275,6 +276,7 @@ namespace BeatLeader_Server.Utils
 
             score.Qualification = qualification;
             score.Platform = info.platform + "," + info.gameVersion + "," + info.version;
+            score.Timepost = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             score.Timeset = info.timestamp;
             score.IgnoreForStats = difficulty.ModeName.ToLower() == "rhythmgamestandard" || difficulty.ModeName.ToLower().Contains("controllable") || info.modifiers.Contains("NF");
             score.Migrated = true;
@@ -286,11 +288,7 @@ namespace BeatLeader_Server.Utils
             } else if (info.modifiers.Contains("NO")) {
                 score.Priority = 1;
             }
-            
-            return (score, maxScore);
-        }
 
-        public static void PostProcessReplay(Score score, Replay replay) {
             score.WallsHit = replay.walls.Count;
             float firstNoteTime = replay.notes.FirstOrDefault()?.eventTime ?? 0.0f;
             float lastNoteTime = replay.notes.LastOrDefault()?.eventTime ?? 0.0f;
@@ -313,6 +311,90 @@ namespace BeatLeader_Server.Utils
                 }
             }
             score.FullCombo = score.BombCuts == 0 && score.MissedNotes == 0 && score.WallsHit == 0 && score.BadCuts == 0;
+            score.ContextExtensions = new List<ScoreContextExtension>();
+            var noModsExtension = NoModsContextExtension(score, difficulty);
+            if (noModsExtension != null) {
+                score.ContextExtensions.Add(noModsExtension);
+            }
+            var noPauseExtenstion = NoPauseContextExtension(score);
+            if (noPauseExtenstion != null) {
+                score.ContextExtensions.Add(noPauseExtenstion);
+            }
+            var golfExtension = GolfContextExtension(score, difficulty);
+            if (golfExtension != null) {
+                score.ContextExtensions.Add(golfExtension);
+            }
+
+            return (score, maxScore);
+        }
+
+        public static ScoreContextExtension? NoModsContextExtension(Score score, DifficultyDescription difficulty) {
+            if (!(score.Modifiers?.Length == 0 || score.Modifiers == "IF" || score.Modifiers == "BE")) {
+                return null;
+            }
+
+            var result = new ScoreContextExtension {
+                Context = LeaderboardContexts.NoMods,
+                BaseScore = score.BaseScore,
+                ModifiedScore = score.BaseScore,
+                Timeset = score.Timepost,
+                Modifiers = "",
+                Accuracy = score.Accuracy
+            };
+
+            if (score.Pp > 0) {
+                (result.Pp, result.BonusPp, result.PassPP, result.AccPP, result.TechPP) = PpFromScore(score.Accuracy, "", difficulty.ModifierValues, 
+                difficulty.ModifiersRating,
+                difficulty.AccRating ?? 0.0f, 
+                difficulty.PassRating ?? 0.0f, 
+                difficulty.TechRating ?? 0.0f, 
+                difficulty.ModeName.ToLower() == "rhythmgamestandard");
+            }
+
+            return result;
+        }
+
+        public static ScoreContextExtension? GolfContextExtension(Score score, DifficultyDescription difficulty) {
+            var modifers = difficulty.ModifierValues ?? new ModifiersMap();
+            if (modifers.GetNegativeMultiplier(score.Modifiers) < 1 || score.Accuracy > 0.5f) {
+                return null;
+            }
+
+            var result = new ScoreContextExtension {
+                Context = LeaderboardContexts.Golf,
+                BaseScore = score.BaseScore,
+                ModifiedScore = score.ModifiedScore,
+                Timeset = score.Timepost,
+                Modifiers = score.Modifiers,
+                Accuracy = score.Accuracy
+            };
+
+            if (score.Pp > 0) {
+                (result.Pp, result.BonusPp, result.PassPP, result.AccPP, result.TechPP) = PpFromScore(1 - score.Accuracy, score.Modifiers, difficulty.ModifierValues, 
+                difficulty.ModifiersRating,
+                difficulty.AccRating ?? 0.0f, 
+                difficulty.PassRating ?? 0.0f, 
+                difficulty.TechRating ?? 0.0f, 
+                difficulty.ModeName.ToLower() == "rhythmgamestandard");
+            }
+            
+            return result;
+        }
+
+        public static ScoreContextExtension? NoPauseContextExtension(Score score) {
+            if (score.Pauses != 0) return null;
+            return new ScoreContextExtension {
+                Context = LeaderboardContexts.NoPause,
+                BaseScore = score.BaseScore,
+                ModifiedScore = score.ModifiedScore,
+                Timeset = score.Timepost,
+                Modifiers = score.Modifiers,
+                Accuracy = score.Accuracy,
+                Pp = score.Pp,
+                AccPP = score.AccPP,
+                TechPP = score.TechPP,
+                PassPP = score.PassPP
+            };
         }
 
         public static HMD HMDFromName(string hmdName) {
@@ -603,6 +685,32 @@ namespace BeatLeader_Server.Utils
             return false;
         }
 
+        public static bool IsNewScoreExtensionBetter(ScoreContextExtension? oldScore, ScoreContextExtension newScore) {
+            if (oldScore == null) return true;
+            if (oldScore.Modifiers.Contains("OP")) return true;
+            if (newScore.Pp != 0) {
+                if (newScore.Pp > oldScore.Pp) return true;
+            } else {
+                if (newScore.Context == LeaderboardContexts.Golf) {
+                    if (newScore.ModifiedScore < oldScore.ModifiedScore) return true;
+                } else {
+                    if (newScore.ModifiedScore > oldScore.ModifiedScore) return true;
+                }
+
+                if (oldScore.Modifiers.Contains("NF") || 
+                    oldScore.Modifiers.Contains("NA") ||
+                    oldScore.Modifiers.Contains("NB") ||
+                    oldScore.Modifiers.Contains("NO")) {
+                    if (!newScore.Modifiers.Contains("NF") && 
+                    !newScore.Modifiers.Contains("NA") &&
+                    !newScore.Modifiers.Contains("NB") &&
+                    !newScore.Modifiers.Contains("NO")) return true;
+                }
+            }
+
+            return false;
+        }
+
         public static int ScoreForRank(int rank) {
             switch (rank) {
                 case 1:
@@ -624,6 +732,24 @@ namespace BeatLeader_Server.Utils
             result += ScoreForRank(newRank);
 
             return result; 
+        }
+
+        public static string ReplayFilename(Replay replay, Score? score, bool temp = false) {
+            string result = "";
+            if (score != null) {
+                result += score.Id + "-";
+            }
+            result += replay.info.playerID;
+            if (replay.info.speed != 0) {
+                result += "-practice";
+            }
+            if (replay.info.failTime != 0) {
+                result += "-fail";
+            }
+
+            result += "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash;
+
+            return result + (temp ? ".bsortemp" : ".bsor");  
         }
     }
 }

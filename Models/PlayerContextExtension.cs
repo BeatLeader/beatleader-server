@@ -1,4 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BeatLeader_Server.Models {
     [Index(nameof(PlayerId), nameof(Context), IsUnique = true)]
@@ -21,6 +23,9 @@ namespace BeatLeader_Server.Models {
         public string PlayerId { get; set; }
         public Player Player { get; set; }
         public PlayerScoreStats? ScoreStats { get; set; }
-        //public string Name { get => Player.Name; set => Player.Name = value; }
+
+        [NotMapped]
+        [JsonIgnore]
+        public string Name { get => Player != null ? Player.Name : ""; set => Player.Name = value; }
     }
 }

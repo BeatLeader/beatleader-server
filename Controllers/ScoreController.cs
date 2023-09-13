@@ -13,7 +13,6 @@ namespace BeatLeader_Server.Controllers
     public class ScoreController : Controller
     {
         private readonly AppContext _context;
-        private readonly ReadAppContext _readContext;
 
         private readonly IAmazonS3 _s3Client;
 
@@ -24,14 +23,12 @@ namespace BeatLeader_Server.Controllers
 
         public ScoreController(
             AppContext context,
-            ReadAppContext readContext,
             IWebHostEnvironment env,
             IServerTiming serverTiming,
             IConfiguration configuration,
             LeaderboardController leaderboardController)
         {
             _context = context;
-            _readContext = readContext;
             _serverTiming = serverTiming;
             _s3Client = configuration.GetS3Client();
             _configuration = configuration;
@@ -155,6 +152,7 @@ namespace BeatLeader_Server.Controllers
             }
             var score = _context.Scores
                 .Where(s => s.Id == id)
+                .Include(s => s.ContextExtensions)
                 .Include(s => s.Leaderboard)
                 .ThenInclude(l => l.Difficulty)
                 .Include(s => s.Leaderboard)
@@ -198,6 +196,9 @@ namespace BeatLeader_Server.Controllers
                 {
                     player.ScoreStats.AverageRankedAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, score.Accuracy);
                 }
+            }
+            foreach (var extension in score.ContextExtensions) {
+                _context.ScoreContextExtensions.Remove(extension);
             }
             try
             {
@@ -329,6 +330,43 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
+        //[HttpGet("~/wfwfwfewefwef")]
+        //public async Task<ActionResult> wfwfwfewefwef()
+        //{
+        //    var scores = _context
+        //        .Scores
+        //        .Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.Golf) && s.Accuracy < 0.05)
+        //        .Include(s => s.ContextExtensions)
+        //        .ToList();
+
+        //    var modifers = new ModifiersMap();
+
+        //    foreach (var score in scores) {
+
+        //        //if (modifers.GetNegativeMultiplier(score.Modifiers) < 1) {
+        //            score.ValidContexts &= ~LeaderboardContexts.Golf;
+        //            var extension = score.ContextExtensions.FirstOrDefault(s => s.Context == LeaderboardContexts.Golf);
+        //            _context.ScoreContextExtensions.Remove(extension);
+        //        //}
+        //        //if (score.Modifiers == "IF" || score.Modifiers == "BE") {
+        //        //    //score.Modifiers = "";
+        //        //} else {
+        //        //    score.ValidContexts &= ~LeaderboardContexts.NoMods;
+        //        //    //_context.ScoreContextExtensions.Remove(score);
+        //        //}
+        //    }
+        //    _context.BulkSaveChanges();
+
+        //    //var history = _context.PlayerScoreStatsHistory.ToList();
+        //    //foreach (var item in history) {
+        //    //    item.Context = LeaderboardContexts.General;
+        //    //}
+
+        //    //_context.BulkSaveChanges();
+
+        //    return Ok();
+        //}
+
         [HttpGet("~/v5/scores/{hash}/{diff}/{mode}")]
         public async Task<ActionResult<ResponseWithMetadataAndContainer<SaverScoreResponse, SaverContainerResponse>>> GetByHash5(
             string hash,
@@ -366,7 +404,9 @@ namespace BeatLeader_Server.Controllers
 
             IQueryable<Score> query = _context
                 .Scores
-                .Where(s => !s.Banned && s.LeaderboardId == leaderboard.Id)
+                .Where(s => !s.Banned && 
+                             s.LeaderboardId == leaderboard.Id &&
+                             s.ValidContexts.HasFlag(LeaderboardContexts.General))
                 .OrderBy(p => p.Rank);
 
             result.Metadata.Total = query.Count();
@@ -395,129 +435,25 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
-        public static string FilterOutPositiveModifiers(string modifiers, ModifiersMap modifiersObject)
-        {
-            List<string> modifierArray = new List<string>();
-            var modifiersMap = modifiersObject.ToDictionary<float>();
-            foreach (var modifier in modifiersMap.Keys)
-            {
-                if (modifiers.Contains(modifier)) {
-                    if (modifiersMap[modifier] < 0) {
-                        modifierArray.Add(modifier);
-                    }
-                }
-            }
-
-            return String.Join(",", modifierArray);
-        }
-
-        private ScoreResponse RemovePositiveModifiers(ScoreResponse s, DifficultyDescription difficulty) {
-            ScoreResponse result = s;
-
-            var status = difficulty.Status;
-            var modifiers = difficulty.ModifierValues ?? new ModifiersMap();
-
-            bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
-            bool hasPp = status == DifficultyStatus.ranked || qualification;
-
-            s.Modifiers = FilterOutPositiveModifiers(s.Modifiers, modifiers);
-            s.ModifiedScore = (int)(s.BaseScore * modifiers.GetNegativeMultiplier(s.Modifiers));
-
-            if (hasPp)
-            {
-                (s.Pp, s.BonusPp, s.PassPP, s.AccPP, s.TechPP) = ReplayUtils.PpFromScoreResponse(s, difficulty);
-            }
-            else
-            {
-                s.Pp = 0;
-                s.BonusPp = 0;
-            }
-
-            return result;
-        }
-
-        [HttpGet("~/v3/scores/{hash}/{diff}/{mode}/{context}/{scope}/{method}")]
-        public async Task<ActionResult<ResponseWithMetadataAndSelection<ScoreResponse>>> GetByHash3(
-            string hash,
-            string diff,
-            string mode,
-            string context,
+        [NonAction]
+        public async Task<List<ScoreResponse>?> GeneralScoreList(
+            ResponseWithMetadataAndSelection<ScoreResponse> result,
+            bool showBots, 
+            string leaderboardId, 
             string scope,
+            string player,
             string method,
-            [FromQuery] string player,
-            [FromQuery] int page = 1,
-            [FromQuery] int count = 10)
-        {
-            
-            ResponseWithMetadataAndSelection<ScoreResponse> result = new ResponseWithMetadataAndSelection<ScoreResponse>
-            {
-                Data = new List<ScoreResponse>(),
-                Metadata =
-                    {
-                        ItemsPerPage = count,
-                        Page = page,
-                        Total = 0
-                    }
-            };
-
-            if (hash.Length < 40) {
-                return BadRequest("Hash is too short");
-            } else {
-                hash = hash.Substring(0, 40);
-            }
-
-            PlayerResponse? currentPlayer = 
-                await _context
-                .Players
-                .Select(p => new PlayerResponse {
-                    Id = p.Id,
-                    Name = p.Name,
-                    Platform = p.Platform,
-                    Avatar = p.Avatar,
-                    Country = p.Country,
-
-                    Pp = p.Pp,
-                    Rank = p.Rank,
-                    CountryRank = p.CountryRank,
-                    Role = p.Role,
-                    Socials = p.Socials,
-                    ProfileSettings = p.ProfileSettings,
-                    Clans = p.Clans.OrderBy(c => p.ClanOrder.IndexOf(c.Tag))
-                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                })
-                .FirstOrDefaultAsync(p => p.Id == player);
-            var song = _readContext.Songs.Select(s => new { Id = s.Id, Hash = s.Hash }).FirstOrDefault(s => s.Hash == hash);
-            if (song == null) {
-                return result;
-            }
-
-            if (mode.EndsWith("OldDots")) {
-                mode = mode.Replace("OldDots", "");
-            }
-
-            int modeValue = SongUtils.ModeForModeName(mode);
-            if (modeValue == 0) {
-                var customMode = _readContext.CustomModes.FirstOrDefault(m => m.Name == mode);
-                if (customMode != null) {
-                    modeValue = customMode.Id + 10;
-                } else {
-                    return result;
-                }
-            }
-
-            var leaderboardId = song.Id + SongUtils.DiffForDiffName(diff).ToString() + modeValue.ToString();
-
-            bool showBots = currentPlayer?.ProfileSettings?.ShowBots ?? false;
-            IQueryable<Score> query = _readContext
+            int page,
+            int count,
+            PlayerResponse? currentPlayer) {
+            IQueryable<Score> query = _context
                 .Scores
                 .Where(s => (!s.Banned || (s.Bot && showBots)) && s.LeaderboardId == leaderboardId)
-                .OrderBy(p => p.Rank);
-
-            
+                                .OrderBy(p => p.Rank);
 
             if (scope.ToLower() == "friends")
             {
-                PlayerFriends? friends = _readContext.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == player);
+                PlayerFriends? friends = _context.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == player);
 
                 if (friends != null) {
                     var idList = friends.Friends.Select(f => f.Id).ToArray();
@@ -527,18 +463,12 @@ namespace BeatLeader_Server.Controllers
                 }
             } else if (scope.ToLower() == "country")
             {
-                currentPlayer = currentPlayer ?? ResponseFromPlayer(await _readContext.Players.FindAsync(player));
+                currentPlayer = currentPlayer ?? ResponseFromPlayer(await _context.Players.FindAsync(player));
                 if (currentPlayer == null)
                 {
-                    return result;
+                    return null;
                 }
                 query = query.Where(s => s.Player.Country == currentPlayer.Country);
-            }
-
-            if (context.ToLower() == "standard") {
-                query = query
-                    .Where(s => s.ModifiedScore >= s.BaseScore)
-                    .OrderByDescending(p => p.Accuracy);
             }
 
             if (method.ToLower() == "around")
@@ -552,7 +482,7 @@ namespace BeatLeader_Server.Controllers
                 }
                 else
                 {
-                    return result;
+                    return null;
                 }
             }
             else
@@ -604,6 +534,7 @@ namespace BeatLeader_Server.Controllers
                     },
                     ScoreImprovement = s.ScoreImprovement
                 }).FirstOrDefault();
+
                 if (highlightedScore != null)
                 {
                     result.Selection = highlightedScore;
@@ -674,25 +605,7 @@ namespace BeatLeader_Server.Controllers
                 })
                 .ToList();
 
-            if (context.ToLower() == "standard") {
-                var difficulty = _context
-                    .Leaderboards
-                    .Where(lb => lb.Id == leaderboardId)
-                    .Include(lb => lb.Difficulty)
-                    .ThenInclude(d => d.ModifiersRating)
-                    .Include(lb => lb.Difficulty)
-                    .ThenInclude(d => d.ModifierValues)
-                    .Select(lb => lb.Difficulty)
-                    .FirstOrDefault();
-
-                if (difficulty != null) {
-                    foreach (var item in resultList) {
-                        RemovePositiveModifiers(item, difficulty);
-                    }
-                }
-            }
-
-            resultList = (resultList.FirstOrDefault()?.Pp > 0 
+            return (resultList.FirstOrDefault()?.Pp > 0 
                         ? resultList
                             .OrderByDescending(el => Math.Round(el.Pp, 2))
                             .ThenByDescending(el => Math.Round(el.Accuracy, 4))
@@ -702,11 +615,307 @@ namespace BeatLeader_Server.Controllers
                             .ThenByDescending(el => el.ModifiedScore)
                             .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                             .ThenBy(el => el.Timeset)).ToList();
+        }
+
+        [NonAction]
+        public async Task<List<ScoreResponse>?> ContextScoreList(
+            ResponseWithMetadataAndSelection<ScoreResponse> result,
+            LeaderboardContexts context,
+            bool showBots, 
+            string leaderboardId, 
+            string scope,
+            string player,
+            string method,
+            int page,
+            int count,
+            PlayerResponse? currentPlayer) {
+
+            IQueryable<ScoreContextExtension> query = _context
+                .ScoreContextExtensions
+                .Where(s => s.Context == context && (!s.Score.Banned || (s.Score.Bot && showBots)) && s.LeaderboardId == leaderboardId)
+                                .OrderBy(p => p.Rank);
+
+            if (scope.ToLower() == "friends")
+            {
+                PlayerFriends? friends = _context.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == player);
+
+                if (friends != null) {
+                    var idList = friends.Friends.Select(f => f.Id).ToArray();
+                    query = query.Where(s => s.PlayerId == player || idList.Contains(s.PlayerId));
+                } else {
+                    query = query.Where(s => s.PlayerId == player);
+                }
+            } else if (scope.ToLower() == "country")
+            {
+                currentPlayer = currentPlayer ?? ResponseFromPlayer(await _context.Players.FindAsync(player));
+                if (currentPlayer == null)
+                {
+                    return null;
+                }
+                query = query.Where(s => s.Player.Country == currentPlayer.Country);
+            }
+
+            if (method.ToLower() == "around")
+            {
+                var playerScore = query.Select(s => new { s.PlayerId, s.Rank }).FirstOrDefault(el => el.PlayerId == player);
+                if (playerScore != null)
+                {
+                    int rank = query.Count(s => s.Rank < playerScore.Rank);
+                    page += (int)Math.Floor((double)(rank) / (double)count);
+                    result.Metadata.Page = page;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            else
+            {
+                ScoreResponse? highlightedScore = query.Where(s => s.Context == context && (!s.Score.Banned || (s.Score.Bot && showBots)) && s.LeaderboardId == leaderboardId && s.PlayerId == player).Select(s => new ScoreResponse
+                {
+                    Id = s.ScoreId != null ? (int)s.ScoreId : 0,
+                    PlayerId = s.PlayerId,
+                    BaseScore = s.BaseScore,
+                    ModifiedScore = s.ModifiedScore,
+                    Accuracy = s.Accuracy,
+                    Pp = s.Pp,
+                    FcAccuracy = s.Score.FcAccuracy,
+                    FcPp = s.Score.FcPp,
+                    Rank = s.Rank,
+                    Replay = s.Score.Replay,
+                    Offsets = s.Score.ReplayOffsets,
+                    Modifiers = s.Modifiers,
+                    BadCuts = s.Score.BadCuts,
+                    MissedNotes = s.Score.MissedNotes,
+                    BombCuts = s.Score.BombCuts,
+                    WallsHit = s.Score.WallsHit,
+                    Pauses = s.Score.Pauses,
+                    FullCombo = s.Score.FullCombo,
+                    Hmd = s.Score.Hmd,
+                    Controller = s.Score.Controller,
+                    MaxCombo = s.Score.MaxCombo,
+                    Timeset = s.Score.Timeset,
+                    Timepost = s.Score.Timepost,
+                    Platform = s.Score.Platform,
+                    LeaderboardId = s.LeaderboardId,
+                    Player = new PlayerResponse
+                    {
+                        Id = s.Player.Id,
+                        Name = s.Player.Name,
+                        Platform = s.Player.Platform,
+                        Avatar = s.Player.Avatar,
+                        Country = s.Player.Country,
+
+                        Pp = s.Player.Pp,
+                        Rank = s.Player.Rank,
+                        CountryRank = s.Player.CountryRank,
+                        Role = s.Player.Role,
+                        Socials = s.Player.Socials,
+                        ProfileSettings = s.Player.ProfileSettings,
+                        PatreonFeatures = s.Player.PatreonFeatures,
+                        ContextExtensions = s.Player.ContextExtensions.Where(ce => ce.Context == context).ToList(),
+                        Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                    },
+                    ScoreImprovement = s.Score.ScoreImprovement
+                }).FirstOrDefault();
+
+                if (highlightedScore != null)
+                {
+                    result.Selection = highlightedScore;
+                    result.Selection.Player = PostProcessSettings(result.Selection.Player);
+                    if (scope.ToLower() == "friends" || scope.ToLower() == "country") {
+                        result.Selection.Rank = query.Count(s => s.Rank < result.Selection.Rank) + 1;
+                    }
+                    if (highlightedScore.Player.ContextExtensions?.Count > 0) {
+                        highlightedScore.Player.ToContext(highlightedScore.Player.ContextExtensions.First());
+                    }
+                }
+
+                if (page < 1) {
+                    page = 1;
+                }
+            }
+
+            result.Metadata.Total = query.Count();
+
+            List<ScoreResponse> resultList = query
+                .Skip((page - 1) * count)
+                .Take(count)
+                .Select(s => new ScoreResponse
+                {
+                    Id = s.ScoreId != null ? (int)s.ScoreId : 0,
+                    PlayerId = s.PlayerId,
+                    BaseScore = s.BaseScore,
+                    ModifiedScore = s.ModifiedScore,
+                    Accuracy = s.Accuracy,
+                    Pp = s.Pp,
+                    FcAccuracy = s.Score.FcAccuracy,
+                    FcPp = s.Score.FcPp,
+                    Rank = s.Rank,
+                    Replay = s.Score.Replay,
+                    Offsets = s.Score.ReplayOffsets,
+                    Modifiers = s.Modifiers,
+                    BadCuts = s.Score.BadCuts,
+                    MissedNotes = s.Score.MissedNotes,
+                    BombCuts = s.Score.BombCuts,
+                    WallsHit = s.Score.WallsHit,
+                    Pauses = s.Score.Pauses,
+                    FullCombo = s.Score.FullCombo,
+                    Hmd = s.Score.Hmd,
+                    Controller = s.Score.Controller,
+                    MaxCombo = s.Score.MaxCombo,
+                    Timeset = s.Score.Timeset,
+                    Timepost = s.Score.Timepost,
+                    Platform = s.Score.Platform,
+                    Priority = s.Priority,
+                    LeaderboardId = s.LeaderboardId,
+                    Player = new PlayerResponse
+                    {
+                        Id = s.Player.Id,
+                        Name = s.Player.Name,
+                        Platform = s.Player.Platform,
+                        Avatar = s.Player.Avatar,
+                        Country = s.Player.Country,
+
+                        Bot = s.Player.Bot,
+                        Pp = s.Player.Pp,
+                        Rank = s.Player.Rank,
+                        CountryRank = s.Player.CountryRank,
+                        Role = s.Player.Role,
+                        Socials = s.Player.Socials,
+                        ProfileSettings = s.Player.ProfileSettings,
+                        PatreonFeatures = s.Player.PatreonFeatures,
+                        ContextExtensions = s.Player.ContextExtensions.Where(ce => ce.Context == context).ToList(),
+                        Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color }).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                    },
+                    ScoreImprovement = s.Score.ScoreImprovement
+                })
+                .ToList();
+
+            foreach (var score in resultList) {
+                if (score.Player.ContextExtensions?.Count > 0) {
+                    score.Player.ToContext(score.Player.ContextExtensions.First());
+                }
+            }
+
+            if (resultList.FirstOrDefault()?.Pp > 0) {
+                return resultList
+                        .OrderByDescending(el => Math.Round(el.Pp, 2))
+                        .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                        .ThenBy(el => el.Timeset)
+                        .ToList();
+            } else if (context == LeaderboardContexts.Golf) {
+                return resultList
+                        .OrderBy(el => el.Priority)
+                        .ThenBy(el => el.ModifiedScore)
+                        .ThenBy(el => Math.Round(el.Accuracy, 4))
+                        .ThenBy(el => el.Timeset).ToList();
+            } else {
+                return resultList
+                        .OrderBy(el => el.Priority)
+                        .ThenByDescending(el => el.ModifiedScore)
+                        .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                        .ThenBy(el => el.Timeset).ToList();
+            }
+        }
+
+        [HttpGet("~/v3/scores/{hash}/{diff}/{mode}/{context}/{scope}/{method}")]
+        public async Task<ActionResult<ResponseWithMetadataAndSelection<ScoreResponse>>> GetByHash3(
+            string hash,
+            string diff,
+            string mode,
+            string context,
+            string scope,
+            string method,
+            [FromQuery] string player,
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10)
+        {
+            
+            ResponseWithMetadataAndSelection<ScoreResponse> result = new ResponseWithMetadataAndSelection<ScoreResponse>
+            {
+                Data = new List<ScoreResponse>(),
+                Metadata =
+                    {
+                        ItemsPerPage = count,
+                        Page = page,
+                        Total = 0
+                    }
+            };
+
+            if (hash.Length < 40) {
+                return BadRequest("Hash is too short");
+            } else {
+                hash = hash.Substring(0, 40);
+            }
+
+            PlayerResponse? currentPlayer = 
+                await _context
+                .Players
+                .Select(p => new PlayerResponse {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Platform = p.Platform,
+                    Avatar = p.Avatar,
+                    Country = p.Country,
+
+                    Pp = p.Pp,
+                    Rank = p.Rank,
+                    CountryRank = p.CountryRank,
+                    Role = p.Role,
+                    Socials = p.Socials,
+                    ProfileSettings = p.ProfileSettings,
+                    Clans = p.Clans.OrderBy(c => p.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color }).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                })
+                .FirstOrDefaultAsync(p => p.Id == player);
+            var song = _context.Songs.Select(s => new { Id = s.Id, Hash = s.Hash }).FirstOrDefault(s => s.Hash == hash);
+            if (song == null) {
+                return result;
+            }
+
+            if (mode.EndsWith("OldDots")) {
+                mode = mode.Replace("OldDots", "");
+            }
+
+            int modeValue = SongUtils.ModeForModeName(mode);
+            if (modeValue == 0) {
+                var customMode = _context.CustomModes.FirstOrDefault(m => m.Name == mode);
+                if (customMode != null) {
+                    modeValue = customMode.Id + 10;
+                } else {
+                    return result;
+                }
+            }
+
+            var leaderboardId = song.Id + SongUtils.DiffForDiffName(diff).ToString() + modeValue.ToString();
+
+            bool showBots = currentPlayer?.ProfileSettings?.ShowBots ?? false;
+            LeaderboardContexts contexts = LeaderboardContexts.General;
+            switch (context) {
+                case "standard":
+                    contexts = LeaderboardContexts.NoMods;
+                    break;
+                case "nopause":
+                    contexts = LeaderboardContexts.NoPause;
+                    break;
+                case "golf":
+                    contexts = LeaderboardContexts.Golf;
+                    break;
+                default:
+                    break;
+            }
+            
+            var resultList =
+                contexts == LeaderboardContexts.General 
+                ? await GeneralScoreList(result, showBots, leaderboardId, scope, player, method, page, count, currentPlayer)
+                : await ContextScoreList(result, contexts, showBots, leaderboardId, scope, player, method, page, count, currentPlayer);
 
             for (int i = 0; i < resultList.Count; i++)
             {
                 var score = resultList[i];
-
                 score.Player = PostProcessSettings(score.Player);
                 score.Rank = i + (page - 1) * count + 1;
 
@@ -719,20 +928,89 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
+        [HttpGet("~/wefwefwfewefwf")]
+        public async Task<ActionResult> wefwefwfewefwf()
+        {
+            //_context.ScoreContextExtensions.Where(ce => ce.Score == null).ToList()
+
+            var scores = _context
+                .Scores
+                .Where(s => s.Accuracy < 0.2 && !s.Modifiers.Contains("NF"))
+                .Include(s => s.ContextExtensions)
+                .Include(s => s.Leaderboard)
+                .ThenInclude(l => l.Song)
+                .Include(s => s.Leaderboard)
+                .ThenInclude(l => l.Difficulty)
+                .ToList();
+            foreach (var score in scores) {
+                string fileName = score.Replay.Split("/").Last();
+                Replay? replay = null;
+
+                using (var replayStream = await _s3Client.DownloadReplay(fileName))
+                {
+                    if (replayStream != null) {
+
+                        using (var ms = new MemoryStream(5))
+                        {
+                            await replayStream.CopyToAsync(ms);
+                            long length = ms.Length;
+                            try
+                            {
+                                (replay, _) = ReplayDecoder.Decode(ms.ToArray());
+                            }
+                            catch (Exception)
+                            {
+                            }
+                        }
+                    }
+                }
+
+                if (replay == null || 
+                    replay.frames.Count() < 10 || 
+                    replay.frames[replay.frames.Count - 10].time < score.Leaderboard.Song.Duration / 2 || 
+                    replay.notes.Count < score.Leaderboard.Difficulty.Notes / 2) {
+                    foreach (var subscore in score.ContextExtensions) {
+                        score.ContextExtensions.Remove(subscore);
+                    }
+
+                    _context.Scores.Remove(score);
+                }
+            }
+            _context.SaveChanges();
+
+            return Ok();
+        }
 
         [HttpGet("~/score/{playerID}/{hash}/{diff}/{mode}")]
-        public async Task<ActionResult<Score>> GetPlayer(string playerID, string hash, string diff, string mode)
+        public async Task<ActionResult<Score>> GetPlayer(
+            string playerID, 
+            string hash, 
+            string diff, 
+            string mode,
+            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
         {
             playerID = _context.PlayerIdToMain(playerID);
-            var score = _readContext
-                .Scores
-                .Where(l => l.Leaderboard.Song.Hash == hash && l.Leaderboard.Difficulty.DifficultyName == diff && l.Leaderboard.Difficulty.ModeName == mode && l.PlayerId == playerID)
-                .Include(el => el.Player).ThenInclude(el => el.PatreonFeatures)
-                .Include(el => el.Player).ThenInclude(el => el.ProfileSettings)
-                .FirstOrDefault();
+
+            var score = _context
+                    .Scores
+                    .Where(l => 
+                        l.Leaderboard.Song.Hash == hash && 
+                        l.Leaderboard.Difficulty.DifficultyName == diff && 
+                        l.Leaderboard.Difficulty.ModeName == mode && 
+                        l.ValidContexts.HasFlag(leaderboardContext) &&
+                        l.PlayerId == playerID)
+                    .Include(el => el.Player)
+                    .ThenInclude(el => el.PatreonFeatures)
+                    .Include(el => el.Player)
+                    .ThenInclude(el => el.ProfileSettings)
+                    .Include(el => el.ContextExtensions.Where(ce => ce.Context == leaderboardContext))
+                    .FirstOrDefault();
 
             if (score != null)
             {
+                if (leaderboardContext != LeaderboardContexts.General) {
+                    score.ToContext(score.ContextExtensions.First());
+                }
                 return score;
             }
             else
