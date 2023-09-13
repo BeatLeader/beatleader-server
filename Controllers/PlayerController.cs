@@ -105,7 +105,7 @@ namespace BeatLeader_Server.Controllers
                     Role = player.Role,
                     Socials = player.Socials,
                     ProfileSettings = player.ProfileSettings,
-                    Clans = stats 
+                    Clans = stats && player.Clans != null
                         ? player
                             .Clans
                             .OrderBy(c => player.ClanOrder.IndexOf(c.Tag))
