@@ -77,6 +77,7 @@ namespace BeatLeader_Server.Models
     public class PlayerScoreStatsHistory
     {
         public int Id { get; set; }
+        public LeaderboardContexts Context { get; set; }
         public int Timestamp { get; set; }
 
         public string? PlayerId { get; set; }

@@ -63,6 +63,8 @@ namespace BeatLeader_Server
 
         public DbSet<VoterFeedback> VoterFeedback { get; set; }
         public DbSet<SongSearch> SongSearches { get; set; }
+        public DbSet<ScoreContextExtension> ScoreContextExtensions { get; set; }
+        public DbSet<PlayerContextExtension> PlayerContextExtensions { get; set; }
 
         public void RejectChanges()
         {

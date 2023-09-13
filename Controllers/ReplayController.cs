@@ -236,6 +236,7 @@ namespace BeatLeader_Server.Controllers
                     .ThenInclude(p => p.ScoreStats)
                     .Include(s => s.RankVoting)
                     .ThenInclude(v => v.Feedbacks)
+                    .Include(s => s.ContextExtensions)
                     .FirstOrDefault();
             }
             var ip = context.Request.HttpContext.GetIpAddress();
@@ -482,6 +483,11 @@ namespace BeatLeader_Server.Controllers
                         };
                     }
                     currentScore.LeaderboardId = null;
+                    if (currentScore.ContextExtensions != null) {
+                        foreach (var ce in currentScore.ContextExtensions) {
+                            _context.ScoreContextExtensions.Remove(ce);
+                        }
+                    }
                     _context.Scores.Remove(currentScore);
                 }
                 else

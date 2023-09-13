@@ -130,6 +130,7 @@ namespace BeatLeader_Server.Controllers {
                 .ThenInclude(p => p.Socials)
                 .Include(u => u.Player)
                 .ThenInclude(p => p.ProfileSettings)
+                .AsSplitQuery()
                 .FirstOrDefault();
 
 
@@ -172,9 +173,12 @@ namespace BeatLeader_Server.Controllers {
                 .Include(u => u.Player)
                 .ThenInclude(p => p.Socials)
                 .Include(u => u.Player)
+                .ThenInclude(p => p.ContextExtensions)
+                .Include(u => u.Player)
                 .ThenInclude(p => p.ProfileSettings)
                 .Include(u => u.ClanRequest)
                 .Include(u => u.BannedClans)
+                .AsSplitQuery()
                 .FirstOrDefault();
             if (user == null) {
                 Player? player = (await _playerController.GetLazy(id)).Value;
@@ -780,6 +784,7 @@ namespace BeatLeader_Server.Controllers {
                 .Include(p => p.ScoreStats)
                 .Include(p => p.Achievements)
                 .Include(p => p.Socials)
+                .Include(p => p.ContextExtensions)
                 .FirstOrDefault();
 
             if (currentPlayer == null || migratedToPlayer == null) {
@@ -931,6 +936,7 @@ namespace BeatLeader_Server.Controllers {
 
             List<Score> scores = _context.Scores
                 .Include(el => el.Player)
+                .Include(el => el.ContextExtensions)
                 .Where(el => el.Player.Id == currentPlayer.Id)
                 .Include(el => el.Leaderboard)
                 .ThenInclude(el => el.Scores).ToList();
@@ -939,8 +945,14 @@ namespace BeatLeader_Server.Controllers {
                     Score? migScore = score.Leaderboard.Scores.FirstOrDefault(el => el.PlayerId == migrateToId);
                     if (migScore != null) {
                         if (migScore.ModifiedScore >= score.ModifiedScore) {
+                            foreach (var ce in score.ContextExtensions) {
+                                _context.ScoreContextExtensions.Remove(ce);
+                            }
                             score.Leaderboard.Scores.Remove(score);
                         } else {
+                            foreach (var ce in migScore.ContextExtensions) {
+                                _context.ScoreContextExtensions.Remove(ce);
+                            }
                             score.Leaderboard.Scores.Remove(migScore);
                             score.Player = migratedToPlayer;
                             score.PlayerId = migrateToId;
@@ -972,6 +984,7 @@ namespace BeatLeader_Server.Controllers {
             currentPlayer.ProfileSettings = null;
             currentPlayer.Socials = null;
             currentPlayer.Achievements = null;
+            currentPlayer.ContextExtensions = null;
             _context.Players.Remove(currentPlayer);
 
             await _context.SaveChangesAsync();
