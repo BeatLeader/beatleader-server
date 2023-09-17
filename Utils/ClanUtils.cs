@@ -14,7 +14,6 @@ namespace BeatLeader_Server.Utils
         public float totalAcc;
         public int totalRank;
         public int totalScore;
-        //public List<Score> Scores;
 
         public ClanRankingData(
             int numberOfScores,
@@ -24,7 +23,6 @@ namespace BeatLeader_Server.Utils
             float totalAcc,
             int totalRank,
             int totalScore)
-            //List<Score> Scores)
         {
             this.numberOfScores = numberOfScores;
             this.weight = weight;
@@ -33,7 +31,6 @@ namespace BeatLeader_Server.Utils
             this.totalAcc = totalAcc;
             this.totalRank = totalRank;
             this.totalScore = totalScore;
-            //this.Scores = Scores;
         }
     };
 
