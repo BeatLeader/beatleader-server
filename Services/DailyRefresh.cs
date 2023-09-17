@@ -25,7 +25,6 @@ namespace BeatLeader_Server.Services
                 if (hoursUntil21 == 0)
                 {
                     await RefreshSteamPlayers();
-                    await RefreshStats();
                     await RefreshPatreon();
                     await RefreshBoosters();
                     await RefreshBanned();
@@ -93,17 +92,6 @@ namespace BeatLeader_Server.Services
 
                     await _context.BulkSaveChangesAsync();
                 }
-            }
-        }
-
-        public async Task RefreshStats()
-        {
-            using (var scope = _serviceScopeFactory.CreateScope())
-            {
-                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
-
-                var _playerController = scope.ServiceProvider.GetRequiredService<PlayerRefreshController>();
-                await _playerController.RefreshPlayersStats();
             }
         }
 

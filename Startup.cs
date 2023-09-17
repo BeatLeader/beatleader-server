@@ -315,7 +315,6 @@ namespace BeatLeader_Server {
             services.AddHostedService<SearchService>();
             services.AddHostedService<OauthService>();
 
-            services.AddSingleton<NominationsForum>();
             services.AddSingleton<RTNominationsForum>();
 
             services.AddMvc ().AddControllersAsServices ().AddJsonOptions (options => {

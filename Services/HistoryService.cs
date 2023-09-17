@@ -1,4 +1,4 @@
-﻿using Azure.Identity;
+﻿using BeatLeader_Server.Controllers;
 using BeatLeader_Server.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,11 +16,12 @@ namespace BeatLeader_Server.Services
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             do {
-                 int hourSpan = 24 - DateTime.Now.Hour;
+                int hourSpan = 24 - DateTime.Now.Hour;
                 int numberOfHours = hourSpan;
 
                 if (hourSpan == 24)
                 {
+                    await RefreshStats();
                     await SetHistories();
                     await SetLastWeek();
 
@@ -31,6 +32,17 @@ namespace BeatLeader_Server.Services
                 await Task.Delay(TimeSpan.FromHours(numberOfHours), stoppingToken);
             }
             while (!stoppingToken.IsCancellationRequested);
+        }
+
+        public async Task RefreshStats()
+        {
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+
+                var _playerController = scope.ServiceProvider.GetRequiredService<PlayerRefreshController>();
+                await _playerController.RefreshPlayersStats();
+            }
         }
         public async Task SetHistories()
         {
@@ -104,6 +116,10 @@ namespace BeatLeader_Server.Services
                             RankedPlayCount = p.ScoreStats.RankedPlayCount,
                             UnrankedPlayCount = p.ScoreStats.UnrankedPlayCount,
                             TotalPlayCount = p.ScoreStats.TotalPlayCount,
+
+                            RankedImprovementsCount = p.ScoreStats.RankedImprovementsCount,
+                            UnrankedImprovementsCount = p.ScoreStats.UnrankedImprovementsCount,
+                            TotalImprovementsCount = p.ScoreStats.TotalImprovementsCount,
 
                             AverageRankedRank = p.ScoreStats.AverageRankedRank,
                             AverageWeightedRankedRank = p.ScoreStats.AverageWeightedRankedRank,

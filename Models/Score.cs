@@ -76,6 +76,7 @@ namespace BeatLeader_Server.Models
         public int AnonimusReplayWatched { get; set; }
         //public bool AltOnly { get; set; }
         //public ICollection<AltScore>? AltScores { get; set; }
+        public int? ReplayOffsetsId { get; set; }
         public ReplayOffsets? ReplayOffsets { get; set; }
         public string? Country { get; set; }
         public int? MaxStreak { get; set; } = null;
@@ -83,7 +84,7 @@ namespace BeatLeader_Server.Models
         public float LeftTiming { get; set; }
         public float RightTiming { get; set; }
         public int Priority { get; set; } = 0;
-
+        public int? ScoreImprovementId { get; set; }
         public ScoreImprovement? ScoreImprovement { get; set; }
         public bool Banned { get; set; } = false;
         public bool Suspicious { get; set; } = false;
