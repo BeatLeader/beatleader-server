@@ -1,4 +1,6 @@
-﻿using OpenIddict.Abstractions;
+﻿using BeatLeader_Server.Models;
+using OpenIddict.Abstractions;
+using OpenIddict.EntityFrameworkCore.Models;
 using System.Text.Json;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -7,7 +9,6 @@ namespace BeatLeader_Server.Services {
     public class OauthService : IHostedService {
         public static string TestClientId = "TestOauthApp";
         public static string TestClientSecret = "388D45FA-B36B-4988-BA59-B187D329C207";
-        public static string IdentityScope = "scp:identity";
 
         private readonly IServiceProvider _serviceProvider;
         private readonly IWebHostEnvironment _environment;
@@ -24,6 +25,16 @@ namespace BeatLeader_Server.Services {
             await context.Database.EnsureCreatedAsync();
 
             if (_environment.IsDevelopment()) {
+                var clanScope = context.OpenIddictScopes.FirstOrDefault(os => os.Id == CustomScopes.Clan);
+                if (clanScope == null) {
+                    context.OpenIddictScopes.Add(new OpenIddictEntityFrameworkCoreScope {
+                        Id = CustomScopes.Clan,
+                        Name = CustomScopes.Clan,
+                        DisplayName = "Clan management"
+                    });
+                    context.SaveChanges();
+                }
+
                 var manager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
                 if (await manager.FindByClientIdAsync(TestClientId) is null) {
                     await manager.CreateAsync(new OpenIddictApplicationDescriptor {
@@ -42,7 +53,8 @@ namespace BeatLeader_Server.Services {
                             Permissions.GrantTypes.AuthorizationCode,
                             Permissions.GrantTypes.RefreshToken,
                             Permissions.ResponseTypes.Code,
-                            Permissions.Scopes.Profile
+                            Permissions.Scopes.Profile,
+                            CustomScopePermissions.Clan
                         },
                         Properties =
                         {

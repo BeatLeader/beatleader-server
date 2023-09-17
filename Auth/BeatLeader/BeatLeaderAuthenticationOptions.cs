@@ -4,6 +4,7 @@
  * for more information concerning the license and the contributors participating to this project.
  */
 
+using BeatLeader_Server.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using System.Security.Claims;
@@ -26,6 +27,7 @@ public class BeatLeaderAuthenticationOptions : OAuthOptions
         UserInformationEndpoint = BeatLeaderAuthenticationDefaults.UserInformationEndpoint;
 
         Scope.Add("profile");
+        Scope.Add(CustomScopes.Clan);
 
         ClaimActions.MapJsonKey(ClaimTypes.NameIdentifier, "id");
         ClaimActions.MapJsonKey(ClaimTypes.Name, "name");
