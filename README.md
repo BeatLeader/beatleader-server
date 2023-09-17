@@ -42,7 +42,7 @@ http://api.beatleader.xyz/swagger/index.html
 
 ### Using Oauth2.0 on BeatLeader
 
-Oauth2.0 is Supported only for server-to-server authorization, it will work only if you have server side as well.
+BeatLeader Oauth2.0 supports only Authorization Code Grant, it will work only if you have server side as well.
 First off you need to dm [nsgolova](https://discordapp.com/users/698212038106677259) on Discord and send him the service information, the icon for the service and the callback endpoint for your website and local development (for example: `https://api.example-site.com/beatleader-login` and `http://localhost:3000/beatleader-login`). You will get a client id and client secret.
 
 For this example, we'll use these variables:
@@ -52,7 +52,9 @@ For this example, we'll use these variables:
 
 Disclaimer! It will be much easier to use a library for that, for example with AspNet.Security.OpenId. There is a C# example [here](/Auth/Beatleader/BeatLeaderAuthenticationDefaults.cs)
 
-Now you need to construct a URL for the oauth2. If we use the variables above, the URL should look something like this: `https://api.beatleader.xyz/oauth2/authorize?client_id=exampleID&response_type=code&redirect_uri=http://localhost:3000/beatleader-login&scope=profile`.
+Now you need to construct a URL for the oauth2. If we use the variables above, the URL should look something like this: `https://api.beatleader.xyz/oauth2/authorize?client_id=exampleID&response_type=code&scope=profile&redirect_uri=http://localhost:3000/beatleader-login`.
+
+**Note:** If you want the server issue also refresh token, you need to add ``offline_access`` to ``scope`` parameter of ``oauth2/authorize`` request. Scopes in OAuth2 Specification are separated by a space, so the parameter should be ``profile%20offline_access`` (%20 is a space encoded in the url).
 
 When the person authorizes access to their account information, BeatLeader will redirect the user to your callback URL with a `code` and `iss` query parameter.
 
@@ -71,12 +73,30 @@ code = exampleCode
 reidrect_uri = http://localhost:3000/beatleader-login
 ```
 
-If the request was successful, you should get a JSON response containing the access token under the `access_token` property.
+If the request was successful, you should get a JSON response containing the access token in the `access_token` field. If your scopes also contained ``offline_access`` you will also get a refresh token in the ``refresh_token`` field.
+
+```json
+{
+    "access_token": "eyJ...",
+    "token_type": "Bearer",
+    "expires_in": 3600,
+    "scope": "profile offline_access",
+    "refresh_token": "eyJ..."
+}
+```
+
+**THE ACCESS TOKEN IS VALID FOR 3600 seconds and the REFRESH TOKEN IS VALID FOR 14 days**
 
 Let's say our access_token is `exampleToken`.
-
-**THE ACCESS TOKEN IS VALID FOR 3600 miliseconds!**
 
 Now, to identify the user, we have to send a GET request to `https://api.beatleader.xyz/oauth2/identity` with a header "Authorization". The content of the Authorization header should be `Bearer exampleToken`.
 
 If everything was done correctly you should have gotten a JSON response with the user's id and name.
+
+**Note:** the following flow is only available if you also specified ``offline_access`` in ``scope`` parameter during authorization.
+
+When the ``access_token`` expires you must refresh it. To do so, you must send a POST request to the endpoint ``https://api.beatleader.xyz/oauth2/token``. The headers should contain Content-Type of "application/x-www-form-urlencoded". And the body of the request needs to contain the following string: `grant_type=refresh_token&client_id=exampleID&client_secret=exampleSecret&refresh_token=OLD_REFRESH_TOKEN`.
+
+If the request was successful, you should get a JSON response containing the **new access token** in the `access_token` field and **new refresh token** in the ``refresh_token`` field. The old tokens will be invalidated, so from then on you must use new ones.
+
+
