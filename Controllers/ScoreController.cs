@@ -448,7 +448,9 @@ namespace BeatLeader_Server.Controllers
             PlayerResponse? currentPlayer) {
             IQueryable<Score> query = _context
                 .Scores
-                .Where(s => (!s.Banned || (s.Bot && showBots)) && s.LeaderboardId == leaderboardId)
+                .Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && 
+                            (!s.Banned || (s.Bot && showBots)) && 
+                            s.LeaderboardId == leaderboardId)
                                 .OrderBy(p => p.Rank);
 
             if (scope.ToLower() == "friends")
@@ -913,17 +915,19 @@ namespace BeatLeader_Server.Controllers
                 ? await GeneralScoreList(result, showBots, leaderboardId, scope, player, method, page, count, currentPlayer)
                 : await ContextScoreList(result, contexts, showBots, leaderboardId, scope, player, method, page, count, currentPlayer);
 
-            for (int i = 0; i < resultList.Count; i++)
-            {
-                var score = resultList[i];
-                score.Player = PostProcessSettings(score.Player);
-                score.Rank = i + (page - 1) * count + 1;
+            if (resultList != null) {
+                for (int i = 0; i < resultList.Count; i++)
+                {
+                    var score = resultList[i];
+                    score.Player = PostProcessSettings(score.Player);
+                    score.Rank = i + (page - 1) * count + 1;
 
-                if (score.Player.Bot) {
-                    score.Player.Name += " [BOT]";
+                    if (score.Player.Bot) {
+                        score.Player.Name += " [BOT]";
+                    }
                 }
+                result.Data = resultList;
             }
-            result.Data = resultList;
 
             return result;
         }

@@ -93,6 +93,13 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] int? time_from = null,
             [FromQuery] int? time_to = null,
             [FromQuery] int? eventId = null) {
+            if (count > 100 || count < 0) {
+                return BadRequest("Please use `count` value in range of 0 to 100");
+            }
+            if (page < 1) {
+                page = 1;
+            }
+
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
                 return await _playerContextScoresController.GetScores(id, sortBy, order, page, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             }
@@ -116,6 +123,9 @@ namespace BeatLeader_Server.Controllers {
                         Total = sequence.Count()
                     }
                 };
+            }
+            if (result.Metadata.Total == 0) {
+                return result;
             }
 
             List<ScoreResponseWithMyScore> resultList;
@@ -170,8 +180,7 @@ namespace BeatLeader_Server.Controllers {
                         Weight = s.Weight,
                         AccLeft = s.AccLeft,
                         AccRight = s.AccRight,
-                        MaxStreak = s.MaxStreak,
-                        ContextExtensions = s.ContextExtensions
+                        MaxStreak = s.MaxStreak
                     })
                     .AsSplitQuery()
                     .ToList();
@@ -220,6 +229,9 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] int? time_from = null,
             [FromQuery] int? time_to = null,
             [FromQuery] int? eventId = null) {
+            if (count > 100 || count < 0) {
+                return BadRequest("Please use `count` value in range of 0 to 100");
+            }
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
                 return await _playerContextScoresController.GetCompactScores(id, sortBy, order, page, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             }
@@ -242,6 +254,7 @@ namespace BeatLeader_Server.Controllers {
                     .Include(s => s.Leaderboard)
                     .Select(s => new CompactScoreResponse {
                         Score = new CompactScore {
+                            Id = s.Id,
                             BaseScore = s.BaseScore,
                             ModifiedScore = s.ModifiedScore,
                             EpochTime = s.Timepost,
@@ -249,9 +262,12 @@ namespace BeatLeader_Server.Controllers {
                             Hmd = s.Hmd,
                             MissedNotes = s.MissedNotes,
                             BadCuts = s.BadCuts,
+                            Modifiers = s.Modifiers
                         },
                         Leaderboard = new CompactLeaderboard {
+                            Id = s.LeaderboardId,
                             Difficulty = s.Leaderboard.Difficulty.Value,
+                            ModeName = s.Leaderboard.Difficulty.ModeName,
                             SongHash = s.Leaderboard.Song.Hash
                         }
                     })
@@ -328,6 +344,9 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] int? time_to = null,
             [FromQuery] int? eventId = null,
             [FromQuery] float? batch = null) {
+            if (count > 100 || count < 0) {
+                return BadRequest("Please use `count` value in range of 0 to 100");
+            }
 
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
                 return await _playerContextScoresController.GetHistogram(id, sortBy, order, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId, batch); 

@@ -108,7 +108,7 @@ namespace BeatLeader_Server.Utils
 
             var rankedScores = context
                 .Scores
-                .Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification)
+                .Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification)
                 .OrderByDescending(s => s.Pp)
                 .Select(s => new { s.Id, s.Accuracy, s.Rank, s.Pp, s.AccPP, s.PassPP, s.TechPP, s.Weight })
                 .ToList();
@@ -121,11 +121,10 @@ namespace BeatLeader_Server.Utils
                 float weight = MathF.Pow(0.965f, i);
                 if (s.Weight != weight)
                 {
-                    var score = context.Scores.Local.FirstOrDefault(ls => ls.Id == s.Id);
-                    if (score == null) {
-                        score = new Score() { Id = s.Id };
+                    var score = new Score() { Id = s.Id };
+                    try {
                         context.Scores.Attach(score);
-                    }
+                    } catch { } 
                     score.Weight = weight;
 
                     context.Entry(score).Property(x => x.Weight).IsModified = true;
@@ -268,11 +267,10 @@ namespace BeatLeader_Server.Utils
                 float weight = MathF.Pow(0.965f, i);
                 if (s.Weight != weight)
                 {
-                    var score = dbContext.ScoreContextExtensions.Local.FirstOrDefault(ls => ls.Id == s.Id);
-                    if (score == null) {
-                        score = new ScoreContextExtension() { Id = s.Id };
+                    var score = new ScoreContextExtension() { Id = s.Id };
+                    try {
                         dbContext.ScoreContextExtensions.Attach(score);
-                    }
+                    } catch { }
                     score.Weight = weight;
 
                     dbContext.Entry(score).Property(x => x.Weight).IsModified = true;

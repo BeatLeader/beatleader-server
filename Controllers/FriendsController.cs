@@ -301,7 +301,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null) {
 
-            if (leaderboardContext != LeaderboardContexts.General || leaderboardContext != LeaderboardContexts.None) {
+            if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
                 return await ContextsFriendsScores(id, sortBy, order, page, count, leaderboardContext, search, diff, type, stars_from, stars_to);
             }
 

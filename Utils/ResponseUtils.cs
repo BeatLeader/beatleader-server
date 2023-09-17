@@ -356,8 +356,10 @@ namespace BeatLeader_Server.Utils {
         }
 
         public class CompactScore {
+            public int Id { get; set; }
             public int BaseScore { get; set; }
             public int ModifiedScore { get; set; }
+            public string Modifiers { get; set; }
             public int MaxCombo { get; set; }
             public int MissedNotes { get; set; }
             public int BadCuts { get; set; }
@@ -367,7 +369,9 @@ namespace BeatLeader_Server.Utils {
         }
 
         public class CompactLeaderboard {
+            public string Id { get; set; }
             public string SongHash { get; set; }
+            public string ModeName { get; set; }
             public int Difficulty { get; set; }
         }
 
@@ -535,6 +539,7 @@ namespace BeatLeader_Server.Utils {
                 Socials = p.Socials,
                 PatreonFeatures = p.PatreonFeatures,
                 ProfileSettings = p.ProfileSettings,
+                ContextExtensions = p.ContextExtensions,
                 Clans = p.Clans?.OrderBy(c => p.ClanOrder.IndexOf(c.Tag))
                             .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
             };

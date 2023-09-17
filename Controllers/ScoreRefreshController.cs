@@ -581,10 +581,9 @@ namespace BeatLeader_Server.Controllers
             _context.ChangeTracker.AutoDetectChangesEnabled = false; 
             
             var allLeaderboards = _context.Leaderboards
-                .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
                 .Select(lb => new {
                     lb.Difficulty,
-                    Scores = lb.Scores.Select(s => new { s.Id, s.Banned, s.Pp, s.Accuracy, s.Timeset, s.ModifiedScore, s.Priority })
+                    Scores = lb.Scores.Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General)).Select(s => new { s.Id, s.Banned, s.Pp, s.Accuracy, s.Timeset, s.ModifiedScore, s.Priority })
                 }).ToList();
                 await allLeaderboards.ParallelForEachAsync(async leaderboard => {
                     var allScores = leaderboard.Scores.Where(s => !s.Banned).ToList();

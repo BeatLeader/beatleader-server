@@ -130,6 +130,8 @@ namespace BeatLeader_Server.Controllers {
                 .ThenInclude(p => p.Socials)
                 .Include(u => u.Player)
                 .ThenInclude(p => p.ProfileSettings)
+                .Include(u => u.Player)
+                .ThenInclude(p => p.ContextExtensions)
                 .AsSplitQuery()
                 .FirstOrDefault();
 
