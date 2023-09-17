@@ -234,6 +234,8 @@ namespace BeatLeader_Server.Controllers
                         s.PlayerId == info.playerID)
                     .Include(s => s.Player)
                     .ThenInclude(p => p.ScoreStats)
+                    .Include(s => s.Player)
+                    .ThenInclude(p => p.Clans)
                     .Include(s => s.RankVoting)
                     .ThenInclude(v => v.Feedbacks)
                     .FirstOrDefault();
@@ -574,9 +576,6 @@ namespace BeatLeader_Server.Controllers
                     
                     _context.Entry(score).Property(x => x.Rank).IsModified = true;
                 }
-
-                // Calculate clan ranking for this leaderboard
-                _context.UpdateClanRanking(leaderboard, currentScore, resultScore);
             }
 
             string fileName = replay.info.playerID + (replay.info.speed != 0 ? "-practice" : "") + (replay.info.failTime != 0 ? "-fail" : "") + "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash + ".bsor";
@@ -667,6 +666,9 @@ namespace BeatLeader_Server.Controllers
 
             _context.ChangeTracker.AutoDetectChangesEnabled = true;
             transaction2 = await _context.Database.BeginTransactionAsync();
+
+            // Calculate clan ranking for this leaderboard
+            _context.UpdateClanRanking(leaderboard, currentScore, resultScore);
 
             ScoreStatistic? statistic;
             try {

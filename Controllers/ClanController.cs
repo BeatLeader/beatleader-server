@@ -320,7 +320,6 @@ namespace BeatLeader_Server.Controllers
             var leaderboardsRecalc = _context
                 .Leaderboards
                 .Include(lb => lb.ClanRanking)
-                .ThenInclude(cr => cr.AssociatedScores)
                 .Where(lb => lb.ClanRanking != null ?
                 lb.ClanRanking.Any(lbClan => lbClan.Clan.Tag == clan.Tag) && lb.Difficulty.Status == DifficultyStatus.ranked :
                 lb.Difficulty.Status == DifficultyStatus.ranked)
@@ -336,9 +335,6 @@ namespace BeatLeader_Server.Controllers
                 if (crToRemove != null)
                 {
                     leaderboard.ClanRanking?.Remove(crToRemove);
-                    // Sever the relationship between clanRanking and scores, if we don't, deleting the clan throws an error
-                    // https://learn.microsoft.com/en-us/ef/core/saving/cascade-delete
-                    crToRemove.AssociatedScores?.Clear();
                     _context.ClanRanking.Remove(crToRemove);
                 }
             });
@@ -824,3 +820,4 @@ namespace BeatLeader_Server.Controllers
         }
     }
 }
+
