@@ -272,6 +272,7 @@ namespace BeatLeader_Server.Utils {
             public string LeaderboardId { get; set; }
             public Leaderboard Leaderboard { get; set; }
             public ICollection<ScoreResponse>? AssociatedScores { get; set; }
+            public int AssociatedScoresCount { get; set; }
         }
 
         public class LeaderboardGroupEntry {
