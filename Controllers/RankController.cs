@@ -1033,7 +1033,7 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin")) 847b91
             {
                 return Unauthorized();
             }
@@ -1075,9 +1075,6 @@ namespace BeatLeader_Server.Controllers
                 };
                 leaderboard.Changes.Add(rankChange);
 
-                // Calculate clanRanking for this map because it has just been ranked
-                leaderboard.ClanRanking = _context.CalculateClanRanking(leaderboard);
-
                 bool updatePlaylists = (difficulty.Status == DifficultyStatus.ranked) != (rankability > 0); 
 
                 if (difficulty.Status != DifficultyStatus.ranked && rankability > 0) {
@@ -1117,6 +1114,10 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 await _scoreRefreshController.RefreshScores(leaderboard.Id);
+
+                // Calculate clanRanking for this map because it has just been ranked
+                leaderboard.ClanRanking = _context.CalculateClanRankingSlow(leaderboard);
+                await _context.BulkSaveChangesAsync();
 
                 HttpContext.Response.OnCompleted(async () => {
                     await _playerRefreshController.RefreshLeaderboardPlayers(leaderboard.Id);

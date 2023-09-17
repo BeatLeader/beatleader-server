@@ -159,6 +159,7 @@ namespace BeatLeader_Server.Controllers
                 .Include(p => p.ScoreStats)
                 .Include(p => p.EventsParticipating)
                 .Include(p => p.ProfileSettings)
+                .Include(p => p.Clans)
                 .FirstOrDefault(p => p.Id == id);
 
             if (player == null) {

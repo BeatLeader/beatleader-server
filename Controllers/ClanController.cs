@@ -284,7 +284,7 @@ namespace BeatLeader_Server.Controllers
                 .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked && lb.Scores.Any(s => s.PlayerId == currentID))
                 .ToList();
 
-            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
+            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
             await _context.BulkSaveChangesAsync();
 
             return newClan;
@@ -320,7 +320,6 @@ namespace BeatLeader_Server.Controllers
             var leaderboardsRecalc = _context
                 .Leaderboards
                 .Include(lb => lb.ClanRanking)
-                .ThenInclude(cr => cr.AssociatedScores)
                 .Where(lb => lb.ClanRanking != null ?
                 lb.ClanRanking.Any(lbClan => lbClan.Clan.Tag == clan.Tag) && lb.Difficulty.Status == DifficultyStatus.ranked :
                 lb.Difficulty.Status == DifficultyStatus.ranked)
@@ -336,9 +335,6 @@ namespace BeatLeader_Server.Controllers
                 if (crToRemove != null)
                 {
                     leaderboard.ClanRanking?.Remove(crToRemove);
-                    // Sever the relationship between clanRanking and scores, if we don't, deleting the clan throws an error
-                    // https://learn.microsoft.com/en-us/ef/core/saving/cascade-delete
-                    crToRemove.AssociatedScores?.Clear();
                     _context.ClanRanking.Remove(crToRemove);
                 }
             });
@@ -348,7 +344,7 @@ namespace BeatLeader_Server.Controllers
             await _context.BulkSaveChangesAsync();
 
             // Recalculate the clanRankings on each leaderboard where this clan had an impact
-            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
+            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
             await _context.BulkSaveChangesAsync();
 
             return Ok();
@@ -619,7 +615,7 @@ namespace BeatLeader_Server.Controllers
                 .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked && lb.Scores.Any(s => s.PlayerId == player))
                 .ToList();
 
-            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
+            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
             await _context.BulkSaveChangesAsync();
 
             return Ok();
@@ -674,7 +670,7 @@ namespace BeatLeader_Server.Controllers
                 .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked && lb.Scores.Any(s => s.PlayerId == currentID))
                 .ToList();
 
-            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
+            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
             await _context.BulkSaveChangesAsync();
 
             return Ok();
@@ -772,7 +768,7 @@ namespace BeatLeader_Server.Controllers
                 .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked && lb.Scores.Any(s => s.PlayerId == currentID))
                 .ToList();
 
-            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRanking(obj));
+            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
             await _context.BulkSaveChangesAsync();
 
             return Ok();

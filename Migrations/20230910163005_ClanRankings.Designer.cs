@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    [Migration("20230723225223_ClanRankings")]
+    [Migration("20230910163005_ClanRankings")]
     partial class ClanRankings
     {
         /// <inheritdoc />
@@ -387,14 +387,13 @@ namespace BeatLeader_Server.Migrations
                     b.Property<float>("AverageRank")
                         .HasColumnType("real");
 
-                    b.Property<int>("ClanId")
+                    b.Property<int?>("ClanId")
                         .HasColumnType("int");
 
                     b.Property<int>("LastUpdateTime")
                         .HasColumnType("int");
 
                     b.Property<string>("LeaderboardId")
-                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<float>("Pp")
@@ -2289,9 +2288,6 @@ namespace BeatLeader_Server.Migrations
                     b.Property<bool>("Bot")
                         .HasColumnType("bit");
 
-                    b.Property<int?>("ClanRankingId")
-                        .HasColumnType("int");
-
                     b.Property<int>("Controller")
                         .HasColumnType("int");
 
@@ -2404,8 +2400,6 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("real");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ClanRankingId");
 
                     b.HasIndex("LeaderboardId");
 
@@ -3136,15 +3130,11 @@ namespace BeatLeader_Server.Migrations
                 {
                     b.HasOne("BeatLeader_Server.Models.Clan", "Clan")
                         .WithMany()
-                        .HasForeignKey("ClanId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("ClanId");
 
                     b.HasOne("BeatLeader_Server.Models.Leaderboard", "Leaderboard")
                         .WithMany("ClanRanking")
-                        .HasForeignKey("LeaderboardId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("LeaderboardId");
 
                     b.Navigation("Clan");
 
@@ -3436,10 +3426,6 @@ namespace BeatLeader_Server.Migrations
 
             modelBuilder.Entity("BeatLeader_Server.Models.Score", b =>
                 {
-                    b.HasOne("BeatLeader_Server.Models.ClanRanking", null)
-                        .WithMany("AssociatedScores")
-                        .HasForeignKey("ClanRankingId");
-
                     b.HasOne("BeatLeader_Server.Models.Leaderboard", "Leaderboard")
                         .WithMany("Scores")
                         .HasForeignKey("LeaderboardId")
@@ -3611,11 +3597,6 @@ namespace BeatLeader_Server.Migrations
             modelBuilder.Entity("BeatLeader_Server.Models.Clan", b =>
                 {
                     b.Navigation("CapturedLeaderboards");
-                });
-
-            modelBuilder.Entity("BeatLeader_Server.Models.ClanRanking", b =>
-                {
-                    b.Navigation("AssociatedScores");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.EventRanking", b =>
