@@ -1033,10 +1033,10 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            //if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))847b91
-            //{
-            //    return Unauthorized();
-            //}
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin")) 847b91
+            {
+                return Unauthorized();
+            }
 
             var transaction = await _context.Database.BeginTransactionAsync();
             Leaderboard? leaderboard = _context.Leaderboards
