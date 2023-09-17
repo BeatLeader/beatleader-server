@@ -162,7 +162,6 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpPost("~/clan/create")]
-        [Authorize]
         public async Task<ActionResult<Clan>> CreateClan(
             [FromQuery] string name,
             [FromQuery] string tag,
@@ -170,7 +169,10 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string description = "",
             [FromQuery] string bio = "")
         {
-            string currentID = HttpContext.CurrentUserID(_context);
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null) {
+                currentID = await HttpContext.CurrentOauthUserID(_context, CustomScopes.Clan);
+            }
 
             var player = _context.Players.Where(p => p.Id == currentID).Include(p => p.Clans).Include(p => p.ScoreStats).FirstOrDefault();
             if (player.Clans.Count == 3)
@@ -291,10 +293,13 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpDelete("~/clan")]
-        [Authorize]
         public async Task<ActionResult> DeleteClan([FromQuery] int? id = null)
         {
-            string currentID = HttpContext.CurrentUserID(_context);
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null) {
+                currentID = await HttpContext.CurrentOauthUserID(_context, CustomScopes.Clan);
+            }
+
             var player = await _context.Players.FindAsync(currentID);
 
             if (player == null)
@@ -351,7 +356,6 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpPut("~/clan")]
-        [Authorize]
         public async Task<ActionResult> UpdateClan(
             [FromQuery] int? id = null,
             [FromQuery] string? name = null,
@@ -359,7 +363,11 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string description = "",
             [FromQuery] string bio = "")
         {
-            string currentID = HttpContext.CurrentUserID(_context);
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null) {
+                currentID = await HttpContext.CurrentOauthUserID(_context, CustomScopes.Clan);
+            }
+
             var player = await _context.Players.FindAsync(currentID);
 
             if (player == null)
@@ -463,10 +471,13 @@ namespace BeatLeader_Server.Controllers
 
 
         [HttpPost("~/clan/invite")]
-        [Authorize]
         public async Task<ActionResult> InviteToClan([FromQuery] string player)
         {
-            string currentID = HttpContext.CurrentUserID(_context);
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null) {
+                currentID = await HttpContext.CurrentOauthUserID(_context, CustomScopes.Clan);
+            }
+
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null)
@@ -518,10 +529,12 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpPost("~/clan/cancelinvite")]
-        [Authorize]
         public async Task<ActionResult> CancelinviteToClan([FromQuery] string player)
         {
-            string currentID = HttpContext.CurrentUserID(_context);
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null) {
+                currentID = await HttpContext.CurrentOauthUserID(_context, CustomScopes.Clan);
+            }
 
             Clan? clan = _context.Clans.FirstOrDefault(c => c.LeaderID == currentID);
             if (clan == null)
@@ -558,12 +571,14 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpPost("~/clan/kickplayer")]
-        [Authorize]
         public async Task<ActionResult> KickPlayer(
             [FromQuery] string player,
             [FromQuery] int? id = null)
         {
-            string currentID = HttpContext.CurrentUserID(_context);
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null) {
+                currentID = await HttpContext.CurrentOauthUserID(_context, CustomScopes.Clan);
+            }
 
             Clan? clan;
             var currentPlayer = await _context.Players.FindAsync(currentID);
@@ -622,10 +637,12 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpPost("~/clan/accept")]
-        [Authorize]
         public async Task<ActionResult> AcceptRequest([FromQuery] int id)
         {
-            string currentID = HttpContext.CurrentUserID(_context);
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null) {
+                currentID = await HttpContext.CurrentOauthUserID(_context, CustomScopes.Clan);
+            }
 
             User? user = await _userController.GetUserLazy(currentID);
             if (user == null)
@@ -677,10 +694,12 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpPost("~/clan/reject")]
-        [Authorize]
         public async Task<ActionResult> RejectRequest([FromQuery] int id, bool ban = false)
         {
-            string currentID = HttpContext.CurrentUserID(_context);
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null) {
+                currentID = await HttpContext.CurrentOauthUserID(_context, CustomScopes.Clan);
+            }
 
             User? user = await _userController.GetUserLazy(currentID);
             if (user == null)
@@ -705,7 +724,6 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpPost("~/clan/unban")]
-        [Authorize]
         public async Task<ActionResult> UnbanClan([FromQuery] int id)
         {
             string currentID = HttpContext.CurrentUserID(_context);
@@ -729,10 +747,12 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpPost("~/clan/leave")]
-        [Authorize]
         public async Task<ActionResult> leaveClan([FromQuery] int id)
         {
-            string currentID = HttpContext.CurrentUserID(_context);
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null) {
+                currentID = await HttpContext.CurrentOauthUserID(_context, CustomScopes.Clan);
+            }
 
             User? user = await _userController.GetUserLazy(currentID);
             if (user == null)

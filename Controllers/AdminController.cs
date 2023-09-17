@@ -1042,6 +1042,93 @@ namespace BeatLeader_Server.Controllers
             return statistic;
         }
 
+        [HttpGet("~/admin/createContexts")]
+        public async Task<ActionResult> CreateContexts()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var allScoresCount = _context.Scores.Where(s => s.ValidContexts == LeaderboardContexts.None).Count();
+
+            for (int i = 0; i < allScoresCount; i += 10000) {
+                var scores = _context
+                    .Scores
+                    .Where(s => s.ValidContexts == LeaderboardContexts.None)
+                    .OrderBy(s => s.Id)
+                    .Skip(i)
+                    .Take(10000)
+                    .Include(s => s.Leaderboard)
+                    .ThenInclude(lb => lb.Difficulty)
+                    .ThenInclude(d => d.ModifierValues)
+                    .Include(s => s.Leaderboard)
+                    .ThenInclude(lb => lb.Difficulty)
+                    .ThenInclude(d => d.ModifiersRating)
+                    .ToList();
+
+                foreach (var score in scores) {
+                    var difficulty = score.Leaderboard.Difficulty;
+                    score.ContextExtensions = new List<ScoreContextExtension>();
+                    score.ValidContexts = LeaderboardContexts.General;
+                    var noModsExtension = ReplayUtils.NoModsContextExtension(score, difficulty);
+                    if (noModsExtension != null) {
+                        noModsExtension.LeaderboardId = score.LeaderboardId;
+                        noModsExtension.PlayerId = score.PlayerId;
+                        score.ContextExtensions.Add(noModsExtension);
+                        score.ValidContexts |= LeaderboardContexts.NoMods;
+                    }
+                    var noPauseExtenstion = ReplayUtils.NoPauseContextExtension(score);
+                    if (noPauseExtenstion != null) {
+                        noPauseExtenstion.LeaderboardId = score.LeaderboardId;
+                        noPauseExtenstion.PlayerId = score.PlayerId;
+                        score.ContextExtensions.Add(noPauseExtenstion);
+                        score.ValidContexts |= LeaderboardContexts.NoPause;
+                    }
+                    var golfExtension = ReplayUtils.GolfContextExtension(score, difficulty);
+                    if (golfExtension != null) {
+                        golfExtension.LeaderboardId = score.LeaderboardId;
+                        golfExtension.PlayerId = score.PlayerId;
+                        score.ContextExtensions.Add(golfExtension);
+                        score.ValidContexts |= LeaderboardContexts.Golf;
+                    }
+                }
+
+                _context.BulkSaveChanges();
+            }
+
+            var players = _context.Players.Where(p => p.ContextExtensions == null).ToList();
+            foreach (var player in players) {
+                player.ContextExtensions = new List<PlayerContextExtension> {
+                    new PlayerContextExtension {
+                        Context = LeaderboardContexts.NoMods,
+                        ScoreStats = new PlayerScoreStats(),
+                        PlayerId = player.Id,
+                        Country = player.Country
+                    },
+                    new PlayerContextExtension {
+                        Context = LeaderboardContexts.NoPause,
+                        ScoreStats = new PlayerScoreStats(),
+                        PlayerId = player.Id,
+                        Country = player.Country
+                    },
+                    new PlayerContextExtension {
+                        Context = LeaderboardContexts.Golf,
+                        ScoreStats = new PlayerScoreStats(),
+                        PlayerId = player.Id,
+                        Country = player.Country
+                    },
+                };
+            }
+
+            _context.BulkSaveChanges();
+
+            return Ok();
+        }
+
         [NonAction]
         //[HttpPost("~/admin/cleandb")]
         public async Task<ActionResult> CleanDb()

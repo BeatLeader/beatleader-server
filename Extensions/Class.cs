@@ -10,6 +10,9 @@ using BeatLeader_Server.Enums;
 using Newtonsoft.Json.Serialization;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
+using OpenIddict.Server.AspNetCore;
+using OpenIddict.Abstractions;
+using OpenIddict.Validation.AspNetCore;
 
 namespace BeatLeader_Server.Extensions
 {
@@ -104,6 +107,32 @@ namespace BeatLeader_Server.Extensions
                 string? currentID = context.User.Claims.FirstOrDefault()?.Value.Split("/").LastOrDefault();
                 if (currentID == null) return null;
 
+                long intId = Int64.Parse(currentID);
+                if (intId < 70000000000000000) {
+                    AccountLink? accountLink = dbcontext.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+
+                    return accountLink != null ? (accountLink.SteamID.Length > 0 ? accountLink.SteamID : accountLink.PCOculusID) : currentID;
+                } else {
+                    return currentID;
+                }
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+
+        }
+
+        public static async Task<string?> CurrentOauthUserID(this HttpContext context, AppContext dbcontext, string scope)
+        {
+            try
+            {
+                var claimsPrincipal = (await context.AuthenticateAsync(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)).Principal;
+                string? currentID = claimsPrincipal.GetClaim(OpenIddictConstants.Claims.Subject);
+                if (currentID == null) return null;
+
+                string? claimedScope = claimsPrincipal.GetClaims("oi_scp").FirstOrDefault(c => c == scope);
+                if (claimedScope == null) return null;
                 long intId = Int64.Parse(currentID);
                 if (intId < 70000000000000000) {
                     AccountLink? accountLink = dbcontext.AccountLinks.FirstOrDefault(el => el.OculusID == intId);

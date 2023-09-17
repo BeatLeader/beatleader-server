@@ -11,6 +11,7 @@ using Prometheus.Client.AspNetCore;
 using System.Net;
 using BeatLeader_Server.Bot;
 using static OpenIddict.Abstractions.OpenIddictConstants;
+using BeatLeader_Server.Models;
 
 namespace BeatLeader_Server {
 
@@ -159,7 +160,19 @@ namespace BeatLeader_Server {
                     {
                         new RateLimitRule
                         {
+                            Endpoint = "GET:/*",
+                            Period = "10s",
+                            Limit = 20,
+                        },
+                        new RateLimitRule
+                        {
                             Endpoint = "GET:/score/*",
+                            Period = "10s",
+                            Limit = 10,
+                        },
+                        new RateLimitRule
+                        {
+                            Endpoint = "GET:/player/*",
                             Period = "10s",
                             Limit = 10,
                         }
@@ -268,7 +281,9 @@ namespace BeatLeader_Server {
                        .SetUserinfoEndpointUris("oauth2/identity");
 
                 // Enable the client credentials flow.
-                options.RegisterScopes(Scopes.Profile);
+                options.RegisterScopes(
+                    Scopes.Profile,
+                    CustomScopes.Clan);
 
                 // Note: the sample uses the code and refresh token flows but you can enable
                 // the other flows if you need to support implicit, password or client credentials.

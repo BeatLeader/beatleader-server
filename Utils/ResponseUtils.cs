@@ -23,10 +23,18 @@ namespace BeatLeader_Server.Utils {
             public int CountryRank { get; set; }
             public string Role { get; set; }
             public ICollection<PlayerSocial>? Socials { get; set; }
+            public ICollection<PlayerContextExtension>? ContextExtensions { get; set; }
 
             public PatreonFeatures? PatreonFeatures { get; set; }
             public ProfileSettings? ProfileSettings { get; set; }
             public IEnumerable<ClanResponse>? Clans { get; set; }
+
+            public virtual void ToContext(PlayerContextExtension extension) {
+                Pp = extension.Pp;
+
+                Rank = extension.Rank;
+                CountryRank = extension.CountryRank;
+            }
         }
         public class PlayerResponseWithFriends : PlayerResponse {
             public ICollection<string>? Friends { get; set; }
@@ -41,6 +49,21 @@ namespace BeatLeader_Server.Utils {
             public int LastWeekRank { get; set; }
             public int LastWeekCountryRank { get; set; }
             public IEnumerable<EventPlayer>? EventsParticipating { get; set; }
+
+            public override void ToContext(PlayerContextExtension extension) {
+                Pp = extension.Pp;
+                AccPp = extension.AccPp;
+                TechPp = extension.TechPp;
+                PassPp = extension.PassPp;
+
+                Rank = extension.Rank;
+                CountryRank = extension.CountryRank;
+                ScoreStats = extension.ScoreStats;
+
+                LastWeekPp = extension.LastWeekPp;
+                LastWeekRank = extension.LastWeekRank;
+                LastWeekCountryRank = extension.LastWeekCountryRank;
+            }
         }
 
         public class PlayerResponseFull : PlayerResponseWithStats {
@@ -102,6 +125,21 @@ namespace BeatLeader_Server.Utils {
             public RankVoting? RankVoting { get; set; }
             public ScoreMetadata? Metadata { get; set; }
             public ReplayOffsets? Offsets { get; set; }
+
+            public void ToContext(ScoreContextExtension? extension) {
+                if (extension == null) return;
+
+                Weight = extension.Weight;
+                Rank = extension.Rank;
+                BaseScore = extension.BaseScore;
+                ModifiedScore = extension.ModifiedScore;
+                Accuracy = extension.Accuracy;
+                Pp = extension.Pp;
+                TechPP = extension.TechPP;
+                PassPP = extension.PassPP;
+                BonusPp = extension.BonusPp;
+                Modifiers = extension.Modifiers;
+            }
         }
 
         public class ScoreSongResponse {
@@ -282,8 +320,6 @@ namespace BeatLeader_Server.Utils {
         }
 
         public class ScoreResponseWithAcc : ScoreResponse {
-            public float Weight { get; set; }
-
             public float AccLeft { get; set; }
             public float AccRight { get; set; }
         }
@@ -292,6 +328,7 @@ namespace BeatLeader_Server.Utils {
             public ScoreResponseWithAcc? MyScore { get; set; }
 
             public LeaderboardResponse Leaderboard { get; set; }
+            public ICollection<ScoreContextExtension> ContextExtensions { get; set; }
         }
 
         public class LeaderboardInfoResponse {
@@ -343,8 +380,10 @@ namespace BeatLeader_Server.Utils {
         }
 
         public class CompactScore {
+            public int Id { get; set; }
             public int BaseScore { get; set; }
             public int ModifiedScore { get; set; }
+            public string Modifiers { get; set; }
             public int MaxCombo { get; set; }
             public int MissedNotes { get; set; }
             public int BadCuts { get; set; }
@@ -354,7 +393,9 @@ namespace BeatLeader_Server.Utils {
         }
 
         public class CompactLeaderboard {
+            public string Id { get; set; }
             public string SongHash { get; set; }
+            public string ModeName { get; set; }
             public int Difficulty { get; set; }
         }
 
@@ -416,6 +457,7 @@ namespace BeatLeader_Server.Utils {
                     Socials = s.Player.Socials,
                     PatreonFeatures = s.Player.PatreonFeatures,
                     ProfileSettings = s.Player.ProfileSettings,
+                    ContextExtensions = s.Player.ContextExtensions,
                     Clans = s.Player.Clans?.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
                             .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                 } : null,
@@ -521,6 +563,7 @@ namespace BeatLeader_Server.Utils {
                 Socials = p.Socials,
                 PatreonFeatures = p.PatreonFeatures,
                 ProfileSettings = p.ProfileSettings,
+                ContextExtensions = p.ContextExtensions,
                 Clans = p.Clans?.OrderBy(c => p.ClanOrder.IndexOf(c.Tag))
                             .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
             };
@@ -616,6 +659,7 @@ namespace BeatLeader_Server.Utils {
                 EventsParticipating = p.EventsParticipating,
                 PatreonFeatures = p.PatreonFeatures,
                 ProfileSettings = p.ProfileSettings,
+                ContextExtensions = p.ContextExtensions,
                 Clans = p.Clans?.OrderBy(c => p.ClanOrder.IndexOf(c.Tag))
                             .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
             };

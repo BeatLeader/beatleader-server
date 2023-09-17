@@ -10,10 +10,9 @@ using Microsoft.Extensions.Options;
 using System.Linq.Expressions;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
-namespace BeatLeader_Server.Controllers
-{
-    public class PlayerRefreshController : Controller
-    {
+namespace BeatLeader_Server.Controllers {
+    public class PlayerStatsRefreshController : Controller {
+
         private readonly AppContext _context;
         private readonly ReadAppContext _readContext;
 
@@ -22,7 +21,7 @@ namespace BeatLeader_Server.Controllers
 
         private readonly IServerTiming _serverTiming;
 
-        public PlayerRefreshController(
+        public PlayerStatsRefreshController(
             AppContext context,
             ReadAppContext readContext,
             IConfiguration configuration, 
@@ -37,32 +36,219 @@ namespace BeatLeader_Server.Controllers
             _environment = env;
         }
 
-        [HttpGet("~/players/steam/refresh")]
-        public async Task<ActionResult> RefreshSteamPlayers()
-        {
-            var players = _context.Players.ToList();
-            foreach (Player p in players)
+        [NonAction]
+        public async Task RefreshPlayer(Player player, LeaderboardContexts context, bool refreshRank = true, bool refreshStats = true) {
+            _context.RecalculatePPAndRankFastContext(context, player);
+            await _context.SaveChangesAsync();
+
+            if (refreshRank)
             {
-                if (Int64.Parse(p.Id) <= 70000000000000000) { continue; }
-                Player? update = await PlayerUtils.GetPlayerFromSteam(_configuration.GetValue<string>("SteamApi"), p.Id, _configuration.GetValue<string>("SteamKey"));
-
-                if (update != null)
+                _context.ChangeTracker.AutoDetectChangesEnabled = false;
+                Dictionary<string, int> countries = new Dictionary<string, int>();
+                var ranked = _context.PlayerContextExtensions
+                    .Where(p => p.Pp > 0 && p.Context == context)
+                    .OrderByDescending(t => t.Pp)
+                    .Select(p => new { Id = p.Id, Country = p.Country })
+                    .ToList();
+                foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
                 {
-                    p.ExternalProfileUrl = update.ExternalProfileUrl;
-
-                    if (p.Avatar.Contains("steamcdn"))
-                    {
-                        p.Avatar = update.Avatar;
+                    PlayerContextExtension? p = _context.PlayerContextExtensions.Local.FirstOrDefault(ls => ls.Id == pp.Id);
+                    if (p == null) {
+                        try {
+                            p = new PlayerContextExtension { Id = pp.Id, Country = pp.Country };
+                            _context.PlayerContextExtensions.Attach(p);
+                        } catch (Exception e) {
+                            continue;
+                        }
                     }
 
-                    if (p.Country == "not set" && update.Country != "not set")
+                    p.Rank = i + 1;
+                    _context.Entry(p).Property(x => x.Rank).IsModified = true;
+                    if (!countries.ContainsKey(p.Country))
                     {
-                        p.Country = update.Country;
+                        countries[p.Country] = 1;
                     }
+
+                    p.CountryRank = countries[p.Country];
+                    _context.Entry(p).Property(x => x.CountryRank).IsModified = true;
+
+                    countries[p.Country]++;
                 }
+                await _context.BulkSaveChangesAsync();
+
+                _context.ChangeTracker.AutoDetectChangesEnabled = true;
+            }
+            if (refreshStats) {
+                await RefreshStats(player.ContextExtensions.First(ce => ce.Context == context).ScoreStats, player.Id, context);
             }
 
             await _context.SaveChangesAsync();
+        }
+
+        [HttpGet("~/player/{id}/refresh/{context}")]
+        public async Task<ActionResult> RefreshPlayerContext(string id, LeaderboardContexts context, [FromQuery] bool refreshRank = true)
+        {
+            string currentId = HttpContext.CurrentUserID(_context);
+            Player? currentPlayer = await _readContext.Players.FindAsync(currentId);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+            Player? player = _context
+                .Players
+                .Where(p => p.Id == id)
+                .Include(p => p.ScoreStats)
+                .Include(p => p.ContextExtensions)
+                .ThenInclude(ce => ce.ScoreStats)
+                .FirstOrDefault();
+            if (player == null)
+            {
+                return NotFound();
+            }
+            await RefreshPlayer(player, context, refreshRank);
+
+            return Ok();
+        }
+
+        [HttpGet("~/player/{id}/refresh/allContexts")]
+        public async Task<ActionResult> RefreshPlayerAllContexts(string id, [FromQuery] bool refreshRank = true)
+        {
+            string currentId = HttpContext.CurrentUserID(_context);
+            Player? currentPlayer = await _readContext.Players.FindAsync(currentId);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+            await RefreshPlayerContext(id, LeaderboardContexts.NoMods, refreshRank);
+            await RefreshPlayerContext(id, LeaderboardContexts.NoPause, refreshRank);
+            await RefreshPlayerContext(id, LeaderboardContexts.Golf, refreshRank);
+
+            return Ok();
+        }
+
+        [HttpGet("~/players/refresh/allContexts")]
+        [Authorize]
+        public async Task<ActionResult> RefreshPlayersAllContext()
+        {
+            if (HttpContext != null)
+            {
+                // Not fetching player here to not mess up context
+                if (HttpContext.CurrentUserID(_context) != AdminController.GolovaID)
+                {
+                    return Unauthorized();
+                }
+            }
+
+            await RefreshPlayersContext(LeaderboardContexts.NoMods);
+            await RefreshPlayersContext(LeaderboardContexts.NoPause);
+            await RefreshPlayersContext(LeaderboardContexts.Golf);
+
+            return Ok();
+        }
+
+        [HttpGet("~/players/refresh/{context}")]
+        [Authorize]
+        public async Task<ActionResult> RefreshPlayersContext(LeaderboardContexts context)
+        {
+            if (HttpContext != null)
+            {
+                // Not fetching player here to not mess up context
+                if (HttpContext.CurrentUserID(_context) != AdminController.GolovaID)
+                {
+                    return Unauthorized();
+                }
+            }
+
+            _context.ChangeTracker.AutoDetectChangesEnabled = false;
+            var weights = new Dictionary<int, float>();
+            for (int i = 0; i < 10000; i++)
+            {
+                weights[i] = MathF.Pow(0.965f, i);
+            }
+
+            var scores = _context
+                .ScoreContextExtensions
+                .Where(s => s.Pp != 0 && s.Context == context && s.ScoreId != null)
+                .OrderByDescending(s => s.Pp)
+                .Select(s => new { s.Id, s.Accuracy, s.Rank, s.Pp, s.AccPP, s.TechPP, s.PassPP, s.Weight, s.PlayerId })
+                .ToList();
+
+            var query = _context.PlayerContextExtensions
+                .Where(s => s.Context == context)
+                .OrderByDescending(p => p.Pp)
+                .Select(p => new { p.Id, p.PlayerId, p.Country })
+                .ToList();
+
+            var allPlayers = new List<PlayerContextExtension>();
+            foreach (var p in query) {
+
+            
+            //await query.ParallelForEachAsync(async p => {
+                //try {
+                    var player = new PlayerContextExtension { Id = p.Id, PlayerId = p.PlayerId, Country = p.Country };
+                    _context.PlayerContextExtensions.Attach(player);
+                    allPlayers.Add(player);
+
+                //    if (allPlayers.Count(p => p.PlayerId == p.PlayerId) > 1) {
+                //    int x = 4353;
+                //}
+
+                    float resultPP = 0f;
+                    float accPP = 0f;
+                    float techPP = 0f;
+                    float passPP = 0f;
+                    var playerScores = scores.Where(s => s.PlayerId == p.PlayerId).ToList();
+                    foreach ((int i, var s) in playerScores.Select((value, i) => (i, value)))
+                    {
+                        float weight = weights[i];
+                        if (s.Weight != weight)
+                        {
+                            var score = new ScoreContextExtension() { Id = s.Id, Weight = weight };
+                            _context.ScoreContextExtensions.Attach(score);
+                            _context.Entry(score).Property(x => x.Weight).IsModified = true;
+                        }
+                        resultPP += s.Pp * weight;
+                        accPP += s.AccPP * weight;
+                        techPP += s.TechPP * weight;
+                        passPP += s.PassPP * weight;
+                    }
+                    player.Pp = resultPP;
+                    player.AccPp = accPP;
+                    player.TechPp = techPP;
+                    player.PassPp = passPP;
+
+                    _context.Entry(player).Property(x => x.Pp).IsModified = true;
+                    _context.Entry(player).Property(x => x.AccPp).IsModified = true;
+                    _context.Entry(player).Property(x => x.TechPp).IsModified = true;
+                    _context.Entry(player).Property(x => x.PassPp).IsModified = true;
+                //} catch (Exception e) {
+                //}
+                //}, maxDegreeOfParallelism: 50);
+        }
+
+        await _context.BulkSaveChangesAsync();
+
+            Dictionary<string, int> countries = new Dictionary<string, int>();
+            var ranked = allPlayers
+                .Where(p => p.Pp > 0)
+                .OrderByDescending(t => t.Pp)
+                .ToList();
+            foreach ((int i, PlayerContextExtension p) in ranked.Select((value, i) => (i, value)))
+            {
+                p.Rank = i + 1;
+                _context.Entry(p).Property(x => x.Rank).IsModified = true;
+                if (!countries.ContainsKey(p.Country))
+                {
+                    countries[p.Country] = 1;
+                }
+
+                p.CountryRank = countries[p.Country];
+                _context.Entry(p).Property(x => x.CountryRank).IsModified = true;
+                countries[p.Country]++;
+            }
+            await _context.BulkSaveChangesAsync();
+
+            _context.ChangeTracker.AutoDetectChangesEnabled = true;
 
             return Ok();
         }
@@ -89,14 +275,17 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task RefreshStats(PlayerScoreStats scoreStats, string playerId, List<SubScore>? scores = null)
+        public async Task RefreshStats(PlayerScoreStats scoreStats, string playerId, LeaderboardContexts context, List<SubScore>? scores = null)
         {
             var allScores = scores ??
-                _context.Scores.Where(s => s.PlayerId == playerId && !s.IgnoreForStats).Select(s => new SubScore
+                _context
+                .ScoreContextExtensions
+                .Where(s => s.PlayerId == playerId && s.Context == context && !s.Score.IgnoreForStats)
+                .Select(s => new SubScore
                 {
                     PlayerId = s.PlayerId,
-                    Platform = s.Platform,
-                    Hmd = s.Hmd,
+                    Platform = s.Score.Platform,
+                    Hmd = s.Score.Hmd,
                     ModifiedScore = s.ModifiedScore,
                     Accuracy = s.Accuracy,
                     Pp = s.Pp,
@@ -105,12 +294,12 @@ namespace BeatLeader_Server.Controllers
                     AccPP = s.AccPP,
                     TechPP = s.TechPP,
                     Rank = s.Rank,
-                    Timeset = s.Timepost,
+                    Timeset = s.Score.Timepost,
                     Weight = s.Weight,
-                    Qualification = s.Qualification,
-                    MaxStreak = s.MaxStreak,
-                    RightTiming = s.RightTiming,
-                    LeftTiming = s.LeftTiming,
+                    Qualification = s.Score.Qualification,
+                    MaxStreak = s.Score.MaxStreak,
+                    RightTiming = s.Score.RightTiming,
+                    LeftTiming = s.Score.LeftTiming,
                 }).ToList();
 
             List<SubScore> rankedScores = new();
@@ -296,202 +485,18 @@ namespace BeatLeader_Server.Controllers
             }
         }
 
-        [NonAction]
-        public async Task RefreshPlayer(Player player, bool refreshRank = true, bool refreshStats = true) {
-            _context.RecalculatePP(player);
-            await _context.SaveChangesAsync();
-
-            if (refreshRank)
-            {
-                _context.ChangeTracker.AutoDetectChangesEnabled = false;
-                Dictionary<string, int> countries = new Dictionary<string, int>();
-                var ranked = _context.Players
-                    .Where(p => p.Pp > 0 && !p.Banned)
-                    .OrderByDescending(t => t.Pp)
-                    .Select(p => new { Id = p.Id, Country = p.Country })
-                    .ToList();
-                foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
-                {
-                    Player? p = _context.Players.Local.FirstOrDefault(ls => ls.Id == pp.Id);
-                    if (p == null) {
-                        try {
-                            p = new Player { Id = pp.Id, Country = pp.Country };
-                            _context.Players.Attach(p);
-                        } catch (Exception e) {
-                            continue;
-                        }
-                    }
-
-                    p.Rank = i + 1;
-                    _context.Entry(p).Property(x => x.Rank).IsModified = true;
-                    if (!countries.ContainsKey(p.Country))
-                    {
-                        countries[p.Country] = 1;
-                    }
-
-                    p.CountryRank = countries[p.Country];
-                    _context.Entry(p).Property(x => x.CountryRank).IsModified = true;
-
-                    countries[p.Country]++;
-                }
-                await _context.BulkSaveChangesAsync();
-
-                _context.ChangeTracker.AutoDetectChangesEnabled = true;
-            }
-            if (refreshStats) {
-                await RefreshStats(player.ScoreStats, player.Id);
-            }
-
-            await _context.SaveChangesAsync();
-        }
-
-        [HttpGet("~/player/{id}/refresh")]
-        public async Task<ActionResult> RefreshPlayerAction(string id, [FromQuery] bool refreshRank = true)
+        [HttpGet("~/players/stats/refresh/allContexts")]
+        public async Task<ActionResult> RefreshPlayersStatsAllContexts()
         {
-            string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = await _readContext.Players.FindAsync(currentId);
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
-            Player? player = _context.Players.Where(p => p.Id == id).Include(p => p.ScoreStats).FirstOrDefault();
-            if (player == null)
-            {
-                return NotFound();
-            }
-            await RefreshPlayer(player, refreshRank);
+            await RefreshPlayersStats(LeaderboardContexts.NoMods);
+            await RefreshPlayersStats(LeaderboardContexts.NoPause);
+            await RefreshPlayersStats(LeaderboardContexts.Golf);
 
             return Ok();
         }
 
-        [HttpGet("~/players/leaderboard/{id}/refresh")]
-        public async Task<ActionResult> RefreshLeaderboardPlayers(string id)
-        {
-            if (HttpContext != null)
-            {
-                string currentId = HttpContext.CurrentUserID(_context);
-                Player? currentPlayer = await _context.Players.FindAsync(currentId);
-                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-                {
-                    return Unauthorized();
-                }
-            }
-            Leaderboard? leaderboard = _context.Leaderboards.Where(p => p.Id == id).Include(l => l.Scores).ThenInclude(s => s.Player).ThenInclude(s => s.ScoreStats).FirstOrDefault();
-
-            if (leaderboard == null)
-            {
-                return NotFound();
-            }
-
-            foreach (var score in leaderboard.Scores)
-            {
-                await RefreshPlayer(score.Player, false, false);
-            }
-
-            return Ok();
-        }
-
-        [HttpGet("~/players/refresh")]
-        [Authorize]
-        public async Task<ActionResult> RefreshPlayers()
-        {
-            if (HttpContext != null)
-            {
-                // Not fetching player here to not mess up context
-                if (HttpContext.CurrentUserID(_context) != AdminController.GolovaID)
-                {
-                    return Unauthorized();
-                }
-            }
-
-            _context.ChangeTracker.AutoDetectChangesEnabled = false;
-            var weights = new Dictionary<int, float>();
-            for (int i = 0; i < 10000; i++)
-            {
-                weights[i] = MathF.Pow(0.965f, i);
-            }
-
-            var scores = _context
-                .Scores
-                .Where(s => s.Pp != 0 && !s.Banned && !s.Qualification && s.ValidContexts.HasFlag(LeaderboardContexts.General))
-                .OrderByDescending(s => s.Pp)
-                .Select(s => new { s.Id, s.Accuracy, s.Rank, s.Pp, s.AccPP, s.TechPP, s.PassPP, s.Weight, s.PlayerId })
-                .ToList();
-
-            var query = _context.Players
-                .OrderByDescending(p => p.Pp)
-                .Where(p => p.Pp != 0 && !p.Banned)
-                .Select(p => new { p.Id, p.Country })
-                .ToList();
-
-            var allPlayers = new List<Player>();
-            await query.ParallelForEachAsync(async p => {
-                try {
-                    Player player = new Player { Id = p.Id, Country = p.Country };
-                    _context.Players.Attach(player);
-                    allPlayers.Add(player);
-
-                    float resultPP = 0f;
-                    float accPP = 0f;
-                    float techPP = 0f;
-                    float passPP = 0f;
-                    var playerScores = scores.Where(s => s.PlayerId == p.Id).ToList();
-                    foreach ((int i, var s) in playerScores.Select((value, i) => (i, value)))
-                    {
-                        float weight = weights[i];
-                        if (s.Weight != weight)
-                        {
-                            var score = new Score() { Id = s.Id, Weight = weight };
-                            _context.Scores.Attach(score);
-                            _context.Entry(score).Property(x => x.Weight).IsModified = true;
-                        }
-                        resultPP += s.Pp * weight;
-                        accPP += s.AccPP * weight;
-                        techPP += s.TechPP * weight;
-                        passPP += s.PassPP * weight;
-                    }
-                    player.Pp = resultPP;
-                    player.AccPp = accPP;
-                    player.TechPp = techPP;
-                    player.PassPp = passPP;
-
-                    _context.Entry(player).Property(x => x.Pp).IsModified = true;
-                    _context.Entry(player).Property(x => x.AccPp).IsModified = true;
-                    _context.Entry(player).Property(x => x.TechPp).IsModified = true;
-                    _context.Entry(player).Property(x => x.PassPp).IsModified = true;
-                } catch (Exception e) {
-                }
-            }, maxDegreeOfParallelism: 50);
-
-            await _context.BulkSaveChangesAsync();
-
-            Dictionary<string, int> countries = new Dictionary<string, int>();
-            var ranked = allPlayers
-                .Where(p => p.Pp > 0)
-                .OrderByDescending(t => t.Pp)
-                .ToList();
-            foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
-            {
-                p.Rank = i + 1;
-                _context.Entry(p).Property(x => x.Rank).IsModified = true;
-                if (!countries.ContainsKey(p.Country))
-                {
-                    countries[p.Country] = 1;
-                }
-
-                p.CountryRank = countries[p.Country];
-                _context.Entry(p).Property(x => x.CountryRank).IsModified = true;
-                countries[p.Country]++;
-            }
-            await _context.BulkSaveChangesAsync();
-
-            _context.ChangeTracker.AutoDetectChangesEnabled = true;
-
-            return Ok();
-        }
-
-        [HttpGet("~/players/stats/refresh")]
-        public async Task<ActionResult> RefreshPlayersStats()
+        [HttpGet("~/players/stats/refresh/{context}")]
+        public async Task<ActionResult> RefreshPlayersStats(LeaderboardContexts context)
         {
             if (HttpContext != null) {
                 // Not fetching player here to not mess up context
@@ -501,11 +506,11 @@ namespace BeatLeader_Server.Controllers
                 }
             }
             var allScores =
-                _context.Scores.Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && (!s.Banned || s.Bot) && !s.IgnoreForStats).Select(s => new SubScore
+                _context.ScoreContextExtensions.Where(s => s.Context == context && (!s.Score.Banned || s.Score.Bot) && !s.Score.IgnoreForStats).Select(s => new SubScore
                 {
                     PlayerId = s.PlayerId,
-                    Platform = s.Platform,
-                    Hmd = s.Hmd,
+                    Platform = s.Score.Platform,
+                    Hmd = s.Score.Hmd,
                     ModifiedScore = s.ModifiedScore,
                     Accuracy = s.Accuracy,
                     Pp = s.Pp,
@@ -514,80 +519,30 @@ namespace BeatLeader_Server.Controllers
                     AccPP = s.AccPP,
                     TechPP = s.TechPP,
                     Rank = s.Rank,
-                    Timeset = s.Timepost,
+                    Timeset = s.Score.Timepost,
                     Weight = s.Weight,
-                    Qualification = s.Qualification,
-                    MaxStreak = s.MaxStreak,
-                    RightTiming = s.RightTiming,
-                    LeftTiming = s.LeftTiming,
+                    Qualification = s.Score.Qualification,
+                    MaxStreak = s.Score.MaxStreak,
+                    RightTiming = s.Score.RightTiming,
+                    LeftTiming = s.Score.LeftTiming,
                 }).ToList();
 
             var players = _context
-                    .Players
-                    .Where(p => (!p.Banned || p.Bot) && p.ScoreStats != null)
+                    .PlayerContextExtensions
+                    .Where(p => p.Context == context && p.ScoreStats != null)
                     .OrderBy(p => p.Rank)
-                    .Select(p => new { p.Id, p.ScoreStats })
+                    .Select(p => new { p.PlayerId, p.ScoreStats })
                     .ToList();
 
             var scoresById = allScores.GroupBy(s => s.PlayerId).ToDictionary(g => g.Key, g => g.ToList());
 
-            var playersWithScores = players.Where(p => scoresById.ContainsKey(p.Id)).Select(p => new { p.Id, p.ScoreStats, Scores = scoresById[p.Id] }).ToList();
+            var playersWithScores = players.Where(p => scoresById.ContainsKey(p.PlayerId)).Select(p => new { Id = p.PlayerId, p.ScoreStats, Scores = scoresById[p.PlayerId] }).ToList();
             
             await playersWithScores.ParallelForEachAsync(async player => {
-                await RefreshStats(player.ScoreStats, player.Id, player.Scores);
+                await RefreshStats(player.ScoreStats, player.Id, context, player.Scores);
             }, maxDegreeOfParallelism: 50);
 
             await _context.BulkSaveChangesAsync();
-
-            return Ok();
-        }
-
-        [HttpGet("~/players/rankrefresh")]
-        [Authorize]
-        public async Task<ActionResult> RefreshRanks()
-        {
-            if (HttpContext != null) {
-                string currentId = HttpContext.CurrentUserID(_context);
-                Player? currentPlayer = await _context.Players.FindAsync(currentId);
-                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-                {
-                    return Unauthorized();
-                }
-            }
-            _context.ChangeTracker.AutoDetectChangesEnabled = false;
-            Dictionary<string, int> countries = new Dictionary<string, int>();
-            var ranked = _context.Players
-                .Where(p => p.Pp > 0 && !p.Banned)
-                .OrderByDescending(t => t.Pp)
-                .Select(p => new { Id = p.Id, Country = p.Country })
-                .ToList();
-            foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
-            {
-                Player? p = _context.Players.Local.FirstOrDefault(ls => ls.Id == pp.Id);
-                if (p == null) {
-                    try {
-                        p = new Player { Id = pp.Id, Country = pp.Country };
-                        _context.Players.Attach(p);
-                    } catch (Exception e) {
-                        continue;
-                    }
-                }
-
-                p.Rank = i + 1;
-                _context.Entry(p).Property(x => x.Rank).IsModified = true;
-                if (!countries.ContainsKey(p.Country))
-                {
-                    countries[p.Country] = 1;
-                }
-
-                p.CountryRank = countries[p.Country];
-                _context.Entry(p).Property(x => x.CountryRank).IsModified = true;
-
-                countries[p.Country]++;
-            }
-            await _context.BulkSaveChangesAsync();
-
-            _context.ChangeTracker.AutoDetectChangesEnabled = true;
 
             return Ok();
         }

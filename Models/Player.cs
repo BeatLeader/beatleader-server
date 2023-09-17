@@ -16,8 +16,24 @@ namespace BeatLeader_Server.Models {
         public string? Changer { get; set; }
     }
 
+    public interface IPlayer {
+        public string Name { get; set; }
+        public string Country { get; set; }
+        public float Pp { get; set; }
+        public float AccPp { get; set; }
+        public float TechPp { get; set; }
+        public float PassPp { get; set; }
+        public int Rank { get; set; }
+        public int CountryRank { get; set; }
+
+        public float LastWeekPp { get; set; }
+        public int LastWeekRank { get; set; }
+        public int LastWeekCountryRank { get; set; }
+        public PlayerScoreStats? ScoreStats { get; set; }
+    }
+
     [Index(nameof(Banned), IsUnique = false)]
-    public class Player {
+    public class Player : IPlayer {
         [Key]
         public string Id { get; set; }
         public string Name { get; set; } = "";
@@ -62,6 +78,7 @@ namespace BeatLeader_Server.Models {
         public ICollection<EventPlayer>? EventsParticipating { get; set; }
         public ICollection<PlayerSocial>? Socials { get; set; }
         public ICollection<Achievement>? Achievements { get; set; }
+        public ICollection<PlayerContextExtension>? ContextExtensions { get; set; }
 
         public void SetDefaultAvatar() {
             this.Avatar = "https://cdn.assets.beatleader.xyz/" + this.Platform + "avatar.png";

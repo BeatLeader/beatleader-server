@@ -32,6 +32,351 @@ namespace BeatLeader_Server.Controllers {
             _serverTiming = serverTiming;
         }
 
+        [NonAction]
+        public async Task GeneralScores(
+            LeaderboardResponse leaderboard,
+            bool showBots,
+            bool voters,
+            bool showVoters,
+            int page,
+            int count,
+            string sortBy,
+            Order order,
+            ScoreFilterStatus scoreStatus,
+            string? countries,
+            string? search,
+            string? modifiers,
+            List<string>? friendsList) {
+            IQueryable<Score> scoreQuery = _context
+                .Scores
+                .Where(s => s.LeaderboardId == leaderboard.Id && s.ValidContexts.HasFlag(LeaderboardContexts.General));
+
+            
+
+            if (countries == null) {
+                if (friendsList != null) {
+                    scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)) && friendsList.Contains(s.PlayerId));
+                } else if (voters) {
+                    scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)) && s.RankVoting != null);
+                } else {
+                    scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)));
+                }
+            } else {
+                if (friendsList != null) {
+                    scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)) && friendsList.Contains(s.PlayerId) && countries.ToLower().Contains(s.Player.Country.ToLower()));
+                } else {
+                    scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)) && countries.ToLower().Contains(s.Player.Country.ToLower()));
+                }
+            }
+
+            if (modifiers != null) {
+                if (!modifiers.Contains("none")) {
+                    var score = Expression.Parameter(typeof(Score), "s");
+
+                    var contains = typeof(string).GetMethod("Contains", new[] { typeof(string) });
+
+                    var any = modifiers.Contains("any");
+                    var not = modifiers.Contains("not");
+                    // 1 != 2 is here to trigger `OrElse` further the line.
+                    var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(any ? 2 : 1));
+                    var modifiersList = modifiers.Split(",").Where(m => m != "any" && m != "none" && m != "not");
+
+                    foreach (var term in modifiersList) {
+                        var subexpression = Expression.Call(Expression.Property(score, "Modifiers"), contains, Expression.Constant(term));
+                        if (not) {
+                            exp = Expression.And(exp, Expression.Not(subexpression));
+                        } else {
+                            if (any) {
+                                exp = Expression.OrElse(exp, subexpression);
+                            } else {
+                                exp = Expression.And(exp, subexpression);
+                            }
+                        }
+                    }
+                    scoreQuery = scoreQuery.Where((Expression<Func<Score, bool>>)Expression.Lambda(exp, score));
+                } else {
+                    scoreQuery = scoreQuery.Where(s => s.Modifiers.Length == 0);
+                }
+            }
+
+            Order oppositeOrder = order.Reverse();
+
+            switch (sortBy) {
+                case "date":
+                    scoreQuery = scoreQuery.Order(order, s => s.Timepost).ThenOrder(oppositeOrder, s => s.Rank);
+                    break;
+                case "pp":
+                    scoreQuery = scoreQuery.Order(order, s => s.Pp).ThenOrder(oppositeOrder, s => s.Rank);
+                    break;
+                case "acc":
+                    scoreQuery = scoreQuery.Order(order, s => s.Accuracy);
+                    break;
+                case "pauses":
+                    scoreQuery = scoreQuery.Order(order, s => s.Pauses).ThenOrder(oppositeOrder, s => s.Rank);
+                    break;
+                case "rank":
+                    scoreQuery = leaderboard.Difficulty.Status.WithPP() 
+                                ? scoreQuery
+                                    .Order(order, el => Math.Round(el.Pp, 2))
+                                    .ThenOrder(order, el => Math.Round(el.Accuracy, 4))
+                                    .ThenOrder(oppositeOrder, el => el.Timeset)
+                                : scoreQuery
+                                    .Order(oppositeOrder, el => el.Priority)
+                                    .ThenOrder(order, el => el.ModifiedScore)
+                                    .ThenOrder(order, el => Math.Round(el.Accuracy, 4))
+                                    .ThenOrder(oppositeOrder, el => el.Timeset);
+                        break;
+                    break;
+                case "maxStreak":
+                    scoreQuery = scoreQuery.Order(order, s => s.MaxStreak).ThenOrder(oppositeOrder, s => s.Rank);
+                    break;
+                case "mistakes":
+                    scoreQuery = scoreQuery.Order(order, s => s.BadCuts + s.MissedNotes + s.BombCuts + s.WallsHit);
+                    break;
+                case "weight":
+                    scoreQuery = scoreQuery.Order(order, s => s.Weight);
+                    break;
+                case "weightedPp":
+                    scoreQuery = scoreQuery.Order(order, s => s.Weight * s.Pp);
+                    break;
+                default:
+                    break;
+            }
+            switch (scoreStatus) {
+                case ScoreFilterStatus.None:
+                    break;
+                case ScoreFilterStatus.Suspicious:
+                    scoreQuery = scoreQuery.Where(s => s.Suspicious);
+                    break;
+                default:
+                    break;
+            }
+            if (search != null) {
+                string lowSearch = search.ToLower();
+                scoreQuery = scoreQuery
+                    .Where(s => s.Player.Name.ToLower().Contains(lowSearch) ||
+                                s.Player.Clans.FirstOrDefault(c => c.Name.ToLower().Contains(lowSearch)) != null ||
+                                s.Player.Clans.FirstOrDefault(c => c.Tag.ToLower().Contains(lowSearch)) != null);
+            }
+            using (_serverTiming.TimeAction("scorecount")) {
+            leaderboard.Plays = scoreQuery.Count();
+            }
+            using (_serverTiming.TimeAction("scorelist")) {
+            leaderboard.Scores = scoreQuery
+                .Skip((page - 1) * count)
+                .Take(count)
+                .Select(s => new ScoreResponse {
+                    Id = s.Id,
+                    BaseScore = s.BaseScore,
+                    ModifiedScore = s.ModifiedScore,
+                    PlayerId = s.PlayerId,
+                    Accuracy = s.Accuracy,
+                    Pp = s.Pp,
+                    Rank = s.Rank,
+                    Modifiers = s.Modifiers,
+                    BadCuts = s.BadCuts,
+                    MissedNotes = s.MissedNotes,
+                    BombCuts = s.BombCuts,
+                    WallsHit = s.WallsHit,
+                    Pauses = s.Pauses,
+                    FullCombo = s.FullCombo,
+                    Timeset = s.Timeset,
+                    Timepost = s.Timepost,
+                    MaxStreak = s.MaxStreak,
+                    AccPP = s.AccPP,
+                    TechPP = s.TechPP,
+                    PassPP = s.PassPP,
+                    Weight = s.Weight,
+                    FcAccuracy = s.FcAccuracy,
+                    FcPp = s.FcPp,
+                    Player = new PlayerResponse {
+                        Id = s.Player.Id,
+                        Name = s.Player.Name,
+                        Avatar = s.Player.Avatar,
+                        Country = s.Player.Country,
+
+                        Bot = s.Player.Bot,
+                        Pp = s.Player.Pp,
+                        Rank = s.Player.Rank,
+                        CountryRank = s.Player.CountryRank,
+                        Role = s.Player.Role,
+                        ProfileSettings = s.Player.ProfileSettings,
+                        Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id)
+                                .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                    },
+                    RankVoting = showVoters ? s.RankVoting : null,
+                })
+                .ToList();
+            }
+        }
+
+        [NonAction]
+        public async Task ContextScores(
+            LeaderboardResponse leaderboard,
+            LeaderboardContexts context,
+            bool showBots,
+            bool voters,
+            bool showVoters,
+            int page,
+            int count,
+            string sortBy,
+            Order order,
+            ScoreFilterStatus scoreStatus,
+            string? countries,
+            string? search,
+            string? modifiers,
+            List<string>? friendsList) {
+            IQueryable<ScoreContextExtension> scoreQuery = _context
+                .ScoreContextExtensions
+                .Include(s => s.Score)
+                .Where(s => s.LeaderboardId == leaderboard.Id && s.Context == context);
+
+            if (countries == null) {
+                if (friendsList != null) {
+                    scoreQuery = scoreQuery.Where(s => (!s.Score.Banned || (showBots && s.Score.Bot)) && friendsList.Contains(s.PlayerId));
+                } else if (voters) {
+                    scoreQuery = scoreQuery.Where(s => (!s.Score.Banned || (showBots && s.Score.Bot)) && s.Score.RankVoting != null);
+                } else {
+                    scoreQuery = scoreQuery.Where(s => (!s.Score.Banned || (showBots && s.Score.Bot)));
+                }
+            } else {
+                if (friendsList != null) {
+                    scoreQuery = scoreQuery.Where(s => (!s.Score.Banned || (showBots && s.Score.Bot)) && friendsList.Contains(s.PlayerId) && countries.ToLower().Contains(s.Player.Country.ToLower()));
+                } else {
+                    scoreQuery = scoreQuery.Where(s => (!s.Score.Banned || (showBots && s.Score.Bot)) && countries.ToLower().Contains(s.Player.Country.ToLower()));
+                }
+            }
+
+            if (modifiers != null) {
+                if (!modifiers.Contains("none")) {
+                    var score = Expression.Parameter(typeof(ScoreContextExtension), "s");
+
+                    var contains = typeof(string).GetMethod("Contains", new[] { typeof(string) });
+
+                    var any = modifiers.Contains("any");
+                    var not = modifiers.Contains("not");
+                    // 1 != 2 is here to trigger `OrElse` further the line.
+                    var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(any ? 2 : 1));
+                    var modifiersList = modifiers.Split(",").Where(m => m != "any" && m != "none" && m != "not");
+
+                    foreach (var term in modifiersList) {
+                        var subexpression = Expression.Call(Expression.Property(score, "Modifiers"), contains, Expression.Constant(term));
+                        if (not) {
+                            exp = Expression.And(exp, Expression.Not(subexpression));
+                        } else {
+                            if (any) {
+                                exp = Expression.OrElse(exp, subexpression);
+                            } else {
+                                exp = Expression.And(exp, subexpression);
+                            }
+                        }
+                    }
+                    scoreQuery = scoreQuery.Where((Expression<Func<ScoreContextExtension, bool>>)Expression.Lambda(exp, score));
+                } else {
+                    scoreQuery = scoreQuery.Where(s => s.Modifiers.Length == 0);
+                }
+            }
+
+            Order oppositeOrder = order.Reverse();
+
+            switch (sortBy) {
+                case "date":
+                    scoreQuery = scoreQuery.Order(order, s => s.Timeset).ThenOrder(oppositeOrder, s => s.Rank);
+                    break;
+                case "pp":
+                    scoreQuery = scoreQuery.Order(order, s => s.Pp).ThenOrder(oppositeOrder, s => s.Rank);
+                    break;
+                case "acc":
+                    scoreQuery = scoreQuery.Order(order, s => s.Accuracy);
+                    break;
+                case "pauses":
+                    scoreQuery = scoreQuery.Order(order, s => s.Score.Pauses).ThenOrder(oppositeOrder, s => s.Rank);
+                    break;
+                case "rank":
+                    scoreQuery = scoreQuery.Order(oppositeOrder, s => s.Rank);
+                    break;
+                case "maxStreak":
+                    scoreQuery = scoreQuery.Order(order, s => s.Score.MaxStreak).ThenOrder(oppositeOrder, s => s.Rank);
+                    break;
+                case "mistakes":
+                    scoreQuery = scoreQuery.Order(order, s => s.Score.BadCuts + s.Score.MissedNotes + s.Score.BombCuts + s.Score.WallsHit);
+                    break;
+                case "weight":
+                    scoreQuery = scoreQuery.Order(order, s => s.Weight);
+                    break;
+                case "weightedPp":
+                    scoreQuery = scoreQuery.Order(order, s => s.Weight * s.Pp);
+                    break;
+                default:
+                    break;
+            }
+            switch (scoreStatus) {
+                case ScoreFilterStatus.None:
+                    break;
+                case ScoreFilterStatus.Suspicious:
+                    scoreQuery = scoreQuery.Where(s => s.Score.Suspicious);
+                    break;
+                default:
+                    break;
+            }
+            if (search != null) {
+                string lowSearch = search.ToLower();
+                scoreQuery = scoreQuery
+                    .Where(s => s.Player.Name.ToLower().Contains(lowSearch) ||
+                                s.Player.Clans.FirstOrDefault(c => c.Name.ToLower().Contains(lowSearch)) != null ||
+                                s.Player.Clans.FirstOrDefault(c => c.Tag.ToLower().Contains(lowSearch)) != null);
+            }
+
+            leaderboard.Plays = scoreQuery.Count();
+            leaderboard.Scores = scoreQuery
+                .Skip((page - 1) * count)
+                .Take(count)
+                .Select(s => new ScoreResponse {
+                    Id = s.ScoreId ?? 0,
+                    BaseScore = s.BaseScore,
+                    ModifiedScore = s.ModifiedScore,
+                    PlayerId = s.PlayerId,
+                    Accuracy = s.Accuracy,
+                    Pp = s.Pp,
+                    Rank = s.Rank,
+                    Modifiers = s.Modifiers,
+                    BadCuts = s.Score.BadCuts,
+                    MissedNotes = s.Score.MissedNotes,
+                    BombCuts = s.Score.BombCuts,
+                    WallsHit = s.Score.WallsHit,
+                    Pauses = s.Score.Pauses,
+                    FullCombo = s.Score.FullCombo,
+                    Timeset = s.Score.Timeset,
+                    Timepost = s.Score.Timepost,
+                    MaxStreak = s.Score.MaxStreak,
+                    AccPP = s.AccPP,
+                    TechPP = s.TechPP,
+                    PassPP = s.PassPP,
+                    Weight = s.Weight,
+                    FcAccuracy = s.Score.FcAccuracy,
+                    FcPp = s.Score.FcPp,
+                    Player = new PlayerResponse {
+                        Id = s.Player.Id,
+                        Name = s.Player.Name,
+                        Avatar = s.Player.Avatar,
+                        Country = s.Player.Country,
+
+                        Bot = s.Player.Bot,
+                        Pp = s.Player.Pp,
+                        Rank = s.Player.Rank,
+                        CountryRank = s.Player.CountryRank,
+                        Role = s.Player.Role,
+                        ProfileSettings = s.Player.ProfileSettings,
+                        Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id)
+                                .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                    },
+                    RankVoting = showVoters ? s.Score.RankVoting : null,
+                })
+                .ToList();
+        }
+
         [HttpGet("~/leaderboard/{id}")]
         public async Task<ActionResult<LeaderboardResponse>> Get(
             string id,
@@ -40,6 +385,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] string sortBy = "rank",
             [FromQuery] Order order = Order.Desc,
             [FromQuery] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
+            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery] string? countries = null,
             [FromQuery] string? search = null,
             [FromQuery] string? modifiers = null,
@@ -139,9 +485,7 @@ namespace BeatLeader_Server.Controllers {
                     leaderboard.HideRatings();
                 }
 
-                var scoreQuery = currentContext.Scores.Where(s => s.LeaderboardId == leaderboard.Id);
                 bool showVoters = false;
-
                 if (voters) {
                     if (isRt) {
                         showVoters = true;
@@ -172,162 +516,12 @@ namespace BeatLeader_Server.Controllers {
                     }
                 }
 
-                if (countries == null) {
-                    if (friendsList != null) {
-                        scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)) && friendsList.Contains(s.PlayerId));
-                    } else if (voters) {
-                        scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)) && s.RankVoting != null);
-                    } else {
-                        scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)));
-                    }
+                if (leaderboardContext == LeaderboardContexts.General || leaderboardContext == LeaderboardContexts.None) {
+                    await GeneralScores(leaderboard, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList);
                 } else {
-                    if (friendsList != null) {
-                        scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)) && friendsList.Contains(s.PlayerId) && countries.ToLower().Contains(s.Player.Country.ToLower()));
-                    } else {
-                        scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)) && countries.ToLower().Contains(s.Player.Country.ToLower()));
-                    }
+                    await ContextScores(leaderboard, leaderboardContext, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList);
                 }
 
-                if (modifiers != null) {
-                    if (!modifiers.Contains("none")) {
-                        var score = Expression.Parameter(typeof(Score), "s");
-
-                        var contains = typeof(string).GetMethod("Contains", new[] { typeof(string) });
-
-                        var any = modifiers.Contains("any");
-                        var not = modifiers.Contains("not");
-                        // 1 != 2 is here to trigger `OrElse` further the line.
-                        var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(any ? 2 : 1));
-                        var modifiersList = modifiers.Split(",").Where(m => m != "any" && m != "none" && m != "not");
-
-                        foreach (var term in modifiersList) {
-                            var subexpression = Expression.Call(Expression.Property(score, "Modifiers"), contains, Expression.Constant(term));
-                            if (not) {
-                                exp = Expression.And(exp, Expression.Not(subexpression));
-                            } else {
-                                if (any) {
-                                    exp = Expression.OrElse(exp, subexpression);
-                                } else {
-                                    exp = Expression.And(exp, subexpression);
-                                }
-                            }
-                        }
-                        scoreQuery = scoreQuery.Where((Expression<Func<Score, bool>>)Expression.Lambda(exp, score));
-                    } else {
-                        scoreQuery = scoreQuery.Where(s => s.Modifiers.Length == 0);
-                    }
-                }
-
-                Order oppositeOrder = order.Reverse();
-
-                switch (sortBy) {
-                    case "date":
-                        scoreQuery = scoreQuery.Order(order, s => s.Timepost).ThenOrder(oppositeOrder, s => s.Rank);
-                        break;
-                    case "pp":
-                        scoreQuery = scoreQuery.Order(order, s => s.Pp).ThenOrder(oppositeOrder, s => s.Rank);
-                        break;
-                    case "acc":
-                        scoreQuery = scoreQuery.Order(order, s => s.Accuracy);
-                        break;
-                    case "pauses":
-                        scoreQuery = scoreQuery.Order(order, s => s.Pauses).ThenOrder(oppositeOrder, s => s.Rank);
-                        break;
-                    case "rank":
-                        scoreQuery = leaderboard.Difficulty.Status.WithPP() 
-                                ? scoreQuery
-                                    .Order(order, el => Math.Round(el.Pp, 2))
-                                    .ThenOrder(order, el => Math.Round(el.Accuracy, 4))
-                                    .ThenOrder(oppositeOrder, el => el.Timeset)
-                                : scoreQuery
-                                    .Order(oppositeOrder, el => el.Priority)
-                                    .ThenOrder(order, el => el.ModifiedScore)
-                                    .ThenOrder(order, el => Math.Round(el.Accuracy, 4))
-                                    .ThenOrder(oppositeOrder, el => el.Timeset);
-                        break;
-                    case "maxStreak":
-                        scoreQuery = scoreQuery.Order(order, s => s.MaxStreak).ThenOrder(oppositeOrder, s => s.Rank);
-                        break;
-                    case "mistakes":
-                        scoreQuery = scoreQuery.Order(order, s => s.BadCuts + s.MissedNotes + s.BombCuts + s.WallsHit);
-                        break;
-                    case "weight":
-                        scoreQuery = scoreQuery.Order(order, s => s.Weight);
-                        break;
-                    case "weightedPp":
-                        scoreQuery = scoreQuery.Order(order, s => s.Weight * s.Pp);
-                        break;
-                    default:
-                        break;
-                }
-                switch (scoreStatus) {
-                    case ScoreFilterStatus.None:
-                        break;
-                    case ScoreFilterStatus.Suspicious:
-                        scoreQuery = scoreQuery.Where(s => s.Suspicious);
-                        break;
-                    default:
-                        break;
-                }
-                if (search != null) {
-                    string lowSearch = search.ToLower();
-                    scoreQuery = scoreQuery
-                        .Where(s => s.Player.Name.ToLower().Contains(lowSearch) ||
-                                    s.Player.Clans.FirstOrDefault(c => c.Name.ToLower().Contains(lowSearch)) != null ||
-                                    s.Player.Clans.FirstOrDefault(c => c.Tag.ToLower().Contains(lowSearch)) != null);
-                }
-                using (_serverTiming.TimeAction("scorecount")) {
-                leaderboard.Plays = scoreQuery.Count();
-                }
-                using (_serverTiming.TimeAction("scorelist")) {
-                leaderboard.Scores = scoreQuery
-                    .Skip((page - 1) * count)
-                    .Take(count)
-                    .AsSplitQuery()
-                    .Select(s => new ScoreResponse {
-                        Id = s.Id,
-                        BaseScore = s.BaseScore,
-                        ModifiedScore = s.ModifiedScore,
-                        PlayerId = s.PlayerId,
-                        Accuracy = s.Accuracy,
-                        Pp = s.Pp,
-                        Rank = s.Rank,
-                        Modifiers = s.Modifiers,
-                        BadCuts = s.BadCuts,
-                        MissedNotes = s.MissedNotes,
-                        BombCuts = s.BombCuts,
-                        WallsHit = s.WallsHit,
-                        Pauses = s.Pauses,
-                        FullCombo = s.FullCombo,
-                        Timeset = s.Timeset,
-                        Timepost = s.Timepost,
-                        MaxStreak = s.MaxStreak,
-                        AccPP = s.AccPP,
-                        TechPP = s.TechPP,
-                        PassPP = s.PassPP,
-                        Weight = s.Weight,
-                        FcAccuracy = s.FcAccuracy,
-                        FcPp = s.FcPp,
-                        Player = new PlayerResponse {
-                            Id = s.Player.Id,
-                            Name = s.Player.Name,
-                            Avatar = s.Player.Avatar,
-                            Country = s.Player.Country,
-
-                            Bot = s.Player.Bot,
-                            Pp = s.Player.Pp,
-                            Rank = s.Player.Rank,
-                            CountryRank = s.Player.CountryRank,
-                            Role = s.Player.Role,
-                            ProfileSettings = s.Player.ProfileSettings,
-                            Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
-                            .ThenBy(c => c.Id)
-                                .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                        },
-                        RankVoting = showVoters ? s.RankVoting : null,
-                    })
-                    .ToList();
-                }
                 foreach (var score in leaderboard.Scores) {
                     score.Player = PostProcessSettings(score.Player);
                 }
@@ -367,35 +561,11 @@ namespace BeatLeader_Server.Controllers {
                     } else {
                         DifficultyDescription? difficulty = song.Difficulties.OrderByDescending(d => d.Value).FirstOrDefault();
 
-                        return difficulty == null ? NotFound() : await Get(song.Id + difficulty.Value + difficulty.Mode, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friends, voters);
+                        return difficulty == null ? NotFound() : await Get(song.Id + difficulty.Value + difficulty.Mode, page, count, sortBy, order, scoreStatus, leaderboardContext, countries, search, modifiers, friends, voters);
                     }
                 } else {
                     DifficultyDescription difficulty = song.Difficulties.First(d => song.Id + d.Value + d.Mode == id);
                     return ResponseFromLeaderboard((await GetByHash(song.Hash, difficulty.DifficultyName, difficulty.ModeName)).Value);
-                }
-            } else if (leaderboard.Reweight != null && !leaderboard.Reweight.Finished) {
-                if (isRt) {
-                    var reweight = leaderboard.Reweight;
-                    var recalculated = leaderboard.Scores.Select(s => {
-
-                        s.ModifiedScore = (int)(s.BaseScore * reweight.Modifiers.GetNegativeMultiplier(s.Modifiers));
-
-                        if (leaderboard.Difficulty.MaxScore > 0) {
-                            s.Accuracy = (float)s.BaseScore / (float)leaderboard.Difficulty.MaxScore;
-                        } else {
-                            s.Accuracy = (float)s.BaseScore / (float)ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
-                        }
-                        (s.Pp, s.BonusPp, s.PassPP, s.AccPP, s.TechPP) = ReplayUtils.PpFromScoreResponse(s, ReplayUtils.AccRating(reweight.PredictedAcc, reweight.PassRating, reweight.TechRating), reweight.PassRating, reweight.TechRating, reweight.Modifiers, reweight.ModifiersRating);
-
-                        return s;
-                    });
-
-                    var rankedScores = recalculated.OrderByDescending(el => el.Pp).ToList();
-                    foreach ((int i, ScoreResponse s) in rankedScores.Select((value, i) => (i, value))) {
-                        s.Rank = i + 1 + ((page - 1) * count);
-                    }
-
-                    leaderboard.Scores = recalculated.ToList();
                 }
             } else if (leaderboard.Difficulty.Status == DifficultyStatus.nominated) {
 
@@ -696,7 +866,7 @@ namespace BeatLeader_Server.Controllers {
                 Qualification = lb.Qualification,
                 Difficulty = lb.Difficulty,
                 Reweight = lb.Reweight,
-                Clan = lb.ClanRanking?.Clan,
+                Clan = lb.Clan,
                 ClanRankingContested = lb.ClanRankingContested,
             }).ToList();
 

@@ -184,16 +184,6 @@ namespace BeatLeader_Server.Services
                               .Build()
                         });
 
-                        if (leaderboard.Qualification.DiscordChannelId.Length > 0)
-                        {
-                            try
-                            {
-                                var forum = scope.ServiceProvider.GetRequiredService<NominationsForum>();
-                                await forum.NominationRanked(leaderboard.Qualification.DiscordChannelId);
-                            }
-                            catch { }
-                        }
-
                         if (leaderboard.Qualification.DiscordRTChannelId.Length > 0)
                         {
                             try

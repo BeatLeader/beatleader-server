@@ -16,46 +16,46 @@
 
   <ItemGroup>
     <PackageReference Include="Anemonis.AspNetCore.RequestDecompression" Version="1.14.0" />
-    <PackageReference Include="AspNet.Security.OAuth.Discord" Version="7.0.2" />
-    <PackageReference Include="AspNet.Security.OAuth.Patreon" Version="7.0.2" />
-    <PackageReference Include="AspNet.Security.OAuth.Twitch" Version="7.0.2" />
-    <PackageReference Include="AspNet.Security.OAuth.Twitter" Version="7.0.2" />
+    <PackageReference Include="AspNet.Security.OAuth.Discord" Version="7.0.4" />
+    <PackageReference Include="AspNet.Security.OAuth.Patreon" Version="7.0.4" />
+    <PackageReference Include="AspNet.Security.OAuth.Twitch" Version="7.0.4" />
+    <PackageReference Include="AspNet.Security.OAuth.Twitter" Version="7.0.4" />
     <PackageReference Include="AspNet.Security.OpenId.Steam" Version="7.0.0" />
     <PackageReference Include="AspNetCoreRateLimit" Version="5.0.0" />
     <PackageReference Include="AsyncEnumerator" Version="4.0.2" />
-    <PackageReference Include="AWSSDK.S3" Version="3.7.200.1" />
+    <PackageReference Include="AWSSDK.S3" Version="3.7.203.11" />
     <PackageReference Include="CoreHtmlToImage" Version="1.0.6" />
-    <PackageReference Include="Discord.Net.Webhook" Version="3.10.0" />
-    <PackageReference Include="Discord.Net.WebSocket" Version="3.10.0" />
+    <PackageReference Include="Discord.Net.Webhook" Version="3.12.0" />
+    <PackageReference Include="Discord.Net.WebSocket" Version="3.12.0" />
     <PackageReference Include="geohash-dotnet" Version="2.0.0" />
     <PackageReference Include="IP2Location.IPGeolocation" Version="8.11.0" />
     <PackageReference Include="Lib.AspNetCore.ServerTiming" Version="6.0.0" />
     <PackageReference Include="Lucene.Net" Version="4.8.0-beta00016" />
     <PackageReference Include="Lucene.Net.Analysis.Common" Version="4.8.0-beta00016" />
     <PackageReference Include="Lucene.Net.QueryParser" Version="4.8.0-beta00016" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="7.0.7" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="7.0.7">
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="7.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="7.0.10">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="7.0.7" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="7.0.7">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="7.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="7.0.10">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="OpenIddict.AspNetCore" Version="4.4.0" />
-    <PackageReference Include="OpenIddict.EntityFrameworkCore" Version="4.4.0" />
+    <PackageReference Include="OpenIddict.AspNetCore" Version="4.7.0" />
+    <PackageReference Include="OpenIddict.EntityFrameworkCore" Version="4.7.0" />
     <PackageReference Include="Prometheus.Client" Version="5.2.0" />
     <PackageReference Include="Prometheus.Client.Abstractions" Version="5.2.0" />
-    <PackageReference Include="Prometheus.Client.AspNetCore" Version="4.8.0" />
-    <PackageReference Include="Prometheus.Client.DependencyInjection" Version="1.2.1" />
+    <PackageReference Include="Prometheus.Client.AspNetCore" Version="5.0.0" />
+    <PackageReference Include="Prometheus.Client.DependencyInjection" Version="1.3.0" />
     <PackageReference Include="Prometheus.Client.HealthChecks" Version="1.1.1" />
     <PackageReference Include="Prometheus.Client.HttpRequestDurations" Version="3.6.0" />
     <PackageReference Include="Prometheus.Client.MetricPusher" Version="3.1.0" />
     <PackageReference Include="SharpZipLib" Version="1.4.2" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.0.1" />
-    <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="1.0.0-beta15" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.0.2" />
+    <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="1.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore.Swagger" Version="6.5.0" />
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="6.5.0" />
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="6.5.0" />

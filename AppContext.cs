@@ -1,5 +1,6 @@
 ﻿using BeatLeader_Server.Models;
 using Microsoft.EntityFrameworkCore;
+using OpenIddict.EntityFrameworkCore.Models;
 
 namespace BeatLeader_Server
 {
@@ -64,6 +65,9 @@ namespace BeatLeader_Server
 
         public DbSet<VoterFeedback> VoterFeedback { get; set; }
         public DbSet<SongSearch> SongSearches { get; set; }
+        public DbSet<ScoreContextExtension> ScoreContextExtensions { get; set; }
+        public DbSet<PlayerContextExtension> PlayerContextExtensions { get; set; }
+        public DbSet<OpenIddictEntityFrameworkCoreScope> OpenIddictScopes { get; set; }
 
         public void RejectChanges()
         {

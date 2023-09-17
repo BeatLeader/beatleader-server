@@ -43,7 +43,11 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/player/{id}")]
-        public async Task<ActionResult<PlayerResponseFull>> Get(string id, bool stats = true, [FromQuery] bool keepOriginalId = false)
+        public async Task<ActionResult<PlayerResponseFull>> Get(
+            string id, 
+            bool stats = true, 
+            [FromQuery] bool keepOriginalId = false,
+            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
         {
             string userId = _context.PlayerIdToMain(id);
             Player? player;
@@ -105,7 +109,7 @@ namespace BeatLeader_Server.Controllers
                     Role = player.Role,
                     Socials = player.Socials,
                     ProfileSettings = player.ProfileSettings,
-                    Clans = stats 
+                    Clans = stats && player.Clans != null
                         ? player
                             .Clans
                             .OrderBy(c => player.ClanOrder.IndexOf(c.Tag))
@@ -119,6 +123,17 @@ namespace BeatLeader_Server.Controllers
 
                 if (keepOriginalId && result.Id != id) {
                     result.Id = id;
+                }
+
+                if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
+                    var contextExtension = _context
+                        .PlayerContextExtensions
+                        .Include(p => p.ScoreStats)
+                        .Where(p => p.PlayerId == userId && p.Context == leaderboardContext)
+                        .FirstOrDefault();
+                    if (contextExtension != null) {
+                        result.ToContext(contextExtension);
+                    }
                 }
 
                 return PostProcessSettings(result);
@@ -160,6 +175,8 @@ namespace BeatLeader_Server.Controllers
                 .Include(p => p.EventsParticipating)
                 .Include(p => p.ProfileSettings)
                 .Include(p => p.Clans)
+                .Include(p => p.ContextExtensions)
+                .ThenInclude(ce => ce.ScoreStats)
                 .FirstOrDefault(p => p.Id == id);
 
             if (player == null) {
@@ -278,7 +295,7 @@ namespace BeatLeader_Server.Controllers
             {
                 return NotFound("No link");
             }
-
+            
             return link;
         }
 
@@ -382,6 +399,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string countries = "",
             [FromQuery] string mapsType = "ranked",
             [FromQuery] string ppType = "general",
+            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery] bool friends = false,
             [FromQuery] string? pp_range = null,
             [FromQuery] string? score_range = null,
@@ -392,6 +410,10 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int? activityPeriod = null,
             [FromQuery] bool? banned = null)
         {
+            if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
+                return await GetContextPlayers(sortBy, page, count, search, order, countries, mapsType, ppType, leaderboardContext, friends, pp_range, score_range, platform, role, hmd, clans, activityPeriod, banned);
+            }
+
             IQueryable<Player> request = 
                 _readContext
                 .Players
@@ -596,12 +618,236 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
-        private IQueryable<Player> Sorted(
-            IQueryable<Player> request, 
+        [NonAction]
+        public async Task<ActionResult<ResponseWithMetadata<PlayerResponseWithStats>>> GetContextPlayers(
+            [FromQuery] string sortBy = "pp", 
+            [FromQuery] int page = 1, 
+            [FromQuery] int count = 50, 
+            [FromQuery] string search = "",
+            [FromQuery] Order order = Order.Desc,
+            [FromQuery] string countries = "",
+            [FromQuery] string mapsType = "ranked",
+            [FromQuery] string ppType = "general",
+            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
+            [FromQuery] bool friends = false,
+            [FromQuery] string? pp_range = null,
+            [FromQuery] string? score_range = null,
+            [FromQuery] string? platform = null,
+            [FromQuery] string? role = null,
+            [FromQuery] string? hmd = null,
+            [FromQuery] string? clans = null,
+            [FromQuery] int? activityPeriod = null,
+            [FromQuery] bool? banned = null)
+        {
+            IQueryable<PlayerContextExtension> request = 
+                _context
+                .PlayerContextExtensions
+                .Where(p => p.Context == leaderboardContext)
+                .Include(p => p.ScoreStats)
+                .Include(p => p.Player)
+                .ThenInclude(p => p.Clans)
+                .Include(p => p.Player)
+                .ThenInclude(p => p.ProfileSettings);
+
+            string? currentID = HttpContext.CurrentUserID(_context);
+            bool showBots = currentID != null ? _context
+                .Players
+                .Where(p => p.Id == currentID)
+                .Select(p => p.ProfileSettings != null ? p.ProfileSettings.ShowBots : false)
+                .FirstOrDefault() : false;
+
+            if (banned != null) {
+                var player = await _context.Players.FindAsync(currentID);
+                if (player == null || !player.Role.Contains("admin"))
+                {
+                    return NotFound();
+                }
+
+                bool bannedUnwrapped = (bool)banned;
+
+                request = request.Where(p => p.Player.Banned == bannedUnwrapped);
+            } else {
+                request = request.Where(p => !p.Player.Banned || ((showBots || search.Length > 0) && p.Player.Bot));
+            }
+            if (countries.Length != 0)
+            {
+                var player = Expression.Parameter(typeof(PlayerContextExtension), "p");
+
+                // 1 != 2 is here to trigger `OrElse` further the line.
+                var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
+                foreach (var term in countries.ToLower().Split(","))
+                {
+                    exp = Expression.OrElse(exp, Expression.Equal(Expression.Property(player, "Country"), Expression.Constant(term)));
+                }
+                request = request.Where((Expression<Func<PlayerContextExtension, bool>>)Expression.Lambda(exp, player));
+            }
+            List<string>? ids = null;
+            List<PlayerMetadata>? searchMatch = null;
+            if (search?.Length > 0) {
+                searchMatch = PlayerSearchService.Search(search);
+                ids = searchMatch.Select(m => m.Id).ToList();
+
+                request = request.Where(p => ids.Contains(p.PlayerId));
+            }
+
+            if (clans != null)
+            {
+                request = request.Where(p => p.Player.Clans.FirstOrDefault(c => clans.Contains(c.Tag)) != null);
+            }
+            if (platform != null) {
+                var platforms = platform.ToLower().Split(",");
+                request = request.Where(p => platforms.Contains(p.ScoreStats.TopPlatform.ToLower()));
+            }
+            if (role != null)
+            {
+                var player = Expression.Parameter(typeof(PlayerContextExtension), "p");
+
+                var contains = "".GetType().GetMethod("Contains", new[] { typeof(string) });
+
+                // 1 != 2 is here to trigger `OrElse` further the line.
+                var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
+                foreach (var term in role.ToLower().Split(","))
+                {
+                    exp = Expression.OrElse(exp, Expression.Call(Expression.Property(player, "Role"), contains, Expression.Constant(term)));
+                }
+                request = request.Where((Expression<Func<PlayerContextExtension, bool>>)Expression.Lambda(exp, player));
+            }
+            if (hmd != null)
+            {
+                try
+                {
+                    var hmds = hmd.ToLower().Split(",").Select(s => (HMD)Int32.Parse(s));
+                    request = request.Where(p => hmds.Contains(p.ScoreStats.TopHMD));
+                }
+                catch { }
+            }
+            if (pp_range != null)
+            {
+                try {
+                    var array = pp_range.Split(",").Select(s => float.Parse(s)).ToArray();
+                    float from = array[0]; float to = array[1];
+                    request = request.Where(p => p.Pp >= from && p.Pp <= to);
+                } catch { }
+            }
+            if (score_range != null)
+            {
+                try
+                {
+                    var array = score_range.Split(",").Select(s => int.Parse(s)).ToArray();
+                    int from = array[0]; int to = array[1];
+                    switch (mapsType)
+                    {
+                        case "ranked":
+                            request = request.Where(p => p.ScoreStats.RankedPlayCount >= from && p.ScoreStats.RankedPlayCount <= to);
+                            break;
+                        case "unranked":
+                            request = request.Where(p => p.ScoreStats.UnrankedPlayCount >= from && p.ScoreStats.UnrankedPlayCount <= to);
+                            break;
+                        case "all":
+                            request = request.Where(p => p.ScoreStats.TotalPlayCount >= from && p.ScoreStats.TotalPlayCount <= to);
+                            break;
+                    }
+                    
+                }
+                catch { }
+            }
+            if (friends) {
+                string userId = HttpContext.CurrentUserID(_readContext);
+                var player = await _readContext.Players.FindAsync(userId);
+                if (player == null)
+                {
+                    return NotFound();
+                }
+                var friendsContainer = _readContext.Friends.Where(f => f.Id == player.Id).Include(f => f.Friends).FirstOrDefault();
+                if (friendsContainer != null)
+                {
+                    var friendsList = friendsContainer.Friends.Select(f => f.Id).ToList();
+                    request = request.Where(p => p.PlayerId == player.Id || friendsList.Contains(p.PlayerId));
+                }
+                else
+                {
+                    request = request.Where(p => p.PlayerId == player.Id);
+                }
+            }
+            if (activityPeriod != null) {
+                int timetreshold = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - (int)activityPeriod;
+
+                switch (mapsType)
+                {
+                    case "ranked":
+                        request = request.Where(p => p.ScoreStats.LastRankedScoreTime >= timetreshold);
+                        break;
+                    case "unranked":
+                        request = request.Where(p => p.ScoreStats.LastUnrankedScoreTime >= timetreshold);
+                        break;
+                    case "all":
+                        request = request.Where(p => p.ScoreStats.LastScoreTime >= timetreshold);
+                        break;
+                }
+            }
+            
+            var result = new ResponseWithMetadata<PlayerResponseWithStats>()
+            {
+                Metadata = new Metadata()
+                {
+                    Page = page,
+                    ItemsPerPage = count,
+                    Total = request.Count()
+                }
+            };
+
+            if (searchMatch?.Count > 0) {
+                var matchedAndFiltered = request.Select(p => p.PlayerId).ToList();
+                var sorted = matchedAndFiltered
+                             .OrderByDescending(p => searchMatch.First(m => m.Id == p).Score)
+                             .Skip((page - 1) * count)
+                             .Take(count)
+                             .ToList();
+
+                request = request.Where(p => sorted.Contains(p.PlayerId));
+            } else {
+                request = Sorted(request, sortBy, ppType, order, mapsType).Skip((page - 1) * count).Take(count);
+            }
+
+            result.Data = request.Select(p => new PlayerResponseWithStats
+                {
+                    Id = p.PlayerId,
+                    Name = p.Player.Name,
+                    Platform = p.Player.Platform,
+                    Avatar = p.Player.Avatar,
+                    Country = p.Country,
+                    ScoreStats = p.ScoreStats,
+
+                    Pp = p.Pp,
+                    TechPp= p.TechPp,
+                    AccPp = p.AccPp,
+                    PassPp = p.PassPp,
+                    Rank = p.Rank,
+                    CountryRank = p.CountryRank,
+                    LastWeekPp = p.LastWeekPp,
+                    LastWeekRank = p.LastWeekRank,
+                    LastWeekCountryRank = p.LastWeekCountryRank,
+                    Role = p.Player.Role,
+                    EventsParticipating = p.Player.EventsParticipating,
+                    PatreonFeatures = p.Player.PatreonFeatures,
+                    ProfileSettings = p.Player.ProfileSettings,
+                    Clans = p.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                }).ToList().Select(PostProcessSettings);
+
+            if (ids?.Count > 0)
+            {
+                result.Data = result.Data.OrderBy(e => ids.IndexOf(e.Id));
+            }
+
+            return result;
+        }
+
+        private IQueryable<T> Sorted<T>(
+            IQueryable<T> request, 
             string sortBy, 
             string ppType,
             Order order, 
-            string mapsType) {
+            string mapsType) where T : IPlayer {
             if (sortBy == "pp") {
                 switch (ppType)
                 {
