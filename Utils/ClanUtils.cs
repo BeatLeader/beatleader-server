@@ -40,17 +40,21 @@ namespace BeatLeader_Server.Utils
 
         public static float RecalculateClanPP(this AppContext context, int clanId)
         {
-            Clan clan = context.Clans.Where(c => c.Id == clanId).Include(c => c.Players).FirstOrDefault();
-            var ranked = clan.Players.OrderByDescending(s => s.Pp).ToList();
+            Clan? clan = context.Clans.Where(c => c.Id == clanId).Include(c => c.Players).FirstOrDefault();
             float resultPP = 0f;
-            foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
-            {
-                float weight = MathF.Pow(0.965f, i);
-                resultPP += p.Pp * weight;
+            if (clan != null) {
+                var ranked = clan.Players.OrderByDescending(s => s.Pp).ToList();
+            
+                foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
+                {
+                    float weight = MathF.Pow(0.965f, i);
+                    resultPP += p.Pp * weight;
+                }
             }
             return resultPP;
         }
-        public static void UpdateClanRanking(this AppContext context, Leaderboard leaderboard, Score currentScore, Score newScore)
+
+        public static void UpdateClanRanking(this AppContext context, Leaderboard? leaderboard, Score? currentScore, Score newScore)
         {
             if (leaderboard != null && 
                (newScore.Player.Clans != null) &&
@@ -100,7 +104,7 @@ namespace BeatLeader_Server.Utils
 
                         var associatedScores = context
                             .Scores
-                            .Where(s => s.LeaderboardId == leaderboard.Id && s.Player.Clans.Contains(clan))
+                            .Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && s.LeaderboardId == leaderboard.Id && s.Player.Clans.Contains(clan))
                             .Include(s => s.Player)
                             .ThenInclude(s => s.Clans)
                             .OrderBy(a => Math.Round(a.Pp, 2))
@@ -250,7 +254,7 @@ namespace BeatLeader_Server.Utils
                     .Scores
                     .Include(s => s.Player)
                     .ThenInclude(p => p.Clans)
-                    .Where(s => s.LeaderboardId == leaderboard.Id && !s.Banned && s.Player.Clans.Count != 0)
+                    .Where(s => s.LeaderboardId == leaderboard.Id && s.ValidContexts.HasFlag(LeaderboardContexts.General) && !s.Banned && s.Player.Clans.Count != 0)
                     .OrderByDescending(el => el.Pp)
                     .ToList();
 
