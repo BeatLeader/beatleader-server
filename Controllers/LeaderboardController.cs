@@ -1,7 +1,6 @@
 ﻿using Amazon.S3;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
-using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +9,7 @@ using BeatLeader_Server.Enums;
 using static BeatLeader_Server.Utils.ResponseUtils;
 using Type = BeatLeader_Server.Enums.Type;
 using Lib.ServerTiming;
+using Microsoft.EntityFrameworkCore.Infrastructure.Internal;
 
 namespace BeatLeader_Server.Controllers {
     public class LeaderboardController : Controller {
@@ -390,7 +390,8 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] string? search = null,
             [FromQuery] string? modifiers = null,
             [FromQuery] bool friends = false,
-            [FromQuery] bool voters = false) {
+            [FromQuery] bool voters = false,
+            [FromQuery] bool clanRanking = false) {
             var currentContext = _readContext;
 
             string? currentID = HttpContext.CurrentUserID(currentContext);
@@ -449,7 +450,6 @@ namespace BeatLeader_Server.Controllers {
                     .ThenInclude(glb => glb.Difficulty);
 
 
-
             LeaderboardResponse? leaderboard;
             using (_serverTiming.TimeAction("leaderboard")) {
                 leaderboard = query
@@ -462,6 +462,7 @@ namespace BeatLeader_Server.Controllers {
                 Qualification = l.Qualification,
                 Reweight = l.Reweight,
                 Changes = l.Changes,
+                ClanRankingContested = l.ClanRankingContested,
                 LeaderboardGroup = l.LeaderboardGroup.Leaderboards.Select(it =>
                     new LeaderboardGroupEntry {
                         Id = it.Id,
@@ -524,6 +525,31 @@ namespace BeatLeader_Server.Controllers {
                 foreach (var score in leaderboard.Scores) {
                     score.Player = PostProcessSettings(score.Player);
                 }
+
+                // Required for the leaderboard header on the website to declare who has captured the leaderboard
+                leaderboard.ClanRanking = currentContext
+                    .ClanRanking
+                    .Include(cr => cr.Clan)
+                    .Where(cr => cr.LeaderboardId == leaderboard.Id)
+                    .OrderByDescending(cr => cr.Pp)
+                    .ThenByDescending(cr => cr.AverageAccuracy)
+                    .ThenByDescending(cr => cr.LastUpdateTime)
+                    .Take(1)
+                    .Select(cr => new ClanRankingResponse
+                    {
+                        Id = cr.Id,
+                        Clan = cr.Clan,
+                        LastUpdateTime = cr.LastUpdateTime,
+                        AverageRank = cr.AverageRank,
+                        Pp = cr.Pp,
+                        AverageAccuracy = cr.AverageAccuracy,
+                        TotalScore = cr.TotalScore,
+                        LeaderboardId = cr.LeaderboardId,
+                        Leaderboard = cr.Leaderboard,
+                        AssociatedScores = null,
+                        AssociatedScoresCount = 0
+                    })
+                    .ToList();
             }
 
             if (leaderboard == null) {
@@ -575,8 +601,225 @@ namespace BeatLeader_Server.Controllers {
                 }
             }
 
-            for (int i = 0; i < leaderboard.Scores.Count; i++) {
+            for (int i = 0; i < leaderboard.Scores?.Count; i++) {
                 leaderboard.Scores[i].Rank = i + (page - 1) * count + 1;
+            }
+
+            return leaderboard;
+        }
+
+        [HttpGet("~/leaderboard/clanRankings/{leaderboardId}/{clanRankingId}")]
+        public async Task<ActionResult<ClanRankingResponse>> GetClanRankingAssociatedScores(
+            string leaderboardId,
+            int clanRankingId,
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 5)
+        {
+            var currentContext = _readContext;
+
+            var clanRankingScores = currentContext
+                .ClanRanking
+                .Where(cr => cr.LeaderboardId == leaderboardId && cr.Id == clanRankingId)
+                .Select(cr => new ClanRankingResponse
+                {
+                    Id = cr.Id,
+                    Clan = cr.Clan,
+                    LastUpdateTime = cr.LastUpdateTime,
+                    AverageRank = cr.AverageRank,
+                    Pp = cr.Pp,
+                    AverageAccuracy = cr.AverageAccuracy,
+                    TotalScore = cr.TotalScore,
+                    LeaderboardId = cr.LeaderboardId,
+                    Leaderboard = cr.Leaderboard,
+                    AssociatedScores = currentContext
+                        .Scores
+                        .Where(s => s.LeaderboardId == leaderboardId && s.Player.Clans.Contains(cr.Clan))
+                        .Include(sc => sc.Player)
+                        .ThenInclude(p => p.ProfileSettings)
+                        .Include(s => s.Player)
+                        .ThenInclude(s => s.Clans)
+                        .OrderBy(s => s.Rank)
+                        .Skip((page - 1) * count)
+                        .Take(count)
+                        .Select(s => new ScoreResponse
+                        {
+                            Id = s.Id,
+                            BaseScore = s.BaseScore,
+                            ModifiedScore = s.ModifiedScore,
+                            PlayerId = s.PlayerId,
+                            Accuracy = s.Accuracy,
+                            Pp = s.Pp,
+                            Rank = s.Rank,
+                            Modifiers = s.Modifiers,
+                            BadCuts = s.BadCuts,
+                            MissedNotes = s.MissedNotes,
+                            BombCuts = s.BombCuts,
+                            WallsHit = s.WallsHit,
+                            Pauses = s.Pauses,
+                            FullCombo = s.FullCombo,
+                            Timeset = s.Timeset,
+                            Timepost = s.Timepost,
+                            Player = new PlayerResponse
+                            {
+                                Id = s.Player.Id,
+                                Name = s.Player.Name,
+                                Avatar = s.Player.Avatar,
+                                Country = s.Player.Country,
+                                Pp = s.Player.Pp,
+                                Rank = s.Player.Rank,
+                                CountryRank = s.Player.CountryRank,
+                                Role = s.Player.Role,
+                                ProfileSettings = s.Player.ProfileSettings,
+                                Clans = s.Player.Clans
+                                    .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                            },
+                            RankVoting = null,
+                        })
+                        .ToList(),
+                    AssociatedScoresCount = currentContext
+                        .Scores
+                        .Where(sc => sc.LeaderboardId == leaderboardId && sc.Player.Clans.Contains(cr.Clan))
+                        .Count()
+                })
+                .FirstOrDefault();
+
+            return clanRankingScores;
+        }
+
+
+        [HttpGet("~/leaderboard/clanRankings/{id}")]
+        public async Task<ActionResult<LeaderboardResponse>> GetClanRankings(
+            string id,
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10)
+        {
+            var currentContext = _readContext;
+
+            string? currentID = HttpContext.CurrentUserID(currentContext);
+            var currentPlayer = currentID != null ? await currentContext
+                .Players
+                .Where(p => p.Id == currentID)
+                .Select(p => new {
+                    p.Role,
+                    ShowBots = p.ProfileSettings != null ? p.ProfileSettings.ShowBots : false,
+                    ShowAllRatings = p.ProfileSettings != null ? p.ProfileSettings.ShowAllRatings : false,
+                    p.MapperId
+                })
+                .FirstOrDefaultAsync() : null;
+
+            bool showBots = currentPlayer?.ShowBots ?? false;
+
+            bool isRt = (currentPlayer != null &&
+                            (currentPlayer.Role.Contains("admin") ||
+                             currentPlayer.Role.Contains("rankedteam") ||
+                             currentPlayer.Role.Contains("qualityteam")));
+
+            IQueryable<Leaderboard> query = currentContext
+                    .Leaderboards
+                    .Where(lb => lb.Id == id)
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(d => d.ModifierValues)
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(d => d.ModifiersRating)
+                    .Include(lb => lb.Qualification)
+                    .ThenInclude(lb => lb.Votes)
+                    .Include(lb => lb.Qualification)
+                    .ThenInclude(q => q.Modifiers)
+                    .Include(lb => lb.Qualification)
+                    .ThenInclude(q => q.CriteriaComments)
+                    .Include(lb => lb.Qualification)
+                    .ThenInclude(q => q.Changes)
+                    .ThenInclude(ch => ch.NewModifiers)
+                    .Include(lb => lb.Qualification)
+                    .ThenInclude(q => q.Changes)
+                    .ThenInclude(ch => ch.OldModifiers)
+                    .Include(lb => lb.Reweight)
+                    .ThenInclude(q => q.Changes)
+                    .ThenInclude(ch => ch.NewModifiers)
+                    .Include(lb => lb.Reweight)
+                    .ThenInclude(q => q.Changes)
+                    .ThenInclude(ch => ch.OldModifiers)
+                    .Include(lb => lb.Reweight)
+                    .ThenInclude(q => q.Modifiers)
+                    .Include(lb => lb.Changes)
+                    .ThenInclude(ch => ch.NewModifiers)
+                    .Include(lb => lb.Changes)
+                    .ThenInclude(ch => ch.OldModifiers)
+                    .Include(lb => lb.Song)
+                    .ThenInclude(s => s.Difficulties)
+                    .Include(lb => lb.LeaderboardGroup)
+                    .ThenInclude(g => g.Leaderboards)
+                    .ThenInclude(glb => glb.Difficulty);
+
+
+            LeaderboardResponse? leaderboard;
+            using (_serverTiming.TimeAction("leaderboard"))
+            {
+                leaderboard = query
+                .AsSplitQuery()
+                .Select(l => new LeaderboardResponse
+                {
+                    Id = l.Id,
+                    Song = l.Song,
+                    Difficulty = l.Difficulty,
+                    Plays = l.Plays,
+                    Qualification = l.Qualification,
+                    Reweight = l.Reweight,
+                    Changes = l.Changes,
+                    ClanRankingContested = l.ClanRankingContested,
+                    LeaderboardGroup = l.LeaderboardGroup.Leaderboards.Select(it =>
+                        new LeaderboardGroupEntry
+                        {
+                            Id = it.Id,
+                            Status = it.Difficulty.Status,
+                            Timestamp = it.Timestamp
+                        }
+                   ),
+                })
+               .FirstOrDefault();
+            }
+
+            if (leaderboard != null)
+            {
+                if (leaderboard.Qualification != null && (isRt || leaderboard.Song.MapperId == currentPlayer?.MapperId))
+                {
+                    leaderboard.Qualification.Comments = _context.QualificationCommentary.Where(c => c.RankQualificationId == leaderboard.Qualification.Id).ToList();
+                }
+
+                bool showRatings = currentPlayer?.ShowAllRatings ?? false;
+                if (!showRatings && !leaderboard.Difficulty.Status.WithRating())
+                {
+                    leaderboard.HideRatings();
+                }
+
+                var clanRankingQuery = currentContext.ClanRanking.Where(s => s.LeaderboardId == leaderboard.Id).ToList();
+
+                leaderboard.Plays = clanRankingQuery.Count();
+                leaderboard.Scores = null;
+
+                // This clanRanking data is required for displaying clanRankings on each leaderboard
+                leaderboard.ClanRanking = currentContext
+                    .ClanRanking
+                    .Include(cr => cr.Clan)
+                    .Where(cr => cr.LeaderboardId == leaderboard.Id)
+                    .OrderByDescending(cr => cr.Pp)
+                    .Skip((page - 1) * count)
+                    .Take(count)
+                    .Select(cr => new ClanRankingResponse
+                    {
+                        Id = cr.Id,
+                        Clan = cr.Clan,
+                        LastUpdateTime = cr.LastUpdateTime,
+                        AverageRank = cr.AverageRank,
+                        Pp = cr.Pp,
+                        AverageAccuracy = cr.AverageAccuracy,
+                        TotalScore = cr.TotalScore,
+                        LeaderboardId = cr.LeaderboardId,
+                        Leaderboard = cr.Leaderboard,
+                        AssociatedScores = null,
+                        AssociatedScoresCount = 0
+                    })
+                    .ToList();
             }
 
             return leaderboard;
@@ -589,6 +832,7 @@ namespace BeatLeader_Server.Controllers {
             } else {
                 hash = hash.Substring(0, 40);
             }
+
             var leaderboards = _readContext.Leaderboards
                  .Where(lb => lb.Song.Hash == hash)
                  .Include(lb => lb.Song)
@@ -599,14 +843,19 @@ namespace BeatLeader_Server.Controllers {
                  .ThenInclude(d => d.ModifiersRating)
                  .Include(lb => lb.Qualification)
                  .Include(lb => lb.Reweight)
+                 .Include(lb => lb.ClanRanking)
+                 .ThenInclude(cr => cr.Clan)
                  .Select(lb => new {
                      Song = lb.Song,
                      Id = lb.Id,
                      Qualification = lb.Qualification,
                      Difficulty = lb.Difficulty,
-                     Reweight = lb.Reweight
+                     Reweight = lb.Reweight,
+                     ClanRankingContested = lb.ClanRankingContested,
+                     Clan = lb.ClanRanking.FirstOrDefault().Clan
                  })
-                 .ToList();
+                .ToList();
+
 
             if (leaderboards.Count() == 0) {
                 return NotFound();
@@ -616,7 +865,9 @@ namespace BeatLeader_Server.Controllers {
                 Id = lb.Id,
                 Qualification = lb.Qualification,
                 Difficulty = lb.Difficulty,
-                Reweight = lb.Reweight
+                Reweight = lb.Reweight,
+                Clan = lb.Clan,
+                ClanRankingContested = lb.ClanRankingContested,
             }).ToList();
 
             if (resultList.Count > 0) {
@@ -678,6 +929,7 @@ namespace BeatLeader_Server.Controllers {
                 .Leaderboards
                 .Include(lb => lb.Difficulty)
                 .ThenInclude(d => d.ModifierValues)
+                .Include(lb => lb.ClanRanking)
                 .Include(lb => lb.Difficulty)
                 .ThenInclude(d => d.ModifiersRating)
                 .FirstOrDefault(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff);
@@ -750,6 +1002,7 @@ namespace BeatLeader_Server.Controllers {
                 .Include(lb => lb.Difficulty)
                 .ThenInclude(d => d.ModifiersRating)
                 .Include(lb => lb.Song)
+                .Include(lb => lb.ClanRanking.OrderByDescending(cr => cr.Pp))
                 .Include(lb => lb.Reweight);
 
             if (type == Type.Staff) {
@@ -767,6 +1020,8 @@ namespace BeatLeader_Server.Controllers {
                     Difficulty = lb.Difficulty,
                     Qualification = lb.Qualification,
                     Reweight = lb.Reweight,
+                    ClanRankingContested = lb.ClanRankingContested,
+                    Clan = lb.ClanRanking.Count() != 0 ? lb.ClanRanking.FirstOrDefault().Clan : null,
                     PositiveVotes = lb.PositiveVotes,
                     NegativeVotes = lb.NegativeVotes,
                     VoteStars = lb.VoteStars,

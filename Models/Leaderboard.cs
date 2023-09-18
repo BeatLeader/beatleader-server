@@ -24,6 +24,8 @@
         public int NegativeVotes { get; set; }
         public float VoteStars { get; set; }
 
+        public ICollection<ClanRanking>? ClanRanking { get; set; }
+        public bool ClanRankingContested { get; set; }
         public void HideRatings() {
             this.Difficulty.AccRating = null;
             this.Difficulty.TechRating = null;

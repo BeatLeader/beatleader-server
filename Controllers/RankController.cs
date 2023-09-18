@@ -1045,6 +1045,7 @@ namespace BeatLeader_Server.Controllers
                 .Include(l => l.Song)
                 .Include(l => l.Qualification)
                 .Include(l => l.Changes)
+                .Include(l => l.ClanRanking)
                 .FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             if (leaderboard != null)
@@ -1114,6 +1115,10 @@ namespace BeatLeader_Server.Controllers
 
                 await _scoreRefreshController.RefreshScores(leaderboard.Id);
 
+                // Calculate clanRanking for this map because it has just been ranked
+                leaderboard.ClanRanking = _context.CalculateClanRankingSlow(leaderboard);
+                await _context.BulkSaveChangesAsync();
+
                 HttpContext.Response.OnCompleted(async () => {
                     await _playerRefreshController.RefreshLeaderboardPlayers(leaderboard.Id);
                 });
@@ -1144,31 +1149,6 @@ namespace BeatLeader_Server.Controllers
                 .Where(lb => lb.Difficulty.Status == DifficultyStatus.nominated && lb.Qualification.RTMember == userId)
                 .Select(lb => new { time = lb.Difficulty.NominatedTime }).OrderByDescending(lb => lb.time).FirstOrDefault()?.time ?? 0
             };
-        }
-
-        [Authorize]
-        [HttpPost("~/rankabunch/")]
-        public async Task<ActionResult> SetStarValues([FromBody] Dictionary<string, float> values) {
-            string? userId = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(userId);
-
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
-
-            var allKeys = values.Keys.Select(k => k.Split(",").First());
-            var leaderboards = _context.Leaderboards.Where(lb => allKeys.Contains(lb.Song.Hash.ToUpper())).Include(lb => lb.Song).Include(lb => lb.Difficulty).ToList();
-            foreach (var lb in leaderboards)
-            {
-                if (lb.Difficulty.Status == DifficultyStatus.ranked && values.ContainsKey(lb.Song.Hash.ToUpper() + "," + lb.Difficulty.DifficultyName + "," + lb.Difficulty.ModeName)) {
-                    lb.Difficulty.Stars = values[lb.Song.Hash.ToUpper() + "," + lb.Difficulty.DifficultyName + "," + lb.Difficulty.ModeName];
-                }
-
-            }
-            await _context.SaveChangesAsync();
-            return Ok();
-
         }
 
         [Authorize]

@@ -45,7 +45,7 @@ namespace BeatLeader_Server.Controllers
             IServerTiming serverTiming,
             IMetricFactory metricFactory
             )
-		{
+        {
             _leaderboardController = leaderboardController;
             _playerController = playerController;
             _scoreController = scoreController;
@@ -234,6 +234,8 @@ namespace BeatLeader_Server.Controllers
                         s.PlayerId == info.playerID)
                     .Include(s => s.Player)
                     .ThenInclude(p => p.ScoreStats)
+                    .Include(s => s.Player)
+                    .ThenInclude(p => p.Clans)
                     .Include(s => s.Player)
                     .ThenInclude(p => p.ContextExtensions)
                     .ThenInclude(ce => ce.ScoreStats)
@@ -794,6 +796,9 @@ namespace BeatLeader_Server.Controllers
             _context.ChangeTracker.AutoDetectChangesEnabled = true;
 
             transaction2 = await _context.Database.BeginTransactionAsync();
+
+            // Calculate clan ranking for this leaderboard
+            _context.UpdateClanRanking(leaderboard, currentScore, resultScore);
 
             ScoreStatistic? statistic;
             string? statisticError;
