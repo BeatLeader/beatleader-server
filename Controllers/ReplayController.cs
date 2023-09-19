@@ -235,8 +235,6 @@ namespace BeatLeader_Server.Controllers
                     .Include(s => s.Player)
                     .ThenInclude(p => p.ScoreStats)
                     .Include(s => s.Player)
-                    .ThenInclude(p => p.Clans)
-                    .Include(s => s.Player)
                     .ThenInclude(p => p.ContextExtensions)
                     .ThenInclude(ce => ce.ScoreStats)
                     .Include(s => s.RankVoting)
@@ -653,11 +651,10 @@ namespace BeatLeader_Server.Controllers
 
             foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
             {
-                var score = _context.Scores.Local.FirstOrDefault(ls => ls.Id == s.Id);
-                if (score == null) {
-                    score = new Score() { Id = s.Id };
+                var score = new Score() { Id = s.Id };
+                try {
                     _context.Scores.Attach(score);
-                }
+                } catch { }
                 score.Rank = i + topRank + 1;
                     
                 _context.Entry(score).Property(x => x.Rank).IsModified = true;
@@ -739,11 +736,10 @@ namespace BeatLeader_Server.Controllers
 
             foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
             {
-                var score = _context.ScoreContextExtensions.Local.FirstOrDefault(ls => ls.Id == s.Id);
-                if (score == null) {
-                    score = new ScoreContextExtension() { Id = s.Id };
+                var score = new ScoreContextExtension() { Id = s.Id };
+                try {
                     _context.ScoreContextExtensions.Attach(score);
-                }
+                } catch { }
                 score.Rank = i + topRank + 1;
                     
                 _context.Entry(score).Property(x => x.Rank).IsModified = true;
@@ -796,9 +792,6 @@ namespace BeatLeader_Server.Controllers
             _context.ChangeTracker.AutoDetectChangesEnabled = true;
 
             transaction2 = await _context.Database.BeginTransactionAsync();
-
-            // Calculate clan ranking for this leaderboard
-            _context.UpdateClanRanking(leaderboard, currentScore, resultScore);
 
             ScoreStatistic? statistic;
             string? statisticError;
@@ -949,6 +942,9 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 await CollectStats(replay, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, resultScore);
+                
+                // Calculate clan ranking for this leaderboard
+                _context.UpdateClanRanking(leaderboard, currentScore, resultScore);
 
                 await _context.BulkSaveChangesAsync();
                 await transaction3.CommitAsync();

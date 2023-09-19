@@ -161,6 +161,20 @@ namespace BeatLeader_Server.Controllers
             };
         }
 
+        [NonAction]
+        public async Task RecalculateClanRanking(string playerId) {
+            var leaderboardsRecalc = _context
+                .Scores
+                .Where(s => s.Pp > 0 && !s.Qualification && s.PlayerId == playerId)
+                .Select(s => s.Leaderboard)
+                .ToList();
+            foreach (var leaderboard in leaderboardsRecalc)
+            {
+                leaderboard.ClanRanking = _context.CalculateClanRankingSlow(leaderboard);
+            }
+            await _context.BulkSaveChangesAsync();
+        }
+
         [HttpPost("~/clan/create")]
         public async Task<ActionResult<Clan>> CreateClan(
             [FromQuery] string name,
@@ -172,6 +186,9 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             if (currentID == null) {
                 currentID = await HttpContext.CurrentOauthUserID(_context, CustomScopes.Clan);
+            }
+            if (currentID == null) {
+                return Unauthorized();
             }
 
             var player = _context.Players.Where(p => p.Id == currentID).Include(p => p.Clans).Include(p => p.ScoreStats).FirstOrDefault();
@@ -278,16 +295,9 @@ namespace BeatLeader_Server.Controllers
             player.Clans.Add(newClan);
             await _context.SaveChangesAsync();
 
-            // Recalculate clanRanking on leaderboards where newly created clan has inherent influence (clan leader already has a score)
-            var leaderboardsRecalc = _context
-                .Leaderboards
-                .Include(lb => lb.ClanRanking)
-                .Include(lb => lb.Scores)
-                .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked && lb.Scores.Any(s => s.PlayerId == currentID))
-                .ToList();
-
-            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
-            await _context.BulkSaveChangesAsync();
+            HttpContext.Response.OnCompleted(async () => {
+                await RecalculateClanRanking(currentID);
+            });
 
             return newClan;
         }
@@ -298,6 +308,9 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             if (currentID == null) {
                 currentID = await HttpContext.CurrentOauthUserID(_context, CustomScopes.Clan);
+            }
+            if (currentID == null) {
+                return Unauthorized();
             }
 
             var player = await _context.Players.FindAsync(currentID);
@@ -579,6 +592,9 @@ namespace BeatLeader_Server.Controllers
             if (currentID == null) {
                 currentID = await HttpContext.CurrentOauthUserID(_context, CustomScopes.Clan);
             }
+            if (currentID == null) {
+                return Unauthorized();
+            }
 
             Clan? clan;
             var currentPlayer = await _context.Players.FindAsync(currentID);
@@ -622,16 +638,9 @@ namespace BeatLeader_Server.Controllers
             clan.Pp = _context.RecalculateClanPP(clan.Id);
             await _context.SaveChangesAsync();
 
-            // Recalculate owning clan on leaderboards the clan owns if a user is kicked from the clan on any leaderboard where this user has a score
-            var leaderboardsRecalc = _context
-                .Leaderboards
-                .Include(lb => lb.ClanRanking)
-                .Include(lb => lb.Scores)
-                .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked && lb.Scores.Any(s => s.PlayerId == player))
-                .ToList();
-
-            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
-            await _context.BulkSaveChangesAsync();
+            HttpContext.Response.OnCompleted(async () => {
+                await RecalculateClanRanking(player);
+            });
 
             return Ok();
         }
@@ -642,6 +651,9 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             if (currentID == null) {
                 currentID = await HttpContext.CurrentOauthUserID(_context, CustomScopes.Clan);
+            }
+            if (currentID == null) {
+                return Unauthorized();
             }
 
             User? user = await _userController.GetUserLazy(currentID);
@@ -679,16 +691,9 @@ namespace BeatLeader_Server.Controllers
             clan.Pp = _context.RecalculateClanPP(clan.Id);
             await _context.SaveChangesAsync();
 
-            // Recalculate owning clan on leaderboards this user has a score on if the user joins a new clan
-            var leaderboardsRecalc = _context
-                .Leaderboards
-                .Include(lb => lb.ClanRanking)
-                .Include(lb => lb.Scores)
-                .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked && lb.Scores.Any(s => s.PlayerId == currentID))
-                .ToList();
-
-            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
-            await _context.BulkSaveChangesAsync();
+            HttpContext.Response.OnCompleted(async () => {
+                await RecalculateClanRanking(currentID);
+            });
 
             return Ok();
         }
@@ -753,6 +758,9 @@ namespace BeatLeader_Server.Controllers
             if (currentID == null) {
                 currentID = await HttpContext.CurrentOauthUserID(_context, CustomScopes.Clan);
             }
+            if (currentID == null) {
+                return Unauthorized();
+            }
 
             User? user = await _userController.GetUserLazy(currentID);
             if (user == null)
@@ -780,16 +788,9 @@ namespace BeatLeader_Server.Controllers
             clan.Pp = _context.RecalculateClanPP(clan.Id);
             await _context.SaveChangesAsync();
 
-            // Recalculate owning clan on leaderboards the clan owns if a user leaves the clan on any leaderboard where this user has a score
-            var leaderboardsRecalc = _context
-                .Leaderboards
-                .Include(lb => lb.ClanRanking)
-                .Include(lb => lb.Scores)
-                .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked && lb.Scores.Any(s => s.PlayerId == currentID))
-                .ToList();
-
-            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
-            await _context.BulkSaveChangesAsync();
+            HttpContext.Response.OnCompleted(async () => {
+                await RecalculateClanRanking(currentID);
+            });
 
             return Ok();
         }
