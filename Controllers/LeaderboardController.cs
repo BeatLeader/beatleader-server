@@ -390,8 +390,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] string? search = null,
             [FromQuery] string? modifiers = null,
             [FromQuery] bool friends = false,
-            [FromQuery] bool voters = false,
-            [FromQuery] bool clanRanking = false) {
+            [FromQuery] bool voters = false) {
             var currentContext = _readContext;
 
             string? currentID = HttpContext.CurrentUserID(currentContext);

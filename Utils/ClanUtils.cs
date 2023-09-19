@@ -110,6 +110,7 @@ namespace BeatLeader_Server.Utils
                             .OrderBy(a => Math.Round(a.Pp, 2))
                             .ThenBy(a => Math.Round(a.Accuracy, 4))
                             .ThenBy(a => a.Timeset)
+                            .Select(s => new { Pp = s.Pp })
                             .ToList();
 
                         if (clanRanking == null)
@@ -256,16 +257,17 @@ namespace BeatLeader_Server.Utils
                     .ThenInclude(p => p.Clans)
                     .Where(s => s.LeaderboardId == leaderboard.Id && s.ValidContexts.HasFlag(LeaderboardContexts.General) && !s.Banned && s.Player.Clans.Count != 0)
                     .OrderByDescending(el => el.Pp)
+                    .Select(s => new { s.Timepost, s.Pp, s.Accuracy, s.Rank, s.ModifiedScore, s.Player.Clans })
                     .ToList();
 
             // Build up a dictionary of the clans on this leaderboard based on scores
-            foreach (Score score in leaderboardClans)
+            foreach (var score in leaderboardClans)
             {
-                if (score.Player.Clans == null)
+                if (score.Clans == null)
                 {
                     continue;
                 }
-                foreach (Clan clan in score.Player.Clans)
+                foreach (Clan clan in score.Clans)
                 {
                     if (newClanRankingData.ContainsKey(clan))
                     {
