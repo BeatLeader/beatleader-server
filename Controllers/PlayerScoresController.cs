@@ -344,6 +344,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] int? time_to = null,
             [FromQuery] int? eventId = null,
             [FromQuery] float? batch = null) {
+            return BadRequest("Temporarily disabled");
             if (count > 100 || count < 0) {
                 return BadRequest("Please use `count` value in range of 0 to 100");
             }

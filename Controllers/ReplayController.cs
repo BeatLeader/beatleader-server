@@ -760,8 +760,6 @@ namespace BeatLeader_Server.Controllers
             ReplayOffsets offsets,
             bool allow = false) {
 
-            await _s3Client.DeleteStats(leaderboard.Id + "-leaderboard.json");
-
             float oldPp = player.Pp;
             int oldRank = player.Rank;
 

@@ -55,11 +55,10 @@ namespace BeatLeader_Server.Utils
                 float weight = MathF.Pow(0.965f, i);
                 if (s.Weight != weight)
                 {
-                    var score = context.Scores.Local.FirstOrDefault(ls => ls.Id == s.Id);
-                    if (score == null) {
-                        score = new Score() { Id = s.Id };
+                    var score = new Score() { Id = s.Id };
+                    try {
                         context.Scores.Attach(score);
-                    }
+                    } catch { }
                     score.Weight = weight;
                     context.Entry(score).Property(x => x.Weight).IsModified = true;
                 }
@@ -182,12 +181,11 @@ namespace BeatLeader_Server.Utils
 
                 foreach ((int i, var p) in rankedPlayers.Select((value, i) => (i, value)))
                 {
-                    var newPlayer = context.Players.Local.FirstOrDefault(lp => lp.Id == p.Id);
+                    var newPlayer = new Player() { Id = p.Id };
 
-                    if (newPlayer == null) {
-                        newPlayer = new Player() { Id = p.Id };
+                    try {
                         context.Players.Attach(newPlayer);
-                    }
+                    } catch { }
                     newPlayer.Rank = i + topRank;
                     context.Entry(newPlayer).Property(x => x.Rank).IsModified = true;
 
@@ -316,12 +314,10 @@ namespace BeatLeader_Server.Utils
 
                 foreach ((int i, var p) in rankedPlayers.Select((value, i) => (i, value)))
                 {
-                    var newPlayer = dbContext.PlayerContextExtensions.Local.FirstOrDefault(lp => lp.Id == p.Id);
-
-                    if (newPlayer == null) {
-                        newPlayer = new PlayerContextExtension() { Id = p.Id };
+                    var newPlayer = new PlayerContextExtension() { Id = p.Id };
+                    try {
                         dbContext.PlayerContextExtensions.Attach(newPlayer);
-                    }
+                    } catch { }
                     newPlayer.Rank = i + topRank;
                     dbContext.Entry(newPlayer).Property(x => x.Rank).IsModified = true;
 
