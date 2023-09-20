@@ -942,7 +942,7 @@ namespace BeatLeader_Server.Controllers
                 await CollectStats(replay, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, resultScore);
                 
                 // Calculate clan ranking for this leaderboard
-                _context.UpdateClanRanking(leaderboard, currentScore, resultScore);
+                //_context.UpdateClanRanking(leaderboard, currentScore, resultScore);
 
                 await _context.BulkSaveChangesAsync();
                 await transaction3.CommitAsync();

@@ -285,7 +285,7 @@ namespace BeatLeader_Server.Utils {
             public IEnumerable<LeaderboardGroupEntry>? LeaderboardGroup { get; set; }
             public int Plays { get; set; }
 
-            public ICollection<ClanRankingResponse>? ClanRanking { get; set; }
+            public Clan? Clan { get; set; }
             public bool ClanRankingContested { get; set; }
             public void HideRatings()
             {
@@ -296,6 +296,11 @@ namespace BeatLeader_Server.Utils {
 
                 this.Difficulty.ModifiersRating = null;
             }
+        }
+
+        public class LeaderboardClanRankingResponse : LeaderboardResponse {
+
+            public ICollection<ClanRankingResponse>? ClanRanking { get; set; }
         }
 
         public class ClanRankingResponse

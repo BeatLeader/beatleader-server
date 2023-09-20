@@ -24,6 +24,9 @@
         public int NegativeVotes { get; set; }
         public float VoteStars { get; set; }
 
+        public int? ClanId { get; set; }
+        public Clan? Clan { get; set; }
+
         public ICollection<ClanRanking>? ClanRanking { get; set; }
         public bool ClanRankingContested { get; set; }
         public void HideRatings() {

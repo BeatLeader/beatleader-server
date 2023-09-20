@@ -462,6 +462,7 @@ namespace BeatLeader_Server.Controllers {
                 Reweight = l.Reweight,
                 Changes = l.Changes,
                 ClanRankingContested = l.ClanRankingContested,
+                Clan = l.Clan,
                 LeaderboardGroup = l.LeaderboardGroup.Leaderboards.Select(it =>
                     new LeaderboardGroupEntry {
                         Id = it.Id,
@@ -524,31 +525,6 @@ namespace BeatLeader_Server.Controllers {
                 foreach (var score in leaderboard.Scores) {
                     score.Player = PostProcessSettings(score.Player);
                 }
-
-                // Required for the leaderboard header on the website to declare who has captured the leaderboard
-                leaderboard.ClanRanking = currentContext
-                    .ClanRanking
-                    .Include(cr => cr.Clan)
-                    .Where(cr => cr.LeaderboardId == leaderboard.Id)
-                    .OrderByDescending(cr => cr.Pp)
-                    .ThenByDescending(cr => cr.AverageAccuracy)
-                    .ThenByDescending(cr => cr.LastUpdateTime)
-                    .Take(1)
-                    .Select(cr => new ClanRankingResponse
-                    {
-                        Id = cr.Id,
-                        Clan = cr.Clan,
-                        LastUpdateTime = cr.LastUpdateTime,
-                        AverageRank = cr.AverageRank,
-                        Pp = cr.Pp,
-                        AverageAccuracy = cr.AverageAccuracy,
-                        TotalScore = cr.TotalScore,
-                        LeaderboardId = cr.LeaderboardId,
-                        Leaderboard = cr.Leaderboard,
-                        AssociatedScores = null,
-                        AssociatedScoresCount = 0
-                    })
-                    .ToList();
             }
 
             if (leaderboard == null) {
@@ -687,7 +663,7 @@ namespace BeatLeader_Server.Controllers {
 
 
         [HttpGet("~/leaderboard/clanRankings/{id}")]
-        public async Task<ActionResult<LeaderboardResponse>> GetClanRankings(
+        public async Task<ActionResult<LeaderboardClanRankingResponse>> GetClanRankings(
             string id,
             [FromQuery] int page = 1,
             [FromQuery] int count = 10)
@@ -751,12 +727,12 @@ namespace BeatLeader_Server.Controllers {
                     .ThenInclude(glb => glb.Difficulty);
 
 
-            LeaderboardResponse? leaderboard;
+            LeaderboardClanRankingResponse? leaderboard;
             using (_serverTiming.TimeAction("leaderboard"))
             {
                 leaderboard = query
                 .AsSplitQuery()
-                .Select(l => new LeaderboardResponse
+                .Select(l => new LeaderboardClanRankingResponse
                 {
                     Id = l.Id,
                     Song = l.Song,
@@ -766,6 +742,7 @@ namespace BeatLeader_Server.Controllers {
                     Reweight = l.Reweight,
                     Changes = l.Changes,
                     ClanRankingContested = l.ClanRankingContested,
+                    Clan = l.Clan,
                     LeaderboardGroup = l.LeaderboardGroup.Leaderboards.Select(it =>
                         new LeaderboardGroupEntry
                         {
@@ -842,8 +819,6 @@ namespace BeatLeader_Server.Controllers {
                  .ThenInclude(d => d.ModifiersRating)
                  .Include(lb => lb.Qualification)
                  .Include(lb => lb.Reweight)
-                 .Include(lb => lb.ClanRanking)
-                 .ThenInclude(cr => cr.Clan)
                  .Select(lb => new {
                      Song = lb.Song,
                      Id = lb.Id,
@@ -851,7 +826,7 @@ namespace BeatLeader_Server.Controllers {
                      Difficulty = lb.Difficulty,
                      Reweight = lb.Reweight,
                      ClanRankingContested = lb.ClanRankingContested,
-                     Clan = lb.ClanRanking.FirstOrDefault().Clan
+                     Clan = lb.Clan
                  })
                 .ToList();
 
@@ -928,7 +903,6 @@ namespace BeatLeader_Server.Controllers {
                 .Leaderboards
                 .Include(lb => lb.Difficulty)
                 .ThenInclude(d => d.ModifierValues)
-                .Include(lb => lb.ClanRanking)
                 .Include(lb => lb.Difficulty)
                 .ThenInclude(d => d.ModifiersRating)
                 .FirstOrDefault(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff);
@@ -1001,7 +975,6 @@ namespace BeatLeader_Server.Controllers {
                 .Include(lb => lb.Difficulty)
                 .ThenInclude(d => d.ModifiersRating)
                 .Include(lb => lb.Song)
-                .Include(lb => lb.ClanRanking.OrderByDescending(cr => cr.Pp))
                 .Include(lb => lb.Reweight);
 
             if (type == Type.Staff) {
@@ -1020,7 +993,7 @@ namespace BeatLeader_Server.Controllers {
                     Qualification = lb.Qualification,
                     Reweight = lb.Reweight,
                     ClanRankingContested = lb.ClanRankingContested,
-                    Clan = lb.ClanRanking.Count() != 0 ? lb.ClanRanking.FirstOrDefault().Clan : null,
+                    Clan = lb.Clan,
                     PositiveVotes = lb.PositiveVotes,
                     NegativeVotes = lb.NegativeVotes,
                     VoteStars = lb.VoteStars,
