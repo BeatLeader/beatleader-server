@@ -367,7 +367,9 @@ namespace BeatLeader_Server.Controllers
                     foreach (var s in allScores)
                     {
                         var score = new ScoreContextExtension() { Id = s.Id };
-                        _context.ScoreContextExtensions.Attach(score);
+                        try {
+                            _context.ScoreContextExtensions.Attach(score);
+                        } catch { }
 
                         int maxScore = leaderboard.Difficulty.MaxScore > 0 ? leaderboard.Difficulty.MaxScore : ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
 

@@ -1003,11 +1003,17 @@ namespace BeatLeader_Server.Controllers {
                         } else {
                             score.Player = migratedToPlayer;
                             score.PlayerId = migrateToId;
-                            foreach (var ce in score.ContextExtensions) {
-                                if (!score.ValidContexts.HasFlag(ce.Context)) {
-                                    score.ContextExtensions.Remove(ce);
-                                }
+                        }
+
+                        var extensionsToRemove = new List<ScoreContextExtension>();
+                        foreach (var ce in score.ContextExtensions) {
+                            if (!score.ValidContexts.HasFlag(ce.Context)) {
+                                extensionsToRemove.Add(ce);
                             }
+                        }
+                        foreach (var ce in extensionsToRemove)
+                        {
+                            score.ContextExtensions.Remove(ce);
                         }
                     }
                 }
