@@ -587,7 +587,10 @@ namespace BeatLeader_Server.Controllers
                     lb.Difficulty,
                     Scores = lb.Scores.Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General)).Select(s => new { s.Id, s.Banned, s.Pp, s.Accuracy, s.Timeset, s.ModifiedScore, s.Priority })
                 }).ToList();
-                await allLeaderboards.ParallelForEachAsync(async leaderboard => {
+
+            for (int i = 0; i < allLeaderboards.Count; i += 1000)
+            {
+                await allLeaderboards.Skip(i).Take(1000).ParallelForEachAsync(async leaderboard => {
                     var allScores = leaderboard.Scores.Where(s => !s.Banned).ToList();
 
                     var status = leaderboard.Difficulty.Status;
@@ -619,7 +622,9 @@ namespace BeatLeader_Server.Controllers
                     }
                 }, maxDegreeOfParallelism: 20);
 
-            await _context.BulkSaveChangesAsync();
+                await _context.BulkSaveChangesAsync();
+            }
+            
 
             _context.ChangeTracker.AutoDetectChangesEnabled = true;
 

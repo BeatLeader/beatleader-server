@@ -436,7 +436,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task<List<ScoreResponse>?> GeneralScoreList(
+        public async Task<(List<ScoreResponse>?, int)> GeneralScoreList(
             ResponseWithMetadataAndSelection<ScoreResponse> result,
             bool showBots, 
             string leaderboardId, 
@@ -468,7 +468,7 @@ namespace BeatLeader_Server.Controllers
                 currentPlayer = currentPlayer ?? ResponseFromPlayer(await _context.Players.FindAsync(player));
                 if (currentPlayer == null)
                 {
-                    return null;
+                    return (null, page);
                 }
                 query = query.Where(s => s.Player.Country == currentPlayer.Country);
             }
@@ -484,7 +484,7 @@ namespace BeatLeader_Server.Controllers
                 }
                 else
                 {
-                    return null;
+                    return (null, page);
                 }
             }
             else
@@ -607,7 +607,7 @@ namespace BeatLeader_Server.Controllers
                 })
                 .ToList();
 
-            return (resultList.FirstOrDefault()?.Pp > 0 
+            return ((resultList.FirstOrDefault()?.Pp > 0 
                         ? resultList
                             .OrderByDescending(el => Math.Round(el.Pp, 2))
                             .ThenByDescending(el => Math.Round(el.Accuracy, 4))
@@ -616,11 +616,11 @@ namespace BeatLeader_Server.Controllers
                             .OrderBy(el => el.Priority)
                             .ThenByDescending(el => el.ModifiedScore)
                             .ThenByDescending(el => Math.Round(el.Accuracy, 4))
-                            .ThenBy(el => el.Timeset)).ToList();
+                            .ThenBy(el => el.Timeset)).ToList(), page);
         }
 
         [NonAction]
-        public async Task<List<ScoreResponse>?> ContextScoreList(
+        public async Task<(List<ScoreResponse>?, int)> ContextScoreList(
             ResponseWithMetadataAndSelection<ScoreResponse> result,
             LeaderboardContexts context,
             bool showBots, 
@@ -652,7 +652,7 @@ namespace BeatLeader_Server.Controllers
                 currentPlayer = currentPlayer ?? ResponseFromPlayer(await _context.Players.FindAsync(player));
                 if (currentPlayer == null)
                 {
-                    return null;
+                    return (null, page);
                 }
                 query = query.Where(s => s.Player.Country == currentPlayer.Country);
             }
@@ -668,7 +668,7 @@ namespace BeatLeader_Server.Controllers
                 }
                 else
                 {
-                    return null;
+                    return (null, page);
                 }
             }
             else
@@ -803,24 +803,26 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (resultList.FirstOrDefault()?.Pp > 0) {
-                return resultList
+                resultList = resultList
                         .OrderByDescending(el => Math.Round(el.Pp, 2))
                         .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                         .ThenBy(el => el.Timeset)
                         .ToList();
             } else if (context == LeaderboardContexts.Golf) {
-                return resultList
+                resultList = resultList
                         .OrderBy(el => el.Priority)
                         .ThenBy(el => el.ModifiedScore)
                         .ThenBy(el => Math.Round(el.Accuracy, 4))
                         .ThenBy(el => el.Timeset).ToList();
             } else {
-                return resultList
+                resultList = resultList
                         .OrderBy(el => el.Priority)
                         .ThenByDescending(el => el.ModifiedScore)
                         .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                         .ThenBy(el => el.Timeset).ToList();
             }
+
+            return (resultList, page);
         }
 
         [HttpGet("~/v3/scores/{hash}/{diff}/{mode}/{context}/{scope}/{method}")]
@@ -910,7 +912,7 @@ namespace BeatLeader_Server.Controllers
                     break;
             }
             
-            var resultList =
+            (var resultList, page) =
                 contexts == LeaderboardContexts.General 
                 ? await GeneralScoreList(result, showBots, leaderboardId, scope, player, method, page, count, currentPlayer)
                 : await ContextScoreList(result, contexts, showBots, leaderboardId, scope, player, method, page, count, currentPlayer);
