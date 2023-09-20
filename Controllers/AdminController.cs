@@ -484,6 +484,14 @@ namespace BeatLeader_Server.Controllers
 
             try
             {
+                var clans = _context.Clans.ToList();
+                foreach (var clan in clans)
+                {
+                    clan.CaptureLeaderboardsCount = 0;
+                    clan.RankedPoolPercentCaptured = 0;
+                }
+                await _context.BulkSaveChangesAsync();
+
                 var leaderboardsRecalc = _context
                     .Leaderboards
                     .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
