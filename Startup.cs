@@ -68,6 +68,28 @@ namespace BeatLeader_Server {
         }
     }
 
+    public class CustomCookieManager : ICookieManager
+    {
+        public string GetRequestCookie(HttpContext context, string key)
+        {
+            return context.Request.Cookies[key];
+        }
+
+        public void AppendResponseCookie(HttpContext context, string key, string value, CookieOptions options)
+        {
+            if (options.Domain == null)
+            {
+                options.Domain = context.Request.Host.Value.Replace("api", "");
+            }
+            context.Response.Cookies.Append(key, value, options);
+        }
+
+        public void DeleteCookie(HttpContext context, string key, CookieOptions options)
+        {
+            context.Response.Cookies.Delete(key, options);
+        }
+    }
+
     public class Startup {
         static string MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
         public Startup (IConfiguration configuration, IWebHostEnvironment env)
@@ -87,8 +109,6 @@ namespace BeatLeader_Server {
             string beatSaverId = Configuration.GetValue<string>("BeatSaverId");
             string beatSaverSecret = Configuration.GetValue<string>("BeatSaverSecret");
 
-            string? cookieDomain = Configuration.GetValue<string>("CookieDomain");
-
             services.AddDataProtection()
             .PersistKeysToFileSystem(new DirectoryInfo(@"../keys/"))
             .SetApplicationName("/home/site/wwwroot/");
@@ -103,15 +123,13 @@ namespace BeatLeader_Server {
             })
 
             .AddCookie (options => {
+                options.CookieManager = new CustomCookieManager();
                 options.Events.OnRedirectToAccessDenied =
                 options.Events.OnRedirectToLogin = c => {
                     c.Response.StatusCode = StatusCodes.Status401Unauthorized;
                     return Task.FromResult<object> (null);
                 };
                 options.Cookie.SameSite = SameSiteMode.None;
-                if (cookieDomain != null) {
-                    options.Cookie.Domain = cookieDomain;
-                }
                 options.Cookie.HttpOnly = false;
                 options.ExpireTimeSpan = TimeSpan.FromDays(30);
                 options.Cookie.MaxAge = options.ExpireTimeSpan;
