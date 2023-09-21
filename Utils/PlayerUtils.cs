@@ -252,7 +252,7 @@ namespace BeatLeader_Server.Utils
 
             var rankedScores = dbContext
                 .ScoreContextExtensions
-                .Where(s => s.PlayerId == player.PlayerId && s.Pp != 0 && s.Context == context)
+                .Where(s => s.PlayerId == player.PlayerId && s.Pp != 0 && s.Context == context  && !s.Banned && !s.Qualification)
                 .OrderByDescending(s => s.Pp)
                 .Select(s => new { s.Id, s.Accuracy, s.Rank, s.Pp, s.AccPP, s.PassPP, s.TechPP, s.Weight })
                 .ToList();
@@ -299,7 +299,7 @@ namespace BeatLeader_Server.Utils
 
             var rankedPlayers = dbContext
                 .PlayerContextExtensions
-                .Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id)
+                .Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned)
                 .Select(p => new { p.Id, p.Rank, p.Country, p.CountryRank, p.Pp })
                 .ToList()
                 .Append(new { player.Id, player.Rank, player.Country, player.CountryRank, player.Pp })

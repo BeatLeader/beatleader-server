@@ -30,6 +30,7 @@ namespace BeatLeader_Server.Models {
         public int LastWeekRank { get; set; }
         public int LastWeekCountryRank { get; set; }
         public PlayerScoreStats? ScoreStats { get; set; }
+        public bool Banned { get; set; }
     }
 
     [Index(nameof(Banned), IsUnique = false)]

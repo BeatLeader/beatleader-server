@@ -385,6 +385,10 @@ namespace BeatLeader_Server.Controllers
             resultScore.Player = player;
 
             resultScore.Banned = player.Bot;
+            foreach (var ce in resultScore.ContextExtensions)
+            {
+                ce.Banned = resultScore.Banned;
+            }
             resultScore.Bot = player.Bot;
 
             var improvement = await GeneralContextScore(leaderboard, player, resultScore, currentScores, replay);
@@ -683,6 +687,7 @@ namespace BeatLeader_Server.Controllers
                     .Where(s => s.LeaderboardId == leaderboard.Id && 
                                 s.Pp <= resultScore.Pp && 
                                 s.Context == context &&
+                                !s.Banned &&
                                 s.PlayerId != resultScore.PlayerId)
                     .OrderByDescending(el => Math.Round(el.Pp, 2))
                     .ThenByDescending(el => Math.Round(el.Accuracy, 4))
@@ -696,6 +701,7 @@ namespace BeatLeader_Server.Controllers
                     .Where(s => s.LeaderboardId == leaderboard.Id && 
                         ((s.ModifiedScore <= resultScore.ModifiedScore && s.Priority == resultScore.Priority) || s.Priority > resultScore.Priority) && 
                         s.Context == context &&
+                        !s.Banned &&
                         s.PlayerId != resultScore.PlayerId)
                     .OrderBy(el => el.Priority)
                     .ThenByDescending(el => el.ModifiedScore)
@@ -709,6 +715,7 @@ namespace BeatLeader_Server.Controllers
                     .Where(s => s.LeaderboardId == leaderboard.Id && 
                         ((s.ModifiedScore >= resultScore.ModifiedScore && s.Priority == resultScore.Priority) || s.Priority < resultScore.Priority) && 
                         s.Context == context &&
+                        !s.Banned &&
                         s.PlayerId != resultScore.PlayerId)
                     .OrderByDescending(el => el.Priority)
                     .ThenBy(el => el.ModifiedScore)

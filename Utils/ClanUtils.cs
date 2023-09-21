@@ -74,15 +74,17 @@ namespace BeatLeader_Server.Utils
 
             var playerClans = context
                 .Players
-                .Where(p => p.Id == newScore.PlayerId && p.Clans != null)
-                .Select(p => p.Clans.ToList())
+                .Where(p => p.Id == newScore.PlayerId)
+                .Select(p => p.Clans)
                 .FirstOrDefault();
+            
             if (playerClans == null || playerClans.Count() == 0) return;
+            var playerClanIds = playerClans.Select(c => c.Id).ToList() ?? new List<int>();
 
             var clanRankings =
                 context
                 .ClanRanking
-                .Where(cr => cr.LeaderboardId == newScore.LeaderboardId && cr.Clan != null && !playerClans.Contains(cr.Clan))
+                .Where(cr => cr.LeaderboardId == newScore.LeaderboardId && cr.Clan != null && !playerClanIds.Contains((int)cr.ClanId))
                 .OrderByDescending(cr => Math.Round(cr.Pp, 2))
                 .ThenByDescending(cr => Math.Round(cr.AverageAccuracy, 4))
                 .ThenByDescending(cr => cr.LastUpdateTime)

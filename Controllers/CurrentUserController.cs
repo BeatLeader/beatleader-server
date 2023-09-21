@@ -19,6 +19,7 @@ namespace BeatLeader_Server.Controllers {
 
         PlayerController _playerController;
         PlayerRefreshController _playerRefreshController;
+        PlayerContextRefreshController _playerContextRefreshController;
         ReplayController _replayController;
         IWebHostEnvironment _environment;
         IConfiguration _configuration;
@@ -31,6 +32,7 @@ namespace BeatLeader_Server.Controllers {
             IWebHostEnvironment env,
             PlayerController playerController,
             PlayerRefreshController playerRefreshController,
+            PlayerContextRefreshController playerContextRefreshController,
             ReplayController replayController,
             ScoreRefreshController scoreRefreshController,
             IConfiguration configuration) {
@@ -39,6 +41,7 @@ namespace BeatLeader_Server.Controllers {
 
             _playerController = playerController;
             _playerRefreshController = playerRefreshController;
+            _playerContextRefreshController = playerContextRefreshController;
             _replayController = replayController;
             _scoreRefreshController = scoreRefreshController;
             _configuration = configuration;
@@ -1205,13 +1208,19 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] bool? bot = null) {
             string userId = GetId();
 
-            var player = await _context.Players.FindAsync(userId);
+            var player = await _context
+                .Players
+                .Include(p => p.ContextExtensions)
+                .FirstOrDefaultAsync(p => p.Id == userId);
 
             if (id != null && player != null && player.Role.Contains("admin")) {
                 if (reason == null || duration == null) {
                     return BadRequest("Provide ban reason and duration");
                 }
-                player = await _context.Players.FindAsync(id);
+                player = await _context
+                    .Players
+                    .Include(p => p.ContextExtensions)
+                    .FirstOrDefaultAsync(p => p.Id == id);
             }
 
             if (player == null) {
@@ -1223,15 +1232,23 @@ namespace BeatLeader_Server.Controllers {
             }
 
             var leaderboardsToUpdate = new List<string>();
-            var scores = _context.Scores.Where(s => s.PlayerId == player.Id).ToList();
+            var scores = _context.Scores.Where(s => s.PlayerId == player.Id).Include(s => s.ContextExtensions).ToList();
             foreach (var score in scores) {
                 leaderboardsToUpdate.Add(score.LeaderboardId);
                 score.Banned = true;
+                foreach (var ce in score.ContextExtensions)
+                {
+                    ce.Banned = true;
+                }
 
                 await GeneralSocketController.ScoreWasRejected(score, _configuration, _context);
             }
 
             player.Banned = true;
+            foreach (var ce in player.ContextExtensions)
+            {
+                ce.Banned = true;
+            }
             if (bot != null) {
                 player.Bot = bot ?? false;
             }
@@ -1250,9 +1267,11 @@ namespace BeatLeader_Server.Controllers {
             HttpContext.Response.OnCompleted(async () => {
                 foreach (var item in leaderboardsToUpdate) {
                     await _scoreRefreshController.RefreshScores(item);
+                    await _scoreRefreshController.BulkRefreshScoresAllContexts(item);
                 }
 
                 await _playerRefreshController.RefreshRanks();
+                await _playerContextRefreshController.RefreshRanksAllContexts();
             });
 
             return Ok();
@@ -1262,12 +1281,18 @@ namespace BeatLeader_Server.Controllers {
         public async Task<ActionResult> Unban([FromQuery] string? id = null) {
             string userId = GetId();
             var transaction = await _context.Database.BeginTransactionAsync();
-            var player = await _context.Players.FindAsync(userId);
+            var player = await _context
+                .Players
+                .Include(p => p.ContextExtensions)
+                .FirstOrDefaultAsync(p => p.Id == userId);
             bool adminUnban = false;
 
             if ((id != null && player != null && player.Role.Contains("admin")) || HttpContext == null) {
                 adminUnban = true;
-                player = await _context.Players.FindAsync(id);
+                player = await _context
+                    .Players
+                    .Include(p => p.ContextExtensions)
+                    .FirstOrDefaultAsync(p => p.Id == id);
             }
 
             if (player == null) {
@@ -1285,33 +1310,44 @@ namespace BeatLeader_Server.Controllers {
                 return BadRequest("You can unban yourself after: " + (24 * 7 - (timeset - ban.Timeset) / (60 * 60)) + "hours");
             }
 
-            var scores = _context.Scores.Where(s => s.PlayerId == player.Id).ToList();
+            var scores = _context.Scores.Include(s => s.ContextExtensions).Where(s => s.PlayerId == player.Id).ToList();
             var leaderboardsToUpdate = new List<string>();
             foreach (var score in scores) {
                 leaderboardsToUpdate.Add(score.LeaderboardId);
                 score.Banned = false;
+                foreach (var ce in score.ContextExtensions)
+                {
+                    ce.Banned = false;
+                }
 
                 await GeneralSocketController.ScoreWasAccepted(score, _configuration, _context);
 
             }
             player.Banned = false;
+            foreach (var ce in player.ContextExtensions)
+            {
+                ce.Banned = false;
+            }
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
-            if (HttpContext != null) {
-                HttpContext.Response.OnCompleted(async () => {
-                    foreach (var item in leaderboardsToUpdate) {
-                        await _scoreRefreshController.RefreshScores(item);
-                    }
-                    await _playerRefreshController.RefreshPlayer(player);
-                    await _playerRefreshController.RefreshRanks();
-                });
-            } else {
+
+            var refreshBlock = async () => {
                 foreach (var item in leaderboardsToUpdate) {
                     await _scoreRefreshController.RefreshScores(item);
+                    await _scoreRefreshController.BulkRefreshScoresAllContexts(item);
                 }
                 await _playerRefreshController.RefreshPlayer(player);
                 await _playerRefreshController.RefreshRanks();
+
+                await _playerContextRefreshController.RefreshPlayerAllContexts(player.Id);
+                await _playerContextRefreshController.RefreshRanksAllContexts();
+            };
+
+            if (HttpContext != null) {
+                HttpContext.Response.OnCompleted(refreshBlock);
+            } else {
+                await refreshBlock();
             }
 
             return Ok();

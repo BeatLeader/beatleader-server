@@ -11,7 +11,7 @@ using System.Linq.Expressions;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers {
-    public class PlayerStatsRefreshController : Controller {
+    public class PlayerContextRefreshController : Controller {
 
         private readonly AppContext _context;
         private readonly ReadAppContext _readContext;
@@ -21,7 +21,7 @@ namespace BeatLeader_Server.Controllers {
 
         private readonly IServerTiming _serverTiming;
 
-        public PlayerStatsRefreshController(
+        public PlayerContextRefreshController(
             AppContext context,
             ReadAppContext readContext,
             IConfiguration configuration, 
@@ -168,13 +168,13 @@ namespace BeatLeader_Server.Controllers {
 
             var scores = _context
                 .ScoreContextExtensions
-                .Where(s => s.Pp != 0 && s.Context == context && s.ScoreId != null)
+                .Where(s => s.Pp != 0 && s.Context == context && s.ScoreId != null && !s.Banned)
                 .OrderByDescending(s => s.Pp)
                 .Select(s => new { s.Id, s.Accuracy, s.Rank, s.Pp, s.AccPP, s.TechPP, s.PassPP, s.Weight, s.PlayerId })
                 .ToList();
 
             var query = _context.PlayerContextExtensions
-                .Where(s => s.Context == context)
+                .Where(ce => ce.Context == context && !ce.Banned)
                 .OrderByDescending(p => p.Pp)
                 .Select(p => new { p.Id, p.PlayerId, p.Country })
                 .ToList();
@@ -543,6 +543,71 @@ namespace BeatLeader_Server.Controllers {
             }, maxDegreeOfParallelism: 50);
 
             await _context.BulkSaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpGet("~/players/rankrefresh/{context}")]
+        [Authorize]
+        public async Task<ActionResult> RefreshRanks(LeaderboardContexts context)
+        {
+            if (HttpContext != null) {
+                string currentId = HttpContext.CurrentUserID(_context);
+                Player? currentPlayer = await _context.Players.FindAsync(currentId);
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+            _context.ChangeTracker.AutoDetectChangesEnabled = false;
+            Dictionary<string, int> countries = new Dictionary<string, int>();
+            var ranked = _context.PlayerContextExtensions
+                .Where(p => p.Pp > 0 && !p.Banned && p.Context == context)
+                .OrderByDescending(t => t.Pp)
+                .Select(p => new { Id = p.Id, Country = p.Country })
+                .ToList();
+            foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
+            {
+                var p = new PlayerContextExtension { Id = pp.Id, Country = pp.Country };
+                try {
+                    _context.PlayerContextExtensions.Attach(p);
+                } catch {}
+
+                p.Rank = i + 1;
+                _context.Entry(p).Property(x => x.Rank).IsModified = true;
+                if (!countries.ContainsKey(p.Country))
+                {
+                    countries[p.Country] = 1;
+                }
+
+                p.CountryRank = countries[p.Country];
+                _context.Entry(p).Property(x => x.CountryRank).IsModified = true;
+
+                countries[p.Country]++;
+            }
+            await _context.BulkSaveChangesAsync();
+
+            _context.ChangeTracker.AutoDetectChangesEnabled = true;
+
+            return Ok();
+        }
+
+        [HttpGet("~/players/rankrefresh/allContexts")]
+        [Authorize]
+        public async Task<ActionResult> RefreshRanksAllContexts()
+        {
+            if (HttpContext != null)
+            {
+                // Not fetching player here to not mess up context
+                if (HttpContext.CurrentUserID(_context) != AdminController.GolovaID)
+                {
+                    return Unauthorized();
+                }
+            }
+
+            await RefreshRanks(LeaderboardContexts.NoMods);
+            await RefreshRanks(LeaderboardContexts.NoPause);
+            await RefreshRanks(LeaderboardContexts.Golf);
 
             return Ok();
         }

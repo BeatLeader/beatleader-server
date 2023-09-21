@@ -23,6 +23,7 @@ namespace BeatLeader_Server.Models {
         public string PlayerId { get; set; }
         public Player Player { get; set; }
         public PlayerScoreStats? ScoreStats { get; set; }
+        public bool Banned { get; set; }
 
         [NotMapped]
         [JsonIgnore]

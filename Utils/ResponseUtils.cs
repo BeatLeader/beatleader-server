@@ -462,7 +462,17 @@ namespace BeatLeader_Server.Utils {
                     Socials = s.Player.Socials,
                     PatreonFeatures = s.Player.PatreonFeatures,
                     ProfileSettings = s.Player.ProfileSettings,
-                    ContextExtensions = s.Player.ContextExtensions,
+                    ContextExtensions = s.Player.ContextExtensions != null ? s.Player.ContextExtensions.Select(ce => new PlayerContextExtension {
+                        Context = ce.Context,
+                        Pp = ce.Pp,
+                        AccPp = ce.AccPp,
+                        TechPp = ce.TechPp,
+                        PassPp = ce.PassPp,
+
+                        Rank = ce.Rank,
+                        Country  = ce.Country,
+                        CountryRank  = ce.CountryRank,
+                    }).ToList() : null,
                     Clans = s.Player.Clans?.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
                             .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                 } : null,

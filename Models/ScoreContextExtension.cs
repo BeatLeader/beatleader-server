@@ -27,6 +27,8 @@ namespace BeatLeader_Server.Models {
 
         public int? ScoreId { get; set; }
         public Score? Score { get; set; }
+        public bool Qualification { get; set; }
+        public bool Banned { get; set; }
 
         public LeaderboardContexts Context { get; set; }
     }
