@@ -582,14 +582,14 @@ namespace BeatLeader_Server.Controllers
             Leaderboard leaderboard, 
             Player player,
             IDbContextTransaction transaction) {
-            if (player.Bot) return;
-
-            var isRanked = leaderboard.Difficulty.Status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.inevent;
-            RefreshGeneneralContextRank(resultScore, currentScores.FirstOrDefault(s => s.ValidContexts.HasFlag(LeaderboardContexts.General)), leaderboard, isRanked);
+            if (!player.Bot) {
+                var isRanked = leaderboard.Difficulty.Status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.inevent;
+                RefreshGeneneralContextRank(resultScore, currentScores.FirstOrDefault(s => s.ValidContexts.HasFlag(LeaderboardContexts.General)), leaderboard, isRanked);
             
-            RefreshContextRank(LeaderboardContexts.NoMods, resultScore, currentScores, leaderboard, isRanked);
-            RefreshContextRank(LeaderboardContexts.NoPause, resultScore, currentScores, leaderboard, isRanked);
-            RefreshContextRank(LeaderboardContexts.Golf, resultScore, currentScores, leaderboard, isRanked);
+                RefreshContextRank(LeaderboardContexts.NoMods, resultScore, currentScores, leaderboard, isRanked);
+                RefreshContextRank(LeaderboardContexts.NoPause, resultScore, currentScores, leaderboard, isRanked);
+                RefreshContextRank(LeaderboardContexts.Golf, resultScore, currentScores, leaderboard, isRanked);
+            }
 
             using (_serverTiming.TimeAction("db")) {
                 try
@@ -942,7 +942,7 @@ namespace BeatLeader_Server.Controllers
                 await CollectStats(replay, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, resultScore);
                 
                 // Calculate clan ranking for this leaderboard
-                //_context.UpdateClanRanking(leaderboard, currentScore, resultScore);
+                _context.UpdateClanRanking(leaderboard, currentScore, resultScore);
 
                 await _context.BulkSaveChangesAsync();
                 await transaction3.CommitAsync();
