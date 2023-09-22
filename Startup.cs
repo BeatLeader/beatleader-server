@@ -86,6 +86,10 @@ namespace BeatLeader_Server {
 
         public void DeleteCookie(HttpContext context, string key, CookieOptions options)
         {
+            if (options.Domain == null)
+            {
+                options.Domain = context.Request.Host.Value.Replace("api", "");
+            }
             context.Response.Cookies.Delete(key, options);
         }
     }
