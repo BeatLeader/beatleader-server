@@ -956,6 +956,17 @@ namespace BeatLeader_Server.Controllers {
                 foreach (var group in scoresGroups) {
                     var scores = group.ToList();
                     foreach (var score in scores) {
+                        foreach (var ce in score.ContextExtensions)
+                        {
+                            _context.ScoreContextExtensions.Remove(ce);
+                            score.ValidContexts &= ~ce.Context;
+                        }
+                    }
+                }
+                await _context.BulkSaveChangesAsync();
+                foreach (var group in scoresGroups) {
+                    var scores = group.ToList();
+                    foreach (var score in scores) {
                         var difficulty = score.Leaderboard.Difficulty;
                         score.ContextExtensions = new List<ScoreContextExtension>();
                         score.ValidContexts = LeaderboardContexts.None;
