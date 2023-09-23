@@ -340,12 +340,11 @@ namespace BeatLeader_Server {
                     services.AddHostedService<HourlyRefresh>();
                     services.AddHostedService<DailyRefresh>();
                     services.AddHostedService<HistoryService>();
-                    services.AddHostedService<RankingService>();
                     services.AddHostedService<BotService>();
                 }
-                
             }
 
+            services.AddHostedService<RankingService>();
             services.AddHostedService<LeaderboardPlayerStatsService>();
             services.AddHostedService<MinuteRefresh>();
 

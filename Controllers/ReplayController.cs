@@ -960,9 +960,6 @@ namespace BeatLeader_Server.Controllers
 
                 await CollectStats(replay, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, resultScore);
                 
-                // Calculate clan ranking for this leaderboard
-                _context.UpdateClanRanking(leaderboard, currentScore, resultScore);
-
                 await _context.BulkSaveChangesAsync();
                 await transaction3.CommitAsync();
 
@@ -1010,6 +1007,14 @@ namespace BeatLeader_Server.Controllers
                             });
                     }
                 }
+
+                transaction3 = await _context.Database.BeginTransactionAsync();
+
+                // Calculate clan ranking for this leaderboard
+                _context.UpdateClanRanking(leaderboard, currentScore, resultScore);
+
+                await _context.BulkSaveChangesAsync();
+                await transaction3.CommitAsync();
             }
             catch (Exception e)
             {
