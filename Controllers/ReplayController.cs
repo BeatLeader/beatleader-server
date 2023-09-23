@@ -643,11 +643,17 @@ namespace BeatLeader_Server.Controllers
                     .Select(s => new { s.Id, s.Rank })
             ).ToList();
 
-            int topRank = rankedScores.Count > 0 ? rankedScores[0].Rank : _context
+            int topRank;
+            if (rankedScores.Count > 0) {
+                topRank = rankedScores[0].Rank;
+                if (currentScore?.Rank < topRank) {
+                    topRank--;
+                }
+            } else if (currentScore != null) {
+                topRank = currentScore.Rank;
+            } else {
+                topRank = _context
                 .Scores.Count(s => s.PlayerId != resultScore.PlayerId && s.ValidContexts.HasFlag(LeaderboardContexts.General) && s.LeaderboardId == leaderboard.Id) + 1;
-
-            if (currentScore?.Rank < topRank) {
-                topRank--;
             }
 
             resultScore.Rank = topRank;
@@ -731,11 +737,17 @@ namespace BeatLeader_Server.Controllers
                 .ContextExtensions
                 .FirstOrDefault(c => c.Context == context);
 
-            int topRank = rankedScores.Count > 0 ? rankedScores[0].Rank : _context
+            int topRank;
+            if (rankedScores.Count > 0) {
+                topRank = rankedScores[0].Rank;
+                if (currentScore?.Rank < topRank) {
+                    topRank--;
+                }
+            } else if (currentScore != null) {
+                topRank = currentScore.Rank;
+            } else {
+                topRank = _context
                 .ScoreContextExtensions.Count(s => s.PlayerId != resultScore.PlayerId && s.LeaderboardId == leaderboard.Id && s.Context == context) + 1;
-
-            if (currentScore?.Rank < topRank) {
-                topRank--;
             }
 
             resultScore.Rank = topRank;
