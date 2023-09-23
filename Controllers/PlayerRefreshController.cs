@@ -89,7 +89,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task RefreshStats(PlayerScoreStats scoreStats, string playerId, List<SubScore>? scores = null)
+        public async Task RefreshStats(PlayerScoreStats scoreStats, string playerId, int rank, List<SubScore>? scores = null)
         {
             var allScores = scores ??
                 _context.Scores.Where(s => s.PlayerId == playerId && !s.IgnoreForStats).Select(s => new SubScore
@@ -152,6 +152,10 @@ namespace BeatLeader_Server.Controllers
 
                 scoreStats.TopPlatform = platforms.MaxBy(s => s.Value).Key;
                 scoreStats.TopHMD = hmds.MaxBy(s => s.Value).Key;
+
+                if (rank < scoreStats.PeakRank || scoreStats.PeakRank == 0) {
+                    scoreStats.PeakRank = rank;
+                }
             }
 
             int allScoresCount = allScores.Count();
@@ -308,18 +312,15 @@ namespace BeatLeader_Server.Controllers
                 var ranked = _context.Players
                     .Where(p => p.Pp > 0 && !p.Banned)
                     .OrderByDescending(t => t.Pp)
-                    .Select(p => new { Id = p.Id, Country = p.Country })
+                    .Select(p => new { p.Id, p.Country, p.Rank })
                     .ToList();
                 foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
                 {
-                    Player? p = _context.Players.Local.FirstOrDefault(ls => ls.Id == pp.Id);
+                    Player? p = new Player { Id = pp.Id, Country = pp.Country, Rank = pp.Rank };
                     if (p == null) {
                         try {
-                            p = new Player { Id = pp.Id, Country = pp.Country };
                             _context.Players.Attach(p);
-                        } catch (Exception e) {
-                            continue;
-                        }
+                        } catch { }
                     }
 
                     p.Rank = i + 1;
@@ -339,7 +340,7 @@ namespace BeatLeader_Server.Controllers
                 _context.ChangeTracker.AutoDetectChangesEnabled = true;
             }
             if (refreshStats) {
-                await RefreshStats(player.ScoreStats, player.Id);
+                await RefreshStats(player.ScoreStats, player.Id, player.Rank);
             }
 
             await _context.SaveChangesAsync();
@@ -526,15 +527,15 @@ namespace BeatLeader_Server.Controllers
                     .Players
                     .Where(p => (!p.Banned || p.Bot) && p.ScoreStats != null)
                     .OrderBy(p => p.Rank)
-                    .Select(p => new { p.Id, p.ScoreStats })
+                    .Select(p => new { p.Id, p.ScoreStats, p.Rank })
                     .ToList();
 
             var scoresById = allScores.GroupBy(s => s.PlayerId).ToDictionary(g => g.Key, g => g.ToList());
 
-            var playersWithScores = players.Where(p => scoresById.ContainsKey(p.Id)).Select(p => new { p.Id, p.ScoreStats, Scores = scoresById[p.Id] }).ToList();
+            var playersWithScores = players.Where(p => scoresById.ContainsKey(p.Id)).Select(p => new { p.Id, p.ScoreStats, p.Rank, Scores = scoresById[p.Id] }).ToList();
             
             await playersWithScores.ParallelForEachAsync(async player => {
-                await RefreshStats(player.ScoreStats, player.Id, player.Scores);
+                await RefreshStats(player.ScoreStats, player.Id, player.Rank, player.Scores);
             }, maxDegreeOfParallelism: 50);
 
             await _context.BulkSaveChangesAsync();
@@ -563,14 +564,11 @@ namespace BeatLeader_Server.Controllers
                 .ToList();
             foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
             {
-                Player? p = _context.Players.Local.FirstOrDefault(ls => ls.Id == pp.Id);
+                Player? p = new Player { Id = pp.Id, Country = pp.Country };
                 if (p == null) {
                     try {
-                        p = new Player { Id = pp.Id, Country = pp.Country };
                         _context.Players.Attach(p);
-                    } catch (Exception e) {
-                        continue;
-                    }
+                    } catch {}
                 }
 
                 p.Rank = i + 1;

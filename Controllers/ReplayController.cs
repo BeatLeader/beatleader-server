@@ -834,7 +834,7 @@ namespace BeatLeader_Server.Controllers
                     improvement.TotalRank = player.Rank - oldRank;
                 }
 
-                if (player.Rank < player.ScoreStats.PeakRank)
+                if (player.Rank < player.ScoreStats.PeakRank || player.ScoreStats.PeakRank == 0)
                 {
                     player.ScoreStats.PeakRank = player.Rank;
                 }
