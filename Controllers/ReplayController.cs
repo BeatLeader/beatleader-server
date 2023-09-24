@@ -782,7 +782,7 @@ namespace BeatLeader_Server.Controllers
             float oldPp = player.Pp;
             int oldRank = player.Rank;
 
-            var transaction2 = await _context.Database.BeginTransactionAsync();
+            var transaction = await _context.Database.BeginTransactionAsync();
 
             if (currentScore != null && improvement != null)
             {
@@ -804,11 +804,11 @@ namespace BeatLeader_Server.Controllers
                 await _context.BulkSaveChangesAsync();
             }
 
-            await transaction2.CommitAsync();
+            await transaction.CommitAsync();
 
             _context.ChangeTracker.AutoDetectChangesEnabled = true;
 
-            transaction2 = await _context.Database.BeginTransactionAsync();
+            transaction = await _context.Database.BeginTransactionAsync();
 
             ScoreStatistic? statistic;
             string? statisticError;
@@ -817,7 +817,7 @@ namespace BeatLeader_Server.Controllers
                 
             } catch (Exception e)
             {
-                SaveFailedScore(transaction2, currentScore, resultScore, leaderboard, e.ToString());
+                SaveFailedScore(transaction, currentScore, resultScore, leaderboard, e.ToString());
                 return;
             }
 
@@ -863,9 +863,9 @@ namespace BeatLeader_Server.Controllers
                 await _context.BulkSaveChangesAsync();
             }
 
-            await transaction2.CommitAsync();
+            await transaction.CommitAsync();
 
-            var transaction3 = await _context.Database.BeginTransactionAsync();
+            transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 foreach (var scoreToDelete in currentScores) {
@@ -879,7 +879,7 @@ namespace BeatLeader_Server.Controllers
 
                 if (statistic == null)
                 {
-                    SaveFailedScore(transaction2, currentScore, resultScore, leaderboard, "Could not recalculate score from replay. Error: " + statisticError);
+                    SaveFailedScore(transaction, currentScore, resultScore, leaderboard, "Could not recalculate score from replay. Error: " + statisticError);
                     return;
                 }
 
@@ -887,7 +887,7 @@ namespace BeatLeader_Server.Controllers
                     double scoreRatio = (double)resultScore.BaseScore / (double)statistic.winTracker.totalScore;
                     if (scoreRatio > 1.01 || scoreRatio < 0.99)
                     {
-                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Calculated on server score is too different: " + statistic.winTracker.totalScore + ". You probably need to update the mod.");
+                        SaveFailedScore(transaction, currentScore, resultScore, leaderboard, "Calculated on server score is too different: " + statistic.winTracker.totalScore + ". You probably need to update the mod.");
 
                         return;
                     }
@@ -908,7 +908,7 @@ namespace BeatLeader_Server.Controllers
                         .FirstOrDefault();
                     if (sameAccScore != null)
                     {
-                        SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, "Acc is suspiciously exact same as: " + sameAccScore + "'s score");
+                        SaveFailedScore(transaction, currentScore, resultScore, leaderboard, "Acc is suspiciously exact same as: " + sameAccScore + "'s score");
 
                         return;
                     }
@@ -961,7 +961,7 @@ namespace BeatLeader_Server.Controllers
                 await CollectStats(replay, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, resultScore);
                 
                 await _context.BulkSaveChangesAsync();
-                await transaction3.CommitAsync();
+                await transaction.CommitAsync();
 
                 await ScoresSocketController.TryPublishNewScore(resultScore, _configuration, _context);
                 await GeneralSocketController.ScoreWasAccepted(resultScore, _configuration, _context);
@@ -1008,17 +1008,17 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
-                transaction3 = await _context.Database.BeginTransactionAsync();
+                transaction = await _context.Database.BeginTransactionAsync();
 
                 // Calculate clan ranking for this leaderboard
                 _context.UpdateClanRanking(leaderboard, currentScore, resultScore);
 
                 await _context.BulkSaveChangesAsync();
-                await transaction3.CommitAsync();
+                await transaction.CommitAsync();
             }
             catch (Exception e)
             {
-                SaveFailedScore(transaction3, currentScore, resultScore, leaderboard, e.ToString());
+                SaveFailedScore(transaction, currentScore, resultScore, leaderboard, e.ToString());
             }
         }
 
