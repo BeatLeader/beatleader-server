@@ -393,9 +393,9 @@ namespace BeatLeader_Server.Controllers
 
             var improvement = await GeneralContextScore(leaderboard, player, resultScore, currentScores, replay);
 
-            await ContextScore(LeaderboardContexts.NoMods, leaderboard, player, resultScore, currentScores, replay);
-            await ContextScore(LeaderboardContexts.NoPause, leaderboard, player, resultScore, currentScores, replay);
-            await ContextScore(LeaderboardContexts.Golf, leaderboard, player, resultScore, currentScores, replay);
+            foreach (var leaderboardContext in ContextExtensions.NonGeneral) {
+                await ContextScore(leaderboardContext, leaderboard, player, resultScore, currentScores, replay);
+            }
 
             if (resultScore.ValidContexts == LeaderboardContexts.None) {
                 return (BadRequest("Score is lower than existing one"), true);
@@ -588,11 +588,11 @@ namespace BeatLeader_Server.Controllers
             IDbContextTransaction transaction) {
             if (!player.Bot) {
                 var isRanked = leaderboard.Difficulty.Status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.inevent;
-                RefreshGeneneralContextRank(resultScore, currentScores.FirstOrDefault(s => s.ValidContexts.HasFlag(LeaderboardContexts.General)), leaderboard, isRanked);
-            
-                RefreshContextRank(LeaderboardContexts.NoMods, resultScore, currentScores, leaderboard, isRanked);
-                RefreshContextRank(LeaderboardContexts.NoPause, resultScore, currentScores, leaderboard, isRanked);
-                RefreshContextRank(LeaderboardContexts.Golf, resultScore, currentScores, leaderboard, isRanked);
+                RefreshGeneneralContextRank(leaderboard, resultScore, isRanked);
+                
+                foreach (var leaderboardContext in ContextExtensions.NonGeneral) {
+                    RefreshContextRank(leaderboardContext, resultScore, leaderboard, isRanked);
+                }
             }
 
             using (_serverTiming.TimeAction("db")) {
@@ -610,62 +610,32 @@ namespace BeatLeader_Server.Controllers
             }
         }
 
-        private void RefreshGeneneralContextRank(
-            Score resultScore, 
-            Score? currentScore,
-            Leaderboard leaderboard,
-            bool isRanked) {
-            var rankedScores = (isRanked 
-                    ?
-                _context
+        private void RefreshGeneneralContextRank(Leaderboard leaderboard, Score resultScore, bool isRanked) {
+            if (!resultScore.ValidContexts.HasFlag(LeaderboardContexts.General)) return;
+
+            var rankedScores = _context
                     .Scores
                     .Where(s => s.LeaderboardId == leaderboard.Id && 
-                                s.Pp <= resultScore.Pp && 
                                 !s.Banned && 
-                                s.ValidContexts.HasFlag(LeaderboardContexts.General) &&
-                                s.PlayerId != resultScore.PlayerId)
-                    .OrderByDescending(el => Math.Round(el.Pp, 2))
+                                s.ValidContexts.HasFlag(LeaderboardContexts.General))
+                    .OrderBy(el => !isRanked ? el.Priority : 1)
+                    .OrderByDescending(el => !isRanked ? el.ModifiedScore : Math.Round(el.Pp, 2))
                     .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                     .ThenBy(el => el.Timeset)
-                    .Select(s => new { s.Id, s.Rank })
-                    :
-                _context
-                    .Scores
-                    .Where(s => s.LeaderboardId == leaderboard.Id && 
-                               ((s.ModifiedScore <= resultScore.ModifiedScore && s.Priority == resultScore.Priority) || s.Priority > resultScore.Priority) && 
-                               !s.Banned &&
-                               s.ValidContexts.HasFlag(LeaderboardContexts.General) &&
-                               s.PlayerId != resultScore.PlayerId)
-                    .OrderBy(el => el.Priority)
-                    .ThenByDescending(el => el.ModifiedScore)
-                    .ThenByDescending(el => Math.Round(el.Accuracy, 4))
-                    .ThenBy(el => el.Timeset)
-                    .Select(s => new { s.Id, s.Rank })
-            ).ToList();
-
-            int topRank;
-            if (rankedScores.Count > 0) {
-                topRank = rankedScores[0].Rank;
-                if (currentScore?.Rank < topRank) {
-                    topRank--;
-                }
-            } else if (currentScore != null) {
-                topRank = currentScore.Rank;
-            } else {
-                topRank = _context
-                .Scores.Count(s => s.PlayerId != resultScore.PlayerId && s.ValidContexts.HasFlag(LeaderboardContexts.General) && s.LeaderboardId == leaderboard.Id) + 1;
-            }
-
-            resultScore.Rank = topRank;
-            _context.Entry(resultScore).Property(x => x.Rank).IsModified = true;
+                    .Select(s => new { s.Id, s.Rank }).ToList();
 
             foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
             {
+                if (s.Id == resultScore.Id) {
+                    resultScore.Rank = i + 1;
+                }
+                if (s.Rank == i + 1) continue;
+
                 var score = new Score() { Id = s.Id };
                 try {
                     _context.Scores.Attach(score);
                 } catch { }
-                score.Rank = i + topRank + 1;
+                score.Rank = i + 1;
                     
                 _context.Entry(score).Property(x => x.Rank).IsModified = true;
             }
@@ -678,23 +648,18 @@ namespace BeatLeader_Server.Controllers
 
         private void RefreshContextRank(
             LeaderboardContexts context,
-            Score mainResultScore, 
-            List<Score> currentScores,
+            Score resultScore,
             Leaderboard leaderboard,
             bool isRanked) {
 
-            var resultScore = mainResultScore.ContextExtensions.FirstOrDefault(s => s.Context == context);
-            if (resultScore == null) return;
+            var resultContextExtension = resultScore.ContextExtensions.FirstOrDefault(ce => ce.Context == context);
+            if (!resultScore.ValidContexts.HasFlag(context) || resultContextExtension == null) return;
 
             List<ScoreSelection> rankedScores;
             if (isRanked) {
                 rankedScores = _context
                     .ScoreContextExtensions
-                    .Where(s => s.LeaderboardId == leaderboard.Id && 
-                                s.Pp <= resultScore.Pp && 
-                                s.Context == context &&
-                                !s.Banned &&
-                                s.PlayerId != resultScore.PlayerId)
+                    .Where(s => s.LeaderboardId == leaderboard.Id && s.Context == context && !s.Banned)
                     .OrderByDescending(el => Math.Round(el.Pp, 2))
                     .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                     .ThenBy(el => el.Timeset)
@@ -702,13 +667,9 @@ namespace BeatLeader_Server.Controllers
                     .ToList();
             } else {
                 if (context != LeaderboardContexts.Golf) {
-                rankedScores = _context
+                    rankedScores = _context
                     .ScoreContextExtensions
-                    .Where(s => s.LeaderboardId == leaderboard.Id && 
-                        ((s.ModifiedScore <= resultScore.ModifiedScore && s.Priority == resultScore.Priority) || s.Priority > resultScore.Priority) && 
-                        s.Context == context &&
-                        !s.Banned &&
-                        s.PlayerId != resultScore.PlayerId)
+                    .Where(s => s.LeaderboardId == leaderboard.Id && s.Context == context && !s.Banned)
                     .OrderBy(el => el.Priority)
                     .ThenByDescending(el => el.ModifiedScore)
                     .ThenByDescending(el => Math.Round(el.Accuracy, 4))
@@ -718,11 +679,7 @@ namespace BeatLeader_Server.Controllers
                 } else {
                     rankedScores = _context
                     .ScoreContextExtensions
-                    .Where(s => s.LeaderboardId == leaderboard.Id && 
-                        ((s.ModifiedScore >= resultScore.ModifiedScore && s.Priority == resultScore.Priority) || s.Priority < resultScore.Priority) && 
-                        s.Context == context &&
-                        !s.Banned &&
-                        s.PlayerId != resultScore.PlayerId)
+                    .Where(s => s.LeaderboardId == leaderboard.Id && s.Context == context && !s.Banned)
                     .OrderByDescending(el => el.Priority)
                     .ThenBy(el => el.ModifiedScore)
                     .ThenByDescending(el => Math.Round(el.Accuracy, 4))
@@ -732,34 +689,20 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            var currentScore = currentScores
-                .FirstOrDefault(s => s.ValidContexts.HasFlag(context))?
-                .ContextExtensions
-                .FirstOrDefault(c => c.Context == context);
-
-            int topRank;
-            if (rankedScores.Count > 0) {
-                topRank = rankedScores[0].Rank;
-                if (currentScore?.Rank < topRank) {
-                    topRank--;
-                }
-            } else if (currentScore != null) {
-                topRank = currentScore.Rank;
-            } else {
-                topRank = _context
-                .ScoreContextExtensions.Count(s => s.PlayerId != resultScore.PlayerId && s.LeaderboardId == leaderboard.Id && s.Context == context) + 1;
-            }
-
-            resultScore.Rank = topRank;
-            _context.Entry(resultScore).Property(x => x.Rank).IsModified = true;
+            
 
             foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
             {
+                if (s.Id == resultContextExtension.Id) {
+                    resultContextExtension.Rank = i + 1;
+                }
+                if (s.Rank == i + 1) continue;
+
                 var score = new ScoreContextExtension() { Id = s.Id };
                 try {
                     _context.ScoreContextExtensions.Attach(score);
                 } catch { }
-                score.Rank = i + topRank + 1;
+                score.Rank = i + 1;
                     
                 _context.Entry(score).Property(x => x.Rank).IsModified = true;
             }

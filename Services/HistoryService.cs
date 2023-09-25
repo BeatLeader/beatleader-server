@@ -268,7 +268,7 @@ namespace BeatLeader_Server.Services
                 
                 var ranked = (await _context
                     .PlayerScoreStatsHistory
-                    .Where(p => p.Timestamp > timesetFrom && p.Timestamp < timesetTo)
+                    .Where(p => p.Timestamp > timesetFrom && p.Timestamp < timesetTo && p.Context == LeaderboardContexts.General)
                     .Select(p => new { 
                         Rank = p.Rank,
                         CountryRank = p.CountryRank,

@@ -19,6 +19,21 @@ namespace BeatLeader_Server.Models
         Golf = 1 << 4
     }
 
+    public static class ContextExtensions {
+        public static List<LeaderboardContexts> All =  new List<LeaderboardContexts> { 
+            LeaderboardContexts.General,
+            LeaderboardContexts.NoMods,
+            LeaderboardContexts.NoPause,
+            LeaderboardContexts.Golf
+        };
+
+        public static List<LeaderboardContexts> NonGeneral = new List<LeaderboardContexts> { 
+            LeaderboardContexts.NoMods,
+            LeaderboardContexts.NoPause,
+            LeaderboardContexts.Golf
+        };
+    }
+
     public class ScoreMetadata 
     {
         public int Id { get; set; }
