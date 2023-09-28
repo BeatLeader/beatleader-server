@@ -393,6 +393,7 @@ namespace BeatLeader_Server.Utils {
             public int MissedNotes { get; set; }
             public int BadCuts { get; set; }
             public HMD Hmd { get; set; }
+            public ControllerEnum Controller { get; set; }
 
             public int EpochTime { get; set; }
         }
