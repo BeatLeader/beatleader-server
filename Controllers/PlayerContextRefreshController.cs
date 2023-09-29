@@ -39,7 +39,7 @@ namespace BeatLeader_Server.Controllers {
         [NonAction]
         public async Task RefreshPlayer(Player player, LeaderboardContexts context, bool refreshRank = true, bool refreshStats = true) {
             _context.RecalculatePPAndRankFastContext(context, player);
-            await _context.SaveChangesAsync();
+            await _context.BulkSaveChangesAsync();
 
             if (refreshRank)
             {
@@ -536,7 +536,7 @@ namespace BeatLeader_Server.Controllers {
 
             var scoresById = allScores.GroupBy(s => s.PlayerId).ToDictionary(g => g.Key, g => g.ToList());
 
-            var playersWithScores = players.Where(p => scoresById.ContainsKey(p.PlayerId)).Select(p => new { Id = p.PlayerId, p.ScoreStats, Scores = scoresById[p.PlayerId] }).ToList();
+            var playersWithScores = players.Select(p => new { Id = p.PlayerId, p.ScoreStats, Scores = scoresById.ContainsKey(p.PlayerId) ? scoresById[p.PlayerId] : new List<SubScore>{ } }).ToList();
             
             await playersWithScores.ParallelForEachAsync(async player => {
                 await RefreshStats(player.ScoreStats, player.Id, context, player.Scores);

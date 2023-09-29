@@ -164,8 +164,7 @@ namespace BeatLeader_Server.Services
                     (float totalpp, int totalRanks) = RefreshLeaderboardPlayers(leaderboard.Id, _context);
                     await _context.SaveChangesAsync();
 
-                    _context.CalculateClanRankingSlow(leaderboard);
-                    await _context.BulkSaveChangesAsync();
+                    
 
                     if (dsClient != null)
                     {
@@ -197,17 +196,25 @@ namespace BeatLeader_Server.Services
                 }
                 RankedMapCount = RefreshRankedMapCount(_context);
 
-                var _playerController = scope.ServiceProvider.GetRequiredService<PlayerRefreshController>();
-                await _playerController.RefreshRanks();
-
                 var _playlistController = scope.ServiceProvider.GetRequiredService<PlaylistController>();
                 await _playlistController.RefreshNominatedPlaylist();
                 await _playlistController.RefreshQualifiedPlaylist();
                 await _playlistController.RefreshRankedPlaylist();
 
-
+                var _playerController = scope.ServiceProvider.GetRequiredService<PlayerRefreshController>();
+                await _playerController.RefreshRanks();
                 await _playerController.RefreshPlayers();
                 await _playerController.RefreshPlayersStats();
+
+                var _playerContextController = scope.ServiceProvider.GetRequiredService<PlayerContextRefreshController>();
+                await _playerContextController.RefreshPlayersAllContext();
+                await _playerContextController.RefreshPlayersStatsAllContexts();
+
+                foreach (var leaderboard in leaderboards)
+                {
+                    leaderboard.ClanRanking = _context.CalculateClanRankingSlow(leaderboard);
+                }
+                await _context.BulkSaveChangesAsync();
             }
         }
     }

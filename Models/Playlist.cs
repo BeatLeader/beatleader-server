@@ -6,5 +6,6 @@
         public bool IsShared { get; set; }
         public string Link { get; set; }
         public string OwnerId { get; set; }
+        public string? Hash { get; set; }
     }
 }
