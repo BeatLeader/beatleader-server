@@ -269,6 +269,7 @@ namespace BeatLeader_Server.Utils {
 
         public class DifficultyResponse
         {
+            public int Id { get; set; }
             public int Value { get; set; }
             public int Mode { get; set; }
             public string DifficultyName { get; set; }
@@ -579,6 +580,7 @@ namespace BeatLeader_Server.Utils {
                     Id = s.LeaderboardId,
                     Song = s.Leaderboard?.Song,
                     Difficulty = s.Leaderboard?.Difficulty != null ? new DifficultyResponse {
+                        Id = s.Leaderboard.Difficulty.Id,
                         Value = s.Leaderboard.Difficulty.Value,
                         Mode = s.Leaderboard.Difficulty.Mode,
                         DifficultyName = s.Leaderboard.Difficulty.DifficultyName,
@@ -647,6 +649,7 @@ namespace BeatLeader_Server.Utils {
                 Id = l.Id,
                 Song = l.Song,
                 Difficulty = new DifficultyResponse {
+                    Id = l.Difficulty.Id,
                     Value = l.Difficulty.Value,
                     Mode = l.Difficulty.Mode,
                     DifficultyName = l.Difficulty.DifficultyName,

@@ -3,7 +3,7 @@
 namespace BeatLeader_Server.Models {
 
     [Index(nameof(PlayerId), nameof(LeaderboardId), nameof(Context), IsUnique = true)]
-    public class ScoreContextExtension 
+    public class ScoreContextExtension
     {
         public int Id { get; set; }
         public string PlayerId { get; set; }

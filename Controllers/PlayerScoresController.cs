@@ -176,6 +176,7 @@ namespace BeatLeader_Server.Controllers {
                             Id = s.LeaderboardId,
                             Song = s.Leaderboard.Song,
                             Difficulty = new DifficultyResponse {
+                                Id = s.Leaderboard.Difficulty.Id,
                                 Value = s.Leaderboard.Difficulty.Value,
                                 Mode = s.Leaderboard.Difficulty.Mode,
                                 DifficultyName = s.Leaderboard.Difficulty.DifficultyName,
@@ -618,6 +619,7 @@ namespace BeatLeader_Server.Controllers {
                             Id = s.LeaderboardId,
                             Song = s.Leaderboard.Song,
                             Difficulty = new DifficultyResponse {
+                                Id = s.Leaderboard.Difficulty.Id,
                                 Value = s.Leaderboard.Difficulty.Value,
                                 Mode = s.Leaderboard.Difficulty.Mode,
                                 DifficultyName = s.Leaderboard.Difficulty.DifficultyName,

@@ -27,6 +27,9 @@ namespace BeatLeader_Server.Controllers
         private readonly LeaderboardController _leaderboardController;
         private readonly PlayerController _playerController;
         private readonly ScoreController _scoreController;
+        private readonly LeaderboardRefreshController _leaderboardRefreshController;
+        private readonly PlayerContextRefreshController _playerContextRefreshController;
+        private readonly PlayerRefreshController _playerRefreshController;
         private readonly IWebHostEnvironment _environment;
         private readonly IConfiguration _configuration;
         private readonly IServerTiming _serverTiming;
@@ -42,13 +45,16 @@ namespace BeatLeader_Server.Controllers
             LeaderboardController leaderboardController, 
             PlayerController playerController,
             ScoreController scoreController,
+            LeaderboardRefreshController leaderboardRefreshController,
             IServerTiming serverTiming,
-            IMetricFactory metricFactory
-            )
+            IMetricFactory metricFactory,
+            PlayerContextRefreshController playerContextRefreshController,
+            PlayerRefreshController playerRefreshController)
         {
             _leaderboardController = leaderboardController;
             _playerController = playerController;
             _scoreController = scoreController;
+            _leaderboardRefreshController = leaderboardRefreshController;
             _context = context;
             _environment = env;
             _configuration = configuration;
@@ -58,10 +64,13 @@ namespace BeatLeader_Server.Controllers
             _replayLocation = metricFactory.CreateGauge("replay_position", "Posted replay location", new string[] { "geohash" });
             _geoHasher = new Geohash.Geohasher();
 
-            if (ipLocation == null) {
+            if (ipLocation == null)
+            {
                 ipLocation = new IP2Location.Component();
                 ipLocation.Open(env.WebRootPath + "/databases/IP2LOCATION-LITE-DB.BIN");
             }
+            _playerContextRefreshController = playerContextRefreshController;
+            _playerRefreshController = playerRefreshController;
         }
 
         [HttpPost("~/replay"), DisableRequestSizeLimit]
@@ -559,7 +568,6 @@ namespace BeatLeader_Server.Controllers
             if (currentScore != null) {
                 currentScore.ValidContexts &= ~context;
                 if (currentExtension != null) {
-                    currentScore.ContextExtensions.Remove(currentExtension);
                     _context.ScoreContextExtensions.Remove(currentExtension);
                 }
             }
@@ -760,7 +768,7 @@ namespace BeatLeader_Server.Controllers
                 
             } catch (Exception e)
             {
-                SaveFailedScore(transaction, currentScore, resultScore, leaderboard, e.ToString());
+                await SaveFailedScore(transaction, currentScore, resultScore, leaderboard, e.ToString());
                 return;
             }
 
@@ -822,7 +830,7 @@ namespace BeatLeader_Server.Controllers
 
                 if (statistic == null)
                 {
-                    SaveFailedScore(transaction, currentScore, resultScore, leaderboard, "Could not recalculate score from replay. Error: " + statisticError);
+                    await SaveFailedScore(transaction, currentScore, resultScore, leaderboard, "Could not recalculate score from replay. Error: " + statisticError);
                     return;
                 }
 
@@ -830,7 +838,7 @@ namespace BeatLeader_Server.Controllers
                     double scoreRatio = (double)resultScore.BaseScore / (double)statistic.winTracker.totalScore;
                     if (scoreRatio > 1.01 || scoreRatio < 0.99)
                     {
-                        SaveFailedScore(transaction, currentScore, resultScore, leaderboard, "Calculated on server score is too different: " + statistic.winTracker.totalScore + ". You probably need to update the mod.");
+                        await SaveFailedScore(transaction, currentScore, resultScore, leaderboard, "Calculated on server score is too different: " + statistic.winTracker.totalScore + ". You probably need to update the mod.");
 
                         return;
                     }
@@ -851,7 +859,7 @@ namespace BeatLeader_Server.Controllers
                         .FirstOrDefault();
                     if (sameAccScore != null)
                     {
-                        SaveFailedScore(transaction, currentScore, resultScore, leaderboard, "Acc is suspiciously exact same as: " + sameAccScore + "'s score");
+                        await SaveFailedScore(transaction, currentScore, resultScore, leaderboard, "Acc is suspiciously exact same as: " + sameAccScore + "'s score");
 
                         return;
                     }
@@ -961,15 +969,33 @@ namespace BeatLeader_Server.Controllers
             }
             catch (Exception e)
             {
-                SaveFailedScore(transaction, currentScore, resultScore, leaderboard, e.ToString());
+                await SaveFailedScore(transaction, currentScore, resultScore, leaderboard, e.ToString());
             }
         }
 
         [NonAction]
-        private void SaveFailedScore(IDbContextTransaction transaction, Score? previousScore, Score score, Leaderboard leaderboard, string failReason) {
+        private async Task SaveFailedScore(IDbContextTransaction transaction, Score? previousScore, Score score, Leaderboard leaderboard, string failReason) {
             try {
-            GeneralSocketController.ScoreWasRejected(score, _configuration, _context);
-            RollbackScore(score, previousScore, leaderboard);
+
+            await GeneralSocketController.ScoreWasRejected(score, _configuration, _context);
+
+            foreach (var ce in score.ContextExtensions) {
+                if (score.ValidContexts.HasFlag(ce.Context)) {
+                    _context.ScoreContextExtensions.Remove(ce);
+                }
+            }
+
+            score.LeaderboardId = null;
+
+            if (previousScore != null) {
+                previousScore.LeaderboardId = leaderboard.Id;
+                foreach (var ce in previousScore.ContextExtensions) {
+                    if (!previousScore.ValidContexts.HasFlag(ce.Context)) {
+                        _context.ScoreContextExtensions.Add(ce);
+                        previousScore.ValidContexts |= ce.Context;
+                    }
+                }
+            }
             Player player = score.Player;
 
             FailedScore failedScore = new FailedScore {
@@ -1002,101 +1028,25 @@ namespace BeatLeader_Server.Controllers
             transaction = _context.Database.BeginTransaction();
 
             _context.ChangeTracker.AutoDetectChangesEnabled = false;
-            var status = leaderboard.Difficulty.Status;
-            var isRanked = status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.inevent;
-
-            var rankedScores = (isRanked 
-                    ?
-                _context
-                    .Scores
-                    .Where(s => s.LeaderboardId == leaderboard.Id && !s.Banned)
-                    .OrderByDescending(el => Math.Round(el.Pp, 2))
-                    .ThenByDescending(el => Math.Round(el.Accuracy, 4))
-                    .ThenBy(el => el.Timeset)
-                    .Select(s => new { Id = s.Id, Rank = s.Rank })
-                    :
-                _context
-                    .Scores
-                    .Where(s => s.LeaderboardId == leaderboard.Id && !s.Banned)
-                    .OrderBy(el => el.Priority)
-                    .ThenByDescending(el => el.ModifiedScore)
-                    .ThenByDescending(el => Math.Round(el.Accuracy, 4))
-                    .ThenBy(el => el.Timeset)
-                    .Select(s => new { Id = s.Id, Rank = s.Rank })
-            ).ToList();
-
-            foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
-            {
-                var score1 = _context.Scores.Local.FirstOrDefault(ls => ls.Id == s.Id);
-                if (score1 == null) {
-                    score1 = new Score() { Id = s.Id };
-                    _context.Scores.Attach(score);
-                }
-                score1.Rank = i + 1;
-                    
-                _context.Entry(score1).Property(x => x.Rank).IsModified = true;
-            }
 
             if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
                 _context.RecalculatePPAndRankFast(player, score.ValidContexts);
+            }
+            await _leaderboardRefreshController.RefreshLeaderboardsRankAllContexts(leaderboard.Id);
+
+            _context.ChangeTracker.AutoDetectChangesEnabled = true;
+
+            await _playerRefreshController.RefreshStats(player.ScoreStats, player.Id, player.Rank);
+
+            foreach (var ce in player.ContextExtensions)
+            {
+                await _playerContextRefreshController.RefreshStats(ce.ScoreStats, player.Id, ce.Context);
             }
 
             _context.BulkSaveChanges();
             transaction.Commit();
             
             } catch { }
-        }
-
-        [NonAction]
-        private async void RollbackScore(Score score, Score? previousScore, Leaderboard leaderboard) {
-            Player player = score.Player;
-            
-            player.ScoreStats.TotalScore -= score.ModifiedScore;
-            if (player.ScoreStats.TotalPlayCount == 1)
-            {
-                player.ScoreStats.AverageAccuracy = 0.0f;
-            }
-            else
-            {
-                player.ScoreStats.AverageAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, score.Accuracy);
-            }
-
-            if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
-            {
-                if (player.ScoreStats.RankedPlayCount == 1)
-                {
-                    player.ScoreStats.AverageRankedAccuracy = 0.0f;
-                }
-                else
-                {
-                    player.ScoreStats.AverageRankedAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, score.Accuracy);
-                }
-            }
-
-            foreach (var ce in score.ContextExtensions) {
-                if (score.ValidContexts.HasFlag(ce.Context)) {
-                    _context.ScoreContextExtensions.Remove(ce);
-                }
-            }
-
-            score.LeaderboardId = null;
-
-            if (previousScore == null) {
-                if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
-                {
-                    player.ScoreStats.RankedPlayCount--;
-                }
-                player.ScoreStats.TotalPlayCount--;
-            } else {
-                previousScore.LeaderboardId = leaderboard.Id;
-
-                player.ScoreStats.TotalScore += previousScore.ModifiedScore;
-                player.ScoreStats.AverageAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, previousScore.Accuracy);
-                if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
-                {
-                    player.ScoreStats.AverageRankedAccuracy = MathUtils.AddToAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, previousScore.Accuracy);
-                }
-            }
         }
 
         [NonAction]

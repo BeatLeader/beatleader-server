@@ -154,7 +154,7 @@ namespace BeatLeader_Server.Utils
 
             var rankedPlayers = context
                 .Players
-                .Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned)
+                .Where(t => t.Pp > 0 && t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned)
                 .Select(p => new {
                     Id = p.Id,
                     Rank = p.Rank,
@@ -299,7 +299,7 @@ namespace BeatLeader_Server.Utils
 
             var rankedPlayers = dbContext
                 .PlayerContextExtensions
-                .Where(t => t.Context == context && t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned)
+                .Where(t => t.Context == context && t.Pp > 0 && t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned)
                 .Select(p => new { p.Id, p.Rank, p.Country, p.CountryRank, p.Pp })
                 .ToList()
                 .Append(new { player.Id, player.Rank, player.Country, player.CountryRank, player.Pp })

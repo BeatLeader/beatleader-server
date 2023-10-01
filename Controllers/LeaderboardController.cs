@@ -457,6 +457,7 @@ namespace BeatLeader_Server.Controllers {
                 Id = l.Id,
                 Song = l.Song,
                 Difficulty = new DifficultyResponse {
+                    Id = l.Difficulty.Id,
                     Value = l.Difficulty.Value,
                     Mode = l.Difficulty.Mode,
                     DifficultyName = l.Difficulty.DifficultyName,
@@ -765,6 +766,7 @@ namespace BeatLeader_Server.Controllers {
                     Id = l.Id,
                     Song = l.Song,
                     Difficulty = new DifficultyResponse {
+                        Id = l.Difficulty.Id,
                         Value = l.Difficulty.Value,
                         Mode = l.Difficulty.Mode,
                         DifficultyName = l.Difficulty.DifficultyName,
@@ -895,6 +897,7 @@ namespace BeatLeader_Server.Controllers {
                 Id = lb.Id,
                 Qualification = lb.Qualification,
                 Difficulty = new DifficultyResponse {
+                    Id = lb.Difficulty.Id,
                     Value = lb.Difficulty.Value,
                     Mode = lb.Difficulty.Mode,
                     DifficultyName = lb.Difficulty.DifficultyName,
@@ -1064,7 +1067,9 @@ namespace BeatLeader_Server.Controllers {
             if (type == Type.Staff) {
                 sequence = sequence
                     .Include(lb => lb.Qualification)
-                    .ThenInclude(q => q.Votes);
+                    .ThenInclude(q => q.Votes)
+                    .Include(lb => lb.Song)
+                    .ThenInclude(s => s.Difficulties);
             }
 
             bool showPlays = sortBy == SortBy.PlayCount;
@@ -1074,6 +1079,7 @@ namespace BeatLeader_Server.Controllers {
                     Id = lb.Id,
                     Song = lb.Song,
                     Difficulty = new DifficultyResponse {
+                        Id = lb.Difficulty.Id,
                         Value = lb.Difficulty.Value,
                         Mode = lb.Difficulty.Mode,
                         DifficultyName = lb.Difficulty.DifficultyName,
@@ -1237,6 +1243,7 @@ namespace BeatLeader_Server.Controllers {
                     Id = lb.Id,
                     Song = lb.Song,
                     Difficulty = new DifficultyResponse {
+                        Id = lb.Difficulty.Id,
                         Value = lb.Difficulty.Value,
                         Mode = lb.Difficulty.Mode,
                         DifficultyName = lb.Difficulty.DifficultyName,
@@ -1281,82 +1288,6 @@ namespace BeatLeader_Server.Controllers {
 
             return result;
         }
-
-        [HttpGet("~/leaderboards/refresh")]
-        public async Task<ActionResult> RefreshLeaderboards([FromQuery] string? id = null) {
-            string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = await _context.Players.FindAsync(currentId);
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin")) {
-                return Unauthorized();
-            }
-            var query = _context
-                .Leaderboards.Where(lb => true);
-
-            if (id != null) {
-                query = query.Where(lb => lb.Id == id);
-            }
-
-            int count = query.Count();
-
-            for (int i = 0; i < count; i += 1000) {
-                var leaderboards =
-                query
-                .OrderBy(lb => lb.Id)
-                .Skip(i)
-                .Take(1000)
-                .Select(lb => new {
-                    lb.Id,
-                    lb.Difficulty.Status,
-                    Scores = lb.Scores.Where(s => !s.Banned).Select(s => new { s.Id, s.Pp, s.Accuracy, s.ModifiedScore, s.Timeset })
-                })
-                .ToArray();
-
-                foreach (var leaderboard in leaderboards) {
-                    var status = leaderboard.Status;
-
-                    var rankedScores = status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.inevent
-                        ? leaderboard
-                            .Scores
-                            .OrderByDescending(el => el.Pp)
-                            .ThenByDescending(el => el.Accuracy)
-                            .ThenBy(el => el.Timeset)
-                            .ToList()
-                        : leaderboard
-                            .Scores
-                            .OrderByDescending(el => el.ModifiedScore)
-                            .ThenByDescending(el => el.Accuracy)
-                            .ThenBy(el => el.Timeset)
-                            .ToList();
-                    if (rankedScores.Count > 0) {
-                        foreach ((int ii, var s) in rankedScores.Select((value, ii) => (ii, value))) {
-                            var score = _context.Scores.Local.FirstOrDefault(ls => ls.Id == s.Id);
-                            if (score == null) {
-                                score = new Score() { Id = s.Id };
-                                _context.Scores.Attach(score);
-                            }
-                            score.Rank = ii + 1;
-
-                            _context.Entry(score).Property(x => x.Rank).IsModified = true;
-                        }
-                    }
-
-                    Leaderboard lb = new Leaderboard() { Id = leaderboard.Id };
-                    _context.Leaderboards.Attach(lb);
-                    lb.Plays = rankedScores.Count;
-
-                    _context.Entry(lb).Property(x => x.Plays).IsModified = true;
-                }
-
-                try {
-                    await _context.BulkSaveChangesAsync();
-                } catch (Exception e) {
-                    _context.RejectChanges();
-                }
-            }
-
-            return Ok();
-        }
-
         public class LeaderboardVoting {
             public float Rankability { get; set; }
             public float Stars { get; set; }
