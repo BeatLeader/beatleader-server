@@ -100,11 +100,11 @@ namespace BeatLeader_Server.Extensions
             
         }
 
-        public static string? CurrentUserID(this HttpContext context, AppContext dbcontext)
+        public static string? CurrentUserID(this HttpContext? context, AppContext dbcontext)
         {
             try
             {
-                string? currentID = context.User.Claims.FirstOrDefault()?.Value.Split("/").LastOrDefault();
+                string? currentID = context?.User.Claims.FirstOrDefault()?.Value.Split("/").LastOrDefault();
                 if (currentID == null) return null;
 
                 long intId = Int64.Parse(currentID);

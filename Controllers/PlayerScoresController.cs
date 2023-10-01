@@ -175,7 +175,35 @@ namespace BeatLeader_Server.Controllers {
                         Leaderboard = new LeaderboardResponse {
                             Id = s.LeaderboardId,
                             Song = s.Leaderboard.Song,
-                            Difficulty = s.Leaderboard.Difficulty
+                            Difficulty = new DifficultyResponse {
+                                Value = s.Leaderboard.Difficulty.Value,
+                                Mode = s.Leaderboard.Difficulty.Mode,
+                                DifficultyName = s.Leaderboard.Difficulty.DifficultyName,
+                                ModeName = s.Leaderboard.Difficulty.ModeName,
+                                Status = s.Leaderboard.Difficulty.Status,
+                                ModifierValues = s.Leaderboard.Difficulty.ModifierValues,
+                                ModifiersRating = s.Leaderboard.Difficulty.ModifiersRating,
+                                NominatedTime  = s.Leaderboard.Difficulty.NominatedTime,
+                                QualifiedTime  = s.Leaderboard.Difficulty.QualifiedTime,
+                                RankedTime = s.Leaderboard.Difficulty.RankedTime,
+
+                                Stars  = s.Leaderboard.Difficulty.Stars,
+                                PredictedAcc  = s.Leaderboard.Difficulty.PredictedAcc,
+                                PassRating  = s.Leaderboard.Difficulty.PassRating,
+                                AccRating  = s.Leaderboard.Difficulty.AccRating,
+                                TechRating  = s.Leaderboard.Difficulty.TechRating,
+                                Type  = s.Leaderboard.Difficulty.Type,
+
+                                Njs  = s.Leaderboard.Difficulty.Njs,
+                                Nps  = s.Leaderboard.Difficulty.Nps,
+                                Notes  = s.Leaderboard.Difficulty.Notes,
+                                Bombs  = s.Leaderboard.Difficulty.Bombs,
+                                Walls  = s.Leaderboard.Difficulty.Walls,
+                                MaxScore = s.Leaderboard.Difficulty.MaxScore,
+                                Duration  = s.Leaderboard.Difficulty.Duration,
+
+                                Requirements = s.Leaderboard.Difficulty.Requirements,
+                            }
                         },
                         Weight = s.Weight,
                         AccLeft = s.AccLeft,
@@ -589,7 +617,35 @@ namespace BeatLeader_Server.Controllers {
                         Leaderboard = new LeaderboardResponse {
                             Id = s.LeaderboardId,
                             Song = s.Leaderboard.Song,
-                            Difficulty = s.Leaderboard.Difficulty
+                            Difficulty = new DifficultyResponse {
+                                Value = s.Leaderboard.Difficulty.Value,
+                                Mode = s.Leaderboard.Difficulty.Mode,
+                                DifficultyName = s.Leaderboard.Difficulty.DifficultyName,
+                                ModeName = s.Leaderboard.Difficulty.ModeName,
+                                Status = s.Leaderboard.Difficulty.Status,
+                                ModifierValues = s.Leaderboard.Difficulty.ModifierValues,
+                                ModifiersRating = s.Leaderboard.Difficulty.ModifiersRating,
+                                NominatedTime  = s.Leaderboard.Difficulty.NominatedTime,
+                                QualifiedTime  = s.Leaderboard.Difficulty.QualifiedTime,
+                                RankedTime = s.Leaderboard.Difficulty.RankedTime,
+
+                                Stars  = s.Leaderboard.Difficulty.Stars,
+                                PredictedAcc  = s.Leaderboard.Difficulty.PredictedAcc,
+                                PassRating  = s.Leaderboard.Difficulty.PassRating,
+                                AccRating  = s.Leaderboard.Difficulty.AccRating,
+                                TechRating  = s.Leaderboard.Difficulty.TechRating,
+                                Type  = s.Leaderboard.Difficulty.Type,
+
+                                Njs  = s.Leaderboard.Difficulty.Njs,
+                                Nps  = s.Leaderboard.Difficulty.Nps,
+                                Notes  = s.Leaderboard.Difficulty.Notes,
+                                Bombs  = s.Leaderboard.Difficulty.Bombs,
+                                Walls  = s.Leaderboard.Difficulty.Walls,
+                                MaxScore = s.Leaderboard.Difficulty.MaxScore,
+                                Duration  = s.Leaderboard.Difficulty.Duration,
+
+                                Requirements = s.Leaderboard.Difficulty.Requirements,
+                            }
                         },
                         Weight = s.Weight,
                         AccLeft = s.AccLeft,

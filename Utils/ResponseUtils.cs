@@ -183,19 +183,14 @@ namespace BeatLeader_Server.Utils {
 
         public class LeaderboardsInfoResponse {
             public string Id { get; set; }
-            public DifficultyDescription Difficulty { get; set; }
+            public DifficultyResponse Difficulty { get; set; }
             public RankQualification? Qualification { get; set; }
             public RankUpdate? Reweight { get; set; }
             public bool ClanRankingContested { get; set; }
             public Clan Clan { get; set; }
 
             public void HideRatings() {
-                this.Difficulty.AccRating = null;
-                this.Difficulty.TechRating = null;
-                this.Difficulty.PassRating = null;
-                this.Difficulty.Stars = null;
-
-                this.Difficulty.ModifiersRating = null;
+                this.Difficulty.HideRatings();
             }
         }
 
@@ -272,10 +267,50 @@ namespace BeatLeader_Server.Utils {
             public Requirements Requirements { get; set; }
         }
 
+        public class DifficultyResponse
+        {
+            public int Value { get; set; }
+            public int Mode { get; set; }
+            public string DifficultyName { get; set; }
+            public string ModeName { get; set; }
+            public DifficultyStatus Status { get; set; }
+            public ModifiersMap? ModifierValues { get; set; } = new ModifiersMap();
+            public ModifiersRating? ModifiersRating { get; set; }
+            public int NominatedTime { get; set; }
+            public int QualifiedTime { get; set; }
+            public int RankedTime { get; set; }
+
+            public float? Stars { get; set; }
+            public float? PredictedAcc { get; set; }
+            public float? PassRating { get; set; }
+            public float? AccRating { get; set; }
+            public float? TechRating { get; set; }
+            public int Type { get; set; }
+
+            public float Njs { get; set; }
+            public float Nps { get; set; }
+            public int Notes { get; set; }
+            public int Bombs { get; set; }
+            public int Walls { get; set; }
+            public int MaxScore { get; set; }
+            public double Duration { get; set; }
+
+            public Requirements Requirements { get; set; }
+
+            public void HideRatings() {
+                this.AccRating = null;
+                this.TechRating = null;
+                this.PassRating = null;
+                this.Stars = null;
+
+                this.ModifiersRating = null;
+            }
+        }
+
         public class LeaderboardResponse {
             public string? Id { get; set; }
             public Song? Song { get; set; }
-            public DifficultyDescription? Difficulty { get; set; }
+            public DifficultyResponse? Difficulty { get; set; }
             public List<ScoreResponse>? Scores { get; set; }
             public IEnumerable<LeaderboardChange>? Changes { get; set; }
 
@@ -289,12 +324,7 @@ namespace BeatLeader_Server.Utils {
             public bool ClanRankingContested { get; set; }
             public void HideRatings()
             {
-                this.Difficulty.AccRating = null;
-                this.Difficulty.TechRating = null;
-                this.Difficulty.PassRating = null;
-                this.Difficulty.Stars = null;
-
-                this.Difficulty.ModifiersRating = null;
+                this.Difficulty.HideRatings();
             }
         }
 
@@ -339,7 +369,7 @@ namespace BeatLeader_Server.Utils {
         public class LeaderboardInfoResponse {
             public string Id { get; set; }
             public Song Song { get; set; }
-            public DifficultyDescription Difficulty { get; set; }
+            public DifficultyResponse Difficulty { get; set; }
             public int Plays { get; set; }
             public int PositiveVotes { get; set; }
             public int StarVotes { get; set; }
@@ -352,12 +382,7 @@ namespace BeatLeader_Server.Utils {
             public RankUpdate? Reweight { get; set; }
 
             public void HideRatings() {
-                this.Difficulty.AccRating = null;
-                this.Difficulty.TechRating = null;
-                this.Difficulty.PassRating = null;
-                this.Difficulty.Stars = null;
-
-                this.Difficulty.ModifiersRating = null;
+                this.Difficulty.HideRatings();
             }
         }
 
@@ -553,7 +578,35 @@ namespace BeatLeader_Server.Utils {
                 Leaderboard = new LeaderboardResponse {
                     Id = s.LeaderboardId,
                     Song = s.Leaderboard?.Song,
-                    Difficulty = s.Leaderboard?.Difficulty
+                    Difficulty = s.Leaderboard?.Difficulty != null ? new DifficultyResponse {
+                        Value = s.Leaderboard.Difficulty.Value,
+                        Mode = s.Leaderboard.Difficulty.Mode,
+                        DifficultyName = s.Leaderboard.Difficulty.DifficultyName,
+                        ModeName = s.Leaderboard.Difficulty.ModeName,
+                        Status = s.Leaderboard.Difficulty.Status,
+                        ModifierValues = s.Leaderboard.Difficulty.ModifierValues,
+                        ModifiersRating = s.Leaderboard.Difficulty.ModifiersRating,
+                        NominatedTime  = s.Leaderboard.Difficulty.NominatedTime,
+                        QualifiedTime  = s.Leaderboard.Difficulty.QualifiedTime,
+                        RankedTime = s.Leaderboard.Difficulty.RankedTime,
+
+                        Stars  = s.Leaderboard.Difficulty.Stars,
+                        PredictedAcc  = s.Leaderboard.Difficulty.PredictedAcc,
+                        PassRating  = s.Leaderboard.Difficulty.PassRating,
+                        AccRating  = s.Leaderboard.Difficulty.AccRating,
+                        TechRating  = s.Leaderboard.Difficulty.TechRating,
+                        Type  = s.Leaderboard.Difficulty.Type,
+
+                        Njs  = s.Leaderboard.Difficulty.Njs,
+                        Nps  = s.Leaderboard.Difficulty.Nps,
+                        Notes  = s.Leaderboard.Difficulty.Notes,
+                        Bombs  = s.Leaderboard.Difficulty.Bombs,
+                        Walls  = s.Leaderboard.Difficulty.Walls,
+                        MaxScore = s.Leaderboard.Difficulty.MaxScore,
+                        Duration  = s.Leaderboard.Difficulty.Duration,
+
+                        Requirements = s.Leaderboard.Difficulty.Requirements,
+                    } : null
                 },
                 Weight = s.Weight,
                 AccLeft = s.AccLeft,
@@ -593,7 +646,35 @@ namespace BeatLeader_Server.Utils {
             return new LeaderboardResponse {
                 Id = l.Id,
                 Song = l.Song,
-                Difficulty = l.Difficulty,
+                Difficulty = new DifficultyResponse {
+                    Value = l.Difficulty.Value,
+                    Mode = l.Difficulty.Mode,
+                    DifficultyName = l.Difficulty.DifficultyName,
+                    ModeName = l.Difficulty.ModeName,
+                    Status = l.Difficulty.Status,
+                    ModifierValues = l.Difficulty.ModifierValues,
+                    ModifiersRating = l.Difficulty.ModifiersRating,
+                    NominatedTime  = l.Difficulty.NominatedTime,
+                    QualifiedTime  = l.Difficulty.QualifiedTime,
+                    RankedTime = l.Difficulty.RankedTime,
+
+                    Stars  = l.Difficulty.Stars,
+                    PredictedAcc  = l.Difficulty.PredictedAcc,
+                    PassRating  = l.Difficulty.PassRating,
+                    AccRating  = l.Difficulty.AccRating,
+                    TechRating  = l.Difficulty.TechRating,
+                    Type  = l.Difficulty.Type,
+
+                    Njs  = l.Difficulty.Njs,
+                    Nps  = l.Difficulty.Nps,
+                    Notes  = l.Difficulty.Notes,
+                    Bombs  = l.Difficulty.Bombs,
+                    Walls  = l.Difficulty.Walls,
+                    MaxScore = l.Difficulty.MaxScore,
+                    Duration  = l.Difficulty.Duration,
+
+                    Requirements = l.Difficulty.Requirements,
+                },
                 Scores = l.Scores.Select(RemoveLeaderboard).ToList(),
                 Plays = l.Plays,
                 Qualification = l.Qualification,

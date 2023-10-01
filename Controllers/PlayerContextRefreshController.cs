@@ -562,7 +562,7 @@ namespace BeatLeader_Server.Controllers {
             _context.ChangeTracker.AutoDetectChangesEnabled = false;
             Dictionary<string, int> countries = new Dictionary<string, int>();
             var ranked = _context.PlayerContextExtensions
-                .Where(p => p.Pp > 0 && !p.Banned && p.Context == context)
+                .Where(p => !p.Banned && p.Context == context)
                 .OrderByDescending(t => t.Pp)
                 .Select(p => new { Id = p.Id, Country = p.Country })
                 .ToList();

@@ -29,14 +29,6 @@
 
         public ICollection<ClanRanking>? ClanRanking { get; set; }
         public bool ClanRankingContested { get; set; }
-        public void HideRatings() {
-            this.Difficulty.AccRating = null;
-            this.Difficulty.TechRating = null;
-            this.Difficulty.PassRating = null;
-            this.Difficulty.Stars = null;
-
-            this.Difficulty.ModifiersRating = null;
-        }
     }
 
     public class LeaderboardGroup {
