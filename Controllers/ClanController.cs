@@ -344,26 +344,21 @@ namespace BeatLeader_Server.Controllers
                 .ToList();
 
             // Remove the clanRankings
-            leaderboardsRecalc.ForEach(leaderboard =>
+            var clanRankings = _context.ClanRanking.Where(cr => cr.ClanId == clan.Id).ToList();
+            foreach (var cr in clanRankings)
             {
-                var crToRemove =
-                    leaderboard.ClanRanking?
-                    .Where(cr => cr.Clan == clan)
-                    .FirstOrDefault();
-                if (crToRemove != null)
-                {
-                    leaderboard.ClanRanking?.Remove(crToRemove);
-                    _context.ClanRanking.Remove(crToRemove);
-                }
-            });
+                _context.ClanRanking.Remove(cr);
+            }
 
             // Remove the clan
             _context.Clans.Remove(clan);
+            
             await _context.BulkSaveChangesAsync();
-
-            // Recalculate the clanRankings on each leaderboard where this clan had an impact
-            leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
-            await _context.BulkSaveChangesAsync();
+            HttpContext.Response.OnCompleted(async () => {
+                // Recalculate the clanRankings on each leaderboard where this clan had an impact
+                leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
+                await _context.BulkSaveChangesAsync();
+            });
 
             return Ok();
         }
