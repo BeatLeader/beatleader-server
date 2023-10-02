@@ -1128,7 +1128,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] bool pin,
             [FromQuery] string? description = null,
             [FromQuery] string? link = null,
-            [FromQuery] int? priority = null)
+            [FromQuery] int? priority = null,
+            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
         {
             string? currentId = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = await _context.Players.FindAsync(currentId);
@@ -1155,28 +1156,28 @@ namespace BeatLeader_Server.Controllers
                 return NotFound("Score not found");
             }
 
-            var score = scores.First(s => s.Id == id);
-
+            var pinLimit = 2;
             if (currentPlayer.Role.Contains("tipper") || currentPlayer.Role.Contains("supporter") || currentPlayer.Role.Contains("sponsor"))
             {
-                if (scores.Count(s => s.Metadata is { Status: ScoreStatus.pinned }) > 9 && pin && score.Metadata is not { Status: ScoreStatus.pinned })
-                {
-                    return BadRequest("Too many scores pinned");
-                }
+                pinLimit = 9;
             }
-            else
+
+            var score = scores.First(s => s.Id == id);
+            var pinnedScores = scores.Where(s => s.Metadata?.PinnedContexts.HasFlag(leaderboardContext) ?? false);
+
+            if (pinnedScores.Count() > pinLimit 
+                && pin 
+                && score.Metadata?.PinnedContexts.HasFlag(leaderboardContext) == false)
             {
-                if (scores.Count(s => s.Metadata is { Status: ScoreStatus.pinned }) > 2 && pin && score.Metadata is not { Status: ScoreStatus.pinned })
-                {
-                    return BadRequest("Too many scores pinned");
-                }
+                return BadRequest("Too many scores pinned");
             }
+
             ScoreMetadata? metadata = score.Metadata;
             if (metadata == null)
             {
                 metadata = new ScoreMetadata
                 {
-                    Priority = scores.Count(s => s.Metadata is { Status: ScoreStatus.pinned }) == 0 ? 1 : scores.Where(s => s.Metadata is { Status: ScoreStatus.pinned }).Max(s => s.Metadata.Priority) + 1
+                    Priority = pinnedScores.Count() == 0 ? 1 : pinnedScores.Max(s => s.Metadata?.Priority ?? 0) + 1
                 };
                 score.Metadata = metadata;
             }
@@ -1209,11 +1210,11 @@ namespace BeatLeader_Server.Controllers
 
             if (pin)
             {
-                metadata.Status = ScoreStatus.pinned;
+                metadata.PinnedContexts |= leaderboardContext;
             }
             else
             {
-                metadata.Status = ScoreStatus.normal;
+                metadata.PinnedContexts &= ~leaderboardContext;
             }
             if (priority != null)
             {
@@ -1223,7 +1224,7 @@ namespace BeatLeader_Server.Controllers
 
                 if (priorityValue <= metadata.Priority)
                 {
-                    var scoresLower = scores.Where(s => s.Metadata is { Status: ScoreStatus.pinned } && s.Metadata.Priority >= priorityValue).ToList();
+                    var scoresLower = pinnedScores.Where(s => s.Metadata?.Priority >= priorityValue).ToList();
                     if (scoresLower.Count > 0)
                     {
                         foreach (var item in scoresLower)
@@ -1234,7 +1235,7 @@ namespace BeatLeader_Server.Controllers
                 }
                 else
                 {
-                    var scoresLower = scores.Where(s => s.Metadata is { Status: ScoreStatus.pinned } && s.Metadata.Priority <= priorityValue).ToList();
+                    var scoresLower = pinnedScores.Where(s => s.Metadata.Priority <= priorityValue).ToList();
                     if (scoresLower.Count > 0)
                     {
                         foreach (var item in scoresLower)
@@ -1247,7 +1248,7 @@ namespace BeatLeader_Server.Controllers
                 metadata.Priority = priorityValue;
             }
 
-            var scoresOrdered = scores.Where(s => s.Metadata is { Status: ScoreStatus.pinned }).OrderBy(s => s.Metadata.Priority).ToList();
+            var scoresOrdered = pinnedScores.OrderBy(s => s.Metadata?.Priority ?? 0).ToList();
             if (scoresOrdered.Count > 0)
             {
                 foreach ((int i, Score p) in scoresOrdered.Select((value, i) => (i, value)))

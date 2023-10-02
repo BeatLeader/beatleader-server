@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Hosting.Server.Features;
 using OpenIddict.Server.AspNetCore;
 using OpenIddict.Abstractions;
 using OpenIddict.Validation.AspNetCore;
+using Microsoft.EntityFrameworkCore;
 
 namespace BeatLeader_Server.Extensions
 {
@@ -147,6 +148,18 @@ namespace BeatLeader_Server.Extensions
                 return null;
             }
 
+        }
+
+        public static bool ShouldShowAllRatings(this HttpContext? context, AppContext dbcontext) {
+            string? currentID = context?.CurrentUserID(dbcontext);
+            return currentID != null 
+                ? dbcontext.Players
+                    .Include(p => p.ProfileSettings)
+                    .Where(p => p.Id == currentID)
+                    .Select(p => p.ProfileSettings)
+                    .FirstOrDefault()?
+                    .ShowAllRatings ?? false 
+                : false;
         }
 
         public static string PlayerIdToMain(this AppContext _context, string id) {

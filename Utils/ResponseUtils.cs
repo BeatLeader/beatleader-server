@@ -84,63 +84,7 @@ namespace BeatLeader_Server.Utils {
             public ICollection<PlayerChange>? Changes { get; set; }
         }
 
-        public class ScoreResponse {
-            public int Id { get; set; }
-            public int BaseScore { get; set; }
-            public int ModifiedScore { get; set; }
-            public float Accuracy { get; set; }
-            public string PlayerId { get; set; }
-            public float Pp { get; set; }
-            public float BonusPp { get; set; }
-            public float PassPP { get; set; }
-            public float AccPP { get; set; }
-            public float TechPP { get; set; }
-            public int Rank { get; set; }
-            public string? Country { get; set; }
-            public float FcAccuracy { get; set; }
-            public float FcPp { get; set; }
-            public float Weight { get; set; }
-            public string Replay { get; set; }
-            public string Modifiers { get; set; }
-            public int BadCuts { get; set; }
-            public int MissedNotes { get; set; }
-            public int BombCuts { get; set; }
-            public int WallsHit { get; set; }
-            public int Pauses { get; set; }
-            public bool FullCombo { get; set; }
-            public string Platform { get; set; }
-            public int MaxCombo { get; set; }
-            public int? MaxStreak { get; set; }
-            public HMD Hmd { get; set; }
-            public ControllerEnum Controller { get; set; }
-            public string LeaderboardId { get; set; }
-            public string Timeset { get; set; }
-            public int Timepost { get; set; }
-            public int ReplaysWatched { get; set; }
-            public int PlayCount { get; set; }
-            [JsonIgnore]
-            public int Priority { get; set; }
-            public PlayerResponse? Player { get; set; }
-            public ScoreImprovement? ScoreImprovement { get; set; }
-            public RankVoting? RankVoting { get; set; }
-            public ScoreMetadata? Metadata { get; set; }
-            public ReplayOffsets? Offsets { get; set; }
-
-            public void ToContext(ScoreContextExtension? extension) {
-                if (extension == null) return;
-
-                Weight = extension.Weight;
-                Rank = extension.Rank;
-                BaseScore = extension.BaseScore;
-                ModifiedScore = extension.ModifiedScore;
-                Accuracy = extension.Accuracy;
-                Pp = extension.Pp;
-                TechPP = extension.TechPP;
-                PassPP = extension.PassPP;
-                BonusPp = extension.BonusPp;
-                Modifiers = extension.Modifiers;
-            }
-        }
+        
 
         public class ScoreSongResponse {
             public string Id { get; set; }
@@ -353,18 +297,6 @@ namespace BeatLeader_Server.Utils {
             public string Id { get; set; }
             public DifficultyStatus Status { get; set; }
             public long Timestamp { get; set; }
-        }
-
-        public class ScoreResponseWithAcc : ScoreResponse {
-            public float AccLeft { get; set; }
-            public float AccRight { get; set; }
-        }
-
-        public class ScoreResponseWithMyScore : ScoreResponseWithAcc {
-            public ScoreResponseWithAcc? MyScore { get; set; }
-
-            public LeaderboardResponse Leaderboard { get; set; }
-            public ICollection<ScoreContextExtension> ContextExtensions { get; set; }
         }
 
         public class LeaderboardInfoResponse {

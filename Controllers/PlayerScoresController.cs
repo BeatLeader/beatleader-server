@@ -139,78 +139,7 @@ namespace BeatLeader_Server.Controllers {
                     .ThenInclude(d => d.ModifierValues)
                     .Skip((page - 1) * count)
                     .Take(count)
-                    .Select(s => new ScoreResponseWithMyScore {
-                        Id = s.Id,
-                        BaseScore = s.BaseScore,
-                        ModifiedScore = s.ModifiedScore,
-                        PlayerId = s.PlayerId,
-                        Accuracy = s.Accuracy,
-                        Pp = s.Pp,
-                        TechPP = s.TechPP,
-                        AccPP = s.AccPP,
-                        PassPP = s.PassPP,
-                        FcAccuracy = s.FcAccuracy,
-                        FcPp = s.FcPp,
-                        BonusPp = s.BonusPp,
-                        Rank = s.Rank,
-                        Replay = s.Replay,
-                        Modifiers = s.Modifiers,
-                        BadCuts = s.BadCuts,
-                        MissedNotes = s.MissedNotes,
-                        BombCuts = s.BombCuts,
-                        WallsHit = s.WallsHit,
-                        Pauses = s.Pauses,
-                        FullCombo = s.FullCombo,
-                        Hmd = s.Hmd,
-                        Controller = s.Controller,
-                        MaxCombo = s.MaxCombo,
-                        Timeset = s.Timeset,
-                        ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
-                        Timepost = s.Timepost,
-                        LeaderboardId = s.LeaderboardId,
-                        Platform = s.Platform,
-                        ScoreImprovement = s.ScoreImprovement,
-                        Country = s.Country,
-                        Offsets = s.ReplayOffsets,
-                        Leaderboard = new LeaderboardResponse {
-                            Id = s.LeaderboardId,
-                            Song = s.Leaderboard.Song,
-                            Difficulty = new DifficultyResponse {
-                                Id = s.Leaderboard.Difficulty.Id,
-                                Value = s.Leaderboard.Difficulty.Value,
-                                Mode = s.Leaderboard.Difficulty.Mode,
-                                DifficultyName = s.Leaderboard.Difficulty.DifficultyName,
-                                ModeName = s.Leaderboard.Difficulty.ModeName,
-                                Status = s.Leaderboard.Difficulty.Status,
-                                ModifierValues = s.Leaderboard.Difficulty.ModifierValues,
-                                ModifiersRating = s.Leaderboard.Difficulty.ModifiersRating,
-                                NominatedTime  = s.Leaderboard.Difficulty.NominatedTime,
-                                QualifiedTime  = s.Leaderboard.Difficulty.QualifiedTime,
-                                RankedTime = s.Leaderboard.Difficulty.RankedTime,
-
-                                Stars  = s.Leaderboard.Difficulty.Stars,
-                                PredictedAcc  = s.Leaderboard.Difficulty.PredictedAcc,
-                                PassRating  = s.Leaderboard.Difficulty.PassRating,
-                                AccRating  = s.Leaderboard.Difficulty.AccRating,
-                                TechRating  = s.Leaderboard.Difficulty.TechRating,
-                                Type  = s.Leaderboard.Difficulty.Type,
-
-                                Njs  = s.Leaderboard.Difficulty.Njs,
-                                Nps  = s.Leaderboard.Difficulty.Nps,
-                                Notes  = s.Leaderboard.Difficulty.Notes,
-                                Bombs  = s.Leaderboard.Difficulty.Bombs,
-                                Walls  = s.Leaderboard.Difficulty.Walls,
-                                MaxScore = s.Leaderboard.Difficulty.MaxScore,
-                                Duration  = s.Leaderboard.Difficulty.Duration,
-
-                                Requirements = s.Leaderboard.Difficulty.Requirements,
-                            }
-                        },
-                        Weight = s.Weight,
-                        AccLeft = s.AccLeft,
-                        AccRight = s.AccRight,
-                        MaxStreak = s.MaxStreak
-                    })
+                    .Select(ScoreResponseQuery<ScoreResponseWithMyScore>.Select())
                     .AsSplitQuery()
                     .ToList();
             }
@@ -551,116 +480,47 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [HttpGet("~/player/{id}/pinnedScores")]
-        public async Task<ActionResult<ICollection<ScoreResponseWithMyScore>>> GetPinnedScores(string id) {
-            id = _context.PlayerIdToMain(id);
-            string? currentID = HttpContext.CurrentUserID(_context);
-            bool showRatings = currentID != null ? _context.Players.Include(p => p.ProfileSettings).Where(p => p.Id == currentID).Select(p => p.ProfileSettings).FirstOrDefault()?.ShowAllRatings ?? false : false;
+        public async Task<ActionResult<ICollection<ScoreResponseWithMyScore>>> GetPinnedScores(
+            string id,
+            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General) {
 
-            var result = _context
+            id = _context.PlayerIdToMain(id);
+
+            var query = _context
                     .Scores
-                    .Where(s => s.PlayerId == id && s.Metadata != null && s.Metadata.Status == ScoreStatus.pinned)
+                    .Where(s => 
+                        s.PlayerId == id && 
+                        s.ValidContexts.HasFlag(leaderboardContext) &&
+                        s.Metadata != null && 
+                        s.Metadata.PinnedContexts.HasFlag(leaderboardContext))
+                    .OrderBy(s => s.Metadata.Priority);
+
+            var resultList = query
                     .Include(s => s.Leaderboard)
                     .ThenInclude(l => l.Difficulty)
                     .ThenInclude(d => d.ModifiersRating)
-                    .OrderBy(s => s.Metadata.Priority)
-                    .Select(s => new ScoreResponseWithMyScore {
-                        Id = s.Id,
-                        BaseScore = s.BaseScore,
-                        ModifiedScore = s.ModifiedScore,
-                        PlayerId = s.PlayerId,
-                        Accuracy = s.Accuracy,
-                        Pp = s.Pp,
-                        PassPP = s.PassPP,
-                        AccPP = s.AccPP,
-                        TechPP = s.TechPP,
-                        FcAccuracy = s.FcAccuracy,
-                        FcPp = s.FcPp,
-                        BonusPp = s.BonusPp,
-                        Rank = s.Rank,
-                        Replay = s.Replay,
-                        Modifiers = s.Modifiers,
-                        BadCuts = s.BadCuts,
-                        MissedNotes = s.MissedNotes,
-                        BombCuts = s.BombCuts,
-                        WallsHit = s.WallsHit,
-                        Pauses = s.Pauses,
-                        FullCombo = s.FullCombo,
-                        Hmd = s.Hmd,
-                        Controller = s.Controller,
-                        MaxCombo = s.MaxCombo,
-                        Timeset = s.Timeset,
-                        ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
-                        Timepost = s.Timepost,
-                        LeaderboardId = s.LeaderboardId,
-                        Platform = s.Platform,
-                        Player = new PlayerResponse {
-                            Id = s.Player.Id,
-                            Name = s.Player.Name,
-                            Platform = s.Player.Platform,
-                            Avatar = s.Player.Avatar,
-                            Country = s.Player.Country,
-
-                            Pp = s.Player.Pp,
-                            Rank = s.Player.Rank,
-                            CountryRank = s.Player.CountryRank,
-                            Role = s.Player.Role,
-                            Socials = s.Player.Socials,
-                            PatreonFeatures = s.Player.PatreonFeatures,
-                            ProfileSettings = s.Player.ProfileSettings,
-                            Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
-                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                        },
-                        ScoreImprovement = s.ScoreImprovement,
-                        RankVoting = s.RankVoting,
-                        Metadata = s.Metadata,
-                        Country = s.Country,
-                        Offsets = s.ReplayOffsets,
-                        Leaderboard = new LeaderboardResponse {
-                            Id = s.LeaderboardId,
-                            Song = s.Leaderboard.Song,
-                            Difficulty = new DifficultyResponse {
-                                Id = s.Leaderboard.Difficulty.Id,
-                                Value = s.Leaderboard.Difficulty.Value,
-                                Mode = s.Leaderboard.Difficulty.Mode,
-                                DifficultyName = s.Leaderboard.Difficulty.DifficultyName,
-                                ModeName = s.Leaderboard.Difficulty.ModeName,
-                                Status = s.Leaderboard.Difficulty.Status,
-                                ModifierValues = s.Leaderboard.Difficulty.ModifierValues,
-                                ModifiersRating = s.Leaderboard.Difficulty.ModifiersRating,
-                                NominatedTime  = s.Leaderboard.Difficulty.NominatedTime,
-                                QualifiedTime  = s.Leaderboard.Difficulty.QualifiedTime,
-                                RankedTime = s.Leaderboard.Difficulty.RankedTime,
-
-                                Stars  = s.Leaderboard.Difficulty.Stars,
-                                PredictedAcc  = s.Leaderboard.Difficulty.PredictedAcc,
-                                PassRating  = s.Leaderboard.Difficulty.PassRating,
-                                AccRating  = s.Leaderboard.Difficulty.AccRating,
-                                TechRating  = s.Leaderboard.Difficulty.TechRating,
-                                Type  = s.Leaderboard.Difficulty.Type,
-
-                                Njs  = s.Leaderboard.Difficulty.Njs,
-                                Nps  = s.Leaderboard.Difficulty.Nps,
-                                Notes  = s.Leaderboard.Difficulty.Notes,
-                                Bombs  = s.Leaderboard.Difficulty.Bombs,
-                                Walls  = s.Leaderboard.Difficulty.Walls,
-                                MaxScore = s.Leaderboard.Difficulty.MaxScore,
-                                Duration  = s.Leaderboard.Difficulty.Duration,
-
-                                Requirements = s.Leaderboard.Difficulty.Requirements,
-                            }
-                        },
-                        Weight = s.Weight,
-                        AccLeft = s.AccLeft,
-                        AccRight = s.AccRight,
-                        MaxStreak = s.MaxStreak
-                    })
+                    .Select(ScoreResponseQuery<ScoreResponseWithMyScore>.Select())
                     .ToList();
-            foreach (var resultScore in result) {
+
+            bool showRatings = HttpContext.ShouldShowAllRatings(_context);
+            foreach (var resultScore in resultList) {
                 if (!showRatings && !resultScore.Leaderboard.Difficulty.Status.WithRating()) {
                     resultScore.Leaderboard.HideRatings();
                 }
             }
-            return result;
+            if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
+                var contexts = query
+                    .Select(s => s.ContextExtensions.FirstOrDefault(ce => ce.Context == leaderboardContext))
+                    .ToList();
+                for (int i = 0; i < resultList.Count && i < contexts.Count; i++)
+                {
+                    if (contexts[i]?.ScoreId == resultList[i].Id) {
+                        resultList[i].ToContext(contexts[i]);
+                    }
+                }
+
+            }
+            return resultList;
         }
     }
 }

@@ -38,6 +38,7 @@ namespace BeatLeader_Server.Models
     {
         public int Id { get; set; }
         public ScoreStatus Status { get; set; }
+        public LeaderboardContexts PinnedContexts { get; set; }
         public int Priority { get; set; }
         public string? Description { get; set; }
 
