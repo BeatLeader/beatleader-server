@@ -495,6 +495,7 @@ namespace BeatLeader_Server.Utils
             if (lowerController.Contains("tundra")) return ControllerEnum.tundra;
             if (lowerController.Contains("cry")) return ControllerEnum.cry;
             if (lowerController.Contains("e4")) return ControllerEnum.e4;
+            if (lowerController.Contains("etee")) return ControllerEnum.etee;
 
             return ControllerEnum.unknown;
         }

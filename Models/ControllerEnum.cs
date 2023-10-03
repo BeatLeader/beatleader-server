@@ -35,6 +35,7 @@
         gamepad = 75,
         joycon = 76,
         steamdeck = 77,
+        etee = 78,
         viveCosmos = 128,
     }
 }
