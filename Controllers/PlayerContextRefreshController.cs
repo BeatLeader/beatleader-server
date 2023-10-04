@@ -168,7 +168,7 @@ namespace BeatLeader_Server.Controllers {
 
             var scores = _context
                 .ScoreContextExtensions
-                .Where(s => s.Pp != 0 && s.Context == context && s.ScoreId != null && !s.Banned)
+                .Where(s => s.Pp != 0 && s.Context == context && s.ScoreId != null && !s.Banned && !s.Qualification)
                 .OrderByDescending(s => s.Pp)
                 .Select(s => new { s.Id, s.Accuracy, s.Rank, s.Pp, s.AccPP, s.TechPP, s.PassPP, s.Weight, s.PlayerId })
                 .ToList();

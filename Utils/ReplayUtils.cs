@@ -339,7 +339,8 @@ namespace BeatLeader_Server.Utils
                 ModifiedScore = score.BaseScore,
                 Timeset = score.Timepost,
                 Modifiers = "",
-                Accuracy = score.Accuracy
+                Accuracy = score.Accuracy,
+                Qualification = score.Qualification
             };
 
             if (score.Pp > 0) {
@@ -366,7 +367,8 @@ namespace BeatLeader_Server.Utils
                 ModifiedScore = score.ModifiedScore,
                 Timeset = score.Timepost,
                 Modifiers = score.Modifiers,
-                Accuracy = score.Accuracy
+                Accuracy = score.Accuracy,
+                Qualification = score.Qualification
             };
 
             if (score.Pp > 0) {
@@ -393,7 +395,8 @@ namespace BeatLeader_Server.Utils
                 Pp = score.Pp,
                 AccPP = score.AccPP,
                 TechPP = score.TechPP,
-                PassPP = score.PassPP
+                PassPP = score.PassPP,
+                Qualification = score.Qualification
             };
         }
 

@@ -425,7 +425,7 @@ namespace BeatLeader_Server.Utils
 
             var rankedScores = context
                 .ScoreContextExtensions
-                .Where(s => s.Context == leaderboardContext && s.PlayerId == player.PlayerId && s.Pp != 0)
+                .Where(s => s.Context == leaderboardContext && s.PlayerId == player.PlayerId && s.Pp != 0 && !s.Qualification)
                 .OrderByDescending(s => s.Pp)
                 .Select(s => s.Pp)
                 .ToList();
