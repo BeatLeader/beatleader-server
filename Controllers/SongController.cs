@@ -102,6 +102,7 @@ namespace BeatLeader_Server.Controllers
                 newLeaderboard.Difficulty.Status = diff.Status;
                 newLeaderboard.Difficulty.Type = diff.Type;
                 newLeaderboard.Difficulty.NominatedTime = diff.NominatedTime;
+                newLeaderboard.Difficulty.QualifiedTime = diff.QualifiedTime;
                 newLeaderboard.Difficulty.ModifierValues = diff.ModifierValues;
             }
 
