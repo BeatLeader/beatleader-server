@@ -127,7 +127,9 @@ namespace BeatLeader_Server {
             })
 
             .AddCookie (options => {
-                options.CookieManager = new CustomCookieManager();
+                if (!Environment.IsDevelopment()) {
+                    options.CookieManager = new CustomCookieManager();
+                }
                 options.Events.OnRedirectToAccessDenied =
                 options.Events.OnRedirectToLogin = c => {
                     c.Response.StatusCode = StatusCodes.Status401Unauthorized;
