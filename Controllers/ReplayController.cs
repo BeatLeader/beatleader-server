@@ -291,7 +291,6 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (!leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles) && 
-                !leaderboard.Difficulty.Requirements.HasFlag(Requirements.MappingExtensions) && 
                 !ReplayUtils.IsPlayerCuttingNotesOnPlatform(replay)) {
                 Thread.Sleep(8000); // Error may not show if returned too quick
                 return BadRequest("Please stay on the platform.");
