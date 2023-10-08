@@ -223,6 +223,11 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Replay is broken, update your mod please.");
             }
 
+            if (replay.info.score <= 0) {
+                Thread.Sleep(8000); // Error may not show if returned too quick
+                return BadRequest("The score should be positive");
+            }
+
             if ((leaderboard.Difficulty.Status.WithRating()) && leaderboard.Difficulty.Notes != 0 && replay.notes.Count > leaderboard.Difficulty.Notes) {
                 string? error = ReplayUtils.RemoveDuplicates(replay, leaderboard);
                 if (error != null) {

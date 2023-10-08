@@ -222,7 +222,11 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [HttpGet("~/oauthclient/info")]
-        public async Task<ActionResult<OauthClientInfo>> GetOauthClientInfo([FromQuery] string clientId) {
+        public async Task<ActionResult<OauthClientInfo>> GetOauthClientInfo([FromQuery] string? clientId) {
+            if (clientId == null || clientId.Length == 0) {
+                return BadRequest("Please provide clientId");
+            }
+
             var application = await _applicationManager.FindByClientIdAsync(clientId);
 
             if (application == null) {

@@ -344,6 +344,10 @@ namespace BeatLeader_Server.Controllers
                 })
                 .FirstOrDefaultAsync();
 
+            if (score == null) {
+                return NotFound();
+            }
+
             var playerId = info.playerID;
             long intId = Int64.Parse(playerId);
             if (intId < 70000000000000000)

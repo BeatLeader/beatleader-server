@@ -934,59 +934,6 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
-        [HttpGet("~/wefwefwfewefwf")]
-        public async Task<ActionResult> wefwefwfewefwf()
-        {
-            //_context.ScoreContextExtensions.Where(ce => ce.Score == null).ToList()
-
-            var scores = _context
-                .Scores
-                .Where(s => s.Accuracy < 0.2 && !s.Modifiers.Contains("NF"))
-                .Include(s => s.ContextExtensions)
-                .Include(s => s.Leaderboard)
-                .ThenInclude(l => l.Song)
-                .Include(s => s.Leaderboard)
-                .ThenInclude(l => l.Difficulty)
-                .ToList();
-            foreach (var score in scores) {
-                string fileName = score.Replay.Split("/").Last();
-                Replay? replay = null;
-
-                using (var replayStream = await _s3Client.DownloadReplay(fileName))
-                {
-                    if (replayStream != null) {
-
-                        using (var ms = new MemoryStream(5))
-                        {
-                            await replayStream.CopyToAsync(ms);
-                            long length = ms.Length;
-                            try
-                            {
-                                (replay, _) = ReplayDecoder.Decode(ms.ToArray());
-                            }
-                            catch (Exception)
-                            {
-                            }
-                        }
-                    }
-                }
-
-                if (replay == null || 
-                    replay.frames.Count() < 10 || 
-                    replay.frames[replay.frames.Count - 10].time < score.Leaderboard.Song.Duration / 2 || 
-                    replay.notes.Count < score.Leaderboard.Difficulty.Notes / 2) {
-                    foreach (var subscore in score.ContextExtensions) {
-                        score.ContextExtensions.Remove(subscore);
-                    }
-
-                    _context.Scores.Remove(score);
-                }
-            }
-            _context.SaveChanges();
-
-            return Ok();
-        }
-
         [HttpGet("~/score/{playerID}/{hash}/{diff}/{mode}")]
         public async Task<ActionResult<Score>> GetPlayer(
             string playerID, 
