@@ -138,6 +138,14 @@ namespace BeatLeader_Server.Utils {
             }
         }
 
+        public class LeaderboardsResponseWithScores : LeaderboardsResponse {
+            public new ICollection<LeaderboardsInfoResponseWithScore> Leaderboards { get; set; }
+        }
+
+        public class LeaderboardsInfoResponseWithScore : LeaderboardsInfoResponse { 
+            public CompactScore? MyScore { get; set; }
+        }
+
         public class ClanReturn {
             public int Id { get; set; }
             public string Name { get; set; }

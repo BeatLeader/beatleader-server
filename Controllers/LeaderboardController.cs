@@ -860,40 +860,43 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [HttpGet("~/leaderboards/hash/{hash}")]
-        public async Task<ActionResult<LeaderboardsResponse>> GetLeaderboardsByHash(string hash) {
+        public async Task<ActionResult<LeaderboardsResponseWithScores>> GetLeaderboardsByHash(
+            string hash,
+            [FromQuery] bool my_scores = false) {
             if (hash.Length < 40) {
                 return BadRequest("Hash is too short");
             } else {
                 hash = hash.Substring(0, 40);
             }
 
-            var leaderboards = _readContext.Leaderboards
-                 .Where(lb => lb.Song.Hash == hash)
-                 .Include(lb => lb.Song)
-                 .ThenInclude(s => s.Difficulties)
-                 .Include(lb => lb.Difficulty)
-                 .ThenInclude(d => d.ModifierValues)
-                 .Include(lb => lb.Difficulty)
-                 .ThenInclude(d => d.ModifiersRating)
-                 .Include(lb => lb.Qualification)
-                 .Include(lb => lb.Reweight)
-                 .Select(lb => new {
-                     Song = lb.Song,
-                     Id = lb.Id,
-                     Qualification = lb.Qualification,
-                     Difficulty = lb.Difficulty,
-                     Reweight = lb.Reweight,
-                     ClanRankingContested = lb.ClanRankingContested,
-                     Clan = lb.Clan
-                 })
-                .ToList();
+            string? currentID = HttpContext.CurrentUserID(_context);
 
+            var song = _context
+                .Songs
+                .Where(s => s.Hash == hash)
+                .Include(s => s.Difficulties)
+                .ThenInclude(d => d.ModifierValues)
+                .Include(s => s.Difficulties)
+                .ThenInclude(d => d.ModifiersRating)
+                .AsSplitQuery()
+                .FirstOrDefault();
 
-            if (leaderboards.Count() == 0) {
+            if (song == null) {
                 return NotFound();
             }
 
-            var resultList = leaderboards.Select(lb => new LeaderboardsInfoResponse {
+            var query = _context
+            .Leaderboards
+            .Where(lb => lb.SongId == song.Id && lb.Difficulty.Mode <= 7);
+
+            if (my_scores && currentID != null) {
+                query = query.Include(lb => lb.Scores.Where(s => s.PlayerId == currentID));
+            }
+
+            var resultList = query
+            .Include(lb => lb.Qualification)
+            .AsSplitQuery()
+            .Select(lb => new LeaderboardsInfoResponseWithScore {
                 Id = lb.Id,
                 Qualification = lb.Qualification,
                 Difficulty = new DifficultyResponse {
@@ -926,17 +929,28 @@ namespace BeatLeader_Server.Controllers {
 
                     Requirements = lb.Difficulty.Requirements,
                 },
-                Reweight = lb.Reweight,
                 Clan = lb.Clan,
                 ClanRankingContested = lb.ClanRankingContested,
+                MyScore = my_scores && currentID != null 
+                    ? lb.Scores.Where(s => s.PlayerId == currentID).Select(s => new CompactScore {
+                        Id = s.Id,
+                        BaseScore = s.BaseScore,
+                        ModifiedScore = s.ModifiedScore,
+                        EpochTime = s.Timepost,
+                        MaxCombo = s.MaxCombo,
+                        Hmd = s.Hmd,
+                        MissedNotes = s.MissedNotes,
+                        BadCuts = s.BadCuts,
+                        Modifiers = s.Modifiers,
+                        Controller = s.Controller
+                    }).FirstOrDefault()
+                    : null
             }).ToList();
 
             if (resultList.Count > 0) {
-                string? currentID = HttpContext.CurrentUserID(_context);
-                Player? currentPlayer = currentID != null ? await _context
-               .Players
-               .Include(p => p.ProfileSettings)
-               .FirstOrDefaultAsync(p => p.Id == currentID) : null;
+                Player? currentPlayer = currentID != null 
+                    ? await _context.Players.Include(p => p.ProfileSettings).FirstOrDefaultAsync(p => p.Id == currentID) 
+                    : null;
                 bool showRatings = currentPlayer?.ProfileSettings?.ShowAllRatings ?? false;
                 foreach (var leaderboard in resultList) {
                     if (!showRatings && !leaderboard.Difficulty.Status.WithRating()) {
@@ -945,8 +959,8 @@ namespace BeatLeader_Server.Controllers {
                 }
             }
 
-            return new LeaderboardsResponse {
-                Song = leaderboards[0].Song,
+            return new LeaderboardsResponseWithScores {
+                Song = song,
                 Leaderboards = resultList
             };
         }
