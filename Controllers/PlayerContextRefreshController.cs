@@ -52,14 +52,11 @@ namespace BeatLeader_Server.Controllers {
                     .ToList();
                 foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
                 {
-                    PlayerContextExtension? p = _context.PlayerContextExtensions.Local.FirstOrDefault(ls => ls.Id == pp.Id);
-                    if (p == null) {
-                        try {
-                            p = new PlayerContextExtension { Id = pp.Id, Country = pp.Country };
-                            _context.PlayerContextExtensions.Attach(p);
-                        } catch (Exception e) {
-                            continue;
-                        }
+                    PlayerContextExtension? p = new PlayerContextExtension { Id = pp.Id, Country = pp.Country };
+                    try {
+                        _context.PlayerContextExtensions.Attach(p);
+                    } catch (Exception e) {
+                        continue;
                     }
 
                     p.Rank = i + 1;
@@ -186,7 +183,9 @@ namespace BeatLeader_Server.Controllers {
             //await query.ParallelForEachAsync(async p => {
                 //try {
                     var player = new PlayerContextExtension { Id = p.Id, PlayerId = p.PlayerId, Country = p.Country };
-                    _context.PlayerContextExtensions.Attach(player);
+                    try {
+                        _context.PlayerContextExtensions.Attach(player);
+                    } catch { }
                     allPlayers.Add(player);
 
                 //    if (allPlayers.Count(p => p.PlayerId == p.PlayerId) > 1) {
@@ -204,7 +203,9 @@ namespace BeatLeader_Server.Controllers {
                         if (s.Weight != weight)
                         {
                             var score = new ScoreContextExtension() { Id = s.Id, Weight = weight };
-                            _context.ScoreContextExtensions.Attach(score);
+                            try {
+                                _context.ScoreContextExtensions.Attach(score);
+                            } catch { }
                             _context.Entry(score).Property(x => x.Weight).IsModified = true;
                         }
                         resultPP += s.Pp * weight;

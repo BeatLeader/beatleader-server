@@ -202,7 +202,9 @@ namespace BeatLeader_Server.Controllers
                     foreach (var s in allScores)
                     {
                         var score = new Score() { Id = s.Id };
-                        _context.Scores.Attach(score);
+                        try {
+                            _context.Scores.Attach(score);
+                        } catch { }
                         int maxScore = leaderboard.Difficulty.MaxScore > 0 ? leaderboard.Difficulty.MaxScore : ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
                         if (hasPp)
                         {
@@ -522,7 +524,9 @@ namespace BeatLeader_Server.Controllers
                     foreach (var s in allScores)
                     {
                         var score = new ScoreContextExtension() { Id = s.Id, Pp = s.Pp, Accuracy = s.Accuracy, Timeset = s.Timeset, ModifiedScore = s.ModifiedScore };
-                        _context.ScoreContextExtensions.Attach(score);
+                        try {
+                            _context.ScoreContextExtensions.Attach(score);
+                        } catch { }
 
                         //score.ModifiedScore = leaderboard.Difficulty.MaxScore - score.ModifiedScore;
 
@@ -600,7 +604,9 @@ namespace BeatLeader_Server.Controllers
                     foreach (var s in allScores)
                     {
                         var score = new Score() { Id = s.Id, Pp = s.Pp, Accuracy = s.Accuracy, Timeset = s.Timeset, ModifiedScore = s.ModifiedScore, Priority = s.Priority };
-                        _context.Scores.Attach(score);
+                        try {
+                            _context.Scores.Attach(score);
+                        } catch { }
 
                         newScores.Add(score);
                     }

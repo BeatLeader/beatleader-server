@@ -317,11 +317,9 @@ namespace BeatLeader_Server.Controllers
                 foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
                 {
                     Player? p = new Player { Id = pp.Id, Country = pp.Country, Rank = pp.Rank };
-                    if (p == null) {
-                        try {
-                            _context.Players.Attach(p);
-                        } catch { }
-                    }
+                    try {
+                        _context.Players.Attach(p);
+                    } catch { }
 
                     p.Rank = i + 1;
                     _context.Entry(p).Property(x => x.Rank).IsModified = true;
@@ -429,7 +427,9 @@ namespace BeatLeader_Server.Controllers
             await query.ParallelForEachAsync(async p => {
                 try {
                     Player player = new Player { Id = p.Id, Country = p.Country };
-                    _context.Players.Attach(player);
+                    try {
+                        _context.Players.Attach(player);
+                    } catch { }
                     allPlayers.Add(player);
 
                     float resultPP = 0f;
@@ -443,7 +443,9 @@ namespace BeatLeader_Server.Controllers
                         if (s.Weight != weight)
                         {
                             var score = new Score() { Id = s.Id, Weight = weight };
-                            _context.Scores.Attach(score);
+                            try {
+                                _context.Scores.Attach(score);
+                            } catch { }
                             _context.Entry(score).Property(x => x.Weight).IsModified = true;
                         }
                         resultPP += s.Pp * weight;
@@ -565,11 +567,9 @@ namespace BeatLeader_Server.Controllers
             foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
             {
                 Player? p = new Player { Id = pp.Id, Country = pp.Country };
-                if (p == null) {
-                    try {
-                        _context.Players.Attach(p);
-                    } catch {}
-                }
+                try {
+                    _context.Players.Attach(p);
+                } catch {}
 
                 p.Rank = i + 1;
                 _context.Entry(p).Property(x => x.Rank).IsModified = true;

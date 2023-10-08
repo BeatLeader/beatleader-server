@@ -217,7 +217,9 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 var lb = new Leaderboard() { Id = leaderboard.Id, Timestamp = firstScoreTimestamp };
-                _context.Leaderboards.Attach(lb);
+                try {
+                    _context.Leaderboards.Attach(lb);
+                } catch { }
                 _context.Entry(lb).Property(x => x.Timestamp).IsModified = true;
             }
 
@@ -323,8 +325,9 @@ namespace BeatLeader_Server.Controllers
                     {
                         Score score = new Score { Id = item.Id };
                         score.Replay = item.Replay.Replace("https://beatleadercdn.blob.core.windows.net/replays/", "https://api.beatleader.xyz/replay/");
-
-                        _context.Scores.Attach(score);
+                        try {
+                            _context.Scores.Attach(score);
+                        } catch { }
                         _context.Entry(score).Property(x => x.Replay).IsModified = true;
                     }
                 }
