@@ -409,7 +409,7 @@ namespace BeatLeader_Server.Controllers
                         {
                             (score.Pp, score.BonusPp, score.PassPP, score.AccPP, score.TechPP) = ReplayUtils.PpFromScore(
                                 leaderboardContext == LeaderboardContexts.Golf ? 1f - score.Accuracy : score.Accuracy,
-                                leaderboardContext == LeaderboardContexts.Golf ? "" : s.Modifiers,
+                                s.Modifiers,
                                 leaderboard.Difficulty.ModifierValues,
                                 leaderboard.Difficulty.ModifiersRating,
                                 leaderboard.Difficulty.AccRating ?? 0,
