@@ -7,6 +7,7 @@
         riftS = 16,
         quest = 32,
         quest2 = 256,
+        quest3 = 512,
         vive = 2,
         vivePro = 4,
         viveCosmos = 128,

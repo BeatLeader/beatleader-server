@@ -188,6 +188,9 @@ namespace BeatLeader_Server.Controllers {
                     PassPP = s.PassPP,
                     Weight = s.Weight,
                     FcAccuracy = s.FcAccuracy,
+                    Hmd = s.Hmd,
+                    Platform = s.Platform,
+                    Controller = s.Controller,
                     FcPp = s.FcPp,
                     Player = new PlayerResponse {
                         Id = s.Player.Id,
@@ -354,6 +357,9 @@ namespace BeatLeader_Server.Controllers {
                     TechPP = s.TechPP,
                     PassPP = s.PassPP,
                     Weight = s.Weight,
+                    Hmd = s.Score.Hmd,
+                    Platform = s.Score.Platform,
+                    Controller = s.Score.Controller,
                     FcAccuracy = s.Score.FcAccuracy,
                     FcPp = s.Score.FcPp,
                     Player = new PlayerResponse {

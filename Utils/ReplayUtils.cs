@@ -439,6 +439,7 @@ namespace BeatLeader_Server.Utils
             if (lowerHmd.Contains("vridge")) return HMD.vridge;
             if (lowerHmd.Contains("medion mixed reality")) return HMD.medion;
 
+            if (lowerHmd.Contains("quest") && lowerHmd.Contains("3")) return HMD.quest3;
             if (lowerHmd.Contains("quest") && lowerHmd.Contains("2")) return HMD.quest2;
             if (lowerHmd.Contains("quest") && lowerHmd.Contains("pro")) return HMD.questPro;
 
