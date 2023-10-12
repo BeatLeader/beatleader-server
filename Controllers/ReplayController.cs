@@ -879,6 +879,7 @@ namespace BeatLeader_Server.Controllers
                 if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
                     resultScore.FcPp = ReplayUtils.PpFromScore(
                         resultScore.FcAccuracy, 
+                        resultScore.ValidContexts,
                         resultScore.Modifiers, 
                         leaderboard.Difficulty.ModifierValues, 
                         leaderboard.Difficulty.ModifiersRating, 
@@ -1088,6 +1089,7 @@ namespace BeatLeader_Server.Controllers
                         if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
                             resultScore.FcPp = ReplayUtils.PpFromScore(
                                 resultScore.FcAccuracy, 
+                                resultScore.ValidContexts,
                                 resultScore.Modifiers, 
                                 leaderboard.Difficulty.ModifierValues, 
                                 leaderboard.Difficulty.ModifiersRating, 

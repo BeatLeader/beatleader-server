@@ -130,27 +130,28 @@ namespace BeatLeader_Server.Utils
             return (650f * MathF.Pow(peepee, 1.3f)) / MathF.Pow(650f, 1.3f);
         }
 
-        private static (float, float, float) GetPp(float accuracy, float accRating, float passRating, float techRating) {
+        private static (float, float, float) GetPp(LeaderboardContexts context, float accuracy, float accRating, float passRating, float techRating) {
 
             float passPP = 15.2f * MathF.Exp(MathF.Pow(passRating, 1 / 2.62f)) - 30f;
             if (float.IsInfinity(passPP) || float.IsNaN(passPP) || float.IsNegativeInfinity(passPP) || passPP < 0)
             {
                 passPP = 0;
             }
-            float accPP = Curve2(accuracy) * accRating * 34f;
+            float accPP = context == LeaderboardContexts.Golf ? accuracy * accRating * 42f : Curve2(accuracy) * accRating * 34f;
             float techPP = MathF.Exp(1.9f * accuracy) * 1.08f * techRating;
             
             return (passPP, accPP, techPP);
         }
 
         public static float ToStars(float accRating, float passRating, float techRating) {
-            (float passPP, float accPP, float techPP) = GetPp(0.96f, accRating, passRating, techRating);
+            (float passPP, float accPP, float techPP) = GetPp(LeaderboardContexts.General, 0.96f, accRating, passRating, techRating);
 
             return Inflate(passPP + accPP + techPP) / 52f;
         }
 
         public static (float, float, float, float, float) PpFromScore(
             float accuracy, 
+            LeaderboardContexts context,
             string modifiers, 
             ModifiersMap modifierValues, 
             ModifiersRating? modifiersRating,
@@ -159,19 +160,13 @@ namespace BeatLeader_Server.Utils
             float techRating, 
             bool timing)
         {
-            bool negativeAcc = float.IsNegative(accuracy);
-            if (negativeAcc)
-            {
-                accuracy *= -1;
-            }
-
             float mp = modifierValues.GetTotalMultiplier(modifiers, modifiersRating == null);
 
             float rawPP = 0; float fullPP = 0; float passPP = 0; float accPP = 0; float techPP = 0; float increase = 0; 
             if (!timing) {
                 if (!modifiers.Contains("NF"))
                 {
-                    (passPP, accPP, techPP) = GetPp(accuracy, accRating, passRating, techRating);
+                    (passPP, accPP, techPP) = GetPp(context, accuracy, accRating, passRating, techRating);
                         
                     rawPP = Inflate(passPP + accPP + techPP);
                     if (modifiersRating != null) {
@@ -187,7 +182,7 @@ namespace BeatLeader_Server.Utils
                             }
                         }
                     }
-                    (passPP, accPP, techPP) = GetPp(accuracy, accRating * mp, passRating * mp, techRating * mp);
+                    (passPP, accPP, techPP) = GetPp(context, accuracy, accRating * mp, passRating * mp, techRating * mp);
                     fullPP = Inflate(passPP + accPP + techPP);
                     if ((passPP + accPP + techPP) > 0) {
                         increase = fullPP / (passPP + accPP + techPP);
@@ -206,17 +201,13 @@ namespace BeatLeader_Server.Utils
                 fullPP = 0;
             }
 
-            if (negativeAcc) {
-                rawPP *= -1;
-                fullPP *= -1;
-            }
-
             return (fullPP, fullPP - rawPP, passPP * increase, accPP * increase, techPP * increase);
         }
 
         public static (float, float, float, float, float) PpFromScore(Score s, DifficultyDescription difficulty) {
             return PpFromScore(
                 s.Accuracy, 
+                LeaderboardContexts.General,
                 s.Modifiers, 
                 difficulty.ModifierValues, 
                 difficulty.ModifiersRating,
@@ -234,14 +225,14 @@ namespace BeatLeader_Server.Utils
             ModifiersMap modifiers,
             ModifiersRating? modifiersRating)
         {
-            return PpFromScore(s.Accuracy, s.Modifiers, modifiers, modifiersRating, accRating, passRating, techRating, false);
+            return PpFromScore(s.Accuracy, LeaderboardContexts.General, s.Modifiers, modifiers, modifiersRating, accRating, passRating, techRating, false);
         }
 
         public static (float, float, float, float, float) PpFromScoreResponse(
             ScoreResponse s, 
             DifficultyDescription diff)
         {
-            return PpFromScore(s.Accuracy, s.Modifiers, diff.ModifierValues, diff.ModifiersRating, diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0, false);
+            return PpFromScore(s.Accuracy, LeaderboardContexts.General, s.Modifiers, diff.ModifierValues, diff.ModifiersRating, diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0, false);
         }
 
         public static (Score, int) ProcessReplay(Replay replay, DifficultyDescription difficulty) {
@@ -344,7 +335,7 @@ namespace BeatLeader_Server.Utils
             };
 
             if (score.Pp > 0) {
-                (result.Pp, result.BonusPp, result.PassPP, result.AccPP, result.TechPP) = PpFromScore(score.Accuracy, "", difficulty.ModifierValues, 
+                (result.Pp, result.BonusPp, result.PassPP, result.AccPP, result.TechPP) = PpFromScore(score.Accuracy, LeaderboardContexts.NoMods, "", difficulty.ModifierValues, 
                 difficulty.ModifiersRating,
                 difficulty.AccRating ?? 0.0f, 
                 difficulty.PassRating ?? 0.0f, 
@@ -372,7 +363,7 @@ namespace BeatLeader_Server.Utils
             };
 
             if (score.Pp > 0) {
-                (result.Pp, result.BonusPp, result.PassPP, result.AccPP, result.TechPP) = PpFromScore(1 - score.Accuracy, score.Modifiers, difficulty.ModifierValues, 
+                (result.Pp, result.BonusPp, result.PassPP, result.AccPP, result.TechPP) = PpFromScore(1 - score.Accuracy, LeaderboardContexts.Golf, score.Modifiers, difficulty.ModifierValues, 
                 difficulty.ModifiersRating,
                 difficulty.AccRating ?? 0.0f, 
                 difficulty.PassRating ?? 0.0f, 

@@ -16,8 +16,9 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [NonAction]
-        public async Task<(IQueryable<ScoreContextExtension>?, bool, string, string)> ScoresQuery(
+        public async Task<(IQueryable<ScoreContextExtension>?, string)> ScoresQuery(
             string id,
+            bool showRatings,
             string sortBy = "date",
             Order order = Order.Desc,
             string? search = null,
@@ -34,33 +35,25 @@ namespace BeatLeader_Server.Controllers {
             int? time_to = null,
             int? eventId = null) {
 
-            string? currentID = HttpContext.CurrentUserID(_context);
-            bool showRatings = currentID != null ? (_context
-                .Players
-                .Include(p => p.ProfileSettings)
-                .Where(p => p.Id == currentID)
-                .Select(p => p.ProfileSettings)
-                .FirstOrDefault()
-                ?.ShowAllRatings ?? false) : false;
-
             id = _context.PlayerIdToMain(id);
 
             var player = _context.Players.FirstOrDefault(p => p.Id == id);
             if (player == null) {
-                return (null, false, "", "");
+                return (null, "");
             }
 
             return (_context
                .ScoreContextExtensions
                .Where(t => t.PlayerId == id && t.Context == leaderboardContext)
                .Include(c => c.Score)
-               .Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId),
-               showRatings, currentID, id);
+               .Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId), id);
         }
 
-        [NonAction]
+        [HttpGet("~/player/{id}/contextscores")]
         public async Task<ActionResult<ResponseWithMetadata<ScoreResponseWithMyScore>>> GetScores(
             string id,
+            bool showRatings,
+            string currentID,
             [FromQuery] string sortBy = "date",
             [FromQuery] Order order = Order.Desc,
             [FromQuery] int page = 1,
@@ -80,10 +73,8 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] int? eventId = null) {
             (
                 IQueryable<ScoreContextExtension>? sequence,
-                bool showRatings,
-                string currentID,
                 string userId
-            ) = await ScoresQuery(id, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+            ) = await ScoresQuery(id, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             if (sequence == null) {
                 return NotFound();
             }
@@ -204,6 +195,7 @@ namespace BeatLeader_Server.Controllers {
         [NonAction]
         public async Task<ActionResult<ResponseWithMetadata<CompactScoreResponse>>> GetCompactScores(
             string id,
+            bool showRatings,
             [FromQuery] string sortBy = "date",
             [FromQuery] Order order = Order.Desc,
             [FromQuery] int page = 1,
@@ -221,7 +213,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] int? time_from = null,
             [FromQuery] int? time_to = null,
             [FromQuery] int? eventId = null) {
-            (IQueryable<ScoreContextExtension>? sequence, bool showRatings, string currentID, string userId) = await ScoresQuery(id, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+            (IQueryable<ScoreContextExtension>? sequence, string userId) = await ScoresQuery(id, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             if (sequence == null) {
                 return NotFound();
             }
@@ -263,6 +255,7 @@ namespace BeatLeader_Server.Controllers {
         [NonAction]
         public async Task<ActionResult<string>> GetHistogram(
             string id,
+            bool showRatings,
             [FromQuery] string sortBy = "date",
             [FromQuery] Order order = Order.Desc,
             [FromQuery] int count = 8,
@@ -280,7 +273,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] int? time_to = null,
             [FromQuery] int? eventId = null,
             [FromQuery] float? batch = null) {
-            (IQueryable<ScoreContextExtension>? sequence, bool showRatings, string currentID, string userId) = await ScoresQuery(id, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+            (IQueryable<ScoreContextExtension>? sequence, string userId) = await ScoresQuery(id, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             if (sequence == null) {
                 return NotFound();
             }
@@ -289,19 +282,19 @@ namespace BeatLeader_Server.Controllers {
                 case "date":
                     return HistogrammValuee(order, sequence.Select(s => s.Timeset).ToList(), (int)(batch > 60 * 60 ? batch : 60 * 60 * 24), count);
                 case "pp":
-                    return HistogrammValuee(order, sequence.Select(s => s.Pp).ToList(), batch ?? 5, count);
+                    return HistogrammValuee(order, sequence.Select(s => s.Pp).ToList(), Math.Max(batch ?? 5, 1), count);
                 case "acc":
-                    return HistogrammValuee(order, sequence.Select(s => s.Accuracy).ToList(), batch ?? 0.0025f, count);
+                    return HistogrammValuee(order, sequence.Select(s => s.Accuracy).ToList(), Math.Max(batch ?? 0.0025f, 0.001f), count);
                 case "pauses":
-                    return HistogrammValuee(order, sequence.Select(s => s.Score.Pauses).ToList(), (int)(batch ?? 1), count);
+                    return HistogrammValuee(order, sequence.Select(s => s.Score.Pauses).ToList(), Math.Max((int)(batch ?? 1), 1), count);
                 case "maxStreak":
-                    return HistogrammValuee(order, sequence.Select(s => s.Score.MaxStreak ?? 0).ToList(), (int)(batch ?? 1), count);
+                    return HistogrammValuee(order, sequence.Select(s => s.Score.MaxStreak ?? 0).ToList(), Math.Max((int)(batch ?? 1), 1), count);
                 case "rank":
-                    return HistogrammValuee(order, sequence.Select(s => s.Rank).ToList(), (int)(batch ?? 1), count);
+                    return HistogrammValuee(order, sequence.Select(s => s.Rank).ToList(), Math.Max((int)(batch ?? 1), 1), count);
                 case "stars":
-                    return HistogrammValuee(order, sequence.Select(s => s.Leaderboard.Difficulty.Stars ?? 0).ToList(), batch ?? 0.15f, count);
+                    return HistogrammValuee(order, sequence.Select(s => s.Leaderboard.Difficulty.Stars ?? 0).ToList(), Math.Max(batch ?? 0.15f, 0.01f), count);
                 case "replaysWatched":
-                    return HistogrammValuee(order, sequence.Select(s => s.Score.AnonimusReplayWatched + s.Score.AuthorizedReplayWatched).ToList(), (int)(batch ?? 1), count);
+                    return HistogrammValuee(order, sequence.Select(s => s.Score.AnonimusReplayWatched + s.Score.AuthorizedReplayWatched).ToList(), Math.Max((int)(batch ?? 1), 1), count);
                 case "mistakes":
                     return HistogrammValuee(order, sequence.Select(s => s.Score.BadCuts + s.Score.MissedNotes + s.Score.BombCuts + s.Score.WallsHit).ToList(), (int)(batch ?? 1), count);
                 default:
@@ -358,15 +351,11 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [NonAction]
-        public ActionResult<ICollection<GraphResponse>> AccGraph(string id, [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General) {
+        public ActionResult<ICollection<GraphResponse>> AccGraph(
+            string id, 
+            bool showRatings,
+            LeaderboardContexts leaderboardContext = LeaderboardContexts.General) {
             id = _context.PlayerIdToMain(id);
-            string? currentID = HttpContext.CurrentUserID(_context);
-            bool showRatings = currentID != null ? _context
-                .Players
-                .Include(p => p.ProfileSettings)
-                .Where(p => p.Id == currentID)
-                .Select(p => p.ProfileSettings)
-                .FirstOrDefault()?.ShowAllRatings ?? false : false;
 
             var result = _context
                 .ScoreContextExtensions

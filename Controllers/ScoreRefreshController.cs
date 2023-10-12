@@ -242,6 +242,7 @@ namespace BeatLeader_Server.Controllers
                         {
                             (score.Pp, score.BonusPp, score.PassPP, score.AccPP, score.TechPP) = ReplayUtils.PpFromScore(
                                 score.Accuracy,
+                                LeaderboardContexts.General,
                                 s.Modifiers,
                                 leaderboard.Difficulty.ModifierValues,
                                 leaderboard.Difficulty.ModifiersRating,
@@ -251,6 +252,7 @@ namespace BeatLeader_Server.Controllers
                                 leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard");
                             (score.FcPp, _, _, _, _) = ReplayUtils.PpFromScore(
                                 s.FcAccuracy, 
+                                LeaderboardContexts.General,
                                 s.Modifiers, 
                                 leaderboard.Difficulty.ModifierValues, 
                                 leaderboard.Difficulty.ModifiersRating, 
@@ -375,7 +377,7 @@ namespace BeatLeader_Server.Controllers
 
                         int maxScore = leaderboard.Difficulty.MaxScore > 0 ? leaderboard.Difficulty.MaxScore : ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
 
-                        if (hasPp && leaderboardContext != LeaderboardContexts.Golf)
+                        if (hasPp)
                         {
                             score.ModifiedScore = (int)(s.BaseScore * modifiers.GetNegativeMultiplier(s.Modifiers));
                         }
@@ -411,6 +413,7 @@ namespace BeatLeader_Server.Controllers
                         {
                             (score.Pp, score.BonusPp, score.PassPP, score.AccPP, score.TechPP) = ReplayUtils.PpFromScore(
                                 leaderboardContext == LeaderboardContexts.Golf ? 1f - score.Accuracy : score.Accuracy,
+                                leaderboardContext,
                                 s.Modifiers,
                                 leaderboard.Difficulty.ModifierValues,
                                 leaderboard.Difficulty.ModifiersRating,
@@ -457,12 +460,13 @@ namespace BeatLeader_Server.Controllers
                         ? newScores
                             .OrderByDescending(el => Math.Round(el.Pp, 2))
                             .ThenBy(el => Math.Round(el.Accuracy, 4))
+                            .ThenBy(el => el.ModifiedScore)
                             .ThenBy(el => el.Timeset)
                             .ToList() 
                         : newScores
                             .OrderBy(el => el.Priority)
-                            .ThenBy(el => el.ModifiedScore)
                             .ThenBy(el => Math.Round(el.Accuracy, 4))
+                            .ThenBy(el => el.ModifiedScore)
                             .ThenBy(el => el.Timeset)
                             .ToList();
                     } else {

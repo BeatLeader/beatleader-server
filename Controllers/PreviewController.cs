@@ -25,7 +25,6 @@ namespace BeatLeader_Server.Controllers
     {
         private readonly HttpClient _client;
         private readonly AppContext _context;
-        private readonly ReadAppContext _readContext;
 
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly IAmazonS3 _s3Client;
@@ -47,13 +46,11 @@ namespace BeatLeader_Server.Controllers
 
         public PreviewController(
             AppContext context,
-            ReadAppContext readContext,
             IWebHostEnvironment webHostEnvironment, 
             IServerTiming serverTiming,
             IConfiguration configuration) {
             _client = new HttpClient();
             _context = context;
-            _readContext = readContext;
             _webHostEnvironment = webHostEnvironment;
             _serverTiming = serverTiming;
             _s3Client = configuration.GetS3Client();
@@ -137,6 +134,19 @@ namespace BeatLeader_Server.Controllers
             public string PlayerRole { get; set; }
             public PatreonFeatures? PatreonFeatures { get; set; }
             public ProfileSettings? ProfileSettings { get; set; }
+            public ICollection<ScoreContextExtension> ContextExtensions { get; set; }
+
+            public LeaderboardContexts Context { get; set; } = LeaderboardContexts.General;
+
+            public void ToContext(ScoreContextExtension? extension)
+            {
+                if (extension == null) return;
+
+                Rank = extension.Rank;
+                Accuracy = extension.Accuracy;
+                Pp = extension.Pp;
+                Modifiers = extension.Modifiers;
+            }
         }
 
         private Image<Rgba32> LoadImage(string fileName)
@@ -191,6 +201,14 @@ namespace BeatLeader_Server.Controllers
 
             (Color diffColor, string diff) = DiffColorAndName(score.Difficulty);
 
+            if (score.ContextExtensions.Count > 0) {
+                var bestScore = score.ContextExtensions.OrderBy(ce => ce.Rank).First();
+                if ((bestScore.Rank < score.Rank || score.Rank == 0) && bestScore.Rank != 0) {
+                    score.ToContext(bestScore);
+                    score.Context = bestScore.Context;
+                }
+            }
+
             Image<Rgba32>? result = null;
             
             using (_serverTiming.TimeAction("generate"))
@@ -204,6 +222,7 @@ namespace BeatLeader_Server.Controllers
                     score.Rank,
                     score.Pp,
                     score.Stars ?? 0,
+                    score.Context,
                     coverImage,
                     avatarImage,
                     overlayImage,
@@ -262,7 +281,7 @@ namespace BeatLeader_Server.Controllers
             using (_serverTiming.TimeAction("db"))
             {
                 if (scoreId != null) {
-                    score = await _readContext.Scores
+                    score = await _context.Scores
                         .Where(s => s.Id == scoreId)
                         .Include(s => s.Player)
                             .ThenInclude(p => p.ProfileSettings)
@@ -270,6 +289,7 @@ namespace BeatLeader_Server.Controllers
                             .ThenInclude(l => l.Song)
                         .Include(s => s.Leaderboard)
                             .ThenInclude(l => l.Difficulty)
+                        .Include(s => s.ContextExtensions)
                         .Select(s => new ScoreSelect {
                             SongId = s.Leaderboard.Song.Id,
                             CoverImage = s.Leaderboard.Song.CoverImage,
@@ -292,10 +312,11 @@ namespace BeatLeader_Server.Controllers
                             PlayerRole = s.Player.Role,
                             PatreonFeatures = s.Player.PatreonFeatures,
                             ProfileSettings = s.Player.ProfileSettings,
+                            ContextExtensions = s.ContextExtensions
                         })
                         .FirstOrDefaultAsync();
                     if (score == null) {
-                        var redirect = _readContext.ScoreRedirects.FirstOrDefault(sr => sr.OldScoreId == scoreId);
+                        var redirect = _context.ScoreRedirects.FirstOrDefault(sr => sr.OldScoreId == scoreId);
                         if (redirect != null && redirect.NewScoreId != scoreId)
                         {
                             return await Get(scoreId: redirect.NewScoreId);

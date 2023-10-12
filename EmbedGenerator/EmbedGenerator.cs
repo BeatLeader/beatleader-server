@@ -1,4 +1,5 @@
-﻿using SixLabors.Fonts;
+﻿using BeatLeader_Server.Models;
+using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -68,6 +69,7 @@ internal class EmbedGenerator
         int rank,
         float pp,
         float stars,
+        LeaderboardContexts context,
         Image<Rgba32> coverImage,
         Image<Rgba32> avatarImage,
         Image<Rgba32>? avatarBorderImage,
@@ -135,6 +137,9 @@ internal class EmbedGenerator
         bitmap.FitText(accuracyText, Color.White, _fontFamily, _fallbackFamilies, _layout.AccTextRectangle);
         bitmap.FitText(rankText, Color.White, _fontFamily, _fallbackFamilies, _layout.RankTextRectangle);
         bitmap.FitText(modifiers, Color.White, _fontFamily, _fallbackFamilies, _layout.ModifiersTextRectangle);
+        if (context != LeaderboardContexts.General && context != LeaderboardContexts.None) {
+            bitmap.FitText(context.ToString(), Color.White, _fontFamily, _fallbackFamilies, _layout.ContextTextRectangle);
+        }
         bitmap.DrawTextCentered(diffText, _diffFont, _fallbackFamilies, diffColor, textRectangle);
 
         return bitmap;

@@ -12,6 +12,7 @@ internal class EmbedLayout {
     public readonly Rectangle AccTextRectangle;
     public readonly Rectangle RankTextRectangle;
     public readonly Rectangle ModifiersTextRectangle;
+    public readonly Rectangle ContextTextRectangle;
 
     public readonly float MinPlayerNameFontSize;
     public readonly float MinSongNameFontSize;
@@ -67,6 +68,10 @@ internal class EmbedLayout {
         var modifiersTextOrigin = statsOrigin with { Y = statsOrigin.Y + size.Height * 0.13f };
         var modifiersTextSize = new SizeF(size.Width * 0.5f, size.Height * 0.061f);
         ModifiersTextRectangle = DrawingUtils.CenteredRectangle(modifiersTextOrigin, modifiersTextSize);
+
+        var contextTextOrigin = statsOrigin with { Y = statsOrigin.Y + size.Height * 0.13f * 1.65f };
+        var contextTextSize = new SizeF(size.Width * 0.5f, size.Height * 0.061f);
+        ContextTextRectangle = DrawingUtils.CenteredRectangle(contextTextOrigin, contextTextSize);
     }
 
     #endregion

@@ -101,7 +101,13 @@ namespace BeatLeader_Server.Controllers {
             }
 
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
-                return await _playerContextScoresController.GetScores(id, sortBy, order, page, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+                string? currentID2 = HttpContext.CurrentUserID(_context);
+                bool showRatings2 = currentID2 != null ? _context
+                    .Players
+                    .Where(p => p.Id == currentID2 && p.ProfileSettings != null)
+                    .Select(p => p.ProfileSettings.ShowAllRatings)
+                    .FirstOrDefault() : false;
+                return await _playerContextScoresController.GetScores(id, showRatings2, currentID2, sortBy, order, page, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             }
 
             (
@@ -262,7 +268,13 @@ namespace BeatLeader_Server.Controllers {
                 return BadRequest("Please use `count` value in range of 0 to 100");
             }
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
-                return await _playerContextScoresController.GetCompactScores(id, sortBy, order, page, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+                string? currentID2 = HttpContext.CurrentUserID(_context);
+                bool showRatings2 = currentID2 != null ? _context
+                    .Players
+                    .Where(p => p.Id == currentID2 && p.ProfileSettings != null)
+                    .Select(p => p.ProfileSettings.ShowAllRatings)
+                    .FirstOrDefault() : false;
+                return await _playerContextScoresController.GetCompactScores(id, showRatings2, sortBy, order, page, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             }
             (IQueryable<Score>? sequence, bool showRatings, string currentID, string userId) = await ScoresQuery(id, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             if (sequence == null) {
@@ -374,13 +386,18 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] int? time_to = null,
             [FromQuery] int? eventId = null,
             [FromQuery] float? batch = null) {
-            return BadRequest("Temporarily disabled");
             if (count > 100 || count < 0) {
                 return BadRequest("Please use `count` value in range of 0 to 100");
             }
 
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
-                return await _playerContextScoresController.GetHistogram(id, sortBy, order, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId, batch); 
+                string? currentID2 = HttpContext.CurrentUserID(_context);
+                bool showRatings2 = currentID2 != null ? _context
+                    .Players
+                    .Where(p => p.Id == currentID2 && p.ProfileSettings != null)
+                    .Select(p => p.ProfileSettings.ShowAllRatings)
+                    .FirstOrDefault() : false;
+                return await _playerContextScoresController.GetHistogram(id, showRatings2, sortBy, order, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId, batch); 
             }
             (IQueryable<Score>? sequence, bool showRatings, string currentID, string userId) = await ScoresQuery(id, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             if (sequence == null) {
@@ -391,21 +408,21 @@ namespace BeatLeader_Server.Controllers {
                 case "date":
                     return HistogrammValuee(order, sequence.Select(s => s.Timepost > 0 ? s.Timepost.ToString() : s.Timeset).Select(s => Int32.Parse(s)).ToList(), (int)(batch > 60 * 60 ? batch : 60 * 60 * 24), count);
                 case "pp":
-                    return HistogrammValuee(order, sequence.Select(s => s.Pp).ToList(), batch ?? 5, count);
+                    return HistogrammValuee(order, sequence.Select(s => s.Pp).ToList(), Math.Max(batch ?? 5, 1), count);
                 case "acc":
-                    return HistogrammValuee(order, sequence.Select(s => s.Accuracy).ToList(), batch ?? 0.0025f, count);
+                    return HistogrammValuee(order, sequence.Select(s => s.Accuracy).ToList(), Math.Max(batch ?? 0.0025f, 0.001f), count);
                 case "pauses":
-                    return HistogrammValuee(order, sequence.Select(s => s.Pauses).ToList(), (int)(batch ?? 1), count);
+                    return HistogrammValuee(order, sequence.Select(s => s.Pauses).ToList(), Math.Max((int)(batch ?? 1), 1), count);
                 case "maxStreak":
-                    return HistogrammValuee(order, sequence.Select(s => s.MaxStreak ?? 0).ToList(), (int)(batch ?? 1), count);
+                    return HistogrammValuee(order, sequence.Select(s => s.MaxStreak ?? 0).ToList(), Math.Max((int)(batch ?? 1), 1), count);
                 case "rank":
-                    return HistogrammValuee(order, sequence.Select(s => s.Rank).ToList(), (int)(batch ?? 1), count);
+                    return HistogrammValuee(order, sequence.Select(s => s.Rank).ToList(), Math.Max((int)(batch ?? 1), 1), count);
                 case "stars":
-                    return HistogrammValuee(order, sequence.Select(s => s.Leaderboard.Difficulty.Stars ?? 0).ToList(), batch ?? 0.15f, count);
+                    return HistogrammValuee(order, sequence.Select(s => s.Leaderboard.Difficulty.Stars ?? 0).ToList(), Math.Max(batch ?? 0.15f, 0.01f), count);
                 case "replaysWatched":
-                    return HistogrammValuee(order, sequence.Select(s => s.AnonimusReplayWatched + s.AuthorizedReplayWatched).ToList(), (int)(batch ?? 1), count);
+                    return HistogrammValuee(order, sequence.Select(s => s.AnonimusReplayWatched + s.AuthorizedReplayWatched).ToList(), Math.Max((int)(batch ?? 1), 1), count);
                 case "mistakes":
-                    return HistogrammValuee(order, sequence.Select(s => s.BadCuts + s.MissedNotes + s.BombCuts + s.WallsHit).ToList(), (int)(batch ?? 1), count);
+                    return HistogrammValuee(order, sequence.Select(s => s.BadCuts + s.MissedNotes + s.BombCuts + s.WallsHit).ToList(), Math.Max((int)(batch ?? 1), 1), count);
                 default:
                     return BadRequest();
             }
@@ -462,7 +479,13 @@ namespace BeatLeader_Server.Controllers {
         [HttpGet("~/player/{id}/accgraph")]
         public ActionResult<ICollection<GraphResponse>> AccGraph(string id, [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General) {
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
-                return _playerContextScoresController.AccGraph(id, leaderboardContext); 
+                string? currentID2 = HttpContext.CurrentUserID(_context);
+                bool showRatings2 = currentID2 != null ? _context
+                    .Players
+                    .Where(p => p.Id == currentID2 && p.ProfileSettings != null)
+                    .Select(p => p.ProfileSettings.ShowAllRatings)
+                    .FirstOrDefault() : false;
+                return _playerContextScoresController.AccGraph(id, showRatings2, leaderboardContext); 
             }
             id = _context.PlayerIdToMain(id);
             string? currentID = HttpContext.CurrentUserID(_context);
