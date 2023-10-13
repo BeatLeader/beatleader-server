@@ -669,14 +669,27 @@ namespace BeatLeader_Server.Controllers
 
             List<ScoreSelection> rankedScores;
             if (isRanked) {
-                rankedScores = _context
+                if (context != LeaderboardContexts.Golf) {
+                    rankedScores = _context
                     .ScoreContextExtensions
                     .Where(s => s.LeaderboardId == leaderboard.Id && s.Context == context && !s.Banned)
                     .OrderByDescending(el => Math.Round(el.Pp, 2))
                     .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                    .ThenByDescending(el => el.ModifiedScore)
                     .ThenBy(el => el.Timeset)
                     .Select(s => new ScoreSelection() { Id = s.Id, Rank = s.Rank })
                     .ToList();
+                } else {
+                    rankedScores = _context
+                    .ScoreContextExtensions
+                    .Where(s => s.LeaderboardId == leaderboard.Id && s.Context == context && !s.Banned)
+                    .OrderByDescending(el => Math.Round(el.Pp, 2))
+                    .ThenBy(el => Math.Round(el.Accuracy, 4))
+                    .ThenBy(el => el.ModifiedScore)
+                    .ThenBy(el => el.Timeset)
+                    .Select(s => new ScoreSelection() { Id = s.Id, Rank = s.Rank })
+                    .ToList();
+                }
             } else {
                 if (context != LeaderboardContexts.Golf) {
                     rankedScores = _context
