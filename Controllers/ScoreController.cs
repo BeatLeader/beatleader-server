@@ -719,7 +719,7 @@ namespace BeatLeader_Server.Controllers
                         Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
                             .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                     },
-                    ScoreImprovement = s.Score.ScoreImprovement
+                    ScoreImprovement = s.ScoreImprovement
                 }).FirstOrDefault();
 
                 if (highlightedScore != null)
@@ -792,7 +792,7 @@ namespace BeatLeader_Server.Controllers
                         Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
                             .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color }).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                     },
-                    ScoreImprovement = s.Score.ScoreImprovement
+                    ScoreImprovement = s.ScoreImprovement
                 })
                 .ToList();
 

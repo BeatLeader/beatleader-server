@@ -404,7 +404,7 @@ namespace BeatLeader_Server.Controllers
             }
             resultScore.Bot = player.Bot;
 
-            var improvement = await GeneralContextScore(leaderboard, player, resultScore, currentScores, replay);
+            await GeneralContextScore(leaderboard, player, resultScore, currentScores, replay);
 
             foreach (var leaderboardContext in ContextExtensions.NonGeneral) {
                 await ContextScore(leaderboardContext, leaderboard, player, resultScore, currentScores, replay);
@@ -448,7 +448,6 @@ namespace BeatLeader_Server.Controllers
                         replayData,
                         leaderboard, 
                         player,
-                        improvement, 
                         resultScore,
                         currentScore,
                         currentScores,
@@ -467,7 +466,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        private async Task<ScoreImprovement?> GeneralContextScore(
+        private async Task GeneralContextScore(
             Leaderboard leaderboard,
             Player player,
             Score resultScore,
@@ -478,7 +477,7 @@ namespace BeatLeader_Server.Controllers
             var currentScore = currentScores.FirstOrDefault(s => s.ValidContexts.HasFlag(LeaderboardContexts.General));
             
             if (!ReplayUtils.IsNewScoreBetter(currentScore, resultScore)) {
-                return null;
+                return;
             }
 
             if (currentScore != null) {
@@ -540,8 +539,6 @@ namespace BeatLeader_Server.Controllers
             if (!player.Bot) {
                 leaderboard.Plays++;
             }
-
-            return improvement;
         }
 
         [NonAction]
@@ -569,9 +566,35 @@ namespace BeatLeader_Server.Controllers
             resultExtension.LeaderboardId = leaderboard.Id;
             resultExtension.PlayerId = player.Id;
             
+            ScoreImprovement improvement = new ScoreImprovement();
+            resultExtension.ScoreImprovement = improvement;
             if (currentScore != null) {
                 currentScore.ValidContexts &= ~context;
                 if (currentExtension != null) {
+                    improvement.Timeset = currentScore.Timeset;
+                    improvement.Score = resultScore.ModifiedScore - currentExtension.ModifiedScore;
+                    improvement.Accuracy = resultScore.Accuracy - currentExtension.Accuracy;
+
+                    improvement.BadCuts = resultScore.BadCuts - currentScore.BadCuts;
+                    improvement.BombCuts = resultScore.BombCuts - currentScore.BombCuts;
+                    improvement.MissedNotes = resultScore.MissedNotes - currentScore.MissedNotes;
+                    improvement.WallsHit = resultScore.WallsHit - currentScore.WallsHit;
+                    var status1 = leaderboard.Difficulty.Status;
+
+                    if (!resultScore.IgnoreForStats) { 
+                        if (status1 == DifficultyStatus.ranked)
+                        {
+                            float oldAverageAcc = player.ScoreStats.AverageRankedAccuracy;
+
+                            improvement.AverageRankedAccuracy = player.ScoreStats.AverageRankedAccuracy - oldAverageAcc;
+                        }
+                    }
+
+                    if (status1 is DifficultyStatus.ranked or DifficultyStatus.qualified)
+                    {
+                        improvement.Pp = resultScore.Pp - currentExtension.Pp;
+                    }
+
                     _context.ScoreContextExtensions.Remove(currentExtension);
                 }
             }
@@ -738,8 +761,7 @@ namespace BeatLeader_Server.Controllers
             Replay replay,
             byte[] replayData,
             Leaderboard leaderboard, 
-            Player player, 
-            ScoreImprovement? improvement,
+            Player player,
             Score resultScore,
             Score? currentScore,
             List<Score> currentScores,
@@ -747,16 +769,9 @@ namespace BeatLeader_Server.Controllers
             ReplayOffsets offsets,
             bool allow = false) {
 
-            float oldPp = player.Pp;
-            int oldRank = player.Rank;
+            var oldPlayerStats = CollectPlayerStats(player);
 
             var transaction = await _context.Database.BeginTransactionAsync();
-
-            if (currentScore != null && improvement != null)
-            {
-                _context.Entry(improvement).Property(x => x.Rank).IsModified = true;
-                improvement.Rank = resultScore.Rank - currentScore.Rank;
-            }
 
             if (!player.Bot && leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
                 _context.RecalculatePPAndRankFast(player, resultScore.ValidContexts);
@@ -809,11 +824,6 @@ namespace BeatLeader_Server.Controllers
 
             if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
             {
-                if (improvement != null) {
-                    improvement.TotalPp = player.Pp - oldPp;
-                    improvement.TotalRank = player.Rank - oldRank;
-                }
-
                 if (player.Rank < player.ScoreStats.PeakRank || player.ScoreStats.PeakRank == 0)
                 {
                     player.ScoreStats.PeakRank = player.Rank;
@@ -907,12 +917,7 @@ namespace BeatLeader_Server.Controllers
                 }
                 resultScore.Country = context.Request.Headers["cf-ipcountry"] == StringValues.Empty ? "not set" : context.Request.Headers["cf-ipcountry"].ToString();
 
-                if (currentScore != null && improvement != null)
-                {
-                    improvement.AccLeft = resultScore.AccLeft - currentScore.AccLeft;
-                    improvement.AccRight = resultScore.AccRight - currentScore.AccRight;
-                }
-
+                UpdateImprovements(resultScore, currentScores, player, oldPlayerStats, leaderboard);
                 if (resultScore.Hmd == HMD.unknown && _context.Headsets.FirstOrDefault(h => h.Name == replay.info.hmd) == null) {
                     _context.Headsets.Add(new Headset {
                         Name = replay.info.hmd,
@@ -964,7 +969,10 @@ namespace BeatLeader_Server.Controllers
                             }
                             message += "\n";
                         }
-                        message += Math.Round(improvement.TotalPp, 2) + " to the personal pp and " + improvement.TotalRank + " to rank \n";
+                        var improvement = resultScore.ScoreImprovement;
+                        if (improvement != null) {
+                            message += Math.Round(improvement.TotalPp, 2) + " to the personal pp and " + improvement.TotalRank + " to rank \n";
+                        }
 
                         await dsClient.SendMessageAsync(message,
                             embeds: new List<Embed> { new EmbedBuilder()
@@ -1223,6 +1231,83 @@ namespace BeatLeader_Server.Controllers
             }
 
             await _context.SaveChangesAsync();
+        }
+
+        class OldPlayerStats {
+            public LeaderboardContexts Context { get; set; }
+            public float Pp { get; set; }
+            public int Rank { get; set; }
+        }
+
+        private List<OldPlayerStats> CollectPlayerStats(Player player) {
+            var result = new List<OldPlayerStats> { new OldPlayerStats {
+                Context = LeaderboardContexts.General,
+                Pp = player.Pp,
+                Rank = player.Rank
+            } };
+
+            if (player.ContextExtensions != null) {
+                foreach (var ce in player.ContextExtensions)
+                {
+                    result.Add(new OldPlayerStats {
+                        Context = ce.Context,
+                        Pp = ce.Pp,
+                        Rank = ce.Rank
+                    });
+                }
+            }
+
+            return result;
+        }
+
+        private void UpdateImprovements(
+                Score resultScore,
+                List<Score> currentScores, 
+                Player player,
+                List<OldPlayerStats> oldPlayerStats,
+                Leaderboard leaderboard) {
+
+            var generalCurrentScore = currentScores.FirstOrDefault(s => s.ValidContexts.HasFlag(LeaderboardContexts.General));
+            if (resultScore.ScoreImprovement != null) {
+                var oldPlayer = oldPlayerStats.First(s => s.Context == LeaderboardContexts.General);
+                var improvement = resultScore.ScoreImprovement;
+                if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
+                {
+                    improvement.TotalPp = player.Pp - oldPlayer.Pp;
+                    improvement.TotalRank = player.Rank - oldPlayer.Rank;
+                }
+                if (generalCurrentScore != null) {
+                    improvement.AccLeft = resultScore.AccLeft - generalCurrentScore.AccLeft;
+                    improvement.AccRight = resultScore.AccRight - generalCurrentScore.AccRight;
+                    improvement.Rank = resultScore.Rank - generalCurrentScore.Rank;
+                }
+            }
+
+            if (resultScore.ContextExtensions != null) {
+                foreach (var ce in resultScore.ContextExtensions)
+                {
+                    var currentScore = currentScores
+                        .FirstOrDefault(s => s.ValidContexts.HasFlag(ce.Context));
+                    var currentScoreExtenstion = currentScore?.ContextExtensions
+                        ?.FirstOrDefault(sce => sce.Context == ce.Context);
+
+                    if (ce.ScoreImprovement != null) {
+                        var oldPlayer = oldPlayerStats.FirstOrDefault(s => s.Context == ce.Context);
+                        var newPlayer = player?.ContextExtensions?.FirstOrDefault(pce => pce.Context == ce.Context);
+                        var improvement = ce.ScoreImprovement;
+                        if (leaderboard.Difficulty.Status == DifficultyStatus.ranked && newPlayer != null && oldPlayer != null)
+                        {
+                            improvement.TotalPp = newPlayer.Pp - oldPlayer.Pp;
+                            improvement.TotalRank = newPlayer.Rank - oldPlayer.Rank;
+                        }
+                        if (currentScore != null && currentScoreExtenstion != null) {
+                            improvement.AccLeft = resultScore.AccLeft - currentScore.AccLeft;
+                            improvement.AccRight = resultScore.AccRight - currentScore.AccRight;
+                            improvement.Rank = ce.Rank - currentScoreExtenstion.Rank;
+                        }
+                    }
+                }
+            }
         }
 
         [NonAction]

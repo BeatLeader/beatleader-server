@@ -31,5 +31,6 @@ namespace BeatLeader_Server.Models {
         public bool Banned { get; set; }
 
         public LeaderboardContexts Context { get; set; }
+        public ScoreImprovement? ScoreImprovement { get; set; }
     }
 }

@@ -182,7 +182,7 @@ namespace BeatLeader_Server.Controllers {
                             Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
                             .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                         },
-                        ScoreImprovement = s.Score.ScoreImprovement,
+                        ScoreImprovement = s.ScoreImprovement,
                         RankVoting = s.Score.RankVoting,
                         Metadata = s.Score.Metadata,
                         Country = s.Score.Country,
@@ -291,7 +291,7 @@ namespace BeatLeader_Server.Controllers {
                             Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
                             .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                         },
-                        ScoreImprovement = s.Score.ScoreImprovement,
+                        ScoreImprovement = s.ScoreImprovement,
                         RankVoting = s.Score.RankVoting,
                         Metadata = s.Score.Metadata,
                         Country = s.Score.Country,

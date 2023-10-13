@@ -94,6 +94,7 @@ namespace BeatLeader_Server.Controllers {
                     .Include(s => s.Leaderboard)
                     .ThenInclude(l => l.Difficulty)
                     .ThenInclude(d => d.ModifierValues)
+                    .Include(s => s.ScoreImprovement)
                     .Skip((page - 1) * count)
                     .Take(count)
                     .Select(s => new ScoreResponseWithMyScore {
@@ -126,7 +127,7 @@ namespace BeatLeader_Server.Controllers {
                         Timepost = s.Timeset,
                         LeaderboardId = s.LeaderboardId,
                         Platform = s.Score.Platform,
-                        ScoreImprovement = s.Score.ScoreImprovement,
+                        ScoreImprovement = s.ScoreImprovement,
                         Country = s.Score.Country,
                         Offsets = s.Score.ReplayOffsets,
                         Leaderboard = new LeaderboardResponse {
