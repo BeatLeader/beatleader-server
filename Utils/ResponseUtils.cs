@@ -553,7 +553,8 @@ namespace BeatLeader_Server.Utils {
                 Weight = s.Weight,
                 AccLeft = s.AccLeft,
                 AccRight = s.AccRight,
-                MaxStreak = s.MaxStreak
+                MaxStreak = s.MaxStreak,
+                ValidContexts = s.ValidContexts
             };
         }
 

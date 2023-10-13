@@ -74,6 +74,7 @@ namespace BeatLeader_Server.Utils
     public class ScoreResponseWithMyScore : ScoreResponseWithAcc
     {
         public ScoreResponseWithAcc? MyScore { get; set; }
+        public LeaderboardContexts ValidContexts { get; set; }
 
         public LeaderboardResponse Leaderboard { get; set; }
         public ICollection<ScoreContextExtension> ContextExtensions { get; set; }
