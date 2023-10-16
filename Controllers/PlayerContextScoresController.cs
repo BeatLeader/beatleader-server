@@ -379,6 +379,8 @@ namespace BeatLeader_Server.Controllers {
                     AccRating = s.Leaderboard.Difficulty.AccRating,
                     PassRating = s.Leaderboard.Difficulty.PassRating,
                     TechRating = s.Leaderboard.Difficulty.TechRating,
+                    PatternRating = s.Leaderboard.Difficulty.PatternRating,
+                    PredictedAcc = s.Leaderboard.Difficulty.PredictedAcc
                 })
                 .ToList();
             var defaultModifiers = new ModifiersMap();
@@ -406,7 +408,7 @@ namespace BeatLeader_Server.Controllers {
                     score.PassRating *= mp;
                     score.TechRating *= mp;
 
-                    score.Stars = ReplayUtils.ToStars(score.AccRating ?? 0, score.PassRating ?? 0, score.TechRating ?? 0);
+                    score.Stars = ReplayUtils.ToStars(score.AccRating ?? 0, score.PassRating ?? 0, score.TechRating ?? 0, score.PatternRating ?? 0, score.PredictedAcc ?? 0);
                 }
             }
 

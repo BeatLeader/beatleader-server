@@ -46,7 +46,6 @@ namespace BeatLeader_Server.Controllers
                 var allLeaderboards = (leaderboardId != null ? query.Where(s => s.Id == leaderboardId) : query)
                     .Select(l => new { l.Scores, l.Difficulty })
                     .ToList(); // .Skip(iii).Take(1000).ToList();
-
                 int counter = 0;
                 var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -249,6 +248,8 @@ namespace BeatLeader_Server.Controllers
                                 leaderboard.Difficulty.AccRating ?? 0,
                                 leaderboard.Difficulty.PassRating ?? 0,
                                 leaderboard.Difficulty.TechRating ?? 0,
+                                leaderboard.Difficulty.PatternRating ?? 0,
+                                leaderboard.Difficulty.PredictedAcc ?? 0,
                                 leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard");
                             (score.FcPp, _, _, _, _) = ReplayUtils.PpFromScore(
                                 s.FcAccuracy, 
@@ -259,6 +260,8 @@ namespace BeatLeader_Server.Controllers
                                 leaderboard.Difficulty.AccRating ?? 0, 
                                 leaderboard.Difficulty.PassRating ?? 0, 
                                 leaderboard.Difficulty.TechRating ?? 0, 
+                                leaderboard.Difficulty.PatternRating ?? 0,
+                                leaderboard.Difficulty.PredictedAcc ?? 0,
                                 leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard");
                         }
                         else
@@ -420,6 +423,8 @@ namespace BeatLeader_Server.Controllers
                                 leaderboard.Difficulty.AccRating ?? 0,
                                 leaderboard.Difficulty.PassRating ?? 0,
                                 leaderboard.Difficulty.TechRating ?? 0,
+                                leaderboard.Difficulty.PatternRating ?? 0,
+                                leaderboard.Difficulty.PredictedAcc ?? 0,
                                 leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard");
                         }
                         else

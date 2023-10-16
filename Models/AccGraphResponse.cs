@@ -23,5 +23,9 @@ namespace BeatLeader_Server.Models {
         public float? AccRating { get; set; }
         [JsonIgnore]
         public float? TechRating { get; set; }
+        [JsonIgnore]
+        public float? PatternRating { get; set; }
+        [JsonIgnore]
+        public float? PredictedAcc { get; set; }
     }
 }

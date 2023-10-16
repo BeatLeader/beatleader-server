@@ -208,6 +208,7 @@ namespace BeatLeader_Server.Controllers {
                                 PassRating  = s.Leaderboard.Difficulty.PassRating,
                                 AccRating  = s.Leaderboard.Difficulty.AccRating,
                                 TechRating  = s.Leaderboard.Difficulty.TechRating,
+                                PatternRating = s.Leaderboard.Difficulty.PatternRating,
                                 Type  = s.Leaderboard.Difficulty.Type,
 
                                 Njs  = s.Leaderboard.Difficulty.Njs,
@@ -317,6 +318,7 @@ namespace BeatLeader_Server.Controllers {
                                 PassRating  = s.Leaderboard.Difficulty.PassRating,
                                 AccRating  = s.Leaderboard.Difficulty.AccRating,
                                 TechRating  = s.Leaderboard.Difficulty.TechRating,
+                                PatternRating = s.Leaderboard.Difficulty.PatternRating,
                                 Type  = s.Leaderboard.Difficulty.Type,
 
                                 Njs  = s.Leaderboard.Difficulty.Njs,
@@ -528,6 +530,7 @@ namespace BeatLeader_Server.Controllers {
                                 PassRating  = s.Leaderboard.Difficulty.PassRating,
                                 AccRating  = s.Leaderboard.Difficulty.AccRating,
                                 TechRating  = s.Leaderboard.Difficulty.TechRating,
+                                PatternRating = s.Leaderboard.Difficulty.PatternRating,
                                 Type  = s.Leaderboard.Difficulty.Type,
 
                                 Njs  = s.Leaderboard.Difficulty.Njs,

@@ -480,6 +480,7 @@ namespace BeatLeader_Server.Controllers {
                     PassRating  = l.Difficulty.PassRating,
                     AccRating  = l.Difficulty.AccRating,
                     TechRating  = l.Difficulty.TechRating,
+                    PatternRating = l.Difficulty.PatternRating,
                     Type  = l.Difficulty.Type,
 
                     Njs  = l.Difficulty.Njs,
@@ -595,6 +596,8 @@ namespace BeatLeader_Server.Controllers {
                             leaderboard.Difficulty.AccRating ?? 0,
                             leaderboard.Difficulty.PassRating ?? 0,
                             leaderboard.Difficulty.TechRating ?? 0,
+                            leaderboard.Difficulty.PatternRating ?? 0,
+                            leaderboard.Difficulty.PredictedAcc ?? 0,
                             qualification.Modifiers,
                             qualification.ModifiersRating
                             );
@@ -789,6 +792,7 @@ namespace BeatLeader_Server.Controllers {
                         PassRating  = l.Difficulty.PassRating,
                         AccRating  = l.Difficulty.AccRating,
                         TechRating  = l.Difficulty.TechRating,
+                        PatternRating = l.Difficulty.PatternRating,
                         Type  = l.Difficulty.Type,
 
                         Njs  = l.Difficulty.Njs,
@@ -923,6 +927,7 @@ namespace BeatLeader_Server.Controllers {
                     PassRating  = lb.Difficulty.PassRating,
                     AccRating  = lb.Difficulty.AccRating,
                     TechRating  = lb.Difficulty.TechRating,
+                    PatternRating = lb.Difficulty.PatternRating,
                     Type  = lb.Difficulty.Type,
 
                     Njs  = lb.Difficulty.Njs,
@@ -1116,6 +1121,7 @@ namespace BeatLeader_Server.Controllers {
                         PassRating  = lb.Difficulty.PassRating,
                         AccRating  = lb.Difficulty.AccRating,
                         TechRating  = lb.Difficulty.TechRating,
+                        PatternRating = lb.Difficulty.PatternRating,
                         Type  = lb.Difficulty.Type,
 
                         Njs  = lb.Difficulty.Njs,
@@ -1280,6 +1286,7 @@ namespace BeatLeader_Server.Controllers {
                         PassRating  = lb.Difficulty.PassRating,
                         AccRating  = lb.Difficulty.AccRating,
                         TechRating  = lb.Difficulty.TechRating,
+                        PatternRating = lb.Difficulty.PatternRating,
                         Type  = lb.Difficulty.Type,
 
                         Njs  = lb.Difficulty.Njs,

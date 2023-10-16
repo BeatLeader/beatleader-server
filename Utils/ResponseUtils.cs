@@ -206,6 +206,7 @@ namespace BeatLeader_Server.Utils {
             public float? PassRating { get; set; }
             public float? AccRating { get; set; }
             public float? TechRating { get; set; }
+            public float? PatternRating { get; set; }
             public int Type { get; set; }
 
             public float Njs { get; set; }
@@ -238,6 +239,7 @@ namespace BeatLeader_Server.Utils {
             public float? PassRating { get; set; }
             public float? AccRating { get; set; }
             public float? TechRating { get; set; }
+            public float? PatternRating { get; set; }
             public int Type { get; set; }
 
             public float Njs { get; set; }
@@ -339,6 +341,7 @@ namespace BeatLeader_Server.Utils {
             public float? PassRating { get; set; }
             public float? AccRating { get; set; }
             public float? TechRating { get; set; }
+            public float? PatternRating { get; set; }
 
             public void HideRatings() {
                 this.AccRating = null;
@@ -537,6 +540,7 @@ namespace BeatLeader_Server.Utils {
                         PassRating  = s.Leaderboard.Difficulty.PassRating,
                         AccRating  = s.Leaderboard.Difficulty.AccRating,
                         TechRating  = s.Leaderboard.Difficulty.TechRating,
+                        PatternRating = s.Leaderboard.Difficulty.PatternRating,
                         Type  = s.Leaderboard.Difficulty.Type,
 
                         Njs  = s.Leaderboard.Difficulty.Njs,
@@ -607,6 +611,7 @@ namespace BeatLeader_Server.Utils {
                     PassRating  = l.Difficulty.PassRating,
                     AccRating  = l.Difficulty.AccRating,
                     TechRating  = l.Difficulty.TechRating,
+                    PatternRating = l.Difficulty.PatternRating,
                     Type  = l.Difficulty.Type,
 
                     Njs  = l.Difficulty.Njs,
@@ -718,7 +723,8 @@ namespace BeatLeader_Server.Utils {
                 ModifiersRating = diff.ModifiersRating,
                 PassRating = diff.PassRating,
                 AccRating = diff.AccRating,
-                TechRating = diff.TechRating
+                TechRating = diff.TechRating,
+                PatternRating = diff.PatternRating
             };
         }
 

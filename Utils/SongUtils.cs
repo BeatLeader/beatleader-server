@@ -178,6 +178,7 @@ namespace BeatLeader_Server.Utils
         public class ExmachinaLackPart {
             public float balanced_tech { get; set; }
             public float balanced_pass_diff { get; set; }
+            public float avg_pattern_rating { get; set; }
         }
 
         public class ExmachinaRating {

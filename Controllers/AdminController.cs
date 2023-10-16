@@ -563,6 +563,7 @@ namespace BeatLeader_Server.Controllers
                             diff.TechRating = response.none.lack_map_calculation.balanced_tech * 10;
                             diff.PredictedAcc = response.none.AIacc;
                             diff.AccRating = ReplayUtils.AccRating(diff.PredictedAcc, diff.PassRating, diff.TechRating);
+                            diff.PatternRating = response.none.lack_map_calculation.avg_pattern_rating;
 
                             diff.ModifiersRating = new ModifiersRating
                             {
@@ -620,12 +621,12 @@ namespace BeatLeader_Server.Controllers
                     Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
                     PlayerId = RankingBotID,
                     OldStars = diff.Stars ?? 0,
-                    NewStars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0),
+                    NewStars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0, diff.PatternRating ?? 0, diff.PredictedAcc ?? 0),
                     NewAccRating = diff.AccRating ?? 0,
                     NewPassRating = diff.PassRating ?? 0,
                     NewTechRating = diff.TechRating ?? 0,
                 };
-                diff.Stars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0);
+                diff.Stars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0, diff.PatternRating ?? 0, diff.PredictedAcc ?? 0);
                 if (leaderboard.Changes == null) {
                     leaderboard.Changes = new List<LeaderboardChange>();
                 }
@@ -685,6 +686,7 @@ namespace BeatLeader_Server.Controllers
                                 diff.TechRating = response.none.lack_map_calculation.balanced_tech * 10;
                                 diff.PredictedAcc = response.none.AIacc;
                                 diff.AccRating = ReplayUtils.AccRating(response.none.AIacc, response.none.lack_map_calculation.balanced_pass_diff, response.none.lack_map_calculation.balanced_tech * 10);
+                                diff.PatternRating = response.none.lack_map_calculation.avg_pattern_rating;
 
                                 diff.ModifiersRating = new ModifiersRating {
                                     SSPassRating = response.SS.lack_map_calculation.balanced_pass_diff,
@@ -701,7 +703,7 @@ namespace BeatLeader_Server.Controllers
                                     FSAccRating = ReplayUtils.AccRating(response.FS.AIacc, response.FS.lack_map_calculation.balanced_pass_diff, response.FS.lack_map_calculation.balanced_tech * 10),
                                 };
 
-                                diff.Stars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0);
+                                diff.Stars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0, diff.PatternRating ?? 0, diff.PredictedAcc ?? 0);
 
                             } else {
                                 diff.PassRating = diff.Stars ?? 0;
@@ -827,13 +829,13 @@ namespace BeatLeader_Server.Controllers
                         //        diff.PassRating,
                         //        diff.TechRating);
 
-                        diff.Stars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0);
+                        diff.Stars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0, diff.PatternRating ?? 0, diff.PredictedAcc ?? 0);
 
                         var modifiersRating = diff.ModifiersRating;
                         if (modifiersRating != null) {
-                            modifiersRating.SSStars = ReplayUtils.ToStars(modifiersRating.SSAccRating, modifiersRating.SSPassRating, modifiersRating.SSTechRating);
-                            modifiersRating.SFStars = ReplayUtils.ToStars(modifiersRating.SFAccRating, modifiersRating.SFPassRating, modifiersRating.SFTechRating);
-                            modifiersRating.FSStars = ReplayUtils.ToStars(modifiersRating.FSAccRating, modifiersRating.FSPassRating, modifiersRating.FSTechRating);
+                            modifiersRating.SSStars = ReplayUtils.ToStars(modifiersRating.SSAccRating, modifiersRating.SSPassRating, modifiersRating.SSTechRating, diff.PatternRating ?? 0, diff.PredictedAcc ?? 0);
+                            modifiersRating.SFStars = ReplayUtils.ToStars(modifiersRating.SFAccRating, modifiersRating.SFPassRating, modifiersRating.SFTechRating, diff.PatternRating ?? 0, diff.PredictedAcc ?? 0);
+                            modifiersRating.FSStars = ReplayUtils.ToStars(modifiersRating.FSAccRating, modifiersRating.FSPassRating, modifiersRating.FSTechRating, diff.PatternRating ?? 0, diff.PredictedAcc ?? 0);
                         }
 
                         //var rating = diff.ModifiersRating;
