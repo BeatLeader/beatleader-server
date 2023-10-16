@@ -472,6 +472,7 @@ namespace BeatLeader_Server.Utils
             if (lowerController.Contains("steam deck")) return ControllerEnum.steamdeck;
             
             if (lowerController.Contains("quest pro")) return ControllerEnum.questPro;
+            if (lowerController.Contains("quest 3")) return ControllerEnum.quest3;
             if (lowerController.Contains("quest2")) return ControllerEnum.quest2;
             if (lowerController.Contains("oculus touch") || lowerController.Contains("rift cv1")) return ControllerEnum.oculustouch;
             if (lowerController.Contains("rift s") || lowerController.Contains("quest")) return ControllerEnum.oculustouch2;

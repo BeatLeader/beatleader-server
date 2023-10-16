@@ -36,6 +36,7 @@
         joycon = 76,
         steamdeck = 77,
         etee = 78,
+        quest3 = 79,
         viveCosmos = 128,
     }
 }
