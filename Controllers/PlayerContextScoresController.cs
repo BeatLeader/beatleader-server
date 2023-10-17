@@ -408,7 +408,7 @@ namespace BeatLeader_Server.Controllers {
                     score.PassRating *= mp;
                     score.TechRating *= mp;
 
-                    score.Stars = ReplayUtils.ToStars(score.AccRating ?? 0, score.PassRating ?? 0, score.TechRating ?? 0, score.PatternRating ?? 0, score.PredictedAcc ?? 0);
+                    score.Stars = ReplayUtils.ToStars(score.AccRating ?? 0, score.PassRating ?? 0, score.TechRating ?? 0, score.PatternRating ?? 0, score.PredictedAcc ?? 0, score.Mode, score.Modifiers.Contains("SF"));
                 }
             }
 

@@ -250,6 +250,7 @@ namespace BeatLeader_Server.Controllers
                                 leaderboard.Difficulty.TechRating ?? 0,
                                 leaderboard.Difficulty.PatternRating ?? 0,
                                 leaderboard.Difficulty.PredictedAcc ?? 0,
+                                leaderboard.Difficulty.ModeName,
                                 leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard");
                             (score.FcPp, _, _, _, _) = ReplayUtils.PpFromScore(
                                 s.FcAccuracy, 
@@ -262,6 +263,7 @@ namespace BeatLeader_Server.Controllers
                                 leaderboard.Difficulty.TechRating ?? 0, 
                                 leaderboard.Difficulty.PatternRating ?? 0,
                                 leaderboard.Difficulty.PredictedAcc ?? 0,
+                                leaderboard.Difficulty.ModeName,
                                 leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard");
                         }
                         else
@@ -425,6 +427,7 @@ namespace BeatLeader_Server.Controllers
                                 leaderboard.Difficulty.TechRating ?? 0,
                                 leaderboard.Difficulty.PatternRating ?? 0,
                                 leaderboard.Difficulty.PredictedAcc ?? 0,
+                                leaderboard.Difficulty.ModeName,
                                 leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard");
                         }
                         else

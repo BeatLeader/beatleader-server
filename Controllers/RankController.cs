@@ -369,12 +369,13 @@ namespace BeatLeader_Server.Controllers
                     };
                     difficulty.ModifiersRating = modifiersRating;
 
-                    difficulty.Stars = ReplayUtils.ToStars(difficulty.AccRating ?? 0, difficulty.PassRating ?? 0, difficulty.TechRating ?? 0, difficulty.PatternRating ?? 0, difficulty.PredictedAcc ?? 0);
-                    modifiersRating.SSStars = ReplayUtils.ToStars(modifiersRating.SSAccRating, modifiersRating.SSPassRating, modifiersRating.SSTechRating, difficulty.PatternRating ?? 0, difficulty.PredictedAcc ?? 0);
-                    modifiersRating.SFStars = ReplayUtils.ToStars(modifiersRating.SFAccRating, modifiersRating.SFPassRating, modifiersRating.SFTechRating, difficulty.PatternRating ?? 0, difficulty.PredictedAcc ?? 0);
-                    modifiersRating.FSStars = ReplayUtils.ToStars(modifiersRating.FSAccRating, modifiersRating.FSPassRating, modifiersRating.FSTechRating, difficulty.PatternRating ?? 0, difficulty.PredictedAcc ?? 0);
+                    difficulty.Stars = ReplayUtils.ToStars(difficulty.AccRating ?? 0, difficulty.PassRating ?? 0, difficulty.TechRating ?? 0, difficulty.PatternRating ?? 0, difficulty.PredictedAcc ?? 0, difficulty.ModeName);
+                    modifiersRating.SSStars = ReplayUtils.ToStars(modifiersRating.SSAccRating, modifiersRating.SSPassRating, modifiersRating.SSTechRating, difficulty.PatternRating ?? 0, difficulty.PredictedAcc ?? 0, difficulty.ModeName);
+                    modifiersRating.SFStars = ReplayUtils.ToStars(modifiersRating.SFAccRating, modifiersRating.SFPassRating, modifiersRating.SFTechRating, difficulty.PatternRating ?? 0, difficulty.PredictedAcc ?? 0, difficulty.ModeName, true);
+                    modifiersRating.FSStars = ReplayUtils.ToStars(modifiersRating.FSAccRating, modifiersRating.FSPassRating, modifiersRating.FSTechRating, difficulty.PatternRating ?? 0, difficulty.PredictedAcc ?? 0, difficulty.ModeName);
 
-                } else {
+                }
+                else {
                     difficulty.PassRating = 0;
                     difficulty.AccRating = 0;
                     difficulty.TechRating = 0;
@@ -577,7 +578,7 @@ namespace BeatLeader_Server.Controllers
                         {
                             leaderboard.Difficulty.PatternRating = patternRating;
                         }
-                        leaderboard.Difficulty.Stars = ReplayUtils.ToStars(leaderboard.Difficulty.AccRating ?? 0, leaderboard.Difficulty.PassRating ?? 0, leaderboard.Difficulty.TechRating ?? 0, leaderboard.Difficulty.PatternRating ?? 0, leaderboard.Difficulty.PredictedAcc ?? 0);
+                        leaderboard.Difficulty.Stars = ReplayUtils.ToStars(leaderboard.Difficulty.AccRating ?? 0, leaderboard.Difficulty.PassRating ?? 0, leaderboard.Difficulty.TechRating ?? 0, leaderboard.Difficulty.PatternRating ?? 0, leaderboard.Difficulty.PredictedAcc ?? 0, leaderboard.Difficulty.ModeName);
                         if (type != null)
                         {
                             leaderboard.Difficulty.Type = (int)type;

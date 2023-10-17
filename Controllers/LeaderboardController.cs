@@ -598,6 +598,7 @@ namespace BeatLeader_Server.Controllers {
                             leaderboard.Difficulty.TechRating ?? 0,
                             leaderboard.Difficulty.PatternRating ?? 0,
                             leaderboard.Difficulty.PredictedAcc ?? 0,
+                            leaderboard.Difficulty.ModeName,
                             qualification.Modifiers,
                             qualification.ModifiersRating
                             );
