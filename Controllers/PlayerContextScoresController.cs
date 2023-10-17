@@ -182,7 +182,12 @@ namespace BeatLeader_Server.Controllers {
             if (currentID != null && currentID != userId) {
                 var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
 
-                var myScores = _context.Scores.Where(s => s.PlayerId == currentID && leaderboards.Contains(s.LeaderboardId)).Select(ToScoreResponseWithAcc).ToList();
+                var myScores = _context
+                            .ScoreContextExtensions
+                            .Include(ce => ce.Score)
+                            .Where(s => s.PlayerId == currentID && s.Context == leaderboardContext && leaderboards.Contains(s.LeaderboardId))
+                            .Select(ToScoreCEResponseWithAcc)
+                            .ToList();
                 foreach (var score in result.Data) {
                     score.MyScore = myScores.FirstOrDefault(s => s.LeaderboardId == score.LeaderboardId);
                 }

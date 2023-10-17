@@ -938,18 +938,7 @@ namespace BeatLeader_Server.Controllers {
                 Clan = lb.Clan,
                 ClanRankingContested = lb.ClanRankingContested,
                 MyScore = my_scores && currentID != null 
-                    ? lb.Scores.Where(s => s.PlayerId == currentID).Select(s => new CompactScore {
-                        Id = s.Id,
-                        BaseScore = s.BaseScore,
-                        ModifiedScore = s.ModifiedScore,
-                        EpochTime = s.Timepost,
-                        MaxCombo = s.MaxCombo,
-                        Hmd = s.Hmd,
-                        MissedNotes = s.MissedNotes,
-                        BadCuts = s.BadCuts,
-                        Modifiers = s.Modifiers,
-                        Controller = s.Controller
-                    }).FirstOrDefault()
+                    ? lb.Scores.AsQueryable().Where(s => s.PlayerId == currentID && s.ValidContexts.HasFlag(LeaderboardContexts.General)).Select(ScoreResponseQuery.SelectWithAcc()).FirstOrDefault()
                     : null
             }).ToList();
 

@@ -80,9 +80,9 @@ namespace BeatLeader_Server.Utils
         public ICollection<ScoreContextExtension> ContextExtensions { get; set; }
     }
 
-    public static class ScoreResponseQuery <T> where T : ScoreResponseWithMyScore
+    public static class ScoreResponseQuery
     {
-        public static Expression<Func<Score, ScoreResponseWithMyScore>> Select()
+        public static Expression<Func<Score, ScoreResponseWithMyScore>> SelectWithMyScore()
         {
             return s => new ScoreResponseWithMyScore
             {
@@ -176,6 +176,71 @@ namespace BeatLeader_Server.Utils
                         Requirements = s.Leaderboard.Difficulty.Requirements,
                     }
                 },
+                Weight = s.Weight,
+                AccLeft = s.AccLeft,
+                AccRight = s.AccRight,
+                MaxStreak = s.MaxStreak
+            };
+        }
+
+        public static Expression<Func<Score, ScoreResponseWithAcc>> SelectWithAcc() 
+        {
+            return s => new ScoreResponseWithAcc
+            {
+                Id = s.Id,
+                BaseScore = s.BaseScore,
+                ModifiedScore = s.ModifiedScore,
+                PlayerId = s.PlayerId,
+                Accuracy = s.Accuracy,
+                Pp = s.Pp,
+                PassPP = s.PassPP,
+                AccPP = s.AccPP,
+                TechPP = s.TechPP,
+                FcAccuracy = s.FcAccuracy,
+                FcPp = s.FcPp,
+                BonusPp = s.BonusPp,
+                Rank = s.Rank,
+                Replay = s.Replay,
+                Modifiers = s.Modifiers,
+                BadCuts = s.BadCuts,
+                MissedNotes = s.MissedNotes,
+                BombCuts = s.BombCuts,
+                WallsHit = s.WallsHit,
+                Pauses = s.Pauses,
+                FullCombo = s.FullCombo,
+                Hmd = s.Hmd,
+                Controller = s.Controller,
+                MaxCombo = s.MaxCombo,
+                Timeset = s.Timeset,
+                ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
+                Timepost = s.Timepost,
+                LeaderboardId = s.LeaderboardId,
+                Platform = s.Platform,
+                Player = new PlayerResponse
+                {
+                    Id = s.Player.Id,
+                    Name = s.Player.Name,
+                    Platform = s.Player.Platform,
+                    Avatar = s.Player.Avatar,
+                    Country = s.Player.Country,
+
+                    Pp = s.Player.Pp,
+                    Rank = s.Player.Rank,
+                    CountryRank = s.Player.CountryRank,
+                    Role = s.Player.Role,
+                    Socials = s.Player.Socials,
+                    PatreonFeatures = s.Player.PatreonFeatures,
+                    ProfileSettings = s.Player.ProfileSettings,
+                    Clans = s.Player.Clans
+                                .OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                                .ThenBy(c => c.Id)
+                                .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                },
+                ScoreImprovement = s.ScoreImprovement,
+                RankVoting = s.RankVoting,
+                Metadata = s.Metadata,
+                Country = s.Country,
+                Offsets = s.ReplayOffsets,
                 Weight = s.Weight,
                 AccLeft = s.AccLeft,
                 AccRight = s.AccRight,

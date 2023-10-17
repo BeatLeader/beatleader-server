@@ -143,7 +143,7 @@ namespace BeatLeader_Server.Utils {
         }
 
         public class LeaderboardsInfoResponseWithScore : LeaderboardsInfoResponse { 
-            public CompactScore? MyScore { get; set; }
+            public ScoreResponseWithAcc? MyScore { get; set; }
         }
 
         public class ClanReturn {
@@ -461,6 +461,84 @@ namespace BeatLeader_Server.Utils {
             result.Weight = s.Weight;
             result.AccLeft = s.AccLeft;
             result.AccRight = s.AccRight;
+
+            return result;
+        }
+
+        public static T RemoveLeaderboardCE<T>(ScoreContextExtension s, int i) where T : ScoreResponse, new() {
+            return new T {
+                Id = s.Id,
+                BaseScore = s.BaseScore,
+                ModifiedScore = s.ModifiedScore,
+                PlayerId = s.PlayerId,
+                Accuracy = s.Accuracy,
+                Pp = s.Pp,
+                FcAccuracy = s.Score.FcAccuracy,
+                FcPp = s.Score.FcPp,
+                BonusPp = s.BonusPp,
+                Rank = s.Rank,
+                Replay = s.Score.Replay,
+                Modifiers = s.Modifiers,
+                BadCuts = s.Score.BadCuts,
+                MissedNotes = s.Score.MissedNotes,
+                BombCuts = s.Score.BombCuts,
+                WallsHit = s.Score.WallsHit,
+                Pauses = s.Score.Pauses,
+                FullCombo = s.Score.FullCombo,
+                Hmd = s.Score.Hmd,
+                Controller = s.Score.Controller,
+                MaxCombo = s.Score.MaxCombo,
+                Timeset = s.Score.Timeset,
+                ReplaysWatched = s.Score.AnonimusReplayWatched + s.Score.AuthorizedReplayWatched,
+                Timepost = s.Timeset,
+                LeaderboardId = s.LeaderboardId,
+                Platform = s.Score.Platform,
+                Player = s.Player != null ? new PlayerResponse {
+                    Id = s.Player.Id,
+                    Name = s.Player.Name,
+                    Platform = s.Player.Platform,
+                    Avatar = s.Player.Avatar,
+                    Country = s.Player.Country,
+
+                    Pp = s.Player.Pp,
+                    Rank = s.Player.Rank,
+                    CountryRank = s.Player.CountryRank,
+                    Role = s.Player.Role,
+                    Socials = s.Player.Socials,
+                    PatreonFeatures = s.Player.PatreonFeatures,
+                    ProfileSettings = s.Player.ProfileSettings,
+                    ContextExtensions = s.Player.ContextExtensions != null ? s.Player.ContextExtensions.Select(ce => new PlayerContextExtension {
+                        Context = ce.Context,
+                        Pp = ce.Pp,
+                        AccPp = ce.AccPp,
+                        TechPp = ce.TechPp,
+                        PassPp = ce.PassPp,
+
+                        Rank = ce.Rank,
+                        Country  = ce.Country,
+                        CountryRank  = ce.CountryRank,
+                    }).ToList() : null,
+                    Clans = s.Player.Clans?.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                } : null,
+                ScoreImprovement = s.ScoreImprovement,
+                RankVoting = s.Score.RankVoting,
+                Metadata = s.Score.Metadata,
+                Country = s.Score.Country,
+                Offsets = s.Score.ReplayOffsets,
+                MaxStreak = s.Score.MaxStreak
+            };
+        }
+
+        public static ScoreResponse RemoveLeaderboardCE(ScoreContextExtension s, int i) {
+            return RemoveLeaderboardCE<ScoreResponse>(s, i);
+        }
+
+        public static ScoreResponseWithAcc ToScoreCEResponseWithAcc(ScoreContextExtension s, int i) {
+            var result = RemoveLeaderboardCE<ScoreResponseWithAcc>(s, i);
+            result.Weight = s.Weight;
+            result.AccLeft = s.Score.AccLeft;
+            result.AccRight = s.Score.AccRight;
 
             return result;
         }
