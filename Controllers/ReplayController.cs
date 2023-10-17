@@ -1186,7 +1186,8 @@ namespace BeatLeader_Server.Controllers
                     .Scores
                     .Where(s =>                                                                                            
                         s.LeaderboardId == leaderboard.Id && 
-                        (s.Rank == 2 || s.Rank == 3 || s.Rank == 4) &&
+                        s.Rank >= resultScore.Rank && 
+                        s.Rank <= 4 &&
                         s.PlayerId != player.Id)
                     .Select(s => new {
                         s.Rank,
@@ -1227,7 +1228,8 @@ namespace BeatLeader_Server.Controllers
                             .ScoreContextExtensions
                             .Where(s =>                                                                                            
                                 s.LeaderboardId == leaderboard.Id && 
-                                (s.Rank == 2 || s.Rank == 3 || s.Rank == 4) &&
+                                s.Rank >= resultScore.Rank && 
+                                s.Rank <= 4 &&
                                 s.PlayerId != player.Id)
                             .Select(s => new {
                                 s.Rank,
