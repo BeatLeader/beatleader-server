@@ -810,12 +810,6 @@ namespace BeatLeader_Server.Controllers
                 return;
             }
 
-            if (!resultScore.IgnoreForStats) {
-                if (resultScore.Rank < 4) {
-                    await UpdateTop4(leaderboard.Id, leaderboard.Difficulty.Status == DifficultyStatus.ranked, player.Id);
-                }
-            }
-
             foreach (var scoreToDelete in currentScores) {
                 if (scoreToDelete.ValidContexts == LeaderboardContexts.None) {
                     _context.ScoreRedirects.Add(new ScoreRedirect
@@ -827,14 +821,6 @@ namespace BeatLeader_Server.Controllers
             }
 
             resultScore.ReplayOffsets = offsets;
-
-            if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
-            {
-                if (player.Rank < player.ScoreStats.PeakRank || player.ScoreStats.PeakRank == 0)
-                {
-                    player.ScoreStats.PeakRank = player.Rank;
-                }
-            }
             _context.RecalculateEventsPP(player, leaderboard);
 
             try
@@ -920,8 +906,10 @@ namespace BeatLeader_Server.Controllers
 
                 resultScore.Country = context.Request.Headers["cf-ipcountry"] == StringValues.Empty ? "not set" : context.Request.Headers["cf-ipcountry"].ToString();
 
+                UpdateTop4(resultScore, currentScores, player, oldPlayerStats, leaderboard);
                 UpdateImprovements(resultScore, currentScores, player, oldPlayerStats, leaderboard);
                 UpdatePlayerStats(resultScore, currentScores, player, oldPlayerStats, leaderboard);
+
                 if (resultScore.Hmd == HMD.unknown && _context.Headsets.FirstOrDefault(h => h.Name == replay.info.hmd) == null) {
                     _context.Headsets.Add(new Headset {
                         Name = replay.info.hmd,
@@ -1180,42 +1168,94 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        private async Task UpdateTop4(
-            string leaderboardId, 
-            bool ranked,
-            string currentPlayerId) {
+        private void UpdateTop4(
+            Score resultScore,
+            List<CurrentScoreWrapper> currentScores, 
+            Player player,
+            List<OldPlayerStats> oldPlayerStats,
+            Leaderboard leaderboard) {
 
-            var scores = _context
-                .Scores
-                .Where(s => 
-                    s.LeaderboardId == leaderboardId && 
-                    (s.Rank == 2 || s.Rank == 3 || s.Rank == 4) &&
-                    s.PlayerId != currentPlayerId)
-                .Select(s => new {
-                    s.Rank,
-                    s.Player.ScoreStats
-                })
-                .ToList();
-            foreach (var score in scores) {
-                if (score.ScoreStats == null) continue;
-                var scoreStats = score.ScoreStats;
-                if (score.Rank == 2) {
-                    if (ranked) {
-                        scoreStats.RankedTop1Count--;
-                    } else {
-                        scoreStats.UnrankedTop1Count--;
+            bool ranked = leaderboard.Difficulty.Status == DifficultyStatus.ranked;
+
+            var generalCurrentScore = currentScores.FirstOrDefault(s => s.ValidContexts.HasFlag(LeaderboardContexts.General));
+            if (resultScore.ValidContexts.HasFlag(LeaderboardContexts.General) && 
+                resultScore.Rank < 4 &&
+
+                (generalCurrentScore == null || generalCurrentScore.Score.Rank != resultScore.Rank)) {
+                var scores = _context
+                    .Scores
+                    .Where(s =>                                                                                            
+                        s.LeaderboardId == leaderboard.Id && 
+                        (s.Rank == 2 || s.Rank == 3 || s.Rank == 4) &&
+                        s.PlayerId != player.Id)
+                    .Select(s => new {
+                        s.Rank,
+                        s.Player.ScoreStats
+                    })
+                    .ToList();
+                foreach (var score in scores) {
+                    if (score.ScoreStats == null) continue;
+                    var scoreStats = score.ScoreStats;
+                    if (score.Rank == 2) {
+                        if (ranked) {
+                            scoreStats.RankedTop1Count--;
+                        } else {
+                            scoreStats.UnrankedTop1Count--;
+                        }
+                        scoreStats.Top1Count--;
                     }
-                    scoreStats.Top1Count--;
+                    if (ranked) {
+                        scoreStats.RankedTop1Score = ReplayUtils.UpdateRankScore(scoreStats.RankedTop1Score, score.Rank - 1, score.Rank);
+                    } else {
+                        scoreStats.UnrankedTop1Score = ReplayUtils.UpdateRankScore(scoreStats.UnrankedTop1Score, score.Rank - 1, score.Rank);
+                    }
+                    scoreStats.Top1Score = ReplayUtils.UpdateRankScore(scoreStats.Top1Score, score.Rank - 1, score.Rank);
                 }
-                if (ranked) {
-                    scoreStats.RankedTop1Score = ReplayUtils.UpdateRankScore(scoreStats.RankedTop1Score, score.Rank - 1, score.Rank);
-                } else {
-                    scoreStats.UnrankedTop1Score = ReplayUtils.UpdateRankScore(scoreStats.UnrankedTop1Score, score.Rank - 1, score.Rank);
-                }
-                scoreStats.Top1Score = ReplayUtils.UpdateRankScore(scoreStats.Top1Score, score.Rank - 1, score.Rank);
             }
 
-            await _context.SaveChangesAsync();
+            if (resultScore.ContextExtensions != null) {
+                foreach (var ce in resultScore.ContextExtensions)
+                {
+                    var currentScore = currentScores
+                        .FirstOrDefault(s => s.ValidContexts.HasFlag(ce.Context));
+                    var currentScoreExtenstion = currentScore?.ContextExtensions
+                        ?.FirstOrDefault(sce => sce.Context == ce.Context);
+
+                    if (ce.Rank < 4 &&
+                        (currentScoreExtenstion == null || currentScoreExtenstion.Rank != ce.Rank)) {
+                        var scores = _context
+                            .ScoreContextExtensions
+                            .Where(s =>                                                                                            
+                                s.LeaderboardId == leaderboard.Id && 
+                                (s.Rank == 2 || s.Rank == 3 || s.Rank == 4) &&
+                                s.PlayerId != player.Id)
+                            .Select(s => new {
+                                s.Rank,
+                                s.Player.ScoreStats
+                            })
+                            .ToList();
+                        foreach (var score in scores) {
+                            if (score.ScoreStats == null) continue;
+                            var scoreStats = score.ScoreStats;
+                            if (score.Rank == 2) {
+                                if (ranked) {
+                                    scoreStats.RankedTop1Count--;
+                                } else {
+                                    scoreStats.UnrankedTop1Count--;
+                                }
+                                scoreStats.Top1Count--;
+                            }
+                            if (ranked) {
+                                scoreStats.RankedTop1Score = ReplayUtils.UpdateRankScore(scoreStats.RankedTop1Score, score.Rank - 1, score.Rank);
+                            } else {
+                                scoreStats.UnrankedTop1Score = ReplayUtils.UpdateRankScore(scoreStats.UnrankedTop1Score, score.Rank - 1, score.Rank);
+                            }
+                            scoreStats.Top1Score = ReplayUtils.UpdateRankScore(scoreStats.Top1Score, score.Rank - 1, score.Rank);
+                        }
+                    }
+
+                }
+            }
         }
 
         class OldPlayerStats {
