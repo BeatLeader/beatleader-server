@@ -1078,7 +1078,7 @@ namespace BeatLeader_Server.Controllers {
                     .Include(lb => lb.Qualification)
                     .ThenInclude(q => q.Votes)
                     .Include(lb => lb.Song)
-                    .ThenInclude(s => s.Difficulties);
+                    .ThenInclude(s => s.Difficulties.Where(d => d.Status == DifficultyStatus.qualified || d.Status == DifficultyStatus.nominated));
             }
 
             bool showPlays = sortBy == SortBy.PlayCount;
