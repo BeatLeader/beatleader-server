@@ -207,6 +207,7 @@ namespace BeatLeader_Server.Utils {
             public float? AccRating { get; set; }
             public float? TechRating { get; set; }
             public float? PatternRating { get; set; }
+            public float? LinearRating { get; set; }
             public int Type { get; set; }
 
             public float Njs { get; set; }
@@ -240,6 +241,7 @@ namespace BeatLeader_Server.Utils {
             public float? AccRating { get; set; }
             public float? TechRating { get; set; }
             public float? PatternRating { get; set; }
+            public float? LinearRating { get; set; }
             public int Type { get; set; }
 
             public float Njs { get; set; }
@@ -342,11 +344,14 @@ namespace BeatLeader_Server.Utils {
             public float? AccRating { get; set; }
             public float? TechRating { get; set; }
             public float? PatternRating { get; set; }
+            public float? LinearRating { get; set; }
 
             public void HideRatings() {
                 this.AccRating = null;
                 this.TechRating = null;
                 this.PassRating = null;
+                this.PatternRating = null;
+                this.LinearRating = null;
                 this.Stars = null;
 
                 this.ModifiersRating = null;
@@ -541,6 +546,7 @@ namespace BeatLeader_Server.Utils {
                         AccRating  = s.Leaderboard.Difficulty.AccRating,
                         TechRating  = s.Leaderboard.Difficulty.TechRating,
                         PatternRating = s.Leaderboard.Difficulty.PatternRating,
+                        LinearRating = s.Leaderboard.Difficulty.LinearRating,
                         Type  = s.Leaderboard.Difficulty.Type,
 
                         Njs  = s.Leaderboard.Difficulty.Njs,
@@ -612,6 +618,7 @@ namespace BeatLeader_Server.Utils {
                     AccRating  = l.Difficulty.AccRating,
                     TechRating  = l.Difficulty.TechRating,
                     PatternRating = l.Difficulty.PatternRating,
+                    LinearRating = l.Difficulty.LinearRating,
                     Type  = l.Difficulty.Type,
 
                     Njs  = l.Difficulty.Njs,
@@ -724,7 +731,8 @@ namespace BeatLeader_Server.Utils {
                 PassRating = diff.PassRating,
                 AccRating = diff.AccRating,
                 TechRating = diff.TechRating,
-                PatternRating = diff.PatternRating
+                PatternRating = diff.PatternRating,
+                LinearRating = diff.LinearRating
             };
         }
 

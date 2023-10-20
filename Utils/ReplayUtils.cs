@@ -78,47 +78,24 @@ namespace BeatLeader_Server.Utils
 
         static List<(double x, double y)> dynamicCurve = new();
 
-        public static void GenerateCurve(float acc, float pass, float tech, float pattern, float predictedAcc, string modeName, bool sfModifier)
+        public static void GenerateCurve(float acc, float pass, float tech, float pattern, float linear, float predictedAcc, string modeName, string speed)
         {
             dynamicCurve = pointList2.ToList();
             var patternNerf = 1 - 0.1 * pattern;
             var patternBuff = 1 + 0.1 * pattern;
-            var pred = predictedAcc - 0.96;
-            if (pred > 0.01) pred = 0.01;
-            var linearNerf = 1 - pred * pass;
-            if (linearNerf < 0.9) linearNerf = 0.9;
-            pred = Math.Abs(pred - 0.01);
-            var techNerf = 1 - pred * tech;
-            if (techNerf < 0.9) techNerf = 0.9;
-            double sfBuff;
-            if (tech > pass) sfBuff = tech / 200;
-            else sfBuff = pass / 200;
-            if (tech < 5) sfBuff = 1 + sfBuff / 2;
-            else sfBuff = 1 + sfBuff;
+            var linearNerf = 1 - linear / 100 * pass;
             var oneSaberNerf = 0.95;
-            for (int i = 0; i < dynamicCurve.Count(); i++)
+            var sfBuff = 1 + tech / 200;
+            var fsBuff = 1 + tech / 500;
+            for (int i = 0; i < dynamicCurve.Count; i++)
             {
-                if (dynamicCurve[i].x < 0.95)
-                {
-                    dynamicCurve[i] = (dynamicCurve[i].x, dynamicCurve[i].y * patternNerf);
-                }
-                else if (dynamicCurve[i].x > 0.95)
-                {
-                    dynamicCurve[i] = (dynamicCurve[i].x, dynamicCurve[i].y * patternBuff);
-                }
+                if (acc <= 12 && dynamicCurve[i].x >= 0.985) dynamicCurve[i] = (dynamicCurve[i].x, dynamicCurve[i].y * (1 + 0.01 * (12 - acc)));
+                if (speed == "SF") dynamicCurve[i] = (dynamicCurve[i].x, dynamicCurve[i].y * sfBuff);
+                if (speed == "FS") dynamicCurve[i] = (dynamicCurve[i].x, dynamicCurve[i].y * fsBuff);
+                if (dynamicCurve[i].x > 0.95) dynamicCurve[i] = (dynamicCurve[i].x, dynamicCurve[i].y * patternBuff);
+                else if (dynamicCurve[i].x < 0.95) dynamicCurve[i] = (dynamicCurve[i].x, dynamicCurve[i].y * patternNerf);
                 dynamicCurve[i] = (dynamicCurve[i].x, dynamicCurve[i].y * linearNerf);
-                if (dynamicCurve[i].x < 0.95)
-                {
-                    dynamicCurve[i] = (dynamicCurve[i].x, dynamicCurve[i].y * techNerf);
-                }
-                if (sfModifier)
-                {
-                    dynamicCurve[i] = (dynamicCurve[i].x, dynamicCurve[i].y * sfBuff);
-                }
-                if (modeName == "OneSaber")
-                {
-                    dynamicCurve[i] = (dynamicCurve[i].x, dynamicCurve[i].y * oneSaberNerf);
-                }
+                if (modeName == "OneSaber") dynamicCurve[i] = (dynamicCurve[i].x, dynamicCurve[i].y * oneSaberNerf);
             }
         }
 
@@ -176,7 +153,7 @@ namespace BeatLeader_Server.Utils
             return (650f * MathF.Pow(peepee, 1.3f)) / MathF.Pow(650f, 1.3f);
         }
 
-        private static (float, float, float) GetPp(float accuracy, float accRating, float passRating, float techRating, float patternRating, float predictedAcc, string mode, bool sfModifier)
+        private static (float, float, float) GetPp(float accuracy, float accRating, float passRating, float techRating, float patternRating, float linearRating, float predictedAcc, string mode, string speed)
         {
 
             float passPP = 15.2f * MathF.Exp(MathF.Pow(passRating, 1 / 2.62f)) - 30f;
@@ -184,22 +161,22 @@ namespace BeatLeader_Server.Utils
             {
                 passPP = 0;
             }
-            GenerateCurve(accRating, passRating, techRating, patternRating, predictedAcc, mode, sfModifier);
+            GenerateCurve(accRating, passRating, techRating, patternRating, linearRating, predictedAcc, mode, speed);
             float accPP = Curve2(accuracy) * accRating * 34f;
             float techPP = MathF.Exp(1.9f * accuracy) * 1.08f * techRating;
 
             return (passPP, accPP, techPP);
         }
-        public static float ToStars(float accRating, float passRating, float techRating, float patternRating, float predictedAcc, string mode, bool sfModifier = false)
+
+        public static float ToStars(float accRating, float passRating, float techRating, float patternRating, float linearRating, float predictedAcc, string mode, string speed = "")
         {
-            (float passPP, float accPP, float techPP) = GetPp(0.96f, accRating, passRating, techRating, patternRating, predictedAcc, mode, sfModifier);
+            (float passPP, float accPP, float techPP) = GetPp(0.96f, accRating, passRating, techRating, patternRating, linearRating, predictedAcc, mode, speed);
 
             return Inflate(passPP + accPP + techPP) / 52f;
         }
 
         public static (float, float, float, float, float) PpFromScore(
             float accuracy, 
-            LeaderboardContexts context,
             string modifiers, 
             ModifiersMap modifierValues, 
             ModifiersRating? modifiersRating,
@@ -207,17 +184,21 @@ namespace BeatLeader_Server.Utils
             float passRating, 
             float techRating,
             float patternRating,
+            float linearRating,
             float predictedAcc,
             string mode,
             bool timing)
         {
             float mp = modifierValues.GetTotalMultiplier(modifiers, modifiersRating == null);
-
+            string speed = "";
+            if (modifiers.Contains("SS")) speed = "SS";
+            if (modifiers.Contains("SF")) speed = "SF";
+            if (modifiers.Contains("FS")) speed = "FS";
             float rawPP = 0; float fullPP = 0; float passPP = 0; float accPP = 0; float techPP = 0; float increase = 0; 
             if (!timing) {
                 if (!modifiers.Contains("NF"))
                 {
-                    (passPP, accPP, techPP) = GetPp(accuracy, accRating, passRating, techRating, patternRating, predictedAcc, mode, modifiers.Contains("SF"));
+                    (passPP, accPP, techPP) = GetPp(accuracy, accRating, passRating, techRating, patternRating, linearRating, predictedAcc, mode, speed);
 
                     rawPP = Inflate(passPP + accPP + techPP);
                     if (modifiersRating != null) {
@@ -233,7 +214,7 @@ namespace BeatLeader_Server.Utils
                             }
                         }
                     }
-                    (passPP, accPP, techPP) = GetPp(accuracy, accRating * mp, passRating * mp, techRating * mp, patternRating, predictedAcc, mode, modifiers.Contains("SF"));
+                    (passPP, accPP, techPP) = GetPp(accuracy, accRating * mp, passRating * mp, techRating * mp, patternRating, linearRating, predictedAcc, mode, speed);
                     fullPP = Inflate(passPP + accPP + techPP);
                     if ((passPP + accPP + techPP) > 0) {
                         increase = fullPP / (passPP + accPP + techPP);
@@ -257,15 +238,15 @@ namespace BeatLeader_Server.Utils
 
         public static (float, float, float, float, float) PpFromScore(Score s, DifficultyDescription difficulty) {
             return PpFromScore(
-                s.Accuracy, 
-                LeaderboardContexts.General,
-                s.Modifiers, 
-                difficulty.ModifierValues, 
+                s.Accuracy,
+                s.Modifiers,
+                difficulty.ModifierValues,
                 difficulty.ModifiersRating,
                 difficulty.AccRating ?? 0.0f,
                 difficulty.PassRating ?? 0.0f,
                 difficulty.TechRating ?? 0.0f,
                 difficulty.PatternRating ?? 0.0f,
+                difficulty.LinearRating ?? 0.0f,
                 difficulty.PredictedAcc ?? 0.0f,
                 difficulty.ModeName,
                 difficulty.ModeName.ToLower() == "rhythmgamestandard");
@@ -277,19 +258,20 @@ namespace BeatLeader_Server.Utils
             float passRating, 
             float techRating, 
             float patternRating,
+            float linearRating,
             float predictedAcc,
             string modeName,
             ModifiersMap modifiers,
             ModifiersRating? modifiersRating)
         {
-            return PpFromScore(s.Accuracy, LeaderboardContexts.General, s.Modifiers, modifiers, modifiersRating, accRating, passRating, techRating, patternRating, predictedAcc, modeName, false);
+            return PpFromScore(s.Accuracy, s.Modifiers, modifiers, modifiersRating, accRating, passRating, techRating, patternRating, linearRating, predictedAcc, modeName, false);
         }
 
         public static (float, float, float, float, float) PpFromScoreResponse(
             ScoreResponse s, 
             DifficultyDescription diff)
         {
-            return PpFromScore(s.Accuracy, LeaderboardContexts.General, s.Modifiers, diff.ModifierValues, diff.ModifiersRating, diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0, diff.PatternRating ?? 0, diff.PredictedAcc ?? 0, diff.ModeName, false);
+            return PpFromScore(s.Accuracy, s.Modifiers, diff.ModifierValues, diff.ModifiersRating, diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0, diff.PatternRating ?? 0, diff.LinearRating ?? 0, diff.PredictedAcc ?? 0, diff.ModeName, false);
         }
 
         public static (Score, int) ProcessReplay(Replay replay, DifficultyDescription difficulty) {
@@ -392,12 +374,13 @@ namespace BeatLeader_Server.Utils
             };
 
             if (score.Pp > 0) {
-                (result.Pp, result.BonusPp, result.PassPP, result.AccPP, result.TechPP) = PpFromScore(score.Accuracy, LeaderboardContexts.NoMods, "", difficulty.ModifierValues, 
+                (result.Pp, result.BonusPp, result.PassPP, result.AccPP, result.TechPP) = PpFromScore(score.Accuracy, "", difficulty.ModifierValues,
                 difficulty.ModifiersRating,
-                difficulty.AccRating ?? 0.0f, 
-                difficulty.PassRating ?? 0.0f, 
-                difficulty.TechRating ?? 0.0f, 
+                difficulty.AccRating ?? 0.0f,
+                difficulty.PassRating ?? 0.0f,
+                difficulty.TechRating ?? 0.0f,
                 difficulty.PatternRating ?? 0.0f,
+                difficulty.LinearRating ?? 0.0f,
                 difficulty.PredictedAcc ?? 0.0f,
                 difficulty.ModeName,
                 difficulty.ModeName.ToLower() == "rhythmgamestandard");
@@ -423,17 +406,18 @@ namespace BeatLeader_Server.Utils
             };
 
             if (score.Pp > 0) {
-                (result.Pp, result.BonusPp, result.PassPP, result.AccPP, result.TechPP) = PpFromScore(1 - score.Accuracy, LeaderboardContexts.Golf, score.Modifiers, difficulty.ModifierValues, 
+                (result.Pp, result.BonusPp, result.PassPP, result.AccPP, result.TechPP) = PpFromScore(1 - score.Accuracy, score.Modifiers, difficulty.ModifierValues,
                 difficulty.ModifiersRating,
-                difficulty.AccRating ?? 0.0f, 
-                difficulty.PassRating ?? 0.0f, 
-                difficulty.TechRating ?? 0.0f, 
+                difficulty.AccRating ?? 0.0f,
+                difficulty.PassRating ?? 0.0f,
+                difficulty.TechRating ?? 0.0f,
                 difficulty.PatternRating ?? 0.0f,
+                difficulty.LinearRating ?? 0.0f,
                 difficulty.PredictedAcc ?? 0.0f,
                 difficulty.ModeName,
                 difficulty.ModeName.ToLower() == "rhythmgamestandard");
             }
-            
+
             return result;
         }
 

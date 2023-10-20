@@ -239,6 +239,12 @@ namespace BeatLeader_Server.Controllers
                         }
                         if (hasPp)
                         {
+                            var modeName = leaderboard.Difficulty.ModeName;
+                            // Awe (One Saber)
+                            if (score.Leaderboard?.Song?.Hash == "397F4485345E33CC0CA1212425C19274EC855740")
+                            {
+                                modeName = "OneSaber";
+                            }
                             (score.Pp, score.BonusPp, score.PassPP, score.AccPP, score.TechPP) = ReplayUtils.PpFromScore(
                                 score.Accuracy,
                                 LeaderboardContexts.General,
@@ -249,8 +255,9 @@ namespace BeatLeader_Server.Controllers
                                 leaderboard.Difficulty.PassRating ?? 0,
                                 leaderboard.Difficulty.TechRating ?? 0,
                                 leaderboard.Difficulty.PatternRating ?? 0,
+                                leaderboard.Difficulty.LinearRating ?? 0,
                                 leaderboard.Difficulty.PredictedAcc ?? 0,
-                                leaderboard.Difficulty.ModeName,
+                                modeName,
                                 leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard");
                             (score.FcPp, _, _, _, _) = ReplayUtils.PpFromScore(
                                 s.FcAccuracy, 
@@ -262,8 +269,9 @@ namespace BeatLeader_Server.Controllers
                                 leaderboard.Difficulty.PassRating ?? 0, 
                                 leaderboard.Difficulty.TechRating ?? 0, 
                                 leaderboard.Difficulty.PatternRating ?? 0,
+                                leaderboard.Difficulty.LinearRating ?? 0,
                                 leaderboard.Difficulty.PredictedAcc ?? 0,
-                                leaderboard.Difficulty.ModeName,
+                                modeName,
                                 leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard");
                         }
                         else
@@ -426,6 +434,7 @@ namespace BeatLeader_Server.Controllers
                                 leaderboard.Difficulty.PassRating ?? 0,
                                 leaderboard.Difficulty.TechRating ?? 0,
                                 leaderboard.Difficulty.PatternRating ?? 0,
+                                leaderboard.Difficulty.LinearRating ?? 0,
                                 leaderboard.Difficulty.PredictedAcc ?? 0,
                                 leaderboard.Difficulty.ModeName,
                                 leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard");

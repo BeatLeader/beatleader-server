@@ -47,6 +47,7 @@ namespace BeatLeader_Server.Models
         public float? AccRating { get; set; }
         public float? TechRating { get; set; }
         public float? PatternRating { get; set; }
+        public float? LinearRating { get; set; }
         public int Type { get; set; }
 
         public float Njs { get; set; }

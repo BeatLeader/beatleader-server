@@ -19,6 +19,7 @@ namespace BeatLeader_Server.Utils {
                     diff.PredictedAcc = response.none.AIacc;
                     diff.AccRating = ReplayUtils.AccRating(diff.PredictedAcc, diff.PassRating, diff.TechRating);
                     diff.PatternRating = response.none.lack_map_calculation.avg_pattern_rating;
+                    diff.LinearRating = response.none.lack_map_calculation.linear_rating;
 
                     diff.ModifiersRating = new ModifiersRating {
                         SSPassRating = toPass(response.SS.lack_map_calculation.balanced_pass_diff),
@@ -32,24 +33,24 @@ namespace BeatLeader_Server.Utils {
                         SFPredictedAcc = response.SFS.AIacc,
                     };
 
-                    diff.Stars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0, diff.PatternRating ?? 0, diff.PredictedAcc ?? 0, diff.ModeName);
+                    diff.Stars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0, diff.PatternRating ?? 0, diff.LinearRating ?? 0, diff.PredictedAcc ?? 0, diff.ModeName);
 
                     var rating = diff.ModifiersRating;
                     rating.SSAccRating = ReplayUtils.AccRating(
                             rating.SSPredictedAcc,
                             rating.SSPassRating,
                             rating.SSTechRating);
-                    rating.SSStars = ReplayUtils.ToStars(rating.SSAccRating, rating.SSPassRating, rating.SSTechRating, diff.PatternRating ?? 0, diff.PredictedAcc ?? 0, diff.ModeName);
+                    rating.SSStars = ReplayUtils.ToStars(rating.SSAccRating, rating.SSPassRating, rating.SSTechRating, diff.PatternRating ?? 0, diff.LinearRating ?? 0, diff.PredictedAcc ?? 0, diff.ModeName, "SS");
                     rating.FSAccRating = ReplayUtils.AccRating(
                             rating.FSPredictedAcc,
                             rating.FSPassRating,
                             rating.FSTechRating);
-                    rating.FSStars = ReplayUtils.ToStars(rating.FSAccRating, rating.FSPassRating, rating.FSTechRating, diff.PatternRating ?? 0, diff.PredictedAcc ?? 0, diff.ModeName);
+                    rating.FSStars = ReplayUtils.ToStars(rating.FSAccRating, rating.FSPassRating, rating.FSTechRating, diff.PatternRating ?? 0, diff.LinearRating ?? 0, diff.PredictedAcc ?? 0, diff.ModeName, "FS");
                     rating.SFAccRating = ReplayUtils.AccRating(
                             rating.SFPredictedAcc,
                             rating.SFPassRating,
                             rating.SFTechRating);
-                    rating.SFStars = ReplayUtils.ToStars(rating.SFAccRating, rating.SFPassRating, rating.SFTechRating, diff.PatternRating ?? 0, diff.PredictedAcc ?? 0, diff.ModeName, true);
+                    rating.SFStars = ReplayUtils.ToStars(rating.SFAccRating, rating.SFPassRating, rating.SFTechRating, diff.PatternRating ?? 0, diff.LinearRating ?? 0, diff.PredictedAcc ?? 0, diff.ModeName, "SF");
                 }
                 else {
                     diff.PassRating = null;
