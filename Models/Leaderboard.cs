@@ -28,6 +28,8 @@
         public Clan? Clan { get; set; }
 
         public ICollection<ClanRanking>? ClanRanking { get; set; }
+
+        public int? TimeOfCapture { get; set; }
         public bool ClanRankingContested { get; set; }
     }
 

@@ -34,6 +34,42 @@ namespace BeatLeader_Server.Controllers
             _assetsS3Client = configuration.GetS3Client();
         }
 
+        public class ClanGlobalMapPoint {
+            public string LeaderboardId { get; set; }
+            public string CoverImage { get; set; }
+
+            public float? Stars { get; set; }
+            public int? CapturedTime { get; set; }
+        }
+
+        public class ClanGlobalMapEntry {
+            public Clan? Clan { get; set; }
+            public List<ClanGlobalMapPoint> CapturedMaps { get; set; }
+        }
+
+        [HttpGet("~/clans/globalmap")]
+        public async Task<ActionResult<List<ClanGlobalMapEntry>>> GlobalMap() {
+            var result = _context.Clans.Select(c => new ClanGlobalMapEntry {
+                Clan = c,
+                CapturedMaps = c.CapturedLeaderboards.Select(cl => new ClanGlobalMapPoint {
+                    LeaderboardId = cl.Id,
+                    CoverImage = cl.Song.CoverImage,
+                    Stars = cl.Difficulty.Stars,
+                    CapturedTime = cl.TimeOfCapture
+                }).ToList()
+            }).ToList();
+
+            result.Add(new ClanGlobalMapEntry {
+                CapturedMaps = _context.Leaderboards.Where(lb => lb.Status == DifficultyStatus.Ranked && lb.ClanRankingContested).Select(cl => new ClanGlobalMapPoint {
+                    LeaderboardId = cl.Id,
+                    CoverImage = cl.Song.CoverImage,
+                    Stars = cl.Difficulty.Stars
+                });
+            });
+
+            return result;
+        }
+
         [HttpGet("~/clans/")]
         public async Task<ActionResult<ResponseWithMetadata<Clan>>> GetAll(
             [FromQuery] int page = 1,
@@ -44,7 +80,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? type = null,
             [FromQuery] string? sortBy = null)
         {
-            var sequence = _readContext.Clans.Include(cl => cl.CapturedLeaderboards).AsQueryable();
+            var sequence = _readContext.Clans.AsQueryable();
             if (sortBy != null)
             {
                 sort = sortBy;
@@ -67,7 +103,7 @@ namespace BeatLeader_Server.Controllers
                     sequence = sequence.Order(order, t => t.PlayersCount);
                     break;
                 case "captures":
-                    sequence = sequence.Order(order, c => c.CapturedLeaderboards.Count);
+                    sequence = sequence.Order(order, c => c.CaptureLeaderboardsCount);
                     break;
                 default:
                     break;
