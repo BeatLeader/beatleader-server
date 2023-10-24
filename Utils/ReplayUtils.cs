@@ -87,9 +87,10 @@ namespace BeatLeader_Server.Utils
             var oneSaberNerf = 0.95;
             var sfBuff = 1 + tech / 200;
             var fsBuff = 1 + tech / 500;
+            var accBuff = 1 + 0.04 * (8 - acc);
             for (int i = 0; i < dynamicCurve.Count; i++)
             {
-                if (acc <= 12 && dynamicCurve[i].x >= 0.985) dynamicCurve[i] = (dynamicCurve[i].x, dynamicCurve[i].y * (1 + 0.01 * (12 - acc)));
+                if (acc <= 8 && dynamicCurve[i].x >= predictedAcc) dynamicCurve[i] = (dynamicCurve[i].x, dynamicCurve[i].y * accBuff);
                 if (speed == "SF") dynamicCurve[i] = (dynamicCurve[i].x, dynamicCurve[i].y * sfBuff);
                 if (speed == "FS") dynamicCurve[i] = (dynamicCurve[i].x, dynamicCurve[i].y * fsBuff);
                 if (dynamicCurve[i].x > 0.95) dynamicCurve[i] = (dynamicCurve[i].x, dynamicCurve[i].y * patternBuff);
@@ -170,7 +171,7 @@ namespace BeatLeader_Server.Utils
 
         public static float ToStars(float accRating, float passRating, float techRating, float patternRating, float linearRating, float predictedAcc, string mode, string speed = "")
         {
-            (float passPP, float accPP, float techPP) = GetPp(0.96f, accRating, passRating, techRating, patternRating, linearRating, predictedAcc, mode, speed);
+            (float passPP, float accPP, float techPP) = GetPp(0.95f, accRating, passRating, techRating, patternRating, linearRating, predictedAcc, mode, speed);
 
             return Inflate(passPP + accPP + techPP) / 52f;
         }
