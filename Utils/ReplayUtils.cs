@@ -86,10 +86,6 @@ namespace BeatLeader_Server.Utils
             var linearNerf = 1 - linear / 100 * pass;
             var oneSaberNerf = 0.95;
             var sfBuff = 1 + tech / 200;
-            if (pass >= 20)
-            {
-                sfBuff *= 1 + (pass - 20) * 5 / 100;
-            }
             var fsBuff = 1 + tech / 500;
             var accBuff = 1 + 0.025 * (8 - acc);
             for (int i = 0; i < dynamicCurve.Count; i++)

@@ -359,11 +359,11 @@ namespace BeatLeader_Server.Controllers
                         SSTechRating = response.SS.lack_map_calculation.balanced_tech * 10,
                         SSPredictedAcc = response.SS.AIacc,
                         SSAccRating = ReplayUtils.AccRating(response.SS.AIacc, response.SS.lack_map_calculation.balanced_pass_diff, response.SS.lack_map_calculation.balanced_tech * 10),
-                        SFPassRating = response.SFS.lack_map_calculation.balanced_pass_diff,
+                        SFPassRating = ModifiersBuff(response.SFS.lack_map_calculation.balanced_pass_diff, "SF"),
                         SFTechRating = response.SFS.lack_map_calculation.balanced_tech * 10,
                         SFPredictedAcc = response.SFS.AIacc,
                         SFAccRating = ReplayUtils.AccRating(response.SFS.AIacc, response.SFS.lack_map_calculation.balanced_pass_diff, response.SFS.lack_map_calculation.balanced_tech * 10),
-                        FSPassRating = response.FS.lack_map_calculation.balanced_pass_diff,
+                        FSPassRating = ModifiersBuff(response.FS.lack_map_calculation.balanced_pass_diff, "FS"),
                         FSTechRating = response.FS.lack_map_calculation.balanced_tech * 10,
                         FSPredictedAcc = response.FS.AIacc,
                         FSAccRating = ReplayUtils.AccRating(response.FS.AIacc, response.FS.lack_map_calculation.balanced_pass_diff, response.FS.lack_map_calculation.balanced_tech * 10),
@@ -427,6 +427,28 @@ namespace BeatLeader_Server.Controllers
             }
 
             return Ok();
+        }
+
+        public static float ModifiersBuff(float rating, string speed)
+        {
+            float newRating = rating;
+            if (speed == "SF")
+            {
+                newRating = MathF.Pow(rating, 1.11f) / 1.26f;
+            }
+            else if (speed == "FS")
+            {
+                newRating = MathF.Pow(rating, 1.09f) / 1.26f;
+            }
+
+            if (newRating > rating)
+            {
+                return newRating;
+            }
+            else
+            {
+                return rating;
+            }
         }
 
         [Authorize]

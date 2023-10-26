@@ -1,4 +1,5 @@
-﻿using BeatLeader_Server.Extensions;
+﻿using BeatLeader_Server.Controllers;
+using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 
 namespace BeatLeader_Server.Utils {
@@ -25,10 +26,10 @@ namespace BeatLeader_Server.Utils {
                         SSPassRating = toPass(response.SS.lack_map_calculation.balanced_pass_diff),
                         SSTechRating = response.SS.lack_map_calculation.balanced_tech * 10,
                         SSPredictedAcc = response.SS.AIacc,
-                        FSPassRating = toPass(response.FS.lack_map_calculation.balanced_pass_diff),
+                        FSPassRating = toPass(RankController.ModifiersBuff(response.FS.lack_map_calculation.balanced_pass_diff, "FS")),
                         FSTechRating = response.FS.lack_map_calculation.balanced_tech * 10,
                         FSPredictedAcc = response.FS.AIacc,
-                        SFPassRating = toPass(response.SFS.lack_map_calculation.balanced_pass_diff),
+                        SFPassRating = toPass(RankController.ModifiersBuff(response.SFS.lack_map_calculation.balanced_pass_diff, "SF")),
                         SFTechRating = response.SFS.lack_map_calculation.balanced_tech * 10,
                         SFPredictedAcc = response.SFS.AIacc,
                     };
