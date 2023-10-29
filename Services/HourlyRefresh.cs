@@ -83,10 +83,18 @@ namespace BeatLeader_Server.Services {
                                 if (diffFile == null) continue;
 
                                 var diff = diffFile.Open().ObjectFromStream<DiffFileV3>();
-                                if (diff != null && (diff.burstSliders?.Length > 0 || diff.sliders?.Length > 0)) {
-                                    var songDiff = song.Difficulties.FirstOrDefault(d => d.DifficultyName == beatmap._difficulty && d.ModeName == set._beatmapCharacteristicName);
-                                    if (songDiff != null) {
-                                        songDiff.Requirements |= Models.Requirements.V3;
+                                if (diff != null) {
+                                    if (diff.burstSliders?.Length > 0 || diff.sliders?.Length > 0) {
+                                        var songDiff = song.Difficulties.FirstOrDefault(d => d.DifficultyName == beatmap._difficulty && d.ModeName == set._beatmapCharacteristicName);
+                                        if (songDiff != null) {
+                                            songDiff.Requirements |= Models.Requirements.V3;
+                                        }
+                                    }
+                                    if (diff.colorNotes?.FirstOrDefault(n => n.Optional()) != null) {
+                                        var songDiff = song.Difficulties.FirstOrDefault(d => d.DifficultyName == beatmap._difficulty && d.ModeName == set._beatmapCharacteristicName);
+                                        if (songDiff != null) {
+                                            songDiff.Requirements |= Models.Requirements.OptionalProperties;
+                                        }
                                     }
                                 }
                             }

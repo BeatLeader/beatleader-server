@@ -3,6 +3,26 @@ using Newtonsoft.Json;
 
 namespace BeatLeader_Server.BeatMapEvaluator
 {
+    public class Note
+    {
+        [JsonProperty("b")]
+        public float Time { get; set; }
+        [JsonProperty("c")]
+        public int? Color { get; set; }
+        [JsonProperty("x")]
+        public int? X { get; set; }
+        [JsonProperty("y")]
+        public int? Y { get; set; }
+        [JsonProperty("d")]
+        public int? Direction { get; set; }
+        [JsonProperty("a")]
+        public int? AngleOffset { get; set; }
+
+        public bool Optional() {
+            return Color == null || X == null || Y == null || Direction == null || AngleOffset == null;
+        }
+    }
+
     public class Chain
     {
         [JsonProperty("b")]
@@ -60,5 +80,6 @@ namespace BeatLeader_Server.BeatMapEvaluator
         public string? version { get; set; }
         public Chain[]? burstSliders { get; set; }
         public Slider[]? sliders { get; set; }
+        public Note[]? colorNotes { get; set; }
     }
 }
