@@ -683,6 +683,7 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 await _context.SaveChangesAsync();
+                await _scoreRefreshController.BulkRefreshScoresAllContexts(leaderboard.Id);
                 await _scoreRefreshController.RefreshScores(leaderboard.Id);
                 await _playlistController.RefreshNominatedPlaylist();
                 await _playlistController.RefreshQualifiedPlaylist();

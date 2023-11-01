@@ -20,7 +20,7 @@ namespace BeatLeader_Server.Extensions
     public static class ModelExtensions {
 
         public static bool WithRating(this DifficultyStatus context) {
-            return context == DifficultyStatus.ranked || context == DifficultyStatus.qualified || context == DifficultyStatus.nominated;
+            return context == DifficultyStatus.ranked || context == DifficultyStatus.qualified || context == DifficultyStatus.nominated || context == DifficultyStatus.inevent;
         }
 
         public static bool WithPP(this DifficultyStatus context) {

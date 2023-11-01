@@ -161,6 +161,7 @@ namespace BeatLeader_Server.Services
                     await _context.SaveChangesAsync();
 
                     await _scoreController.RefreshScores(leaderboard.Id);
+                    await _scoreController.BulkRefreshScoresAllContexts(leaderboard.Id);
                     (float totalpp, int totalRanks) = RefreshLeaderboardPlayers(leaderboard.Id, _context);
                     await _context.SaveChangesAsync();
 
