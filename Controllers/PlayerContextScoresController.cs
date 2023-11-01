@@ -259,7 +259,7 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [NonAction]
-        public async Task<ActionResult<string>> GetHistogram(
+        public async Task<ActionResult<string>> GetPlayerHistogram(
             string id,
             bool showRatings,
             [FromQuery] string sortBy = "date",
@@ -286,74 +286,26 @@ namespace BeatLeader_Server.Controllers {
 
             switch (sortBy) {
                 case "date":
-                    return HistogrammValuee(order, sequence.Select(s => s.Timeset).ToList(), (int)(batch > 60 * 60 ? batch : 60 * 60 * 24), count);
+                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Timeset).ToList(), (int)(batch > 60 * 60 ? batch : 60 * 60 * 24), count);
                 case "pp":
-                    return HistogrammValuee(order, sequence.Select(s => s.Pp).ToList(), Math.Max(batch ?? 5, 1), count);
+                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Pp).ToList(), Math.Max(batch ?? 5, 1), count);
                 case "acc":
-                    return HistogrammValuee(order, sequence.Select(s => s.Accuracy).ToList(), Math.Max(batch ?? 0.0025f, 0.001f), count);
+                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Accuracy).ToList(), Math.Max(batch ?? 0.0025f, 0.001f), count);
                 case "pauses":
-                    return HistogrammValuee(order, sequence.Select(s => s.Score.Pauses).ToList(), Math.Max((int)(batch ?? 1), 1), count);
+                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Score.Pauses).ToList(), Math.Max((int)(batch ?? 1), 1), count);
                 case "maxStreak":
-                    return HistogrammValuee(order, sequence.Select(s => s.Score.MaxStreak ?? 0).ToList(), Math.Max((int)(batch ?? 1), 1), count);
+                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Score.MaxStreak ?? 0).ToList(), Math.Max((int)(batch ?? 1), 1), count);
                 case "rank":
-                    return HistogrammValuee(order, sequence.Select(s => s.Rank).ToList(), Math.Max((int)(batch ?? 1), 1), count);
+                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Rank).ToList(), Math.Max((int)(batch ?? 1), 1), count);
                 case "stars":
-                    return HistogrammValuee(order, sequence.Select(s => s.Leaderboard.Difficulty.Stars ?? 0).ToList(), Math.Max(batch ?? 0.15f, 0.01f), count);
+                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Leaderboard.Difficulty.Stars ?? 0).ToList(), Math.Max(batch ?? 0.15f, 0.01f), count);
                 case "replaysWatched":
-                    return HistogrammValuee(order, sequence.Select(s => s.Score.AnonimusReplayWatched + s.Score.AuthorizedReplayWatched).ToList(), Math.Max((int)(batch ?? 1), 1), count);
+                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Score.AnonimusReplayWatched + s.Score.AuthorizedReplayWatched).ToList(), Math.Max((int)(batch ?? 1), 1), count);
                 case "mistakes":
-                    return HistogrammValuee(order, sequence.Select(s => s.Score.BadCuts + s.Score.MissedNotes + s.Score.BombCuts + s.Score.WallsHit).ToList(), (int)(batch ?? 1), count);
+                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Score.BadCuts + s.Score.MissedNotes + s.Score.BombCuts + s.Score.WallsHit).ToList(), (int)(batch ?? 1), count);
                 default:
                     return BadRequest();
             }
-        }
-
-        public string HistogrammValuee(Order order, List<int> values, int batch, int count) {
-            if (values.Count() == 0) {
-                return "";
-            }
-            Dictionary<int, HistogrammValue> result = new Dictionary<int, HistogrammValue>();
-            int normalizedMin = (values.Min() / batch) * batch;
-            int normalizedMax = (values.Max() / batch) * batch;
-            int totalCount = 0;
-            if (order == Order.Desc) {
-                for (int i = normalizedMax; i >= normalizedMin; i -= batch) {
-                    int value = values.Count(s => s <= i && s > i - batch);
-                    result[i] = new HistogrammValue { Value = value, Page = totalCount / count };
-                    totalCount += value;
-                }
-            } else {
-                for (int i = normalizedMin; i <= normalizedMax; i += batch) {
-                    int value = values.Count(s => s >= i && s < i + batch);
-                    result[i] = new HistogrammValue { Value = value, Page = totalCount / count };
-                    totalCount += value;
-                }
-            }
-
-            return JsonConvert.SerializeObject(result);
-        }
-
-        public string HistogrammValuee(Order order, List<float> values, float batch, int count) {
-            if (values.Count() == 0) return "";
-            Dictionary<float, HistogrammValue> result = new Dictionary<float, HistogrammValue>();
-            int totalCount = 0;
-            float normalizedMin = (int)(values.Min() / batch) * batch;
-            float normalizedMax = (int)(values.Max() / batch + 1) * batch;
-            if (order == Order.Desc) {
-                for (float i = normalizedMax; i > normalizedMin; i -= batch) {
-                    int value = values.Count(s => s <= i && s >= i - batch);
-                    result[i - batch] = new HistogrammValue { Value = value, Page = totalCount / count };
-                    totalCount += value;
-                }
-            } else {
-                for (float i = normalizedMin; i < normalizedMax; i += batch) {
-                    int value = values.Count(s => s >= i && s <= i + batch);
-                    result[i + batch] = new HistogrammValue { Value = value, Page = totalCount / count };
-                    totalCount += value;
-                }
-            }
-
-            return JsonConvert.SerializeObject(result);
         }
 
         [NonAction]
