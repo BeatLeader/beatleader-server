@@ -145,7 +145,7 @@ namespace BeatLeader_Server.Services
                         deletionList.Add(ban.PlayerId);
                     }
 
-                    if (ban.PlayerId != ban.BannedBy && ban.Timeset + ban.Duration > currentTime) {
+                    if (ban.PlayerId != ban.BannedBy && ban.Duration != 0 && ban.Timeset + ban.Duration < currentTime) {
                         unbanlist.Add(ban.PlayerId);
                     }
                 }
