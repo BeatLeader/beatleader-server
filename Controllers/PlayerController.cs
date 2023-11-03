@@ -707,7 +707,7 @@ namespace BeatLeader_Server.Controllers
                 var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
                 foreach (var term in role.ToLower().Split(","))
                 {
-                    exp = Expression.OrElse(exp, Expression.Call(Expression.Property(player, "Role"), contains, Expression.Constant(term)));
+                    exp = Expression.OrElse(exp, Expression.Call(Expression.Property(Expression.Property(player, "Player"), "Role"), contains, Expression.Constant(term)));
                 }
                 request = request.Where((Expression<Func<PlayerContextExtension, bool>>)Expression.Lambda(exp, player));
             }
