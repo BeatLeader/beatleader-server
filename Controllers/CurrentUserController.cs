@@ -812,40 +812,53 @@ namespace BeatLeader_Server.Controllers {
                 return BadRequest("Both players are clan leaders, delete one of the clans");
             }
 
-            if (accountLink == null) {
-                if (fromIntID < 1000000000000000) {
-                    if (long.Parse(migrateToId) > 70000000000000000) {
-                        accountLink = new AccountLink {
+            if (accountLink == null)
+            {
+                if (fromIntID < 1000000000000000)
+                {
+                    if (long.Parse(migrateToId) > 70000000000000000)
+                    {
+                        accountLink = new AccountLink
+                        {
                             OculusID = (int)fromIntID,
                             SteamID = migrateToId,
                         };
-                    } else {
-                        accountLink = new AccountLink {
+                    } else
+                    {
+                        accountLink = new AccountLink
+                        {
                             OculusID = (int)fromIntID,
                             PCOculusID = migrateToId,
                         };
                     }
-                } else {
-                    accountLink = new AccountLink {
+                } else
+                {
+                    accountLink = new AccountLink
+                    {
                         PCOculusID = migrateFromId,
                         SteamID = migrateToId,
                     };
                 }
                 _context.AccountLinks.Add(accountLink);
-            } else {
-                if (fromIntID < 1000000000000000) {
-                    if (long.Parse(migrateToId) > 70000000000000000) {
+            } else
+            {
+                if (fromIntID < 1000000000000000)
+                {
+                    if (long.Parse(migrateToId) > 70000000000000000)
+                    {
                         if (accountLink.SteamID.Length > 0 && accountLink.OculusID > 0) return BadRequest("Account already linked");
 
                         accountLink.OculusID = (int)fromIntID;
                         accountLink.SteamID = migrateToId;
-                    } else {
+                    } else
+                    {
                         if (accountLink.PCOculusID.Length > 0 && accountLink.OculusID > 0) return BadRequest("Account already linked");
 
                         accountLink.OculusID = (int)fromIntID;
                         accountLink.PCOculusID = migrateToId;
                     }
-                } else {
+                } else
+                {
                     if (accountLink.PCOculusID.Length > 0 && accountLink.SteamID.Length > 0) return BadRequest("Account already linked");
 
                     accountLink.PCOculusID = migrateFromId;
@@ -959,7 +972,6 @@ namespace BeatLeader_Server.Controllers {
                         foreach (var ce in score.ContextExtensions)
                         {
                             _context.ScoreContextExtensions.Remove(ce);
-                            score.ValidContexts &= ~ce.Context;
                         }
                     }
                 }
@@ -1008,15 +1020,7 @@ namespace BeatLeader_Server.Controllers {
                         extensions.Sort((item1, item2) => ReplayUtils.IsNewScoreExtensionBetter(item1.Context, item2.Context) ? -1 : 1);
                         extensions[0].Score.ValidContexts |= context;
                     }
-
                     foreach (var score in scores) {
-                        if (score.ValidContexts == LeaderboardContexts.None) {
-                            _context.Scores.Remove(score);
-                        } else {
-                            score.Player = migratedToPlayer;
-                            score.PlayerId = migrateToId;
-                        }
-
                         var extensionsToRemove = new List<ScoreContextExtension>();
                         foreach (var ce in score.ContextExtensions) {
                             if (!score.ValidContexts.HasFlag(ce.Context)) {
@@ -1027,7 +1031,39 @@ namespace BeatLeader_Server.Controllers {
                         {
                             score.ContextExtensions.Remove(ce);
                         }
+                        
                     }
+
+                    foreach (var score in scores) {
+
+                        if (score.ValidContexts == LeaderboardContexts.None) {
+                            _context.Scores.Remove(score);
+                        }
+                    }
+
+                    var valid = scores.Where(s => s.ValidContexts != LeaderboardContexts.None).ToList();
+                    var firstValid = valid.First();
+                    var save = firstValid.ValidContexts;
+                    firstValid.ValidContexts = LeaderboardContexts.None;
+
+                    _context.SaveChanges();
+
+                    firstValid.ValidContexts = save;
+                    _context.SaveChanges();
+
+                    foreach (var score in scores) {
+
+                        if (score.ValidContexts != LeaderboardContexts.None) {
+                            score.Player = migratedToPlayer;
+                            score.PlayerId = migrateToId;
+                        }
+                    }
+
+                    _context.SaveChanges();
+
+                        
+
+                   
                 }
             }
 
@@ -1047,7 +1083,7 @@ namespace BeatLeader_Server.Controllers {
             currentPlayer.ContextExtensions = null;
             _context.Players.Remove(currentPlayer);
 
-            await _context.BulkSaveChangesAsync();
+            _context.SaveChanges();
 
             if (scoresGroups.Count() > 0) {
                 foreach (var group in scoresGroups) {
