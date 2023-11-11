@@ -3,21 +3,13 @@ using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using Newtonsoft.Json.Linq;
-using System.Dynamic;
+using Swashbuckle.AspNetCore.Annotations;
 using System.Net;
 
 namespace BeatLeader_Server.Controllers
 {
-    [ApiController]
-    [Route("[controller]")]
-    [Authorize]
     public class PatreonController : Controller
     {
         private readonly AppContext _context;
@@ -34,56 +26,91 @@ namespace BeatLeader_Server.Controllers
             _configuration = configuration;
         }
 
-        [NonAction]
-        public async Task<ActionResult> AddPatreonRole(string role, int tier)
+        [HttpGet("~/refreshmypatreon")]
+        [Authorize]
+        [SwaggerOperation(Summary = "Refresh Patreon Link", Description = "Refreshes the Patreon link for the current user, updating their Patreon tier and roles based on the latest information.")]
+        [SwaggerResponse(200, "Patreon link refreshed successfully")]
+        [SwaggerResponse(400, "Bad request, no existing Patreon link")]
+        [SwaggerResponse(401, "Unauthorized, user not found or not logged in")]
+        public async Task<ActionResult> RefreshMyPatreon()
         {
-            await RemovePatreonRoles();
-            string? playerId = HttpContext.CurrentUserID(_context);
-            if (playerId == null)
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = currentID == null ? null : await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null)
             {
-                return NotFound();
+                return Unauthorized();
             }
-            Player? currentPlayer = _context.Players.Include(p => p.ProfileSettings).FirstOrDefault(p => p.Id == playerId);
-            if (currentPlayer != null)
-            {
-                currentPlayer.Role += "," + role;
-                if (currentPlayer.ProfileSettings == null) {
-                    currentPlayer.ProfileSettings = new ProfileSettings();
+
+            var link = _context.PatreonLinks.Where(p => p.Id == currentPlayer.Id).FirstOrDefault();
+
+            if (link == null) {
+                return BadRequest("No existing Patreon link");
+            }
+
+            var user = await GetPatreonUser(link.Token);
+
+            if (user != null) {
+                string? tier = GetUserTier(user);
+                string userId = _context.PlayerIdToMain(link.Id);
+
+                var player = _context.Players.FirstOrDefault(p => p.Id == userId);
+                if (player != null) {
+                    if (tier != null) {
+                        if (tier.Contains("tipper"))
+                        {
+                            UpdatePatreonRole(player, "tipper");
+                        }
+                        else if (tier.Contains("supporter"))
+                        {
+                            UpdatePatreonRole(player, "supporter");
+                        }
+                        else if (tier.Contains("sponsor"))
+                        {
+                            UpdatePatreonRole(player, "sponsor");
+                        }
+                        else {
+                            UpdatePatreonRole(player, null);
+                        }
+                        link.Tier = tier;
+                    } else {
+                        UpdatePatreonRole(player, null);
+                        link.Tier = "";
+                    }
                 }
+            } else {
+                var newToken = await RefreshToken(link.RefreshToken);
+                if (newToken != null) {
+                    link.Token = newToken.access_token;
+                    link.RefreshToken = newToken.refresh_token;
+                } else {
+                    var player = _context.Players.FirstOrDefault(p => p.Id == link.Id);
+                    if (player == null) {
+                        long intId = Int64.Parse(link.Id);
+                        if (intId < 70000000000000000) {
+                            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
 
-                currentPlayer.ProfileSettings.EffectName = "TheSun_Tier" + tier;
-                await _context.SaveChangesAsync();
+                            if (accountLink != null) {
+                                string playerId = accountLink.SteamID.Length > 0 ? accountLink.SteamID : accountLink.PCOculusID;
+
+                                player = _context.Players.FirstOrDefault(p => p.Id == playerId);
+                            }
+                        }
+                    }
+                    _context.PatreonLinks.Remove(link);
+
+                    if (player != null) {
+                        UpdatePatreonRole(player, null);
+                    }
+                }
             }
+
+            await _context.SaveChangesAsync();
+
             return Ok();
         }
 
-        [NonAction]
-        public async Task<ActionResult> RemovePatreonRoles()
-        {
-            string playerId = HttpContext.CurrentUserID(_context);
-            if (playerId == null)
-            {
-                return NotFound();
-            }
-            Player? currentPlayer = await _context.Players.FindAsync(playerId);
-            if (currentPlayer != null)
-            {
-                currentPlayer.Role = string.Join(",", currentPlayer.Role.Split(",").Where(r => r != "tipper" && r != "supporter" && r != "sponsor"));
-                await _context.SaveChangesAsync();
-            }
-            return Ok();
-        }
-
-        [NonAction]
-        public async void UpdatePatreonRole(Player player, string? role)
-        {
-            player.Role = string.Join(",", player.Role.Split(",").Where(r => r != "tipper" && r != "supporter" && r != "sponsor"));
-            if (role != null) {
-                player.Role += "," + role;
-            }
-        }
-
-
+        [ApiExplorerSettings(IgnoreApi = true)]
         [HttpGet("~/user/linkPatreon")]
         public async Task<ActionResult> LinkPatreon([FromQuery] string returnUrl)
         {
@@ -111,18 +138,7 @@ namespace BeatLeader_Server.Controllers
                         return Redirect(returnUrl);
                     }
 
-                    var data = user.included;
-
-                    string? tier = null;
-
-                    foreach (var item in data)
-                    {
-                        if (ExpandantoObject.HasProperty(item.attributes, "title"))
-                        {
-                            tier = item.attributes.title.ToLower();
-                            break;
-                        }
-                    }
+                    string? tier = GetUserTier(user);
 
                     if (tier != null)
                     {
@@ -155,17 +171,12 @@ namespace BeatLeader_Server.Controllers
             return Redirect(returnUrl);
         }
 
-        [HttpGet("~/refreshPatreon")]
+        [ApiExplorerSettings(IgnoreApi = true)]
+        [HttpGet("~/refreshpatreon")]
         public async Task<ActionResult> RefreshPatreon()
         {
-            if (HttpContext != null) {
-                string currentID = HttpContext.CurrentUserID(_context);
-                var currentPlayer = await _context.Players.FindAsync(currentID);
-
-                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-                {
-                    return Unauthorized();
-                }
+            if (!HttpContext.ItsAdmin(_context)) {
+                return Unauthorized();
             }
 
             var links = _context.PatreonLinks.ToList();
@@ -175,16 +186,7 @@ namespace BeatLeader_Server.Controllers
                 var user = await GetPatreonUser(link.Token);
 
                 if (user != null) {
-                    string? tier = null;
-
-                    foreach (var item in user.included)
-                    {
-                        if (ExpandantoObject.HasProperty(item.attributes, "title"))
-                        {
-                            tier = item.attributes.title.ToLower();
-                            break;
-                        }
-                    }
+                    string? tier = GetUserTier(user);
 
                     if (tier != link.Tier) {
                         var player = _context.Players.FirstOrDefault(p => p.Id == link.Id);
@@ -257,94 +259,55 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
-        [HttpGet("~/refreshmypatreon")]
-        public async Task<ActionResult> RefreshMyPatreon()
+        [NonAction]
+        public async Task<ActionResult> AddPatreonRole(string role, int tier)
         {
-            string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
-
-            if (currentPlayer == null)
+            await RemovePatreonRoles();
+            string? playerId = HttpContext.CurrentUserID(_context);
+            if (playerId == null)
             {
-                return Unauthorized();
+                return NotFound();
             }
-
-            var link = _context.PatreonLinks.Where(p => p.Id == currentPlayer.Id).FirstOrDefault();
-
-            if (link == null) {
-                return BadRequest("No existing Patreon link");
-            }
-
-            var user = await GetPatreonUser(link.Token);
-
-            if (user != null) {
-                string? tier = null;
-
-                foreach (var item in user.included)
-                {
-                    if (ExpandantoObject.HasProperty(item.attributes, "title"))
-                    {
-                        tier = item.attributes.title.ToLower();
-                        break;
-                    }
+            Player? currentPlayer = _context.Players.Include(p => p.ProfileSettings).FirstOrDefault(p => p.Id == playerId);
+            if (currentPlayer != null)
+            {
+                currentPlayer.Role += "," + role;
+                if (currentPlayer.ProfileSettings == null) {
+                    currentPlayer.ProfileSettings = new ProfileSettings();
                 }
 
-                string userId = _context.PlayerIdToMain(link.Id);
-
-                var player = _context.Players.FirstOrDefault(p => p.Id == userId);
-                if (player != null) {
-                    if (tier != null) {
-                        if (tier.Contains("tipper"))
-                        {
-                            UpdatePatreonRole(player, "tipper");
-                        }
-                        else if (tier.Contains("supporter"))
-                        {
-                            UpdatePatreonRole(player, "supporter");
-                        }
-                        else if (tier.Contains("sponsor"))
-                        {
-                            UpdatePatreonRole(player, "sponsor");
-                        }
-                        else {
-                            UpdatePatreonRole(player, null);
-                        }
-                        link.Tier = tier;
-                    } else {
-                        UpdatePatreonRole(player, null);
-                        link.Tier = "";
-                    }
-                }
-            } else {
-                var newToken = await RefreshToken(link.RefreshToken);
-                if (newToken != null) {
-                    link.Token = newToken.access_token;
-                    link.RefreshToken = newToken.refresh_token;
-                } else {
-                    var player = _context.Players.FirstOrDefault(p => p.Id == link.Id);
-                    if (player == null) {
-                        long intId = Int64.Parse(link.Id);
-                        if (intId < 70000000000000000) {
-                            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
-
-                            if (accountLink != null) {
-                                string playerId = accountLink.SteamID.Length > 0 ? accountLink.SteamID : accountLink.PCOculusID;
-
-                                player = _context.Players.FirstOrDefault(p => p.Id == playerId);
-                            }
-                        }
-                    }
-                    _context.PatreonLinks.Remove(link);
-
-                    if (player != null) {
-                        UpdatePatreonRole(player, null);
-                    }
-                }
+                currentPlayer.ProfileSettings.EffectName = "TheSun_Tier" + tier;
+                await _context.SaveChangesAsync();
             }
-
-            await _context.SaveChangesAsync();
-
             return Ok();
         }
+
+        [NonAction]
+        public async Task<ActionResult> RemovePatreonRoles()
+        {
+            string playerId = HttpContext.CurrentUserID(_context);
+            if (playerId == null)
+            {
+                return NotFound();
+            }
+            Player? currentPlayer = await _context.Players.FindAsync(playerId);
+            if (currentPlayer != null)
+            {
+                currentPlayer.Role = string.Join(",", currentPlayer.Role.Split(",").Where(r => r != "tipper" && r != "supporter" && r != "sponsor"));
+                await _context.SaveChangesAsync();
+            }
+            return Ok();
+        }
+
+        [NonAction]
+        public async void UpdatePatreonRole(Player player, string? role)
+        {
+            player.Role = string.Join(",", player.Role.Split(",").Where(r => r != "tipper" && r != "supporter" && r != "sponsor"));
+            if (role != null) {
+                player.Role += "," + role;
+            }
+        }
+
         [NonAction]
         public Task<dynamic?> GetPatreonUser(string token)
         {
@@ -354,6 +317,24 @@ namespace BeatLeader_Server.Controllers
             request.Proxy = null;
 
             return request.DynamicResponse();
+        }
+
+        [NonAction]
+        public string? GetUserTier(dynamic user) {
+            string? tier = null;
+
+            foreach (var item in user.included)
+            {
+                if (ExpandantoObject.HasProperty(item.attributes, "title"))
+                {
+                    tier = item.attributes.title.ToLower();
+                    if (tier != "free") {
+                        break;
+                    }
+                }
+            }
+
+            return tier;
         }
 
         [NonAction]

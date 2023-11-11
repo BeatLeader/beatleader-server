@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>BeatLeader_Server</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -56,9 +57,8 @@
     <PackageReference Include="SharpZipLib" Version="1.4.2" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.0.2" />
     <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="1.0.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore.Swagger" Version="6.5.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="6.5.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="6.5.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.5.0" />
     <PackageReference Include="System.Drawing.Common" Version="7.0.0" />
     <PackageReference Include="Z.EntityFramework.Extensions.EFCore" Version="7.100.0.5" />
   </ItemGroup>

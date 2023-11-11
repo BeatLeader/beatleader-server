@@ -12,6 +12,7 @@ using System.Net;
 using BeatLeader_Server.Bot;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using BeatLeader_Server.Models;
+using Microsoft.OpenApi.Models;
 
 namespace BeatLeader_Server {
 
@@ -368,7 +369,14 @@ namespace BeatLeader_Server {
                     });
             });
 
-            services.AddSwaggerGen();
+            services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "API.BL", Version = "v1" });
+                c.EnableAnnotations();
+                var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+                var xmlPath = Path.Combine(System.AppContext.BaseDirectory, xmlFile);
+                c.IncludeXmlComments(xmlPath);
+            });
 
             services.AddResponseCompression(options =>
             {
@@ -410,7 +418,10 @@ namespace BeatLeader_Server {
             });
 
             app.UseSwagger();
-            app.UseSwaggerUI();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "API.BL V1");
+            });
         }
     }
 }
