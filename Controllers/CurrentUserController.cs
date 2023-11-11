@@ -159,6 +159,41 @@ namespace BeatLeader_Server.Controllers {
             return result;
         }
 
+        [HttpGet("~/oculususer")]
+        public async Task<ActionResult<OculusUser>> GetOculusUser([FromQuery] string token)
+        {
+            (string? id, string? error) = await SteamHelper.GetPlayerIDFromTicket(token, _configuration);
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var link = _readContext.AccountLinks.FirstOrDefault(l => l.PCOculusID == id);
+            if (link != null)
+            {
+                string playerId = link.SteamID.Length > 0 ? link.SteamID : id;
+
+                var player = await _readContext.Players.FindAsync(playerId);
+
+                return new OculusUser
+                {
+                    Id = id,
+                    Migrated = true,
+                    MigratedId = playerId,
+                    Name = player.Name,
+                    Avatar = player.Avatar,
+                };
+            }
+            var oculusPlayer = await PlayerUtils.GetPlayerFromOculus(id, token);
+
+            return new OculusUser
+            {
+                Id = id,
+                Name = oculusPlayer.Name,
+                Avatar = oculusPlayer.Avatar,
+            };
+        }
+
         [NonAction]
         public async Task<User?> GetCurrentUserLazy() => await GetUserLazy(GetId());
 

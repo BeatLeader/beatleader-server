@@ -6,6 +6,7 @@ using Lib.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Swashbuckle.AspNetCore.Annotations;
 using Newtonsoft.Json;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
@@ -74,25 +75,29 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [HttpGet("~/player/{id}/scores")]
+        [SwaggerOperation(Summary = "Retrieve player's scores", Description = "Fetches a paginated list of scores for a specified player ID. Allows filtering by various criteria like date, difficulty, mode, and more.")]
+        [SwaggerResponse(200, "Scores retrieved successfully", typeof(ResponseWithMetadata<ScoreResponseWithMyScore>))]
+        [SwaggerResponse(400, "Invalid request parameters")]
+        [SwaggerResponse(404, "Scores not found for the given player ID")]
         public async Task<ActionResult<ResponseWithMetadata<ScoreResponseWithMyScore>>> GetScores(
-            string id,
-            [FromQuery] string sortBy = "date",
-            [FromQuery] Order order = Order.Desc,
-            [FromQuery] int page = 1,
-            [FromQuery] int count = 8,
-            [FromQuery] string? search = null,
-            [FromQuery] string? diff = null,
-            [FromQuery] string? mode = null,
-            [FromQuery] Requirements requirements = Requirements.None,
-            [FromQuery] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
-            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            [FromQuery] string? type = null,
-            [FromQuery] string? modifiers = null,
-            [FromQuery] float? stars_from = null,
-            [FromQuery] float? stars_to = null,
-            [FromQuery] int? time_from = null,
-            [FromQuery] int? time_to = null,
-            [FromQuery] int? eventId = null) {
+            [FromRoute, SwaggerParameter("Player's unique identifier")] string id,
+            [FromQuery, SwaggerParameter("Sorting criteria for scores, default is by 'date'")] string sortBy = "date",
+            [FromQuery, SwaggerParameter("Order of sorting, default is descending")] Order order = Order.Desc,
+            [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
+            [FromQuery, SwaggerParameter("Number of scores per page, default is 8")] int count = 8,
+            [FromQuery, SwaggerParameter("Filter scores by search term in song name, author or mapper. Default is null")] string? search = null,
+            [FromQuery, SwaggerParameter("Filter scores by map difficulty(Easy, Expert, Expert+, etc), default is null")] string? diff = null,
+            [FromQuery, SwaggerParameter("Filter scores by map characteristic(Standard, OneSaber, etc), default is null")] string? mode = null,
+            [FromQuery, SwaggerParameter("Filter scores by map requirements, default is 'None'")] Requirements requirements = Requirements.None,
+            [FromQuery, SwaggerParameter("Filter scores by score status, default is 'None'")] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
+            [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
+            [FromQuery, SwaggerParameter("Filter scores by map status, default is null")] string? type = null,
+            [FromQuery, SwaggerParameter("Filter scores by modifiers(GN, SF, etc), default is null")] string? modifiers = null,
+            [FromQuery, SwaggerParameter("Filter scores on ranked maps with stars greater than, default is null")] float? stars_from = null,
+            [FromQuery, SwaggerParameter("Filter scores on ranked maps with stars lower than, default is null")] float? stars_to = null,
+            [FromQuery, SwaggerParameter("Filter scores made after unix timestamp, default is null")] int? time_from = null,
+            [FromQuery, SwaggerParameter("Filter scores made before unix timestamp, default is null")] int? time_to = null,
+            [FromQuery, SwaggerParameter("Show only scores from the event with ID, default is null")] int? eventId = null) {
             if (count > 100 || count < 0) {
                 return BadRequest("Please use `count` value in range of 0 to 100");
             }
@@ -242,28 +247,30 @@ namespace BeatLeader_Server.Controllers {
             return result;
         }
 
-
-
         [HttpGet("~/player/{id}/scores/compact")]
+        [SwaggerOperation(Summary = "Retrieve player's scores in a compact form", Description = "Fetches a paginated list of scores for a specified player ID. Returns less info to save bandwith or processing time")]
+        [SwaggerResponse(200, "Scores retrieved successfully")]
+        [SwaggerResponse(400, "Invalid request parameters")]
+        [SwaggerResponse(404, "Scores not found for the given player ID")]
         public async Task<ActionResult<ResponseWithMetadata<CompactScoreResponse>>> GetCompactScores(
-            string id,
-            [FromQuery] string sortBy = "date",
-            [FromQuery] Order order = Order.Desc,
-            [FromQuery] int page = 1,
-            [FromQuery] int count = 8,
-            [FromQuery] string? search = null,
-            [FromQuery] string? diff = null,
-            [FromQuery] string? mode = null,
-            [FromQuery] Requirements requirements = Requirements.None,
-            [FromQuery] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
-            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            [FromQuery] string? type = null,
-            [FromQuery] string? modifiers = null,
-            [FromQuery] float? stars_from = null,
-            [FromQuery] float? stars_to = null,
-            [FromQuery] int? time_from = null,
-            [FromQuery] int? time_to = null,
-            [FromQuery] int? eventId = null) {
+            [FromRoute, SwaggerParameter("Player's unique identifier")] string id,
+            [FromQuery, SwaggerParameter("Sorting criteria for scores, default is by 'date'")] string sortBy = "date",
+            [FromQuery, SwaggerParameter("Order of sorting, default is descending")] Order order = Order.Desc,
+            [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
+            [FromQuery, SwaggerParameter("Number of scores per page, default is 8")] int count = 8,
+            [FromQuery, SwaggerParameter("Filter scores by search term in song name, author or mapper. Default is null")] string? search = null,
+            [FromQuery, SwaggerParameter("Filter scores by map difficulty(Easy, Expert, Expert+, etc), default is null")] string? diff = null,
+            [FromQuery, SwaggerParameter("Filter scores by map characteristic(Standard, OneSaber, etc), default is null")] string? mode = null,
+            [FromQuery, SwaggerParameter("Filter scores by map requirements, default is 'None'")] Requirements requirements = Requirements.None,
+            [FromQuery, SwaggerParameter("Filter scores by score status, default is 'None'")] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
+            [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
+            [FromQuery, SwaggerParameter("Filter scores by map status, default is null")] string? type = null,
+            [FromQuery, SwaggerParameter("Filter scores by modifiers(GN, SF, etc), default is null")] string? modifiers = null,
+            [FromQuery, SwaggerParameter("Filter scores on ranked maps with stars greater than, default is null")] float? stars_from = null,
+            [FromQuery, SwaggerParameter("Filter scores on ranked maps with stars lower than, default is null")] float? stars_to = null,
+            [FromQuery, SwaggerParameter("Filter scores made after unix timestamp, default is null")] int? time_from = null,
+            [FromQuery, SwaggerParameter("Filter scores made before unix timestamp, default is null")] int? time_to = null,
+            [FromQuery, SwaggerParameter("Show only scores from the event with ID, default is null")] int? eventId = null) {
             if (count > 100 || count < 0) {
                 return BadRequest("Please use `count` value in range of 0 to 100");
             }
@@ -320,32 +327,16 @@ namespace BeatLeader_Server.Controllers {
             return result;
         }
 
-        [HttpDelete("~/player/{id}/score/{leaderboardID}")]
-        [Authorize]
-        public async Task<ActionResult> DeleteScore(string id, string leaderboardID) {
-            string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = await _context.Players.FindAsync(currentId);
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin")) {
-                return Unauthorized();
-            }
-            Leaderboard? leaderboard = _context.Leaderboards.Where(l => l.Id == leaderboardID).Include(l => l.Scores).FirstOrDefault();
-            if (leaderboard == null) {
-                return NotFound();
-            }
-            Score? scoreToDelete = leaderboard.Scores.FirstOrDefault(t => t.PlayerId == id);
-
-            if (scoreToDelete == null) {
-                return NotFound();
-            }
-
-            _context.Scores.Remove(scoreToDelete);
-            await _context.SaveChangesAsync();
-            return Ok();
-
-        }
-
         [HttpGet("~/player/{id}/scorevalue/{hash}/{difficulty}/{mode}")]
-        public ActionResult<int> GetScoreValue(string id, string hash, string difficulty, string mode) {
+        [SwaggerOperation(Summary = "Retrieve player's score for a specific map", Description = "Fetches a score made by a Player with ID for a map specified by Hash and difficulty")]
+        [SwaggerResponse(200, "Score retrieved successfully")]
+        [SwaggerResponse(400, "Invalid request parameters")]
+        [SwaggerResponse(404, "Score not found for the given player ID")]
+        public ActionResult<int> GetScoreValue(
+            [FromRoute, SwaggerParameter("Player's unique identifier")] string id, 
+            [FromRoute, SwaggerParameter("Maps's hash")] string hash, 
+            [FromRoute, SwaggerParameter("Maps's difficulty(Easy, Expert, Expert+, etc)")] string difficulty, 
+            [FromRoute, SwaggerParameter("Maps's characteristic(Standard, OneSaber, etc)")] string mode) {
             Score? score = _context
                 .Scores
                 .Include(s => s.Leaderboard)
@@ -425,7 +416,13 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [HttpGet("~/player/{id}/accgraph")]
-        public ActionResult<ICollection<GraphResponse>> AccGraph(string id, [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General) {
+        [SwaggerOperation(Summary = "Retrieve player's accuracy graph", Description = "Usefull to visualise player's performance relative to map's complexity")]
+        [SwaggerResponse(200, "Accuracy graph retrieved successfully")]
+        [SwaggerResponse(400, "Invalid request parameters")]
+        [SwaggerResponse(404, "No accuracy graph available for the given player ID")]
+        public ActionResult<ICollection<GraphResponse>> AccGraph(
+            [FromRoute, SwaggerParameter("Player's unique identifier")] string id, 
+            [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General) {
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
                 string? currentID2 = HttpContext.CurrentUserID(_context);
                 bool showRatings2 = currentID2 != null ? _context
@@ -501,7 +498,14 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [HttpGet("~/player/{id}/history")]
-        public async Task<ActionResult<ICollection<PlayerScoreStatsHistory>>> GetHistory(string id, [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General, [FromQuery] int count = 50) {
+        [SwaggerOperation(Summary = "Retrieve player's statistic history", Description = "Fetches a list of player's performance metrics and various stats saved daily")]
+        [SwaggerResponse(200, "History retrieved successfully")]
+        [SwaggerResponse(400, "Invalid request parameters")]
+        [SwaggerResponse(404, "No history saved for the given player ID")]
+        public async Task<ActionResult<ICollection<PlayerScoreStatsHistory>>> GetHistory(
+            [FromRoute, SwaggerParameter("Player's unique identifier")] string id, 
+            [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General, 
+            [FromQuery, SwaggerParameter("Amount of days to include")] int count = 50) {
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
                 return await _playerContextScoresController.GetHistory(id, leaderboardContext, count); 
             }
@@ -522,9 +526,13 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [HttpGet("~/player/{id}/pinnedScores")]
+        [SwaggerOperation(Summary = "Retrieve player's pinned scores", Description = "Fetches a paginated list of scores pinned by player for their ID.")]
+        [SwaggerResponse(200, "Scores retrieved successfully")]
+        [SwaggerResponse(400, "Invalid request parameters")]
+        [SwaggerResponse(404, "Scores not found for the given player ID")]
         public async Task<ActionResult<ICollection<ScoreResponseWithMyScore>>> GetPinnedScores(
-            string id,
-            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General) {
+            [FromRoute, SwaggerParameter("Player's unique identifier")]string id,
+            [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General) {
 
             id = _context.PlayerIdToMain(id);
 

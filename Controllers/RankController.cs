@@ -831,6 +831,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [Authorize]
+        [ApiExplorerSettings(IgnoreApi = true)]
         [HttpGet("~/voting/spread")]
         public ActionResult<Dictionary<int, int>> Spread() {
             string? currentID = HttpContext.CurrentUserID(_readContext);

@@ -6,8 +6,6 @@ using Dasync.Collections;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using System.Net;
 
 namespace BeatLeader_Server.Controllers
 {

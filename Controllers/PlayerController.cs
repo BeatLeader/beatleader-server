@@ -7,9 +7,9 @@ using Lib.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using System.Linq.Expressions;
 using BeatLeader_Server.Enums;
+using Swashbuckle.AspNetCore.Annotations;
 using static BeatLeader_Server.Services.SearchService;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
@@ -43,11 +43,14 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/player/{id}")]
+        [SwaggerOperation(Summary = "Get player profile", Description = "Retrieves a Beat Saber profile data for a specific player ID.")]
+        [SwaggerResponse(200, "Returns the player's full profile", typeof(PlayerResponseFull))]
+        [SwaggerResponse(404, "Player not found")]
         public async Task<ActionResult<PlayerResponseFull>> Get(
-            string id, 
-            bool stats = true, 
-            [FromQuery] bool keepOriginalId = false,
-            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
+            [FromRoute, SwaggerParameter("The ID of the player")] string id,
+            [FromQuery, SwaggerParameter("Include stats in the response")]  bool stats = true,
+            [FromQuery, SwaggerParameter("Whether to keep original ID (for migrated players)")] bool keepOriginalId = false,
+            [FromQuery, SwaggerParameter("Leaderboard context, 'general' by default")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
         {
             string userId = _context.PlayerIdToMain(id);
             Player? player;
@@ -143,7 +146,10 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/player/discord/{id}")]
-        public async Task<ActionResult<PlayerResponseFull>> GetDiscord(string id)
+        [SwaggerOperation(Summary = "Get player with Discord", Description = "Retrieves a BeatLeader profile data with linked Discord profile.")]
+        [SwaggerResponse(200, "Returns the player's full profile", typeof(PlayerResponseFull))]
+        [SwaggerResponse(404, "Player not found")]
+        public async Task<ActionResult<PlayerResponseFull>> GetDiscord([FromRoute, SwaggerParameter("Discord profile ID")] string id)
         {
             var social = _context.PlayerSocial.Where(s => s.Service == "Discord" && s.UserId == id && s.PlayerId != null).FirstOrDefault();
 
@@ -155,7 +161,10 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/player/beatsaver/{id}")]
-        public async Task<ActionResult<PlayerResponseFull>> GetBeatSaver(string id)
+        [SwaggerOperation(Summary = "Get player with BeatSaver", Description = "Retrieves a BeatLeader profile data with linked BeatSaver profile.")]
+        [SwaggerResponse(200, "Returns the player's full profile", typeof(PlayerResponseFull))]
+        [SwaggerResponse(404, "Player not found")]
+        public async Task<ActionResult<PlayerResponseFull>> GetBeatSaver([FromRoute, SwaggerParameter("BeatSaver profile ID")] string id)
         {
             var social = _context.PlayerSocial.Where(s => s.Service == "BeatSaver" && s.UserId == id && s.PlayerId != null).FirstOrDefault();
 
@@ -274,140 +283,30 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
-        [HttpGet("~/playerlink/{login}")]
-        [Authorize]
-        public async Task<ActionResult<AccountLink>> GetPlayerLink(string login)
-        {
-            string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = await _context.Players.FindAsync(currentId);
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
-            AuthInfo? info = _context.Auths.FirstOrDefault(el => el.Login == login);
-            if (info == null)
-            {
-                return NotFound("No info");
-            }
-            AccountLink? link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == info.Id);
-            if (link == null)
-            {
-                return NotFound("No link");
-            }
-            
-            return link;
-        }
-
-        [HttpDelete("~/authinfo/{login}")]
-        [Authorize]
-        public async Task<ActionResult> DeleteAuthInfo(string login)
-        {
-            string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = await _context.Players.FindAsync(currentId);
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
-            AuthInfo? info = _context.Auths.FirstOrDefault(el => el.Login == login);
-            if (info == null)
-            {
-                return NotFound("No info");
-            }
-            _context.Auths.Remove(info);
-            await _context.SaveChangesAsync();
-
-            return Ok();
-        }
-
-        [HttpDelete("~/authips/")]
-        [Authorize]
-        public async Task<ActionResult> DeleteAuthIps()
-        {
-            string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = await _context.Players.FindAsync(currentId);
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
-            var info = _context.AuthIPs.ToArray();
-            foreach (var item in info)
-            {
-                _context.AuthIPs.Remove(item);
-            }
-            
-            await _context.SaveChangesAsync();
-
-            return Ok();
-        }
-
-        [HttpDelete("~/attempts/")]
-        [Authorize]
-        public async Task<ActionResult> DeleteAttempts()
-        {
-            string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = await _context.Players.FindAsync(currentId);
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
-            var info = _context.LoginAttempts.ToArray();
-            foreach (var item in info)
-            {
-                _context.LoginAttempts.Remove(item);
-            }
-            
-            await _context.SaveChangesAsync();
-
-            return Ok();
-        }
-
-        [HttpDelete("~/playerlink/{id}")]
-        [Authorize]
-        public async Task<ActionResult> DeletePlayerLinked(string id)
-        {
-            string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = await _context.Players.FindAsync(currentId);
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
-            AccountLink? link = _context.AccountLinks.FirstOrDefault(el => el.SteamID == id);
-            if (link == null)
-            {
-                return NotFound();
-            }
-            AuthInfo? info = _context.Auths.FirstOrDefault(el => el.Id == link.OculusID);
-            if (info == null)
-            {
-                return NotFound();
-            }
-            _context.AccountLinks.Remove(link);
-
-            await _context.SaveChangesAsync();
-
-            return Ok();
-        }
-
         [HttpGet("~/players")]
+        [SwaggerOperation(Summary = "Retrieve a list of players (ranking)", Description = "Fetches a paginated and optionally filtered list of players. Filters include sorting by performance points, search, country, maps type, platform, and more.")]
+        [SwaggerResponse(200, "List of players retrieved successfully", typeof(ResponseWithMetadata<PlayerResponseWithStats>))]
+        [SwaggerResponse(400, "Invalid request parameters")]
+        [SwaggerResponse(404, "Players not found")]
         public async Task<ActionResult<ResponseWithMetadata<PlayerResponseWithStats>>> GetPlayers(
-            [FromQuery] string sortBy = "pp", 
-            [FromQuery] int page = 1, 
-            [FromQuery] int count = 50, 
-            [FromQuery] string search = "",
-            [FromQuery] Order order = Order.Desc,
-            [FromQuery] string countries = "",
-            [FromQuery] string mapsType = "ranked",
-            [FromQuery] string ppType = "general",
-            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            [FromQuery] bool friends = false,
-            [FromQuery] string? pp_range = null,
-            [FromQuery] string? score_range = null,
-            [FromQuery] string? platform = null,
-            [FromQuery] string? role = null,
-            [FromQuery] string? hmd = null,
-            [FromQuery] string? clans = null,
-            [FromQuery] int? activityPeriod = null,
-            [FromQuery] bool? banned = null)
+            [FromQuery, SwaggerParameter("Sorting criteria, default is 'pp' (performance points)")] string sortBy = "pp",
+            [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
+            [FromQuery, SwaggerParameter("Number of players per page, default is 50")] int count = 50,
+            [FromQuery, SwaggerParameter("Search term for filtering players by username")] string search = "",
+            [FromQuery, SwaggerParameter("Order of sorting, default is descending")] Order order = Order.Desc,
+            [FromQuery, SwaggerParameter("Comma-separated list of countries for filtering")] string countries = "",
+            [FromQuery, SwaggerParameter("Type of maps to consider, default is 'ranked'")] string mapsType = "ranked",
+            [FromQuery, SwaggerParameter("Type of performance points, default is 'general'")] string ppType = "general",
+            [FromQuery, SwaggerParameter("Context of the leaderboard, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
+            [FromQuery, SwaggerParameter("Flag to filter only friends, default is false")] bool friends = false,
+            [FromQuery, SwaggerParameter("Comma-separated range to filter by amount of pp, default is null")] string? pp_range = null,
+            [FromQuery, SwaggerParameter("Comma-separated range to filter by total score, default is null")] string? score_range = null,
+            [FromQuery, SwaggerParameter("Comma-separated range to filter by platform value, default is null")] string? platform = null,
+            [FromQuery, SwaggerParameter("Comma-separated range to filter by role, default is null")] string? role = null,
+            [FromQuery, SwaggerParameter("Comma-separated range to filter by hmd (headset), default is null")] string? hmd = null,
+            [FromQuery, SwaggerParameter("Comma-separated range to filter by clan tags, default is null")] string? clans = null,
+            [FromQuery, SwaggerParameter("Value in seconds to filter by the last score time, default is null")] int? activityPeriod = null,
+            [FromQuery, SwaggerParameter("Flag to filter only banned players, default is null")] bool? banned = null)
         {
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
                 return await GetContextPlayers(sortBy, page, count, search, order, countries, mapsType, ppType, leaderboardContext, friends, pp_range, score_range, platform, role, hmd, clans, activityPeriod, banned);
@@ -1037,235 +936,6 @@ namespace BeatLeader_Server.Controllers
             }
 
             return request;
-        }
-
-        [HttpGet("~/event/{id}/players")]
-        public async Task<ActionResult<ResponseWithMetadata<PlayerResponseWithStats>>> GetEventPlayers(
-            int id,
-            [FromQuery] string sortBy = "pp", 
-            [FromQuery] int page = 1, 
-            [FromQuery] int count = 50, 
-            [FromQuery] string search = "",
-            [FromQuery] Order order = Order.Desc,
-            [FromQuery] string countries = ""
-            )
-        {
-            IQueryable<Player> request = _readContext
-                .Players
-                .Include(p => p.ScoreStats)
-                .Include(p => p.EventsParticipating)
-                .Include(p => p.ProfileSettings)
-                .Where(p => !p.Banned);
-            
-            if (countries.Length != 0)
-            {
-                var player = Expression.Parameter(typeof(Player), "p");
-
-                // 1 != 2 is here to trigger `OrElse` further the line.
-                var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
-                foreach (var term in countries.ToLower().Split(","))
-                {
-                    exp = Expression.OrElse(exp, Expression.Equal(Expression.Property(player, "Country"), Expression.Constant(term)));
-                }
-                request = request.Where((Expression<Func<Player, bool>>)Expression.Lambda(exp, player));
-            }
-
-            if (search.Length != 0)
-            {
-                var player = Expression.Parameter(typeof(Player), "p");
-
-                var contains = "".GetType().GetMethod("Contains", new[] { typeof(string) });
-
-                // 1 != 2 is here to trigger `OrElse` further the line.
-                var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
-                foreach (var term in search.ToLower().Split(","))
-                {
-                    exp = Expression.OrElse(exp, Expression.Call(Expression.Property(player, "Name"), contains, Expression.Constant(term)));
-                }
-                request = request.Where((Expression<Func<Player, bool>>)Expression.Lambda(exp, player));
-            }
-
-            var players = request.Where(p => p.EventsParticipating.FirstOrDefault(e => e.EventId == id) != null)
-                .AsEnumerable()
-                .Select(ResponseWithStatsFromPlayer)
-                .OrderByDescending(p => p.EventsParticipating.First(e => e.EventId == id).Pp);
-
-            var allPlayers = players.Skip((page - 1) * count).Take(count).ToList();
-
-            foreach (var resultPlayer in allPlayers)
-            {
-                var eventPlayer = resultPlayer.EventsParticipating.First(e => e.EventId == id);
-
-                resultPlayer.Rank = eventPlayer.Rank;
-                resultPlayer.Pp = eventPlayer.Pp;
-                resultPlayer.CountryRank = eventPlayer.CountryRank;
-            }
-
-            return new ResponseWithMetadata<PlayerResponseWithStats>()
-            {
-                Metadata = new Metadata()
-                {
-                    Page = page,
-                    ItemsPerPage = count,
-                    Total = players.Count()
-                },
-                Data = allPlayers
-            };
-        }
-
-        [HttpPut("~/badge")]
-        [Authorize]
-        public async Task<ActionResult<Badge>> CreateBadge(
-                [FromQuery] string description, 
-                [FromQuery] string? link = null,
-                [FromQuery] string? image = null,
-                [FromQuery] int? timeset = null,
-                [FromQuery] string? playerId = null) {
-            string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = _context.Players.Find(currentId);
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
-
-            Badge badge = new Badge {
-                Description = description,
-                Image = image ?? "",
-                Link = link,
-                Timeset = timeset ?? (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds
-            };
-
-            _context.Badges.Add(badge);
-            _context.SaveChanges();
-
-            if (image == null) {
-                string? fileName = null;
-                try
-                {
-                    var ms = new MemoryStream(5);
-                    await Request.Body.CopyToAsync(ms);
-                    ms.Position = 0;
-
-                    (string extension, MemoryStream stream) = ImageUtils.GetFormat(ms);
-                    Random rnd = new Random();
-                    fileName = "badge-" + badge.Id + "R" + rnd.Next(1, 50) + extension;
-
-                    badge.Image = await _assetsS3Client.UploadAsset(fileName, stream);
-                }
-                catch {}
-            }
-
-            _context.SaveChanges();
-
-            if (playerId != null) {
-                await AddBadge(playerId, badge.Id);
-            }
-
-            return badge;
-        }
-
-        [HttpPut("~/badge/{id}")]
-        [Authorize]
-        public ActionResult<Badge> UpdateBadge(int id, [FromQuery] string? description, [FromQuery] string? image, [FromQuery] string? link = null)
-        {
-            string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = _context.Players.Find(currentId);
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
-
-            var badge = _context.Badges.Find(id);
-
-            if (badge == null) {
-                return NotFound();
-            }
-
-            if (description != null) {
-                badge.Description = description;
-            }
-
-            if (image != null) {
-                badge.Image = image;
-            }
-
-            if (Request.Query.ContainsKey("link"))
-            {
-                badge.Link = link;
-            }
-
-            _context.SaveChanges();
-
-            return badge;
-        }
-
-        [HttpPut("~/player/badge/{playerId}/{badgeId}")]
-        [Authorize]
-        public async Task<ActionResult<Player>> AddBadge(string playerId, int badgeId)
-        {
-            if (HttpContext != null) {
-                string currentId = HttpContext.CurrentUserID(_context);
-                Player? currentPlayer = await _context.Players.FindAsync(currentId);
-                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-                {
-                    return Unauthorized();
-                }
-            }
-
-            Player? player = _context.Players.Include(p => p.Badges).FirstOrDefault(p => p.Id == playerId);
-            if (player == null)
-            {
-                return NotFound("Player not found");
-            }
-
-            Badge? badge = await _context.Badges.FindAsync(badgeId);
-            if (badge == null)
-            {
-                return NotFound("Badge not found");
-            }
-            if (player.Badges == null) {
-                player.Badges = new List<Badge>();
-            }
-
-            player.Badges.Add(badge);
-            await _context.SaveChangesAsync();
-
-            return player;
-        }
-
-        [HttpGet("~/oculususer")]
-        public async Task<ActionResult<OculusUser>> GetOculusUser([FromQuery] string token)
-        {
-            (string? id, string? error) = await SteamHelper.GetPlayerIDFromTicket(token, _configuration);
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var link = _readContext.AccountLinks.FirstOrDefault(l => l.PCOculusID == id);
-            if (link != null)
-            {
-                string playerId = link.SteamID.Length > 0 ? link.SteamID : id;
-
-                var player = await _readContext.Players.FindAsync(playerId);
-
-                return new OculusUser
-                {
-                    Id = id,
-                    Migrated = true,
-                    MigratedId = playerId,
-                    Name = player.Name,
-                    Avatar = player.Avatar,
-                };
-            }
-            var oculusPlayer = await PlayerUtils.GetPlayerFromOculus(id, token);
-
-            return new OculusUser
-            {
-                Id = id,
-                Name = oculusPlayer.Name,
-                Avatar = oculusPlayer.Avatar,
-            };
         }
 
         [NonAction]
