@@ -267,6 +267,7 @@ namespace BeatLeader_Server.Controllers
                 shared = playlistRecord.IsShared
             };
             playlist.customData = customData;
+            await _context.SaveChangesAsync();
 
             await S3Helper.UploadPlaylist(_s3Client, id + ".bplist", playlist);
 
