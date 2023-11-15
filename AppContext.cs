@@ -69,6 +69,8 @@ namespace BeatLeader_Server
         public DbSet<PlayerContextExtension> PlayerContextExtensions { get; set; }
         public DbSet<OpenIddictEntityFrameworkCoreScope> OpenIddictScopes { get; set; }
 
+        public DbSet<SongSuggestRefresh> SongSuggestRefreshes { get; set; }
+
         public void RejectChanges()
         {
             foreach (var entry in ChangeTracker.Entries())
