@@ -21,20 +21,16 @@ namespace BeatLeader_Server.Controllers
         private readonly IServerTiming _serverTiming;
         private readonly IConfiguration _configuration;
 
-        private readonly LeaderboardController _leaderboardController;
-
         public SongSuggestController(
             AppContext context,
             IWebHostEnvironment env,
             IServerTiming serverTiming,
-            IConfiguration configuration,
-            LeaderboardController leaderboardController)
+            IConfiguration configuration)
         {
             _context = context;
             _serverTiming = serverTiming;
             _s3Client = configuration.GetS3Client();
             _configuration = configuration;
-            _leaderboardController = leaderboardController;
         }
 
         [HttpGet("~/songsuggest")]
@@ -100,6 +96,9 @@ namespace BeatLeader_Server.Controllers
             var list = _context.Scores
                 .Where(s => 
                     s.Weight >= weight &&
+                    s.ValidContexts.HasFlag(LeaderboardContexts.NoMods) &&
+                    s.Pp > 0 &&
+                    s.Leaderboard.Difficulty.ModeName == "Standard" &&
                     s.Player.ScoreStats.RankedPlayCount >= 10 &&
                     s.Player.ScoreStats.LastRankedScoreTime >= activeTreshold)
                 .Select(s => new { 
