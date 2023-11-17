@@ -360,6 +360,8 @@ namespace BeatLeader_Server.Utils {
             public int BadCuts { get; set; }
             public HMD Hmd { get; set; }
             public ControllerEnum Controller { get; set; }
+            public float Accuracy { get; set; }
+            public float? Pp { get; set; }
 
             public int EpochTime { get; set; }
         }

@@ -311,7 +311,9 @@ namespace BeatLeader_Server.Controllers {
                             MissedNotes = s.MissedNotes,
                             BadCuts = s.BadCuts,
                             Modifiers = s.Modifiers,
-                            Controller = s.Controller
+                            Controller = s.Controller,
+                            Accuracy = s.Accuracy,
+                            Pp = s.Pp
                         },
                         Leaderboard = new CompactLeaderboard {
                             Id = s.LeaderboardId,
