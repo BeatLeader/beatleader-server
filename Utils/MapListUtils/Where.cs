@@ -11,7 +11,7 @@ public static partial class MapListUtils
         type switch
         {
             Type.Ranked      => sequence.Where(leaderboard => leaderboard.Difficulty.Status == DifficultyStatus.ranked),
-            Type.Ranking     => sequence.Where(leaderboard => leaderboard.Difficulty.Status != DifficultyStatus.unranked && leaderboard.Difficulty.Status != DifficultyStatus.outdated),
+            Type.Ranking     => sequence.Where(leaderboard => leaderboard.Difficulty.Status != DifficultyStatus.unranked && leaderboard.Difficulty.Status != DifficultyStatus.outdated && leaderboard.Difficulty.Status != DifficultyStatus.inevent),
             Type.Nominated   => sequence.Where(leaderboard => leaderboard.Difficulty.Status == DifficultyStatus.nominated),
             Type.Qualified   => sequence.Where(leaderboard => leaderboard.Difficulty.Status == DifficultyStatus.qualified),
             Type.Staff       => sequence.Where(leaderboard => leaderboard.Difficulty.Status == DifficultyStatus.qualified || leaderboard.Difficulty.Status == DifficultyStatus.nominated),
@@ -41,6 +41,10 @@ public static partial class MapListUtils
     {
         int mapperId = 0;
         string? currentId = currentPlayer?.Id;
+
+        if (currentId == null) { 
+            return sequence;
+        }
 
         if (mytype != MyType.None)
         {

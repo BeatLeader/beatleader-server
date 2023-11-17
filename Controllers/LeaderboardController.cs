@@ -1048,6 +1048,10 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] int? date_from = null,
             [FromQuery] int? date_to = null) {
 
+            if (count > 100) {
+                count = 100;
+            }
+
             var sequence = _context.Leaderboards.AsQueryable();
             string? currentID = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = currentID != null ? await _context
@@ -1157,7 +1161,9 @@ namespace BeatLeader_Server.Controllers {
                         MaxStreak = s.MaxStreak,
                     }).FirstOrDefault(),
                     Plays = showPlays ? lb.Scores.Count(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)) : 0
-                }).ToList();
+                })
+                .AsSplitQuery()
+                .ToList();
 
             if (resultList.Count > 0) {
                 bool showRatings = currentPlayer?.ProfileSettings?.ShowAllRatings ?? false;
