@@ -914,6 +914,63 @@ namespace BeatLeader_Server.Controllers
         }
 
         [Authorize]
+        [HttpGet("~/grantRTCore/{playerId}")]
+        public ActionResult GrantRTCore(
+            string playerId)
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = _context.Players.Find(currentID);
+
+            if (currentPlayer == null || currentID == playerId || (!currentPlayer.Role.Contains("admin") && (!currentPlayer.Role.Contains("rankedteam") || !currentPlayer.Role.Contains("creator"))))
+            {
+                return Unauthorized();
+            }
+
+            Player? player = _context.Players.FirstOrDefault(p => p.Id == playerId);
+            if (player == null) {
+                return NotFound();
+            }
+
+            if (!player.Role.Contains("rankedteam"))
+            {
+                player.Role = string.Join(",", player.Role.Split(",").Append("rankedteam"));
+
+                _context.SaveChanges();
+            }
+
+            return Ok();
+        }
+
+        [Authorize]
+        [HttpGet("~/removeRTCore/{playerId}")]
+        public ActionResult RemoveRTCore(
+            string playerId)
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = _context.Players.Find(currentID);
+
+            if (currentPlayer == null || currentID == playerId || (!currentPlayer.Role.Contains("admin") && (!currentPlayer.Role.Contains("rankedteam") || !currentPlayer.Role.Contains("creator"))))
+            {
+                return Unauthorized();
+            }
+
+            Player? player = _context.Players.FirstOrDefault(p => p.Id == playerId);
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            if (player.Role.Contains("rankedteam"))
+            {
+                player.Role = string.Join(",", player.Role.Split(",").Where(s => s != "rankedteam"));
+
+                _context.SaveChanges();
+            }
+
+            return Ok();
+        }
+
+        [Authorize]
         [HttpPost("~/qualification/comment/{id}")]
         public async Task<ActionResult<QualificationCommentary>> PostComment(int id)
         {
