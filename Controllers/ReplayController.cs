@@ -224,7 +224,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (replay.notes.Last().eventTime - replay.frames.Last().time > 2) {
-                return BadRequest("Replay is broken, update your mod please.");
+                return BadRequest("Replay missing frame data past note data.");
             }
 
             if (replay.info.score <= 0) {
