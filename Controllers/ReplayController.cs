@@ -223,6 +223,10 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Replay is broken, update your mod please.");
             }
 
+            if (replay.notes.Last().eventTime - replay.frames.Last().time > 2) {
+                return BadRequest("Replay is broken, update your mod please.");
+            }
+
             if (replay.info.score <= 0) {
                 Thread.Sleep(8000); // Error may not show if returned too quick
                 return BadRequest("The score should be positive");
