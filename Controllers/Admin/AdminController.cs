@@ -542,65 +542,6 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            var songs = _context.Songs.Where(el => el.Difficulties.FirstOrDefault(d => 
-                d.Status == DifficultyStatus.ranked || 
-                d.Status == DifficultyStatus.qualified || 
-                d.Status == DifficultyStatus.nominated) != null)
-                .Include(song => song.Difficulties)
-                .ThenInclude(d => d.ModifiersRating)
-                .ToList();
-
-            await songs.ParallelForEachAsync(async song => {
-                foreach (var diff in song.Difficulties)
-                {
-                    if (diff.Status == DifficultyStatus.ranked || diff.Status == DifficultyStatus.qualified || diff.Status == DifficultyStatus.nominated) {
-                        var response = await SongUtils.ExmachinaStars(song.Hash, diff.Value, diff.ModeName);
-                        if (response != null)
-                        {
-                            diff.PassRating = response.none.lack_map_calculation.balanced_pass_diff;
-                            diff.TechRating = response.none.lack_map_calculation.balanced_tech * 10;
-                            diff.PredictedAcc = response.none.AIacc;
-                            diff.AccRating = ReplayUtils.AccRating(diff.PredictedAcc, diff.PassRating, diff.TechRating);
-
-                            diff.ModifiersRating = new ModifiersRating
-                            {
-                                SSPassRating = response.SS.lack_map_calculation.balanced_pass_diff,
-                                SSTechRating = response.SS.lack_map_calculation.balanced_tech * 10,
-                                SSPredictedAcc = response.SS.AIacc,
-                                FSPassRating = response.FS.lack_map_calculation.balanced_pass_diff,
-                                FSTechRating = response.FS.lack_map_calculation.balanced_tech * 10,
-                                FSPredictedAcc = response.FS.AIacc,
-                                SFPassRating = response.SFS.lack_map_calculation.balanced_pass_diff,
-                                SFTechRating = response.SFS.lack_map_calculation.balanced_tech * 10,
-                                SFPredictedAcc = response.SFS.AIacc,
-                            };
-
-                            var rating = diff.ModifiersRating;
-                            rating.SSAccRating = ReplayUtils.AccRating(
-                                    rating.SSPredictedAcc, 
-                                    rating.SSPassRating, 
-                                    rating.SSTechRating);
-                            rating.FSAccRating = ReplayUtils.AccRating(
-                                    rating.FSPredictedAcc, 
-                                    rating.FSPassRating, 
-                                    rating.FSTechRating);
-                            rating.SFAccRating = ReplayUtils.AccRating(
-                                    rating.SFPredictedAcc, 
-                                    rating.SFPassRating, 
-                                    rating.SFTechRating);
-                        }
-                        else
-                        {
-                            diff.PassRating = 0.0f;
-                            diff.PredictedAcc = 1.0f;
-                            diff.TechRating = 0.0f;
-                        }
-                    }
-                }
-            }, maxDegreeOfParallelism: 3);
-
-            await _context.SaveChangesAsync();
-
             var leaderboards = _context
                 .Leaderboards
                 .Where(lb => 
@@ -609,111 +550,33 @@ namespace BeatLeader_Server.Controllers
                     lb.Difficulty.Status == DifficultyStatus.nominated)
                 .Include(lb => lb.Difficulty)
                 .Include(lb => lb.Changes)
+                .Include(lb => lb.Song)
                 .ToList();
-            foreach (var leaderboard  in leaderboards) {
+
+            foreach (var leaderboard in leaderboards)
+            {
                 var diff = leaderboard.Difficulty;
+                var song = leaderboard.Song;
 
                 LeaderboardChange rankChange = new LeaderboardChange
                 {
                     Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
                     PlayerId = RankingBotID,
                     OldStars = diff.Stars ?? 0,
-                    NewStars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0),
-                    NewAccRating = diff.AccRating ?? 0,
-                    NewPassRating = diff.PassRating ?? 0,
-                    NewTechRating = diff.TechRating ?? 0,
+                    OldAccRating = diff.AccRating ?? 0,
+                    OldPassRating = diff.PassRating ?? 0,
+                    OldTechRating = diff.TechRating ?? 0,
                 };
-                diff.Stars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0);
+
                 if (leaderboard.Changes == null) {
                     leaderboard.Changes = new List<LeaderboardChange>();
                 }
 
                 leaderboard.Changes.Add(rankChange);
-            }
-            await _context.SaveChangesAsync();
 
-            return Ok();
-        }
-
-        [HttpPost("~/admin/playlist/rank")]
-        public async Task<ActionResult> RankPlaylist()
-        {
-            string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
-
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
+                await RatingUtils.UpdateFromExMachina(leaderboard, rankChange);
             }
 
-            dynamic? playlist = null;
-
-            using (var ms = new MemoryStream(5))
-            {
-                await Request.Body.CopyToAsync(ms);
-                ms.Position = 0;
-                playlist = ms.ObjectFromStream();
-            }
-
-            var players = new List<EventPlayer>();
-            var basicPlayers = new List<Player>();
-            var playerScores = new Dictionary<string, List<Score>>();
-
-            foreach (var songy in playlist.songs) {
-                foreach (var diffy in songy.difficulties)
-                {
-                    string hash = songy.hash.ToLower();
-                    string diffName = diffy.name.ToLower();
-                    string characteristic = diffy.characteristic.ToLower();
-
-                    var lb = _context.Leaderboards.Where(lb => 
-                        lb.Song.Hash.ToLower() == hash && 
-                        lb.Difficulty.DifficultyName.ToLower() == diffName &&
-                        lb.Difficulty.ModeName.ToLower() == characteristic).Include(lb => lb.Difficulty).Include(lb => lb.Song).FirstOrDefault();
-
-                    if (lb != null && lb.Difficulty.Status != DifficultyStatus.outdated) {
-
-                        if (lb.Difficulty.Status == DifficultyStatus.unranked || lb.Difficulty.Status == DifficultyStatus.inevent)
-                        {
-                            var diff = lb.Difficulty;
-                            lb.Difficulty.Status = DifficultyStatus.ranked;
-                            var response = await SongUtils.ExmachinaStars(lb.Song.Hash, diff.Value, diff.ModeName);
-                            if (response != null) {
-                                diff.PassRating = response.none.lack_map_calculation.balanced_pass_diff;
-                                diff.TechRating = response.none.lack_map_calculation.balanced_tech * 10;
-                                diff.PredictedAcc = response.none.AIacc;
-                                diff.AccRating = ReplayUtils.AccRating(response.none.AIacc, response.none.lack_map_calculation.balanced_pass_diff, response.none.lack_map_calculation.balanced_tech * 10);
-
-                                diff.ModifiersRating = new ModifiersRating {
-                                    SSPassRating = response.SS.lack_map_calculation.balanced_pass_diff,
-                                    SSTechRating = response.SS.lack_map_calculation.balanced_tech * 10,
-                                    SSPredictedAcc = response.SS.AIacc,
-                                    SSAccRating = ReplayUtils.AccRating(response.SS.AIacc, response.SS.lack_map_calculation.balanced_pass_diff, response.SS.lack_map_calculation.balanced_tech * 10),
-                                    SFPassRating = response.SFS.lack_map_calculation.balanced_pass_diff,
-                                    SFTechRating = response.SFS.lack_map_calculation.balanced_tech * 10,
-                                    SFPredictedAcc = response.SFS.AIacc,
-                                    SFAccRating = ReplayUtils.AccRating(response.SFS.AIacc, response.SFS.lack_map_calculation.balanced_pass_diff, response.SFS.lack_map_calculation.balanced_tech * 10),
-                                    FSPassRating = response.FS.lack_map_calculation.balanced_pass_diff,
-                                    FSTechRating = response.FS.lack_map_calculation.balanced_tech * 10,
-                                    FSPredictedAcc = response.FS.AIacc,
-                                    FSAccRating = ReplayUtils.AccRating(response.FS.AIacc, response.FS.lack_map_calculation.balanced_pass_diff, response.FS.lack_map_calculation.balanced_tech * 10),
-                                };
-
-                                diff.Stars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0);
-
-                            } else {
-                                diff.PassRating = diff.Stars ?? 0;
-                                diff.PredictedAcc = 0.98f;
-                                diff.TechRating = 0;
-                            }
-                            await _context.SaveChangesAsync();
-
-                            await _scoreRefreshController.RefreshScores(lb.Id);
-                        }
-                    }
-                }
-            }
-            
             await _context.SaveChangesAsync();
 
             return Ok();

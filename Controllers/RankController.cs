@@ -345,39 +345,7 @@ namespace BeatLeader_Server.Controllers
                 difficulty.Status = DifficultyStatus.nominated;
                 difficulty.NominatedTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
-                var response = await SongUtils.ExmachinaStars(leaderboard.Song.Hash, difficulty.Value, difficulty.ModeName);
-                if (response != null) {
-                    difficulty.PassRating = response.none.lack_map_calculation.balanced_pass_diff;
-                    difficulty.TechRating = response.none.lack_map_calculation.balanced_tech * 10;
-                    difficulty.PredictedAcc = response.none.AIacc;
-                    difficulty.AccRating = ReplayUtils.AccRating(response.none.AIacc, response.none.lack_map_calculation.balanced_pass_diff, response.none.lack_map_calculation.balanced_tech * 10);
-
-                    var modifiersRating = new ModifiersRating {
-                        SSPassRating = response.SS.lack_map_calculation.balanced_pass_diff,
-                        SSTechRating = response.SS.lack_map_calculation.balanced_tech * 10,
-                        SSPredictedAcc = response.SS.AIacc,
-                        SSAccRating = ReplayUtils.AccRating(response.SS.AIacc, response.SS.lack_map_calculation.balanced_pass_diff, response.SS.lack_map_calculation.balanced_tech * 10),
-                        SFPassRating = response.SFS.lack_map_calculation.balanced_pass_diff,
-                        SFTechRating = response.SFS.lack_map_calculation.balanced_tech * 10,
-                        SFPredictedAcc = response.SFS.AIacc,
-                        SFAccRating = ReplayUtils.AccRating(response.SFS.AIacc, response.SFS.lack_map_calculation.balanced_pass_diff, response.SFS.lack_map_calculation.balanced_tech * 10),
-                        FSPassRating = response.FS.lack_map_calculation.balanced_pass_diff,
-                        FSTechRating = response.FS.lack_map_calculation.balanced_tech * 10,
-                        FSPredictedAcc = response.FS.AIacc,
-                        FSAccRating = ReplayUtils.AccRating(response.FS.AIacc, response.FS.lack_map_calculation.balanced_pass_diff, response.FS.lack_map_calculation.balanced_tech * 10),
-                    };
-                    difficulty.ModifiersRating = modifiersRating;
-
-                    difficulty.Stars = ReplayUtils.ToStars(difficulty.AccRating ?? 0, difficulty.PassRating ?? 0, difficulty.TechRating ?? 0);
-                    modifiersRating.SSStars = ReplayUtils.ToStars(modifiersRating.SSAccRating, modifiersRating.SSPassRating, modifiersRating.SSTechRating);
-                    modifiersRating.SFStars = ReplayUtils.ToStars(modifiersRating.SFAccRating, modifiersRating.SFPassRating, modifiersRating.SFTechRating);
-                    modifiersRating.FSStars = ReplayUtils.ToStars(modifiersRating.FSAccRating, modifiersRating.FSPassRating, modifiersRating.FSTechRating);
-
-                } else {
-                    difficulty.PassRating = 0;
-                    difficulty.AccRating = 0;
-                    difficulty.TechRating = 0;
-                }
+                await RatingUtils.UpdateFromExMachina(leaderboard, null);
 
                 string? criteriaCheck = qualifiedLeaderboards.FirstOrDefault(lb => lb.Qualification.CriteriaCheck != null)?.Qualification.CriteriaCheck;
                 if (criteriaCheck == null) {

@@ -175,32 +175,57 @@ namespace BeatLeader_Server.Utils
             }   
         }
 
-        public class ExmachinaLackPart {
-            public float balanced_tech { get; set; }
-            public float balanced_pass_diff { get; set; }
+        public class LackMapCalculation
+        {
+            [JsonProperty("avg_pattern_rating")]
+            public float PatternRating { get; set; } = 0;
+            [JsonProperty("balanced_pass_diff")]
+            public float PassRating { get; set; } = 0;
+            [JsonProperty("linear_rating")]
+            public float LinearRating { get; set; } = 0;
+
+            [JsonProperty("balanced_tech")]
+            public float TechRating { get; set; } = 0;
+            [JsonProperty("low_note_nerf")]
+            public float LowNoteNerf { get; set; } = 0;
         }
 
-        public class ExmachinaRating {
-            public float AIacc { get; set; }
-            public ExmachinaLackPart lack_map_calculation { get; set; }
+        public class CurvePoint
+        {
+            public double x { get; set; } = 0;
+            public double y { get; set; } = 0;
+        }
+
+        public class RatingResult
+        {
+            [JsonProperty("predicted_acc")]
+            public float PredictedAcc { get; set; } = 0;
+            [JsonProperty("acc_rating")]
+            public float AccRating { get; set; } = 0;
+            [JsonProperty("lack_map_calculation")]
+            public LackMapCalculation LackMapCalculation { get; set; } = new();
+            [JsonProperty("pointlist")]
+            public List<CurvePoint> PointList { get; set; } = new();
         }
 
         public class ExmachinaResponse {
-            public ExmachinaRating FS { get; set; }
-            public ExmachinaRating SFS { get; set; }
-            public ExmachinaRating SS { get; set; }
-            public ExmachinaRating none { get; set; }
+            public RatingResult FS { get; set; }
+            public RatingResult SFS { get; set; }
+            public RatingResult SS { get; set; }
+            public RatingResult none { get; set; }
         }
 
         public static async Task<ExmachinaResponse?> ExmachinaStars(string hash, int diff, string mode) {
 
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"https://stage.api.beatleader.net/ppai/{hash}/{mode}/{diff}");
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"https://stage.api.beatleader.net/ppai2/{hash}/{mode}/{diff}");
             request.Method = "GET";
             request.Proxy = null;
 
             try {
                 return await request.DynamicResponse<ExmachinaResponse>();
-            } catch { return null; }
+            } catch (Exception e) { 
+                return null; 
+            }
         }
     }
 }

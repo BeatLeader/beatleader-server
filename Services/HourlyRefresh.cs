@@ -116,7 +116,7 @@ namespace BeatLeader_Server.Services {
                     } catch { }
 
                     foreach (var diff in song.Difficulties) {
-                        await RatingUtils.SetRating(diff, song);
+                        await RatingUtils.UpdateFromExMachina(diff, song, null);
                     }
 
                     song.Checked = true;
