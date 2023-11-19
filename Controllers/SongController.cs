@@ -27,6 +27,12 @@ namespace BeatLeader_Server.Controllers
             _rtNominationsForum = rtNominationsForum;
         }
 
+        [HttpGet("~/refreshstatus")]
+        public string refreshstatus()
+        {
+            return _context.Songs.Where(s => s.Refreshed).Count() + " of " +  _context.Songs.Count();
+        }
+
         [HttpGet("~/map/hash/{hash}")]
         public async Task<ActionResult<Song>> GetHash(string hash)
         {

@@ -30,7 +30,7 @@ namespace BeatLeader_Server.Utils {
                 if (rankChange != null) {
                     rankChange.NewAccRating = diff.AccRating ?? 0;
                     rankChange.NewPassRating = diff.PassRating ?? 0;
-                    rankChange.NewAccRating = diff.AccRating ?? 0;
+                    rankChange.NewTechRating = diff.TechRating ?? 0;
                     rankChange.NewStars = diff.Stars ?? 0;
                 }
 

@@ -25,6 +25,7 @@ namespace BeatLeader_Server.Services {
 
                 if (minuteSpan == 60) {
                     await RefreshClans();
+                    await RefreshMaps();
                     await CheckMaps();
 
                     minuteSpan = 60 - DateTime.Now.Minute;
@@ -123,6 +124,40 @@ namespace BeatLeader_Server.Services {
                 }
 
                 await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task RefreshMaps() {
+            using (var scope = _serviceScopeFactory.CreateScope()) {
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+                var _s3Client = _configuration.GetS3Client();
+
+                var query = _context.Songs.Where(s => !s.Refreshed);
+                var count = query.Count();
+
+                for (int i = 0; i < count; i+=1000)
+                {
+                    var songs = query
+                        .OrderByDescending(s => s.UploadTime)
+                        .Skip(i)
+                        .Take(1000)
+                        .Include(s => s.Difficulties)
+                        .ThenInclude(d => d.ModifiersRating)
+                        .ToList();
+
+                    foreach (var song in songs) {
+
+                        foreach (var diff in song.Difficulties) {
+                            if (diff.Status != DifficultyStatus.ranked) {
+                                await RatingUtils.UpdateFromExMachina(diff, song, null);
+                            }
+                        }
+
+                        song.Refreshed = true;
+                    }
+
+                    await _context.SaveChangesAsync();
+                }
             }
         }
     }
