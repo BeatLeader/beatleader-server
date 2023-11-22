@@ -1012,29 +1012,11 @@ namespace BeatLeader_Server.Controllers
                 auth.Password = "password" + auth.Id;
             }
 
-            foreach (var item in _context.AuthIPs.ToList()) {
-                _context.AuthIPs.Remove(item);
-            }
-
-            foreach (var item in _context.AuthIDs.ToList()) {
-                _context.AuthIDs.Remove(item);
-            }
-
-            foreach (var item in _context.PlayerLeaderboardStats.ToList()) {
-                _context.PlayerLeaderboardStats.Remove(item);
-            }
-
-            foreach (var item in _context.TwitterLinks.ToList()) {
-                _context.TwitterLinks.Remove(item);
-            }
-
-            foreach (var item in _context.TwitchLinks.ToList()) {
-                _context.TwitchLinks.Remove(item);
-            }
-
-            foreach (var item in _context.DiscordLinks.ToList()) {
-                _context.DiscordLinks.Remove(item);
-            }
+            _context.AuthIPs.BulkDelete(_context.AuthIPs);
+            _context.AuthIDs.BulkDelete(_context.AuthIDs);
+            _context.TwitterLinks.BulkDelete(_context.TwitterLinks);
+            _context.TwitchLinks.BulkDelete(_context.TwitchLinks);
+            _context.DiscordLinks.BulkDelete(_context.DiscordLinks);
 
             foreach (var item in _context.YouTubeLinks.ToList()) {
                 _context.YouTubeLinks.Remove(item);
@@ -1047,14 +1029,13 @@ namespace BeatLeader_Server.Controllers
             foreach (var item in _context.BeatSaverLinks.ToList()) {
                 _context.BeatSaverLinks.Remove(item);
             }
-
-            foreach (var item in _context.WatchingSessions.ToList()) {
-                _context.WatchingSessions.Remove(item);
-            }
+            _context.WatchingSessions.BulkDelete(_context.WatchingSessions);
+            _context.BulkSaveChanges();
 
             foreach (var item in _context.RankVotings.ToList()) {
                 _context.RankVotings.Remove(item);
             }
+            _context.BulkSaveChanges();
 
             foreach (var item in _context.Friends.ToList()) {
                 _context.Friends.Remove(item);
@@ -1067,6 +1048,7 @@ namespace BeatLeader_Server.Controllers
             foreach (var item in _context.CriteriaCommentary.ToList()) {
                 _context.CriteriaCommentary.Remove(item);
             }
+            _context.BulkSaveChanges();
 
             foreach (var item in _context.QualificationCommentary.ToList()) {
                 _context.QualificationCommentary.Remove(item);
@@ -1080,6 +1062,7 @@ namespace BeatLeader_Server.Controllers
             foreach (var item in _context.AccountLinkRequests.ToList()) {
                 _context.AccountLinkRequests.Remove(item);
             }
+            _context.BulkSaveChanges();
 
             foreach (var item in _context.Leaderboards.Where(lb => lb.Qualification != null).Include(lb => lb.Qualification).ToList()) {
                 item.Qualification = null;
@@ -1087,6 +1070,21 @@ namespace BeatLeader_Server.Controllers
             foreach (var item in _context.ScoreRemovalLogs.ToList()) {
                 _context.ScoreRemovalLogs.Remove(item);
             }
+
+            foreach (var item in _context.OpenIddictApplications.ToList()) {
+                _context.OpenIddictApplications.Remove(item);
+            }
+            foreach (var item in _context.OpenIddictAuthorizations.ToList()) {
+                _context.OpenIddictAuthorizations.Remove(item);
+            }
+            foreach (var item in _context.OpenIddictScopes.ToList()) {
+                _context.OpenIddictScopes.Remove(item);
+            }
+            foreach (var item in _context.OpenIddictTokens.ToList()) {
+                _context.OpenIddictTokens.Remove(item);
+            }
+
+            _context.Database.ExecuteSqlRaw("TRUNCATE TABLE PlayerLeaderboardStats;");
 
             _context.BulkSaveChanges();
 

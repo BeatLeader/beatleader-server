@@ -67,7 +67,11 @@ namespace BeatLeader_Server
         public DbSet<SongSearch> SongSearches { get; set; }
         public DbSet<ScoreContextExtension> ScoreContextExtensions { get; set; }
         public DbSet<PlayerContextExtension> PlayerContextExtensions { get; set; }
+        public DbSet<OpenIddictEntityFrameworkCoreApplication> OpenIddictApplications { get; set; }
+        public DbSet<OpenIddictEntityFrameworkCoreAuthorization> OpenIddictAuthorizations { get; set; }
         public DbSet<OpenIddictEntityFrameworkCoreScope> OpenIddictScopes { get; set; }
+        public DbSet<OpenIddictEntityFrameworkCoreToken> OpenIddictTokens { get; set; }
+
 
         public DbSet<SongSuggestRefresh> SongSuggestRefreshes { get; set; }
 

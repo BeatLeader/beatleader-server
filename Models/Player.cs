@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace BeatLeader_Server.Models {
     public class PlayerChange {
@@ -69,6 +70,9 @@ namespace BeatLeader_Server.Models {
         public ICollection<PlayerFriends>? Friends { get; set; }
 
         public ICollection<Badge>? Badges { get; set; }
+
+        [JsonIgnore]
+        public DeveloperProfile? DeveloperProfile { get; set; }
 
         public PatreonFeatures? PatreonFeatures { get; set; }
         public ProfileSettings? ProfileSettings { get; set; }
