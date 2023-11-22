@@ -1234,10 +1234,11 @@ namespace BeatLeader_Server.Controllers
                                 s.LeaderboardId == leaderboard.Id && 
                                 s.Rank >= resultScore.Rank && 
                                 s.Rank <= 4 &&
-                                s.PlayerId != player.Id)
+                                s.PlayerId != player.Id &&
+                                s.Context == ce.Context)
                             .Select(s => new {
                                 s.Rank,
-                                s.Player.ScoreStats
+                                s.Player.ContextExtensions.Where(ce => ce.Context == ce.Context).FirstOrDefault().ScoreStats
                             })
                             .ToList();
                         foreach (var score in scores) {
