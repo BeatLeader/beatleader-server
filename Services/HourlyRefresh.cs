@@ -25,7 +25,6 @@ namespace BeatLeader_Server.Services {
 
                 if (minuteSpan == 60) {
                     await RefreshClans();
-                    await RefreshMaps();
                     await CheckMaps();
 
                     minuteSpan = 60 - DateTime.Now.Minute;

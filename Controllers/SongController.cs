@@ -159,13 +159,14 @@ namespace BeatLeader_Server.Controllers
                         songId += "x";
                         existingSong = _context.Songs.Include(s => s.Difficulties).FirstOrDefault(i => i.Id == songId);
                     }
-                    var checkAgain = GetSongWithDiffsFromHash(hash);
-                    if (checkAgain != null) return checkAgain;
 
                     song.Id = songId;
                     song.Hash = hash;
-                    _context.Songs.Add(song);
-                    await _context.SaveChangesAsync();
+                    try {
+                        _context.Songs.Add(song);
+                        await _context.SaveChangesAsync();
+                    } catch {
+                    }
 
                     SongSearchService.AddNewSong(song);
                     

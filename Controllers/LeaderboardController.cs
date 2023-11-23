@@ -1143,7 +1143,7 @@ namespace BeatLeader_Server.Controllers {
                         Type  = lb.Difficulty.Type,
                         MaxScore = lb.Difficulty.MaxScore,
                     },
-                    Qualification = new QualificationInfo {
+                    Qualification = lb.Qualification != null ? new QualificationInfo {
                         Id = lb.Qualification.Id,
                         Timeset = lb.Qualification.Timeset,
                         RTMember = lb.Qualification.RTMember,
@@ -1157,7 +1157,7 @@ namespace BeatLeader_Server.Controllers {
                         ApprovalTimeset = lb.Qualification.ApprovalTimeset,
                         Approved = lb.Qualification.Approved,
                         Approvers = lb.Qualification.Approvers,
-                    }
+                    } : null
                 })
                 .ToList();
 
