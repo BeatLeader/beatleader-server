@@ -441,8 +441,9 @@ namespace BeatLeader_Server.Utils
             var rankedPlayers = context
                 .PlayerContextExtensions
                 .Where(t => t.Context == leaderboardContext && t.Pp >= oldPp && t.Pp <= resultPP && t.PlayerId != player.PlayerId)
+                .Select(p => new { p.Id, p.Rank, p.Country, p.CountryRank, p.Pp })
+                .ToList()
                 .OrderByDescending(t => t.Pp)
-                .Select(p => new { Pp = p.Pp, Country = p.Country, Rank = p.Rank, CountryRank = p.CountryRank })
                 .ToList();
 
             if (rankedPlayers.Count() > 0)
@@ -481,8 +482,9 @@ namespace BeatLeader_Server.Utils
             var rankedPlayers = context
                 .Players
                 .Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned)
+                .Select(p => new { p.Id, p.Rank, p.Country, p.CountryRank, p.Pp })
+                .ToList()
                 .OrderByDescending(t => t.Pp)
-                .Select(p => new { Pp = p.Pp, Country = p.Country, Rank = p.Rank, CountryRank = p.CountryRank })
                 .ToList();
 
             if (rankedPlayers.Count() > 0)

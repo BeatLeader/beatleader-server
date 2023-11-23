@@ -1023,6 +1023,158 @@ namespace BeatLeader_Server.Controllers {
             return leaderboard;
         }
 
+        public class QualificationInfo {
+            public int Id { get; set; }
+            public int Timeset { get; set; }
+            public string RTMember { get; set; }
+            public int CriteriaMet { get; set; }
+            public int CriteriaTimeset { get; set; }
+            public string CriteriaChecker { get; set; }
+            public string CriteriaCommentary { get; set; }
+            public bool MapperAllowed { get; set; }
+            public string MapperId { get; set; }
+            public bool MapperQualification { get; set; }
+            public int ApprovalTimeset { get; set; }
+            public bool Approved { get; set; }
+            public string Approvers { get; set; }
+        }
+
+        public class MassLeaderboardsInfoResponse {
+            public string Id { get; set; }
+            public SongInfo Song { get; set; }
+            public MassLeaderboardsDiffInfo Difficulty { get; set; }
+            public QualificationInfo? Qualification { get; set; }
+
+            public void HideRatings() {
+                Difficulty.HideRatings();
+            }
+        }
+
+        public class SongInfo {
+            public string Id { get; set; }
+            public string Hash { get; set; }
+        }
+
+        public class MassLeaderboardsDiffInfo {
+            public int Id { get; set; }
+            public int Value { get; set; }
+            public int Mode { get; set; }
+            public DifficultyStatus Status { get; set; }
+            public string ModeName { get; set; }
+            public string DifficultyName { get; set; }
+            public int NominatedTime { get; set; }
+            public int QualifiedTime { get; set; }
+            public int RankedTime { get; set; }
+            public float? Stars { get; set; }
+            public float? AccRating { get; set; }
+            public float? PassRating { get; set; }
+            public float? TechRating { get; set; }
+            public int MaxScore { get; set; }
+            public int Type { get; set; }
+            public ModifiersMap ModifierValues { get; set; }
+            public ModifiersRating? ModifiersRating { get; set; }
+
+            public void HideRatings() {
+                this.AccRating = null;
+                this.TechRating = null;
+                this.PassRating = null;
+                this.Stars = null;
+
+                this.ModifiersRating = null;
+            }
+        }
+
+        [NonAction]
+        public async Task<ActionResult<ResponseWithMetadata<MassLeaderboardsInfoResponse>>> GetModList(
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10,
+            [FromQuery] SortBy sortBy = SortBy.None,
+            [FromQuery] Order order = Order.Desc,
+            [FromQuery] int? date_from = null,
+            [FromQuery] int? date_to = null
+            ) {
+            var sequence = _context.Leaderboards.AsQueryable();
+            string? currentID = HttpContext.CurrentUserID(_context);
+            Player? currentPlayer = currentID != null ? await _context
+                .Players
+                .Include(p => p.ProfileSettings)
+                .FirstOrDefaultAsync(p => p.Id == currentID) : null;
+
+            sequence = sequence.FilterRanking(_context, page, count, out int totalMatches, sortBy, order, date_from, date_to);
+
+            var result = new ResponseWithMetadata<MassLeaderboardsInfoResponse>() {
+                Metadata = new Metadata() {
+                    Page = page,
+                    ItemsPerPage = count,
+                    Total = totalMatches,
+                }
+            };
+
+            sequence = sequence
+                .Include(lb => lb.Difficulty)
+                .ThenInclude(d => d.ModifierValues)
+                .Include(lb => lb.Difficulty)
+                .ThenInclude(d => d.ModifiersRating);
+
+            var resultList = sequence
+                .Select(lb => new MassLeaderboardsInfoResponse {
+                    Id = lb.Id,
+                    Song = new SongInfo {
+                        Id = lb.Song.Id,
+                        Hash = lb.Song.Hash
+                    },
+                    Difficulty = new MassLeaderboardsDiffInfo {
+                        Id = lb.Difficulty.Id,
+                        Value = lb.Difficulty.Value,
+                        Mode = lb.Difficulty.Mode,
+                        DifficultyName = lb.Difficulty.DifficultyName,
+                        ModeName = lb.Difficulty.ModeName,
+                        Status = lb.Difficulty.Status,
+                        ModifierValues = lb.Difficulty.ModifierValues,
+                        ModifiersRating = lb.Difficulty.ModifiersRating,
+                        NominatedTime  = lb.Difficulty.NominatedTime,
+                        QualifiedTime  = lb.Difficulty.QualifiedTime,
+                        RankedTime = lb.Difficulty.RankedTime,
+
+                        Stars  = lb.Difficulty.Stars,
+                        PassRating  = lb.Difficulty.PassRating,
+                        AccRating  = lb.Difficulty.AccRating,
+                        TechRating  = lb.Difficulty.TechRating,
+                        Type  = lb.Difficulty.Type,
+                        MaxScore = lb.Difficulty.MaxScore,
+                    },
+                    Qualification = new QualificationInfo {
+                        Id = lb.Qualification.Id,
+                        Timeset = lb.Qualification.Timeset,
+                        RTMember = lb.Qualification.RTMember,
+                        CriteriaMet = lb.Qualification.CriteriaMet,
+                        CriteriaTimeset = lb.Qualification.CriteriaTimeset,
+                        CriteriaChecker = lb.Qualification.CriteriaChecker,
+                        CriteriaCommentary = lb.Qualification.CriteriaCommentary,
+                        MapperAllowed = lb.Qualification.MapperAllowed,
+                        MapperId = lb.Qualification.MapperId,
+                        MapperQualification = lb.Qualification.MapperQualification,
+                        ApprovalTimeset = lb.Qualification.ApprovalTimeset,
+                        Approved = lb.Qualification.Approved,
+                        Approvers = lb.Qualification.Approvers,
+                    }
+                })
+                .ToList();
+
+            if (resultList.Count > 0) {
+                bool showRatings = currentPlayer?.ProfileSettings?.ShowAllRatings ?? false;
+                foreach (var leaderboard in resultList) {
+                    if (!showRatings && !leaderboard.Difficulty.Status.WithRating()) {
+                        leaderboard.HideRatings();
+                    }
+                }
+            }
+
+            result.Data = resultList;
+
+            return result;
+        }
+
         [HttpGet("~/leaderboards/")]
         public async Task<ActionResult<ResponseWithMetadata<LeaderboardInfoResponse>>> GetAll(
             [FromQuery] int page = 1,
@@ -1048,8 +1200,8 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] int? date_from = null,
             [FromQuery] int? date_to = null) {
 
-            if (count > 100) {
-                count = 100;
+            if (type == Type.Ranking && count == 500) {
+                return Ok((await GetModList(page, count, sortBy, order, date_from, date_to)).Value);
             }
 
             var sequence = _context.Leaderboards.AsQueryable();
@@ -1162,7 +1314,6 @@ namespace BeatLeader_Server.Controllers {
                     }).FirstOrDefault(),
                     Plays = showPlays ? lb.Scores.Count(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)) : 0
                 })
-                .AsSplitQuery()
                 .ToList();
 
             if (resultList.Count > 0) {
