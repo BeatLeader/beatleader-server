@@ -4,6 +4,7 @@ using Amazon.S3.Model;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
 using Newtonsoft.Json;
+using ReplayDecoder;
 
 namespace BeatLeader_Server.Utils
 {

@@ -6,6 +6,7 @@ using Lib.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ReplayDecoder;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -1009,7 +1010,7 @@ namespace BeatLeader_Server.Controllers
                     long length = ms.Length;
                     try
                     {
-                        (replay, _) = ReplayDecoder.Decode(ms.ToArray());
+                        (replay, _) = ReplayDecoder.ReplayDecoder.Decode(ms.ToArray());
                     }
                     catch (Exception)
                     {

@@ -1,4 +1,6 @@
-﻿namespace BeatLeader_Server.Models {
+﻿using ReplayDecoder;
+
+namespace BeatLeader_Server.Models {
     public enum EndType {
         Unknown = 0,
         Clear = 1,

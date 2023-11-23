@@ -1515,44 +1515,5 @@ namespace BeatLeader_Server.Controllers {
 
             return result;
         }
-
-        [HttpGet("~/leaderboard/statistic/{id}")]
-        public async Task<ActionResult<Models.ScoreStatistic>> RefreshStatistic(string id) {
-            var stream = await _s3Client.DownloadStats(id + "-leaderboard.json");
-            if (stream != null) {
-                return File(stream, "application/json");
-            }
-
-            var leaderboard = _context.Leaderboards.Where(lb => lb.Id == id).Include(lb => lb.Scores.Where(s =>
-                !s.Banned
-                && !s.Modifiers.Contains("SS")
-                && !s.Modifiers.Contains("NA")
-                && !s.Modifiers.Contains("NB")
-                && !s.Modifiers.Contains("NF")
-                && !s.Modifiers.Contains("NO"))).FirstOrDefault();
-            if (leaderboard == null || leaderboard.Scores.Count == 0) {
-                return NotFound();
-            }
-
-            var scoreIds = leaderboard.Scores.Select(s => s.Id);
-
-            var statistics = scoreIds.Select(async id => {
-                using (var stream = await _s3Client.DownloadStats(id + ".json")) {
-                    if (stream == null) {
-                        return null;
-                    }
-
-                    return stream.ObjectFromStream<Models.ScoreStatistic>();
-                }
-            });
-
-            var result = new Models.ScoreStatistic();
-
-            await ReplayStatisticUtils.AverageStatistic(statistics, result);
-
-            await _s3Client.UploadScoreStats(id + "-leaderboard.json", result);
-
-            return result;
-        }
     }
 }

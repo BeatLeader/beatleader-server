@@ -15,6 +15,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Primitives;
 using Prometheus.Client;
 using System.Buffers;
+using ReplayDecoder;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -175,7 +176,7 @@ namespace BeatLeader_Server.Controllers
             replayData = replayDataList.ToArray();
             try
             {
-                (replay, offsets) = ReplayDecoder.Decode(replayData);
+                (replay, offsets) = ReplayDecoder.ReplayDecoder.Decode(replayData);
             }
             catch (Exception)
             {

@@ -1,6 +1,7 @@
 ﻿using AngleSharp.Common;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using ReplayDecoder;
 using System.Runtime.ConstrainedExecution;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
@@ -602,7 +603,7 @@ namespace BeatLeader_Server.Utils
                         if (param.scoringType != ScoringType.Default && param.scoringType != ScoringType.Normal) {
                             slider = true;
                         }
-                        return ReplayStatisticUtils.ScoreForNote(n, param.scoringType);
+                        return ReplayStatistic.ScoreForNote(n, param.scoringType);
                     }).Skip(1).ToList();
 
                     if (slider) {

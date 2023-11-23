@@ -2,6 +2,7 @@
 using Newtonsoft.Json;
 using System.Linq.Expressions;
 using static BeatLeader_Server.Utils.ResponseUtils;
+using ReplayDecoder;
 
 namespace BeatLeader_Server.Utils
 {

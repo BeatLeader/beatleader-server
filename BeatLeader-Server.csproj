@@ -10,9 +10,13 @@
 
   <ItemGroup>
     <Compile Remove="CronJobs\**" />
+    <Compile Remove="ReplayDecoder\**" />
     <Content Remove="CronJobs\**" />
+    <Content Remove="ReplayDecoder\**" />
     <EmbeddedResource Remove="CronJobs\**" />
+    <EmbeddedResource Remove="ReplayDecoder\**" />
     <None Remove="CronJobs\**" />
+    <None Remove="ReplayDecoder\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -72,6 +76,10 @@
   <ItemGroup>
     <None Remove="Auth\SteamTicket\" />
     <None Remove="Auth\Oculus\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="ReplayDecoder\ReplayDecoder\ReplayDecoder.csproj" />
   </ItemGroup>
   <ProjectExtensions>
     <MonoDevelop>

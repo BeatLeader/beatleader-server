@@ -6,6 +6,7 @@ using Dasync.Collections;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ReplayDecoder;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -641,7 +642,7 @@ namespace BeatLeader_Server.Controllers
                             long length = ms.Length;
                             try
                             {
-                                (replay, _) = ReplayDecoder.Decode(ms.ToArray());
+                                (replay, _) = ReplayDecoder.ReplayDecoder.Decode(ms.ToArray());
                             }
                             catch (Exception)
                             {
@@ -871,7 +872,7 @@ namespace BeatLeader_Server.Controllers
                     long length = ms.Length;
                     try
                     {
-                        (replay, _) = ReplayDecoder.Decode(ms.ToArray());
+                        (replay, _) = ReplayDecoder.ReplayDecoder.Decode(ms.ToArray());
                     }
                     catch (Exception)
                     {

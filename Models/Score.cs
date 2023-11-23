@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using ReplayDecoder;
 
 namespace BeatLeader_Server.Models
 {
@@ -38,16 +39,6 @@ namespace BeatLeader_Server.Models
         public string? LinkService { get; set; }
         public string? LinkServiceIcon { get; set; }
         public string? Link { get; set; }
-    }
-
-    public class ReplayOffsets
-    {
-        public int Id { get; set; }
-        public int Frames { get; set; }
-        public int Notes { get; set; }
-        public int Walls { get; set; }
-        public int Heights { get; set; }
-        public int Pauses { get; set; }
     }
 
     [Index(nameof(PlayerId))]

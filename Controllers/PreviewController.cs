@@ -18,6 +18,7 @@ using System.Dynamic;
 using System.Net;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.Formats.Webp;
+using ReplayDecoder;
 
 namespace BeatLeader_Server.Controllers
 {
