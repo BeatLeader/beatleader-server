@@ -13,6 +13,8 @@ using BeatLeader_Server.Bot;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using BeatLeader_Server.Models;
 using Microsoft.OpenApi.Models;
+using System.Reflection;
+using ReplayDecoder;
 
 namespace BeatLeader_Server {
 
@@ -122,6 +124,15 @@ namespace BeatLeader_Server {
                 options.ForwardedHeaders =
                     ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
             });
+
+            var replayRecalculatorType = Assembly.GetExecutingAssembly()
+                .GetTypes()
+                .FirstOrDefault(t => typeof(IReplayRecalculator).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract);
+
+            if (replayRecalculatorType != null)
+            {
+                services.AddScoped(typeof(IReplayRecalculator), replayRecalculatorType);
+            }
 
             var authBuilder = services.AddAuthentication (options => {
                 options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;

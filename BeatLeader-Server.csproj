@@ -9,12 +9,24 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="bs-simulator\ReplayDecoder\**" />
+    <Compile Remove="bs-simulator\ReplayRecalculatorRunner\**" />
+    <Compile Remove="bs-simulator\ReplayRecalculator\obj\**" />
     <Compile Remove="CronJobs\**" />
     <Compile Remove="ReplayDecoder\**" />
+    <Content Remove="bs-simulator\ReplayDecoder\**" />
+    <Content Remove="bs-simulator\ReplayRecalculatorRunner\**" />
+    <Content Remove="bs-simulator\ReplayRecalculator\obj\**" />
     <Content Remove="CronJobs\**" />
     <Content Remove="ReplayDecoder\**" />
+    <EmbeddedResource Remove="bs-simulator\ReplayDecoder\**" />
+    <EmbeddedResource Remove="bs-simulator\ReplayRecalculatorRunner\**" />
+    <EmbeddedResource Remove="bs-simulator\ReplayRecalculator\obj\**" />
     <EmbeddedResource Remove="CronJobs\**" />
     <EmbeddedResource Remove="ReplayDecoder\**" />
+    <None Remove="bs-simulator\ReplayDecoder\**" />
+    <None Remove="bs-simulator\ReplayRecalculatorRunner\**" />
+    <None Remove="bs-simulator\ReplayRecalculator\obj\**" />
     <None Remove="CronJobs\**" />
     <None Remove="ReplayDecoder\**" />
   </ItemGroup>
@@ -76,6 +88,10 @@
   <ItemGroup>
     <None Remove="Auth\SteamTicket\" />
     <None Remove="Auth\Oculus\" />
+    <None Remove="bs-simulator\.git" />
+    <None Remove="bs-simulator\.gitattributes" />
+    <None Remove="bs-simulator\.gitignore" />
+    <None Remove="bs-simulator\.gitmodules" />
   </ItemGroup>
 
   <ItemGroup>

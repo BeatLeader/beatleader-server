@@ -1235,7 +1235,7 @@ namespace BeatLeader_Server.Controllers {
             if (name == null) {
                 return Ok();
             }
-            var result = await _replayController.PostReplayFromCDN(score.PlayerId, name, score.Replay.Contains("/backup/file"), allow, HttpContext);
+            var result = await _replayController.PostReplayFromCDN(score.PlayerId, name, score.Replay.Contains("/backup/file"), allow, score.Timeset, HttpContext);
             _context.FailedScores.Remove(score);
             await _context.SaveChangesAsync();
 

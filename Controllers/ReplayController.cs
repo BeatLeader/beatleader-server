@@ -17,6 +17,7 @@ using Prometheus.Client;
 using System.Buffers;
 using ReplayDecoder;
 using static BeatLeader_Server.Utils.ResponseUtils;
+using System.Text;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -34,6 +35,7 @@ namespace BeatLeader_Server.Controllers
         private readonly IWebHostEnvironment _environment;
         private readonly IConfiguration _configuration;
         private readonly IServerTiming _serverTiming;
+        private readonly IReplayRecalculator? _replayRecalculator;
 
         private readonly IMetricFamily<IGauge> _replayLocation;
         private readonly Geohash.Geohasher _geoHasher;
@@ -50,7 +52,8 @@ namespace BeatLeader_Server.Controllers
             IServerTiming serverTiming,
             IMetricFactory metricFactory,
             PlayerContextRefreshController playerContextRefreshController,
-            PlayerRefreshController playerRefreshController)
+            PlayerRefreshController playerRefreshController,
+            IReplayRecalculator? replayRecalculator)
         {
             _leaderboardController = leaderboardController;
             _playerController = playerController;
@@ -72,6 +75,7 @@ namespace BeatLeader_Server.Controllers
             }
             _playerContextRefreshController = playerContextRefreshController;
             _playerRefreshController = playerRefreshController;
+            _replayRecalculator = replayRecalculator;
         }
 
         [HttpPost("~/replay"), DisableRequestSizeLimit]
@@ -114,7 +118,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task<ActionResult<ScoreResponse>> PostReplayFromCDN(string authenticatedPlayerID, string name, bool backup, bool allow, HttpContext context)
+        public async Task<ActionResult<ScoreResponse>> PostReplayFromCDN(string authenticatedPlayerID, string name, bool backup, bool allow, string timeset, HttpContext context)
         {
             if (backup) {
                 string directoryPath = Path.Combine("/root/replays");
@@ -126,12 +130,12 @@ namespace BeatLeader_Server.Controllers
 
                 // Use FileMode.Create to overwrite the file if it already exists.
                 using (FileStream stream = new FileStream(filePath, FileMode.Open)) {
-                    return await PostReplay(authenticatedPlayerID, stream, context, allow: allow);
+                    return await PostReplay(authenticatedPlayerID, stream, context, allow: allow, timesetForce: timeset);
                 }
             } else {
                 using (var stream = await _s3Client.DownloadReplay(name)) {
                     if (stream != null) {
-                        return await PostReplay(authenticatedPlayerID, stream, context, allow: allow);
+                        return await PostReplay(authenticatedPlayerID, stream, context, allow: allow, timesetForce: timeset);
                     } else {
                         return NotFound();
                     }
@@ -146,7 +150,8 @@ namespace BeatLeader_Server.Controllers
             HttpContext context,
             float time = 0, 
             EndType type = 0,
-            bool allow = false)
+            bool allow = false,
+            string? timesetForce = null)
         {
             Replay? replay;
             ReplayOffsets? offsets;
@@ -241,6 +246,10 @@ namespace BeatLeader_Server.Controllers
             }
 
             (Score resultScore, int maxScore) = ReplayUtils.ProcessReplay(replay, leaderboard.Difficulty);
+
+            if (timesetForce != null) {
+                resultScore.Timepost = int.Parse(timesetForce);
+            }
 
             List<Score> currentScores;
             using (_serverTiming.TimeAction("currS"))
@@ -859,12 +868,37 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 if (!leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles) && !allow) {
-                    double scoreRatio = (double)resultScore.BaseScore / (double)statistic.winTracker.totalScore;
+                    double scoreRatio = resultScore.BaseScore / (double)statistic.winTracker.totalScore;
                     if (scoreRatio > 1.01 || scoreRatio < 0.99)
                     {
-                        await SaveFailedScore(transaction, resultScore, leaderboard, "Calculated on server score is too different: " + statistic.winTracker.totalScore + ". You probably need to update the mod.");
+                        if (_replayRecalculator != null) {
+                            (int? newScore, replay) = await _replayRecalculator.RecalculateReplay(replay);
+                            if (newScore != null) {
+                                scoreRatio = resultScore.BaseScore / (double)newScore;
+                            }
+                        }
 
-                        return;
+                        if (scoreRatio > 1.01 || scoreRatio < 0.99)
+                        {
+                            await SaveFailedScore(transaction, resultScore, leaderboard, "Calculated on server score is too different: " + statistic.winTracker.totalScore + ". You probably need to update the mod.");
+
+                            return;
+                        } else {
+                            using (var recalculatedStream = new MemoryStream()) {
+                                ReplayEncoder.Encode(replay, new BinaryWriter(recalculatedStream, Encoding.UTF8));
+                                resultScore.Replay = await _s3Client.UploadReplay("recalculated-" + ReplayUtils.ReplayFilename(replay, resultScore), recalculatedStream.ToArray());
+                                _context.Entry(resultScore).Property(x => x.Replay).IsModified = true;
+                            }
+
+                            try {
+                                (statistic, statisticError) = await _scoreController.CalculateAndSaveStatistic(replay, resultScore);
+                
+                            } catch (Exception e)
+                            {
+                                await SaveFailedScore(transaction, resultScore, leaderboard, e.ToString());
+                                return;
+                            }
+                        }
                     }
                 }
 
