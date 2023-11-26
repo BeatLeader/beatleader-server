@@ -92,6 +92,7 @@ namespace BeatLeader_Server.Controllers
             var weight = MathF.Pow(0.925f, (float)(TopPPScores - 1));
             var timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             var activeTreshold = timeset - 60 * 60 * 24 * 31 * 3;
+            var scoreTreshold = timeset - 60 * 60 * 24 * 365;
 
             var list = _context.Scores
                 .Where(s => 
@@ -99,13 +100,14 @@ namespace BeatLeader_Server.Controllers
                     s.ValidContexts.HasFlag(LeaderboardContexts.NoMods) &&
                     s.Pp > 0 &&
                     s.Leaderboard.Difficulty.ModeName == "Standard" &&
-                    s.Player.ScoreStats.RankedPlayCount >= 10 &&
+                    s.Player.ScoreStats.RankedPlayCount >= 30 &&
                     s.Player.ScoreStats.LastRankedScoreTime >= activeTreshold)
                 .Select(s => new { 
                     score = new Top10kScore {
                         songID = s.LeaderboardId,
                         pp = s.Pp,
-                        accuracy = s.Accuracy
+                        accuracy = s.Accuracy,
+                        timepost = s.Timepost
                     },
                     player = new Top10kPlayer {
                         id = s.Player.Id,
@@ -128,10 +130,12 @@ namespace BeatLeader_Server.Controllers
                         .Select((score, i) => new Top10kScore {
                             songID = score.songID,
                             pp = score.pp,
-                            rank = i + 1
+                            rank = i + 1,
+                            timepost = score.timepost
                         })
                         .ToList()
                 })
+                .Where(p => p.top10kScore.Last().pp / p.top10kScore.First().pp > 0.7 && p.top10kScore.All(s => s.timepost > scoreTreshold))
                 .ToList();
 
             var filename = $"songsuggestions-{timeset}.json";
