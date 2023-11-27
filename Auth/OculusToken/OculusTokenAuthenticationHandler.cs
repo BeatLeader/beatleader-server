@@ -37,14 +37,21 @@ public partial class OculusTokenAuthenticationHandler<TOptions> : Authentication
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         var task2 = ((Func<Task<AuthenticateResult>>)(async () => {
-            if (Request.Query["ticket"].Count == 0) {
+            string? ticket = Request.Query["ticket"].FirstOrDefault();
+            if (ticket == null) {
+                ticket = Request.Form["ticket"].FirstOrDefault();
+            }
+
+            if (ticket == null) {
                 Response.StatusCode = 401;
                 await Task.Delay(0);
                 return AuthenticateResult.NoResult();
             } else {
-                (string? id, string? error) = await SteamHelper.GetPlayerIDFromTicket(Request.Query["ticket"].First(), null);
+                (string? id, string? error) = await SteamHelper.GetPlayerIDFromTicket(ticket, null);
                 if (id == null)
                 {
+                    Response.StatusCode = 401;
+                    await Task.Delay(0);
                     return AuthenticateResult.NoResult();
                 }
 
@@ -60,11 +67,11 @@ public partial class OculusTokenAuthenticationHandler<TOptions> : Authentication
                 var claims = new[] { new Claim(ClaimTypes.NameIdentifier, id) };
                 var identity = new ClaimsIdentity(claims, "Test");
                 var principal = new ClaimsPrincipal(identity);
-                var ticket = new AuthenticationTicket(principal, "Cookies");
+                var authTicket = new AuthenticationTicket(principal, "Cookies");
 
                 await AuthenticationHttpContextExtensions.SignInAsync(Context, CookieAuthenticationDefaults.AuthenticationScheme, principal);
 
-                var result = AuthenticateResult.Success(ticket);
+                var result = AuthenticateResult.Success(authTicket);
                 return result;
             }
         }))();

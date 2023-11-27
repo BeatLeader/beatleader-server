@@ -31,7 +31,12 @@ public partial class SteamTicketAuthenticationHandler<TOptions> : Authentication
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (Request.Query["ticket"].Count == 0) {
+        string? ticket = Request.Query["ticket"].FirstOrDefault();
+        if (ticket == null) {
+            ticket = Request.Form["ticket"].FirstOrDefault();
+        }
+
+        if (ticket == null) {
             Response.StatusCode = 401;
             var task2 = ((Func<Task<AuthenticateResult>>)(async () =>{
                 await Task.Delay(0);
@@ -39,7 +44,7 @@ public partial class SteamTicketAuthenticationHandler<TOptions> : Authentication
             }))();
             return task2;
         } else {
-            return MakeAsyncRequest(Options.ApiUrl + "/ISteamUserAuth/AuthenticateUserTicket/v1?appid=" + Options.ApplicationID + "&key=" + Options.Key + "&ticket=" + Request.Query["ticket"].First(), "");
+            return MakeAsyncRequest(Options.ApiUrl + "/ISteamUserAuth/AuthenticateUserTicket/v1?appid=" + Options.ApplicationID + "&key=" + Options.Key + "&ticket=" + ticket, "");
         }
     }
 

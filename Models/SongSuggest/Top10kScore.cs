@@ -11,5 +11,8 @@ namespace BeatLeader_Server.Models.SongSuggest
         [JsonIgnore]
         public float accuracy { get; set; }
 
+        [JsonIgnore]
+        public int timepost { get; set; }
+
     }
 }

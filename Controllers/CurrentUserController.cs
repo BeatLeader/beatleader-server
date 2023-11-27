@@ -159,6 +159,11 @@ namespace BeatLeader_Server.Controllers {
             return result;
         }
 
+        [HttpPost("~/oculususer")]
+        public async Task<ActionResult<OculusUser>> PostOculusUser([FromForm] string token) {
+            return await GetOculusUser(token);
+        }
+
         [HttpGet("~/oculususer")]
         public async Task<ActionResult<OculusUser>> GetOculusUser([FromQuery] string token)
         {
