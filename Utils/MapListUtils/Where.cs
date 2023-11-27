@@ -37,6 +37,16 @@ public static partial class MapListUtils
         };
     }
 
+    private static IQueryable<Leaderboard> WhereSongStatus(this IQueryable<Leaderboard> sequence, SongStatus status)
+    {
+        if (status == SongStatus.None)
+        {
+            return sequence;
+        }
+
+        return sequence.Where(leaderboard => leaderboard.Song.ExternalStatuses.FirstOrDefault(s => status.HasFlag(s.Status)) != null);
+    }
+
     private static IQueryable<Leaderboard> WhereMyType(this IQueryable<Leaderboard> sequence, MyType mytype, Player? currentPlayer)
     {
         int mapperId = 0;

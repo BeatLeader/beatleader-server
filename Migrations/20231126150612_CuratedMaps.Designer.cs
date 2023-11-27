@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20231126150612_CuratedMaps")]
+    partial class CuratedMaps
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2623,7 +2626,7 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Replay")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("ReplayOffsetsId")
                         .HasColumnType("int");
@@ -2667,7 +2670,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("ScoreImprovementId");
 
-                    b.HasIndex("Timepost", "Replay");
+                    b.HasIndex("Timepost");
 
                     b.HasIndex("Banned", "Qualification", "Pp");
 
@@ -3027,9 +3030,6 @@ namespace BeatLeader_Server.Migrations
 
                     b.Property<DateTime>("Date")
                         .HasColumnType("datetime2");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
 
                     b.HasKey("Id");
 

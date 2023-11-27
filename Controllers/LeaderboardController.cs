@@ -450,6 +450,8 @@ namespace BeatLeader_Server.Controllers {
                     .ThenInclude(ch => ch.OldModifiers)
                     .Include(lb => lb.Song)
                     .ThenInclude(s => s.Difficulties)
+                    .Include(lb => lb.Song)
+                    .ThenInclude(s => s.ExternalStatuses)
                     .Include(lb => lb.LeaderboardGroup)
                     .ThenInclude(g => g.Leaderboards)
                     .ThenInclude(glb => glb.Difficulty);
@@ -1188,6 +1190,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] Operation allTypes = Operation.Any,
             [FromQuery] Requirements mapRequirements = Requirements.Ignore,
             [FromQuery] Operation allRequirements = Operation.Any,
+            [FromQuery] SongStatus songStatus = SongStatus.None,
             [FromQuery] MyType mytype = MyType.None,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
@@ -1211,7 +1214,7 @@ namespace BeatLeader_Server.Controllers {
                 .Include(p => p.ProfileSettings)
                 .FirstOrDefaultAsync(p => p.Id == currentID) : null;
 
-            sequence = sequence.Filter(_context, page, count, out int totalMatches, out int? searchId, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
+            sequence = sequence.Filter(_context, page, count, out int totalMatches, out int? searchId, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, songStatus, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
 
             var result = new ResponseWithMetadata<LeaderboardInfoResponse>() {
                 Metadata = new Metadata() {
@@ -1352,6 +1355,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] Operation allTypes = Operation.Any,
             [FromQuery] Requirements mapRequirements = Requirements.Ignore,
             [FromQuery] Operation allRequirements = Operation.Any,
+            [FromQuery] SongStatus songStatus = SongStatus.None,
             [FromQuery] MyType mytype = MyType.None,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
@@ -1370,7 +1374,7 @@ namespace BeatLeader_Server.Controllers {
                 .Players
                 .Include(p => p.ProfileSettings)
                 .FirstOrDefaultAsync(p => p.Id == currentID) : null;
-            sequence = sequence.Filter(_context, page, count, out int totalMatches, out int? searchId, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
+            sequence = sequence.Filter(_context, page, count, out int totalMatches, out int? searchId, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, songStatus, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
 
             var ids = sequence.Select(lb => lb.SongId).ToList();
 
@@ -1390,7 +1394,7 @@ namespace BeatLeader_Server.Controllers {
             };
 
             sequence = sequence
-                .Where(lb => ids.Contains(lb.SongId)).Filter(_context, page, count, out totalMatches, out searchId, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer)
+                .Where(lb => ids.Contains(lb.SongId)).Filter(_context, page, count, out totalMatches, out searchId, sortBy, order, search, type, mode, mapType, allTypes, mapRequirements, allRequirements, songStatus, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer)
                 .Include(lb => lb.Difficulty)
                 .Include(lb => lb.Song);
 

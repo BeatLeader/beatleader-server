@@ -1,178 +1,128 @@
 ﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using HtmlAgilityPack;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System.Dynamic;
 using System.Net;
+using System.Web;
 
 namespace BeatLeader_Server.Utils
 {
     public class SongUtils
     {
-        public static int ModeForModeName(string modeName) {
-            switch (modeName) {
-                case "Standard":
-                    return 1;
-                case "OneSaber":
-                    return 2;
-                case "NoArrows":
-                    return 3;
-                case "90Degree":
-                    return 4;
-                case "360Degree":
-                    return 5;
-                case "Lightshow":
-                    return 6;
-                case "Lawless":
-                    return 7;
-            }
-
-            return 0;
-        }
-
-        public static int DiffForDiffName(string diffName) {
-            switch (diffName) {
-                case "Easy":
-                case "easy":
-                    return 1;
-                case "Normal":
-                case "normal":
-                    return 3;
-                case "Hard":
-                case "hard":
-                    return 5;
-                case "Expert":
-                case "expert":
-                    return 7;
-                case "ExpertPlus":
-                case "expertPlus":
-                    return 9;
-            }
-
-            return 0;
-        }
-
-        public static string DiffNameForDiff(int diff)
+        public static async Task<Song?> GetSongFromBeatSaver(string hash)
         {
-            switch (diff)
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://api.beatsaver.com/maps/hash/" + hash);
+            var info = await request.DynamicResponse<MapDetail>();
+            if (info == null) return null;
+
+            Song result = new Song();
+            result.FromMapDetails(info);
+
+            return result;
+        }
+
+        public static async Task<List<Song>> GetCuratedSongsFromBeatSaver(DateTime afterTime)
+        {
+            var songs = new List<Song>();
+            DateTime? curatedAfter = afterTime;
+            SearchResponse? searchResponse;
+
+            do
             {
-                case 1:
-                    return "Easy";
-                case 3:
-                    return "Normal";
-                case 5:
-                    return "Hard";
-                case 7:
-                    return "Expert";
-                case 9:
-                    return "ExpertPlus";
+                string url = "https://api.beatsaver.com/maps/latest?sort=CURATED";
+                if (curatedAfter.HasValue)
+                {
+                    url += "&after=" + HttpUtility.UrlEncode(curatedAfter.Value.ToString("yyyy-MM-ddTHH:mm:ss+00:00"));
+                }
+
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                searchResponse = await request.DynamicResponse<SearchResponse>();
+
+                if (searchResponse == null || searchResponse.Docs == null || !searchResponse.Docs.Any())
+                {
+                    break;
+                }
+
+                foreach (var mapDetail in searchResponse.Docs)
+                {
+                    var song = new Song();
+                    song.FromMapDetails(mapDetail);
+                    songs.Add(song);
+                }
+
+                curatedAfter = searchResponse.Docs.OrderByDescending(s => s.CuratedAt).FirstOrDefault()?.CuratedAt;
+
+            } while (searchResponse.Docs.Count == 20);
+
+            return songs;
+        }
+
+        public static async Task<List<Song>> GetMapOfTheWeekSongs(DateTime afterTime)
+        {
+            var songs = new List<Song>();
+            int pageNumber = 1;
+            bool morePages = true;
+
+            while (morePages)
+            {
+                var url = $"https://bsaber.com/songs/page/{pageNumber}/?genre=beastmap";
+                var httpClient = new HttpClient();
+                var html = await httpClient.GetStringAsync(url);
+
+                var htmlDoc = new HtmlDocument();
+                htmlDoc.LoadHtml(html);
+
+                var articles = htmlDoc.DocumentNode.SelectNodes("//article[contains(@class, 'post')]");
+                if (articles == null || articles.Count == 0)
+                {
+                    morePages = false;
+                    break;
+                }
+
+                foreach (var article in articles)
+                {
+                    var href = article.SelectSingleNode(".//a").Attributes["href"].Value;
+                    if (!string.IsNullOrEmpty(href) && href.EndsWith("/"))
+                    {
+                        href = href.Remove(href.Length - 1);
+                    }
+                    var songId = href?.Split('/').LastOrDefault();
+
+                    if (songId == null) {
+                        continue;
+                    }
+
+                    var timeNode = article.SelectSingleNode(".//time[@class='date published time']");
+                    if (timeNode == null || !DateTime.TryParse(timeNode.Attributes["datetime"]?.Value, out DateTime motwTime))
+                    {
+                        continue;
+                    }
+
+                    if (motwTime < afterTime) {
+                        break;
+                    }
+
+                    var songInfo = new Song
+                    {
+                        Id = songId,
+                        ExternalStatuses = new List<ExternalStatus> {
+                            new ExternalStatus {
+                                Status = SongStatus.MapOfTheWeek,
+                                Timeset = (int)motwTime.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
+                                Link = href
+                            }
+                        }
+                    };
+
+                    songs.Add(songInfo);
+                }
+
+                pageNumber++;
             }
 
-            return "";
-        }
-
-        public static Task<Song?> GetSongFromBeatSaver(string url)
-        {
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-            request.Method = "GET";
-            request.Proxy = null;
-
-            WebResponse? response = null;
-            Song? song = null;
-            var stream = 
-            Task<(WebResponse?, Song?)>.Factory.FromAsync(request.BeginGetResponse, result =>
-            {
-                try
-                {
-                    response = request.EndGetResponse(result);
-                }
-                catch (Exception e)
-                {
-                    song = null;
-                }
-            
-                return (response, song);
-            }, request);
-
-            return stream.ContinueWith(t => ReadSongFromResponse(t.Result));
-        }
-        private static Song? ReadSongFromResponse((WebResponse?, Song?) response)
-        {
-            if (response.Item1 != null) {
-                using (Stream responseStream = response.Item1.GetResponseStream())
-                using (StreamReader reader = new StreamReader(responseStream))
-                {
-                    string results = reader.ReadToEnd();
-                    if (string.IsNullOrEmpty(results))
-                    {
-                        return null;
-                    }
-
-                    dynamic? info = JsonConvert.DeserializeObject<ExpandoObject>(results, new ExpandoObjectConverter());
-                    if (info == null) return null;
-                    Song result = new Song();
-                    result.Author = info.metadata.songAuthorName;
-                    result.Mapper = info.metadata.levelAuthorName;
-                    result.Name = info.metadata.songName;
-                    result.SubName = info.metadata.songSubName;
-                    result.Duration = info.metadata.duration;
-                    result.Bpm = info.metadata.bpm;
-                    result.MapperId = (int)info.uploader.id;
-                    result.UploadTime = (int)info.uploaded.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-                    if (ExpandantoObject.HasProperty(info, "tags")) {
-                        result.Tags = string.Join(",", info.tags);
-                    }
-
-                    dynamic currentVersion = info.versions[0];
-                    result.CoverImage = currentVersion.coverURL;
-                    result.DownloadUrl = currentVersion.downloadURL;
-                    result.Hash = currentVersion.hash;
-                    if (ExpandantoObject.HasProperty(info, "id"))
-                    {
-                        result.Id = info.id;
-                    } else
-                    {
-                        result.Id = currentVersion.key;
-                    }
-
-                    List<DifficultyDescription> difficulties = new List<DifficultyDescription>();
-                    dynamic diffs = currentVersion.diffs;
-                    foreach (dynamic diff in diffs) {
-                        DifficultyDescription difficulty = new DifficultyDescription();
-                        difficulty.ModeName = diff.characteristic;
-                        difficulty.Mode = SongUtils.ModeForModeName(diff.characteristic);
-                        difficulty.DifficultyName = diff.difficulty;
-                        difficulty.Value = SongUtils.DiffForDiffName(diff.difficulty);
-                        
-                        difficulty.Njs = (float)diff.njs;
-                        difficulty.Notes = (int)diff.notes;
-                        difficulty.Bombs = (int)diff.bombs;
-                        difficulty.Nps = (float)diff.nps;
-                        difficulty.Walls = (int)diff.obstacles;
-                        difficulty.MaxScore = (int)diff.maxScore;
-                        difficulty.Duration = result.Duration;
-                        if (diff.chroma) {
-                            difficulty.Requirements |= Requirements.Chroma;
-                        }
-                        if (diff.me) {
-                            difficulty.Requirements |= Requirements.MappingExtensions;
-                        }
-                        if (diff.ne) {
-                            difficulty.Requirements |= Requirements.Noodles;
-                        }
-                        if (diff.cinema) {
-                            difficulty.Requirements |= Requirements.Cinema;
-                        }
-
-                        difficulties.Add(difficulty);
-                    }
-                    result.Difficulties = difficulties;
-
-                    return result;
-                }
-            } else {
-                return response.Item2;
-            }   
+            return songs;
         }
 
         public class LackMapCalculation
@@ -208,23 +158,27 @@ namespace BeatLeader_Server.Utils
             public List<CurvePoint> PointList { get; set; } = new();
         }
 
-        public class ExmachinaResponse {
+        public class ExmachinaResponse
+        {
             public RatingResult FS { get; set; }
             public RatingResult SFS { get; set; }
             public RatingResult SS { get; set; }
             public RatingResult none { get; set; }
         }
 
-        public static async Task<ExmachinaResponse?> ExmachinaStars(string hash, int diff, string mode) {
+        public static async Task<ExmachinaResponse?> ExmachinaStars(string hash, int diff, string mode)
+        {
 
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"https://stage.api.beatleader.net/ppai2/{hash}/{mode}/{diff}");
             request.Method = "GET";
             request.Proxy = null;
 
-            try {
+            try
+            {
                 return await request.DynamicResponse<ExmachinaResponse>();
-            } catch (Exception e) { 
-                return null; 
+            } catch (Exception e)
+            {
+                return null;
             }
         }
     }

@@ -453,7 +453,7 @@ namespace BeatLeader_Server.Controllers
 
             foreach (var song in songs)
             {
-                Song? updatedSong = await SongUtils.GetSongFromBeatSaver("https://api.beatsaver.com/maps/hash/" + song.Hash);
+                Song? updatedSong = await SongUtils.GetSongFromBeatSaver(song.Hash);
 
                 if (updatedSong != null && updatedSong.Hash == song.Hash)
                 {
@@ -791,6 +791,48 @@ namespace BeatLeader_Server.Controllers
             }
 
             return result;
+        }
+
+        [HttpGet("~/externalstatuscheck")]
+        public async Task<ActionResult> externalstatuscheck()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = _context.Players.Find(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var songs = _context
+                .Songs
+                .Where(s => s.ExternalStatuses != null && s.ExternalStatuses.Count > 0 && s.Difficulties.FirstOrDefault(d => d.Status == DifficultyStatus.outdated) != null)
+                .Include(song => song.ExternalStatuses)
+                .ToList();
+
+            foreach (var song in songs)
+            {
+                var newSong = _context
+                    .Songs
+                    .Where(s => s.Id.StartsWith(song.Id + "x") && s.Difficulties.FirstOrDefault(d => d.Status == DifficultyStatus.outdated) == null)
+                    .Include(song => song.ExternalStatuses)
+                    .FirstOrDefault();
+                if (newSong == null) continue;
+
+                if (newSong.ExternalStatuses == null) {
+                    newSong.ExternalStatuses = new List<ExternalStatus>();
+                }
+
+                foreach (var status in song.ExternalStatuses)
+                {
+                    newSong.ExternalStatuses.Add(status);
+                    song.ExternalStatuses.Remove(status);
+                }
+            }
+
+            _context.BulkSaveChanges();
+
+            return Ok();
         }
 
         [Authorize]

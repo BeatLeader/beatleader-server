@@ -45,6 +45,7 @@
     <PackageReference Include="Discord.Net.Webhook" Version="3.12.0" />
     <PackageReference Include="Discord.Net.WebSocket" Version="3.12.0" />
     <PackageReference Include="geohash-dotnet" Version="2.0.0" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.11.54" />
     <PackageReference Include="IP2Location.IPGeolocation" Version="8.11.0" />
     <PackageReference Include="Lib.AspNetCore.ServerTiming" Version="6.0.0" />
     <PackageReference Include="Lucene.Net" Version="4.8.0-beta00016" />

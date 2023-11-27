@@ -133,7 +133,7 @@ namespace BeatLeader_Server.Controllers
 
             if (song == null)
             {
-                song = await SongUtils.GetSongFromBeatSaver("https://api.beatsaver.com/maps/hash/" + hash);
+                song = await SongUtils.GetSongFromBeatSaver(hash);
 
                 if (song == null)
                 {

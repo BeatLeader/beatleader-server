@@ -25,6 +25,7 @@ namespace BeatLeader_Server.Services {
 
                 if (minuteSpan == 60) {
                     await RefreshClans();
+                    await FetchCurated();
                     await CheckMaps();
 
                     minuteSpan = 60 - DateTime.Now.Minute;
@@ -54,6 +55,42 @@ namespace BeatLeader_Server.Services {
                 }
 
                 await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task FetchCurated() {
+            using (var scope = _serviceScopeFactory.CreateScope()) {
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+
+                var currentDate = DateTime.UtcNow;
+                var lastUpdateDate = _context.SongsLastUpdateTimes.Where(s => s.Status == SongStatus.Curated).FirstOrDefault()?.Date ?? new DateTime(1970, 1, 1);
+                if (currentDate.Subtract(lastUpdateDate).TotalHours > 1) {
+                    var curated = await SongUtils.GetCuratedSongsFromBeatSaver(lastUpdateDate);
+                    var hashes = curated.Select(m => m.Hash.ToLower()).ToList();
+                    var songs = _context.Songs.Where(s => hashes.Contains(s.Hash.ToLower())).Include(s => s.ExternalStatuses).ToList();
+                    foreach (var map in curated)
+                    {
+                        var song = songs.FirstOrDefault(s => s.Hash.ToLower() == map.Hash.ToLower());
+                        if (song != null && map.ExternalStatuses != null) {
+                            if (song.ExternalStatuses == null) {
+                                song.ExternalStatuses = new List<ExternalStatus>();
+                            }
+                            if (song.ExternalStatuses.FirstOrDefault(es => es.Status == SongStatus.Curated) == null) {
+                                foreach (var status in map.ExternalStatuses)
+                                {
+                                    song.ExternalStatuses.Add(status);
+                                }
+                            }
+                        }
+                    }
+
+                    _context.SongsLastUpdateTimes.Add(new SongsLastUpdateTime {
+                        Date = currentDate,
+                        Status = SongStatus.Curated
+                    });
+                }
+
+                _context.SaveChanges();
             }
         }
 

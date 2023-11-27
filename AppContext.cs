@@ -74,6 +74,7 @@ namespace BeatLeader_Server
 
 
         public DbSet<SongSuggestRefresh> SongSuggestRefreshes { get; set; }
+        public DbSet<SongsLastUpdateTime> SongsLastUpdateTimes { get; set; }
 
         public void RejectChanges()
         {

@@ -28,6 +28,7 @@ namespace BeatLeader_Server.Services
                     await RefreshPatreon();
                     await RefreshBoosters();
                     await RefreshBanned();
+                    await FetchMapOfTheWeek();
 
                     hoursUntil21 = 24;
                 }
@@ -159,6 +160,43 @@ namespace BeatLeader_Server.Services
                 foreach (var playerToUnban in unbanlist) {
                     await userController.Unban(playerToUnban);
                 }
+            }
+        }
+
+        public async Task FetchMapOfTheWeek() {
+            using (var scope = _serviceScopeFactory.CreateScope()) {
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+
+                var currentDate = DateTime.UtcNow;
+                var lastUpdateDate = _context.SongsLastUpdateTimes.Where(s => s.Status == SongStatus.MapOfTheWeek).FirstOrDefault()?.Date ?? new DateTime(1970, 1, 1);
+                if (currentDate.Subtract(lastUpdateDate).TotalHours > 20)
+                {
+                    var curated = await SongUtils.GetMapOfTheWeekSongs(lastUpdateDate);
+                    var ids = curated.Select(m => m.Id.ToLower()).ToList();
+                    var songs = _context.Songs.Where(s => ids.Contains(s.Id.ToLower())).Include(s => s.ExternalStatuses).ToList();
+                    foreach (var map in curated)
+                    {
+                        var song = songs.FirstOrDefault(s => s.Id.ToLower() == map.Id.ToLower());
+                        if (song != null && map.ExternalStatuses != null) {
+                            if (song.ExternalStatuses == null) {
+                                song.ExternalStatuses = new List<ExternalStatus>();
+                            }
+                            if (song.ExternalStatuses.FirstOrDefault(es => es.Status == SongStatus.MapOfTheWeek) == null) {
+                                foreach (var status in map.ExternalStatuses)
+                                {
+                                    song.ExternalStatuses.Add(status);
+                                }
+                            }
+                        }
+                    }
+
+                    _context.SongsLastUpdateTimes.Add(new SongsLastUpdateTime {
+                        Date = currentDate,
+                        Status = SongStatus.MapOfTheWeek
+                    });
+                }
+
+                _context.SaveChanges();
             }
         }
     }

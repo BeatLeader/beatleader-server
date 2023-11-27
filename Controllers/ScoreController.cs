@@ -291,7 +291,7 @@ namespace BeatLeader_Server.Controllers
                 mode = mode.Replace("OldDots", "");
             }
 
-            int modeValue = SongUtils.ModeForModeName(mode);
+            int modeValue = Song.ModeForModeName(mode);
             if (modeValue == 0) {
                 var customMode = _context.CustomModes.FirstOrDefault(m => m.Name == mode);
                 if (customMode != null) {
@@ -301,7 +301,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            var leaderboardId = song.Id + SongUtils.DiffForDiffName(diff).ToString() + modeValue.ToString();
+            var leaderboardId = song.Id + Song.DiffForDiffName(diff).ToString() + modeValue.ToString();
 
             IQueryable<Score> query = _context
                 .Scores
@@ -885,7 +885,7 @@ namespace BeatLeader_Server.Controllers
                 mode = mode.Replace("OldDots", "");
             }
 
-            int modeValue = SongUtils.ModeForModeName(mode);
+            int modeValue = Song.ModeForModeName(mode);
             if (modeValue == 0) {
                 var customMode = _context.CustomModes.FirstOrDefault(m => m.Name == mode);
                 if (customMode != null) {
@@ -895,7 +895,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            var leaderboardId = song.Id + SongUtils.DiffForDiffName(diff).ToString() + modeValue.ToString();
+            var leaderboardId = song.Id + Song.DiffForDiffName(diff).ToString() + modeValue.ToString();
 
             bool showBots = currentPlayer?.ProfileSettings?.ShowBots ?? false;
             LeaderboardContexts contexts = LeaderboardContexts.General;

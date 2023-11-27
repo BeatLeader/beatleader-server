@@ -36,6 +36,7 @@ public static partial class MapListUtils
                                                  Operation allTypes = Operation.Any,
                                                  Requirements mapRequirements = Requirements.Ignore,
                                                  Operation allRequirements = Operation.Any,
+                                                 SongStatus songStatus = SongStatus.None,
                                                  MyType mytype = MyType.None,
                                                  float? starsFrom = null,
                                                  float? starsTo = null,
@@ -72,6 +73,7 @@ public static partial class MapListUtils
               .WhereMapType(mapType, allTypes)
               .WhereMode(mode)
               .WhereMapRequirements(mapRequirements, allRequirements)
+              .WhereSongStatus(songStatus)
               .WhereMyType(mytype, currentPlayer)
               .WhereRatingFrom(RatingType.Stars, starsFrom)
               .WhereRatingFrom(RatingType.Acc, accRatingFrom)
