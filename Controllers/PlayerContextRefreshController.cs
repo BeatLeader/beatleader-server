@@ -116,9 +116,10 @@ namespace BeatLeader_Server.Controllers {
             {
                 return Unauthorized();
             }
-            await RefreshPlayerContext(id, LeaderboardContexts.NoMods, refreshRank);
-            await RefreshPlayerContext(id, LeaderboardContexts.NoPause, refreshRank);
-            await RefreshPlayerContext(id, LeaderboardContexts.Golf, refreshRank);
+            foreach (var context in ContextExtensions.NonGeneral)
+            {
+                await RefreshPlayerContext(id, context, refreshRank);
+            }
 
             return Ok();
         }
@@ -136,9 +137,9 @@ namespace BeatLeader_Server.Controllers {
                 }
             }
 
-            await RefreshPlayersContext(LeaderboardContexts.NoMods);
-            await RefreshPlayersContext(LeaderboardContexts.NoPause);
-            await RefreshPlayersContext(LeaderboardContexts.Golf);
+            foreach (var context in ContextExtensions.NonGeneral) {
+                await RefreshPlayersContext(context);
+            }
 
             return Ok();
         }
@@ -489,9 +490,9 @@ namespace BeatLeader_Server.Controllers {
         [HttpGet("~/players/stats/refresh/allContexts")]
         public async Task<ActionResult> RefreshPlayersStatsAllContexts()
         {
-            await RefreshPlayersStats(LeaderboardContexts.NoMods);
-            await RefreshPlayersStats(LeaderboardContexts.NoPause);
-            await RefreshPlayersStats(LeaderboardContexts.Golf);
+            foreach (var context in ContextExtensions.NonGeneral) {
+                await RefreshPlayersStats(context);
+            }
 
             return Ok();
         }
@@ -606,9 +607,9 @@ namespace BeatLeader_Server.Controllers {
                 }
             }
 
-            await RefreshRanks(LeaderboardContexts.NoMods);
-            await RefreshRanks(LeaderboardContexts.NoPause);
-            await RefreshRanks(LeaderboardContexts.Golf);
+            foreach (var context in ContextExtensions.NonGeneral) {
+                await RefreshRanks(context);
+            }
 
             return Ok();
         }

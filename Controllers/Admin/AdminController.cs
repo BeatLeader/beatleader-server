@@ -1010,6 +1010,13 @@ namespace BeatLeader_Server.Controllers
                         score.ContextExtensions.Add(golfExtension);
                         score.ValidContexts |= LeaderboardContexts.Golf;
                     }
+                    var scpmExtension = ReplayUtils.SCPMContextExtension(score, difficulty);
+                    if (scpmExtension != null) {
+                        scpmExtension.LeaderboardId = score.LeaderboardId;
+                        scpmExtension.PlayerId = score.PlayerId;
+                        score.ContextExtensions.Add(scpmExtension);
+                        score.ValidContexts |= LeaderboardContexts.SCPM;
+                    }
                 }
 
                 _context.BulkSaveChanges();
@@ -1032,6 +1039,12 @@ namespace BeatLeader_Server.Controllers
                     },
                     new PlayerContextExtension {
                         Context = LeaderboardContexts.Golf,
+                        ScoreStats = new PlayerScoreStats(),
+                        PlayerId = player.Id,
+                        Country = player.Country
+                    },
+                    new PlayerContextExtension {
+                        Context = LeaderboardContexts.SCPM,
                         ScoreStats = new PlayerScoreStats(),
                         PlayerId = player.Id,
                         Country = player.Country

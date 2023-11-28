@@ -80,22 +80,18 @@ namespace BeatLeader_Server.Utils
         }
 
         public static void RecalculatePPAndRankFast(
-            this AppContext context, 
+            this AppContext dbcontext, 
             Player player,
             LeaderboardContexts leaderboardContexts)
         {
             if (leaderboardContexts.HasFlag(LeaderboardContexts.General)) {
-                context.RecalculatePPAndRankFastGeneral(player);
+                dbcontext.RecalculatePPAndRankFastGeneral(player);
             }
 
-            if (leaderboardContexts.HasFlag(LeaderboardContexts.Golf)) {
-                context.RecalculatePPAndRankFastContext(LeaderboardContexts.Golf, player);
-            }
-            if (leaderboardContexts.HasFlag(LeaderboardContexts.NoPause)) {
-                context.RecalculatePPAndRankFastContext(LeaderboardContexts.NoPause, player);
-            }
-            if (leaderboardContexts.HasFlag(LeaderboardContexts.NoMods)) {
-                context.RecalculatePPAndRankFastContext(LeaderboardContexts.NoMods, player);
+            foreach (var context in ContextExtensions.NonGeneral) {
+                if (leaderboardContexts.HasFlag(context)) {
+                    dbcontext.RecalculatePPAndRankFastContext(context, player);
+                }
             }
         }
 
@@ -458,13 +454,13 @@ namespace BeatLeader_Server.Utils
             }
         }
 
-        public static void RecalculatePPAndRankFasterAllContexts(this AppContext context, ScoreResponse scoreResponse)
+        public static void RecalculatePPAndRankFasterAllContexts(this AppContext dbcontext, ScoreResponse scoreResponse)
         {
             var player = scoreResponse.Player;
             
             float oldPp = player.Pp;
 
-            var rankedScores = context
+            var rankedScores = dbcontext
                 .Scores
                 .Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification)
                 .OrderByDescending(s => s.Pp)
@@ -479,7 +475,7 @@ namespace BeatLeader_Server.Utils
 
             player.Pp = resultPP;
 
-            var rankedPlayers = context
+            var rankedPlayers = dbcontext
                 .Players
                 .Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned)
                 .Select(p => new { p.Id, p.Rank, p.Country, p.CountryRank, p.Pp })
@@ -498,9 +494,9 @@ namespace BeatLeader_Server.Utils
                 }
             }
 
-            RecalculatePPAndRankFasterContext(context, scoreResponse, LeaderboardContexts.Golf);
-            RecalculatePPAndRankFasterContext(context, scoreResponse, LeaderboardContexts.NoMods);
-            RecalculatePPAndRankFasterContext(context, scoreResponse, LeaderboardContexts.NoPause);
+            foreach (var context in ContextExtensions.NonGeneral) {
+                RecalculatePPAndRankFasterContext(dbcontext, scoreResponse, context);
+            }
         }
 
         public static void RecalculateEventsPP(this AppContext context, Player player, Leaderboard leaderboard)

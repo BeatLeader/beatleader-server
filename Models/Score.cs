@@ -11,7 +11,8 @@ namespace BeatLeader_Server.Models
         General = 1 << 1,
         NoMods = 1 << 2,
         NoPause = 1 << 3,
-        Golf = 1 << 4
+        Golf = 1 << 4,
+        SCPM = 1 << 5
     }
 
     public static class ContextExtensions {
@@ -19,13 +20,15 @@ namespace BeatLeader_Server.Models
             LeaderboardContexts.General,
             LeaderboardContexts.NoMods,
             LeaderboardContexts.NoPause,
-            LeaderboardContexts.Golf
+            LeaderboardContexts.Golf,
+            LeaderboardContexts.SCPM
         };
 
         public static List<LeaderboardContexts> NonGeneral = new List<LeaderboardContexts> { 
             LeaderboardContexts.NoMods,
             LeaderboardContexts.NoPause,
-            LeaderboardContexts.Golf
+            LeaderboardContexts.Golf,
+            LeaderboardContexts.SCPM
         };
     }
 

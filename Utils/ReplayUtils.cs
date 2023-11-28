@@ -316,6 +316,10 @@ namespace BeatLeader_Server.Utils
             if (golfExtension != null) {
                 score.ContextExtensions.Add(golfExtension);
             }
+            var scpmExtenstion = SCPMContextExtension(score, difficulty);
+            if (scpmExtenstion != null) {
+                score.ContextExtensions.Add(scpmExtenstion);
+            }
 
             return (score, maxScore);
         }
@@ -390,6 +394,33 @@ namespace BeatLeader_Server.Utils
                 PassPP = score.PassPP,
                 Qualification = score.Qualification
             };
+        }
+
+        public static ScoreContextExtension? SCPMContextExtension(Score score, DifficultyDescription difficulty) {
+            if (score.Modifiers?.Length == 0 || !score.Modifiers.Contains("SC") || !score.Modifiers.Contains("PM")) {
+                return null;
+            }
+
+            var result = new ScoreContextExtension {
+                Context = LeaderboardContexts.SCPM,
+                BaseScore = score.BaseScore,
+                ModifiedScore = score.BaseScore,
+                Timeset = score.Timepost,
+                Modifiers = score.Modifiers,
+                Accuracy = score.Accuracy,
+                Qualification = score.Qualification
+            };
+
+            if (score.Pp > 0) {
+                (result.Pp, result.BonusPp, result.PassPP, result.AccPP, result.TechPP) = PpFromScore(score.Accuracy, LeaderboardContexts.SCPM, score.Modifiers, difficulty.ModifierValues, 
+                difficulty.ModifiersRating,
+                difficulty.AccRating ?? 0.0f, 
+                difficulty.PassRating ?? 0.0f, 
+                difficulty.TechRating ?? 0.0f, 
+                difficulty.ModeName.ToLower() == "rhythmgamestandard");
+            }
+
+            return result;
         }
 
         public static HMD HMDFromName(string hmdName) {

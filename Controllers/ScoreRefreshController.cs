@@ -326,9 +326,9 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         public async Task<ActionResult> BulkRefreshScoresAllContexts([FromQuery] string? leaderboardId = null)
         {
-            await BulkRefreshContextScores(LeaderboardContexts.NoMods, leaderboardId);
-            await BulkRefreshContextScores(LeaderboardContexts.NoPause, leaderboardId);
-            await BulkRefreshContextScores(LeaderboardContexts.Golf, leaderboardId);
+            foreach (var context in ContextExtensions.NonGeneral) {
+                await BulkRefreshContextScores(context, leaderboardId);
+            }
 
             return Ok();
         }

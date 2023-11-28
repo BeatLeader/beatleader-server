@@ -1003,8 +1003,6 @@ namespace BeatLeader_Server.Controllers {
                 .GroupBy(el => el.LeaderboardId)
                 .ToList();
 
-            var contextsList = new List<LeaderboardContexts>() { LeaderboardContexts.NoMods, LeaderboardContexts.NoPause, LeaderboardContexts.Golf  };
-
             if (scoresGroups.Count() > 0) {
                 foreach (var group in scoresGroups) {
                     var scores = group.ToList();
@@ -1040,12 +1038,18 @@ namespace BeatLeader_Server.Controllers {
                             golfExtension.PlayerId = migrateToId;
                             score.ContextExtensions.Add(golfExtension);
                         }
+                        var scpmExtension = ReplayUtils.SCPMContextExtension(score, difficulty);
+                        if (scpmExtension != null) {
+                            scpmExtension.LeaderboardId = score.LeaderboardId;
+                            scpmExtension.PlayerId = migrateToId;
+                            score.ContextExtensions.Add(scpmExtension);
+                        }
                     }
 
                     scores.Sort((item1, item2) => ReplayUtils.IsNewScoreBetter(item1, item2) ? -1 : 1);
                     scores[0].ValidContexts |= LeaderboardContexts.General;
 
-                    foreach (var context in contextsList) {
+                    foreach (var context in ContextExtensions.NonGeneral) {
                         var extensions = scores
                             .Select(s => new { 
                                 Context = s.ContextExtensions.FirstOrDefault(ce => ce.Context == context),

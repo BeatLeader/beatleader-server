@@ -159,9 +159,7 @@ namespace BeatLeader_Server.Services
 
                 int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
-                var contexts = new List<LeaderboardContexts> { LeaderboardContexts.NoMods, LeaderboardContexts.NoPause, LeaderboardContexts.Golf };
-
-                foreach (var context in contexts)
+                foreach (var context in ContextExtensions.NonGeneral)
                 {
                     var lastHistory = _context.PlayerScoreStatsHistory.OrderByDescending(ps => ps.Timestamp).Where(ps => ps.Context == context).FirstOrDefault();
                     if (lastHistory != null && lastHistory.Timestamp > timeset - 60 * 60 * 12) {

@@ -909,6 +909,9 @@ namespace BeatLeader_Server.Controllers
                 case "golf":
                     contexts = LeaderboardContexts.Golf;
                     break;
+                case "scpm":
+                    contexts = LeaderboardContexts.SCPM;
+                    break;
                 default:
                     break;
             }
