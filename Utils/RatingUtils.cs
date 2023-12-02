@@ -17,7 +17,7 @@ namespace BeatLeader_Server.Utils {
         }
 
         public static async Task UpdateFromExMachina(DifficultyDescription diff, Song song, LeaderboardChange? rankChange) {
-
+            try {
             var response = await SongUtils.ExmachinaStars(song.Hash, diff.Value, diff.ModeName);
             if (response != null)
             {
@@ -61,6 +61,8 @@ namespace BeatLeader_Server.Utils {
                 diff.PassRating = 0.0f;
                 diff.PredictedAcc = 1.0f;
                 diff.TechRating = 0.0f;
+            }
+            } catch {
             }
         }
     }

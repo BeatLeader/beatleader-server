@@ -260,7 +260,7 @@ namespace BeatLeader_Server.Utils
             }
             
             score.Accuracy = (float)score.BaseScore / (float)maxScore;
-            score.Modifiers = info.modifiers;
+            score.Modifiers = info.modifiers.Replace("PM,SC", "SC,PM");
 
             if (hasPp) {
                 (score.Pp, score.BonusPp, score.PassPP, score.AccPP, score.TechPP) = PpFromScore(score, difficulty);
