@@ -81,25 +81,26 @@ namespace BeatLeader_Server.Controllers
                 .ToList();
         }
 
-        private const int TopPPScores = 30;
-
         [ApiExplorerSettings(IgnoreApi = true)]
         [HttpGet("~/songsuggest/refresh")]
         public async Task<ActionResult> RefreshSongSuggest()
         {
             if (!HttpContext.ItsAdmin(_context)) return Unauthorized();
 
-            var weight = MathF.Pow(0.925f, (float)(TopPPScores - 1));
             var timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             var activeTreshold = timeset - 60 * 60 * 24 * 31 * 3;
             var scoreTreshold = timeset - 60 * 60 * 24 * 365;
 
             var list = _context.Scores
                 .Where(s => 
-                    s.Weight >= weight &&
-                    s.ValidContexts.HasFlag(LeaderboardContexts.NoMods) &&
-                    s.Pp > 0 &&
+                    s.ValidContexts.HasFlag(LeaderboardContexts.General) &&
+                    !s.Qualification &&
+                    !s.Modifiers.Contains("FS") &&
+                    !s.Modifiers.Contains("SF") &&
+                    !s.Modifiers.Contains("GN") &&
+                    !s.Modifiers.Contains("SS") &&
                     s.Leaderboard.Difficulty.ModeName == "Standard" &&
+                    s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked &&
                     s.Player.ScoreStats.RankedPlayCount >= 30 &&
                     s.Player.ScoreStats.LastRankedScoreTime >= activeTreshold)
                 .Select(s => new { 
@@ -124,6 +125,8 @@ namespace BeatLeader_Server.Controllers
                     rank = i + 1,
                     top10kScore = group
                         .Select(m => m.score)
+                        .OrderByDescending(s => s.pp)
+                        .Take(30)
                         .OrderByDescending(s => s.accuracy)
                         .Take(20)
                         .OrderByDescending(s => s.pp)
