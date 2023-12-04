@@ -437,6 +437,7 @@ namespace BeatLeader_Server.Utils {
                         AccPp = ce.AccPp,
                         TechPp = ce.TechPp,
                         PassPp = ce.PassPp,
+                        PlayerId = ce.PlayerId,
 
                         Rank = ce.Rank,
                         Country  = ce.Country,

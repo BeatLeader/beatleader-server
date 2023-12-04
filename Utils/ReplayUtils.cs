@@ -429,6 +429,7 @@ namespace BeatLeader_Server.Utils
             if (lowerHmd.Contains("pico") && lowerHmd.Contains("4")) return HMD.picoNeo4;
             if (lowerHmd.Contains("pico neo") && lowerHmd.Contains("3")) return HMD.picoNeo3;
             if (lowerHmd.Contains("pico neo") && lowerHmd.Contains("2")) return HMD.picoNeo2;
+            if (lowerHmd.Contains("pico")) return HMD.picoNeo4;
             if (lowerHmd.Contains("vive pro 2")) return HMD.vivePro2;
             if (lowerHmd.Contains("vive elite")) return HMD.viveElite;
             if (lowerHmd.Contains("focus3")) return HMD.viveFocus;
@@ -439,6 +440,11 @@ namespace BeatLeader_Server.Utils
             if (lowerHmd.Contains("pimax") && lowerHmd.Contains("crystal")) return HMD.pimaxCrystal;
 
             if (lowerHmd.Contains("controllable")) return HMD.controllable;
+
+            if (lowerHmd.Contains("beyond")) return HMD.bigscreenbeyond;
+            if (lowerHmd.Contains("nolo") && lowerHmd.Contains("sonic")) return HMD.nolosonic;
+            if (lowerHmd.Contains("hypereal")) return HMD.hypereal;
+            if (lowerHmd.Contains("varjo") && lowerHmd.Contains("aero")) return HMD.varjoaero;
 
             if (lowerHmd.Contains("hp reverb")) return HMD.hpReverb;
             if (lowerHmd.Contains("samsung windows")) return HMD.samsungWmr;
@@ -524,6 +530,7 @@ namespace BeatLeader_Server.Utils
             if (lowerController.Contains("cry")) return ControllerEnum.cry;
             if (lowerController.Contains("e4")) return ControllerEnum.e4;
             if (lowerController.Contains("etee")) return ControllerEnum.etee;
+            if (lowerController.Contains("contactglove")) return ControllerEnum.contactglove;
 
             return ControllerEnum.unknown;
         }

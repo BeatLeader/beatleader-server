@@ -957,6 +957,48 @@ namespace BeatLeader_Server.Controllers
             return statistic;
         }
 
+        [HttpGet("~/admin/checkheadsets")]
+        public async Task<ActionResult> CheckHeadsets()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var scores = _context.Scores.Where(s => s.Hmd == HMD.unknown).OrderByDescending(s => s.Timepost).ToList();
+            var asyncDecoder = new AsyncReplayDecoder();
+
+            foreach (var score in scores)
+            {
+                string fileName = score.Replay.Split("/").Last();
+                ReplayInfo? replayInfo;
+
+                using (var replayStream = await _s3Client.DownloadReplay(fileName))
+                {
+                    if (replayStream == null) continue;
+
+                    try
+                    {
+                        replayInfo = await asyncDecoder.DecodeInfoOnly(replayStream);
+                    }
+                    catch (Exception)
+                    {
+                        continue;
+                    }
+                }
+
+                score.Hmd = ReplayUtils.HMDFromName(replayInfo.hmd);
+                score.Controller = ReplayUtils.ControllerFromName(replayInfo.controller);
+            }
+
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
         [HttpGet("~/admin/createContexts")]
         public async Task<ActionResult> CreateContexts()
         {

@@ -46,5 +46,9 @@
         e4 = 63,
         index = 64,
         controllable = 65,
+        bigscreenbeyond = 66,
+        nolosonic = 67,
+        hypereal = 68,
+        varjoaero = 69
     }
 }

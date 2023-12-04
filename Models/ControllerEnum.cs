@@ -37,6 +37,7 @@
         steamdeck = 77,
         etee = 78,
         quest3 = 79,
+        contactglove = 80,
         viveCosmos = 128,
     }
 }
