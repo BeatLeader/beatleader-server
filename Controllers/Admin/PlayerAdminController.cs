@@ -4,7 +4,6 @@ using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Text.Json.Serialization;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -153,7 +152,7 @@ namespace BeatLeader_Server.Controllers
             public string Headset { get; set; }
             public string Value { get; set; }
 
-            [JsonIgnore]
+            [System.Text.Json.Serialization.JsonIgnore]
             public float FloatValue { get; set; }
         }
 

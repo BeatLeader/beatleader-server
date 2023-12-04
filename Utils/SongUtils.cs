@@ -181,5 +181,28 @@ namespace BeatLeader_Server.Utils
                 return null;
             }
         }
+
+        public class PredictedNotes {
+            public List<List<double>> Rows { get; set; }
+        }
+
+        public class PredictedAcc {
+            public PredictedNotes Notes { get; set; }
+        }
+
+        public static async Task<PredictedAcc?> ExmachinaAcc(string hash, int diff, string mode, float speed)
+        {
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"https://stage.api.beatleader.net/json/{hash}/{mode}/{diff}/full/time-scale/{speed}");
+            request.Method = "GET";
+            request.Proxy = null;
+
+            try
+            {
+                return await request.DynamicResponse<PredictedAcc>();
+            } catch (Exception e)
+            {
+                return null;
+            }
+        }
     }
 }
