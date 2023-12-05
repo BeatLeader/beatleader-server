@@ -127,6 +127,7 @@ namespace BeatLeader_Server
         public DbSet<PatreonLink> PatreonLinks { get; set; }
         public DbSet<TwitchLink> TwitchLinks { get; set; }
         public DbSet<TwitterLink> TwitterLinks { get; set; }
+        public DbSet<DiscordLink> DiscordLinks { get; set; }
         public DbSet<YouTubeLink> YouTubeLinks { get; set; }
         public DbSet<BeatSaverLink> BeatSaverLinks { get; set; }
         public DbSet<PlayerLeaderboardStats> PlayerLeaderboardStats { get; set; }
@@ -142,6 +143,29 @@ namespace BeatLeader_Server
         public DbSet<PlayerScoreStatsHistory> PlayerScoreStatsHistory { get; set; }
 
         public DbSet<EventRanking> EventRankings { get; set; }
+        public DbSet<CountryChangeBan> CountryChangeBans { get; set; }
+        public DbSet<RankQualification> RankQualification { get; set; }
+        public DbSet<QualificationCommentary> QualificationCommentary { get; set; }
+        public DbSet<CriteriaCommentary> CriteriaCommentary { get; set; }
+        public DbSet<QualificationVote> QualificationVote { get; set; }
+        public DbSet<PlayerSocial> PlayerSocial { get; set; }
+        public DbSet<AchievementDescription> AchievementDescriptions { get; set; }
+        public DbSet<Achievement> Achievements { get; set; }
+        public DbSet<AchievementLevel> AchievementLevels { get; set; }
+        public DbSet<SurveyPassed> SurveyResponses { get; set; }
+
+        public DbSet<VoterFeedback> VoterFeedback { get; set; }
+        public DbSet<SongSearch> SongSearches { get; set; }
+        public DbSet<ScoreContextExtension> ScoreContextExtensions { get; set; }
+        public DbSet<PlayerContextExtension> PlayerContextExtensions { get; set; }
+        public DbSet<OpenIddictEntityFrameworkCoreApplication> OpenIddictApplications { get; set; }
+        public DbSet<OpenIddictEntityFrameworkCoreAuthorization> OpenIddictAuthorizations { get; set; }
+        public DbSet<OpenIddictEntityFrameworkCoreScope> OpenIddictScopes { get; set; }
+        public DbSet<OpenIddictEntityFrameworkCoreToken> OpenIddictTokens { get; set; }
+
+
+        public DbSet<SongSuggestRefresh> SongSuggestRefreshes { get; set; }
+        public DbSet<SongsLastUpdateTime> SongsLastUpdateTimes { get; set; }
 
         public void RejectChanges()
         {

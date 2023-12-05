@@ -163,6 +163,10 @@ namespace BeatLeader_Server.Utils
         {
             float mp = modifierValues.GetTotalMultiplier(modifiers, modifiersRating == null);
 
+            if (accuracy < 0) {
+                accuracy = 0;
+            }
+
             float rawPP = 0; float fullPP = 0; float passPP = 0; float accPP = 0; float techPP = 0; float increase = 0; 
             if (!timing) {
                 if (!modifiers.Contains("NF"))
