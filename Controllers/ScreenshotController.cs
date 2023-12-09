@@ -7,70 +7,21 @@ namespace BeatLeader_Server.Controllers
 {
     public class ScreenshotController : Controller
     {
-        private IBrowser? browser;
+        private static BrowserPool? browserPool;
         private readonly IConfiguration configuration;
 
         public ScreenshotController(IConfiguration configuration)
         {
             this.configuration = configuration;
+            if (browserPool == null) {
+                browserPool = new BrowserPool(5);
+            }
         }
 
-        private async Task InitBrowser() {
-            if (browser != null) return;
-            const string ChromiumRevision = "120.0.6099.71";
-            var options = new BrowserFetcherOptions();
-            var bf = new BrowserFetcher(options);
-            await bf.DownloadAsync(ChromiumRevision);   
-            string exePath = bf.GetExecutablePath(ChromiumRevision); 
-            browser = await Puppeteer.LaunchAsync(new LaunchOptions
-            {
-                Args = new string[]
-                {
-                    "--autoplay-policy=user-gesture-required",
-                    "--disable-background-networking",
-                    "--disable-background-timer-throttling",
-                    "--disable-backgrounding-occluded-windows",
-                    "--disable-breakpad",
-                    "--disable-client-side-phishing-detection",
-                    "--disable-component-update",
-                    "--disable-default-apps",
-                    "--disable-dev-shm-usage",
-                    "--disable-domain-reliability",
-                    "--disable-extensions",
-                    "--disable-features=AudioServiceOutOfProcess",
-                    "--disable-hang-monitor",
-                    "--disable-ipc-flooding-protection",
-                    "--disable-notifications",
-                    "--disable-offer-store-unmasked-wallet-cards",
-                    "--disable-popup-blocking",
-                    "--disable-print-preview",
-                    "--disable-prompt-on-repost",
-                    "--disable-renderer-backgrounding",
-                    "--disable-setuid-sandbox",
-                    "--disable-speech-api",
-                    "--disable-sync",
-                    "--hide-scrollbars",
-                    "--ignore-gpu-blacklist",
-                    "--metrics-recording-only",
-                    "--mute-audio",
-                    "--no-default-browser-check",
-                    "--no-first-run",
-                    "--no-pings",
-                    "--no-sandbox",
-                    "--no-zygote",
-                    "--password-store=basic",
-                    "--use-gl=swiftshader",
-                    "--use-mock-keychain"
-                },
-                Headless = true,
-                ExecutablePath = exePath,
-            });
-        }
-
-        [HttpGet("/screenshot/{width}x{height}/{*path}")]
-        public async Task<IActionResult> GetScreenshot(int width, int height, string path, [FromQuery] Dictionary<string, string> queryStringParameters)
+        [HttpGet("/screenshot/{width}x{height}/{imagename}/{*path}")]
+        public async Task<IActionResult> GetScreenshot(int width, int height, string path, string imagename, [FromQuery] Dictionary<string, string> queryStringParameters)
         {
-            await InitBrowser();
+            var browser = await browserPool?.GetBrowserAsync();
 
             var options = new
             {
@@ -122,20 +73,105 @@ namespace BeatLeader_Server.Controllers
                 });
 
                 var maxAge = options.MaxAge;
-                Response.Headers["Cache-Control"] = $"public, max-age={maxAge}";
-                Response.Headers["Expires"] = new DateTimeOffset(DateTime.UtcNow.AddSeconds(maxAge)).ToString("r");
+                Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+                Response.Headers["Expires"] = "0";
 
-                return File(screenshot, "image/png");
+                browserPool?.ReturnBrowser(browser);
+
+                return File(screenshot, "image/png", imagename + ".png");
             }
         }
+    }
 
-        protected override void Dispose(bool disposing)
+    public class BrowserPool
+    {
+        private readonly int _poolSize;
+        private string? exePath = null;
+        private readonly Queue<IBrowser> _browsers;
+        private readonly object _lock = new object();
+
+        public BrowserPool(int poolSize)
         {
-            if (disposing)
+            _poolSize = poolSize;
+            _browsers = new Queue<IBrowser>();
+        }
+
+        public async Task<IBrowser> GetBrowserAsync()
+        {
+            lock (_lock)
             {
-                browser?.Dispose();
+                if (_browsers.Count > 0)
+                {
+                    return _browsers.Dequeue();
+                }
             }
-            base.Dispose(disposing);
+
+            if (exePath == null) {
+                const string ChromiumRevision = "120.0.6099.71";
+                var options = new BrowserFetcherOptions();
+                var bf = new BrowserFetcher(options);
+                await bf.DownloadAsync(ChromiumRevision);   
+                exePath = bf.GetExecutablePath(ChromiumRevision);
+            }
+
+            return await Puppeteer.LaunchAsync(new LaunchOptions
+            {
+                Args = new string[]
+                {
+                    "--autoplay-policy=user-gesture-required",
+                    "--disable-background-networking",
+                    "--disable-background-timer-throttling",
+                    "--disable-backgrounding-occluded-windows",
+                    "--disable-breakpad",
+                    "--disable-client-side-phishing-detection",
+                    "--disable-component-update",
+                    "--disable-default-apps",
+                    "--disable-dev-shm-usage",
+                    "--disable-domain-reliability",
+                    "--disable-extensions",
+                    "--disable-features=AudioServiceOutOfProcess",
+                    "--disable-hang-monitor",
+                    "--disable-ipc-flooding-protection",
+                    "--disable-notifications",
+                    "--disable-offer-store-unmasked-wallet-cards",
+                    "--disable-popup-blocking",
+                    "--disable-print-preview",
+                    "--disable-prompt-on-repost",
+                    "--disable-renderer-backgrounding",
+                    "--disable-setuid-sandbox",
+                    "--disable-speech-api",
+                    "--disable-sync",
+                    "--hide-scrollbars",
+                    "--ignore-gpu-blacklist",
+                    "--metrics-recording-only",
+                    "--mute-audio",
+                    "--no-default-browser-check",
+                    "--no-first-run",
+                    "--no-pings",
+                    "--no-sandbox",
+                    "--no-zygote",
+                    "--password-store=basic",
+                    "--use-gl=swiftshader",
+                    "--use-mock-keychain"
+                },
+                Headless = true,
+                ExecutablePath = exePath,
+            });
+        }
+
+        public void ReturnBrowser(IBrowser browser)
+        {
+            lock (_lock)
+            {
+                if (_browsers.Count < _poolSize)
+                {
+                    _browsers.Enqueue(browser);
+                }
+                else
+                {
+                    browser.Dispose();
+                }
+            }
         }
     }
 }
