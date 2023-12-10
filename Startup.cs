@@ -15,6 +15,7 @@ using BeatLeader_Server.Models;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 using ReplayDecoder;
+using System.Security.Cryptography.X509Certificates;
 
 namespace BeatLeader_Server {
 
@@ -117,8 +118,9 @@ namespace BeatLeader_Server {
             string beatSaverSecret = Configuration.GetValue<string>("BeatSaverSecret");
 
             services.AddDataProtection()
-            .PersistKeysToFileSystem(new DirectoryInfo(@"../keys/"))
-            .SetApplicationName("/home/site/wwwroot/");
+                .PersistKeysToFileSystem(new DirectoryInfo(@"../keys/"))
+                .SetApplicationName("/home/site/wwwroot/");
+
             services.Configure<ForwardedHeadersOptions>(options =>
             {
                 options.ForwardedHeaders =
@@ -314,9 +316,17 @@ namespace BeatLeader_Server {
                 options.AllowAuthorizationCodeFlow()
                        .AllowRefreshTokenFlow();
 
-                // Register the signing and encryption credentials.
-                options.AddDevelopmentEncryptionCertificate()
-                       .AddDevelopmentSigningCertificate();
+                options.SetRefreshTokenReuseLeeway(TimeSpan.FromMinutes(10));
+
+                if (Environment.IsDevelopment()) {
+                    // Register the signing and encryption credentials.
+                    options.AddDevelopmentEncryptionCertificate()
+                           .AddDevelopmentSigningCertificate();
+                } else {
+                    var signingCertificate = new X509Certificate2("../keys/openiddict_certificate.pfx", Configuration.GetValue<string>("OpeniddictPassword"));
+                    options.AddSigningCertificate(signingCertificate);
+                    options.AddEncryptionCertificate(signingCertificate);
+                }
 
                 // Register the ASP.NET Core host and configure the ASP.NET Core options.
                 options.UseAspNetCore()
