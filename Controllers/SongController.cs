@@ -165,10 +165,9 @@ namespace BeatLeader_Server.Controllers
                     try {
                         _context.Songs.Add(song);
                         await _context.SaveChangesAsync();
+                        SongSearchService.AddNewSong(song);
                     } catch {
                     }
-
-                    SongSearchService.AddNewSong(song);
                     
                     foreach (var oldSong in songsToMigrate)
                     {
@@ -179,7 +178,10 @@ namespace BeatLeader_Server.Controllers
                             item.Stars = 0;
                         }
                     }
-                    await _context.SaveChangesAsync();
+                    try {
+                        await _context.SaveChangesAsync();
+                    } catch {
+                    }
                 }
             }
 
