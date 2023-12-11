@@ -848,15 +848,19 @@ namespace BeatLeader_Server.Controllers
                                 .Order(order.Reverse(), p => Math.Round(p.ScoreStats.AverageUnrankedRank))
                                 .ThenOrder(order, p => p.ScoreStats.UnrankedPlayCount);
                             break;
+                        case "acc":
+                            request = request.Order(order, p => p.ScoreStats.AverageUnrankedAccuracy);
+                            break;
+                        case "weightedAcc":
+                            request = request.Order(order, p => p.ScoreStats.AverageUnrankedAccuracy);
+                            break;
                         case "top1Count":
                             request = request.Order(order, p => p.ScoreStats.UnrankedTop1Count);
                             break;
                         case "top1Score":
                             request = request.Order(order, p => p.ScoreStats.UnrankedTop1Score);
                             break;
-                        case "acc":
-                            request = request.Order(order, p => p.ScoreStats.AverageUnrankedAccuracy);
-                            break;
+                        
                         case "topAcc":
                             request = request.Order(order, p => p.ScoreStats.TopUnrankedAccuracy);
                             break;
@@ -902,6 +906,9 @@ namespace BeatLeader_Server.Controllers
                             break;
                         case "acc":
                             request = request.Order(order, p => p.ScoreStats.AverageAccuracy);
+                            break;
+                        case "weightedAcc":
+                            request = request.Order(order, p => p.ScoreStats.AverageWeightedRankedAccuracy);
                             break;
                         case "topAcc":
                             request = request.Order(order, p => p.ScoreStats.TopAccuracy);
