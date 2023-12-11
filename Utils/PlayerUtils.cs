@@ -433,6 +433,7 @@ namespace BeatLeader_Server.Utils
             }
 
             player.Pp = resultPP;
+            if (resultPP == 0 && oldPp == 0) return;
 
             var rankedPlayers = context
                 .PlayerContextExtensions
