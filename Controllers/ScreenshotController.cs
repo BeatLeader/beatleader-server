@@ -18,14 +18,14 @@ namespace BeatLeader_Server.Controllers
             }
         }
 
-        [HttpGet("/screenshot/{width}x{height}/{imagename}/{*path}")]
-        public async Task<IActionResult> GetScreenshot(int width, int height, string path, string imagename, [FromQuery] Dictionary<string, string> queryStringParameters)
+        [HttpGet("/screenshot/{width}x{height}/{imagename}/{context}/{*path}")]
+        public async Task<IActionResult> GetScreenshot(int width, int height, string context, string imagename, string path, [FromQuery] Dictionary<string, string> queryStringParameters)
         {
             var browser = await browserPool?.GetBrowserAsync();
 
             var options = new
             {
-                Base = "https://screenshot.beatleader.xyz/",
+                Base = $"https://{(context != "general" ? (context + ".") : "")}screenshot.beatleader.xyz/",
                 MaxAge = 60 * 60 * 24 * 7,
                 Params = HttpUtility.ParseQueryString(""),
                 Scale = 1
