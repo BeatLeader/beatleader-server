@@ -239,6 +239,7 @@ namespace BeatLeader_Server.Controllers {
                             BaseScore = s.BaseScore,
                             ModifiedScore = s.ModifiedScore,
                             EpochTime = s.Timeset,
+                            FullCombo = s.Score.FullCombo,
                             MaxCombo = s.Score.MaxCombo,
                             Hmd = s.Score.Hmd,
                             MissedNotes = s.Score.MissedNotes,

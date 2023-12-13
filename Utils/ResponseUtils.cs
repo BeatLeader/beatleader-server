@@ -355,6 +355,7 @@ namespace BeatLeader_Server.Utils {
             public int BaseScore { get; set; }
             public int ModifiedScore { get; set; }
             public string Modifiers { get; set; }
+            public bool FullCombo { get; set; }
             public int MaxCombo { get; set; }
             public int MissedNotes { get; set; }
             public int BadCuts { get; set; }
