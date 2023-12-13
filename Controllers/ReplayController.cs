@@ -328,7 +328,7 @@ namespace BeatLeader_Server.Controllers
             resultScore.PlayerId = info.playerID;
             resultScore.LeaderboardId = leaderboard.Id;
 
-            GeneralSocketController.ScoreWasUploaded(resultScore, _configuration, _context);
+            SocketController.ScoreWasUploaded(resultScore, _context);
             resultScore.LeaderboardId = null;
 
             var transaction = await _context.Database.BeginTransactionAsync();
@@ -968,8 +968,8 @@ namespace BeatLeader_Server.Controllers
                 await _context.BulkSaveChangesAsync();
                 await transaction.CommitAsync();
 
-                await ScoresSocketController.TryPublishNewScore(resultScore, _configuration, _context);
-                await GeneralSocketController.ScoreWasAccepted(resultScore, _configuration, _context);
+                await SocketController.TryPublishNewScore(resultScore, _context);
+                await SocketController.ScoreWasAccepted(resultScore, _context);
 
                 if (leaderboard.Difficulty.Status == DifficultyStatus.ranked && 
                     resultScore.ValidContexts.HasFlag(LeaderboardContexts.General) &&
@@ -1034,7 +1034,7 @@ namespace BeatLeader_Server.Controllers
         private async Task SaveFailedScore(IDbContextTransaction transaction, Score score, Leaderboard leaderboard, string failReason) {
             try {
 
-            await GeneralSocketController.ScoreWasRejected(score, _configuration, _context);
+            await SocketController.ScoreWasRejected(score, _context);
 
             foreach (var ce in score.ContextExtensions) {
                 if (score.ValidContexts.HasFlag(ce.Context)) {

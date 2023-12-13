@@ -211,7 +211,7 @@ namespace BeatLeader_Server.Controllers
                 leaderboard.Scores.Remove(score);
             }
 
-            await GeneralSocketController.ScoreWasRejected(score, _configuration, _context);
+            await SocketController.ScoreWasRejected(score, _context);
 
             if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
             {

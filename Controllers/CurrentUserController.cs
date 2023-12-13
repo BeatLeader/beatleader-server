@@ -1332,7 +1332,7 @@ namespace BeatLeader_Server.Controllers {
                     ce.Banned = true;
                 }
 
-                await GeneralSocketController.ScoreWasRejected(score, _configuration, _context);
+                await SocketController.ScoreWasRejected(score, _context);
             }
 
             player.Banned = true;
@@ -1411,7 +1411,7 @@ namespace BeatLeader_Server.Controllers {
                     ce.Banned = false;
                 }
 
-                await GeneralSocketController.ScoreWasAccepted(score, _configuration, _context);
+                await SocketController.ScoreWasAccepted(score, _context);
 
             }
             player.Banned = false;
@@ -1468,7 +1468,7 @@ namespace BeatLeader_Server.Controllers {
                 leaderboardsToUpdate.Add(score.LeaderboardId);
                 score.Banned = true;
 
-                await GeneralSocketController.ScoreWasRejected(score, _configuration, _context);
+                await SocketController.ScoreWasRejected(score, _context);
             }
 
             await _context.SaveChangesAsync();

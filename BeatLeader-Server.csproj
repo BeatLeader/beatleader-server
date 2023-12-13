@@ -12,22 +12,22 @@
     <Compile Remove="bs-simulator\ReplayDecoder\**" />
     <Compile Remove="bs-simulator\ReplayRecalculatorRunner\**" />
     <Compile Remove="bs-simulator\ReplayRecalculator\obj\**" />
-    <Compile Remove="CronJobs\**" />
     <Compile Remove="ReplayDecoder\**" />
     <Content Remove="bs-simulator\ReplayDecoder\**" />
     <Content Remove="bs-simulator\ReplayRecalculatorRunner\**" />
     <Content Remove="bs-simulator\ReplayRecalculator\obj\**" />
-    <Content Remove="CronJobs\**" />
     <Content Remove="ReplayDecoder\**" />
     <EmbeddedResource Remove="bs-simulator\ReplayDecoder\**" />
     <EmbeddedResource Remove="bs-simulator\ReplayRecalculatorRunner\**" />
     <EmbeddedResource Remove="bs-simulator\ReplayRecalculator\obj\**" />
-    <EmbeddedResource Remove="CronJobs\**" />
     <EmbeddedResource Remove="ReplayDecoder\**" />
     <None Remove="bs-simulator\ReplayDecoder\**" />
     <None Remove="bs-simulator\ReplayRecalculatorRunner\**" />
     <None Remove="bs-simulator\ReplayRecalculator\obj\**" />
-    <None Remove="CronJobs\**" />
+    <Compile Remove="BeatLeader-Server-Sockets\**" />
+    <Content Remove="BeatLeader-Server-Sockets\**" />
+    <EmbeddedResource Remove="BeatLeader-Server-Sockets\**" />
+    <None Remove="BeatLeader-Server-Sockets\**" />
     <None Remove="ReplayDecoder\**" />
   </ItemGroup>
 
