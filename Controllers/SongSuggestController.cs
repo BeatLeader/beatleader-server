@@ -119,6 +119,7 @@ namespace BeatLeader_Server.Controllers
                 .ToList()
                 .GroupBy(m => m.player.id)
                 .OrderBy(group => group.First().player.rank)
+                .Where(g => g.Count() >= 20)
                 .Select((group, i) => new Top10kPlayer {
                     id = group.First().player.id,
                     name = group.First().player.name,

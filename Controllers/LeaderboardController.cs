@@ -1470,6 +1470,11 @@ namespace BeatLeader_Server.Controllers {
             public int Type { get; set; }
         }
 
+        [HttpGet("~/custommodes")]
+        public ActionResult<ICollection<CustomMode>> CustomModes() {
+            return _context.CustomModes.ToList();
+        }
+
         [HttpGet("~/leaderboard/ranking/{id}")]
         public ActionResult<LeaderboardVoting> GetVoting(string id) {
             var rankVotings = _readContext
