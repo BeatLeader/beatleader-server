@@ -1007,9 +1007,11 @@ namespace BeatLeader_Server.Controllers {
                 foreach (var group in scoresGroups) {
                     var scores = group.ToList();
                     foreach (var score in scores) {
-                        foreach (var ce in score.ContextExtensions)
-                        {
-                            _context.ScoreContextExtensions.Remove(ce);
+                        if (score.ContextExtensions != null) {
+                            foreach (var ce in score.ContextExtensions)
+                            {
+                                _context.ScoreContextExtensions.Remove(ce);
+                            }
                         }
                     }
                 }
@@ -1046,8 +1048,14 @@ namespace BeatLeader_Server.Controllers {
                         }
                     }
 
-                    scores.Sort((item1, item2) => ReplayUtils.IsNewScoreBetter(item1, item2) ? -1 : 1);
-                    scores[0].ValidContexts |= LeaderboardContexts.General;
+                    var bestScore = scores[0];
+                    foreach (var score in scores) {
+                        if (ReplayUtils.IsNewScoreBetter(bestScore, score)) {
+                            bestScore = score;
+                        }
+                    }
+
+                    bestScore.ValidContexts |= LeaderboardContexts.General;
 
                     foreach (var context in ContextExtensions.NonGeneral) {
                         var extensions = scores
@@ -1061,8 +1069,14 @@ namespace BeatLeader_Server.Controllers {
                             continue;
                         }
 
-                        extensions.Sort((item1, item2) => ReplayUtils.IsNewScoreExtensionBetter(item1.Context, item2.Context) ? -1 : 1);
-                        extensions[0].Score.ValidContexts |= context;
+                        var bestExtension = extensions[0];
+                        foreach (var extension in extensions) {
+                            if (ReplayUtils.IsNewScoreExtensionBetter(bestExtension.Context, extension.Context)) {
+                                bestExtension = extension;
+                            }
+                        }
+                        
+                        bestExtension.Score.ValidContexts |= context;
                     }
                     foreach (var score in scores) {
                         var extensionsToRemove = new List<ScoreContextExtension>();
@@ -1075,7 +1089,6 @@ namespace BeatLeader_Server.Controllers {
                         {
                             score.ContextExtensions.Remove(ce);
                         }
-                        
                     }
 
                     foreach (var score in scores) {
@@ -1104,10 +1117,6 @@ namespace BeatLeader_Server.Controllers {
                     }
 
                     _context.SaveChanges();
-
-                        
-
-                   
                 }
             }
 
