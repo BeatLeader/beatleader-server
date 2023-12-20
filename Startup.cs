@@ -377,6 +377,7 @@ namespace BeatLeader_Server {
                         .AllowCredentials();
                     });
             });
+            services.AddHttpClient();
 
             services.AddSwaggerGen(c =>
             {

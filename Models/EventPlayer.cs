@@ -3,7 +3,6 @@
     public class EventPlayer
     {
         public int Id { get; set; }
-        public EventRanking Event { get; set; }
         public int EventId { get; set; }
         public string Name { get; set; }
         public string PlayerId { get; set; }

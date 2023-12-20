@@ -75,6 +75,10 @@ namespace BeatLeader_Server
 
         public DbSet<SongSuggestRefresh> SongSuggestRefreshes { get; set; }
         public DbSet<SongsLastUpdateTime> SongsLastUpdateTimes { get; set; }
+        public DbSet<ReeSabersPreset> ReeSabersPresets { get; set; }
+        public DbSet<ReePresetDownload> ReePresetDownloads { get; set; }
+
+        public DbSet<ReeSabersComment> ReeSabersComment { get; set; }
 
         public void RejectChanges()
         {

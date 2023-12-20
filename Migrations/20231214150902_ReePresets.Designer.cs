@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20231214150902_ReePresets")]
+    partial class ReePresets
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2485,15 +2488,13 @@ namespace BeatLeader_Server.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("EditTimeset")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("Edited")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("PlayerId")
+                    b.Property<string>("AuthorId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("ReeSabersPresetId")
                         .HasColumnType("int");
@@ -2501,13 +2502,9 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int>("Timeset")
                         .HasColumnType("int");
 
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("PlayerId");
+                    b.HasIndex("AuthorId");
 
                     b.HasIndex("ReeSabersPresetId");
 
@@ -2524,9 +2521,6 @@ namespace BeatLeader_Server.Migrations
 
                     b.Property<int>("CommentsCount")
                         .HasColumnType("int");
-
-                    b.Property<bool>("CommentsDisabled")
-                        .HasColumnType("bit");
 
                     b.Property<string>("CoverLink")
                         .IsRequired()
@@ -4055,9 +4049,9 @@ namespace BeatLeader_Server.Migrations
 
             modelBuilder.Entity("BeatLeader_Server.Models.ReeSabersComment", b =>
                 {
-                    b.HasOne("BeatLeader_Server.Models.Player", "Player")
+                    b.HasOne("BeatLeader_Server.Models.Player", "Author")
                         .WithMany()
-                        .HasForeignKey("PlayerId")
+                        .HasForeignKey("AuthorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -4065,7 +4059,7 @@ namespace BeatLeader_Server.Migrations
                         .WithMany("Comments")
                         .HasForeignKey("ReeSabersPresetId");
 
-                    b.Navigation("Player");
+                    b.Navigation("Author");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ReeSabersPreset", b =>

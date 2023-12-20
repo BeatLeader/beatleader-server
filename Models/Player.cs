@@ -84,6 +84,7 @@ namespace BeatLeader_Server.Models {
         public ICollection<PlayerSocial>? Socials { get; set; }
         public ICollection<Achievement>? Achievements { get; set; }
         public ICollection<PlayerContextExtension>? ContextExtensions { get; set; }
+        public ICollection<ReeSabersPreset>? Presets { get; set; }
 
         public void SetDefaultAvatar() {
             this.Avatar = "https://cdn.assets.beatleader.xyz/" + this.Platform + "avatar.png";

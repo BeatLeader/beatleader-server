@@ -161,6 +161,8 @@ namespace BeatLeader_Server.Utils
             float techRating, 
             bool timing)
         {
+            if (accuracy <= 0 || accuracy > 1) return (0, 0, 0, 0, 0);
+
             float mp = modifierValues.GetTotalMultiplier(modifiers, modifiersRating == null);
 
             if (accuracy < 0) {
