@@ -62,7 +62,7 @@ namespace BeatLeader_Server.Controllers
                 SocketClient = new WebSocketClient(SocketHost + "inputsocket");
             }
             if (!SocketClient.IsAlive()) {
-                await SocketClient.ConnectAsync();
+                await SocketClient.ReconnectAsync();
             }
             await SocketClient.SendAsync(socketName + "###" + message);
         }

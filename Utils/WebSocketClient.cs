@@ -22,7 +22,7 @@ namespace BeatLeader_Server.Utils
             return _webSocket.State == WebSocketState.Open;
         }
 
-        public async Task ConnectAsync()
+        private async Task ConnectAsync()
         {
             await _webSocket.ConnectAsync(_serverUri, CancellationToken.None);
             StartKeepAlive();
