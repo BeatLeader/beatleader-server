@@ -6,7 +6,8 @@ namespace BeatLeader_Server.Models {
         Clear = 1,
         Fail = 2,
         Restart = 3,
-        Quit = 4
+        Quit = 4,
+        Practice = 5
     }
 
     public class PlayerLeaderboardStats {
