@@ -242,7 +242,6 @@ namespace BeatLeader_Server.Controllers
             if (description.Length > 100)
             {
                 return BadRequest("Description is too long");
-                return BadRequest("Description is too long");
             }
 
             if (bio.Length > 1000)
@@ -340,7 +339,7 @@ namespace BeatLeader_Server.Controllers
                 .Include(lb => lb.ClanRanking)
                 .Where(lb => lb.ClanRanking != null ?
                 lb.ClanRanking.Any(lbClan => lbClan.Clan.Tag == clan.Tag) && lb.Difficulty.Status == DifficultyStatus.ranked :
-                lb.Difficulty.Status == DifficultyStatus.ranked)
+                lb.Difficulty.Status == DifficultyStatus.inevent)
                 .ToList();
 
             // Remove the clanRankings

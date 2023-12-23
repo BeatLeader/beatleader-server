@@ -28,7 +28,8 @@ namespace BeatLeader_Server.Utils
             string extension;
 
             if (format.Name == "GIF") {
-                image.SaveAsGif(ms);
+                memoryStream.Position = 0;
+                memoryStream.CopyTo(ms);
                 extension = ".gif";
             } else {
                 image.SaveAsPng(ms);

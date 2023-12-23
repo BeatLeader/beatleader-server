@@ -17,6 +17,7 @@ namespace BeatLeader_Server.Utils
             var ranked = scores ?? context
                 .Scores
                 .Where(s => 
+                    s.ValidContexts.HasFlag(LeaderboardContexts.General) &&
                     s.PlayerId == player.Id && 
                     s.Pp != 0 && 
                     !s.Banned && 

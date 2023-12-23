@@ -92,7 +92,7 @@ namespace BeatLeader_Server.Controllers
         public async Task RefreshStats(PlayerScoreStats scoreStats, string playerId, int rank, List<SubScore>? scores = null)
         {
             var allScores = scores ??
-                _context.Scores.Where(s => s.PlayerId == playerId && !s.IgnoreForStats).Select(s => new SubScore
+                _context.Scores.Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && s.PlayerId == playerId && !s.IgnoreForStats).Select(s => new SubScore
                 {
                     PlayerId = s.PlayerId,
                     Platform = s.Platform,

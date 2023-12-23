@@ -56,7 +56,7 @@ namespace BeatLeader_Server.Utils
 
         public static void UpdateClanRanking(this AppContext context, Leaderboard? leaderboard, Score? currentScore, Score newScore)
         {
-            if (leaderboard == null || leaderboard.Difficulty.Status != DifficultyStatus.ranked) return;
+            if (leaderboard == null || leaderboard.Difficulty.Status != DifficultyStatus.inevent) return;
 
             /*
                 * Any new score can have multiple clans associated with it

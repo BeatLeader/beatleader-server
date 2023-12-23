@@ -53,7 +53,7 @@ namespace BeatLeader_Server.Utils
                 }
 
                 return $"https://cdn.{container}.beatleader.xyz/{filename}";
-            } catch (Exception _) {
+            } catch (Exception e) {
                 string directoryPath = Path.Combine("/root", container.ToString());
                 string filePath = Path.Combine(directoryPath, filename);
 
@@ -75,6 +75,11 @@ namespace BeatLeader_Server.Utils
         public static async Task<string> UploadReplay(this IAmazonS3 client, string filename, byte[] data)
         {   
 	        return await client.UploadStream(filename, S3Container.replays, new BinaryData(data).ToStream());
+        }
+
+        public static async Task<string> UploadAsset(this IAmazonS3 client, string filename, byte[] data)
+        {   
+	        return await client.UploadStream(filename, S3Container.assets, new BinaryData(data).ToStream());
         }
 
         public static async Task<string> UploadOtherReplay(this IAmazonS3 client, string filename, byte[] data)

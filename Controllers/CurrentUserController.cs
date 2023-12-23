@@ -967,7 +967,7 @@ namespace BeatLeader_Server.Controllers {
                 }
             }
 
-            PatreonLink? patreonLink = await _context.PatreonLinks.FindAsync(currentPlayer.Id);
+            var patreonLink = await _context.PatreonLinks.FindAsync(currentPlayer.Id);
             if (patreonLink != null) {
                 var newLink = new PatreonLink {
                     Id = patreonLink.Id,
@@ -979,6 +979,20 @@ namespace BeatLeader_Server.Controllers {
                 };
                 _context.PatreonLinks.Remove(patreonLink);
                 _context.PatreonLinks.Add(newLink);
+            }
+
+            var saverLink = await _context.BeatSaverLinks.FindAsync(currentPlayer.Id);
+            if (saverLink != null) {
+                var newLink = new BeatSaverLink {
+                    Id = migratedToPlayer.Id,
+                    BeatSaverId = saverLink.BeatSaverId,
+                    Token = saverLink.Token,
+                    RefreshToken = saverLink.RefreshToken,
+                    Timestamp = saverLink.Timestamp,
+                };
+                migratedToPlayer.MapperId = int.Parse(saverLink.BeatSaverId);
+                _context.BeatSaverLinks.Remove(saverLink);
+                _context.BeatSaverLinks.Add(newLink);
             }
 
             PatreonFeatures? features = migratedToPlayer.PatreonFeatures;

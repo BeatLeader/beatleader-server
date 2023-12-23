@@ -225,6 +225,26 @@ namespace BeatLeader_Server.Controllers
             return (int.Parse(beatSaverId), null);
         }
 
+        [ApiExplorerSettings(IgnoreApi = true)]
+        [HttpDelete("~/user/beatsaverlink/{id}")]
+        public async Task<ActionResult> RemoveBeatSaverlink(string id)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var link = _context.BeatSaverLinks.Where(bs => bs.Id == id).FirstOrDefault();
+            _context.BeatSaverLinks.Remove(link);
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
+        [ApiExplorerSettings(IgnoreApi = true)]
         [HttpGet("~/beatsaver/refresh")]
         public async Task<ActionResult> BeatSaverRefresh()
         {
