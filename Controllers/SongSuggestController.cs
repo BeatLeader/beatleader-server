@@ -50,6 +50,24 @@ namespace BeatLeader_Server.Controllers
             return File(replayStream, "application/json");
         }
 
+        [HttpGet("~/songsuggest/songs")]
+        public async Task<ActionResult<List<SongSuggestSong>>> GetSongSuggestSongs(
+            [FromQuery] int? before_time = null) {
+
+            var refresh = _context
+                .SongSuggestRefreshes
+                .OrderByDescending(s => s.Timeset)
+                .Where(s => before_time != null ? s.Timeset < before_time : true)
+                .FirstOrDefault();
+            if (refresh == null) return NotFound();
+
+            var replayStream = await _s3Client.DownloadAsset(refresh.SongsFile);
+            if (replayStream == null) {
+                return NotFound();
+            }
+            return File(replayStream, "application/json");
+        }
+
         [HttpGet("~/songsuggest/refreshTime")]
         public async Task<ActionResult<int>> GetSongSuggestLastRefreshTime([FromQuery] int? before_time = null)
         {
@@ -61,24 +79,6 @@ namespace BeatLeader_Server.Controllers
             if (refresh == null) return NotFound();
 
             return refresh.Timeset;
-        }
-
-        [HttpGet("~/songsuggest/songs")]
-        public async Task<ActionResult<List<SongSuggestSong>>> GetSongSuggestSongs(
-            [FromQuery] int? after_time = null) {
-
-            return _context.Leaderboards
-                .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked && (after_time != null ? lb.Difficulty.RankedTime > after_time : true))
-                .OrderByDescending(lb => lb.Difficulty.Stars)
-                .Select(lb => new SongSuggestSong {
-                    ID = lb.Id,
-                    name = lb.Song.Name,
-                    hash = lb.Song.Hash,
-                    difficulty = lb.Difficulty.DifficultyName,
-                    mode = lb.Difficulty.ModeName,
-                    stars = (float)lb.Difficulty.Stars
-                })
-                .ToList();
         }
 
         [ApiExplorerSettings(IgnoreApi = true)]
@@ -145,9 +145,26 @@ namespace BeatLeader_Server.Controllers
             var filename = $"songsuggestions-{timeset}.json";
             await _s3Client.UploadStream(filename, S3Container.assets, new BinaryData(JsonConvert.SerializeObject(list)).ToStream());
 
+            var songs = _context.Leaderboards
+                .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
+                .OrderByDescending(lb => lb.Difficulty.Stars)
+                .Select(lb => new SongSuggestSong {
+                    ID = lb.Id,
+                    name = lb.Song.Name,
+                    hash = lb.Song.Hash,
+                    difficulty = lb.Difficulty.DifficultyName,
+                    mode = lb.Difficulty.ModeName,
+                    stars = (float)lb.Difficulty.Stars
+                })
+                .ToList();
+
+            var songsfilename = $"songsuggestions-{timeset}.json";
+            await _s3Client.UploadStream(songsfilename, S3Container.assets, new BinaryData(JsonConvert.SerializeObject(songs)).ToStream());
+
             _context.SongSuggestRefreshes.Add(new SongSuggestRefresh {
                 Timeset = timeset,
-                File = filename
+                File = filename,
+                SongsFile = songsfilename
             });
             _context.SaveChanges();
 
