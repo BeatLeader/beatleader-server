@@ -32,6 +32,7 @@ public static partial class MapListUtils
                                                  string? search = null,
                                                  Type type = Type.All,
                                                  string? mode = null,
+                                                 string? difficulty = null,
                                                  int? mapType = null,
                                                  Operation allTypes = Operation.Any,
                                                  Requirements mapRequirements = Requirements.Ignore,
@@ -70,6 +71,7 @@ public static partial class MapListUtils
                               ref dateFrom,
                               ref dateTo)
               .WhereType(type)
+              .WhereDifficulty(difficulty)
               .WhereMapType(mapType, allTypes)
               .WhereMode(mode)
               .WhereMapRequirements(mapRequirements, allRequirements)

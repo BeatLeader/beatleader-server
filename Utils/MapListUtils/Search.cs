@@ -38,31 +38,6 @@ public static partial class MapListUtils
             return sequence;
         }
 
-        search = search.GetSearchFilters(ref type,
-                                         ref mode,
-                                         ref mapType,
-                                         ref allTypes,
-                                         ref mapRequirements,
-                                         ref allRequirements,
-                                         ref mytype,
-                                         ref starsFrom,
-                                         ref starsTo,
-                                         ref accRatingFrom,
-                                         ref accRatingTo,
-                                         ref passRatingFrom,
-                                         ref passRatingTo,
-                                         ref techRatingFrom,
-                                         ref techRatingTo,
-                                         ref dateFrom,
-                                         ref dateTo);
-
-        if (string.IsNullOrEmpty(search)) // returns after search filters to allow search filters to apply, but skips if search is truly empty
-        {
-            searchId = null;
-
-            return sequence;
-        }
-
         List<SongMetadata> matches = SongSearchService.Search(search);
         Random rnd = new Random();
 

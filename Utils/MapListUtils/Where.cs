@@ -85,6 +85,16 @@ public static partial class MapListUtils
         return sequence.Where(leaderboard => leaderboard.Difficulty.ModeName == mode);
     }
 
+    private static IQueryable<Leaderboard> WhereDifficulty(this IQueryable<Leaderboard> sequence, string? difficulty)
+    {
+        if (difficulty == null)
+        {
+            return sequence;
+        }
+
+        return sequence.Where(leaderboard => leaderboard.Difficulty.DifficultyName == difficulty);
+    }
+
     private static IQueryable<Leaderboard> WhereMapRequirements(this IQueryable<Leaderboard> sequence, Requirements mapRequirements, Operation allRequirements)
     {
         if (mapRequirements == Requirements.Ignore)
