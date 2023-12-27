@@ -1,9 +1,9 @@
 [submodule "beatleader-server-private"]
 	path = beatleader-server-private
 	url = git@github.com:BeatLeader/beatleader-server-private.git
-[submodule "ReplayDecoder"]
-	path = ReplayDecoder
-	url = https://github.com/BeatLeader/ReplayDecoder.git
 [submodule "bs-simulator"]
 	path = bs-simulator
 	url = git@github.com:DziugasRam/bs-simulator.git
+[submodule "beatleader-server-models"]
+	path = beatleader-server-models
+	url = https://github.com/BeatLeader/beatleader-server-models.git

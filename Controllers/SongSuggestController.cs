@@ -158,7 +158,7 @@ namespace BeatLeader_Server.Controllers
                 })
                 .ToList();
 
-            var songsfilename = $"songsuggestions-{timeset}.json";
+            var songsfilename = $"songsuggestions-{timeset}-songs.json";
             await _s3Client.UploadStream(songsfilename, S3Container.assets, new BinaryData(JsonConvert.SerializeObject(songs)).ToStream());
 
             _context.SongSuggestRefreshes.Add(new SongSuggestRefresh {

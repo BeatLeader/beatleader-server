@@ -9,18 +9,22 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="beatleader-server-models\**" />
     <Compile Remove="bs-simulator\ReplayDecoder\**" />
     <Compile Remove="bs-simulator\ReplayRecalculatorRunner\**" />
     <Compile Remove="bs-simulator\ReplayRecalculator\obj\**" />
     <Compile Remove="ReplayDecoder\**" />
+    <Content Remove="beatleader-server-models\**" />
     <Content Remove="bs-simulator\ReplayDecoder\**" />
     <Content Remove="bs-simulator\ReplayRecalculatorRunner\**" />
     <Content Remove="bs-simulator\ReplayRecalculator\obj\**" />
     <Content Remove="ReplayDecoder\**" />
+    <EmbeddedResource Remove="beatleader-server-models\**" />
     <EmbeddedResource Remove="bs-simulator\ReplayDecoder\**" />
     <EmbeddedResource Remove="bs-simulator\ReplayRecalculatorRunner\**" />
     <EmbeddedResource Remove="bs-simulator\ReplayRecalculator\obj\**" />
     <EmbeddedResource Remove="ReplayDecoder\**" />
+    <None Remove="beatleader-server-models\**" />
     <None Remove="bs-simulator\ReplayDecoder\**" />
     <None Remove="bs-simulator\ReplayRecalculatorRunner\**" />
     <None Remove="bs-simulator\ReplayRecalculator\obj\**" />
@@ -40,7 +44,7 @@
     <PackageReference Include="AspNet.Security.OpenId.Steam" Version="8.0.0" />
     <PackageReference Include="AspNetCoreRateLimit" Version="5.0.0" />
     <PackageReference Include="AsyncEnumerator" Version="4.0.2" />
-    <PackageReference Include="AWSSDK.S3" Version="3.7.304.5" />
+    <PackageReference Include="AWSSDK.S3" Version="3.7.305.1" />
     <PackageReference Include="CoreHtmlToImage" Version="1.0.6" />
     <PackageReference Include="Discord.Net.Webhook" Version="3.13.0" />
     <PackageReference Include="Discord.Net.WebSocket" Version="3.13.0" />
@@ -62,8 +66,8 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="OpenIddict.AspNetCore" Version="4.10.1" />
-    <PackageReference Include="OpenIddict.EntityFrameworkCore" Version="4.10.1" />
+    <PackageReference Include="OpenIddict.AspNetCore" Version="5.0.1" />
+    <PackageReference Include="OpenIddict.EntityFrameworkCore" Version="5.0.1" />
     <PackageReference Include="Prometheus.Client" Version="5.2.0" />
     <PackageReference Include="Prometheus.Client.Abstractions" Version="5.2.0" />
     <PackageReference Include="Prometheus.Client.AspNetCore" Version="5.0.0" />
@@ -97,6 +101,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="beatleader-server-models\Models.csproj" />
     <ProjectReference Include="ReplayDecoder\ReplayDecoder\ReplayDecoder.csproj" />
   </ItemGroup>
   <ProjectExtensions>
