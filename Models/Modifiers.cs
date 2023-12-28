@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BeatLeader_Server.Models
 {
@@ -11,17 +12,26 @@ namespace BeatLeader_Server.Models
         public float FSTechRating { get; set; }
         public float FSStars { get; set; }
 
+        [ForeignKey("FSRatingId")]
+        public ICollection<CurvePoint>? FSCurve { get; set; }
+
         public float SSPredictedAcc { get; set; }
         public float SSPassRating { get; set; }
         public float SSAccRating { get; set; }
         public float SSTechRating { get; set; }
         public float SSStars { get; set; }
 
+        [ForeignKey("SSRatingId")]
+        public ICollection<CurvePoint>? SSCurve { get; set; }
+
         public float SFPredictedAcc { get; set; }
         public float SFPassRating { get; set; }
         public float SFAccRating { get; set; }
         public float SFTechRating { get; set; }
         public float SFStars { get; set; }
+
+        [ForeignKey("SFRatingId")]
+        public ICollection<CurvePoint>? SFCurve { get; set; }
     }
 
     public class ModifiersMap

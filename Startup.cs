@@ -210,66 +210,66 @@ namespace BeatLeader_Server {
             services.AddSingleton<IProcessingStrategy, AsyncKeyLockProcessingStrategy>();
             services.AddInMemoryRateLimiting();
 
-            if (!Environment.IsDevelopment()) {
+            //if (!Environment.IsDevelopment()) {
 
-                string patreonId = Configuration.GetValue<string>("PatreonId");
-                string patreonSecret = Configuration.GetValue<string>("PatreonSecret");
-                authBuilder.AddPatreon(options => {
-                    options.SignInScheme = "BLPatreon";
-                    options.SaveTokens = true;
-                    options.ClientId = patreonId;
-                    options.ClientSecret = patreonSecret;
-                });
+            //    string patreonId = Configuration.GetValue<string>("PatreonId");
+            //    string patreonSecret = Configuration.GetValue<string>("PatreonSecret");
+            //    authBuilder.AddPatreon(options => {
+            //        options.SignInScheme = "BLPatreon";
+            //        options.SaveTokens = true;
+            //        options.ClientId = patreonId;
+            //        options.ClientSecret = patreonSecret;
+            //    });
 
-                string twitchId = Configuration.GetValue<string>("TwitchId");
-                string twitchSecret = Configuration.GetValue<string>("TwitchSecret");
-                authBuilder.AddTwitch(options =>
-                {
-                    options.SaveTokens = true;
-                    options.ClientId = twitchId;
-                    options.ClientSecret = twitchSecret;
-                    options.SignInScheme = "BLTwitch";
-                });
+            //    string twitchId = Configuration.GetValue<string>("TwitchId");
+            //    string twitchSecret = Configuration.GetValue<string>("TwitchSecret");
+            //    authBuilder.AddTwitch(options =>
+            //    {
+            //        options.SaveTokens = true;
+            //        options.ClientId = twitchId;
+            //        options.ClientSecret = twitchSecret;
+            //        options.SignInScheme = "BLTwitch";
+            //    });
 
-                string twitterId = Configuration.GetValue<string>("TwitterId");
-                string twitterSecret = Configuration.GetValue<string>("TwitterSecret");
-                authBuilder.AddTwitter(options =>
-                {
-                    options.SaveTokens = true;
-                    options.ClientId = twitterId;
-                    options.ClientSecret = twitterSecret;
-                    options.SignInScheme = "BLTwitter";
-                });
+            //    string twitterId = Configuration.GetValue<string>("TwitterId");
+            //    string twitterSecret = Configuration.GetValue<string>("TwitterSecret");
+            //    authBuilder.AddTwitter(options =>
+            //    {
+            //        options.SaveTokens = true;
+            //        options.ClientId = twitterId;
+            //        options.ClientSecret = twitterSecret;
+            //        options.SignInScheme = "BLTwitter";
+            //    });
 
-                string discordId = Configuration.GetValue<string>("DiscordId");
-                string discordSecret = Configuration.GetValue<string>("DiscordSecret");
-                authBuilder.AddDiscord(options => 
-                {
-                    options.SaveTokens = true;
-                    options.ClientId = discordId;
-                    options.ClientSecret = discordSecret;
-                    options.SignInScheme = "BLDiscord";
-                });
+            //    string discordId = Configuration.GetValue<string>("DiscordId");
+            //    string discordSecret = Configuration.GetValue<string>("DiscordSecret");
+            //    authBuilder.AddDiscord(options => 
+            //    {
+            //        options.SaveTokens = true;
+            //        options.ClientId = discordId;
+            //        options.ClientSecret = discordSecret;
+            //        options.SignInScheme = "BLDiscord";
+            //    });
 
-                string googleId = Configuration.GetValue<string>("GoogleId");
-                string googleSecret = Configuration.GetValue<string>("GoogleSecret");
-                authBuilder.AddGoogle(options =>
-                {
-                    options.SaveTokens = true;
-                    options.ClientId = googleId;
-                    options.ClientSecret = googleSecret;
-                    options.SignInScheme = "BLGoogle";
-                    options.Scope.Add("https://www.googleapis.com/auth/youtube.readonly");
-                });
-            } else {
-                authBuilder.AddCookie("BLBeatLeader")
-                .AddBeatLeader(options => {
-                    options.SignInScheme = "BLBeatLeader";
-                    options.SaveTokens = true;
-                    options.ClientId = OauthService.TestClientId;
-                    options.ClientSecret = OauthService.TestClientSecret;
-                });
-            }
+            //    string googleId = Configuration.GetValue<string>("GoogleId");
+            //    string googleSecret = Configuration.GetValue<string>("GoogleSecret");
+            //    authBuilder.AddGoogle(options =>
+            //    {
+            //        options.SaveTokens = true;
+            //        options.ClientId = googleId;
+            //        options.ClientSecret = googleSecret;
+            //        options.SignInScheme = "BLGoogle";
+            //        options.Scope.Add("https://www.googleapis.com/auth/youtube.readonly");
+            //    });
+            //} else {
+            //    authBuilder.AddCookie("BLBeatLeader")
+            //    .AddBeatLeader(options => {
+            //        options.SignInScheme = "BLBeatLeader";
+            //        options.SaveTokens = true;
+            //        options.ClientId = OauthService.TestClientId;
+            //        options.ClientSecret = OauthService.TestClientSecret;
+            //    });
+            //}
 
             services.AddServerTiming();
             services.AddMetricFactory();
@@ -346,16 +346,16 @@ namespace BeatLeader_Server {
                 options.UseAspNetCore();
             });
 
-            if (!Environment.IsDevelopment()) {
-                if (Configuration.GetValue<string>("ServicesHost") == "YES")
-                {
-                    services.AddHostedService<HourlyRefresh>();
-                    services.AddHostedService<DailyRefresh>();
-                    services.AddHostedService<HistoryService>();
-                    services.AddHostedService<BotService>();
-                }
-            }
-
+            //if (!Environment.IsDevelopment()) {
+            //    if (Configuration.GetValue<string>("ServicesHost") == "YES")
+            //    {
+            //        services.AddHostedService<HourlyRefresh>();
+            //        services.AddHostedService<DailyRefresh>();
+            //        services.AddHostedService<HistoryService>();
+            //        services.AddHostedService<BotService>();
+            //    }
+            //}
+            //services.AddHostedService<HourlyRefresh>();
             services.AddHostedService<RankingService>();
             services.AddHostedService<LeaderboardPlayerStatsService>();
             services.AddHostedService<MinuteRefresh>();

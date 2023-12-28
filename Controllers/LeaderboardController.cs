@@ -57,7 +57,7 @@ namespace BeatLeader_Server.Controllers {
                 if (friendsList != null) {
                     scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)) && friendsList.Contains(s.PlayerId));
                 } else if (voters) {
-                    scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)) && s.RankVoting != null);
+                    scoreQuery = scoreQuery.Where(s => s.RankVoting != null);
                 } else {
                     scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)));
                 }
@@ -421,9 +421,18 @@ namespace BeatLeader_Server.Controllers {
                     .Leaderboards
                     .Where(lb => lb.Id == id)
                     .Include(lb => lb.Difficulty)
+                    .ThenInclude(d => d.Curve)
+                    .Include(lb => lb.Difficulty)
                     .ThenInclude(d => d.ModifierValues)
                     .Include(lb => lb.Difficulty)
                     .ThenInclude(d => d.ModifiersRating)
+                    .ThenInclude(mr => mr.SSCurve)
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(d => d.ModifiersRating)
+                    .ThenInclude(mr => mr.FSCurve)
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(d => d.ModifiersRating)
+                    .ThenInclude(mr => mr.SFCurve)
                     .Include(lb => lb.Qualification)
                     .ThenInclude(lb => lb.Votes)
                     .Include(lb => lb.Qualification)
@@ -482,6 +491,8 @@ namespace BeatLeader_Server.Controllers {
                     PassRating  = l.Difficulty.PassRating,
                     AccRating  = l.Difficulty.AccRating,
                     TechRating  = l.Difficulty.TechRating,
+                    PatternRating = l.Difficulty.PatternRating,
+                    LinearRating = l.Difficulty.LinearRating,
                     Type  = l.Difficulty.Type,
 
                     Njs  = l.Difficulty.Njs,
@@ -491,6 +502,7 @@ namespace BeatLeader_Server.Controllers {
                     Walls  = l.Difficulty.Walls,
                     MaxScore = l.Difficulty.MaxScore,
                     Duration  = l.Difficulty.Duration,
+                    Curve = l.Difficulty.Curve,
 
                     Requirements = l.Difficulty.Requirements,
                 },
@@ -597,6 +609,10 @@ namespace BeatLeader_Server.Controllers {
                             leaderboard.Difficulty.AccRating ?? 0,
                             leaderboard.Difficulty.PassRating ?? 0,
                             leaderboard.Difficulty.TechRating ?? 0,
+                            leaderboard.Difficulty.PatternRating ?? 0,
+                            leaderboard.Difficulty.LinearRating ?? 0,
+                            leaderboard.Difficulty.PredictedAcc ?? 0,
+                            leaderboard.Difficulty.ModeName,
                             qualification.Modifiers,
                             qualification.ModifiersRating
                             );
@@ -791,6 +807,8 @@ namespace BeatLeader_Server.Controllers {
                         PassRating  = l.Difficulty.PassRating,
                         AccRating  = l.Difficulty.AccRating,
                         TechRating  = l.Difficulty.TechRating,
+                        PatternRating = l.Difficulty.PatternRating,
+                        LinearRating = l.Difficulty.LinearRating,
                         Type  = l.Difficulty.Type,
 
                         Njs  = l.Difficulty.Njs,
@@ -867,6 +885,81 @@ namespace BeatLeader_Server.Controllers {
             return leaderboard;
         }
 
+
+
+        [HttpGet("~/wefwefwf")]
+        public async Task<ActionResult> wefwefwf() {
+
+        
+
+                _context.CurvePoint.BulkDelete(_context.CurvePoint);
+
+
+            var leaderboards = _context
+                .Leaderboards
+                .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked || lb.Difficulty.Status == DifficultyStatus.qualified  || lb.Difficulty.Status == DifficultyStatus.nominated)
+                .Include(lb => lb.Difficulty)
+                .ThenInclude(lb => lb.ModifiersRating)
+                .ToList();
+
+
+            foreach (var lb in leaderboards)
+            {
+                
+                var diff = lb.Difficulty;
+                var mrt = diff.ModifiersRating;
+
+                var points = new List<CurvePoint>();
+                var list = ReplayUtils.GenerateCurve(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0, diff.PatternRating ?? 0, diff.LinearRating ?? 0, diff.PredictedAcc ?? 0, diff.ModeName, "");
+                foreach (var l in list)
+                {
+                    points.Add(new CurvePoint {
+                        X = (float)l.x,
+                        Y = (float)l.y
+                    });
+                }
+                diff.Curve = points;
+
+                if (mrt != null) {
+                    var fspoints = new List<CurvePoint>();
+                    var fslist = ReplayUtils.GenerateCurve(mrt.FSAccRating, mrt.FSPassRating, mrt.FSTechRating, diff.PatternRating ?? 0, diff.LinearRating ?? 0, mrt.FSPredictedAcc, diff.ModeName, "FS");
+                    foreach (var l in fslist)
+                    {
+                        fspoints.Add(new CurvePoint {
+                            X = (float)l.x,
+                            Y = (float)l.y
+                        });
+                    }
+                    mrt.FSCurve = fspoints;
+                    var sfpoints = new List<CurvePoint>();
+                    var sflist = ReplayUtils.GenerateCurve(mrt.SFAccRating, mrt.SFPassRating, mrt.SFTechRating, diff.PatternRating ?? 0, diff.LinearRating ?? 0, mrt.SFPredictedAcc, diff.ModeName, "SF");
+                    foreach (var l in sflist)
+                    {
+                        sfpoints.Add(new CurvePoint {
+                            X = (float)l.x,
+                            Y = (float)l.y
+                        });
+                    }
+                    mrt.SFCurve = sfpoints;
+                    var sspoints = new List<CurvePoint>();
+                    var sslist = ReplayUtils.GenerateCurve(mrt.SSAccRating, mrt.SSPassRating, mrt.SSTechRating, diff.PatternRating ?? 0, diff.LinearRating ?? 0, mrt.SSPredictedAcc, diff.ModeName, "SS");
+                    foreach (var l in sslist)
+                    {
+                        sspoints.Add(new CurvePoint {
+                            X = (float)l.x,
+                            Y = (float)l.y
+                        });
+                    }
+                    mrt.SSCurve = sspoints;
+                }
+
+            }
+            _context.BulkSaveChanges();
+
+
+            return Ok();
+        }
+
         [HttpGet("~/leaderboards/hash/{hash}")]
         public async Task<ActionResult<LeaderboardsResponseWithScores>> GetLeaderboardsByHash(
             string hash,
@@ -925,6 +1018,8 @@ namespace BeatLeader_Server.Controllers {
                     PassRating  = lb.Difficulty.PassRating,
                     AccRating  = lb.Difficulty.AccRating,
                     TechRating  = lb.Difficulty.TechRating,
+                    PatternRating = lb.Difficulty.PatternRating,
+                    LinearRating = lb.Difficulty.LinearRating,
                     Type  = lb.Difficulty.Type,
 
                     Njs  = lb.Difficulty.Njs,
@@ -1265,6 +1360,8 @@ namespace BeatLeader_Server.Controllers {
                         PassRating  = lb.Difficulty.PassRating,
                         AccRating  = lb.Difficulty.AccRating,
                         TechRating  = lb.Difficulty.TechRating,
+                        PatternRating = lb.Difficulty.PatternRating,
+                        LinearRating = lb.Difficulty.LinearRating,
                         Type  = lb.Difficulty.Type,
 
                         Njs  = lb.Difficulty.Njs,
@@ -1432,6 +1529,8 @@ namespace BeatLeader_Server.Controllers {
                         PassRating  = lb.Difficulty.PassRating,
                         AccRating  = lb.Difficulty.AccRating,
                         TechRating  = lb.Difficulty.TechRating,
+                        PatternRating = lb.Difficulty.PatternRating,
+                        LinearRating = lb.Difficulty.LinearRating,
                         Type  = lb.Difficulty.Type,
 
                         Njs  = lb.Difficulty.Njs,

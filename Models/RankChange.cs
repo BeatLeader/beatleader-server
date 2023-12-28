@@ -13,6 +13,8 @@
         public float OldAccRating { get; set; } = 0;
         public float OldPassRating { get; set; } = 0;
         public float OldTechRating { get; set; } = 0;
+        public float OldPatternRating { get; set; } = 0;
+        public float OldLinearRating { get; set; } = 0;
         public int OldType { get; set; } = 0;
         public int OldCriteriaMet { get; set; } = 0;
         public ModifiersMap? OldModifiers { get; set; }
@@ -24,6 +26,8 @@
         public float NewAccRating { get; set; } = 0;
         public float NewPassRating { get; set; } = 0;
         public float NewTechRating { get; set; } = 0;
+        public float NewPatternRating { get; set; } = 0;
+        public float NewLinearRating { get; set; } = 0;
         public int NewType { get; set; } = 0;
         public int NewCriteriaMet { get; set; } = 0;
         public ModifiersMap? NewModifiers { get; set; }
@@ -42,6 +46,8 @@
         public float OldAccRating { get; set; } = 0;
         public float OldPassRating { get; set; } = 0;
         public float OldTechRating { get; set; } = 0;
+        public float OldPatternRating { get; set; } = 0;
+        public float OldLinearRating { get; set; } = 0;
         public int OldType { get; set; } = 0;
         public int OldCriteriaMet { get; set; } = 0;
         public string? OldCriteriaCommentary { get; set; }
@@ -52,6 +58,8 @@
         public float NewAccRating { get; set; } = 0;
         public float NewPassRating { get; set; } = 0;
         public float NewTechRating { get; set; } = 0;
+        public float NewPatternRating { get; set; } = 0;
+        public float NewLinearRating { get; set; } = 0;
         public int NewType { get; set; } = 0;
         public int NewCriteriaMet { get; set; } = 0;
         public string? NewCriteriaCommentary { get; set; }

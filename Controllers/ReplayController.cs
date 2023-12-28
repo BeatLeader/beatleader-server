@@ -505,7 +505,7 @@ namespace BeatLeader_Server.Controllers
                 currentScore.ValidContexts &= ~LeaderboardContexts.General;
                 resultScore.PlayCount = currentScore.PlayCount;
             } else {
-                resultScore.PlayCount = _context.PlayerLeaderboardStats.Where(st => st.PlayerId == player.Id && st.LeaderboardId == leaderboard.Id).Count();
+                //resultScore.PlayCount = _context.PlayerLeaderboardStats.Where(st => st.PlayerId == player.Id && st.LeaderboardId == leaderboard.Id).Count();
             }
 
             resultScore.ValidContexts |= LeaderboardContexts.General;
@@ -933,13 +933,16 @@ namespace BeatLeader_Server.Controllers
                 if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
                     resultScore.FcPp = ReplayUtils.PpFromScore(
                         resultScore.FcAccuracy, 
-                        resultScore.ValidContexts,
-                        resultScore.Modifiers, 
+                        resultScore.Modifiers,
                         leaderboard.Difficulty.ModifierValues, 
                         leaderboard.Difficulty.ModifiersRating, 
                         leaderboard.Difficulty.AccRating ?? 0, 
                         leaderboard.Difficulty.PassRating ?? 0, 
                         leaderboard.Difficulty.TechRating ?? 0, 
+                        leaderboard.Difficulty.PatternRating ?? 0,
+                        leaderboard.Difficulty.LinearRating ?? 0,
+                        leaderboard.Difficulty.PredictedAcc ?? 0,
+                        leaderboard.Difficulty.ModeName,
                         leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
                 }
 
@@ -1141,13 +1144,16 @@ namespace BeatLeader_Server.Controllers
                         if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
                             resultScore.FcPp = ReplayUtils.PpFromScore(
                                 resultScore.FcAccuracy, 
-                                resultScore.ValidContexts,
                                 resultScore.Modifiers, 
                                 leaderboard.Difficulty.ModifierValues, 
                                 leaderboard.Difficulty.ModifiersRating, 
                                 leaderboard.Difficulty.AccRating ?? 0, 
                                 leaderboard.Difficulty.PassRating ?? 0, 
                                 leaderboard.Difficulty.TechRating ?? 0, 
+                                leaderboard.Difficulty.PatternRating ?? 0,
+                                leaderboard.Difficulty.LinearRating ?? 0,
+                                leaderboard.Difficulty.PredictedAcc ?? 0,
+                                leaderboard.Difficulty.ModeName,
                                 leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
                         }
                     }
@@ -1167,9 +1173,9 @@ namespace BeatLeader_Server.Controllers
 
         private async Task MigrateOldReplay(Score score, string leaderboardId) {
             if (score.Replay == null) return;
-            var stats = await _context.PlayerLeaderboardStats
-                .Where(s => s.LeaderboardId == leaderboardId && s.Score == score.BaseScore && s.PlayerId == score.PlayerId && (s.Replay == null || s.Replay == score.Replay))
-                .FirstOrDefaultAsync();
+            //var stats = await _context.PlayerLeaderboardStats
+            //    .Where(s => s.LeaderboardId == leaderboardId && s.Score == score.BaseScore && s.PlayerId == score.PlayerId && (s.Replay == null || s.Replay == score.Replay))
+            //    .FirstOrDefaultAsync();
             
             string? name = score.Replay.Split("/").LastOrDefault();
             if (name == null) return;
@@ -1189,21 +1195,21 @@ namespace BeatLeader_Server.Controllers
                 }
             } catch {}
 
-            if (uploaded) {
-                if (stats != null) {
-                    stats.Replay = "https://api.beatleader.xyz/otherreplays/" + fileName;
-                } else {
-                     LeaderboardPlayerStatsService.AddJob(new PlayerStatsJob {
-                        fileName = "https://api.beatleader.xyz/otherreplays/" + fileName,
-                        playerId = score.PlayerId,
-                        leaderboardId = leaderboardId,
-                        timeset = score.Timepost > 0 ? score.Timepost : int.Parse(score.Timeset),
-                        type = EndType.Clear,
-                        time = 0,
-                        score = score
-                    });
-                }
-            }
+            //if (uploaded) {
+            //    if (stats != null) {
+            //        stats.Replay = "https://api.beatleader.xyz/otherreplays/" + fileName;
+            //    } else {
+            //         LeaderboardPlayerStatsService.AddJob(new PlayerStatsJob {
+            //            fileName = "https://api.beatleader.xyz/otherreplays/" + fileName,
+            //            playerId = score.PlayerId,
+            //            leaderboardId = leaderboardId,
+            //            timeset = score.Timepost > 0 ? score.Timepost : int.Parse(score.Timeset),
+            //            type = EndType.Clear,
+            //            time = 0,
+            //            score = score
+            //        });
+            //    }
+            //}
         }
 
         [NonAction]

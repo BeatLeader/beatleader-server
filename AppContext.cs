@@ -79,6 +79,7 @@ namespace BeatLeader_Server
         public DbSet<ReePresetDownload> ReePresetDownloads { get; set; }
 
         public DbSet<ReeSabersComment> ReeSabersComment { get; set; }
+        public DbSet<CurvePoint> CurvePoint { get; set; }
 
         public void RejectChanges()
         {

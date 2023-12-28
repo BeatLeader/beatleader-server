@@ -206,6 +206,8 @@ namespace BeatLeader_Server.Utils {
             public float? PassRating { get; set; }
             public float? AccRating { get; set; }
             public float? TechRating { get; set; }
+            public float? PatternRating { get; set; }
+            public float? LinearRating { get; set; }
             public int Type { get; set; }
 
             public float Njs { get; set; }
@@ -238,6 +240,8 @@ namespace BeatLeader_Server.Utils {
             public float? PassRating { get; set; }
             public float? AccRating { get; set; }
             public float? TechRating { get; set; }
+            public float? PatternRating { get; set; }
+            public float? LinearRating { get; set; }
             public int Type { get; set; }
 
             public float Njs { get; set; }
@@ -249,6 +253,7 @@ namespace BeatLeader_Server.Utils {
             public double Duration { get; set; }
 
             public Requirements Requirements { get; set; }
+            public ICollection<CurvePoint>? Curve { get; set; }
 
             public void HideRatings() {
                 this.AccRating = null;
@@ -277,7 +282,7 @@ namespace BeatLeader_Server.Utils {
             public bool ClanRankingContested { get; set; }
             public void HideRatings()
             {
-                this.Difficulty.HideRatings();
+                //this.Difficulty.HideRatings();
             }
         }
 
@@ -323,7 +328,7 @@ namespace BeatLeader_Server.Utils {
             public RankUpdate? Reweight { get; set; }
 
             public void HideRatings() {
-                this.Difficulty.HideRatings();
+                //this.Difficulty.HideRatings();
             }
         }
 
@@ -339,14 +344,18 @@ namespace BeatLeader_Server.Utils {
             public float? PassRating { get; set; }
             public float? AccRating { get; set; }
             public float? TechRating { get; set; }
+            public float? PatternRating { get; set; }
+            public float? LinearRating { get; set; }
 
             public void HideRatings() {
-                this.AccRating = null;
-                this.TechRating = null;
-                this.PassRating = null;
-                this.Stars = null;
+                //this.AccRating = null;
+                //this.TechRating = null;
+                //this.PassRating = null;
+                //this.PatternRating = null;
+                //this.LinearRating = null;
+                //this.Stars = null;
 
-                this.ModifiersRating = null;
+                //this.ModifiersRating = null;
             }
         }
 
@@ -619,6 +628,8 @@ namespace BeatLeader_Server.Utils {
                         PassRating  = s.Leaderboard.Difficulty.PassRating,
                         AccRating  = s.Leaderboard.Difficulty.AccRating,
                         TechRating  = s.Leaderboard.Difficulty.TechRating,
+                        PatternRating = s.Leaderboard.Difficulty.PatternRating,
+                        LinearRating = s.Leaderboard.Difficulty.LinearRating,
                         Type  = s.Leaderboard.Difficulty.Type,
 
                         Njs  = s.Leaderboard.Difficulty.Njs,
@@ -689,6 +700,8 @@ namespace BeatLeader_Server.Utils {
                     PassRating  = l.Difficulty.PassRating,
                     AccRating  = l.Difficulty.AccRating,
                     TechRating  = l.Difficulty.TechRating,
+                    PatternRating = l.Difficulty.PatternRating,
+                    LinearRating = l.Difficulty.LinearRating,
                     Type  = l.Difficulty.Type,
 
                     Njs  = l.Difficulty.Njs,
@@ -800,7 +813,9 @@ namespace BeatLeader_Server.Utils {
                 ModifiersRating = diff.ModifiersRating,
                 PassRating = diff.PassRating,
                 AccRating = diff.AccRating,
-                TechRating = diff.TechRating
+                TechRating = diff.TechRating,
+                PatternRating = diff.PatternRating,
+                LinearRating = diff.LinearRating
             };
         }
 

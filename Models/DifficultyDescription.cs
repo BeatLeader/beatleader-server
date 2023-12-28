@@ -38,6 +38,8 @@ namespace BeatLeader_Server.Models
         public DifficultyStatus Status { get; set; }
         public ModifiersMap? ModifierValues { get; set; } = new ModifiersMap();
         public ModifiersRating? ModifiersRating { get; set; }
+        [ForeignKey("DifficultyId")]
+        public ICollection<CurvePoint>? Curve { get; set; }
         public int NominatedTime { get; set; }
         public int QualifiedTime { get; set; }
         public int RankedTime { get; set; }
@@ -47,6 +49,8 @@ namespace BeatLeader_Server.Models
         public float? PassRating { get; set; }
         public float? AccRating { get; set; }
         public float? TechRating { get; set; }
+        public float? PatternRating { get; set; }
+        public float? LinearRating { get; set; }
         public int Type { get; set; }
 
         public float Njs { get; set; }

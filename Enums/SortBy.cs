@@ -9,6 +9,8 @@ public enum SortBy
     PassRating,
     AccRating,
     TechRating,
+    PatternRating,
+    LinearRating,
     ScoreTime,
     PlayCount,
     Voting,

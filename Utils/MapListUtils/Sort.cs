@@ -25,6 +25,8 @@ public static partial class MapListUtils
             SortBy.PassRating => sequence.SortByPassRating(order, dateFrom, dateTo, searchId, currentPlayer),
             SortBy.AccRating  => sequence.SortByAccRating(order, dateFrom, dateTo, searchId, currentPlayer),
             SortBy.TechRating => sequence.SortByTechRating(order, dateFrom, dateTo, searchId, currentPlayer),
+            SortBy.PatternRating => sequence.SortByPatternRating(order, dateFrom, dateTo, searchId, currentPlayer),
+            SortBy.LinearRating => sequence.SortByLinearRating(order, dateFrom, dateTo, searchId, currentPlayer),
             SortBy.ScoreTime  => sequence.SortByScoreTime(order, mytype, dateFrom, searchId, dateTo, currentPlayer?.Id),
             SortBy.PlayCount  => sequence.SortByPlayCount(order, dateFrom, dateTo, searchId),
             SortBy.Voting     => sequence.SortByVoting(order, dateFrom, dateTo, searchId),
@@ -124,6 +126,28 @@ public static partial class MapListUtils
                     leaderboard.Difficulty.Status == DifficultyStatus.nominated || 
                     leaderboard.Difficulty.Status == DifficultyStatus.qualified || 
                     leaderboard.Difficulty.Status == DifficultyStatus.ranked) ? leaderboard.Difficulty.TechRating : 0);
+    }
+
+    private static IOrderedQueryable<Leaderboard> SortByPatternRating(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo, int? searchId, Player? player) {
+        bool showRatings = player?.ProfileSettings?.ShowAllRatings ?? false;
+        return sequence.FilterRated(dateFrom, dateTo, searchId)
+                .OrderByDescending(l => searchId != null ? l.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
+                .ThenOrder(order, leaderboard => (
+                    showRatings || 
+                    leaderboard.Difficulty.Status == DifficultyStatus.nominated || 
+                    leaderboard.Difficulty.Status == DifficultyStatus.qualified || 
+                    leaderboard.Difficulty.Status == DifficultyStatus.ranked) ? leaderboard.Difficulty.PatternRating : 0);
+    }
+
+    private static IOrderedQueryable<Leaderboard> SortByLinearRating(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo, int? searchId, Player? player) {
+        bool showRatings = player?.ProfileSettings?.ShowAllRatings ?? false;
+        return sequence.FilterRated(dateFrom, dateTo, searchId)
+                .OrderByDescending(l => searchId != null ? l.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
+                .ThenOrder(order, leaderboard => (
+                    showRatings || 
+                    leaderboard.Difficulty.Status == DifficultyStatus.nominated || 
+                    leaderboard.Difficulty.Status == DifficultyStatus.qualified || 
+                    leaderboard.Difficulty.Status == DifficultyStatus.ranked) ? leaderboard.Difficulty.LinearRating : 0);
     }
 
     private static IQueryable<Leaderboard> FilterRated(this IQueryable<Leaderboard> sequence, int? dateFrom, int? dateTo, int? searchId) => sequence

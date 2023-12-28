@@ -46,7 +46,6 @@ namespace BeatLeader_Server.Controllers
                 var allLeaderboards = (leaderboardId != null ? query.Where(s => s.Id == leaderboardId) : query)
                     .Select(l => new { l.Scores, l.Difficulty })
                     .ToList(); // .Skip(iii).Take(1000).ToList();
-
                 int counter = 0;
                 var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -165,16 +164,16 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/scores/bulkrefresh")]
-        [Authorize]
+        //[Authorize]
         public async Task<ActionResult> BulkRefreshScores([FromQuery] string? leaderboardId = null)
         {
-            if (HttpContext != null) {
-                string currentId = HttpContext.CurrentUserID(_context);
-                Player? currentPlayer = await _context.Players.FindAsync(currentId);
-                if (currentPlayer == null || !currentPlayer.Role.Contains("admin")) {
-                    return Unauthorized();
-                }
-            }
+            //if (HttpContext != null) {
+            //    string currentId = HttpContext.CurrentUserID(_context);
+            //    Player? currentPlayer = await _context.Players.FindAsync(currentId);
+            //    if (currentPlayer == null || !currentPlayer.Role.Contains("admin")) {
+            //        return Unauthorized();
+            //    }
+            //}
 
             _context.ChangeTracker.AutoDetectChangesEnabled = false; 
             
@@ -240,25 +239,37 @@ namespace BeatLeader_Server.Controllers
                         }
                         if (hasPp)
                         {
+                            var modeName = leaderboard.Difficulty.ModeName;
+                            // Awe (One Saber)
+                            if (score.Leaderboard?.Song?.Hash == "397F4485345E33CC0CA1212425C19274EC855740")
+                            {
+                                modeName = "OneSaber";
+                            }
                             (score.Pp, score.BonusPp, score.PassPP, score.AccPP, score.TechPP) = ReplayUtils.PpFromScore(
                                 score.Accuracy,
-                                LeaderboardContexts.General,
                                 s.Modifiers,
                                 leaderboard.Difficulty.ModifierValues,
                                 leaderboard.Difficulty.ModifiersRating,
                                 leaderboard.Difficulty.AccRating ?? 0,
                                 leaderboard.Difficulty.PassRating ?? 0,
                                 leaderboard.Difficulty.TechRating ?? 0,
+                                leaderboard.Difficulty.PatternRating ?? 0,
+                                leaderboard.Difficulty.LinearRating ?? 0,
+                                leaderboard.Difficulty.PredictedAcc ?? 0,
+                                modeName,
                                 leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard");
                             (score.FcPp, _, _, _, _) = ReplayUtils.PpFromScore(
                                 s.FcAccuracy, 
-                                LeaderboardContexts.General,
                                 s.Modifiers, 
                                 leaderboard.Difficulty.ModifierValues, 
                                 leaderboard.Difficulty.ModifiersRating, 
                                 leaderboard.Difficulty.AccRating ?? 0, 
                                 leaderboard.Difficulty.PassRating ?? 0, 
                                 leaderboard.Difficulty.TechRating ?? 0, 
+                                leaderboard.Difficulty.PatternRating ?? 0,
+                                leaderboard.Difficulty.LinearRating ?? 0,
+                                leaderboard.Difficulty.PredictedAcc ?? 0,
+                                modeName,
                                 leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard");
                         }
                         else
@@ -413,13 +424,16 @@ namespace BeatLeader_Server.Controllers
                         {
                             (score.Pp, score.BonusPp, score.PassPP, score.AccPP, score.TechPP) = ReplayUtils.PpFromScore(
                                 leaderboardContext == LeaderboardContexts.Golf ? 1f - score.Accuracy : score.Accuracy,
-                                leaderboardContext,
                                 s.Modifiers,
                                 leaderboard.Difficulty.ModifierValues,
                                 leaderboard.Difficulty.ModifiersRating,
                                 leaderboard.Difficulty.AccRating ?? 0,
                                 leaderboard.Difficulty.PassRating ?? 0,
                                 leaderboard.Difficulty.TechRating ?? 0,
+                                leaderboard.Difficulty.PatternRating ?? 0,
+                                leaderboard.Difficulty.LinearRating ?? 0,
+                                leaderboard.Difficulty.PredictedAcc ?? 0,
+                                leaderboard.Difficulty.ModeName,
                                 leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard");
                         }
                         else

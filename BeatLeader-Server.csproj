@@ -9,18 +9,22 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="beatleader-server-models\**" />
     <Compile Remove="bs-simulator\ReplayDecoder\**" />
     <Compile Remove="bs-simulator\ReplayRecalculatorRunner\**" />
     <Compile Remove="bs-simulator\ReplayRecalculator\obj\**" />
     <Compile Remove="ReplayDecoder\**" />
+    <Content Remove="beatleader-server-models\**" />
     <Content Remove="bs-simulator\ReplayDecoder\**" />
     <Content Remove="bs-simulator\ReplayRecalculatorRunner\**" />
     <Content Remove="bs-simulator\ReplayRecalculator\obj\**" />
     <Content Remove="ReplayDecoder\**" />
+    <EmbeddedResource Remove="beatleader-server-models\**" />
     <EmbeddedResource Remove="bs-simulator\ReplayDecoder\**" />
     <EmbeddedResource Remove="bs-simulator\ReplayRecalculatorRunner\**" />
     <EmbeddedResource Remove="bs-simulator\ReplayRecalculator\obj\**" />
     <EmbeddedResource Remove="ReplayDecoder\**" />
+    <None Remove="beatleader-server-models\**" />
     <None Remove="bs-simulator\ReplayDecoder\**" />
     <None Remove="bs-simulator\ReplayRecalculatorRunner\**" />
     <None Remove="bs-simulator\ReplayRecalculator\obj\**" />
@@ -51,6 +55,7 @@
     <PackageReference Include="Lucene.Net" Version="4.8.0-beta00016" />
     <PackageReference Include="Lucene.Net.Analysis.Common" Version="4.8.0-beta00016" />
     <PackageReference Include="Lucene.Net.QueryParser" Version="4.8.0-beta00016" />
+    <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

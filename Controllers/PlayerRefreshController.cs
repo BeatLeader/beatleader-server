@@ -391,17 +391,17 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/players/refresh")]
-        [Authorize]
+        //[Authorize]
         public async Task<ActionResult> RefreshPlayers()
         {
-            if (HttpContext != null)
-            {
-                // Not fetching player here to not mess up context
-                if (HttpContext.CurrentUserID(_context) != AdminController.GolovaID)
-                {
-                    return Unauthorized();
-                }
-            }
+            //if (HttpContext != null)
+            //{
+            //    // Not fetching player here to not mess up context
+            //    if (HttpContext.CurrentUserID(_context) != AdminController.GolovaID)
+            //    {
+            //        return Unauthorized();
+            //    }
+            //}
 
             _context.ChangeTracker.AutoDetectChangesEnabled = false;
             var weights = new Dictionary<int, float>();
@@ -493,16 +493,100 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+         [HttpGet("~/players/refresh2")]
+        //[Authorize]
+        public async Task<ActionResult> RefreshPlayers2()
+        {
+            //if (HttpContext != null)
+            //{
+            //    // Not fetching player here to not mess up context
+            //    if (HttpContext.CurrentUserID(_context) != AdminController.GolovaID)
+            //    {
+            //        return Unauthorized();
+            //    }
+            //}
+
+            var weights = new Dictionary<int, float>();
+            for (int i = 0; i < 10000; i++)
+            {
+                weights[i] = MathF.Pow(0.965f, i);
+            }
+
+            var scores = _context
+                .Scores
+                .Where(s => s.Pp != 0 && !s.Banned && !s.Qualification && s.ValidContexts.HasFlag(LeaderboardContexts.General))
+                .OrderByDescending(s => s.Pp)
+                .ToList();
+
+            var query = _context.Players
+                .OrderByDescending(p => p.Pp)
+                .Where(p => p.Pp != 0 && !p.Banned)
+                .ToList();
+
+            query.AsParallel().ForAll(p => {
+                try {
+
+                    float resultPP = 0f;
+                    float accPP = 0f;
+                    float techPP = 0f;
+                    float passPP = 0f;
+                    var playerScores = scores.Where(s => s.PlayerId == p.Id).ToList();
+                    foreach ((int i, var s) in playerScores.Select((value, i) => (i, value)))
+                    {
+                        float weight = weights[i];
+                        if (s.Weight != weight)
+                        {
+                            s.Weight = weight;
+                        }
+                        resultPP += s.Pp * weight;
+                        accPP += s.AccPP * weight;
+                        techPP += s.TechPP * weight;
+                        passPP += s.PassPP * weight;
+                    }
+                    p.Pp = resultPP;
+                    p.AccPp = accPP;
+                    p.TechPp = techPP;
+                    p.PassPp = passPP;
+
+                    
+                } catch (Exception e) {
+                }
+            });
+
+            _context.BulkUpdate(scores);
+
+            Dictionary<string, int> countries = new Dictionary<string, int>();
+            var ranked = query
+                .Where(p => p.Pp > 0)
+                .OrderByDescending(t => t.Pp)
+                .ToList();
+            foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
+            {
+                p.Rank = i + 1;
+               
+                if (!countries.ContainsKey(p.Country))
+                {
+                    countries[p.Country] = 1;
+                }
+
+                p.CountryRank = countries[p.Country];
+                countries[p.Country]++;
+            }
+            _context.BulkUpdate(query);
+
+            return Ok();
+        }
+
         [HttpGet("~/players/stats/refresh")]
         public async Task<ActionResult> RefreshPlayersStats()
         {
-            if (HttpContext != null) {
-                // Not fetching player here to not mess up context
-                if (HttpContext.CurrentUserID(_context) != AdminController.GolovaID)
-                {
-                    return Unauthorized();
-                }
-            }
+            //if (HttpContext != null) {
+            //    // Not fetching player here to not mess up context
+            //    if (HttpContext.CurrentUserID(_context) != AdminController.GolovaID)
+            //    {
+            //        return Unauthorized();
+            //    }
+            //}
             var allScores =
                 _context.Scores.Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && (!s.Banned || s.Bot) && !s.IgnoreForStats).Select(s => new SubScore
                 {

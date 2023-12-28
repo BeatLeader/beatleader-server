@@ -48,7 +48,8 @@ namespace BeatLeader_Server.Controllers
                 .Include(s => s.Leaderboard)
                 .ThenInclude(l => l.Difficulty)
                 .ThenInclude(d => d.ModifierValues)
-                .Select(s => new ScoreResponseWithDifficulty {
+                .Select(s => new ScoreResponseWithDifficulty
+                {
                     Id = s.Id,
                     PlayerId = s.PlayerId,
                     BaseScore = s.BaseScore,
@@ -75,7 +76,8 @@ namespace BeatLeader_Server.Controllers
                     Platform = s.Platform,
                     LeaderboardId = s.LeaderboardId,
                     Difficulty = s.Leaderboard.Difficulty,
-                    Song = new ScoreSongResponse {
+                    Song = new ScoreSongResponse
+                    {
                         Id = s.Leaderboard.Song.Id,
                         Hash = s.Leaderboard.Song.Hash,
                         Cover = s.Leaderboard.Song.CoverImage,
@@ -108,13 +110,14 @@ namespace BeatLeader_Server.Controllers
             {
                 score.Player = PostProcessSettings(score.Player);
                 return score;
-            }
-            else
+            } else
             {
                 var redirect = fallbackToRedirect ? _context.ScoreRedirects.FirstOrDefault(sr => sr.OldScoreId == id) : null;
-                if (redirect != null && redirect.NewScoreId != id) {
+                if (redirect != null && redirect.NewScoreId != id)
+                {
                     return await GetScore(redirect.NewScoreId);
-                } else {
+                } else
+                {
                     return NotFound();
                 }
             }
@@ -134,8 +137,7 @@ namespace BeatLeader_Server.Controllers
             if (score != null)
             {
                 return score;
-            }
-            else
+            } else
             {
                 return NotFound();
             }
@@ -166,7 +168,8 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            var log = new ScoreRemovalLog {
+            var log = new ScoreRemovalLog
+            {
                 Replay = score.Replay,
                 AdminId = currentId,
                 Timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds
@@ -181,8 +184,7 @@ namespace BeatLeader_Server.Controllers
             if (player.ScoreStats.TotalPlayCount == 1)
             {
                 player.ScoreStats.AverageAccuracy = 0.0f;
-            }
-            else
+            } else
             {
                 player.ScoreStats.AverageAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, score.Accuracy);
             }
@@ -192,20 +194,19 @@ namespace BeatLeader_Server.Controllers
                 if (player.ScoreStats.RankedPlayCount == 1)
                 {
                     player.ScoreStats.AverageRankedAccuracy = 0.0f;
-                }
-                else
+                } else
                 {
                     player.ScoreStats.AverageRankedAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, score.Accuracy);
                 }
             }
-            foreach (var extension in score.ContextExtensions) {
+            foreach (var extension in score.ContextExtensions)
+            {
                 _context.ScoreContextExtensions.Remove(extension);
             }
             try
             {
                 leaderboard.Scores.Remove(score);
-            }
-            catch (Exception)
+            } catch (Exception)
             {
                 leaderboard.Scores = new List<Score>(leaderboard.Scores);
                 leaderboard.Scores.Remove(score);
@@ -261,7 +262,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int count = 10)
         {
-            if (page < 1) {
+            if (page < 1)
+            {
                 return BadRequest("Page should be greater than zero!");
             }
 
@@ -276,27 +278,33 @@ namespace BeatLeader_Server.Controllers
                     }
             };
 
-            if (hash.Length < 40) {
+            if (hash.Length < 40)
+            {
                 return BadRequest("Hash is too short");
-            } else {
+            } else
+            {
                 hash = hash.Substring(0, 40);
             }
 
             var song = _context.Songs.Select(s => new { Id = s.Id, Hash = s.Hash }).FirstOrDefault(s => s.Hash == hash);
-            if (song == null) {
+            if (song == null)
+            {
                 return result;
             }
 
-            if (mode.EndsWith("OldDots")) {
+            if (mode.EndsWith("OldDots"))
+            {
                 mode = mode.Replace("OldDots", "");
             }
 
             int modeValue = Song.ModeForModeName(mode);
             if (modeValue == 0) {
                 var customMode = _context.CustomModes.FirstOrDefault(m => m.Name == mode);
-                if (customMode != null) {
+                if (customMode != null)
+                {
                     modeValue = customMode.Id + 10;
-                } else {
+                } else
+                {
                     return result;
                 }
             }
@@ -376,7 +384,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int count = 10)
         {
-            if (page < 1) {
+            if (page < 1)
+            {
                 return BadRequest("Page should be greater than zero!");
             }
 
@@ -392,20 +401,23 @@ namespace BeatLeader_Server.Controllers
                     }
             };
 
-            if (hash.Length < 40) {
+            if (hash.Length < 40)
+            {
                 return BadRequest("Hash is too short");
-            } else {
+            } else
+            {
                 hash = hash.Substring(0, 40);
             }
 
             var leaderboard = (await _leaderboardController.GetByHash(hash, diff, mode, false)).Value;
-            if (leaderboard == null) {
+            if (leaderboard == null)
+            {
                 return result;
             }
 
             IQueryable<Score> query = _context
                 .Scores
-                .Where(s => !s.Banned && 
+                .Where(s => !s.Banned &&
                              s.LeaderboardId == leaderboard.Id &&
                              s.ValidContexts.HasFlag(LeaderboardContexts.General))
                 .OrderBy(p => p.Rank);
@@ -439,18 +451,19 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         public async Task<(List<ScoreResponse>?, int)> GeneralScoreList(
             ResponseWithMetadataAndSelection<ScoreResponse> result,
-            bool showBots, 
-            string leaderboardId, 
+            bool showBots,
+            string leaderboardId,
             string scope,
             string player,
             string method,
             int page,
             int count,
-            PlayerResponse? currentPlayer) {
+            PlayerResponse? currentPlayer)
+        {
             IQueryable<Score> query = _context
                 .Scores
-                .Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && 
-                            (!s.Banned || (s.Bot && showBots)) && 
+                .Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) &&
+                            (!s.Banned || (s.Bot && showBots)) &&
                             s.LeaderboardId == leaderboardId)
                                 .OrderBy(p => p.Rank);
 
@@ -458,10 +471,12 @@ namespace BeatLeader_Server.Controllers
             {
                 PlayerFriends? friends = _context.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == player);
 
-                if (friends != null) {
+                if (friends != null)
+                {
                     var idList = friends.Friends.Select(f => f.Id).ToArray();
                     query = query.Where(s => s.PlayerId == player || idList.Contains(s.PlayerId));
-                } else {
+                } else
+                {
                     query = query.Where(s => s.PlayerId == player);
                 }
             } else if (scope.ToLower() == "country")
@@ -482,13 +497,11 @@ namespace BeatLeader_Server.Controllers
                     int rank = query.Count(s => s.Rank < playerScore.Rank);
                     page += (int)Math.Floor((double)(rank) / (double)count);
                     result.Metadata.Page = page;
-                }
-                else
+                } else
                 {
                     return (null, page);
                 }
-            }
-            else
+            } else
             {
                 ScoreResponse? highlightedScore = query.Where(el => el.PlayerId == player).Select(s => new ScoreResponse
                 {
@@ -542,12 +555,14 @@ namespace BeatLeader_Server.Controllers
                 {
                     result.Selection = highlightedScore;
                     result.Selection.Player = PostProcessSettings(result.Selection.Player);
-                    if (scope.ToLower() == "friends" || scope.ToLower() == "country") {
+                    if (scope.ToLower() == "friends" || scope.ToLower() == "country")
+                    {
                         result.Selection.Rank = query.Count(s => s.Rank < result.Selection.Rank) + 1;
                     }
                 }
 
-                if (page < 1) {
+                if (page < 1)
+                {
                     page = 1;
                 }
             }
@@ -608,7 +623,7 @@ namespace BeatLeader_Server.Controllers
                 })
                 .ToList();
 
-            return ((resultList.FirstOrDefault()?.Pp > 0 
+            return ((resultList.FirstOrDefault()?.Pp > 0
                         ? resultList
                             .OrderByDescending(el => Math.Round(el.Pp, 2))
                             .ThenByDescending(el => Math.Round(el.Accuracy, 4))
@@ -624,14 +639,15 @@ namespace BeatLeader_Server.Controllers
         public async Task<(List<ScoreResponse>?, int)> ContextScoreList(
             ResponseWithMetadataAndSelection<ScoreResponse> result,
             LeaderboardContexts context,
-            bool showBots, 
-            string leaderboardId, 
+            bool showBots,
+            string leaderboardId,
             string scope,
             string player,
             string method,
             int page,
             int count,
-            PlayerResponse? currentPlayer) {
+            PlayerResponse? currentPlayer)
+        {
 
             IQueryable<ScoreContextExtension> query = _context
                 .ScoreContextExtensions
@@ -642,10 +658,12 @@ namespace BeatLeader_Server.Controllers
             {
                 PlayerFriends? friends = _context.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == player);
 
-                if (friends != null) {
+                if (friends != null)
+                {
                     var idList = friends.Friends.Select(f => f.Id).ToArray();
                     query = query.Where(s => s.PlayerId == player || idList.Contains(s.PlayerId));
-                } else {
+                } else
+                {
                     query = query.Where(s => s.PlayerId == player);
                 }
             } else if (scope.ToLower() == "country")
@@ -666,13 +684,11 @@ namespace BeatLeader_Server.Controllers
                     int rank = query.Count(s => s.Rank < playerScore.Rank);
                     page += (int)Math.Floor((double)(rank) / (double)count);
                     result.Metadata.Page = page;
-                }
-                else
+                } else
                 {
                     return (null, page);
                 }
-            }
-            else
+            } else
             {
                 ScoreResponse? highlightedScore = query.Where(s => s.Context == context && (!s.Score.Banned || (s.Score.Bot && showBots)) && s.LeaderboardId == leaderboardId && s.PlayerId == player).Select(s => new ScoreResponse
                 {
@@ -727,15 +743,18 @@ namespace BeatLeader_Server.Controllers
                 {
                     result.Selection = highlightedScore;
                     result.Selection.Player = PostProcessSettings(result.Selection.Player);
-                    if (scope.ToLower() == "friends" || scope.ToLower() == "country") {
+                    if (scope.ToLower() == "friends" || scope.ToLower() == "country")
+                    {
                         result.Selection.Rank = query.Count(s => s.Rank < result.Selection.Rank) + 1;
                     }
-                    if (highlightedScore.Player.ContextExtensions?.Count > 0) {
+                    if (highlightedScore.Player.ContextExtensions?.Count > 0)
+                    {
                         highlightedScore.Player.ToContext(highlightedScore.Player.ContextExtensions.First());
                     }
                 }
 
-                if (page < 1) {
+                if (page < 1)
+                {
                     page = 1;
                 }
             }
@@ -797,25 +816,30 @@ namespace BeatLeader_Server.Controllers
                 })
                 .ToList();
 
-            foreach (var score in resultList) {
-                if (score.Player.ContextExtensions?.Count > 0) {
+            foreach (var score in resultList)
+            {
+                if (score.Player.ContextExtensions?.Count > 0)
+                {
                     score.Player.ToContext(score.Player.ContextExtensions.First());
                 }
             }
 
-            if (resultList.FirstOrDefault()?.Pp > 0) {
+            if (resultList.FirstOrDefault()?.Pp > 0)
+            {
                 resultList = resultList
                         .OrderByDescending(el => Math.Round(el.Pp, 2))
                         .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                         .ThenBy(el => el.Timeset)
                         .ToList();
-            } else if (context == LeaderboardContexts.Golf) {
+            } else if (context == LeaderboardContexts.Golf)
+            {
                 resultList = resultList
                         .OrderBy(el => el.Priority)
                         .ThenBy(el => el.ModifiedScore)
                         .ThenBy(el => Math.Round(el.Accuracy, 4))
                         .ThenBy(el => el.Timeset).ToList();
-            } else {
+            } else
+            {
                 resultList = resultList
                         .OrderBy(el => el.Priority)
                         .ThenByDescending(el => el.ModifiedScore)
@@ -838,7 +862,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int count = 10)
         {
-            
+
             ResponseWithMetadataAndSelection<ScoreResponse> result = new ResponseWithMetadataAndSelection<ScoreResponse>
             {
                 Data = new List<ScoreResponse>(),
@@ -850,16 +874,19 @@ namespace BeatLeader_Server.Controllers
                     }
             };
 
-            if (hash.Length < 40) {
+            if (hash.Length < 40)
+            {
                 return BadRequest("Hash is too short");
-            } else {
+            } else
+            {
                 hash = hash.Substring(0, 40);
             }
 
-            PlayerResponse? currentPlayer = 
+            PlayerResponse? currentPlayer =
                 await _context
                 .Players
-                .Select(p => new PlayerResponse {
+                .Select(p => new PlayerResponse
+                {
                     Id = p.Id,
                     Name = p.Name,
                     Platform = p.Platform,
@@ -877,20 +904,24 @@ namespace BeatLeader_Server.Controllers
                 })
                 .FirstOrDefaultAsync(p => p.Id == player);
             var song = _context.Songs.Select(s => new { Id = s.Id, Hash = s.Hash }).FirstOrDefault(s => s.Hash == hash);
-            if (song == null) {
+            if (song == null)
+            {
                 return result;
             }
 
-            if (mode.EndsWith("OldDots")) {
+            if (mode.EndsWith("OldDots"))
+            {
                 mode = mode.Replace("OldDots", "");
             }
 
             int modeValue = Song.ModeForModeName(mode);
             if (modeValue == 0) {
                 var customMode = _context.CustomModes.FirstOrDefault(m => m.Name == mode);
-                if (customMode != null) {
+                if (customMode != null)
+                {
                     modeValue = customMode.Id + 10;
-                } else {
+                } else
+                {
                     return result;
                 }
             }
@@ -899,7 +930,8 @@ namespace BeatLeader_Server.Controllers
 
             bool showBots = currentPlayer?.ProfileSettings?.ShowBots ?? false;
             LeaderboardContexts contexts = LeaderboardContexts.General;
-            switch (context) {
+            switch (context)
+            {
                 case "standard":
                     contexts = LeaderboardContexts.NoMods;
                     break;
@@ -915,20 +947,22 @@ namespace BeatLeader_Server.Controllers
                 default:
                     break;
             }
-            
+
             (var resultList, page) =
-                contexts == LeaderboardContexts.General 
+                contexts == LeaderboardContexts.General
                 ? await GeneralScoreList(result, showBots, leaderboardId, scope, player, method, page, count, currentPlayer)
                 : await ContextScoreList(result, contexts, showBots, leaderboardId, scope, player, method, page, count, currentPlayer);
 
-            if (resultList != null) {
+            if (resultList != null)
+            {
                 for (int i = 0; i < resultList.Count; i++)
                 {
                     var score = resultList[i];
                     score.Player = PostProcessSettings(score.Player);
                     score.Rank = i + (page - 1) * count + 1;
 
-                    if (score.Player.Bot) {
+                    if (score.Player.Bot)
+                    {
                         score.Player.Name += " [BOT]";
                     }
                 }
@@ -940,9 +974,9 @@ namespace BeatLeader_Server.Controllers
 
         [HttpGet("~/score/{playerID}/{hash}/{diff}/{mode}")]
         public async Task<ActionResult<Score>> GetPlayer(
-            string playerID, 
-            string hash, 
-            string diff, 
+            string playerID,
+            string hash,
+            string diff,
             string mode,
             [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
         {
@@ -950,10 +984,10 @@ namespace BeatLeader_Server.Controllers
 
             var score = _context
                     .Scores
-                    .Where(l => 
-                        l.Leaderboard.Song.Hash == hash && 
-                        l.Leaderboard.Difficulty.DifficultyName == diff && 
-                        l.Leaderboard.Difficulty.ModeName == mode && 
+                    .Where(l =>
+                        l.Leaderboard.Song.Hash == hash &&
+                        l.Leaderboard.Difficulty.DifficultyName == diff &&
+                        l.Leaderboard.Difficulty.ModeName == mode &&
                         l.ValidContexts.HasFlag(leaderboardContext) &&
                         l.PlayerId == playerID)
                     .Include(el => el.Player)
@@ -965,12 +999,12 @@ namespace BeatLeader_Server.Controllers
 
             if (score != null)
             {
-                if (leaderboardContext != LeaderboardContexts.General) {
+                if (leaderboardContext != LeaderboardContexts.General)
+                {
                     score.ToContext(score.ContextExtensions.First());
                 }
                 return score;
-            }
-            else
+            } else
             {
                 return NotFound();
             }
@@ -980,7 +1014,8 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> GetStatistic(int id)
         {
             var replayStream = await _s3Client.DownloadStats(id + ".json");
-            if (replayStream == null) {
+            if (replayStream == null)
+            {
                 return NotFound();
             }
             return File(replayStream, "application/json");
@@ -1023,7 +1058,8 @@ namespace BeatLeader_Server.Controllers
             }
 
             (ScoreStatistic? statistic, string? error) = await CalculateAndSaveStatistic(replay, score);
-            if (statistic == null) {
+            if (statistic == null)
+            {
                 return BadRequest(error);
             }
 
@@ -1043,10 +1079,12 @@ namespace BeatLeader_Server.Controllers
             try
             {
                 (statistic, string? error) = ReplayStatisticUtils.ProcessReplay(replay, leaderboard);
-                if (statistic == null && error != null) {
+                if (statistic == null && error != null)
+                {
                     return (null, error);
                 }
-            } catch (Exception e) {
+            } catch (Exception e)
+            {
                 return (null, e.ToString());
             }
 
@@ -1116,8 +1154,8 @@ namespace BeatLeader_Server.Controllers
             var score = scores.First(s => s.Id == id);
             var pinnedScores = scores.Where(s => s.Metadata?.PinnedContexts.HasFlag(leaderboardContext) ?? false);
 
-            if (pinnedScores.Count() > pinLimit 
-                && pin 
+            if (pinnedScores.Count() > pinLimit
+                && pin
                 && score.Metadata?.PinnedContexts.HasFlag(leaderboardContext) == false)
             {
                 return BadRequest("Too many scores pinned");
@@ -1150,8 +1188,7 @@ namespace BeatLeader_Server.Controllers
                     metadata.LinkServiceIcon = icon;
                     metadata.LinkService = service;
                     metadata.Link = link;
-                }
-                else
+                } else
                 {
                     metadata.LinkServiceIcon = null;
                     metadata.LinkService = null;
@@ -1162,8 +1199,7 @@ namespace BeatLeader_Server.Controllers
             if (pin)
             {
                 metadata.PinnedContexts |= leaderboardContext;
-            }
-            else
+            } else
             {
                 metadata.PinnedContexts &= ~leaderboardContext;
             }
@@ -1183,8 +1219,7 @@ namespace BeatLeader_Server.Controllers
                             item.Metadata.Priority++;
                         }
                     }
-                }
-                else
+                } else
                 {
                     var scoresLower = pinnedScores.Where(s => s.Metadata.Priority <= priorityValue).ToList();
                     if (scoresLower.Count > 0)
@@ -1215,34 +1250,38 @@ namespace BeatLeader_Server.Controllers
 
         [HttpGet("~/replays/")]
         public async Task<ActionResult<ResponseWithMetadata<string>>> GetReplays(
-            int count = 50, 
+            int count = 50,
             int page = 1,
             int? date_from = null,
             int? date_to = null)
         {
-            if (count > 1000) {
+            if (count > 1000)
+            {
                 return BadRequest("Max count is 1000");
             }
             IQueryable<Score> scores = _context
                 .Scores
                 .OrderBy(s => s.Id);
 
-            if (date_from != null) {
+            if (date_from != null)
+            {
                 scores = scores.Where(s => s.Timepost >= date_from);
             }
 
-            if (date_to != null) {
+            if (date_to != null)
+            {
                 scores = scores.Where(s => s.Timepost <= date_to);
             }
 
-            return new ResponseWithMetadata<string>() {
-                    Metadata = new Metadata()
-                    {
-                        Page = page,
-                        ItemsPerPage = count,
-                        Total = scores.Count()
-                    },
-                    Data = scores
+            return new ResponseWithMetadata<string>()
+            {
+                Metadata = new Metadata()
+                {
+                    Page = page,
+                    ItemsPerPage = count,
+                    Total = scores.Count()
+                },
+                Data = scores
                         .Skip((page - 1) * count)
                         .Take(count)
                         .Select(s => s.Replay)
@@ -1253,10 +1292,194 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/scorestats/")]
         public async Task<ActionResult<string>> GetStats()
         {
+            //var currentId = HttpContext.CurrentUserID(_context);
+            //var currentPlayer = await _context.Players.FindAsync(currentId);
+
+            //if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            //{
+            //    return Unauthorized();
+            //}
+
+            string result = "Count,Count >80%,Count >95%,Count/80,Count/95,95/80,Average,Percentile,Megametric,Megametric125,Megametric75,Megametric40,Top250,Total PP,PP/topPP filtered,PP/topPP unfiltered,Acc Rating,Pass Rating,Tech Rating,Name,Link\n";
+            float weightTreshold = MathF.Pow(0.965f, 40);
+
+            var leaderboards = _context
+                .Leaderboards
+                .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
+                .Select(lb => new
+                {
+                    Average = lb.Scores.Average(s => s.Weight),
+                    Megametric = lb.Scores.Where(s => s.Player.ScoreStats.TopPp != 0).Select(s => new { s.Weight, s.Player.ScoreStats.RankedPlayCount, s.Pp, s.Player.ScoreStats.TopPp }),
+                    Count8 = lb.Scores.Where(s => s.Weight > 0.8).Count(),
+                    Count95 = lb.Scores.Where(s => s.Weight > 0.95).Count(),
+                    PPsum = lb.Scores.Sum(s => s.Pp * s.Weight),
+
+                    PPAverage = lb
+                        .Scores
+                        .Where(s => s.Player.ScoreStats.RankedPlayCount >= 50 && s.Player.ScoreStats.TopPp != 0)
+                      .Average(s => s.Pp / s.Player.ScoreStats.TopPp),
+                    PPAverage2 = lb
+                        .Scores
+                        .Where(s => s.Player.ScoreStats.TopPp != 0)
+                      .Average(s => s.Pp / s.Player.ScoreStats.TopPp),
+                    Count = lb.Scores.Count(),
+                    Top250 = lb.Scores.Where(s => s.Player.Rank < 250 && s.Weight > weightTreshold).Count(),
+                    lb.Id,
+                    lb.Song.Name,
+                    lb.Difficulty.AccRating,
+                    lb.Difficulty.PassRating,
+                    lb.Difficulty.TechRating
+                })
+                .ToList();
+
+            foreach (var item in leaderboards)
+            {
+                var l = item.Megametric.OrderByDescending(s => s.Weight).Take((int)(((double)item.Megametric.Count()) * 0.33));
+                var ll = l.Count() > 10 ? l.Average(s => s.Weight) : 0;
+
+                var m = item.Megametric.OrderByDescending(s => s.Weight).Take((int)(((double)item.Megametric.Count()) * 0.33)).Where(s => s.RankedPlayCount > 75);
+                var mm = m.Count() > 10 ? m.Average(s => (s.Pp / s.TopPp) * s.Weight) : 0;
+
+                var m2 = item.Megametric.Where(s => s.RankedPlayCount > 125).OrderByDescending(s => s.Weight).Take((int)(((double)item.Megametric.Count()) * 0.33));
+                var mm2 = m2.Count() > 10 ? m2.Average(s => (s.Pp / s.TopPp) * s.Weight) : 0;
+
+                var m3 = item.Megametric.Where(s => s.RankedPlayCount > 75).OrderByDescending(s => s.Weight).Take((int)(((double)item.Megametric.Count()) * 0.33));
+                var mm3 = m3.Count() > 10 ? m3.Average(s => (s.Pp / s.TopPp) * s.Weight) : 0;
+
+                var m4 = item.Megametric.Where(s => s.RankedPlayCount > 40).OrderByDescending(s => s.Weight).Take((int)(((double)item.Megametric.Count()) * 0.33));
+                var mm4 = m4.Count() > 10 ? m4.Average(s => (s.Pp / s.TopPp) * s.Weight) : 0;
+
+
+                result += $"{item.Count},{item.Count8},{item.Count95},{item.Count8 / (float)item.Count},{item.Count95 / (float)item.Count},{item.Count95 / (float)item.Count8},{item.Average},{ll},{mm},{mm2},{mm3},{mm4},{item.Top250},{item.PPsum},{item.PPAverage},{item.PPAverage2},{item.AccRating},{item.PassRating},{item.TechRating},{item.Name.Replace(",", "")},https://stage4.beatleader.net/leaderboard/global/{item.Id}/1\n";
+            }
+
+            return result;
+        }
+
+        [HttpGet("~/autoreweight/")]
+        public async Task<ActionResult> Autoreweight()
+        {
             var currentId = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentId);
 
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin")) {
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var leaderboards = _context
+                .Leaderboards
+                .Where(lb =>
+                    lb.Difficulty.Status == DifficultyStatus.ranked &&
+                    lb.Scores.Count > 50)
+                .Select(lb => new
+                {
+                    //AverageWeight = lb.Scores.Average(s => s.Weight),
+                    //Percentile = lb.Scores.Select(s => s.Weight),
+                    Megametric = lb.Scores.Where(s => s.Player.ScoreStats.TopPp != 0).Select(s => new { s.Weight, s.Player.ScoreStats.RankedPlayCount, s.Pp, s.Player.ScoreStats.TopPp }),
+                    //TopPP = lb.Scores
+                    //    .Where(s => s.Player.ScoreStats.RankedPlayCount >= 50 && s.Player.ScoreStats.TopPp != 0)
+                    //  .Average(s => s.Pp / s.Player.ScoreStats.TopPp),
+                    lb.Difficulty,
+                    lb.Difficulty.ModifiersRating
+                })
+                .ToList();
+            int i = 0;
+            foreach (var lb in leaderboards)
+            {
+                var m4 = lb.Megametric.Where(s => s.RankedPlayCount > 40).OrderByDescending(s => s.Weight).Take((int)(((double)lb.Megametric.Count()) * 0.33));
+                var mm4 = m4.Count() > 10 ? m4.Average(s => (s.Pp / s.TopPp) * s.Weight) : 0;
+
+                if (mm4 > 0.6f)
+                {
+
+                    //var topAverage = lb.Percentile.OrderByDescending(s => s).Take((int)(((double)lb.Percentile.Count()) * 0.33)).Average(s => s);
+                    //var adjustedTop = lb.TopPP - 0.5f;
+                    var value = 1.0f - (mm4 - 0.6f) * 0.1f;
+
+                    lb.Difficulty.AccRating *= value;
+                    //lb.Difficulty.PassRating *= 1.0f - value * 0.4f;
+                    if (lb.ModifiersRating != null)
+                    {
+                        lb.ModifiersRating.FSAccRating *= value;
+                        //lb.ModifiersRating.FSPassRating *= 1.0f - value * 1.2f * 0.6f;
+                        lb.ModifiersRating.SFAccRating *= value;
+                        lb.ModifiersRating.SSAccRating *= value;
+                        //lb.ModifiersRating.SFPassRating *=1.0f - value * 1.4f * 0.6f;
+                    }
+                }
+            }
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpGet("~/autoreweight3/")]
+        public async Task<ActionResult> Autoreweight3()
+        {
+            var currentId = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentId);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var leaderboards = _context
+                .Leaderboards
+                .Where(lb =>
+                    lb.Difficulty.Status == DifficultyStatus.ranked &&
+                    lb.Scores.Count > 100)
+                .Select(lb => new
+                {
+                    //AverageWeight = lb.Scores.Average(s => s.Weight),
+                    //Percentile = lb.Scores.Select(s => s.Weight),
+                    Megametric = lb.Scores.Where(s => s.Player.ScoreStats.TopPp != 0).Select(s => new { s.Weight, s.Player.ScoreStats.RankedPlayCount, s.Pp, s.Player.ScoreStats.TopPp }),
+                    //TopPP = lb.Scores
+                    //    .Where(s => s.Player.ScoreStats.RankedPlayCount >= 50 && s.Player.ScoreStats.TopPp != 0)
+                    //  .Average(s => s.Pp / s.Player.ScoreStats.TopPp),
+                    lb.Difficulty,
+                    lb.Difficulty.ModifiersRating
+                })
+                .ToList();
+            int i = 0;
+            foreach (var lb in leaderboards)
+            {
+                var l = lb.Megametric.OrderByDescending(s => s.Weight).Take((int)(((double)lb.Megametric.Count()) * 0.33));
+                var ll = l.Count() > 10 ? l.Average(s => s.Weight) : 0;
+
+                var m = lb.Megametric.OrderByDescending(s => s.Weight).Take((int)(((double)lb.Megametric.Count()) * 0.33)).Where(s => s.RankedPlayCount > 75);
+                var mm = m.Count() > 10 ? m.Average(s => (s.Pp / s.TopPp) * s.Weight) : 0;
+
+                if (ll < 0.5f)
+                {
+
+                    //var topAverage = lb.Percentile.OrderByDescending(s => s).Take((int)(((double)lb.Percentile.Count()) * 0.33)).Average(s => s);
+                    //var adjustedTop = lb.TopPP - 0.5f;
+                    var value = 1.0f + (0.5f - ll) * 0.28f;
+
+                    lb.Difficulty.AccRating *= value;
+                    if (lb.ModifiersRating != null)
+                    {
+                        lb.ModifiersRating.FSAccRating *= value;
+                        lb.ModifiersRating.SFAccRating *= value;
+                        lb.ModifiersRating.SSAccRating *= value;
+                    }
+                }
+            }
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpGet("~/scorestats2/")]
+        public async Task<ActionResult<string>> GetStats2()
+        {
+            var currentId = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentId);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
                 return Unauthorized();
             }
 
@@ -1266,8 +1489,9 @@ namespace BeatLeader_Server.Controllers
             var leaderboards = _context
                 .Leaderboards
                 .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
-                .Select(lb => new { 
-                    Average = lb.Scores.Average(s => s.Weight), 
+                .Select(lb => new
+                {
+                    Average = lb.Scores.Average(s => s.Weight),
                     Count8 = lb.Scores.Where(s => s.Weight > 0.8).Count(),
                     Count95 = lb.Scores.Where(s => s.Weight > 0.95).Count(),
                     PPsum = lb.Scores.Sum(s => s.Pp * s.Weight),
@@ -1285,12 +1509,13 @@ namespace BeatLeader_Server.Controllers
                     lb.Song.Name,
                     lb.Difficulty.AccRating,
                     lb.Difficulty.PassRating,
-                    lb.Difficulty.TechRating})
+                    lb.Difficulty.TechRating
+                })
                 .ToList();
 
             foreach (var item in leaderboards)
             {
-                result += $"{item.Count},{item.Count8},{item.Count95},{item.Count8/(float)item.Count},{item.Count95/(float)item.Count},{item.Average},{item.Top250},{item.PPsum},{item.PPAverage},{item.PPAverage2},{item.AccRating},{item.PassRating},{item.TechRating},{item.Name.Replace(",","")},https://stage.beatleader.net/leaderboard/global/{item.Id}/1\n";
+                result += $"{item.Count},{item.Count8},{item.Count95},{item.Count8 / (float)item.Count},{item.Count95 / (float)item.Count},{item.Average},{item.Top250},{item.PPsum},{item.PPAverage},{item.PPAverage2},{item.AccRating},{item.PassRating},{item.TechRating},{item.Name.Replace(",", "")},https://stage.beatleader.net/leaderboard/global/{item.Id}/1\n";
             }
 
             return result;

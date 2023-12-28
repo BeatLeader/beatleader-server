@@ -11,10 +11,11 @@ using ReplayDecoder;
 namespace BeatLeader_Server.Controllers
 {
     [ApiExplorerSettings(IgnoreApi = true)]
-    [Authorize]
+    //[Authorize]
     public class AdminController : Controller
     {
         private readonly AppContext _context;
+        private readonly ReadAppContext _readContext;
         CurrentUserController _currentUserController;
         ScoreRefreshController _scoreRefreshController;
         ReplayController _replayController;
@@ -23,6 +24,7 @@ namespace BeatLeader_Server.Controllers
 
         public AdminController(
             AppContext context,
+            ReadAppContext readContext,
             IWebHostEnvironment env,
             CurrentUserController currentUserController,
             ScoreRefreshController scoreRefreshController,
@@ -30,6 +32,7 @@ namespace BeatLeader_Server.Controllers
             IConfiguration configuration)
         {
             _context = context;
+            _readContext = readContext;
             _currentUserController = currentUserController;
             _scoreRefreshController = scoreRefreshController;
             _replayController = replayController;
@@ -537,13 +540,13 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/admin/maps/newranking")]
         public async Task<ActionResult> newranking()
         {
-            string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
+            //string currentID = HttpContext.CurrentUserID(_context);
+            //var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
+            //if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            //{
+            //    return Unauthorized();
+            //}
 
             var leaderboards = _context
                 .Leaderboards
@@ -581,6 +584,36 @@ namespace BeatLeader_Server.Controllers
             }
 
             await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpGet("~/refreshstars")]
+        public async Task<ActionResult> refreshstars()
+        {
+
+            var leaderboards = _context
+                .Leaderboards
+                .Where(lb => 
+                    lb.Difficulty.Status == DifficultyStatus.ranked || 
+                    lb.Difficulty.Status == DifficultyStatus.qualified || 
+                    lb.Difficulty.Status == DifficultyStatus.nominated)
+                .Include(lb => lb.Difficulty)
+                .ThenInclude(d => d.ModifiersRating)
+                .ToList();
+            foreach (var leaderboard  in leaderboards) {
+                var diff = leaderboard.Difficulty;
+
+                diff.Stars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0, diff.PatternRating ?? 0, diff.LinearRating ?? 0, diff.PredictedAcc ?? 0, diff.ModeName);
+                
+                var modrating = diff.ModifiersRating;
+                if (modrating != null) {
+                    modrating.SFStars = ReplayUtils.ToStars(modrating.SFAccRating, modrating.SFPassRating, modrating.SFTechRating, diff.PatternRating ?? 0, diff.LinearRating ?? 0, modrating.SFPredictedAcc, diff.ModeName);
+                    modrating.FSStars = ReplayUtils.ToStars(modrating.FSAccRating, modrating.FSPassRating, modrating.FSTechRating, diff.PatternRating ?? 0, diff.LinearRating ?? 0,  modrating.FSPredictedAcc, diff.ModeName);
+                    modrating.SSStars = ReplayUtils.ToStars(modrating.SSAccRating, modrating.SSPassRating, modrating.SSTechRating, diff.PatternRating ?? 0, diff.LinearRating ?? 0, modrating.SSPredictedAcc, diff.ModeName);
+                }
+            }
+            await _context.BulkSaveChangesAsync();
 
             return Ok();
         }
@@ -691,13 +724,14 @@ namespace BeatLeader_Server.Controllers
                         //        diff.PassRating,
                         //        diff.TechRating);
 
-                        diff.Stars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0);
+                        diff.Stars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0, diff.PatternRating ?? 0, diff.LinearRating ?? 0, diff.PredictedAcc ?? 0, diff.ModeName);
 
                         var modifiersRating = diff.ModifiersRating;
-                        if (modifiersRating != null) {
-                            modifiersRating.SSStars = ReplayUtils.ToStars(modifiersRating.SSAccRating, modifiersRating.SSPassRating, modifiersRating.SSTechRating);
-                            modifiersRating.SFStars = ReplayUtils.ToStars(modifiersRating.SFAccRating, modifiersRating.SFPassRating, modifiersRating.SFTechRating);
-                            modifiersRating.FSStars = ReplayUtils.ToStars(modifiersRating.FSAccRating, modifiersRating.FSPassRating, modifiersRating.FSTechRating);
+                        if (modifiersRating != null)
+                        {
+                            modifiersRating.SSStars = ReplayUtils.ToStars(modifiersRating.SSAccRating, modifiersRating.SSPassRating, modifiersRating.SSTechRating, diff.PatternRating ?? 0, diff.LinearRating ?? 0, diff.PredictedAcc ?? 0, diff.ModeName, "SS");
+                            modifiersRating.SFStars = ReplayUtils.ToStars(modifiersRating.SFAccRating, modifiersRating.SFPassRating, modifiersRating.SFTechRating, diff.PatternRating ?? 0, diff.LinearRating ?? 0, diff.PredictedAcc ?? 0, diff.ModeName, "SF");
+                            modifiersRating.FSStars = ReplayUtils.ToStars(modifiersRating.FSAccRating, modifiersRating.FSPassRating, modifiersRating.FSTechRating, diff.PatternRating ?? 0, diff.LinearRating ?? 0, diff.PredictedAcc ?? 0, diff.ModeName, "FS");
                         }
 
                         //var rating = diff.ModifiersRating;
@@ -1182,8 +1216,7 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
-        [NonAction]
-        //[HttpPost("~/admin/cleandb")]
+        [HttpPost("~/admin/cleandb")]
         public async Task<ActionResult> CleanDb()
         {
             var auths = _context.Auths.ToList();
