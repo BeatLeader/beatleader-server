@@ -1,5 +1,4 @@
 ﻿using BeatLeader_Server.Models;
-using Lucene.Net.Analysis.Standard;
 using Lucene.Net.Documents;
 using Lucene.Net.Index;
 using Lucene.Net.Sandbox.Queries;
@@ -13,6 +12,7 @@ public static class SongSearchService
 {
     private const int HitsLimit = 5000;
     private static readonly string LuceneDir = Path.Combine(System.AppContext.BaseDirectory, "lucene_index_songs");
+    private static readonly LuceneVersion LuceneVersion = LuceneVersion.LUCENE_48;
 
     private static FSDirectory Directory { get; } = FSDirectory.Open(new DirectoryInfo(LuceneDir));
 
@@ -20,8 +20,8 @@ public static class SongSearchService
     {
         lock (Directory)
         {
-            using StandardAnalyzer analyzer = new(LuceneVersion.LUCENE_48);
-            IndexWriterConfig config = new(LuceneVersion.LUCENE_48, analyzer);
+            using CustomAnalyzer analyzer = new(LuceneVersion);
+            IndexWriterConfig config = new(LuceneVersion, analyzer);
             using IndexWriter writer = new(Directory, config);
 
             foreach (SongMetadata songMetadata in songs)
@@ -37,8 +37,8 @@ public static class SongSearchService
     {
         lock (Directory)
         {
-            using StandardAnalyzer analyzer = new(LuceneVersion.LUCENE_48);
-            IndexWriterConfig config = new(LuceneVersion.LUCENE_48, analyzer);
+            using CustomAnalyzer analyzer = new(LuceneVersion);
+            IndexWriterConfig config = new(LuceneVersion, analyzer);
             using IndexWriter writer = new(Directory, config);
 
             AddToLuceneIndex((SongMetadata)song, writer);
@@ -86,14 +86,12 @@ public static class SongSearchService
     {
         searchQuery = searchQuery.ToLower();
 
-        Console.WriteLine(searchQuery);
-        string[] words = searchQuery.Split(' ');
-        int wordsLength = words.Length;
-        FuzzyLikeThisQuery fuzzyWordsQueryName = new(wordsLength, new StandardAnalyzer(LuceneVersion.LUCENE_48));
+        int wordsLength = searchQuery.Split(' ').Length;
+        FuzzyLikeThisQuery fuzzyWordsQueryName = new(wordsLength, new CustomAnalyzer(LuceneVersion));
         fuzzyWordsQueryName.AddTerms(searchQuery, nameof(SongMetadata.Name), 0.7f, 1);
-        FuzzyLikeThisQuery fuzzyWordsQueryAuthor = new(wordsLength, new StandardAnalyzer(LuceneVersion.LUCENE_48));
+        FuzzyLikeThisQuery fuzzyWordsQueryAuthor = new(wordsLength, new CustomAnalyzer(LuceneVersion));
         fuzzyWordsQueryAuthor.AddTerms(searchQuery, nameof(SongMetadata.Author), 0.7f, 1);
-        FuzzyLikeThisQuery fuzzyWordsQueryMapper = new(wordsLength, new StandardAnalyzer(LuceneVersion.LUCENE_48));
+        FuzzyLikeThisQuery fuzzyWordsQueryMapper = new(wordsLength, new CustomAnalyzer(LuceneVersion));
         fuzzyWordsQueryMapper.AddTerms(searchQuery, nameof(SongMetadata.Mapper), 0.7f, 1);
 
         BooleanQuery booleanQuery = new()

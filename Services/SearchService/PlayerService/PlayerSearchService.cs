@@ -1,5 +1,4 @@
 ﻿using BeatLeader_Server.Models;
-using Lucene.Net.Analysis.Standard;
 using Lucene.Net.Documents;
 using Lucene.Net.Index;
 using Lucene.Net.Queries;
@@ -14,6 +13,7 @@ public static class PlayerSearchService
 {
     private const int HitsLimit = 1000;
     private static readonly string LuceneDir = Path.Combine(System.AppContext.BaseDirectory, "lucene_index_players");
+    private static readonly LuceneVersion LuceneVersion = LuceneVersion;
 
     private static FSDirectory Directory { get; } = FSDirectory.Open(new DirectoryInfo(LuceneDir));
 
@@ -21,8 +21,8 @@ public static class PlayerSearchService
     {
         lock (Directory)
         {
-            using StandardAnalyzer analyzer = new(LuceneVersion.LUCENE_48);
-            IndexWriterConfig config = new(LuceneVersion.LUCENE_48, analyzer);
+            using CustomAnalyzer analyzer = new(LuceneVersion);
+            IndexWriterConfig config = new(LuceneVersion, analyzer);
             using IndexWriter writer = new(Directory, config);
 
             foreach (PlayerMetadata playerMetadata in players)
@@ -38,8 +38,8 @@ public static class PlayerSearchService
     {
         lock (Directory)
         {
-            using StandardAnalyzer analyzer = new(LuceneVersion.LUCENE_48);
-            IndexWriterConfig config = new(LuceneVersion.LUCENE_48, analyzer);
+            using CustomAnalyzer analyzer = new(LuceneVersion);
+            IndexWriterConfig config = new(LuceneVersion, analyzer);
             using IndexWriter writer = new(Directory, config);
 
             AddToLuceneIndex((PlayerMetadata)player, writer);
@@ -52,8 +52,8 @@ public static class PlayerSearchService
     {
         lock (Directory)
         {
-            using StandardAnalyzer analyzer = new(LuceneVersion.LUCENE_48);
-            IndexWriterConfig config = new(LuceneVersion.LUCENE_48, analyzer);
+            using CustomAnalyzer analyzer = new(LuceneVersion);
+            IndexWriterConfig config = new(LuceneVersion, analyzer);
             using IndexWriter writer = new(Directory, config);
 
             using DirectoryReader directoryReader = DirectoryReader.Open(Directory);
@@ -124,7 +124,7 @@ public static class PlayerSearchService
         {
             string[] words = searchQuery.Split(' ', '_', '-');
 
-            FuzzyLikeThisQuery fuzzyWordsQuery = new(words.Length, new StandardAnalyzer(LuceneVersion.LUCENE_48));
+            FuzzyLikeThisQuery fuzzyWordsQuery = new(words.Length, new CustomAnalyzer(LuceneVersion));
             fuzzyWordsQuery.AddTerms(searchQuery, nameof(PlayerMetadata.Names), 0.6f, 1);
 
             booleanQuery.Add(fuzzyWordsQuery, Occur.SHOULD);
