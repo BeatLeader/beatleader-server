@@ -532,8 +532,7 @@ namespace BeatLeader_Server.Controllers
                         Socials = s.Player.Socials,
                         ProfileSettings = s.Player.ProfileSettings,
                         PatreonFeatures = s.Player.PatreonFeatures,
-                        Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
-                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                        Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                     },
                     ScoreImprovement = s.ScoreImprovement
                 }).FirstOrDefault();
@@ -601,8 +600,7 @@ namespace BeatLeader_Server.Controllers
                         Socials = s.Player.Socials,
                         ProfileSettings = s.Player.ProfileSettings,
                         PatreonFeatures = s.Player.PatreonFeatures,
-                        Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
-                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                        Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                     },
                     ScoreImprovement = s.ScoreImprovement
                 })
@@ -717,8 +715,7 @@ namespace BeatLeader_Server.Controllers
                         ProfileSettings = s.Player.ProfileSettings,
                         PatreonFeatures = s.Player.PatreonFeatures,
                         ContextExtensions = s.Player.ContextExtensions.Where(ce => ce.Context == context).ToList(),
-                        Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
-                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                        Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                     },
                     ScoreImprovement = s.ScoreImprovement
                 }).FirstOrDefault();
@@ -790,8 +787,7 @@ namespace BeatLeader_Server.Controllers
                         ProfileSettings = s.Player.ProfileSettings,
                         PatreonFeatures = s.Player.PatreonFeatures,
                         ContextExtensions = s.Player.ContextExtensions.Where(ce => ce.Context == context).ToList(),
-                        Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
-                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color }).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                        Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                     },
                     ScoreImprovement = s.ScoreImprovement
                 })
@@ -872,8 +868,7 @@ namespace BeatLeader_Server.Controllers
                     Role = p.Role,
                     Socials = p.Socials,
                     ProfileSettings = p.ProfileSettings,
-                    Clans = p.Clans.OrderBy(c => p.ClanOrder.IndexOf(c.Tag))
-                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color }).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                    Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                 })
                 .FirstOrDefaultAsync(p => p.Id == player);
             var song = _context.Songs.Select(s => new { Id = s.Id, Hash = s.Hash }).FirstOrDefault(s => s.Hash == hash);
