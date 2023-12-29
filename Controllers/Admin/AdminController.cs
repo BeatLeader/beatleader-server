@@ -1194,7 +1194,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             _context.AuthIPs.BulkDelete(_context.AuthIPs);
-            _context.AuthIDs.BulkDelete(_context.AuthIDs);
+            _context.Bans.BulkDelete(_context.Bans);
             _context.TwitterLinks.BulkDelete(_context.TwitterLinks);
             _context.TwitchLinks.BulkDelete(_context.TwitchLinks);
             _context.DiscordLinks.BulkDelete(_context.DiscordLinks);
