@@ -12,7 +12,6 @@ using static BeatLeader_Server.Utils.ResponseUtils;
 namespace BeatLeader_Server.Controllers {
     [ApiController]
     [Route("[controller]")]
-    [Authorize]
     public class CurrentUserController : ControllerBase {
         private readonly AppContext _context;
         private readonly ReadAppContext _readContext;
