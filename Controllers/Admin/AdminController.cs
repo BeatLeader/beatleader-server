@@ -1,6 +1,7 @@
 ﻿using Amazon.S3;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Dasync.Collections;
 using Microsoft.AspNetCore.Authorization;
@@ -498,7 +499,7 @@ namespace BeatLeader_Server.Controllers
 
                 var leaderboardsRecalc = _context
                     .Leaderboards
-                    .Where(lb => lb.Difficulty.Status == DifficultyStatus.inevent)
+                    .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
                     .Include(lb => lb.ClanRanking)
                     .ToList();
                 leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
@@ -508,6 +509,29 @@ namespace BeatLeader_Server.Controllers
                 Console.WriteLine(ex.Message);
             }
 
+            await _context.BulkSaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpPut("~/admin/refreshClanCapturedPercent")]
+        public async Task<ActionResult> RefreshClanCapturedPercent()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (!currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var clans = _context.Clans.Select(c => new { Clan = c, CaptureLeaderboardsCount = c.CapturedLeaderboards.Count() }).ToList();
+            foreach (var c in clans)
+            {
+                var clan = c.Clan;
+                clan.CaptureLeaderboardsCount = c.CaptureLeaderboardsCount;
+                clan.RankedPoolPercentCaptured = ((float)clan.CaptureLeaderboardsCount) / (float)RankingService.RankedMapCount;
+            }
             await _context.BulkSaveChangesAsync();
 
             return Ok();
