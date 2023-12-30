@@ -1,4 +1,5 @@
-﻿namespace BeatLeader_Server.Services;
+﻿using Microsoft.EntityFrameworkCore;
+namespace BeatLeader_Server.Services;
 
 public class SearchService : BackgroundService
 {
@@ -26,6 +27,6 @@ public class SearchService : BackgroundService
 
         SongSearchService.AddNewSongs(context.Songs);
 
-        PlayerSearchService.AddNewPlayers(context.Players);
+        PlayerSearchService.AddNewPlayers(context.Players.Include(p => p.Changes));
     }
 }
