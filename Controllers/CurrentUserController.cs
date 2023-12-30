@@ -1152,14 +1152,11 @@ namespace BeatLeader_Server.Controllers {
             _context.SaveChanges();
 
             if (scoresGroups.Count() > 0) {
-                foreach (var group in scoresGroups) {
-                    await _scoreRefreshController.RefreshScores(group.Key);
-                    await _scoreRefreshController.BulkRefreshScoresAllContexts(group.Key);
-                }
+                RefreshTaskService.AddJob(new MigrationJob {
+                    PlayerId = migratedToPlayer.Id,
+                    Leaderboards = scoresGroups.Select(g => g.Key).ToList()
+                });
             }
-
-            await _playerRefreshController.RefreshPlayer(migratedToPlayer);
-            await _context.BulkSaveChangesAsync();
 
             return Ok();
         }

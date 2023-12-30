@@ -347,11 +347,13 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/player/{id}/refresh")]
         public async Task<ActionResult> RefreshPlayerAction(string id, [FromQuery] bool refreshRank = true)
         {
-            string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = await _readContext.Players.FindAsync(currentId);
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
+            if (HttpContext != null) {
+                string? currentId = HttpContext.CurrentUserID(_context);
+                Player? currentPlayer = await _readContext.Players.FindAsync(currentId);
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
             }
             Player? player = _context.Players.Where(p => p.Id == id).Include(p => p.ScoreStats).FirstOrDefault();
             if (player == null)
