@@ -198,5 +198,107 @@ namespace BeatLeader_Server.Controllers
             
             return result.OrderByDescending(s => s.FloatValue).ToList();
         }
+
+        public class VersionStat {
+            public string Version { get; set; }
+            public string Value { get; set; }
+
+            [System.Text.Json.Serialization.JsonIgnore]
+            public float FloatValue { get; set; }
+        }
+
+        [HttpGet("~/admin/versionStats")]
+        [Authorize]
+        public async Task<ActionResult<List<VersionStat>>> GetVersionStats([FromQuery] int time = 60 * 60 * 24 * 7 * 3)
+        {
+            string currentId = HttpContext.CurrentUserID(_context);
+            Player? currentPlayer = await _context.Players.FindAsync(currentId);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+            var activeTreshold = timeset - time;
+
+            var scores = _context
+                .Scores
+                .Where(s => s.Timepost > activeTreshold)
+                .Select(s => new {
+                    s.PlayerId,
+                    s.Platform
+                })
+                .ToList()
+                .Select(s => new {
+                    s.PlayerId,
+                    Platform = s.Platform.Split(",")[1].Split("_").First()
+                })
+                .ToList();
+
+            var keys = scores.DistinctBy(s => s.Platform).Select(s => s.Platform).ToList();
+            var groups = scores.GroupBy(s => s.PlayerId + s.Platform).ToList();
+
+            var totalCount = groups.Count();
+            var result = new List<VersionStat>();
+            foreach (var key in keys)
+            {
+                float value = ((float)groups.Count(g => g.First().Platform == key) / totalCount) * 100f;
+
+                result.Add(new VersionStat {
+                    Version = key,
+                    Value = Math.Round(value, 2) + "%",
+                    FloatValue = value
+                });
+            }
+            
+            return result.OrderByDescending(s => s.FloatValue).ToList();
+        }
+
+        [HttpGet("~/admin/versionStatsScores")]
+        [Authorize]
+        public async Task<ActionResult<List<VersionStat>>> GetVersionStats2([FromQuery] int time = 60 * 60 * 24 * 7 * 3)
+        {
+            string currentId = HttpContext.CurrentUserID(_context);
+            Player? currentPlayer = await _context.Players.FindAsync(currentId);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+            var activeTreshold = timeset - time;
+
+            var scores = _context
+                .Scores
+                .Where(s => s.Timepost > activeTreshold)
+                .Select(s => new {
+                    s.PlayerId,
+                    s.Platform
+                })
+                .ToList()
+                .Select(s => new {
+                    s.PlayerId,
+                    Platform = s.Platform.Split(",")[1].Split("_").First()
+                })
+                .ToList();
+
+            var keys = scores.DistinctBy(s => s.Platform).Select(s => s.Platform).ToList();
+            var groups = scores.GroupBy(s => s.Platform).ToList();
+
+            var totalCount = scores.Count();
+            var result = new List<VersionStat>();
+            foreach (var group in groups)
+            {
+                float value = ((float)group.Count() / totalCount) * 100f;
+
+                result.Add(new VersionStat {
+                    Version = group.Key,
+                    Value = Math.Round(value, 2) + "%",
+                    FloatValue = value
+                });
+            }
+            
+            return result.OrderByDescending(s => s.FloatValue).ToList();
+        }
     }
 }
