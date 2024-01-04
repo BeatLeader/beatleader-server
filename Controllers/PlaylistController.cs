@@ -373,11 +373,13 @@ namespace BeatLeader_Server.Controllers
                 difficulties = lb.Song.Difficulties.Where(d => d.Status == DifficultyStatus.ranked).Select(d => new {
                     name = d.DifficultyName.FirstCharToLower(),
                     characteristic = d.ModeName
-                })
+                }),
+                rankedTime = lb.Difficulty.RankedTime
             }).ToList();
 
-            playlist.songs = songs.DistinctBy(s => s.hash).ToList();
-            playlist.customData = new CustomData { 
+            playlist.songs = songs.DistinctBy(s => s.hash).OrderByDescending(a => a.rankedTime).ToList();
+            playlist.customData = new CustomData
+            {
                 syncURL = "https://api.beatleader.xyz/playlist/ranked",
                 owner = "BeatLeader",
                 id = "ranked"
@@ -432,10 +434,11 @@ namespace BeatLeader_Server.Controllers
                 {
                     name = d.DifficultyName.FirstCharToLower(),
                     characteristic = d.ModeName
-                })
+                }),
+                nominatedTime = lb.Difficulty.NominatedTime
             }).ToList();
 
-            playlist.songs = songs.DistinctBy(s => s.hash).ToList();
+            playlist.songs = songs.DistinctBy(s => s.hash).OrderByDescending(a => a.nominatedTime).ToList();
             playlist.customData = new CustomData
             {
                 syncURL = "https://api.beatleader.xyz/playlist/nominated",
@@ -491,10 +494,11 @@ namespace BeatLeader_Server.Controllers
                 {
                     name = d.DifficultyName.FirstCharToLower(),
                     characteristic = d.ModeName
-                })
+                }),
+                qualifiedTime = lb.Difficulty.QualifiedTime
             }).ToList();
 
-            playlist.songs = songs.DistinctBy(s => s.hash).ToList();
+            playlist.songs = songs.DistinctBy(s => s.hash).OrderByDescending(a => a.qualifiedTime).ToList();
             playlist.customData = new CustomData
             {
                 syncURL = "https://api.beatleader.xyz/playlist/qualified",
