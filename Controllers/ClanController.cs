@@ -34,6 +34,45 @@ namespace BeatLeader_Server.Controllers
             _assetsS3Client = configuration.GetS3Client();
         }
 
+        public class ClanMapConnection {
+            public Clan? Clan { get; set; }
+            
+            public float Pp { get; set; }
+        }
+
+        public class ClanGlobalMapPoint {
+            public string LeaderboardId { get; set; }
+            public string CoverImage { get; set; }
+
+            public float? Stars { get; set; }
+
+            public bool Tie { get; set; }
+
+            public List<ClanMapConnection> Clans { get; set; }
+        }
+
+        [HttpGet("~/clans/globalmap")]
+        public async Task<ActionResult<List<ClanGlobalMapPoint>>> GlobalMap() {
+            return _context
+                .Leaderboards
+                .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
+                .Select(lb => new ClanGlobalMapPoint {
+                    LeaderboardId = lb.Id,
+                    CoverImage = lb.Song.CoverImage,
+                    Stars = lb.Difficulty.Stars,
+                    Tie = lb.ClanRankingContested,
+                    Clans = lb.ClanRanking
+                               .OrderByDescending(cr => cr.Pp)
+                               .Take(3)
+                               .Select(cr => new ClanMapConnection {
+                                   Clan = cr.Clan,
+                                   Pp = cr.Pp,
+                               })
+                               .ToList()
+                })
+                .ToList();
+        }
+
         [HttpGet("~/clans/")]
         public async Task<ActionResult<ResponseWithMetadata<Clan>>> GetAll(
             [FromQuery] int page = 1,
@@ -339,7 +378,7 @@ namespace BeatLeader_Server.Controllers
                 .Include(lb => lb.ClanRanking)
                 .Where(lb => lb.ClanRanking != null ?
                 lb.ClanRanking.Any(lbClan => lbClan.Clan.Tag == clan.Tag) && lb.Difficulty.Status == DifficultyStatus.ranked :
-                lb.Difficulty.Status == DifficultyStatus.inevent)
+                lb.Difficulty.Status == DifficultyStatus.ranked)
                 .ToList();
 
             // Remove the clanRankings

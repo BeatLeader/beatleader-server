@@ -1019,7 +1019,7 @@ namespace BeatLeader_Server.Controllers
                 transaction = await _context.Database.BeginTransactionAsync();
 
                 // Calculate clan ranking for this leaderboard
-                _context.UpdateClanRanking(leaderboard, currentScores.FirstOrDefault(s => s.Score.ValidContexts.HasFlag(LeaderboardContexts.General))?.Score, resultScore);
+                _context.UpdateClanRanking(leaderboard, resultScore);
 
                 await _context.BulkSaveChangesAsync();
                 await transaction.CommitAsync();

@@ -98,6 +98,14 @@ namespace BeatLeader_Server {
         }
     }
 
+    public class ReplayRecalculatorStub : IReplayRecalculator
+    {
+        public async Task<(int?, Replay)> RecalculateReplay(Replay replay)
+        {
+            return (0, replay);
+        }
+    }
+
     public class Startup {
         static string MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
         public Startup (IConfiguration configuration, IWebHostEnvironment env)
@@ -129,11 +137,13 @@ namespace BeatLeader_Server {
 
             var replayRecalculatorType = Assembly.GetExecutingAssembly()
                 .GetTypes()
-                .FirstOrDefault(t => typeof(IReplayRecalculator).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract);
+                .FirstOrDefault(t => typeof(IReplayRecalculator).IsAssignableFrom(t) && t.FullName.Contains("Stub") && !t.IsInterface && !t.IsAbstract);
 
             if (replayRecalculatorType != null)
             {
                 services.AddScoped(typeof(IReplayRecalculator), replayRecalculatorType);
+            } else {
+                services.AddScoped(typeof(IReplayRecalculator), typeof(ReplayRecalculatorStub));
             }
 
             var authBuilder = services.AddAuthentication (options => {
