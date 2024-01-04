@@ -369,11 +369,15 @@ namespace BeatLeader_Server.Controllers
                 difficulties = lb.Song.Difficulties.Where(d => d.Status == DifficultyStatus.ranked).Select(d => new {
                     name = d.DifficultyName.FirstCharToLower(),
                     characteristic = d.ModeName
-                })
+                }),
+                rankedTime = lb.Difficulty.RankedTime
             }).ToList();
 
+            songs.Sort((a, b) => b.rankedTime.CompareTo(a.rankedTime));
+
             playlist.songs = songs.DistinctBy(s => s.hash).ToList();
-            playlist.customData = new CustomData { 
+            playlist.customData = new CustomData
+            {
                 syncURL = "https://api.beatleader.xyz/playlist/ranked",
                 owner = "BeatLeader",
                 id = "ranked"
@@ -424,8 +428,11 @@ namespace BeatLeader_Server.Controllers
                 {
                     name = d.DifficultyName.FirstCharToLower(),
                     characteristic = d.ModeName
-                })
+                }),
+                nominatedTime = lb.Difficulty.NominatedTime
             }).ToList();
+
+            songs.Sort((a, b) => b.nominatedTime.CompareTo(a.nominatedTime));
 
             playlist.songs = songs.DistinctBy(s => s.hash).ToList();
             playlist.customData = new CustomData
@@ -479,8 +486,11 @@ namespace BeatLeader_Server.Controllers
                 {
                     name = d.DifficultyName.FirstCharToLower(),
                     characteristic = d.ModeName
-                })
+                }),
+                qualifiedTime = lb.Difficulty.QualifiedTime
             }).ToList();
+
+            songs.Sort((a, b) => b.qualifiedTime.CompareTo(a.qualifiedTime));
 
             playlist.songs = songs.DistinctBy(s => s.hash).ToList();
             playlist.customData = new CustomData
