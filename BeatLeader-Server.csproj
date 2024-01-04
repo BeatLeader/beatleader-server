@@ -90,6 +90,7 @@
     <Folder Include="Migrations\" />
     <Folder Include="Auth\SteamTicket\" />
     <Folder Include="Auth\Oculus\" />
+    <Folder Include="wwwroot\playlists\" />
   </ItemGroup>
 
   <ItemGroup>

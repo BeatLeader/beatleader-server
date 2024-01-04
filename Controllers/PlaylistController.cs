@@ -352,6 +352,10 @@ namespace BeatLeader_Server.Controllers
             using (var stream = await _s3Client.DownloadPlaylist("ranked.bplist")) {
                 if (stream != null) {
                     playlist = stream.ObjectFromStream();
+                } else {
+                    using (var filestream = new FileStream(_environment.WebRootPath + "/playlists/ranked.bplist", FileMode.Open)) {
+                        playlist = filestream.ObjectFromStream();
+                    }
                 }
             }
 
@@ -406,6 +410,10 @@ namespace BeatLeader_Server.Controllers
             using (var stream = await _s3Client.DownloadPlaylist("nominated.bplist")) {
                 if (stream != null) {
                     playlist = stream.ObjectFromStream();
+                } else {
+                    using (var filestream = new FileStream(_environment.WebRootPath + "/playlists/nominated.bplist", FileMode.Open)) {
+                        playlist = filestream.ObjectFromStream();
+                    }
                 }
             }
 
@@ -463,6 +471,10 @@ namespace BeatLeader_Server.Controllers
             using (var stream = await _s3Client.DownloadPlaylist("qualified.bplist")) {
                 if (stream != null) {
                     playlist = stream.ObjectFromStream();
+                } else {
+                    using (var filestream = new FileStream(_environment.WebRootPath + "/playlists/qualified.bplist", FileMode.Open)) {
+                        playlist = filestream.ObjectFromStream();
+                    }
                 }
             }
 
