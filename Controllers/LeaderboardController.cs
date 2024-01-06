@@ -645,12 +645,12 @@ namespace BeatLeader_Server.Controllers {
                     Leaderboard = cr.Leaderboard,
                     AssociatedScores = currentContext
                         .Scores
-                        .Where(s => s.LeaderboardId == leaderboardId && s.Player.Clans.Contains(cr.Clan))
+                        .Where(s => s.LeaderboardId == leaderboardId && s.ValidContexts.HasFlag(LeaderboardContexts.General) && s.Player.Clans.Contains(cr.Clan))
                         .Include(sc => sc.Player)
                         .ThenInclude(p => p.ProfileSettings)
                         .Include(s => s.Player)
                         .ThenInclude(s => s.Clans)
-                        .OrderBy(s => s.Rank)
+                        .OrderBy(s => s.Pp)
                         .Skip((page - 1) * count)
                         .Take(count)
                         .Select(s => new ScoreResponse
@@ -690,7 +690,7 @@ namespace BeatLeader_Server.Controllers {
                         .ToList(),
                     AssociatedScoresCount = currentContext
                         .Scores
-                        .Where(sc => sc.LeaderboardId == leaderboardId && sc.Player.Clans.Contains(cr.Clan))
+                        .Where(sc => sc.LeaderboardId == leaderboardId && sc.ValidContexts.HasFlag(LeaderboardContexts.General) && sc.Player.Clans.Contains(cr.Clan))
                         .Count()
                 })
                 .FirstOrDefault();

@@ -2,12 +2,13 @@
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
 using BeatLeader_Server.Enums;
 using static BeatLeader_Server.Utils.ResponseUtils;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -16,7 +17,7 @@ namespace BeatLeader_Server.Controllers
         private readonly AppContext _context;
         private readonly ReadAppContext _readContext;
 
-        IAmazonS3 _assetsS3Client;
+        IAmazonS3 _s3Client;
         CurrentUserController _userController;
         IWebHostEnvironment _environment;
 
@@ -31,47 +32,10 @@ namespace BeatLeader_Server.Controllers
             _userController = userController;
             _environment = env;
             _readContext = readContext;
-            _assetsS3Client = configuration.GetS3Client();
+            _s3Client = configuration.GetS3Client();
         }
 
-        public class ClanMapConnection {
-            public Clan? Clan { get; set; }
-            
-            public float Pp { get; set; }
-        }
-
-        public class ClanGlobalMapPoint {
-            public string LeaderboardId { get; set; }
-            public string CoverImage { get; set; }
-
-            public float? Stars { get; set; }
-
-            public bool Tie { get; set; }
-
-            public List<ClanMapConnection> Clans { get; set; }
-        }
-
-        [HttpGet("~/clans/globalmap")]
-        public async Task<ActionResult<List<ClanGlobalMapPoint>>> GlobalMap() {
-            return _context
-                .Leaderboards
-                .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
-                .Select(lb => new ClanGlobalMapPoint {
-                    LeaderboardId = lb.Id,
-                    CoverImage = lb.Song.CoverImage,
-                    Stars = lb.Difficulty.Stars,
-                    Tie = lb.ClanRankingContested,
-                    Clans = lb.ClanRanking
-                               .OrderByDescending(cr => cr.Pp)
-                               .Take(3)
-                               .Select(cr => new ClanMapConnection {
-                                   Clan = cr.Clan,
-                                   Pp = cr.Pp,
-                               })
-                               .ToList()
-                })
-                .ToList();
-        }
+        
 
         [HttpGet("~/clans/")]
         public async Task<ActionResult<ResponseWithMetadata<Clan>>> GetAll(
@@ -304,7 +268,7 @@ namespace BeatLeader_Server.Controllers
                 (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(ms);
                 fileName += extension;
 
-                icon = await _assetsS3Client.UploadAsset(fileName, stream);
+                icon = await _s3Client.UploadAsset(fileName, stream);
             }
             catch (Exception e)
             {
@@ -484,7 +448,7 @@ namespace BeatLeader_Server.Controllers
                     (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(ms);
                     fileName += extension;
 
-                    clan.Icon = await _assetsS3Client.UploadAsset(fileName, stream);
+                    clan.Icon = await _s3Client.UploadAsset(fileName, stream);
                 }
             }
             catch (Exception)
@@ -869,6 +833,143 @@ namespace BeatLeader_Server.Controllers
 
             _context.ReservedTags.Remove(rt);
             await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        public class ClanPoint {
+            public int Id { get; set; }
+            public string Tag { get; set; }
+            public string Color { get; set; }
+            public float X { get; set; }
+            public float Y { get; set; }
+        }
+
+        public class ClanMapConnection {
+            public int? Id { get; set; }
+            
+            public float Pp { get; set; }
+        }
+
+        public class ClanGlobalMapPoint {
+            public string LeaderboardId { get; set; }
+            public string CoverImage { get; set; }
+
+            public float? Stars { get; set; }
+
+            public bool Tie { get; set; }
+
+            public List<ClanMapConnection> Clans { get; set; }
+        }
+
+        public class ClanGlobalMap {
+            public List<ClanGlobalMapPoint> Points { get; set; }
+            public List<ClanPoint> Clans { get; set; }
+        }
+
+        [HttpGet("~/clans/globalmap")]
+        public async Task<ActionResult> GlobalMap() {
+            var replayStream = await _s3Client.DownloadAsset("global-map-file.json");
+            if (replayStream == null) {
+                return NotFound();
+            }
+            return File(replayStream, "application/json");
+        }
+
+        [HttpGet("~/clans/refreshglobalmap")]
+        public async Task<ActionResult> RefreshGlobalMap() {
+            if (HttpContext != null) {
+                string currentID = HttpContext.CurrentUserID(_context);
+                var currentPlayer = await _context.Players.FindAsync(currentID);
+
+                if (!currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+
+            var points = _context
+                    .Leaderboards
+                    .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
+                    .Select(lb => new ClanGlobalMapPoint {
+                        LeaderboardId = lb.Id,
+                        CoverImage = lb.Song.CoverImage,
+                        Stars = lb.Difficulty.Stars,
+                        Tie = lb.ClanRankingContested,
+                        Clans = lb.ClanRanking
+                                   .OrderByDescending(cr => cr.Pp)
+                                   .Take(3)
+                                   .Select(cr => new ClanMapConnection {
+                                       Id = cr.ClanId,
+                                       Pp = cr.Pp,
+                                   })
+                                   .ToList()
+                    })
+                    .ToList();
+
+            var clanIds = new List<int>();
+            foreach (var item in points)
+            {
+                foreach (var clan in item.Clans)
+                {
+                    if (clan.Id != null && !clanIds.Contains((int)clan.Id)) {
+                        clanIds.Add((int)clan.Id);
+                    }
+                }
+            }
+
+            var map = new ClanGlobalMap {
+                Points = points,
+                Clans = _context
+                    .Clans
+                    .Where(c => clanIds.Contains(c.Id))
+                    .Select(c => new ClanPoint {
+                        Id = c.Id,
+                        Tag = c.Tag,
+                        Color = c.Color,
+                        X = c.GlobalMapX,
+                        Y = c.GlobalMapY
+                    })
+                    .ToList()
+            };
+
+            DefaultContractResolver contractResolver = new DefaultContractResolver
+            {
+                NamingStrategy = new CamelCaseNamingStrategy()
+            };
+
+            await _s3Client.UploadStream("global-map-file.json", S3Container.assets, new BinaryData(JsonConvert.SerializeObject(map, new JsonSerializerSettings
+            {
+                ContractResolver = contractResolver
+            })).ToStream());
+            return Ok();
+        }
+
+        public class SimulationCache {
+            public Dictionary<int, PointF> Clans { get; set; }
+        }
+
+        [HttpPost("~/clans/importLocations")]
+        public async Task<ActionResult> ImportLocations([FromBody] SimulationCache cache) {
+            if (HttpContext != null) {
+                string currentID = HttpContext.CurrentUserID(_context);
+                var currentPlayer = await _context.Players.FindAsync(currentID);
+
+                if (!currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+            var clans = _context.Clans.ToList();
+            foreach (var clan in clans)
+            {
+                if (cache.Clans.ContainsKey(clan.Id)) {
+                    clan.GlobalMapX = cache.Clans[clan.Id].X;
+                    clan.GlobalMapY = cache.Clans[clan.Id].Y;
+                }
+            }
+
+            _context.BulkSaveChanges();
 
             return Ok();
         }

@@ -7,34 +7,14 @@ namespace BeatLeader_Server.Utils
 {
     public class ClanRankingData
     {
-        public int Id;
-        public int numberOfScores;
-        public float weight;
-        public int lastUpdateTime;
-        public float Pp;
-        public float totalAcc;
-        public int totalRank;
-        public int totalScore;
-
-        public ClanRankingData(
-            int id,
-            int numberOfScores,
-            float weight,
-            int lastUpdateTime,
-            float Pp,
-            float totalAcc,
-            int totalRank,
-            int totalScore)
-        {
-            this.Id = id;
-            this.numberOfScores = numberOfScores;
-            this.weight = weight;
-            this.lastUpdateTime = lastUpdateTime;
-            this.Pp = Pp;
-            this.totalAcc = totalAcc;
-            this.totalRank = totalRank;
-            this.totalScore = totalScore;
-        }
+        public int Id { get; set; }
+        public int numberOfScores { get; set; }
+        public float weight { get; set; }
+        public int lastUpdateTime { get; set; }
+        public float Pp { get; set; }
+        public float totalAcc { get; set; }
+        public int totalRank { get; set; }
+        public int totalScore { get; set; }
     };
 
     public static class ClanUtils
@@ -257,16 +237,7 @@ namespace BeatLeader_Server.Utils
                     if (!clanRankingData.ContainsKey(clan.Id))
                     {
                         // Update the data already in the newClanRankingData dictionary
-                        clanRankingData.Add(clan.Id, new ClanRankingData(
-                            clan.Id,
-                            1,
-                            1.0f,
-                            score.Timepost,
-                            score.Pp,
-                            score.Accuracy,
-                            score.Rank,
-                            score.ModifiedScore
-                            ));
+                        clanRankingData.Add(clan.Id, new ClanRankingData { Id = clan.Id });
                     }
 
                     clanRankingData[clan.Id].weight = MathF.Pow(0.8f, clanRankingData[clan.Id].numberOfScores);
