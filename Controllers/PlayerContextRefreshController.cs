@@ -280,7 +280,7 @@ namespace BeatLeader_Server.Controllers {
         public async Task RefreshStats(PlayerScoreStats scoreStats, string playerId, LeaderboardContexts context, List<SubScore>? scores = null)
         {
             var allScores = scores ??
-                _context
+                await _context
                 .ScoreContextExtensions
                 .Where(s => s.PlayerId == playerId && s.Context == context && !s.Score.IgnoreForStats)
                 .Select(s => new SubScore
@@ -302,7 +302,7 @@ namespace BeatLeader_Server.Controllers {
                     MaxStreak = s.Score.MaxStreak,
                     RightTiming = s.Score.RightTiming,
                     LeftTiming = s.Score.LeftTiming,
-                }).ToList();
+                }).ToListAsync();
 
             List<SubScore> rankedScores = new();
             List<SubScore> unrankedScores = new();
@@ -490,6 +490,14 @@ namespace BeatLeader_Server.Controllers {
         [HttpGet("~/players/stats/refresh/allContexts")]
         public async Task<ActionResult> RefreshPlayersStatsAllContexts()
         {
+            if (HttpContext != null) {
+                // Not fetching player here to not mess up context
+                if (HttpContext.CurrentUserID(_context) != AdminController.GolovaID)
+                {
+                    return Unauthorized();
+                }
+            }
+
             foreach (var context in ContextExtensions.NonGeneral) {
                 await RefreshPlayersStats(context);
             }
@@ -545,6 +553,62 @@ namespace BeatLeader_Server.Controllers {
             }, maxDegreeOfParallelism: 50);
 
             await _context.BulkSaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpGet("~/players/stats/refresh/allContexts/slowly")]
+        public async Task<ActionResult> RefreshPlayersStatsAllContextsSlowly()
+        {
+            if (HttpContext != null) {
+                // Not fetching player here to not mess up context
+                if (HttpContext.CurrentUserID(_context) != AdminController.GolovaID)
+                {
+                    return Unauthorized();
+                }
+            }
+
+            foreach (var context in ContextExtensions.NonGeneral) {
+                await RefreshPlayersStatsSlowly(context);
+            }
+
+            return Ok();
+        }
+
+        [HttpGet("~/players/stats/refresh/{context}/slowly")]
+        public async Task<ActionResult> RefreshPlayersStatsSlowly(LeaderboardContexts context)
+        {
+            if (HttpContext != null) {
+                // Not fetching player here to not mess up context
+                if (HttpContext.CurrentUserID(_context) != AdminController.GolovaID)
+                {
+                    return Unauthorized();
+                }
+            }
+
+            var playerCount = await _context
+                    .PlayerContextExtensions
+                    .Where(p => p.Context == context && p.ScoreStats != null)
+                    .CountAsync();
+
+            for (int i = 0; i < playerCount; i += 10000)
+            {
+                var players = await _context
+                        .PlayerContextExtensions
+                        .OrderBy(p => p.Id)
+                        .Skip(i)
+                        .Take(10000)
+                        .Where(p => p.Context == context && p.ScoreStats != null)
+                        .OrderBy(p => p.Rank)
+                        .Select(p => new { p.PlayerId, p.ScoreStats })
+                        .ToListAsync();
+            
+                await players.ParallelForEachAsync(async player => {
+                    await RefreshStats(player.ScoreStats, player.PlayerId, context);
+                }, maxDegreeOfParallelism: 3);
+
+                await _context.BulkSaveChangesAsync();
+            }
 
             return Ok();
         }

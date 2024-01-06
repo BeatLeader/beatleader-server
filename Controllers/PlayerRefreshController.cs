@@ -92,7 +92,7 @@ namespace BeatLeader_Server.Controllers
         public async Task RefreshStats(PlayerScoreStats scoreStats, string playerId, int rank, List<SubScore>? scores = null)
         {
             var allScores = scores ??
-                _context.Scores.Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && s.PlayerId == playerId && !s.IgnoreForStats).Select(s => new SubScore
+                await _context.Scores.Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && (!s.Banned || s.Bot) && s.PlayerId == playerId && !s.IgnoreForStats).Select(s => new SubScore
                 {
                     PlayerId = s.PlayerId,
                     Platform = s.Platform,
@@ -111,7 +111,7 @@ namespace BeatLeader_Server.Controllers
                     MaxStreak = s.MaxStreak,
                     RightTiming = s.RightTiming,
                     LeftTiming = s.LeftTiming,
-                }).ToList();
+                }).ToListAsync();
 
             List<SubScore> rankedScores = new();
             List<SubScore> unrankedScores = new();
@@ -506,7 +506,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
             var allScores =
-                _context.Scores.Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && (!s.Banned || s.Bot) && !s.IgnoreForStats).Select(s => new SubScore
+                await _context.Scores.Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && (!s.Banned || s.Bot) && !s.IgnoreForStats).Select(s => new SubScore
                 {
                     PlayerId = s.PlayerId,
                     Platform = s.Platform,
@@ -525,14 +525,14 @@ namespace BeatLeader_Server.Controllers
                     MaxStreak = s.MaxStreak,
                     RightTiming = s.RightTiming,
                     LeftTiming = s.LeftTiming,
-                }).ToList();
+                }).ToListAsync();
 
-            var players = _context
+            var players = await _context
                     .Players
                     .Where(p => (!p.Banned || p.Bot) && p.ScoreStats != null)
                     .OrderBy(p => p.Rank)
                     .Select(p => new { p.Id, p.ScoreStats, p.Rank })
-                    .ToList();
+                    .ToListAsync();
 
             var scoresById = allScores.GroupBy(s => s.PlayerId).ToDictionary(g => g.Key, g => g.ToList());
 
@@ -543,6 +543,43 @@ namespace BeatLeader_Server.Controllers
             }, maxDegreeOfParallelism: 50);
 
             await _context.BulkSaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpGet("~/players/stats/refresh/slowly")]
+        public async Task<ActionResult> RefreshPlayersStatsSlowly()
+        {
+            if (HttpContext != null) {
+                // Not fetching player here to not mess up context
+                if (HttpContext.CurrentUserID(_context) != AdminController.GolovaID)
+                {
+                    return Unauthorized();
+                }
+            }
+
+            var playerCount = await _context
+                    .Players
+                    .Where(p => (!p.Banned || p.Bot) && p.ScoreStats != null)
+                    .CountAsync();
+
+            for (int i = 0; i < playerCount; i += 10000)
+            {
+                var players = await _context
+                    .Players
+                    .OrderBy(p => p.Id)
+                    .Skip(i)
+                    .Take(10000)
+                    .Where(p => (!p.Banned || p.Bot) && p.ScoreStats != null)
+                    .Select(p => new { p.Id, p.ScoreStats, p.Rank })
+                    .ToListAsync();
+            
+                await players.ParallelForEachAsync(async player => {
+                    await RefreshStats(player.ScoreStats, player.Id, player.Rank);
+                }, maxDegreeOfParallelism: 3);
+
+                await _context.BulkSaveChangesAsync();
+            }
 
             return Ok();
         }
