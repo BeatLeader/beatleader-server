@@ -16,6 +16,7 @@ using Microsoft.OpenApi.Models;
 using System.Reflection;
 using ReplayDecoder;
 using System.Security.Cryptography.X509Certificates;
+using Prometheus.Client;
 
 namespace BeatLeader_Server {
 
@@ -414,12 +415,46 @@ namespace BeatLeader_Server {
             RequestDecompressionServiceCollectionExtensions.AddRequestDecompression(services);
         }
 
+        public class GrafanaTimingMiddleware
+        {
+            private readonly RequestDelegate _next;
+            private readonly ILogger<LocalstatsMiddleware> _logger;
+            private readonly IMetricFamily<ISummary> _durationHistogram;
+ 
+            public GrafanaTimingMiddleware(
+                RequestDelegate next, 
+                ILogger<LocalstatsMiddleware> logger,
+                IMetricFactory metricFactory)
+            {
+                _next = next;
+                _logger = logger;
+                _durationHistogram = metricFactory.CreateSummary(
+                    "bl_requests_duration_seconds", 
+                    "Histogram of request durations",
+                    new[] {"method", "endpoint"}
+                );
+            }
+ 
+            public async Task Invoke(HttpContext context)
+            {
+                var start = DateTime.Now;
+                await _next(context);
+                var duration = DateTime.Now - start;
+
+                var routeData = context.GetRouteData();
+                string path = routeData?.Values["controller"]?.ToString() + "/" + routeData?.Values["action"]?.ToString();
+
+                _durationHistogram.WithLabels(context.Request.Method, path).Observe(duration.TotalSeconds);
+            }
+        }
+
         public void Configure (IApplicationBuilder app)
         {
             app.UseMiddleware<ErrorLoggingMiddleware>();
             app.UseMiddleware<LocalstatsMiddleware>();
             app.UsePrometheusServer();
             app.UsePrometheusRequestDurations();
+            app.UseMiddleware<GrafanaTimingMiddleware>();
             app.UseStaticFiles();
             app.UseForwardedHeaders();
             app.UseServerTiming();
