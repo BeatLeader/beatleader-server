@@ -710,6 +710,11 @@ namespace BeatLeader_Server.Utils
             if (oldScore.Modifiers.Contains("OP")) return true;
             if (newScore.Pp != 0) {
                 if (newScore.Pp > oldScore.Pp) return true;
+                if (oldScore.Modifiers.Contains("NF") && 
+                    newScore.Modifiers.Contains("NF") &&
+                    newScore.ModifiedScore > oldScore.ModifiedScore) {
+                    return true;
+                }
             } else {
                 if (newScore.ModifiedScore > oldScore.ModifiedScore) return true;
 
