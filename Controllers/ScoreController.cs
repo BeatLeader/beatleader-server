@@ -974,11 +974,11 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/score/statistic/{id}")]
         public async Task<ActionResult> GetStatistic(int id)
         {
-            var replayStream = await _s3Client.DownloadStats(id + ".json");
-            if (replayStream == null) {
+            var statsUrl = _s3Client.GetPresignedUrl(id + ".json", S3Container.scorestats);
+            if (statsUrl == null) {
                 return NotFound();
             }
-            return File(replayStream, "application/json");
+            return Redirect(statsUrl);
         }
 
         [HttpGet("~/score/calculatestatistic/{id}")]

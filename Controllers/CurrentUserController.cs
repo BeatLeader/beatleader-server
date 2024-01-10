@@ -1277,11 +1277,11 @@ namespace BeatLeader_Server.Controllers {
                 return Unauthorized();
             }
 
-            var configStream = await _s3Client.DownloadStream(userId + "-config.json", S3Container.configs);
-            if (configStream == null) {
+            var configUrl = _s3Client.GetPresignedUrl(userId + "-config.json", S3Container.configs);
+            if (configUrl == null) {
                 return NotFound();
             }
-            return File(configStream, "application/json");
+            return Redirect(configUrl);
         }
 
         [HttpPost("~/user/config")]

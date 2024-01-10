@@ -263,10 +263,10 @@ namespace BeatLeader_Server.Controllers
 
             if (scoreId != null)
             {
-                var stream = await _s3Client.DownloadPreview($"{scoreId}-{(twitter ? "twitter" : "")}preview.png");
-                if (stream != null)
+                var previewUrl = _s3Client.GetPresignedUrl($"{scoreId}-{(twitter ? "twitter" : "")}preview.png", S3Container.previews);
+                if (previewUrl != null)
                 {
-                    return File(stream, "image/png");
+                    return Redirect(previewUrl);
                 }
             }
             else if (link != null) {
@@ -354,8 +354,6 @@ namespace BeatLeader_Server.Controllers
 
             var score = await _context.Leaderboards
                 .Where(lb => lb.Song.Hash == info.hash && lb.Difficulty.DifficultyName == info.difficulty && lb.Difficulty.ModeName == info.mode)
-                .Include(s => s.Song)
-                .Include(s => s.Difficulty)
                 .Select(s => new ScoreSelect {
                     SongId = s.Song.Id,
                     CoverImage = s.Song.CoverImage,

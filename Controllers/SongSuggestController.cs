@@ -43,11 +43,11 @@ namespace BeatLeader_Server.Controllers
                 .FirstOrDefault();
             if (refresh == null) return NotFound();
 
-            var replayStream = await _s3Client.DownloadAsset(refresh.File);
-            if (replayStream == null) {
+            var playersUrl = _s3Client.GetPresignedUrl(refresh.File, S3Container.assets);
+            if (playersUrl == null) {
                 return NotFound();
             }
-            return File(replayStream, "application/json");
+            return Redirect(playersUrl);
         }
 
         [HttpGet("~/songsuggest/songs")]
@@ -61,11 +61,11 @@ namespace BeatLeader_Server.Controllers
                 .FirstOrDefault();
             if (refresh == null) return NotFound();
 
-            var replayStream = await _s3Client.DownloadAsset(refresh.SongsFile);
-            if (replayStream == null) {
+            var songsUrl = _s3Client.GetPresignedUrl(refresh.SongsFile, S3Container.assets);
+            if (songsUrl == null) {
                 return NotFound();
             }
-            return File(replayStream, "application/json");
+            return Redirect(songsUrl);
         }
 
         [HttpGet("~/songsuggest/refreshTime")]
@@ -79,6 +79,31 @@ namespace BeatLeader_Server.Controllers
             if (refresh == null) return NotFound();
 
             return refresh.Timeset;
+        }
+
+        [ApiExplorerSettings(IgnoreApi = true)]
+        [HttpGet("~/songsuggest/biglist")]
+        public async Task<ActionResult> GetBigMapsList()
+        {
+            if (!HttpContext.ItsAdmin(_context)) return Unauthorized();
+
+            return Ok( _context.Leaderboards
+                .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
+                .OrderByDescending(lb => lb.Difficulty.Stars)
+                .Select(lb => new {
+                    ID = lb.Id,
+                    name = lb.Song.Name,
+                    hash = lb.Song.Hash,
+                    difficulty = lb.Difficulty.DifficultyName,
+                    mode = lb.Difficulty.ModeName,
+                    stars = (float)lb.Difficulty.Stars,
+                    accRating = (float)lb.Difficulty.AccRating,
+                    passRating = (float)lb.Difficulty.PassRating,
+                    techRating = (float)lb.Difficulty.TechRating,
+                    cover = lb.Song.CoverImage,
+                    time = lb.Difficulty.RankedTime
+                })
+                .ToList());
         }
 
         [ApiExplorerSettings(IgnoreApi = true)]

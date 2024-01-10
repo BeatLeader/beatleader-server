@@ -43,13 +43,13 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             if (currentID == null) return Unauthorized();
 
-            var stream = await _s3Client.DownloadPlaylist(currentID + "oneclick.bplist");
-            if (stream != null) {
-                return File(stream, "application/json");
+            var playlistUrl = _s3Client.GetPresignedUrl(currentID + "oneclick.bplist", S3Container.playlists);
+            if (playlistUrl != null) {
+                return Redirect(playlistUrl);
             } else {
-                stream = await _s3Client.DownloadPlaylist("oneclick.bplist");
-                if (stream != null) {
-                    return File(stream, "application/json");
+                playlistUrl = _s3Client.GetPresignedUrl("oneclick.bplist", S3Container.playlists);
+                if (playlistUrl != null) {
+                    return Redirect(playlistUrl);
                 } else {
                     return NotFound();
                 }
@@ -156,9 +156,9 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            var stream = await _s3Client.DownloadPlaylist(id + ".bplist");
-            if (stream != null) {
-                return File(stream, "application/json");
+            var playlisUrl = _s3Client.GetPresignedUrl(id + ".bplist", S3Container.playlists);
+            if (playlisUrl != null) {
+                return Redirect(playlisUrl);
             } else {
                 return NotFound();
             }

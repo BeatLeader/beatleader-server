@@ -1,4 +1,5 @@
-﻿using Amazon.Runtime;
+﻿using Amazon;
+using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
 using BeatLeader_Server.Models;
@@ -115,6 +116,19 @@ namespace BeatLeader_Server.Utils
         public static async Task<string> UploadPlaylist(IAmazonS3 client, string filename, dynamic playlist)
         {
             return await client.UploadStream(filename, S3Container.playlists, new BinaryData(JsonConvert.SerializeObject(playlist)).ToStream());
+        }
+
+        public static string GetPresignedUrl(this IAmazonS3 client, string filename, S3Container container)
+        {
+            AWSConfigsS3.UseSignatureVersion4 = true;
+            var request = new GetPreSignedUrlRequest
+            {
+                BucketName = container.ToString(),
+                Key = filename,
+                Expires = DateTime.UtcNow.AddMinutes(5),
+            };
+
+            return client.GetPreSignedURL(request);
         }
 
         public static async Task<Stream?> DownloadStreamOffset(
