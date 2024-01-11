@@ -143,7 +143,7 @@ public static partial class MapListUtils
         };
     }
 
-    private static IQueryable<Leaderboard> WherePage(this IQueryable<Leaderboard> sequence, int page, int count, out int totalMatches)
+    public static IQueryable<Leaderboard> WherePage(this IQueryable<Leaderboard> sequence, int page, int count, out int totalMatches)
     {
         if (page <= 0) {
             page = 1;

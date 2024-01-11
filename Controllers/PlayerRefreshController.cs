@@ -573,10 +573,11 @@ namespace BeatLeader_Server.Controllers
                     .Where(p => (!p.Banned || p.Bot) && p.ScoreStats != null)
                     .Select(p => new { p.Id, p.ScoreStats, p.Rank })
                     .ToListAsync();
-            
-                await players.ParallelForEachAsync(async player => {
+
+                foreach (var player in players)
+                {
                     await RefreshStats(player.ScoreStats, player.Id, player.Rank);
-                }, maxDegreeOfParallelism: 3);
+                }
 
                 await _context.BulkSaveChangesAsync();
             }

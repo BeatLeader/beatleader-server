@@ -118,7 +118,7 @@ namespace BeatLeader_Server.Utils
             return await client.UploadStream(filename, S3Container.playlists, new BinaryData(JsonConvert.SerializeObject(playlist)).ToStream());
         }
 
-        public static string GetPresignedUrl(this IAmazonS3 client, string filename, S3Container container)
+        public static async Task<string?> GetPresignedUrl(this IAmazonS3 client, string filename, S3Container container)
         {
             AWSConfigsS3.UseSignatureVersion4 = true;
             var request = new GetPreSignedUrlRequest
@@ -126,9 +126,29 @@ namespace BeatLeader_Server.Utils
                 BucketName = container.ToString(),
                 Key = filename,
                 Expires = DateTime.UtcNow.AddMinutes(5),
+                Verb = HttpVerb.HEAD
             };
 
-            return client.GetPreSignedURL(request);
+            var presignedUrl = client.GetPreSignedURL(request);
+
+            using (var httpClient = new HttpClient())
+            {
+                var headRequest = new HttpRequestMessage(HttpMethod.Head, presignedUrl);
+
+                try
+                {
+                    var response = await httpClient.SendAsync(headRequest);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        request.Verb = HttpVerb.GET;
+                        return client.GetPreSignedURL(request);
+                    }
+                }
+                catch { }
+            }
+
+            return null;
         }
 
         public static async Task<Stream?> DownloadStreamOffset(

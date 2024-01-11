@@ -7,6 +7,7 @@ using Lib.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers {
@@ -30,7 +31,7 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [NonAction]
-        public async Task<ActionResult<ResponseWithMetadata<ScoreResponseWithMyScore>>> ContextsFriendsScores(
+        internal async Task<ActionResult<ResponseWithMetadata<ScoreResponseWithMyScore>>> ContextsFriendsScores(
             string id,
             [FromQuery] string sortBy = "date",
             [FromQuery] Order order = Order.Desc,
@@ -43,8 +44,13 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null) {
 
-            string userId = HttpContext.CurrentUserID(_context);
-            var player = await _context.Players.Include(p => p.ProfileSettings).FirstOrDefaultAsync(p => p.Id == userId);
+            string? userId = HttpContext.CurrentUserID(_context);
+            var player = userId != null 
+                ? await _context
+                    .Players
+                    .Include(p => p.ProfileSettings)
+                    .FirstOrDefaultAsync(p => p.Id == userId)
+                : null;
             if (player == null) {
                 return NotFound();
             }
@@ -53,17 +59,21 @@ namespace BeatLeader_Server.Controllers {
             IQueryable<ScoreContextExtension> sequence;
 
             using (_serverTiming.TimeAction("sequence")) {
-                var friends = _context
+                var friends = await _context
                     .Friends
                     .Where(f => f.Id == player.Id)
                     .Include(f => f.Friends)
-                    .FirstOrDefault();
+                    .FirstOrDefaultAsync();
 
                 if (friends != null) {
                     var friendsList = friends.Friends.Select(f => f.Id).ToList();
-                    sequence = _context.ScoreContextExtensions.Where(s => (s.PlayerId == player.Id || friendsList.Contains(s.PlayerId)) && s.Context == leaderboardContext);
+                    sequence = _context
+                        .ScoreContextExtensions
+                        .Where(s => (s.PlayerId == player.Id || friendsList.Contains(s.PlayerId)) && s.Context == leaderboardContext);
                 } else {
-                    sequence = _context.ScoreContextExtensions.Where(s => s.PlayerId == player.Id && s.Context == leaderboardContext);
+                    sequence = _context
+                        .ScoreContextExtensions
+                        .Where(s => s.PlayerId == player.Id && s.Context == leaderboardContext);
                 }
 
                 switch (sortBy) {
@@ -131,13 +141,12 @@ namespace BeatLeader_Server.Controllers {
                 }
             }
 
-            var resultList = sequence
+            var resultList = await sequence
                     .Skip((page - 1) * count)
                     .Take(count)
                     .Include(s => s.Leaderboard)
                     .ThenInclude(l => l.Difficulty)
                     .ThenInclude(d => d.ModifiersRating)
-                    .AsSplitQuery()
                     .Select(s => new ScoreResponseWithMyScore {
                         Id = s.Id,
                         BaseScore = s.BaseScore,
@@ -225,7 +234,10 @@ namespace BeatLeader_Server.Controllers {
                         AccLeft = s.Score.AccLeft,
                         AccRight = s.Score.AccRight,
                         MaxStreak = s.Score.MaxStreak
-                    }).ToList();
+                    })
+                    .TagWithCallSite()
+                    .AsSplitQuery()
+                    .ToListAsync();
 
             foreach (var resultScore in resultList) {
                 if (!showAllRatings && !resultScore.Leaderboard.Difficulty.Status.WithRating()) {
@@ -237,14 +249,14 @@ namespace BeatLeader_Server.Controllers {
                 Metadata = new Metadata() {
                     Page = page,
                     ItemsPerPage = count,
-                    Total = sequence.Count()
+                    Total = await sequence.CountAsync()
                 },
                 Data = resultList
             };
 
             var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
 
-            var myScores = _context
+            var myScores = await _context
                 .ScoreContextExtensions
                 .Where(s => s.PlayerId == userId && leaderboards.Contains(s.LeaderboardId))
                 .Select(s => new ScoreResponseWithMyScore {
@@ -335,7 +347,9 @@ namespace BeatLeader_Server.Controllers {
                         AccRight = s.Score.AccRight,
                         MaxStreak = s.Score.MaxStreak
                     })
-                .ToList();
+                .TagWithCallSite()
+                .AsSplitQuery()
+                .ToListAsync();
             foreach (var score in result.Data)
             {
                 score.MyScore = myScores.FirstOrDefault(s => s.LeaderboardId == score.LeaderboardId);
@@ -363,24 +377,30 @@ namespace BeatLeader_Server.Controllers {
                 return await ContextsFriendsScores(id, sortBy, order, page, count, leaderboardContext, search, diff, type, stars_from, stars_to);
             }
 
-            string userId = HttpContext.CurrentUserID(_context);
-            var player = await _context.Players.Include(p => p.ProfileSettings).FirstOrDefaultAsync(p => p.Id == userId);
+            string? userId = HttpContext.CurrentUserID(_context);
+            var player = userId != null 
+                ? await _context
+                    .Players
+                    .Include(p => p.ProfileSettings)
+                    .FirstOrDefaultAsync(p => p.Id == userId)
+                : null;
             if (player == null) {
                 return NotFound();
             }
 
-            bool showAllRatings = player.ProfileSettings?.ShowAllRatings ?? false; 
+            bool showAllRatings = player.ProfileSettings?.ShowAllRatings ?? false;
             IQueryable<Score> sequence;
 
             using (_serverTiming.TimeAction("sequence")) {
-                var friends = _context
+                var friends = await _context
                     .Friends
                     .Where(f => f.Id == player.Id)
                     .Include(f => f.Friends)
-                    .FirstOrDefault();
+                    .FirstOrDefaultAsync();
 
                 if (friends != null) {
                     var friendsList = friends.Friends.Select(f => f.Id).ToList();
+                    var json = JsonConvert.SerializeObject(friendsList);
                     sequence = _context.Scores.Where(s => (s.PlayerId == player.Id || friendsList.Contains(s.PlayerId)) && s.ValidContexts.HasFlag(leaderboardContext));
                 } else {
                     sequence = _context.Scores.Where(s => s.PlayerId == player.Id && s.ValidContexts.HasFlag(leaderboardContext));
@@ -457,7 +477,6 @@ namespace BeatLeader_Server.Controllers {
                     .Include(s => s.Leaderboard)
                     .ThenInclude(l => l.Difficulty)
                     .ThenInclude(d => d.ModifiersRating)
-                    .AsSplitQuery()
                     .Select(s => new ScoreResponseWithMyScore {
                         Id = s.Id,
                         BaseScore = s.BaseScore,
@@ -497,10 +516,8 @@ namespace BeatLeader_Server.Controllers {
                             CountryRank = s.Player.CountryRank,
                             Role = s.Player.Role,
                             Socials = s.Player.Socials,
-                            PatreonFeatures = s.Player.PatreonFeatures,
                             ProfileSettings = s.Player.ProfileSettings,
-                            Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
-                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                            Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                         },
                         ScoreImprovement = s.ScoreImprovement,
                         RankVoting = s.RankVoting,
@@ -545,29 +562,97 @@ namespace BeatLeader_Server.Controllers {
                         AccLeft = s.AccLeft,
                         AccRight = s.AccRight,
                         MaxStreak = s.MaxStreak
-                    }).ToList();
+                    })
+                    .TagWithCallSite()
+                    .ToList();
 
             foreach (var resultScore in resultList) {
                 if (!showAllRatings && !resultScore.Leaderboard.Difficulty.Status.WithRating()) {
                     resultScore.Leaderboard.HideRatings();
                 }
+
             }
 
             var result = new ResponseWithMetadata<ScoreResponseWithMyScore>() {
                 Metadata = new Metadata() {
                     Page = page,
                     ItemsPerPage = count,
-                    Total = sequence.Count()
+                    Total = await sequence.CountAsync()
                 },
                 Data = resultList
             };
 
             var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
 
-            var myScores = _context.Scores.Where(s => s.PlayerId == userId && leaderboards.Contains(s.LeaderboardId)).Select(ToScoreResponseWithAcc).ToList();
+            var myScores = await _context
+                .Scores
+                .Where(s => s.PlayerId == userId && leaderboards.Contains(s.LeaderboardId))
+                .Select(s => new ScoreResponseWithAcc
+                    {
+                        Id = s.Id,
+                        BaseScore = s.BaseScore,
+                        ModifiedScore = s.ModifiedScore,
+                        PlayerId = s.PlayerId,
+                        Accuracy = s.Accuracy,
+                        Pp = s.Pp,
+                        PassPP = s.PassPP,
+                        AccPP = s.AccPP,
+                        TechPP = s.TechPP,
+                        FcAccuracy = s.FcAccuracy,
+                        FcPp = s.FcPp,
+                        BonusPp = s.BonusPp,
+                        Rank = s.Rank,
+                        Replay = s.Replay,
+                        Modifiers = s.Modifiers,
+                        BadCuts = s.BadCuts,
+                        MissedNotes = s.MissedNotes,
+                        BombCuts = s.BombCuts,
+                        WallsHit = s.WallsHit,
+                        Pauses = s.Pauses,
+                        FullCombo = s.FullCombo,
+                        Hmd = s.Hmd,
+                        Controller = s.Controller,
+                        MaxCombo = s.MaxCombo,
+                        Timeset = s.Timeset,
+                        ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
+                        Timepost = s.Timepost,
+                        LeaderboardId = s.LeaderboardId,
+                        Platform = s.Platform,
+                        Player = new PlayerResponse
+                        {
+                            Id = s.Player.Id,
+                            Name = s.Player.Name,
+                            Platform = s.Player.Platform,
+                            Avatar = s.Player.Avatar,
+                            Country = s.Player.Country,
+
+                            Pp = s.Player.Pp,
+                            Rank = s.Player.Rank,
+                            CountryRank = s.Player.CountryRank,
+                            Role = s.Player.Role,
+                            Socials = s.Player.Socials,
+                            ProfileSettings = s.Player.ProfileSettings,
+                            Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                        },
+                        ScoreImprovement = s.ScoreImprovement,
+                        RankVoting = s.RankVoting,
+                        Metadata = s.Metadata,
+                        Country = s.Country,
+                        Offsets = s.ReplayOffsets,
+                        Weight = s.Weight,
+                        AccLeft = s.AccLeft,
+                        AccRight = s.AccRight,
+                        MaxStreak = s.MaxStreak
+                    })
+                .TagWithCallSite()
+                .ToListAsync();
             foreach (var score in result.Data)
             {
+                PostProcessSettings(score.Player);
                 score.MyScore = myScores.FirstOrDefault(s => s.LeaderboardId == score.LeaderboardId);
+                if (score.MyScore != null) {
+                    PostProcessSettings(score.MyScore.Player);
+                }
             }
 
             return result;

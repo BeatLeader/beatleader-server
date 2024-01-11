@@ -43,13 +43,33 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             if (currentID == null) return Unauthorized();
 
-            var playlistUrl = _s3Client.GetPresignedUrl(currentID + "oneclick.bplist", S3Container.playlists);
+            var playlistUrl = await _s3Client.GetPresignedUrl(currentID + "oneclick.bplist", S3Container.playlists);
             if (playlistUrl != null) {
                 return Redirect(playlistUrl);
             } else {
-                playlistUrl = _s3Client.GetPresignedUrl("oneclick.bplist", S3Container.playlists);
+                playlistUrl = await _s3Client.GetPresignedUrl("oneclick.bplist", S3Container.playlists);
                 if (playlistUrl != null) {
                     return Redirect(playlistUrl);
+                } else {
+                    return NotFound();
+                }
+            }
+        }
+
+        [Authorize]
+        [HttpGet("~/user/oneclickplaylist/link")]
+        public async Task<ActionResult<string>> GetOneClickPlaylistUrl()
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null) return Unauthorized();
+
+            var playlistUrl = await _s3Client.GetPresignedUrl(currentID + "oneclick.bplist", S3Container.playlists);
+            if (playlistUrl != null) {
+                return playlistUrl;
+            } else {
+                playlistUrl = await _s3Client.GetPresignedUrl("oneclick.bplist", S3Container.playlists);
+                if (playlistUrl != null) {
+                    return playlistUrl;
                 } else {
                     return NotFound();
                 }
@@ -156,9 +176,29 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            var playlisUrl = _s3Client.GetPresignedUrl(id + ".bplist", S3Container.playlists);
+            var stream = await _s3Client.DownloadPlaylist(id + ".bplist");
+            if (stream != null) {
+                return File(stream, "application/json");
+            } else {
+                return NotFound();
+            }
+        }
+
+        [HttpGet("~/playlist/{id}/link")]
+        public async Task<ActionResult<string>> GetByIdLink(string id)
+        {
+            if (int.TryParse(id, out var intId)) {
+                string? currentID = HttpContext.CurrentUserID(_context);
+
+                var playlist = _context.Playlists.FirstOrDefault(p => (p.OwnerId == currentID || p.IsShared) && p.Id == intId);
+                if (playlist == null) {
+                    return Unauthorized("");
+                }
+            }
+
+            var playlisUrl = await _s3Client.GetPresignedUrl(id + ".bplist", S3Container.playlists);
             if (playlisUrl != null) {
-                return Redirect(playlisUrl);
+                return playlisUrl;
             } else {
                 return NotFound();
             }
@@ -556,7 +596,9 @@ namespace BeatLeader_Server.Controllers
                 .FirstOrDefaultAsync(p => p.Id == currentID) : null;
 
             int searchCount = 0;
-            sequence = sequence.Filter(_context, 0, count, out int totalMatches, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
+            sequence = sequence
+                .Filter(_context, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer)
+                .WherePage(0, count, out int totalMatches);
 
             var diffsList = sequence.Select(s => s.Song.Hash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash);
 

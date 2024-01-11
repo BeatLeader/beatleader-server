@@ -65,7 +65,7 @@ namespace BeatLeader_Server.Controllers
             };
 
             _context.Badges.Add(badge);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             if (image == null) {
                 string? fileName = null;
@@ -84,7 +84,7 @@ namespace BeatLeader_Server.Controllers
                 catch {}
             }
 
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             if (playerId != null) {
                 await AddBadge(playerId, badge.Id);
@@ -95,10 +95,10 @@ namespace BeatLeader_Server.Controllers
 
         [HttpPut("~/badge/{id}")]
         [Authorize]
-        public ActionResult<Badge> UpdateBadge(int id, [FromQuery] string? description, [FromQuery] string? image, [FromQuery] string? link = null)
+        public async Task<ActionResult<Badge>> UpdateBadge(int id, [FromQuery] string? description, [FromQuery] string? image, [FromQuery] string? link = null)
         {
-            string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = _context.Players.Find(currentId);
+            string? currentId = HttpContext.CurrentUserID(_context);
+            Player? currentPlayer = currentId != null ? _context.Players.Find(currentId) : null;
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
@@ -123,7 +123,7 @@ namespace BeatLeader_Server.Controllers
                 badge.Link = link;
             }
 
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return badge;
         }

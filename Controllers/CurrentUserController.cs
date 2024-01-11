@@ -596,7 +596,7 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [HttpPatch("~/user/changePassword")]
-        public ActionResult ChangePassword([FromForm] string login, [FromForm] string oldPassword, [FromForm] string newPassword) {
+        public async Task<ActionResult> ChangePassword([FromForm] string login, [FromForm] string oldPassword, [FromForm] string newPassword) {
             string? iPAddress = Request.HttpContext.GetIpAddress();
             if (iPAddress == null) {
                 return Unauthorized("You don't have an IP address? Tell #NSGolova how you get this error.");
@@ -622,13 +622,13 @@ namespace BeatLeader_Server.Controllers {
                         Timestamp = timestamp,
                     };
                     _context.LoginAttempts.Add(loginAttempt);
-                    _context.SaveChanges();
+                    await _context.SaveChangesAsync();
                 } else if ((timestamp - loginAttempt.Timestamp) >= 60 * 60 * 24) {
                     loginAttempt.Timestamp = timestamp;
                     loginAttempt.Count = 0;
                 }
                 loginAttempt.Count++;
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
 
                 return Unauthorized("Login or password is incorrect");
             }
@@ -638,13 +638,13 @@ namespace BeatLeader_Server.Controllers {
 
             authInfo.Password = newPassword;
             _context.Auths.Update(authInfo);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
 
         [HttpPatch("~/user/resetPassword")]
-        public ActionResult ChangePassword([FromForm] string login, [FromForm] string newPassword) {
+        public async Task<ActionResult> ChangePassword([FromForm] string login, [FromForm] string newPassword) {
             string userId = GetId();
             AccountLink? link = _context.AccountLinks.FirstOrDefault(a => a.SteamID == userId);
             if (link == null) {
@@ -661,13 +661,13 @@ namespace BeatLeader_Server.Controllers {
 
             authInfo.Password = newPassword;
             _context.Auths.Update(authInfo);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
 
         [HttpPatch("~/user/changeLogin")]
-        public ActionResult ChangeLogin([FromForm] string newLogin) {
+        public async Task<ActionResult> ChangeLogin([FromForm] string newLogin) {
             string? iPAddress = Request.HttpContext.GetIpAddress();
             if (iPAddress == null) {
                 return Unauthorized("You don't have an IP address? Tell #NSGolova how you got this error.");
@@ -708,13 +708,13 @@ namespace BeatLeader_Server.Controllers {
                         Timestamp = timestamp,
                     };
                     _context.LoginAttempts.Add(loginAttempt);
-                    _context.SaveChanges();
+                    await _context.SaveChangesAsync();
                 } else if ((timestamp - loginAttempt.Timestamp) >= 60 * 60 * 24) {
                     loginAttempt.Timestamp = timestamp;
                     loginAttempt.Count = 0;
                 }
                 loginAttempt.Count++;
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
 
                 return Unauthorized("User with such login already exists");
             }
@@ -736,7 +736,7 @@ namespace BeatLeader_Server.Controllers {
             lastLoginChange.Timestamp = timestamp;
 
             authInfo.Login = newLogin;
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
@@ -1116,10 +1116,10 @@ namespace BeatLeader_Server.Controllers {
                     var save = firstValid.ValidContexts;
                     firstValid.ValidContexts = LeaderboardContexts.None;
 
-                    _context.SaveChanges();
+                    await _context.SaveChangesAsync();
 
                     firstValid.ValidContexts = save;
-                    _context.SaveChanges();
+                    await _context.SaveChangesAsync();
 
                     foreach (var score in scores) {
 
@@ -1129,7 +1129,7 @@ namespace BeatLeader_Server.Controllers {
                         }
                     }
 
-                    _context.SaveChanges();
+                    await _context.SaveChangesAsync();
                 }
             }
 
@@ -1149,7 +1149,7 @@ namespace BeatLeader_Server.Controllers {
             currentPlayer.ContextExtensions = null;
             _context.Players.Remove(currentPlayer);
 
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             if (scoresGroups.Count() > 0) {
                 RefreshTaskService.AddJob(new MigrationJob {
@@ -1270,18 +1270,18 @@ namespace BeatLeader_Server.Controllers {
             return result;
         }
 
-        [HttpGet("~/user/config")]
-        public async Task<ActionResult> GetConfig() {
+        [HttpGet("~/user/config/link")]
+        public async Task<ActionResult<string>> GetConfig() {
             string? userId = GetId();
             if (userId == null) {
                 return Unauthorized();
             }
 
-            var configUrl = _s3Client.GetPresignedUrl(userId + "-config.json", S3Container.configs);
+            var configUrl = await _s3Client.GetPresignedUrl(userId + "-config.json", S3Container.configs);
             if (configUrl == null) {
                 return NotFound();
             }
-            return Redirect(configUrl);
+            return configUrl;
         }
 
         [HttpPost("~/user/config")]

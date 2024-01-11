@@ -43,7 +43,7 @@ namespace BeatLeader_Server.Controllers
                 .FirstOrDefault();
             if (refresh == null) return NotFound();
 
-            var playersUrl = _s3Client.GetPresignedUrl(refresh.File, S3Container.assets);
+            var playersUrl = await _s3Client.GetPresignedUrl(refresh.File, S3Container.assets);
             if (playersUrl == null) {
                 return NotFound();
             }
@@ -61,7 +61,7 @@ namespace BeatLeader_Server.Controllers
                 .FirstOrDefault();
             if (refresh == null) return NotFound();
 
-            var songsUrl = _s3Client.GetPresignedUrl(refresh.SongsFile, S3Container.assets);
+            var songsUrl = await _s3Client.GetPresignedUrl(refresh.SongsFile, S3Container.assets);
             if (songsUrl == null) {
                 return NotFound();
             }
@@ -191,7 +191,7 @@ namespace BeatLeader_Server.Controllers
                 File = filename,
                 SongsFile = songsfilename
             });
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }

@@ -23,9 +23,6 @@ public static partial class MapListUtils
 
     public static IQueryable<Leaderboard> Filter(this IQueryable<Leaderboard> source,
                                                  AppContext _context,
-                                                 int page,
-                                                 int count,
-                                                 out int totalMatches,
                                                  out int? searchId,
                                                  SortBy sortBy = SortBy.None,
                                                  Order order = Order.Desc,
@@ -85,6 +82,5 @@ public static partial class MapListUtils
               .WhereRatingTo(RatingType.Acc, accRatingTo)
               .WhereRatingTo(RatingType.Pass, passRatingTo)
               .WhereRatingTo(RatingType.Tech, techRatingTo)
-              .Sort(sortBy, order, type, mytype, dateFrom, dateTo, searchId, currentPlayer)
-              .WherePage(page, count, out totalMatches);
+              .Sort(sortBy, order, type, mytype, dateFrom, dateTo, searchId, currentPlayer);
 }

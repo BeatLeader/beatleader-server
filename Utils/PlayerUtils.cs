@@ -720,7 +720,7 @@ namespace BeatLeader_Server.Utils
                 } else {
                     UpdateBoosterRole(player, null);
                 }
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
             }
         }
 

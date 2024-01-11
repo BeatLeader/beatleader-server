@@ -13,20 +13,22 @@ using Microsoft.EntityFrameworkCore.Infrastructure.Internal;
 
 namespace BeatLeader_Server.Controllers {
     public class LeaderboardController : Controller {
+
         private readonly AppContext _context;
-        private readonly ReadAppContext _readContext;
+        private readonly IDbContextFactory<AppContext> _dbFactory;
+
         private readonly SongController _songController;
         private readonly IAmazonS3 _s3Client;
         private readonly IServerTiming _serverTiming;
 
         public LeaderboardController(
             AppContext context,
-            ReadAppContext readContext,
+            IDbContextFactory<AppContext> dbFactory,
             IConfiguration configuration,
             SongController songController,
             IServerTiming serverTiming) {
             _context = context;
-            _readContext = readContext;
+            _dbFactory = dbFactory;
             _songController = songController;
             _s3Client = configuration.GetS3Client();
             _serverTiming = serverTiming;
@@ -162,7 +164,9 @@ namespace BeatLeader_Server.Controllers {
             leaderboard.Plays = scoreQuery.Count();
             }
             using (_serverTiming.TimeAction("scorelist")) {
-            leaderboard.Scores = scoreQuery
+            leaderboard.Scores = await scoreQuery
+                .AsSplitQuery()
+                .TagWithCallSite()
                 .Skip((page - 1) * count)
                 .Take(count)
                 .Select(s => new ScoreResponse {
@@ -210,7 +214,7 @@ namespace BeatLeader_Server.Controllers {
                     },
                     RankVoting = showVoters ? s.RankVoting : null,
                 })
-                .ToList();
+                .ToListAsync();
             }
         }
 
@@ -332,7 +336,9 @@ namespace BeatLeader_Server.Controllers {
             }
 
             leaderboard.Plays = scoreQuery.Count();
-            leaderboard.Scores = scoreQuery
+            leaderboard.Scores = await scoreQuery
+                .AsSplitQuery()
+                .TagWithCallSite()
                 .Skip((page - 1) * count)
                 .Take(count)
                 .Select(s => new ScoreResponse {
@@ -380,7 +386,7 @@ namespace BeatLeader_Server.Controllers {
                     },
                     RankVoting = showVoters ? s.Score.RankVoting : null,
                 })
-                .ToList();
+                .ToListAsync();
         }
 
         [HttpGet("~/leaderboard/{id}")]
@@ -397,10 +403,9 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] string? modifiers = null,
             [FromQuery] bool friends = false,
             [FromQuery] bool voters = false) {
-            var currentContext = _readContext;
 
-            string? currentID = HttpContext.CurrentUserID(currentContext);
-            var currentPlayer = currentID != null ? await currentContext
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = currentID != null ? await _context
                 .Players
                 .Where(p => p.Id == currentID)
                 .Select(p => new { 
@@ -417,7 +422,7 @@ namespace BeatLeader_Server.Controllers {
                              currentPlayer.Role.Contains("rankedteam") ||
                              currentPlayer.Role.Contains("qualityteam")));
 
-            IQueryable<Leaderboard> query = currentContext
+            IQueryable<Leaderboard> query = _context
                     .Leaderboards
                     .Where(lb => lb.Id == id)
                     .Include(lb => lb.Difficulty)
@@ -459,7 +464,7 @@ namespace BeatLeader_Server.Controllers {
 
             LeaderboardResponse? leaderboard;
             using (_serverTiming.TimeAction("leaderboard")) {
-                leaderboard = query
+                leaderboard = await query
                 .AsSplitQuery()
                 .Select(l => new LeaderboardResponse {
                 Id = l.Id,
@@ -508,7 +513,7 @@ namespace BeatLeader_Server.Controllers {
                     }
                    ),
             })
-               .FirstOrDefault();
+               .FirstOrDefaultAsync();
             }
 
             if (leaderboard != null) {
@@ -538,7 +543,7 @@ namespace BeatLeader_Server.Controllers {
                         return NotFound();
                     }
                     using (_serverTiming.TimeAction("friends")) {
-                    var friendsContainer = currentContext
+                    var friendsContainer = _context
                         .Friends
                         .Where(f => f.Id == currentID)
                         .Include(f => f.Friends)
@@ -565,9 +570,9 @@ namespace BeatLeader_Server.Controllers {
             }
 
             if (leaderboard == null) {
-                Song? song = currentContext.Songs.Include(s => s.Difficulties).FirstOrDefault(s => s.Difficulties.FirstOrDefault(d => s.Id + d.Value + d.Mode == id) != null);
+                Song? song = _context.Songs.Include(s => s.Difficulties).FirstOrDefault(s => s.Difficulties.FirstOrDefault(d => s.Id + d.Value + d.Mode == id) != null);
                 if (song == null) {
-                    song = currentContext.Songs.Include(s => s.Difficulties).FirstOrDefault(s => s.Difficulties.FirstOrDefault(d => s.Id == id) != null);
+                    song = _context.Songs.Include(s => s.Difficulties).FirstOrDefault(s => s.Difficulties.FirstOrDefault(d => s.Id == id) != null);
                     if (song == null) {
                         return NotFound();
                     } else {
@@ -627,9 +632,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] int page = 1,
             [FromQuery] int count = 5)
         {
-            var currentContext = _readContext;
-
-            var clanRankingScores = currentContext
+            var clanRankingScores = _context
                 .ClanRanking
                 .Where(cr => cr.LeaderboardId == leaderboardId && cr.Id == clanRankingId)
                 .Select(cr => new ClanRankingResponse
@@ -643,7 +646,7 @@ namespace BeatLeader_Server.Controllers {
                     TotalScore = cr.TotalScore,
                     LeaderboardId = cr.LeaderboardId,
                     Leaderboard = cr.Leaderboard,
-                    AssociatedScores = currentContext
+                    AssociatedScores = _context
                         .Scores
                         .Where(s => s.LeaderboardId == leaderboardId && s.ValidContexts.HasFlag(LeaderboardContexts.General) && s.Player.Clans.Contains(cr.Clan))
                         .Include(sc => sc.Player)
@@ -688,7 +691,7 @@ namespace BeatLeader_Server.Controllers {
                             RankVoting = null,
                         })
                         .ToList(),
-                    AssociatedScoresCount = currentContext
+                    AssociatedScoresCount = _context
                         .Scores
                         .Where(sc => sc.LeaderboardId == leaderboardId && sc.ValidContexts.HasFlag(LeaderboardContexts.General) && sc.Player.Clans.Contains(cr.Clan))
                         .Count()
@@ -705,10 +708,8 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] int page = 1,
             [FromQuery] int count = 10)
         {
-            var currentContext = _readContext;
-
-            string? currentID = HttpContext.CurrentUserID(currentContext);
-            var currentPlayer = currentID != null ? await currentContext
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = currentID != null ? await _context
                 .Players
                 .Where(p => p.Id == currentID)
                 .Select(p => new {
@@ -726,7 +727,7 @@ namespace BeatLeader_Server.Controllers {
                              currentPlayer.Role.Contains("rankedteam") ||
                              currentPlayer.Role.Contains("qualityteam")));
 
-            IQueryable<Leaderboard> query = currentContext
+            IQueryable<Leaderboard> query = _context
                     .Leaderboards
                     .Where(lb => lb.Id == id)
                     .Include(lb => lb.Difficulty)
@@ -834,13 +835,13 @@ namespace BeatLeader_Server.Controllers {
                     leaderboard.HideRatings();
                 }
 
-                var clanRankingQuery = currentContext.ClanRanking.Where(s => s.LeaderboardId == leaderboard.Id).ToList();
+                var clanRankingQuery = _context.ClanRanking.Where(s => s.LeaderboardId == leaderboard.Id).ToList();
 
                 leaderboard.Plays = clanRankingQuery.Count();
                 leaderboard.Scores = null;
 
                 // This clanRanking data is required for displaying clanRankings on each leaderboard
-                leaderboard.ClanRanking = currentContext
+                leaderboard.ClanRanking = _context
                     .ClanRanking
                     .Include(cr => cr.Clan)
                     .Where(cr => cr.LeaderboardId == leaderboard.Id)
@@ -978,14 +979,14 @@ namespace BeatLeader_Server.Controllers {
         //    var stats = _context.PlayerLeaderboardStats.FirstOrDefault(lb => lb.LeaderboardId == id);
         //    if (stats != null) {
         //        _context.PlayerLeaderboardStats.Remove(stats);
-        //        _context.SaveChanges();
+        //        await _context.SaveChangesAsync();
         //    }
 
         //    var lb = _context.Leaderboards.FirstOrDefault(lb => lb.Id == id);
 
         //    if (lb != null) {
         //        _context.Leaderboards.Remove(lb);
-        //        _context.SaveChanges();
+        //        await _context.SaveChangesAsync();
         //    } else {
         //        return NotFound();
         //    }
@@ -997,13 +998,15 @@ namespace BeatLeader_Server.Controllers {
         public async Task<ActionResult<Leaderboard>> GetByHash(string hash, string diff, string mode, bool recursive = true) {
             Leaderboard? leaderboard;
 
-            leaderboard = _context
+            leaderboard = await _context
                 .Leaderboards
                 .Include(lb => lb.Difficulty)
                 .ThenInclude(d => d.ModifierValues)
                 .Include(lb => lb.Difficulty)
                 .ThenInclude(d => d.ModifiersRating)
-                .FirstOrDefault(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff);
+                .TagWithCallSite()
+                .AsSplitQuery()
+                .FirstOrDefaultAsync(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff);
 
             if (leaderboard == null) {
                 Song? song = await _songController.GetOrAddSong(hash);
@@ -1208,125 +1211,141 @@ namespace BeatLeader_Server.Controllers {
                 return Ok((await GetModList(page, count, sortBy, order, date_from, date_to)).Value);
             }
 
-            var sequence = _context.Leaderboards.AsQueryable();
             string? currentID = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = currentID != null ? await _context
                 .Players
                 .Include(p => p.ProfileSettings)
                 .FirstOrDefaultAsync(p => p.Id == currentID) : null;
 
-            sequence = sequence.Filter(_context, page, count, out int totalMatches, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
+            var sequence = _context.Leaderboards.Filter(_context, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
 
             var result = new ResponseWithMetadata<LeaderboardInfoResponse>() {
                 Metadata = new Metadata() {
                     Page = page,
-                    ItemsPerPage = count,
-                    Total = totalMatches,
+                    ItemsPerPage = count
                 }
             };
 
-            sequence = sequence
-                .Include(lb => lb.Difficulty)
-                .ThenInclude(d => d.ModifierValues)
-                .Include(lb => lb.Difficulty)
-                .ThenInclude(d => d.ModifiersRating)
-                .Include(lb => lb.Song)
-                .Include(lb => lb.Reweight);
-
-            if (type == Type.Staff) {
-                sequence = sequence
-                    .Include(lb => lb.Qualification)
-                    .ThenInclude(q => q.Votes)
-                    .Include(lb => lb.Song)
-                    .ThenInclude(s => s.Difficulties.Where(d => d.Status == DifficultyStatus.qualified || d.Status == DifficultyStatus.nominated));
-            }
-
             bool showPlays = sortBy == SortBy.PlayCount;
 
-            var resultList = sequence
-                .Select(lb => new LeaderboardInfoResponse {
-                    Id = lb.Id,
-                    Song = lb.Song,
-                    Difficulty = new DifficultyResponse {
-                        Id = lb.Difficulty.Id,
-                        Value = lb.Difficulty.Value,
-                        Mode = lb.Difficulty.Mode,
-                        DifficultyName = lb.Difficulty.DifficultyName,
-                        ModeName = lb.Difficulty.ModeName,
-                        Status = lb.Difficulty.Status,
-                        ModifierValues = lb.Difficulty.ModifierValues,
-                        ModifiersRating = lb.Difficulty.ModifiersRating,
-                        NominatedTime  = lb.Difficulty.NominatedTime,
-                        QualifiedTime  = lb.Difficulty.QualifiedTime,
-                        RankedTime = lb.Difficulty.RankedTime,
+            if (page <= 0) {
+                page = 1;
+            }
 
-                        Stars  = lb.Difficulty.Stars,
-                        PredictedAcc  = lb.Difficulty.PredictedAcc,
-                        PassRating  = lb.Difficulty.PassRating,
-                        AccRating  = lb.Difficulty.AccRating,
-                        TechRating  = lb.Difficulty.TechRating,
-                        Type  = lb.Difficulty.Type,
+            var idsList = await sequence
+                .Skip((page - 1) * count)
+                .Take(count)
+                .Select(lb => lb.Id)
+                .ToListAsync();
 
-                        Njs  = lb.Difficulty.Njs,
-                        Nps  = lb.Difficulty.Nps,
-                        Notes  = lb.Difficulty.Notes,
-                        Bombs  = lb.Difficulty.Bombs,
-                        Walls  = lb.Difficulty.Walls,
-                        MaxScore = lb.Difficulty.MaxScore,
-                        Duration  = lb.Difficulty.Duration,
+            using (var anotherContext = _dbFactory.CreateDbContext()) {
+                var lbsequence = anotherContext
+                    .Leaderboards
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(d => d.ModifierValues)
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(d => d.ModifiersRating)
+                    .Include(lb => lb.Song)
+                    .Include(lb => lb.Reweight)
+                    .Where(lb => idsList.Contains(lb.Id));
 
-                        Requirements = lb.Difficulty.Requirements,
-                    },
-                    Qualification = lb.Qualification,
-                    Reweight = lb.Reweight,
-                    ClanRankingContested = lb.ClanRankingContested,
-                    Clan = lb.Clan,
-                    PositiveVotes = lb.PositiveVotes,
-                    NegativeVotes = lb.NegativeVotes,
-                    VoteStars = lb.VoteStars,
-                    StarVotes = lb.StarVotes,
-                    MyScore = currentID == null ? null : lb.Scores.Where(s => s.PlayerId == currentID && !s.Banned).Select(s => new ScoreResponseWithAcc {
-                        Id = s.Id,
-                        BaseScore = s.BaseScore,
-                        ModifiedScore = s.ModifiedScore,
-                        PlayerId = s.PlayerId,
-                        Accuracy = s.Accuracy,
-                        Pp = s.Pp,
-                        FcAccuracy = s.FcAccuracy,
-                        FcPp = s.FcPp,
-                        BonusPp = s.BonusPp,
-                        Rank = s.Rank,
-                        Replay = s.Replay,
-                        Offsets = s.ReplayOffsets,
-                        Modifiers = s.Modifiers,
-                        BadCuts = s.BadCuts,
-                        MissedNotes = s.MissedNotes,
-                        BombCuts = s.BombCuts,
-                        WallsHit = s.WallsHit,
-                        Pauses = s.Pauses,
-                        FullCombo = s.FullCombo,
-                        Hmd = s.Hmd,
-                        Timeset = s.Timeset,
-                        Timepost = s.Timepost,
-                        ReplaysWatched = s.AuthorizedReplayWatched + s.AnonimusReplayWatched,
-                        LeaderboardId = s.LeaderboardId,
-                        Platform = s.Platform,
-                        Weight = s.Weight,
-                        AccLeft = s.AccLeft,
-                        AccRight = s.AccRight,
-                        MaxStreak = s.MaxStreak,
-                    }).FirstOrDefault(),
-                    Plays = showPlays ? lb.Scores.Count(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)) : 0
-                })
-                .ToList();
+                if (type == Type.Staff) {
+                    lbsequence = lbsequence
+                        .Include(lb => lb.Qualification)
+                        .ThenInclude(q => q.Votes)
+                        .Include(lb => lb.Song)
+                        .ThenInclude(s => s.Difficulties.Where(d => d.Status == DifficultyStatus.qualified || d.Status == DifficultyStatus.nominated));
+                }
 
-            if (resultList.Count > 0) {
+                (result.Metadata.Total, result.Data) = await sequence.CountAsync().CoundAndResults(lbsequence
+                    .TagWithCallSite()
+                    .AsSplitQuery()
+                    .Select(lb => new LeaderboardInfoResponse {
+                        Id = lb.Id,
+                        Song = lb.Song,
+                        Difficulty = new DifficultyResponse {
+                            Id = lb.Difficulty.Id,
+                            Value = lb.Difficulty.Value,
+                            Mode = lb.Difficulty.Mode,
+                            DifficultyName = lb.Difficulty.DifficultyName,
+                            ModeName = lb.Difficulty.ModeName,
+                            Status = lb.Difficulty.Status,
+                            ModifierValues = lb.Difficulty.ModifierValues,
+                            ModifiersRating = lb.Difficulty.ModifiersRating,
+                            NominatedTime  = lb.Difficulty.NominatedTime,
+                            QualifiedTime  = lb.Difficulty.QualifiedTime,
+                            RankedTime = lb.Difficulty.RankedTime,
+
+                            Stars  = lb.Difficulty.Stars,
+                            PredictedAcc  = lb.Difficulty.PredictedAcc,
+                            PassRating  = lb.Difficulty.PassRating,
+                            AccRating  = lb.Difficulty.AccRating,
+                            TechRating  = lb.Difficulty.TechRating,
+                            Type  = lb.Difficulty.Type,
+
+                            Njs  = lb.Difficulty.Njs,
+                            Nps  = lb.Difficulty.Nps,
+                            Notes  = lb.Difficulty.Notes,
+                            Bombs  = lb.Difficulty.Bombs,
+                            Walls  = lb.Difficulty.Walls,
+                            MaxScore = lb.Difficulty.MaxScore,
+                            Duration  = lb.Difficulty.Duration,
+
+                            Requirements = lb.Difficulty.Requirements,
+                        },
+                        Qualification = lb.Qualification,
+                        Reweight = lb.Reweight,
+                        ClanRankingContested = lb.ClanRankingContested,
+                        Clan = lb.Clan,
+                        PositiveVotes = lb.PositiveVotes,
+                        NegativeVotes = lb.NegativeVotes,
+                        VoteStars = lb.VoteStars,
+                        StarVotes = lb.StarVotes,
+                        MyScore = currentID == null ? null : lb.Scores.Where(s => s.PlayerId == currentID && !s.Banned).Select(s => new ScoreResponseWithAcc {
+                            Id = s.Id,
+                            BaseScore = s.BaseScore,
+                            ModifiedScore = s.ModifiedScore,
+                            PlayerId = s.PlayerId,
+                            Accuracy = s.Accuracy,
+                            Pp = s.Pp,
+                            FcAccuracy = s.FcAccuracy,
+                            FcPp = s.FcPp,
+                            BonusPp = s.BonusPp,
+                            Rank = s.Rank,
+                            Replay = s.Replay,
+                            Offsets = s.ReplayOffsets,
+                            Modifiers = s.Modifiers,
+                            BadCuts = s.BadCuts,
+                            MissedNotes = s.MissedNotes,
+                            BombCuts = s.BombCuts,
+                            WallsHit = s.WallsHit,
+                            Pauses = s.Pauses,
+                            FullCombo = s.FullCombo,
+                            Hmd = s.Hmd,
+                            Timeset = s.Timeset,
+                            Timepost = s.Timepost,
+                            ReplaysWatched = s.AuthorizedReplayWatched + s.AnonimusReplayWatched,
+                            LeaderboardId = s.LeaderboardId,
+                            Platform = s.Platform,
+                            Weight = s.Weight,
+                            AccLeft = s.AccLeft,
+                            AccRight = s.AccRight,
+                            MaxStreak = s.MaxStreak,
+                        }).FirstOrDefault(),
+                        Plays = showPlays ? lb.Scores.Count(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)) : 0
+                    })
+                    .ToListAsync());
+            }
+
+            if (result.Data.Count() > 0) {
                 bool showRatings = currentPlayer?.ProfileSettings?.ShowAllRatings ?? false;
-                foreach (var leaderboard in resultList) {
+                foreach (var leaderboard in result.Data) {
                     if (!showRatings && !leaderboard.Difficulty.Status.WithRating()) {
                         leaderboard.HideRatings();
                     }
                 }
+
+                result.Data = result.Data.OrderBy(e => idsList.IndexOf(e.Id));
             }
             if (searchId != null) {
                 HttpContext.Response.OnCompleted(async () => {
@@ -1337,8 +1356,6 @@ namespace BeatLeader_Server.Controllers {
                     await _context.BulkSaveChangesAsync();
                 });
             }
-
-            result.Data = resultList;
 
             return result;
         }
@@ -1376,7 +1393,9 @@ namespace BeatLeader_Server.Controllers {
                 .Players
                 .Include(p => p.ProfileSettings)
                 .FirstOrDefaultAsync(p => p.Id == currentID) : null;
-            sequence = sequence.Filter(_context, page, count, out int totalMatches, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
+            sequence = sequence
+                .Filter(_context, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer)
+                .WherePage(page, count, out int totalMatches);
 
             var ids = sequence.Select(lb => lb.SongId).ToList();
 
@@ -1396,7 +1415,8 @@ namespace BeatLeader_Server.Controllers {
             };
 
             sequence = sequence
-                .Where(lb => ids.Contains(lb.SongId)).Filter(_context, page, count, out totalMatches, out searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer)
+                .Where(lb => ids.Contains(lb.SongId)).Filter(_context, out searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer)
+                .WherePage(page, count, out totalMatches)
                 .Include(lb => lb.Difficulty)
                 .Include(lb => lb.Song);
 
@@ -1479,7 +1499,7 @@ namespace BeatLeader_Server.Controllers {
 
         [HttpGet("~/leaderboard/ranking/{id}")]
         public ActionResult<LeaderboardVoting> GetVoting(string id) {
-            var rankVotings = _readContext
+            var rankVotings = _context
                     .Leaderboards
                     .Where(lb => lb.Id == id)
                     .Include(lb => lb.Scores)

@@ -303,6 +303,39 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpGet("~/mappersList")]
+        public async Task<ActionResult> mappersList()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = _context.Players.Find(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var lbs = _context
+                .Leaderboards
+                .Include(l => l.Song)
+                .Include(l => l.Difficulty)
+                .Where(lb => lb.Difficulty.RankedTime > 1672531200)
+                .ToList();
+
+            var mappers = new List<string>();
+
+            foreach (var lb in lbs)
+            {
+                foreach (var item in lb.Song.Mapper.Split("&"))
+                {
+                    foreach (var item1 in item.Split(",")) {
+                        mappers.Add(item1.Trim());
+                    }
+                }
+            }
+
+            return Ok(mappers.Distinct().Count());
+        }
+
         [HttpGet("~/admin/migrateCDN")]
         public async Task<ActionResult> migrateCDN()
         {
@@ -411,7 +444,7 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
             _context.BeatSaverLinks.Remove(link);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
@@ -467,7 +500,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            _context.BulkSaveChanges();
+            await _context.BulkSaveChangesAsync();
 
             return Ok();
         }
@@ -485,7 +518,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            _context.BulkDelete(_context.ClanRanking);
+            //_context.BulkDelete(_context.ClanRanking);
 
             try
             {
@@ -553,7 +586,7 @@ namespace BeatLeader_Server.Controllers
                 PlayerId = playerId
             };
             _context.CountryChangeBans.Add(changeBan);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
@@ -689,7 +722,7 @@ namespace BeatLeader_Server.Controllers
                 
             }
 
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
@@ -763,7 +796,7 @@ namespace BeatLeader_Server.Controllers
             if (changeBan != null) {
                 _context.CountryChangeBans.Remove(changeBan);
             }
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
@@ -856,7 +889,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            _context.BulkSaveChanges();
+            await _context.BulkSaveChangesAsync();
 
             return Ok();
         }
@@ -905,7 +938,7 @@ namespace BeatLeader_Server.Controllers
                 }
 
             }
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
@@ -974,7 +1007,7 @@ namespace BeatLeader_Server.Controllers
             score.BaseScore = statistic.winTracker.totalScore;
             score.Accuracy = statistic.scoreGraphTracker.graph.Last();
 
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             HttpContext.Response.OnCompleted(async () => {
                 await _scoreRefreshController.RefreshScores(score.LeaderboardId);
@@ -1020,7 +1053,7 @@ namespace BeatLeader_Server.Controllers
                 score.Controller = ReplayUtils.ControllerFromName(replayInfo.controller);
             }
 
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
@@ -1087,7 +1120,7 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
-                _context.BulkSaveChanges();
+                await _context.BulkSaveChangesAsync();
             }
 
             var players = _context.Players.Where(p => p.ContextExtensions == null).ToList();
@@ -1120,7 +1153,7 @@ namespace BeatLeader_Server.Controllers
                 };
             }
 
-            _context.BulkSaveChanges();
+            await _context.BulkSaveChangesAsync();
 
             return Ok();
         }
@@ -1235,12 +1268,12 @@ namespace BeatLeader_Server.Controllers
                 _context.BeatSaverLinks.Remove(item);
             }
             _context.WatchingSessions.BulkDelete(_context.WatchingSessions);
-            _context.BulkSaveChanges();
+            await _context.BulkSaveChangesAsync();
 
             foreach (var item in _context.RankVotings.ToList()) {
                 _context.RankVotings.Remove(item);
             }
-            _context.BulkSaveChanges();
+            await _context.BulkSaveChangesAsync();
 
             foreach (var item in _context.Friends.ToList()) {
                 _context.Friends.Remove(item);
@@ -1253,7 +1286,7 @@ namespace BeatLeader_Server.Controllers
             foreach (var item in _context.CriteriaCommentary.ToList()) {
                 _context.CriteriaCommentary.Remove(item);
             }
-            _context.BulkSaveChanges();
+            await _context.BulkSaveChangesAsync();
 
             foreach (var item in _context.QualificationCommentary.ToList()) {
                 _context.QualificationCommentary.Remove(item);
@@ -1267,7 +1300,7 @@ namespace BeatLeader_Server.Controllers
             foreach (var item in _context.AccountLinkRequests.ToList()) {
                 _context.AccountLinkRequests.Remove(item);
             }
-            _context.BulkSaveChanges();
+            await _context.BulkSaveChangesAsync();
 
             foreach (var item in _context.Leaderboards.Where(lb => lb.Qualification != null).Include(lb => lb.Qualification).ToList()) {
                 item.Qualification = null;
@@ -1291,7 +1324,7 @@ namespace BeatLeader_Server.Controllers
 
             _context.Database.ExecuteSqlRaw("TRUNCATE TABLE PlayerLeaderboardStats;");
 
-            _context.BulkSaveChanges();
+            await _context.BulkSaveChangesAsync();
 
             return Ok();
         }

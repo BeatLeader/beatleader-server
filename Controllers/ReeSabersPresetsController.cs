@@ -301,7 +301,7 @@ namespace BeatLeader_Server.Controllers
                         Player = currentId,
                         PresetId = id,
                     });
-                    _context.SaveChanges();
+                    await _context.SaveChangesAsync();
                }
             }
 
@@ -335,7 +335,7 @@ namespace BeatLeader_Server.Controllers
                         Player = currentId,
                         PresetId = id,
                     });
-                    _context.SaveChanges();
+                    await _context.SaveChangesAsync();
                }
             }
 
@@ -554,7 +554,7 @@ namespace BeatLeader_Server.Controllers
             };
 
             preset.Comments.Add(result);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return result;
         }
@@ -584,7 +584,7 @@ namespace BeatLeader_Server.Controllers
             comment.Value = Encoding.UTF8.GetString(ms.ToArray());
             comment.Edited = true;
             comment.EditTimeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return comment;
         }
@@ -607,7 +607,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             _context.ReeSabersComment.Remove(comment);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }

@@ -254,7 +254,7 @@ namespace BeatLeader_Server.Controllers
             List<Score> currentScores;
             using (_serverTiming.TimeAction("currS"))
             {
-                currentScores = _context
+                currentScores = await _context
                     .Scores
                     .Where(s =>
                         s.LeaderboardId == leaderboard.Id &&
@@ -267,7 +267,9 @@ namespace BeatLeader_Server.Controllers
                     .Include(s => s.RankVoting)
                     .ThenInclude(v => v.Feedbacks)
                     .Include(s => s.ContextExtensions)
-                    .ToList();
+                    .AsSplitQuery()
+                    .TagWithCallSite()
+                    .ToListAsync();
             }
             var ip = context.Request.HttpContext.GetIpAddress();
             Player? player;
@@ -377,7 +379,7 @@ namespace BeatLeader_Server.Controllers
                     Hmd = resultScore.Hmd,
                 };
                 _context.FailedScores.Add(failedScore);
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
 
                 transaction.Commit();
             }
@@ -644,7 +646,7 @@ namespace BeatLeader_Server.Controllers
             IDbContextTransaction transaction) {
             if (!player.Bot) {
                 var isRanked = leaderboard.Difficulty.Status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.inevent;
-                RefreshGeneneralContextRank(leaderboard, resultScore, isRanked);
+                await RefreshGeneneralContextRank(leaderboard, resultScore, isRanked);
                 
                 foreach (var leaderboardContext in ContextExtensions.NonGeneral) {
                     RefreshContextRank(leaderboardContext, resultScore, leaderboard, isRanked);
@@ -666,19 +668,22 @@ namespace BeatLeader_Server.Controllers
             }
         }
 
-        private void RefreshGeneneralContextRank(Leaderboard leaderboard, Score resultScore, bool isRanked) {
+        private async Task RefreshGeneneralContextRank(Leaderboard leaderboard, Score resultScore, bool isRanked) {
             if (!resultScore.ValidContexts.HasFlag(LeaderboardContexts.General)) return;
 
-            var rankedScores = _context
+            var rankedScores = (await _context
                     .Scores
                     .Where(s => s.LeaderboardId == leaderboard.Id && 
                                 !s.Banned && 
                                 s.ValidContexts.HasFlag(LeaderboardContexts.General))
+                    
+                    .Select(s => new { s.Id, s.Rank, s.Priority, s.ModifiedScore, s.Accuracy, s.Pp, s.Timeset })
+                    .ToListAsync())
                     .OrderBy(el => !isRanked ? el.Priority : 1)
                     .OrderByDescending(el => !isRanked ? el.ModifiedScore : Math.Round(el.Pp, 2))
                     .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                     .ThenBy(el => el.Timeset)
-                    .Select(s => new { s.Id, s.Rank }).ToList();
+                    .ToList();
 
             foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
             {
@@ -1078,7 +1083,7 @@ namespace BeatLeader_Server.Controllers
                 
             };
             _context.FailedScores.Add(failedScore);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             transaction.Commit();
 
@@ -1100,7 +1105,7 @@ namespace BeatLeader_Server.Controllers
                 await _playerContextRefreshController.RefreshStats(ce.ScoreStats, player.Id, ce.Context);
             }
 
-            _context.BulkSaveChanges();
+            await _context.BulkSaveChangesAsync();
             transaction.Commit();
             
             } catch { }

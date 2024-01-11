@@ -55,7 +55,7 @@ namespace BeatLeader_Server.Controllers {
             };
 
             _context.AchievementDescriptions.Add(achievementDescription);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return achievementDescription;
         }
@@ -103,7 +103,7 @@ namespace BeatLeader_Server.Controllers {
             };
             achievementDescription.Levels.Add(achievementLevel);
 
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return achievementLevel;
         }
@@ -193,13 +193,13 @@ namespace BeatLeader_Server.Controllers {
                 SurveyId = "",
                 Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds
             });
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
 
         [HttpGet("~/survey/achievement")]
-        public ActionResult<Achievement> AssignAchievement() {
+        public async Task<ActionResult<Achievement>> AssignAchievement() {
             string currentId = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = _context.Players
                 .Include(p => p.Achievements)
@@ -235,7 +235,7 @@ namespace BeatLeader_Server.Controllers {
                     Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds
                 };
                 currentPlayer.Achievements.Add(achievement);
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
             }
 
             return Ok(achievement);

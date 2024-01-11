@@ -602,10 +602,11 @@ namespace BeatLeader_Server.Controllers {
                         .OrderBy(p => p.Rank)
                         .Select(p => new { p.PlayerId, p.ScoreStats })
                         .ToListAsync();
-            
-                await players.ParallelForEachAsync(async player => {
+
+                foreach (var player in players)
+                {
                     await RefreshStats(player.ScoreStats, player.PlayerId, context);
-                }, maxDegreeOfParallelism: 3);
+                }
 
                 await _context.BulkSaveChangesAsync();
             }

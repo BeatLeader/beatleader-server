@@ -291,7 +291,7 @@ namespace BeatLeader_Server {
                 options.SuppressXFrameOptionsHeader = false;
             });
 
-            services.AddDbContext<AppContext>(options => { 
+            services.AddDbContextFactory<AppContext>(options => { 
                 options.UseSqlServer(Configuration.GetValue<string>("DefaultConnection"));
 
                 options.UseOpenIddict();

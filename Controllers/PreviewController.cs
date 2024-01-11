@@ -263,7 +263,7 @@ namespace BeatLeader_Server.Controllers
 
             if (scoreId != null)
             {
-                var previewUrl = _s3Client.GetPresignedUrl($"{scoreId}-{(twitter ? "twitter" : "")}preview.png", S3Container.previews);
+                var previewUrl = await _s3Client.GetPresignedUrl($"{scoreId}-{(twitter ? "twitter" : "")}preview.png", S3Container.previews);
                 if (previewUrl != null)
                 {
                     return Redirect(previewUrl);
@@ -505,7 +505,9 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
-                song = _context.Songs.Select(s => new SongSelect { Hash = s.Hash, CoverImage = s.CoverImage, Name = s.Name }).FirstOrDefault(s => s.Hash == hash);
+                song = await _context
+                    .Songs.Select(s => new SongSelect { Hash = s.Hash, CoverImage = s.CoverImage, Name = s.Name })
+                    .FirstOrDefaultAsync(s => s.Hash == hash);
             }
 
             if (playersList.Count == 0 || song == null)

@@ -300,5 +300,71 @@ namespace BeatLeader_Server.Controllers
             
             return result.OrderByDescending(s => s.FloatValue).ToList();
         }
+
+        [HttpPost("~/clan/reserve")]
+        public async Task<ActionResult> ReserveTag([FromQuery] string tag)
+        {
+            tag = tag.ToUpper();
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (!currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            _context.ReservedTags.Add(new ReservedClanTag
+            {
+                Tag = tag
+            });
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpDelete("~/clan/reserve")]
+        public async Task<ActionResult> AllowTag([FromQuery] string tag)
+        {
+            tag = tag.ToUpper();
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (!currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var rt = _context.ReservedTags.FirstOrDefault(rt => rt.Tag == tag);
+            if (rt == null)
+            {
+                return NotFound();
+            }
+
+            _context.ReservedTags.Remove(rt);
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpGet("~/theBestTriangles")]
+        public async Task<ActionResult> theBestTriangles()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (!currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            return Ok(_context
+                .Players
+                .Where(p => !p.Banned && p.Pp > 16000)
+                .Select(p => new { p.Id, PassPp = p.PassPp / 6000f, TechPp = p.TechPp / 1300f, AccPp = p.AccPp / 15000f })
+                .ToList()
+                .OrderBy(p => Math.Abs(p.PassPp - 0.5) + Math.Abs(p.TechPp - 0.5) + Math.Abs(p.AccPp - 0.5))
+                .ThenByDescending(p => p.PassPp + p.AccPp + p.TechPp)
+                .Take(3));
+        }
     }
 }

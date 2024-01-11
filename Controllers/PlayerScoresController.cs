@@ -54,15 +54,20 @@ namespace BeatLeader_Server.Controllers {
             int? eventId = null) {
 
             string? currentID = HttpContext.CurrentUserID(_context);
-            bool showRatings = currentID != null ? _context
+            bool showRatings = currentID != null ? await _context
                 .Players
                 .Where(p => p.Id == currentID && p.ProfileSettings != null)
                 .Select(p => p.ProfileSettings.ShowAllRatings)
-                .FirstOrDefault() : false;
+                .TagWithCallSite()
+                .FirstOrDefaultAsync() : false;
 
             id = _context.PlayerIdToMain(id);
 
-            var player = await _context.Players.Where(p => p.Id == id).Select(p => new { p.Banned }).FirstOrDefaultAsync();
+            var player = await _context
+                    .Players
+                    .Where(p => p.Id == id)
+                    .Select(p => new { p.Banned })
+                    .FirstOrDefaultAsync();
             if (player == null) {
                 return (null, false, "", "");
             }
@@ -70,6 +75,7 @@ namespace BeatLeader_Server.Controllers {
             return (_context
                .Scores
                .Where(t => t.PlayerId == id && t.ValidContexts.HasFlag(leaderboardContext))
+               .TagWithCallSite()
                .Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId),
                showRatings, currentID, id);
         }
@@ -107,11 +113,11 @@ namespace BeatLeader_Server.Controllers {
 
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
                 string? currentID2 = HttpContext.CurrentUserID(_context);
-                bool showRatings2 = currentID2 != null ? _context
+                bool showRatings2 = currentID2 != null ? await _context
                     .Players
                     .Where(p => p.Id == currentID2 && p.ProfileSettings != null)
                     .Select(p => p.ProfileSettings.ShowAllRatings)
-                    .FirstOrDefault() : false;
+                    .FirstOrDefaultAsync() : false;
                 return await _playerContextScoresController.GetScores(id, showRatings2, currentID2, sortBy, order, page, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             }
 
@@ -141,13 +147,15 @@ namespace BeatLeader_Server.Controllers {
 
             List<ScoreResponseWithMyScore> resultList;
             using (_serverTiming.TimeAction("list")) {
-                resultList = sequence
+                resultList = await sequence
                     .Include(s => s.Leaderboard)
                     .ThenInclude(l => l.Difficulty)
                     .ThenInclude(d => d.ModifiersRating)
                     .Include(s => s.Leaderboard)
                     .ThenInclude(l => l.Difficulty)
                     .ThenInclude(d => d.ModifierValues)
+                    .AsSplitQuery()
+                    .TagWithCallSite()
                     .Skip((page - 1) * count)
                     .Take(count)
                     .Select(s => new ScoreResponseWithMyScore {
@@ -222,8 +230,8 @@ namespace BeatLeader_Server.Controllers {
                         AccRight = s.AccRight,
                         MaxStreak = s.MaxStreak
                     })
-                    .AsSplitQuery()
-                    .ToList();
+                    
+                    .ToListAsync();
             }
 
             using (_serverTiming.TimeAction("postprocess")) {
@@ -237,7 +245,11 @@ namespace BeatLeader_Server.Controllers {
                 if (currentID != null && currentID != userId) {
                     var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
 
-                    var myScores = _context.Scores.Where(s => s.PlayerId == currentID && s.ValidContexts.HasFlag(LeaderboardContexts.General) && leaderboards.Contains(s.LeaderboardId)).Select(ToScoreResponseWithAcc).ToList();
+                    var myScores = _context
+                        .Scores
+                        .Where(s => s.PlayerId == currentID && s.ValidContexts.HasFlag(LeaderboardContexts.General) && leaderboards.Contains(s.LeaderboardId))
+                        .Select(ToScoreResponseWithAcc)
+                        .ToList();
                     foreach (var score in result.Data) {
                         score.MyScore = myScores.FirstOrDefault(s => s.LeaderboardId == score.LeaderboardId);
                     }
@@ -294,12 +306,14 @@ namespace BeatLeader_Server.Controllers {
                     Metadata = new Metadata() {
                         Page = page,
                         ItemsPerPage = count,
-                        Total = sequence.Count()
+                        Total = await sequence.CountAsync()
                     },
-                    Data = sequence
+                    Data = await sequence
+                    .Include(s => s.Leaderboard)
+                    .TagWithCallSite()
+                    .AsSplitQuery()
                     .Skip((page - 1) * count)
                     .Take(count)
-                    .Include(s => s.Leaderboard)
                     .Select(s => new CompactScoreResponse {
                         Score = new CompactScore {
                             Id = s.Id,
@@ -323,36 +337,63 @@ namespace BeatLeader_Server.Controllers {
                             SongHash = s.Leaderboard.Song.Hash
                         }
                     })
-                    .ToList()
+                    
+                    .ToListAsync()
                 };
             }
 
             return result;
         }
 
+        //[HttpGet("~/qdqdqdqd/")]
+        //public async Task<ActionResult> qdqdqdqd() {
+        //    var chloe = _context.Scores.Include(s => s.Leaderboard).ThenInclude(l => l.Song).Where(s => s.PlayerId == "76561199495333721").ToList();
+        //    var gage = _context.Scores.Include(s => s.Leaderboard).ThenInclude(l => l.Song).Where(s => s.PlayerId == "76561199068365172").ToList();
+
+        //    foreach (var score in gage)
+        //    {
+        //        var overlapped = chloe.Where(s => 
+        //            int.Parse(s.Timeset) < int.Parse(score.Timeset) && s.Timepost > score.Timepost)
+        //            .ToList();
+        //        if (overlapped.Count > 0) {
+        //            Console.WriteLine("");
+        //        }
+        //    }
+
+        //    return Ok(gage.OrderByDescending(s => s.Timepost).Select(s => new { 
+
+        //        Passed = s.Timepost - int.Parse(s.Timeset),
+        //        s.Leaderboard.Song.Duration,
+        //        s.Timeset,
+        //        s.Timepost,
+        //        s.Modifiers,
+        //        s.LeaderboardId,
+                
+        //        }));
+        //}
+
         [HttpGet("~/player/{id}/scorevalue/{hash}/{difficulty}/{mode}")]
         [SwaggerOperation(Summary = "Retrieve player's score for a specific map", Description = "Fetches a score made by a Player with ID for a map specified by Hash and difficulty")]
         [SwaggerResponse(200, "Score retrieved successfully")]
         [SwaggerResponse(400, "Invalid request parameters")]
         [SwaggerResponse(404, "Score not found for the given player ID")]
-        public ActionResult<int> GetScoreValue(
+        public async Task<ActionResult<int>> GetScoreValue(
             [FromRoute, SwaggerParameter("Player's unique identifier")] string id, 
             [FromRoute, SwaggerParameter("Maps's hash")] string hash, 
             [FromRoute, SwaggerParameter("Maps's difficulty(Easy, Expert, Expert+, etc)")] string difficulty, 
             [FromRoute, SwaggerParameter("Maps's characteristic(Standard, OneSaber, etc)")] string mode) {
-            Score? score = _context
+            int? score = await _context
                 .Scores
-                .Include(s => s.Leaderboard)
-                .ThenInclude(l => l.Song)
-                .Include(s => s.Leaderboard)
-                .ThenInclude(l => l.Difficulty)
-                .FirstOrDefault(s => s.PlayerId == id && s.Leaderboard.Song.Hash == hash && s.Leaderboard.Difficulty.DifficultyName == difficulty && s.Leaderboard.Difficulty.ModeName == mode);
+                .TagWithCallSite()
+                .Where(s => s.PlayerId == id && s.Leaderboard.Song.Hash == hash && s.Leaderboard.Difficulty.DifficultyName == difficulty && s.Leaderboard.Difficulty.ModeName == mode)
+                .Select(s => s.ModifiedScore)
+                .FirstOrDefaultAsync();
 
             if (score == null) {
                 return NotFound();
             }
 
-            return score.ModifiedScore;
+            return score;
         }
 
         [HttpGet("~/player/{id}/histogram")]
@@ -385,6 +426,7 @@ namespace BeatLeader_Server.Controllers {
                     .Players
                     .Where(p => p.Id == currentID2 && p.ProfileSettings != null)
                     .Select(p => p.ProfileSettings.ShowAllRatings)
+                    .TagWithCallSite()
                     .FirstOrDefault() : false;
                 return await _playerContextScoresController.GetPlayerHistogram(id, showRatings2, sortBy, order, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId, batch); 
             }
@@ -431,6 +473,7 @@ namespace BeatLeader_Server.Controllers {
                     .Players
                     .Where(p => p.Id == currentID2 && p.ProfileSettings != null)
                     .Select(p => p.ProfileSettings.ShowAllRatings)
+                    .TagWithCallSite()
                     .FirstOrDefault() : false;
                 return _playerContextScoresController.AccGraph(id, showRatings2, leaderboardContext); 
             }
@@ -441,11 +484,13 @@ namespace BeatLeader_Server.Controllers {
                 .Include(p => p.ProfileSettings)
                 .Where(p => p.Id == currentID)
                 .Select(p => p.ProfileSettings)
+                .TagWithCallSite()
                 .FirstOrDefault()?.ShowAllRatings ?? false : false;
 
             var result = _context
                 .Scores
                 .Where(s => s.PlayerId == id && s.ValidContexts.HasFlag(leaderboardContext) && !s.IgnoreForStats && ((showRatings && s.Leaderboard.Difficulty.Stars != null) || s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked))
+                .TagWithCallSite()
                 .Select(s => new GraphResponse {
                     LeaderboardId = s.Leaderboard.Id,
                     Diff = s.Leaderboard.Difficulty.DifficultyName,
@@ -515,6 +560,7 @@ namespace BeatLeader_Server.Controllers {
             var result = _context
                     .PlayerScoreStatsHistory
                     .Where(p => p.PlayerId == id && p.Context == leaderboardContext)
+                    .TagWithCallSite()
                     .OrderByDescending(s => s.Timestamp)
                     .Take(count)
                     .ToList();
@@ -545,12 +591,15 @@ namespace BeatLeader_Server.Controllers {
                         s.ValidContexts.HasFlag(leaderboardContext) &&
                         s.Metadata != null && 
                         s.Metadata.PinnedContexts.HasFlag(leaderboardContext))
-                    .OrderBy(s => s.Metadata.Priority);
+                    .OrderBy(s => s.Metadata.Priority)
+                    .TagWithCallSite();
 
-            var resultList = query
+            var resultList = await query
                     .Include(s => s.Leaderboard)
                     .ThenInclude(l => l.Difficulty)
                     .ThenInclude(d => d.ModifiersRating)
+                    .TagWithCallSite()
+                    .AsSplitQuery()
                     .Select(s => new ScoreResponseWithMyScore {
                         Id = s.Id,
                         BaseScore = s.BaseScore,
@@ -581,23 +630,6 @@ namespace BeatLeader_Server.Controllers {
                         Timepost = s.Timepost,
                         LeaderboardId = s.LeaderboardId,
                         Platform = s.Platform,
-                        Player = new PlayerResponse {
-                            Id = s.Player.Id,
-                            Name = s.Player.Name,
-                            Platform = s.Player.Platform,
-                            Avatar = s.Player.Avatar,
-                            Country = s.Player.Country,
-
-                            Pp = s.Player.Pp,
-                            Rank = s.Player.Rank,
-                            CountryRank = s.Player.CountryRank,
-                            Role = s.Player.Role,
-                            Socials = s.Player.Socials,
-                            PatreonFeatures = s.Player.PatreonFeatures,
-                            ProfileSettings = s.Player.ProfileSettings,
-                            Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
-                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                        },
                         ScoreImprovement = s.ScoreImprovement,
                         RankVoting = s.RankVoting,
                         Metadata = s.Metadata,
@@ -642,7 +674,7 @@ namespace BeatLeader_Server.Controllers {
                         AccRight = s.AccRight,
                         MaxStreak = s.MaxStreak
                     })
-                    .ToList();
+                    .ToListAsync();
 
             bool showRatings = HttpContext.ShouldShowAllRatings(_context);
             foreach (var resultScore in resultList) {
@@ -650,13 +682,20 @@ namespace BeatLeader_Server.Controllers {
                     resultScore.Leaderboard.HideRatings();
                 }
             }
-            if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
-                var contexts = query
-                    .Select(s => s.ContextExtensions.FirstOrDefault(ce => ce.Context == leaderboardContext))
+
+            if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None)
+            {
+                var scoreIds = resultList.Select(s => s.Id).ToList();
+
+                var contexts = _context
+                    .ScoreContextExtensions
+                    .Where(s => s.Context == leaderboardContext && s.ScoreId != null && scoreIds.Contains((int)s.ScoreId))
                     .ToList();
+
                 for (int i = 0; i < resultList.Count && i < contexts.Count; i++)
                 {
-                    if (contexts[i]?.ScoreId == resultList[i].Id) {
+                    if (contexts[i]?.ScoreId == resultList[i].Id)
+                    {
                         resultList[i].ToContext(contexts[i]);
                     }
                 }

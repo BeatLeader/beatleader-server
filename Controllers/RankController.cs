@@ -75,9 +75,12 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Provide player or authenticate");
             }
 
-            var score = _context
+            var score = await _context
                 .Scores
-                .FirstOrDefault(l => l.Leaderboard.Song.Hash == hash && l.Leaderboard.Difficulty.DifficultyName == diff && l.Leaderboard.Difficulty.ModeName == mode && l.PlayerId == userId);
+                .Where(l => l.Leaderboard.Song.Hash == hash && l.Leaderboard.Difficulty.DifficultyName == diff && l.Leaderboard.Difficulty.ModeName == mode && l.PlayerId == userId)
+                .Select(s => new { s.Modifiers, s.Id })
+                .TagWithCallSite()
+                .FirstOrDefaultAsync();
 
             if (score == null) {
                 return VoteStatus.CantVote;
@@ -195,11 +198,12 @@ namespace BeatLeader_Server.Controllers
             AccountLink? link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
             string userId = (link != null ? (link.SteamID.Length > 0 ? link.SteamID : link.PCOculusID) : player);
 
-            var score = _context
+            var score = await _context
                 .Scores
                 .Include(s => s.RankVoting)
                 .Include(s => s.Leaderboard)
-                .FirstOrDefault(l => l.Leaderboard.Song.Hash == hash && l.Leaderboard.Difficulty.DifficultyName == diff && l.Leaderboard.Difficulty.ModeName == mode && l.PlayerId == userId);
+                .TagWithCallSite()
+                .FirstOrDefaultAsync(l => l.Leaderboard.Song.Hash == hash && l.Leaderboard.Difficulty.DifficultyName == diff && l.Leaderboard.Difficulty.ModeName == mode && l.PlayerId == userId);
 
             if (score == null)
             {
@@ -826,7 +830,7 @@ namespace BeatLeader_Server.Controllers
 
         [Authorize]
         [HttpGet("~/grantRTJunior/{playerId}")]
-        public ActionResult GrantRTJunior(
+        public async Task<ActionResult> GrantRTJunior(
             string playerId)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
@@ -846,7 +850,7 @@ namespace BeatLeader_Server.Controllers
             {
                 player.Role = string.Join(",", player.Role.Split(",").Append("juniorrankedteam"));
 
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
             }
 
             return Ok();
@@ -854,7 +858,7 @@ namespace BeatLeader_Server.Controllers
 
         [Authorize]
         [HttpGet("~/removeRTJunior/{playerId}")]
-        public ActionResult RemoveRTJunior(
+        public async Task<ActionResult> RemoveRTJunior(
             string playerId)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
@@ -875,7 +879,7 @@ namespace BeatLeader_Server.Controllers
             {
                 player.Role = string.Join(",", player.Role.Split(",").Where(s => s != "juniorrankedteam"));
 
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
             }
 
             return Ok();
@@ -883,7 +887,7 @@ namespace BeatLeader_Server.Controllers
 
         [Authorize]
         [HttpGet("~/grantRTCore/{playerId}")]
-        public ActionResult GrantRTCore(
+        public async Task<ActionResult> GrantRTCore(
             string playerId)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
@@ -903,7 +907,7 @@ namespace BeatLeader_Server.Controllers
             {
                 player.Role = string.Join(",", player.Role.Split(",").Append("rankedteam"));
 
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
             }
 
             return Ok();
@@ -911,7 +915,7 @@ namespace BeatLeader_Server.Controllers
 
         [Authorize]
         [HttpGet("~/removeRTCore/{playerId}")]
-        public ActionResult RemoveRTCore(
+        public async Task<ActionResult> RemoveRTCore(
             string playerId)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
@@ -932,7 +936,7 @@ namespace BeatLeader_Server.Controllers
             {
                 player.Role = string.Join(",", player.Role.Split(",").Where(s => s != "rankedteam"));
 
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
             }
 
             return Ok();
@@ -979,11 +983,11 @@ namespace BeatLeader_Server.Controllers
             };
 
             qualification.Comments.Add(result);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             try {
             result.DiscordMessageId = await _rtNominationsForum.PostComment(qualification.DiscordRTChannelId, result.Value, currentPlayer);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             } catch { }
 
             return result;
@@ -1013,11 +1017,11 @@ namespace BeatLeader_Server.Controllers
             comment.Value = Encoding.UTF8.GetString(ms.ToArray());
             comment.Edited = true;
             comment.EditTimeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             try {
             comment.DiscordMessageId = await _rtNominationsForum.UpdateComment(comment.RankQualification.DiscordRTChannelId, comment.DiscordMessageId, comment.Value, currentPlayer);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             } catch { }
 
             return comment;
@@ -1038,7 +1042,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             _context.QualificationCommentary.Remove(comment);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             try {
             await _rtNominationsForum.DeleteComment(comment.RankQualification.DiscordRTChannelId, comment.DiscordMessageId);
@@ -1088,11 +1092,11 @@ namespace BeatLeader_Server.Controllers
             };
 
             qualification.CriteriaComments.Add(result);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             try {
             result.DiscordMessageId = await _rtNominationsForum.PostComment(qualification.DiscordRTChannelId, result.Value, currentPlayer);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             } catch { }
 
             return result;
@@ -1122,11 +1126,11 @@ namespace BeatLeader_Server.Controllers
             comment.Value = Encoding.UTF8.GetString(ms.ToArray());
             comment.Edited = true;
             comment.EditTimeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             try {
             comment.DiscordMessageId = await _rtNominationsForum.UpdateComment(comment.RankQualification.DiscordRTChannelId, comment.DiscordMessageId, comment.Value, currentPlayer);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             } catch { }
 
             return comment;
@@ -1147,7 +1151,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             _context.CriteriaCommentary.Remove(comment);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             try {
             await _rtNominationsForum.DeleteComment(comment.RankQualification.DiscordRTChannelId, comment.DiscordMessageId);

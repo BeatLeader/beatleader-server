@@ -18,7 +18,7 @@ namespace BeatLeader_Server.Controllers
     public class PlayerController : Controller
     {
         private readonly AppContext _context;
-        private readonly ReadAppContext _readContext;
+        private readonly IDbContextFactory<AppContext> _dbFactory;
 
         private readonly IConfiguration _configuration;
         IAmazonS3 _assetsS3Client;
@@ -28,13 +28,13 @@ namespace BeatLeader_Server.Controllers
 
         public PlayerController(
             AppContext context,
-            ReadAppContext readContext,
+            IDbContextFactory<AppContext> dbFactory,
             IConfiguration configuration, 
             IServerTiming serverTiming,
             IWebHostEnvironment env)
         {
             _context = context;
-            _readContext = readContext;
+            _dbFactory = dbFactory;
 
             _configuration = configuration;
             _serverTiming = serverTiming;
@@ -57,7 +57,7 @@ namespace BeatLeader_Server.Controllers
             using (_serverTiming.TimeAction("player"))
             {
                 if (stats) {
-                    player = _readContext
+                    player = _context
                         .Players
                         .Where(p => p.Id == userId)
                         .Include(p => p.ScoreStats)
@@ -69,7 +69,7 @@ namespace BeatLeader_Server.Controllers
                         .AsSplitQuery()
                         .FirstOrDefault();
                 } else {
-                    player = await _readContext.Players.FindAsync(userId);
+                    player = await _context.Players.FindAsync(userId);
                 }
                 
             }
@@ -112,12 +112,9 @@ namespace BeatLeader_Server.Controllers
                     Role = player.Role,
                     Socials = player.Socials,
                     ProfileSettings = player.ProfileSettings,
+                    ClanOrder = player.ClanOrder,
                     Clans = stats && player.Clans != null
-                        ? player
-                            .Clans
-                            .OrderBy(c => player.ClanOrder.IndexOf(c.Tag))
-                            .ThenBy(c => c.Id)
-                            .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color }) 
+                        ? player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color }) 
                         : null
                 };
                 if (result.Banned) {
@@ -255,6 +252,12 @@ namespace BeatLeader_Server.Controllers
                 _context.PatreonLinks.Remove(plink);
             }
 
+            var intId = int.Parse(id);
+            var auth = _context.Auths.FirstOrDefault(l => l.Id == intId);
+            if (auth != null) {
+                _context.Auths.Remove(auth);
+            }
+
             var scores = _context.Scores.Where(s => s.PlayerId == id).ToList();
             foreach (var score in scores) {
                 string? name = score.Replay.Split("/").LastOrDefault();
@@ -313,21 +316,18 @@ namespace BeatLeader_Server.Controllers
             }
 
             IQueryable<Player> request = 
-                _readContext
-                .Players
-                .Include(p => p.ScoreStats)
-                .Include(p => p.Clans)
-                .Include(p => p.ProfileSettings);
+                _context
+                .Players;
 
             string? currentID = HttpContext.CurrentUserID(_context);
-            bool showBots = currentID != null ? _context
+            bool showBots = currentID != null ? await _context
                 .Players
                 .Where(p => p.Id == currentID)
                 .Select(p => p.ProfileSettings != null ? p.ProfileSettings.ShowBots : false)
-                .FirstOrDefault() : false;
+                .FirstOrDefaultAsync() : false;
 
             if (banned != null) {
-                var player = await _readContext.Players.FindAsync(currentID);
+                var player = await _context.Players.FindAsync(currentID);
                 if (player == null || !player.Role.Contains("admin"))
                 {
                     return NotFound();
@@ -391,44 +391,48 @@ namespace BeatLeader_Server.Controllers
                 }
                 catch { }
             }
-            if (pp_range != null)
+            if (pp_range != null && pp_range.Length > 1)
             {
                 try {
                     var array = pp_range.Split(",").Select(s => float.Parse(s)).ToArray();
                     float from = array[0]; float to = array[1];
-                    request = request.Where(p => p.Pp >= from && p.Pp <= to);
+                    if (!float.IsNaN(from) && !float.IsNaN(to)) {
+                        request = request.Where(p => p.Pp >= from && p.Pp <= to);
+                    }
                 } catch { }
             }
-            if (score_range != null)
+            if (score_range != null && score_range.Length > 1)
             {
                 try
                 {
                     var array = score_range.Split(",").Select(s => int.Parse(s)).ToArray();
                     int from = array[0]; int to = array[1];
-                    switch (mapsType)
-                    {
-                        case "ranked":
-                            request = request.Where(p => p.ScoreStats.RankedPlayCount >= from && p.ScoreStats.RankedPlayCount <= to);
-                            break;
-                        case "unranked":
-                            request = request.Where(p => p.ScoreStats.UnrankedPlayCount >= from && p.ScoreStats.UnrankedPlayCount <= to);
-                            break;
-                        case "all":
-                            request = request.Where(p => p.ScoreStats.TotalPlayCount >= from && p.ScoreStats.TotalPlayCount <= to);
-                            break;
+                    if (!float.IsNaN(from) && !float.IsNaN(to)) {
+                        switch (mapsType)
+                        {
+                            case "ranked":
+                                request = request.Where(p => p.ScoreStats.RankedPlayCount >= from && p.ScoreStats.RankedPlayCount <= to);
+                                break;
+                            case "unranked":
+                                request = request.Where(p => p.ScoreStats.UnrankedPlayCount >= from && p.ScoreStats.UnrankedPlayCount <= to);
+                                break;
+                            case "all":
+                                request = request.Where(p => p.ScoreStats.TotalPlayCount >= from && p.ScoreStats.TotalPlayCount <= to);
+                                break;
+                        }
                     }
                     
                 }
                 catch { }
             }
             if (friends) {
-                string userId = HttpContext.CurrentUserID(_readContext);
-                var player = await _readContext.Players.FindAsync(userId);
+                string? userId = HttpContext.CurrentUserID(_context);
+                var player = userId != null ? await _context.Players.FindAsync(userId) : null;
                 if (player == null)
                 {
                     return NotFound();
                 }
-                var friendsContainer = _readContext.Friends.Where(f => f.Id == player.Id).Include(f => f.Friends).FirstOrDefault();
+                var friendsContainer = await _context.Friends.Where(f => f.Id == player.Id).Include(f => f.Friends).FirstOrDefaultAsync();
                 if (friendsContainer != null)
                 {
                     var friendsList = friendsContainer.Friends.Select(f => f.Id).ToList();
@@ -461,56 +465,73 @@ namespace BeatLeader_Server.Controllers
                 Metadata = new Metadata()
                 {
                     Page = page,
-                    ItemsPerPage = count,
-                    Total = request.Count()
+                    ItemsPerPage = count
                 }
             };
 
+            List<string> playerIds;
             if (searchMatch?.Count > 0) {
                 var matchedAndFiltered = request.Select(p => p.Id).ToList();
-                var sorted = matchedAndFiltered
+                playerIds = matchedAndFiltered
                              .OrderByDescending(p => searchMatch.First(m => m.Id == p).Score)
                              .Skip((page - 1) * count)
                              .Take(count)
                              .ToList();
-
-                request = request.Where(p => sorted.Contains(p.Id));
             } else {
-                request = Sorted(request, sortBy, ppType, order, mapsType).Skip((page - 1) * count).Take(count);
+                playerIds = await 
+                        Sorted(request, sortBy, ppType, order, mapsType)
+                        .Skip((page - 1) * count)
+                        .Take(count)
+                        .Select(p => p.Id)
+                        .ToListAsync();
             }
 
-            result.Data = request
-                .AsSplitQuery()
-                .Select(p => new PlayerResponseWithStats
-                {
-                    Id = p.Id,
-                    Name = p.Name,
-                    Platform = p.Platform,
-                    Avatar = p.Avatar,
-                    Country = p.Country,
-                    ScoreStats = p.ScoreStats,
+            using (var anotherContext = _dbFactory.CreateDbContext()) {
+                (result.Metadata.Total, result.Data) = await request.CountAsync().CoundAndResults(
+                    anotherContext
+                    .Players
+                    .Where(p => playerIds.Contains(p.Id))
+                    .Include(p => p.ScoreStats)
+                    .Include(p => p.Clans)
+                    .Include(p => p.ProfileSettings)
+                    .AsSplitQuery()
+                    .TagWithCallSite()
+                    .Select(p => new PlayerResponseWithStats
+                    {
+                        Id = p.Id,
+                        Name = p.Name,
+                        Platform = p.Platform,
+                        Avatar = p.Avatar,
+                        Country = p.Country,
+                        ScoreStats = p.ScoreStats,
 
-                    Pp = p.Pp,
-                    TechPp= p.TechPp,
-                    AccPp = p.AccPp,
-                    PassPp = p.PassPp,
-                    Rank = p.Rank,
-                    CountryRank = p.CountryRank,
-                    LastWeekPp = p.LastWeekPp,
-                    LastWeekRank = p.LastWeekRank,
-                    LastWeekCountryRank = p.LastWeekCountryRank,
-                    Role = p.Role,
-                    ProfileSettings = p.ProfileSettings,
-                    Clans = p
-                            .Clans
-                            .OrderBy(c => p.ClanOrder.IndexOf(c.Tag))
-                            .ThenBy(c => c.Id)
-                            .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                }).ToList().Select(PostProcessSettings);
+                        Pp = p.Pp,
+                        TechPp= p.TechPp,
+                        AccPp = p.AccPp,
+                        PassPp = p.PassPp,
+                        Rank = p.Rank,
+                        CountryRank = p.CountryRank,
+                        LastWeekPp = p.LastWeekPp,
+                        LastWeekRank = p.LastWeekRank,
+                        LastWeekCountryRank = p.LastWeekCountryRank,
+                        Role = p.Role,
+                        ProfileSettings = p.ProfileSettings,
+                        ClanOrder = p.ClanOrder,
+                        Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                    })
+                    .ToListAsync());
+            }
+
+            foreach (var item in result.Data)
+            {
+                PostProcessSettings(item);
+            }
 
             if (ids?.Count > 0)
             {
                 result.Data = result.Data.OrderBy(e => ids.IndexOf(e.Id));
+            } else if (playerIds.Count > 0) {
+                result.Data = result.Data.OrderBy(e => playerIds.IndexOf(e.Id));
             }
 
             return result;
@@ -619,44 +640,48 @@ namespace BeatLeader_Server.Controllers
                 }
                 catch { }
             }
-            if (pp_range != null)
+            if (pp_range != null && pp_range.Length > 1)
             {
                 try {
                     var array = pp_range.Split(",").Select(s => float.Parse(s)).ToArray();
                     float from = array[0]; float to = array[1];
-                    request = request.Where(p => p.Pp >= from && p.Pp <= to);
+                    if (!float.IsNaN(from) && !float.IsNaN(to)) {
+                        request = request.Where(p => p.Pp >= from && p.Pp <= to);
+                    }
                 } catch { }
             }
-            if (score_range != null)
+            if (score_range != null && score_range.Length > 1)
             {
                 try
                 {
                     var array = score_range.Split(",").Select(s => int.Parse(s)).ToArray();
                     int from = array[0]; int to = array[1];
-                    switch (mapsType)
-                    {
-                        case "ranked":
-                            request = request.Where(p => p.ScoreStats.RankedPlayCount >= from && p.ScoreStats.RankedPlayCount <= to);
-                            break;
-                        case "unranked":
-                            request = request.Where(p => p.ScoreStats.UnrankedPlayCount >= from && p.ScoreStats.UnrankedPlayCount <= to);
-                            break;
-                        case "all":
-                            request = request.Where(p => p.ScoreStats.TotalPlayCount >= from && p.ScoreStats.TotalPlayCount <= to);
-                            break;
+                    if (!float.IsNaN(from) && !float.IsNaN(to)) {
+                        switch (mapsType)
+                        {
+                            case "ranked":
+                                request = request.Where(p => p.ScoreStats.RankedPlayCount >= from && p.ScoreStats.RankedPlayCount <= to);
+                                break;
+                            case "unranked":
+                                request = request.Where(p => p.ScoreStats.UnrankedPlayCount >= from && p.ScoreStats.UnrankedPlayCount <= to);
+                                break;
+                            case "all":
+                                request = request.Where(p => p.ScoreStats.TotalPlayCount >= from && p.ScoreStats.TotalPlayCount <= to);
+                                break;
+                        }
                     }
                     
                 }
                 catch { }
             }
             if (friends) {
-                string userId = HttpContext.CurrentUserID(_readContext);
-                var player = await _readContext.Players.FindAsync(userId);
+                string userId = HttpContext.CurrentUserID(_context);
+                var player = await _context.Players.FindAsync(userId);
                 if (player == null)
                 {
                     return NotFound();
                 }
-                var friendsContainer = _readContext.Friends.Where(f => f.Id == player.Id).Include(f => f.Friends).FirstOrDefault();
+                var friendsContainer = _context.Friends.Where(f => f.Id == player.Id).Include(f => f.Friends).FirstOrDefault();
                 if (friendsContainer != null)
                 {
                     var friendsList = friendsContainer.Friends.Select(f => f.Id).ToList();
@@ -707,7 +732,10 @@ namespace BeatLeader_Server.Controllers
                 request = Sorted(request, sortBy, ppType, order, mapsType).Skip((page - 1) * count).Take(count);
             }
 
-            result.Data = request.Select(p => new PlayerResponseWithStats
+            result.Data = (await request
+                .AsSplitQuery()
+                .TagWithCallSite()
+                .Select(p => new PlayerResponseWithStats
                 {
                     Id = p.PlayerId,
                     Name = p.Player.Name,
@@ -730,7 +758,9 @@ namespace BeatLeader_Server.Controllers
                     PatreonFeatures = p.Player.PatreonFeatures,
                     ProfileSettings = p.Player.ProfileSettings,
                     Clans = p.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                }).ToList().Select(PostProcessSettings);
+                })
+                .ToListAsync())
+                .Select(PostProcessSettings);
 
             if (ids?.Count > 0)
             {

@@ -239,7 +239,7 @@ namespace BeatLeader_Server.Controllers
 
             var link = _context.BeatSaverLinks.Where(bs => bs.Id == id).FirstOrDefault();
             _context.BeatSaverLinks.Remove(link);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }

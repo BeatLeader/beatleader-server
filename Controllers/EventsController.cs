@@ -352,7 +352,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             _context.EventRankings.Remove(eventRanking);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }

@@ -51,7 +51,7 @@ namespace BeatLeader_Server.Services
             while (!stoppingToken.IsCancellationRequested);
         }
 
-        private (float, int) RefreshPlayer(
+        private async Task<(float, int)> RefreshPlayer(
                 Player player,
                 Score? score,
                 AppContext _context)
@@ -71,12 +71,12 @@ namespace BeatLeader_Server.Services
                 score.ScoreImprovement.TotalPp = player.Pp - oldPp;
             }
 
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return (newPp - oldPp, newRank - oldRank);
         }
 
-        private (float, int) RefreshLeaderboardPlayers(string id, AppContext _context)
+        private async Task<(float, int)> RefreshLeaderboardPlayers(string id, AppContext _context)
         {
             Leaderboard? leaderboard = _context.Leaderboards
                 .Where(p => p.Id == id)
@@ -91,7 +91,7 @@ namespace BeatLeader_Server.Services
 
             foreach (var score in leaderboard.Scores.OrderBy(s => s.Timepost))
             {
-                (float playerPP, int playerRank) = RefreshPlayer(score.Player, score, _context);
+                (float playerPP, int playerRank) = await RefreshPlayer(score.Player, score, _context);
                 pp += playerPP;
                 ranks += playerRank;
             }
@@ -162,7 +162,7 @@ namespace BeatLeader_Server.Services
 
                     await _scoreController.RefreshScores(leaderboard.Id);
                     await _scoreController.BulkRefreshScoresAllContexts(leaderboard.Id);
-                    (float totalpp, int totalRanks) = RefreshLeaderboardPlayers(leaderboard.Id, _context);
+                    (float totalpp, int totalRanks) = await RefreshLeaderboardPlayers(leaderboard.Id, _context);
                     await _context.SaveChangesAsync();
 
                     
