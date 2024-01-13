@@ -129,6 +129,7 @@ namespace BeatLeader_Server.Services
                     .Include(l => l.Song)
                     .Include(l => l.Qualification)
                     .Include(l => l.Changes)
+                    .Include(l => l.ClanRanking)
                     .OrderBy(l => l.Difficulty.Stars)
                     .ToListAsync();
 
@@ -213,7 +214,7 @@ namespace BeatLeader_Server.Services
 
                 foreach (var leaderboard in leaderboards)
                 {
-                    leaderboard.ClanRanking = _context.CalculateClanRankingSlow(leaderboard);
+                    _ = _context.CalculateClanRankingSlow(leaderboard);
                 }
                 await _context.BulkSaveChangesAsync();
             }

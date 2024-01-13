@@ -15,6 +15,7 @@ namespace BeatLeader_Server.Controllers
         IAmazonS3 _s3Client;
         CurrentUserController _userController;
         IWebHostEnvironment _environment;
+        private readonly IConfiguration _configuration;
 
         public ClanManagementController(
             AppContext context,
@@ -26,20 +27,30 @@ namespace BeatLeader_Server.Controllers
             _userController = userController;
             _environment = env;
             _s3Client = configuration.GetS3Client();
+            _configuration = configuration;
         }
 
         [NonAction]
-        public async Task RecalculateClanRanking(string playerId) {
+        public async Task<List<ClanRankingChanges>?> RecalculateClanRanking(string playerId) {
             var leaderboardsRecalc = _context
                 .Scores
                 .Where(s => s.Pp > 0 && !s.Qualification && s.PlayerId == playerId)
+                .Include(s => s.Leaderboard)
+                .ThenInclude(lb => lb.Difficulty)
+                .Include(s => s.Leaderboard)
+                .ThenInclude(lb => lb.ClanRanking)
                 .Select(s => s.Leaderboard)
                 .ToList();
+            var result = new List<ClanRankingChanges>(); 
             foreach (var leaderboard in leaderboardsRecalc)
             {
-                leaderboard.ClanRanking = _context.CalculateClanRankingSlow(leaderboard);
+                var changes = _context.CalculateClanRankingSlow(leaderboard);
+                if (changes != null) {
+                    result.AddRange(changes);
+                }
             }
             await _context.BulkSaveChangesAsync();
+            return result;
         }
 
         [HttpPost("~/clan/create")]
@@ -162,7 +173,10 @@ namespace BeatLeader_Server.Controllers
             await _context.SaveChangesAsync();
 
             HttpContext.Response.OnCompleted(async () => {
-                await RecalculateClanRanking(currentID);
+                var changes = await RecalculateClanRanking(currentID);
+
+                var message = $"{player.Name} created [{newClan.Tag}] which";
+                await ClanUtils.PostChangesWithMessage(_context, changes, message, _configuration.GetValue<string?>("ClanWarsHook"));
             });
 
             return newClan;
@@ -204,6 +218,7 @@ namespace BeatLeader_Server.Controllers
             var leaderboardsRecalc = _context
                 .Leaderboards
                 .Include(lb => lb.ClanRanking)
+                .Include(lb => lb.Difficulty)
                 .Where(lb => lb.ClanRanking != null ?
                 lb.ClanRanking.Any(lbClan => lbClan.Clan.Tag == clan.Tag) && lb.Difficulty.Status == DifficultyStatus.ranked :
                 lb.Difficulty.Status == DifficultyStatus.ranked)
@@ -222,8 +237,19 @@ namespace BeatLeader_Server.Controllers
             await _context.BulkSaveChangesAsync();
             HttpContext.Response.OnCompleted(async () => {
                 // Recalculate the clanRankings on each leaderboard where this clan had an impact
-                leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
+                var result = new List<ClanRankingChanges>(); 
+                foreach (var leaderboard in leaderboardsRecalc)
+                {
+                    var changes = _context.CalculateClanRankingSlow(leaderboard);
+                    if (changes != null) {
+                        result.AddRange(changes);
+                    }
+                }
+
                 await _context.BulkSaveChangesAsync();
+
+                var message = $"{player.Name} dismantled [{clan.Tag}] which";
+                await ClanUtils.PostChangesWithMessage(_context, result, message, _configuration.GetValue<string?>("ClanWarsHook"));
             });
 
             return Ok();
@@ -500,7 +526,10 @@ namespace BeatLeader_Server.Controllers
             await _context.SaveChangesAsync();
 
             HttpContext.Response.OnCompleted(async () => {
-                await RecalculateClanRanking(player);
+                var changes = await RecalculateClanRanking(player);
+
+                var message = $"{user.Player.Name} was kicked from [{clan.Tag}] which led to";
+                await ClanUtils.PostChangesWithMessage(_context, changes, message, _configuration.GetValue<string?>("ClanWarsHook"));
             });
 
             return Ok();
@@ -553,7 +582,9 @@ namespace BeatLeader_Server.Controllers
             await _context.SaveChangesAsync();
 
             HttpContext.Response.OnCompleted(async () => {
-                await RecalculateClanRanking(currentID);
+                var changes = await RecalculateClanRanking(currentID);
+                var message = $"{user.Player.Name} joined [{clan.Tag}] which led to";
+                await ClanUtils.PostChangesWithMessage(_context, changes, message, _configuration.GetValue<string?>("ClanWarsHook"));
             });
 
             return Ok();
@@ -650,7 +681,10 @@ namespace BeatLeader_Server.Controllers
             await _context.SaveChangesAsync();
 
             HttpContext.Response.OnCompleted(async () => {
-                await RecalculateClanRanking(currentID);
+                var changes = await RecalculateClanRanking(currentID);
+
+                var message = $"{user.Player.Name} left [{clan.Tag}] which led to";
+                await ClanUtils.PostChangesWithMessage(_context, changes, message, _configuration.GetValue<string?>("ClanWarsHook"));
             });
 
             return Ok();

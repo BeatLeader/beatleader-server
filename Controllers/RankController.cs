@@ -767,7 +767,7 @@ namespace BeatLeader_Server.Controllers
                 await _scoreRefreshController.RefreshScores(leaderboard.Id);
 
                 // Calculate clanRanking for this map because it has just been ranked
-                leaderboard.ClanRanking = _context.CalculateClanRankingSlow(leaderboard);
+                _ = _context.CalculateClanRankingSlow(leaderboard);
                 await _context.BulkSaveChangesAsync();
 
                 HttpContext.Response.OnCompleted(async () => {

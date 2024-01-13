@@ -506,7 +506,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpPut("~/admin/refreshClanRankings")]
-        public async Task<ActionResult> RefreshClanRankings()
+        public async Task<ActionResult> RefreshClanRankings([FromQuery] string? lbId = null)
         {
             // refreshClanRankings: Http Put endpoint that recalculates the clan rankings for all ranked leaderboards.
 
@@ -520,43 +520,19 @@ namespace BeatLeader_Server.Controllers
 
             //_context.BulkDelete(_context.ClanRanking);
 
-            try
+            var leaderboardsRecalc = _context
+                .Leaderboards
+                .Where(lb => 
+                    lb.Difficulty.Status == DifficultyStatus.ranked &&
+                    (lbId == null || lb.Id == lbId))
+                .Include(lb => lb.ClanRanking)
+                .ToList();
+            foreach (var leaderboard in leaderboardsRecalc)
             {
-                var clans = _context.Clans.ToList();
-                foreach (var clan in clans)
-                {
-                    clan.CaptureLeaderboardsCount = 0;
-                    clan.RankedPoolPercentCaptured = 0;
-                }
-                await _context.BulkSaveChangesAsync();
-
-                var leaderboardsRecalc = _context
-                    .Leaderboards
-                    .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
-                    .Include(lb => lb.ClanRanking)
-                    .ToList();
-                leaderboardsRecalc.ForEach(obj => obj.ClanRanking = _context.CalculateClanRankingSlow(obj));
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
+                _ = _context.CalculateClanRankingSlow(leaderboard);
             }
 
             await _context.BulkSaveChangesAsync();
-
-            return Ok();
-        }
-
-        [HttpPut("~/admin/refreshClanCapturedPercent")]
-        public async Task<ActionResult> RefreshClanCapturedPercent()
-        {
-            string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
-
-            if (!currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
 
             var clans = _context.Clans.Select(c => new { Clan = c, CaptureLeaderboardsCount = c.CapturedLeaderboards.Count() }).ToList();
             foreach (var c in clans)
@@ -1236,6 +1212,33 @@ namespace BeatLeader_Server.Controllers
             }
 
             await _context.SaveChangesAsync();
+            return Ok();
+        }
+
+        [HttpPost("~/admin/mugrateScores")]
+        public async Task<ActionResult> MigrateScores(
+            [FromQuery] string oldId,
+            [FromQuery] string newId)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var scores = _context.Scores.Where(s => s.LeaderboardId == oldId).Include(s => s.ContextExtensions).ToList();
+            foreach (var score in scores)
+            {
+                score.LeaderboardId = newId;
+                foreach (var ce in score.ContextExtensions)
+                {
+                    ce.LeaderboardId = newId;
+                }
+            }
+            await _context.SaveChangesAsync();
+
             return Ok();
         }
 

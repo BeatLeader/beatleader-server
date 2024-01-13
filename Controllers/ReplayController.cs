@@ -1024,7 +1024,11 @@ namespace BeatLeader_Server.Controllers
                 transaction = await _context.Database.BeginTransactionAsync();
 
                 // Calculate clan ranking for this leaderboard
-                _context.UpdateClanRanking(leaderboard, resultScore);
+                await ClanUtils.PostChangesWithScore(
+                    _context,
+                    _context.UpdateClanRanking(leaderboard, resultScore),
+                    resultScore,
+                    _configuration.GetValue<string?>("ClanWarsHook"));
 
                 await _context.BulkSaveChangesAsync();
                 await transaction.CommitAsync();
