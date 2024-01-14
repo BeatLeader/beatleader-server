@@ -167,6 +167,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/playlist/{id}")]
         public async Task<ActionResult> GetById(string id)
         {
+            id = id.Replace(".bplist", "");
             if (int.TryParse(id, out var intId)) {
                 string? currentID = HttpContext.CurrentUserID(_context);
 
@@ -177,8 +178,33 @@ namespace BeatLeader_Server.Controllers
             }
 
             var stream = await _s3Client.DownloadPlaylist(id + ".bplist");
+            
             if (stream != null) {
-                return File(stream, "application/json");
+                using (var objectStream = new MemoryStream(5))
+                {
+                    var outputStream = new MemoryStream(5);
+                    stream.CopyTo(objectStream);
+                    objectStream.Position = 0;
+                    objectStream.CopyTo(outputStream);
+                    objectStream.Position = 0;
+                    outputStream.Position = 0;
+
+                    dynamic? playlistObject = objectStream.ObjectFromStream();
+
+                    if (playlistObject == null)
+                    {
+                        return NotFound();
+                    }
+                    System.Net.Mime.ContentDisposition cd = new System.Net.Mime.ContentDisposition
+                    {
+                        FileName = playlistObject.playlistTitle + ".bplist",
+                        Inline = false
+                    };
+                    Response.Headers.Add("Content-Disposition", cd.ToString());
+                    Response.Headers.Add("X-Content-Type-Options", "nosniff");
+                    return File(outputStream, "application/json");
+                }
+                
             } else {
                 return NotFound();
             }
