@@ -7,3 +7,6 @@
 [submodule "beatleader-server-models"]
 	path = beatleader-server-models
 	url = https://github.com/BeatLeader/beatleader-server-models.git
+[submodule "beatleader-parser"]
+	path = beatleader-parser
+	url = https://github.com/BeatLeader/beatleader-parser.git

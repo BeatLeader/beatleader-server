@@ -1,13 +1,18 @@
-﻿using BeatLeader_Server.Bot;
+﻿using Amazon.S3;
+using beatleader_parser;
+using BeatLeader_Server.BeatMapEvaluator;
+using BeatLeader_Server.Bot;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
+using BeatMapEvaluator;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System.Dynamic;
+using System.IO.Compression;
 using System.Net;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
@@ -20,8 +25,10 @@ namespace BeatLeader_Server.Controllers
         private readonly AppContext _context;
         private readonly ReadAppContext _readContext;
         private readonly RTNominationsForum _rtNominationsForum;
-        public SongController(AppContext context, ReadAppContext readContext, RTNominationsForum rtNominationsForum)
+        private readonly IAmazonS3 _s3Client;
+        public SongController(AppContext context, ReadAppContext readContext, RTNominationsForum rtNominationsForum, IConfiguration configuration)
         {
+            _s3Client = configuration.GetS3Client();
             _context = context;      
             _readContext = readContext;
             _rtNominationsForum = rtNominationsForum;
@@ -36,9 +43,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/map/hash/{hash}")]
         public async Task<ActionResult<Song>> GetHash(string hash)
         {
-            if (hash.Length < 40) {
-                return BadRequest("Hash is too short");
-            } else {
+            if (hash.Length >= 40) {
                 hash = hash.Substring(0, 40);
             }
             Song? song = await GetOrAddSong(hash);
@@ -318,6 +323,112 @@ namespace BeatLeader_Server.Controllers
                 item.Status = DifficultyStatus.outdated;
                 item.Stars = 0;
             }
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpPost("~/map/uploadOst")]
+        public async Task<ActionResult> UploadOstMap()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var parse = new Parse(); 
+            var ms = new MemoryStream();
+            await Request.Body.CopyToAsync(ms);
+            var map = parse.TryLoadZip(ms)?.FirstOrDefault();
+            if (map == null) return BadRequest();
+            var info = map.Info;
+
+            var song = new Song
+            {
+                Id = info._songFilename.Replace(".ogg", ""),
+                Hash = info._songFilename.Replace(".ogg", ""),
+                Name = info._songName + " [OST I]",
+                SubName = info._songSubName,
+                Author = info._songAuthorName,
+                Mapper = "Beat Games",
+                Bpm = info._beatsPerMinute,
+                Duration = map.SongLength,
+                UploadTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds
+            };
+
+            var diffs = new List<DifficultyDescription>();
+
+            foreach (var set in map.Difficulties)
+            {
+
+                var diff = info
+                    ._difficultyBeatmapSets
+                    .First(s => s._beatmapCharacteristicName == set.Characteristic)
+                    ._difficultyBeatmaps
+                    .First(b => b._difficulty == set.Difficulty);
+
+                var newDD = new DifficultyDescription
+                {
+                    Value = Song.DiffForDiffName(set.Difficulty),
+                    Mode = Song.ModeForModeName(set.Characteristic),
+                    DifficultyName = set.Difficulty,
+                    ModeName = set.Characteristic,
+                    Status = DifficultyStatus.OST,
+
+                    Njs = diff._noteJumpMovementSpeed,
+                    Nps = set.Data.Notes.Count() / (float)map.SongLength,
+                    Notes = set.Data.Notes.Count(),
+                    Bombs = set.Data.Bombs.Count(),
+                    Walls = set.Data.Walls.Count(),
+                    MaxScore = ReplayUtils.MaxScoreForNote(set.Data.Notes.Count),
+                    Duration = map.SongLength,
+                };
+
+                if (set.Data.Chains.Count > 0 || set.Data.Arcs.Count > 0)
+                {
+                    newDD.Requirements |= Requirements.V3;
+                }
+
+                diffs.Add(newDD);
+            }
+            song.Difficulties = diffs;
+
+            ms.Position = 0;
+            var archive = new ZipArchive(ms);
+
+            if (info._coverImageFilename != null)
+            {
+                var coverFile = archive.Entries.FirstOrDefault(e => e.Name.ToLower() == info._coverImageFilename.ToLower());
+                if (coverFile != null)
+                {
+                    using (var coverStream = coverFile.Open())
+                    {
+                        using (var coverMs = new MemoryStream(5))
+                        {
+                            await coverStream.CopyToAsync(coverMs);
+                            var fileName = ($"songcover-{song.Id}-" + info._coverImageFilename).Replace(" ", "").Replace("(", "").Replace(")", "");
+
+                            song.FullCoverImage = await _s3Client.UploadAsset(fileName, coverMs);
+                            song.CoverImage = song.FullCoverImage;
+                        }
+                    }
+                }
+            }
+
+            ms.Position = 0;
+            song.DownloadUrl = await _s3Client.UploadSong(song.Hash + ".zip", ms);
+            _context.Songs.Add(song);
+
+            foreach (var diff in song.Difficulties) {
+                await RatingUtils.UpdateFromExMachina(diff, song.DownloadUrl, null);
+                var newLeaderboard = await NewLeaderboard(song, null, diff.DifficultyName, diff.ModeName);
+            }
+
+            song.Checked = true;
 
             await _context.SaveChangesAsync();
 

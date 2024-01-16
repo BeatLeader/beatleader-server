@@ -64,9 +64,7 @@ namespace BeatLeader_Server.Controllers
             string mode,
             [FromQuery] string? player = null)
         {
-            if (hash.Length < 40) {
-                return BadRequest("Hash is too short");
-            } else {
+            if (hash.Length >= 40) {
                 hash = hash.Substring(0, 40);
             }
 
@@ -112,9 +110,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string stars = "",
             [FromQuery] int type = 0)
         {
-            if (hash.Length < 40) {
-                return BadRequest("Hash is too short");
-            } else {
+            if (hash.Length >= 40) {
                 hash = hash.Substring(0, 40);
             }
             string? currentID = HttpContext.CurrentUserID(_context);
@@ -148,9 +144,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string stars = "",
             [FromQuery] int type = 0)
         {
-            if (hash.Length < 40) {
-                return BadRequest("Hash is too short");
-            } else {
+            if (hash.Length >= 40) {
                 hash = hash.Substring(0, 40);
             }
             (string? id, string? error) = await SteamHelper.GetPlayerIDFromTicket(ticket, _configuration);
@@ -291,9 +285,7 @@ namespace BeatLeader_Server.Controllers
             string diff,
             string mode)
         {
-            if (hash.Length < 40) {
-                return BadRequest("Hash is too short");
-            } else {
+            if (hash.Length >= 40) {
                 hash = hash.Substring(0, 40);
             }
 
@@ -411,9 +403,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? criteriaCommentary,
             [FromQuery] string? modifiers = null)
         {
-            if (hash.Length < 40) {
-                return BadRequest("Hash is too short");
-            } else {
+            if (hash.Length >= 40) {
                 hash = hash.Substring(0, 40);
             }
             string currentID = HttpContext.CurrentUserID(_context);
@@ -676,9 +666,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] float techRating = 0,
             [FromQuery] int type = 0)
         {
-            if (hash.Length < 40) {
-                return BadRequest("Hash is too short");
-            } else {
+            if (hash.Length >= 40) {
                 hash = hash.Substring(0, 40);
             }
             string? currentID = HttpContext.CurrentUserID(_context);

@@ -20,7 +20,8 @@ namespace BeatLeader_Server.Utils
         unicode,
         configs,
         replayedvalues,
-        reepresets
+        reepresets,
+        songs
     }
 
     public static class S3Helper
@@ -96,6 +97,11 @@ namespace BeatLeader_Server.Utils
         public static async Task<string> UploadAsset(this IAmazonS3 client, string filename, Stream data)
         {
             return await client.UploadStream(filename, S3Container.assets, data);
+        }
+
+        public static async Task<string> UploadSong(this IAmazonS3 client, string filename, Stream data)
+        {
+            return await client.UploadStream(filename, S3Container.songs, data);
         }
 
         public static async Task<string> UploadReepreset(this IAmazonS3 client, string filename, Stream data)

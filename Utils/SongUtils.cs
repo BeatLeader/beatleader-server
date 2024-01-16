@@ -182,6 +182,22 @@ namespace BeatLeader_Server.Utils
             }
         }
 
+        public static async Task<ExmachinaResponse?> ExmachinaStarsLink(string link, int diff, string mode)
+        {
+
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"https://stage.api.beatleader.net/ppai2/link/{mode}/{diff}?link={link}");
+            request.Method = "GET";
+            request.Proxy = null;
+
+            try
+            {
+                return await request.DynamicResponse<ExmachinaResponse>();
+            } catch (Exception e)
+            {
+                return null;
+            }
+        }
+
         public class PredictedNotes {
             public List<List<double>> Rows { get; set; }
         }

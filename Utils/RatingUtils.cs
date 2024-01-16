@@ -1,24 +1,30 @@
 ﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using static BeatLeader_Server.Utils.SongUtils;
 
-namespace BeatLeader_Server.Utils {
-    public class RatingUtils {
-        private static float toPass(float original) {
-            if (original < 24.4) {
+namespace BeatLeader_Server.Utils
+{
+    public class RatingUtils
+    {
+        private static float toPass(float original)
+        {
+            if (original < 24.4)
+            {
                 return original;
-            } else {
+            } else
+            {
                 return 16 + MathF.Sqrt(original) * 1.7f;
             }
         }
 
-        public static async Task UpdateFromExMachina(Leaderboard leaderboard, LeaderboardChange? rankChange) {
+        public static async Task UpdateFromExMachina(Leaderboard leaderboard, LeaderboardChange? rankChange)
+        {
 
             await UpdateFromExMachina(leaderboard.Difficulty, leaderboard.Song, rankChange);
         }
 
-        public static async Task UpdateFromExMachina(DifficultyDescription diff, Song song, LeaderboardChange? rankChange) {
-            try {
-            var response = await SongUtils.ExmachinaStars(song.Hash, diff.Value, diff.ModeName);
+        private static void UpdateFromResponse(DifficultyDescription diff, ExmachinaResponse? response, LeaderboardChange? rankChange)
+        {
             if (response != null)
             {
                 diff.PassRating = response.none.LackMapCalculation.PassRating;
@@ -27,7 +33,8 @@ namespace BeatLeader_Server.Utils {
                 diff.AccRating = response.none.AccRating;
                 diff.Stars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0);
 
-                if (rankChange != null) {
+                if (rankChange != null)
+                {
                     rankChange.NewAccRating = diff.AccRating ?? 0;
                     rankChange.NewPassRating = diff.PassRating ?? 0;
                     rankChange.NewTechRating = diff.TechRating ?? 0;
@@ -55,15 +62,33 @@ namespace BeatLeader_Server.Utils {
                 modrating.SFStars = ReplayUtils.ToStars(modrating.SFAccRating, modrating.SFPassRating, modrating.SFTechRating);
                 modrating.FSStars = ReplayUtils.ToStars(modrating.FSAccRating, modrating.FSPassRating, modrating.FSTechRating);
                 modrating.SSStars = ReplayUtils.ToStars(modrating.SSAccRating, modrating.SSPassRating, modrating.SSTechRating);
-            }
-            else
+            } else
             {
                 diff.PassRating = 0.0f;
                 diff.PredictedAcc = 1.0f;
                 diff.TechRating = 0.0f;
             }
-            } catch {
-            }
+
+        }
+
+        public static async Task UpdateFromExMachina(DifficultyDescription diff, Song song, LeaderboardChange? rankChange)
+        {
+            try
+            {
+                var response = await ExmachinaStars(song.Hash, diff.Value, diff.ModeName);
+                UpdateFromResponse(diff, response, rankChange);
+
+            } catch {}
+        }
+
+        public static async Task UpdateFromExMachina(DifficultyDescription diff, string link, LeaderboardChange? rankChange)
+        {
+            try
+            {
+                var response = await ExmachinaStarsLink(link, diff.Value, diff.ModeName);
+                UpdateFromResponse(diff, response, rankChange);
+
+            } catch {}
         }
     }
 }

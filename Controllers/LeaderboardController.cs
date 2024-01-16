@@ -872,9 +872,7 @@ namespace BeatLeader_Server.Controllers {
         public async Task<ActionResult<LeaderboardsResponseWithScores>> GetLeaderboardsByHash(
             string hash,
             [FromQuery] bool my_scores = false) {
-            if (hash.Length < 40) {
-                return BadRequest("Hash is too short");
-            } else {
+            if (hash.Length >= 40) {
                 hash = hash.Substring(0, 40);
             }
 
