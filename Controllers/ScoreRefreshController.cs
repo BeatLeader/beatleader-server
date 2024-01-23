@@ -428,6 +428,8 @@ namespace BeatLeader_Server.Controllers
                             score.BonusPp = 0;
                         }
 
+                        score.Qualification = qualification;
+
                         if (float.IsNaN(score.Pp))
                         {
                             score.Pp = 0.0f;
@@ -448,6 +450,7 @@ namespace BeatLeader_Server.Controllers
                         _context.Entry(score).Property(x => x.PassPP).IsModified = true;
                         _context.Entry(score).Property(x => x.AccPP).IsModified = true;
                         _context.Entry(score).Property(x => x.TechPP).IsModified = true;
+                        _context.Entry(score).Property(x => x.Qualification).IsModified = true;
                         _context.Entry(score).Property(x => x.Priority).IsModified = true;
 
                         newScores.Add(score);
