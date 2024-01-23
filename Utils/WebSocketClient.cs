@@ -7,32 +7,26 @@ namespace BeatLeader_Server.Utils
     {
         private ClientWebSocket _webSocket;
         private readonly Uri _serverUri;
-        private readonly TimeSpan _keepAliveInterval;
-        private readonly TimeSpan _reconnectDelay;
 
         public WebSocketClient(string serverUri)
         {
             _serverUri = new Uri(serverUri);
             _webSocket = new ClientWebSocket();
-            _keepAliveInterval = TimeSpan.FromSeconds(30);
-            _reconnectDelay = TimeSpan.FromSeconds(5);
         }
 
         public bool IsAlive() {
             return _webSocket.State == WebSocketState.Open;
         }
 
-        private async Task ConnectAsync()
+        public async Task ConnectAsync()
         {
             await _webSocket.ConnectAsync(_serverUri, CancellationToken.None);
-            StartKeepAlive();
         }
 
-        private async Task StartKeepAlive()
+        public async Task Ping()
         {
-            while (_webSocket.State == WebSocketState.Open)
+            if (_webSocket.State == WebSocketState.Open)
             {
-                await Task.Delay(_keepAliveInterval);
                 try
                 {
                     await _webSocket.SendAsync(new ArraySegment<byte>(new byte[1]), WebSocketMessageType.Binary, true, CancellationToken.None);
@@ -40,8 +34,9 @@ namespace BeatLeader_Server.Utils
                 {
                     await ReconnectAsync();
                 }
+            } else {
+                await ReconnectAsync();
             }
-            await ReconnectAsync();
         }
 
         public async Task SendAsync(string message)
@@ -50,7 +45,7 @@ namespace BeatLeader_Server.Utils
             await _webSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
         }
 
-        public async Task ReconnectAsync()
+        private async Task ReconnectAsync()
         {
             if (_webSocket.State != WebSocketState.Open)
             {
@@ -62,9 +57,9 @@ namespace BeatLeader_Server.Utils
 
         public async Task ReceiveMessagesAsync()
         {
-            var buffer = new byte[1024 * 4];
-            while (_webSocket.State == WebSocketState.Open)
-            {
+            try {
+                var buffer = new byte[1024 * 4];
+
                 var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
 
                 if (result.MessageType == WebSocketMessageType.Close)
@@ -74,6 +69,8 @@ namespace BeatLeader_Server.Utils
                 {
                     var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
                 }
+            } catch {
+                await ReconnectAsync();
             }
         }
 

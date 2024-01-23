@@ -78,7 +78,9 @@ namespace BeatLeader_Server_Sockets.Controllers
                             break;
                         }
                     }
-                } catch (Exception ex) { }
+                } catch (Exception ex) {
+                    Console.WriteLine(ex.ToString());
+                }
 
                 outputSockets[name].Remove(socketWithTask);
 
@@ -148,7 +150,7 @@ namespace BeatLeader_Server_Sockets.Controllers
 
                 inputSockets.Add(socketWithTask);
 
-                var buffer = new Byte[10240];
+                var buffer = new Byte[20240];
                 try {
                     while (true)
                     {

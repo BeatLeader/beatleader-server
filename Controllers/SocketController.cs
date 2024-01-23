@@ -1,5 +1,6 @@
 ﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -60,9 +61,8 @@ namespace BeatLeader_Server.Controllers
         private static async Task PublishNewMessage(string message, string socketName) {
             if (SocketClient == null) {
                 SocketClient = new WebSocketClient(SocketHost + "inputsocket");
-            }
-            if (!SocketClient.IsAlive()) {
-                await SocketClient.ReconnectAsync();
+                await SocketClient.ConnectAsync();
+                SocketService.AddSocketToManage(SocketClient);
             }
             await SocketClient.SendAsync(socketName + "###" + message);
         }
@@ -82,7 +82,9 @@ namespace BeatLeader_Server.Controllers
                     ContractResolver = new CamelCasePropertyNamesContractResolver() 
                 });
                 await PublishNewMessage(message, "scores");
-            } catch { }
+            } catch {
+                SocketClient = null;
+            }
         }
 
         class SocketMessage {
