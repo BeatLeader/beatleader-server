@@ -29,6 +29,7 @@ namespace BeatLeader_Server.Services
                     await RefreshBoosters();
                     await RefreshBanned();
                     await FetchMapOfTheWeek();
+                    await RefreshSongSuggest();
 
                     hoursUntil21 = 24;
                 }
@@ -197,6 +198,13 @@ namespace BeatLeader_Server.Services
                 }
 
                 await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task RefreshSongSuggest() {
+            using (var scope = _serviceScopeFactory.CreateScope()) {
+                var songSuggestController = scope.ServiceProvider.GetRequiredService<SongSuggestController>();
+                await songSuggestController.RefreshSongSuggest();
             }
         }
     }

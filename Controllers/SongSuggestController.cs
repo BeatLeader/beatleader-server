@@ -107,10 +107,66 @@ namespace BeatLeader_Server.Controllers
         }
 
         [ApiExplorerSettings(IgnoreApi = true)]
+        [HttpGet("~/gigalist")]
+        public async Task<ActionResult> GetGigaList([FromQuery] int topCount)
+        {
+            if (!HttpContext.ItsAdmin(_context)) return Unauthorized();
+
+            var objec = new { 
+                Maps = _context.Leaderboards
+                    .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
+                    .OrderByDescending(lb => lb.Difficulty.Stars)
+                    .Select(lb => new {
+                        id = lb.Id,
+                        name = lb.Song.Name,
+                        hash = lb.Song.Hash,
+                        difficulty = lb.Difficulty.DifficultyName,
+                        mode = lb.Difficulty.ModeName,
+                        stars = (float)lb.Difficulty.Stars,
+                        accRating = (float)lb.Difficulty.AccRating,
+                        passRating = (float)lb.Difficulty.PassRating,
+                        techRating = (float)lb.Difficulty.TechRating,
+                        cover = lb.Song.CoverImage
+                    })
+                    .ToList(),
+                Players = _context
+                    .Players
+                    .Where(p => !p.Banned && p.Rank <= topCount && p.Rank >= 1)
+                    .Select(p => new {
+                        id = p.Id,
+                        N = p.Name,
+                        A = p.Avatar,
+                        R = p.Rank
+                    }),
+                Scores = _context
+                    .Scores
+                    .Where(s => 
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked &&
+                        !s.Player.Banned && 
+                        s.Player.Rank <= topCount &&
+                        s.Player.Rank >= 1 &&
+                        s.Weight > 0.4 &&
+                        s.ValidContexts.HasFlag(LeaderboardContexts.General))
+                    .Select(s => new {
+                        P = s.Pp,
+                        W = s.Weight,
+                        I = s.PlayerId,
+                        LI = s.LeaderboardId
+                    })
+                    .ToList()
+            };
+
+            var filename = $"gigalistfile{topCount}.json";
+            await _s3Client.UploadStream(filename, S3Container.assets, new BinaryData(JsonConvert.SerializeObject(objec)).ToStream());
+
+            return Ok();
+        }
+
+        [ApiExplorerSettings(IgnoreApi = true)]
         [HttpGet("~/songsuggest/refresh")]
         public async Task<ActionResult> RefreshSongSuggest()
         {
-            if (!HttpContext.ItsAdmin(_context)) return Unauthorized();
+            if (HttpContext != null && !HttpContext.ItsAdmin(_context)) return Unauthorized();
 
             var timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             var activeTreshold = timeset - 60 * 60 * 24 * 31 * 3;
