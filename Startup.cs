@@ -138,7 +138,7 @@ namespace BeatLeader_Server {
 
             var replayRecalculatorType = Assembly.GetExecutingAssembly()
                 .GetTypes()
-                .FirstOrDefault(t => typeof(IReplayRecalculator).IsAssignableFrom(t) && t.FullName.Contains("Stub") && !t.IsInterface && !t.IsAbstract);
+                .FirstOrDefault(t => typeof(IReplayRecalculator).IsAssignableFrom(t) && !t.FullName.Contains("Stub") && !t.IsInterface && !t.IsAbstract);
 
             if (replayRecalculatorType != null)
             {
