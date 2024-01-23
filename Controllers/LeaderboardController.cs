@@ -653,7 +653,7 @@ namespace BeatLeader_Server.Controllers {
                         .ThenInclude(p => p.ProfileSettings)
                         .Include(s => s.Player)
                         .ThenInclude(s => s.Clans)
-                        .OrderBy(s => s.Pp)
+                        .OrderByDescending(s => s.Pp)
                         .Skip((page - 1) * count)
                         .Take(count)
                         .Select(s => new ScoreResponse
@@ -854,6 +854,7 @@ namespace BeatLeader_Server.Controllers {
                         Clan = cr.Clan,
                         LastUpdateTime = cr.LastUpdateTime,
                         AverageRank = cr.AverageRank,
+                        Rank = cr.Rank,
                         Pp = cr.Pp,
                         AverageAccuracy = cr.AverageAccuracy,
                         TotalScore = cr.TotalScore,

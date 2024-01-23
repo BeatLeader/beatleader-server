@@ -345,33 +345,6 @@ namespace BeatLeader_Server.Controllers {
             return result;
         }
 
-        //[HttpGet("~/qdqdqdqd/")]
-        //public async Task<ActionResult> qdqdqdqd() {
-        //    var chloe = _context.Scores.Include(s => s.Leaderboard).ThenInclude(l => l.Song).Where(s => s.PlayerId == "76561199495333721").ToList();
-        //    var gage = _context.Scores.Include(s => s.Leaderboard).ThenInclude(l => l.Song).Where(s => s.PlayerId == "76561199068365172").ToList();
-
-        //    foreach (var score in gage)
-        //    {
-        //        var overlapped = chloe.Where(s => 
-        //            int.Parse(s.Timeset) < int.Parse(score.Timeset) && s.Timepost > score.Timepost)
-        //            .ToList();
-        //        if (overlapped.Count > 0) {
-        //            Console.WriteLine("");
-        //        }
-        //    }
-
-        //    return Ok(gage.OrderByDescending(s => s.Timepost).Select(s => new { 
-
-        //        Passed = s.Timepost - int.Parse(s.Timeset),
-        //        s.Leaderboard.Song.Duration,
-        //        s.Timeset,
-        //        s.Timepost,
-        //        s.Modifiers,
-        //        s.LeaderboardId,
-                
-        //        }));
-        //}
-
         [HttpGet("~/player/{id}/scorevalue/{hash}/{difficulty}/{mode}")]
         [SwaggerOperation(Summary = "Retrieve player's score for a specific map", Description = "Fetches a score made by a Player with ID for a map specified by Hash and difficulty")]
         [SwaggerResponse(200, "Score retrieved successfully")]
@@ -694,9 +667,10 @@ namespace BeatLeader_Server.Controllers {
 
                 for (int i = 0; i < resultList.Count && i < contexts.Count; i++)
                 {
-                    if (contexts[i]?.ScoreId == resultList[i].Id)
+                    var ce = contexts.FirstOrDefault(c => c.ScoreId == resultList[i].Id);
+                    if (ce != null)
                     {
-                        resultList[i].ToContext(contexts[i]);
+                        resultList[i].ToContext(ce);
                     }
                 }
 
