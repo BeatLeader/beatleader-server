@@ -288,7 +288,8 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> Unlink([FromForm] string provider, [FromForm] string returnUrl)
         {
             string playerId = HttpContext.CurrentUserID(_context);
-            if (playerId == null || (long.Parse(playerId) < 1000000000000000 && provider == "BeatSaver"))
+            var loggedInPlayer = playerId != null ? long.Parse(playerId) : 0; 
+            if (playerId == null || (!(loggedInPlayer < 30000000 || loggedInPlayer > 1000000000000000) && provider == "BeatSaver"))
             {
                 return Redirect(returnUrl);
             }
