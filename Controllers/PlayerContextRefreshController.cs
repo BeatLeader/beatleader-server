@@ -76,7 +76,18 @@ namespace BeatLeader_Server.Controllers {
                 _context.ChangeTracker.AutoDetectChangesEnabled = true;
             }
             if (refreshStats) {
-                await RefreshStats(player.ContextExtensions.First(ce => ce.Context == context).ScoreStats, player.Id, context);
+                var ext = player.ContextExtensions.FirstOrDefault(ce => ce.Context == context);
+                if (ext == null) {
+                    ext = new PlayerContextExtension {
+                        Context = context,
+                        ScoreStats = new PlayerScoreStats(),
+                        PlayerId = player.Id,
+                        Country = player.Country
+                    };
+                    player.ContextExtensions.Add(ext);
+                }
+
+                await RefreshStats(ext.ScoreStats, player.Id, context);
             }
 
             await _context.SaveChangesAsync();

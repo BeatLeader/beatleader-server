@@ -252,18 +252,25 @@ namespace BeatLeader_Server.Controllers
                 _context.PatreonLinks.Remove(plink);
             }
 
-            var intId = int.Parse(id);
+            var intId = long.Parse(id);
             var auth = _context.Auths.FirstOrDefault(l => l.Id == intId);
             if (auth != null) {
                 _context.Auths.Remove(auth);
             }
 
-            var scores = _context.Scores.Where(s => s.PlayerId == id).ToList();
+            var scores = _context.Scores.Include(s => s.ContextExtensions).Where(s => s.PlayerId == id).ToList();
             foreach (var score in scores) {
                 string? name = score.Replay.Split("/").LastOrDefault();
                 if (name != null) {
                     await _assetsS3Client.DeleteReplay(name);
                 }
+
+                foreach (var item in score.ContextExtensions)
+                {
+                    _context.ScoreContextExtensions.Remove(item);
+                }
+
+                _context.Scores.Remove(score);
             }
 
             Player? player = _context.Players.Where(p => p.Id == id)
@@ -311,6 +318,10 @@ namespace BeatLeader_Server.Controllers
             [FromQuery, SwaggerParameter("Value in seconds to filter by the last score time, default is null")] int? activityPeriod = null,
             [FromQuery, SwaggerParameter("Flag to filter only banned players, default is null")] bool? banned = null)
         {
+            if (count < 0 || count > 100) {
+                return BadRequest("Please use count between 0 and 100");
+            }
+
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
                 return await GetContextPlayers(sortBy, page, count, search, order, countries, mapsType, ppType, leaderboardContext, friends, pp_range, score_range, platform, role, hmd, clans, activityPeriod, banned);
             }
