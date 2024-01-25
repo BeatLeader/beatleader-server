@@ -212,6 +212,12 @@ namespace BeatLeader_Server {
                             Endpoint = "GET:/*",
                             Period = "10s",
                             Limit = 50,
+                        },
+                        new RateLimitRule
+                        {
+                            Endpoint = "GET:/players",
+                            Period = "10s",
+                            Limit = 10,
                         }
                     };
             });
