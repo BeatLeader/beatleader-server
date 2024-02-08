@@ -43,6 +43,7 @@ namespace BeatLeader_Server_Sockets.Controllers
 
         [Route("/general")]
         [Route("/scores")]
+        [Route("/clansocket")]
         public async Task<ActionResult> ConnectOutputSocket()
         {
             if (HttpContext.WebSockets.IsWebSocketRequest)
@@ -150,7 +151,7 @@ namespace BeatLeader_Server_Sockets.Controllers
 
                 inputSockets.Add(socketWithTask);
 
-                var buffer = new Byte[20240];
+                var buffer = new Byte[26240];
                 try {
                     while (true)
                     {

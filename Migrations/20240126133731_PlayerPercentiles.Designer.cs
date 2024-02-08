@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20240126133731_PlayerPercentiles")]
+    partial class PlayerPercentiles
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -869,134 +872,6 @@ namespace BeatLeader_Server.Migrations
                     b.HasIndex("PlayerId");
 
                     b.ToTable("FailedScores");
-                });
-
-            modelBuilder.Entity("BeatLeader_Server.Models.FeaturedPlaylist", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Cover")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Owner")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("OwnerCover")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("OwnerLink")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PlaylistLink")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("FeaturedPlaylist");
-                });
-
-            modelBuilder.Entity("BeatLeader_Server.Models.GlobalMapChange", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("LeaderboardId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<float?>("NewClan1Capture")
-                        .HasColumnType("real");
-
-                    b.Property<int?>("NewClan1Id")
-                        .HasColumnType("int");
-
-                    b.Property<float?>("NewClan1Pp")
-                        .HasColumnType("real");
-
-                    b.Property<float?>("NewClan2Capture")
-                        .HasColumnType("real");
-
-                    b.Property<int?>("NewClan2Id")
-                        .HasColumnType("int");
-
-                    b.Property<float?>("NewClan2Pp")
-                        .HasColumnType("real");
-
-                    b.Property<float?>("NewClan3Capture")
-                        .HasColumnType("real");
-
-                    b.Property<int?>("NewClan3Id")
-                        .HasColumnType("int");
-
-                    b.Property<float?>("NewClan3Pp")
-                        .HasColumnType("real");
-
-                    b.Property<float>("NewX")
-                        .HasColumnType("real");
-
-                    b.Property<float>("NewY")
-                        .HasColumnType("real");
-
-                    b.Property<float?>("OldClan1Capture")
-                        .HasColumnType("real");
-
-                    b.Property<int?>("OldClan1Id")
-                        .HasColumnType("int");
-
-                    b.Property<float?>("OldClan1Pp")
-                        .HasColumnType("real");
-
-                    b.Property<float?>("OldClan2Capture")
-                        .HasColumnType("real");
-
-                    b.Property<int?>("OldClan2Id")
-                        .HasColumnType("int");
-
-                    b.Property<float?>("OldClan2Pp")
-                        .HasColumnType("real");
-
-                    b.Property<float?>("OldClan3Capture")
-                        .HasColumnType("real");
-
-                    b.Property<int?>("OldClan3Id")
-                        .HasColumnType("int");
-
-                    b.Property<float?>("OldClan3Pp")
-                        .HasColumnType("real");
-
-                    b.Property<float>("OldX")
-                        .HasColumnType("real");
-
-                    b.Property<float>("OldY")
-                        .HasColumnType("real");
-
-                    b.Property<int?>("PlayerAction")
-                        .HasColumnType("int");
-
-                    b.Property<string>("PlayerId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("ScoreId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Timeset")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("GlobalMapChanges");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.GlobalMapHistory", b =>
@@ -3560,21 +3435,6 @@ namespace BeatLeader_Server.Migrations
                     b.ToTable("YouTubeLinks");
                 });
 
-            modelBuilder.Entity("ClanFeaturedPlaylist", b =>
-                {
-                    b.Property<int>("ClansId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("FeaturedPlaylistsId")
-                        .HasColumnType("int");
-
-                    b.HasKey("ClansId", "FeaturedPlaylistsId");
-
-                    b.HasIndex("FeaturedPlaylistsId");
-
-                    b.ToTable("ClanFeaturedPlaylist");
-                });
-
             modelBuilder.Entity("ClanPlayer", b =>
                 {
                     b.Property<int>("ClansId")
@@ -3633,21 +3493,6 @@ namespace BeatLeader_Server.Migrations
                     b.HasIndex("LeaderboardsId");
 
                     b.ToTable("EventRankingLeaderboard");
-                });
-
-            modelBuilder.Entity("FeaturedPlaylistLeaderboard", b =>
-                {
-                    b.Property<int>("FeaturedPlaylistsId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("LeaderboardsId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("FeaturedPlaylistsId", "LeaderboardsId");
-
-                    b.HasIndex("LeaderboardsId");
-
-                    b.ToTable("FeaturedPlaylistLeaderboard");
                 });
 
             modelBuilder.Entity("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreApplication", b =>
@@ -4449,21 +4294,6 @@ namespace BeatLeader_Server.Migrations
                         .HasForeignKey("RankVotingScoreId");
                 });
 
-            modelBuilder.Entity("ClanFeaturedPlaylist", b =>
-                {
-                    b.HasOne("BeatLeader_Server.Models.Clan", null)
-                        .WithMany()
-                        .HasForeignKey("ClansId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("BeatLeader_Server.Models.FeaturedPlaylist", null)
-                        .WithMany()
-                        .HasForeignKey("FeaturedPlaylistsId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("ClanPlayer", b =>
                 {
                     b.HasOne("BeatLeader_Server.Models.Clan", null)
@@ -4514,21 +4344,6 @@ namespace BeatLeader_Server.Migrations
                     b.HasOne("BeatLeader_Server.Models.EventRanking", null)
                         .WithMany()
                         .HasForeignKey("EventsId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("BeatLeader_Server.Models.Leaderboard", null)
-                        .WithMany()
-                        .HasForeignKey("LeaderboardsId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("FeaturedPlaylistLeaderboard", b =>
-                {
-                    b.HasOne("BeatLeader_Server.Models.FeaturedPlaylist", null)
-                        .WithMany()
-                        .HasForeignKey("FeaturedPlaylistsId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

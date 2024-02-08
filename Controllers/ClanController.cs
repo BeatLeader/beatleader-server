@@ -9,6 +9,7 @@ using BeatLeader_Server.Enums;
 using static BeatLeader_Server.Utils.ResponseUtils;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
+using SixLabors.ImageSharp;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -33,7 +34,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/clans/")]
-        public async Task<ActionResult<ResponseWithMetadata<Clan>>> GetAll(
+        public async Task<ActionResult<ResponseWithMetadata<ClanResponseFull>>> GetAll(
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
             [FromQuery] string sort = "captures",
@@ -68,7 +69,7 @@ namespace BeatLeader_Server.Controllers
                     sequence = sequence.Order(order, t => t.PlayersCount);
                     break;
                 case "captures":
-                    sequence = sequence.Order(order, c => c.CapturedLeaderboards.Count);
+                    sequence = sequence.Order(order, c => c.CaptureLeaderboardsCount);
                     break;
                 default:
                     break;
@@ -81,7 +82,7 @@ namespace BeatLeader_Server.Controllers
                                 p.Tag.ToLower().Contains(lowSearch));
             }
 
-            return new ResponseWithMetadata<Clan>()
+            return new ResponseWithMetadata<ClanResponseFull>()
             {
                 Metadata = new Metadata()
                 {
@@ -94,42 +95,62 @@ namespace BeatLeader_Server.Controllers
                     .TagWithCallSite()
                     .Skip((page - 1) * count)
                     .Take(count)
+                    .Select(clan => new ClanResponseFull {
+                        Id = clan.Id,
+                        Name = clan.Name,
+                        Color = clan.Color,
+                        Icon = clan.Icon,
+                        Tag = clan.Tag,
+                        LeaderID = clan.LeaderID,
+                        Description = clan.Description,
+                        Bio = clan.Bio,
+                        PlayersCount = clan.PlayersCount,
+                        Pp = clan.Pp,
+                        Rank = clan.Rank,
+                        AverageRank = clan.AverageRank,
+                        AverageAccuracy = clan.AverageAccuracy,
+                        RankedPoolPercentCaptured = clan.RankedPoolPercentCaptured,
+                        CaptureLeaderboardsCount = clan.CaptureLeaderboardsCount
+                    })
                     .ToListAsync()
             };
         }
 
-        [HttpGet("~/clan/{tag}")]
-        public async Task<ActionResult<ResponseWithMetadataAndContainer<PlayerResponse, Clan>>> GetClan(
-            string tag,
-            [FromQuery] int page = 1,
-            [FromQuery] int count = 10,
-            [FromQuery] string sort = "pp",
-            [FromQuery] Order order = Order.Desc,
-            [FromQuery] string? search = null,
-            [FromQuery] string? capturedLeaderboards = null)
-        {
-            Clan? clan = null;
+        private async Task<Clan?> CurrentClan(string tag, string? currentID) {
             if (tag == "my")
             {
-                string? currentID = HttpContext.CurrentUserID(_context);
                 var player = currentID != null ? await _context.Players.FindAsync(currentID) : null;
 
                 if (player == null)
                 {
-                    return NotFound();
+                    return null;
                 }
-                clan = await _context
+                return await _context
                     .Clans
                     .Where(c => c.LeaderID == currentID)
                     .FirstOrDefaultAsync();
             }
             else
             {
-                clan = await _context
+                return await _context
                     .Clans
                     .Where(c => c.Tag == tag)
                     .FirstOrDefaultAsync();
             }
+        }
+
+        [HttpGet("~/clan/{tag}")]
+        public async Task<ActionResult<ResponseWithMetadataAndContainer<PlayerResponse, ClanResponseFull>>> GetClan(
+            string tag,
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10,
+            [FromQuery] string sortBy = "pp",
+            [FromQuery] Order order = Order.Desc,
+            [FromQuery] string? search = null,
+            [FromQuery] string? capturedLeaderboards = null)
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            Clan? clan = await CurrentClan(tag, currentID);
             if (clan == null)
             {
                 return NotFound();
@@ -139,7 +160,7 @@ namespace BeatLeader_Server.Controllers
                 .Players
                 .Include(p => p.ProfileSettings)
                 .Where(p => !p.Banned && p.Clans.Contains(clan));
-            switch (sort)
+            switch (sortBy)
             {
                 case "pp":
                     players = players.Order(order, t => t.Pp);
@@ -153,11 +174,28 @@ namespace BeatLeader_Server.Controllers
                 default:
                     break;
             }
-            return new ResponseWithMetadataAndContainer<PlayerResponse, Clan>
+            return new ResponseWithMetadataAndContainer<PlayerResponse, ClanResponseFull>
             {
-                Container = clan,
+                Container = new ClanResponseFull {
+                    Id = clan.Id,
+                    Name = clan.Name,
+                    Color = clan.Color,
+                    Icon = clan.Icon,
+                    Tag = clan.Tag,
+                    LeaderID = clan.LeaderID,
+                    Description = clan.Description,
+                    Bio = clan.Bio,
+                    PlayersCount = clan.PlayersCount,
+                    Pp = clan.Pp,
+                    Rank = clan.Rank,
+                    AverageRank = clan.AverageRank,
+                    AverageAccuracy = clan.AverageAccuracy,
+                    RankedPoolPercentCaptured = clan.RankedPoolPercentCaptured,
+                    CaptureLeaderboardsCount = clan.CaptureLeaderboardsCount,
+                    ClanRankingDiscordHook = currentID == clan.LeaderID ? clan.ClanRankingDiscordHook : null,
+                    PlayerChangesCallback = currentID == clan.LeaderID ? clan.PlayerChangesCallback : null
+                },
                 Data = (await players
-                    .AsSplitQuery()
                     .TagWithCallSite()
                     .Skip((page - 1) * count)
                     .Take(count)
@@ -183,6 +221,173 @@ namespace BeatLeader_Server.Controllers
                     Page = 1,
                     ItemsPerPage = 10,
                     Total = await players.CountAsync()
+                }
+            };
+        }
+
+        [HttpGet("~/clan/{tag}/maps")]
+        public async Task<ActionResult<ResponseWithMetadataAndContainer<ClanRankingResponse, ClanResponseFull>>> GetClanWithMaps(
+            string tag,
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10,
+            [FromQuery] string sortBy = "pp",
+            [FromQuery] Order order = Order.Desc,
+            [FromQuery] string? search = null,
+            [FromQuery] string? capturedLeaderboards = null)
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            Clan? clan = await CurrentClan(tag, currentID);
+            if (clan == null)
+            {
+                return NotFound();
+            }
+
+            var rankings = _context
+                .ClanRanking
+                .Include(p => p.Leaderboard)
+                .ThenInclude(l => l.Song)
+                .ThenInclude(s => s.Difficulties)
+                .ThenInclude(d => d.ModifiersRating)
+                .Where(p => p.ClanId == clan.Id);
+
+            switch (sortBy)
+            {
+                case "pp":
+                    rankings = rankings.Order(order, t => t.Pp);
+                    break;
+                case "acc":
+                    rankings = rankings.Order(order, t => t.AverageAccuracy);
+                    break;
+                case "rank":
+                    rankings = rankings.Order(order, t => t.Rank);
+                    break;
+                case "date":
+                    rankings = rankings.Order(order, t => t.LastUpdateTime);
+                    break;
+                case "tohold":
+                    rankings = rankings
+                        .Where(cr => cr.Rank == 1)
+                        .Order(
+                            order.Reverse(), 
+                            t => t.Pp - t
+                                    .Leaderboard
+                                    .ClanRanking
+                                    .Where(cr => cr.ClanId != clan.Id && cr.Rank == 2)
+                                    .Select(cr => cr.Pp)
+                                    .First());
+                    break;
+                case "toconquer":
+                    rankings = rankings
+                        .Where(cr => cr.Rank != 1 || cr.Leaderboard.ClanRankingContested)
+                        .Order(
+                            order, 
+                            t => t.Pp - t
+                                    .Leaderboard
+                                    .ClanRanking
+                                    .Where(cr => cr.ClanId != clan.Id && cr.Rank == 1)
+                                    .Select(cr => cr.Pp)
+                                    .First());
+                    break;
+                default:
+                    break;
+            }
+
+            var rankingList = await rankings
+            .TagWithCallSite()
+            .Skip((page - 1) * count)
+            .Take(count)
+            .Select(cr => new ClanRankingResponse {
+                Id = cr.Id,
+                Clan = cr.Clan,
+                LastUpdateTime = cr.LastUpdateTime,
+                AverageRank = cr.AverageRank,
+                Pp = cr.Pp,
+                AverageAccuracy = cr.AverageAccuracy,
+                TotalScore = cr.TotalScore,
+                LeaderboardId = cr.LeaderboardId,
+                Leaderboard = cr.Leaderboard,
+                Rank = cr.Rank,
+                MyScore = currentID == null ? null : cr.Leaderboard.Scores.Where(s => s.PlayerId == currentID && !s.Banned).Select(s => new ScoreResponseWithAcc {
+                    Id = s.Id,
+                    BaseScore = s.BaseScore,
+                    ModifiedScore = s.ModifiedScore,
+                    PlayerId = s.PlayerId,
+                    Accuracy = s.Accuracy,
+                    Pp = s.Pp,
+                    FcAccuracy = s.FcAccuracy,
+                    FcPp = s.FcPp,
+                    BonusPp = s.BonusPp,
+                    Rank = s.Rank,
+                    Replay = s.Replay,
+                    Offsets = s.ReplayOffsets,
+                    Modifiers = s.Modifiers,
+                    BadCuts = s.BadCuts,
+                    MissedNotes = s.MissedNotes,
+                    BombCuts = s.BombCuts,
+                    WallsHit = s.WallsHit,
+                    Pauses = s.Pauses,
+                    FullCombo = s.FullCombo,
+                    Hmd = s.Hmd,
+                    Timeset = s.Timeset,
+                    Timepost = s.Timepost,
+                    ReplaysWatched = s.AuthorizedReplayWatched + s.AnonimusReplayWatched,
+                    LeaderboardId = s.LeaderboardId,
+                    Platform = s.Platform,
+                    Weight = s.Weight,
+                    AccLeft = s.AccLeft,
+                    AccRight = s.AccRight,
+                    MaxStreak = s.MaxStreak,
+                }).FirstOrDefault(),
+            })
+            .ToListAsync();
+
+            if (sortBy == "tohold" || sortBy == "toconquer") {
+                var pps = await rankings
+                    .TagWithCallSite()
+                    .Skip((page - 1) * count)
+                    .Take(count)
+                    .Select(t => new { t.LeaderboardId, Pp = t.Pp - t
+                        .Leaderboard
+                        .ClanRanking
+                        .Where(cr => cr.ClanId != clan.Id && (cr.Rank == (sortBy == "tohold" ? 2 : 1)))
+                        .Select(cr => cr.Pp)
+                        .First()
+                    })
+                    .ToListAsync();
+
+                foreach (var item in pps)
+                {
+                    rankingList.First(cr => cr.LeaderboardId == item.LeaderboardId).Pp = item.Pp;
+                }
+            }
+
+            return new ResponseWithMetadataAndContainer<ClanRankingResponse, ClanResponseFull>
+            {
+                Container = new ClanResponseFull {
+                    Id = clan.Id,
+                    Name = clan.Name,
+                    Color = clan.Color,
+                    Icon = clan.Icon,
+                    Tag = clan.Tag,
+                    LeaderID = clan.LeaderID,
+                    Description = clan.Description,
+                    Bio = clan.Bio,
+                    PlayersCount = clan.PlayersCount,
+                    Pp = clan.Pp,
+                    Rank = clan.Rank,
+                    AverageRank = clan.AverageRank,
+                    AverageAccuracy = clan.AverageAccuracy,
+                    RankedPoolPercentCaptured = clan.RankedPoolPercentCaptured,
+                    CaptureLeaderboardsCount = clan.CaptureLeaderboardsCount,
+                    ClanRankingDiscordHook = currentID == clan.LeaderID ? clan.ClanRankingDiscordHook : null,
+                    PlayerChangesCallback = currentID == clan.LeaderID ? clan.PlayerChangesCallback : null
+                },
+                Data = rankingList,
+                Metadata = new Metadata
+                {
+                    Page = 1,
+                    ItemsPerPage = 10,
+                    Total = await rankings.CountAsync()
                 }
             };
         }

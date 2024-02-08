@@ -134,6 +134,8 @@ namespace BeatLeader_Server.Controllers {
                 .ThenInclude(p => p.ProfileSettings)
                 .Include(u => u.Player)
                 .ThenInclude(p => p.ContextExtensions)
+                .Include(u => u.Player)
+                .ThenInclude(p => p.Clans)
                 .AsSplitQuery()
                 .FirstOrDefault();
 

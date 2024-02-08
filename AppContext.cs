@@ -79,6 +79,9 @@ namespace BeatLeader_Server
         public DbSet<ReePresetDownload> ReePresetDownloads { get; set; }
 
         public DbSet<ReeSabersComment> ReeSabersComment { get; set; }
+        public DbSet<GlobalMapHistory> GlobalMapHistory { get; set; }
+        public DbSet<GlobalMapChange> GlobalMapChanges { get; set; }
+        public DbSet<FeaturedPlaylist> FeaturedPlaylist { get; set; }
 
         public void RejectChanges()
         {

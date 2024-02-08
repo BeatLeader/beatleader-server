@@ -89,7 +89,13 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task RefreshStats(PlayerScoreStats scoreStats, string playerId, int rank, List<SubScore>? scores = null)
+        public async Task RefreshStats(
+            PlayerScoreStats scoreStats, 
+            string playerId, 
+            int rank, 
+            float? percentile,
+            float? countryPercentile,
+            List<SubScore>? scores = null)
         {
             var allScores = scores ??
                 await _context.Scores.Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && (!s.Banned || s.Bot) && s.PlayerId == playerId && !s.IgnoreForStats).Select(s => new SubScore
@@ -298,6 +304,13 @@ namespace BeatLeader_Server.Controllers
                 scoreStats.SPlays = 0;
                 scoreStats.APlays = 0;
             }
+
+            if (percentile != null) {
+                scoreStats.TopPercentile = (float)percentile;
+            }
+            if (countryPercentile != null) {
+                scoreStats.CountryTopPercentile = (float)countryPercentile;
+            }
         }
 
         [NonAction]
@@ -338,7 +351,7 @@ namespace BeatLeader_Server.Controllers
                 _context.ChangeTracker.AutoDetectChangesEnabled = true;
             }
             if (refreshStats) {
-                await RefreshStats(player.ScoreStats, player.Id, player.Rank);
+                await RefreshStats(player.ScoreStats, player.Id, player.Rank, null, null);
             }
 
             await _context.SaveChangesAsync();
@@ -531,15 +544,35 @@ namespace BeatLeader_Server.Controllers
                     .Players
                     .Where(p => (!p.Banned || p.Bot) && p.ScoreStats != null)
                     .OrderBy(p => p.Rank)
-                    .Select(p => new { p.Id, p.ScoreStats, p.Rank })
+                    .Select(p => new { p.Id, p.ScoreStats, p.Rank, p.Country, p.Pp, p.CountryRank })
                     .ToListAsync();
 
             var scoresById = allScores.GroupBy(s => s.PlayerId).ToDictionary(g => g.Key, g => g.ToList());
 
-            var playersWithScores = players.Where(p => scoresById.ContainsKey(p.Id)).Select(p => new { p.Id, p.ScoreStats, p.Rank, Scores = scoresById[p.Id] }).ToList();
+            var playersWithScores = players.Where(p => scoresById.ContainsKey(p.Id)).Select(p => new { 
+                p.Id, 
+                p.ScoreStats, 
+                p.Rank, 
+                p.Pp,
+                p.Country,
+                p.CountryRank,
+                Scores = scoresById[p.Id] 
+            }).ToList();
             
+            var playerCount = players.Where(p => p.Pp > 0).Count();
+            var countryCounts = players
+                .Where(p => p.Pp > 0)
+                .GroupBy(p => p.Country)
+                .ToDictionary(g => g.Key, g => g.Count());
+
             await playersWithScores.ParallelForEachAsync(async player => {
-                await RefreshStats(player.ScoreStats, player.Id, player.Rank, player.Scores);
+                await RefreshStats(
+                    player.ScoreStats, 
+                    player.Id, 
+                    player.Rank, 
+                    player.Pp > 0 ? player.Rank / (float)playerCount : 0,
+                    player.Pp > 0 ? player.CountryRank / (float)countryCounts[player.Country] : 0,
+                    player.Scores);
             }, maxDegreeOfParallelism: 50);
 
             await _context.BulkSaveChangesAsync();
@@ -576,7 +609,12 @@ namespace BeatLeader_Server.Controllers
 
                 foreach (var player in players)
                 {
-                    await RefreshStats(player.ScoreStats, player.Id, player.Rank);
+                    await RefreshStats(
+                        player.ScoreStats, 
+                        player.Id, 
+                        player.Rank,
+                        null,
+                        null);
                 }
 
                 await _context.BulkSaveChangesAsync();

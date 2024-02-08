@@ -18,6 +18,7 @@ public static partial class MapListUtils
             Type.Reweighting => sequence.Where(leaderboard => leaderboard.Reweight != null && !leaderboard.Reweight.Finished),
             Type.Reweighted  => sequence.Where(leaderboard => leaderboard.Reweight != null && leaderboard.Reweight.Finished),
             Type.Unranked    => sequence.Where(leaderboard => leaderboard.Difficulty.Status == DifficultyStatus.unranked),
+            Type.Ost         => sequence.Where(leaderboard => leaderboard.Difficulty.Status == DifficultyStatus.OST),
             _                => sequence,
         };
 

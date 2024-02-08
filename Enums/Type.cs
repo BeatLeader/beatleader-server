@@ -11,4 +11,5 @@ public enum Type
     Reweighting,
     Reweighted,
     Unranked,
+    Ost
 }

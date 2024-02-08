@@ -460,6 +460,7 @@ namespace BeatLeader_Server.Controllers {
                     .Include(lb => lb.LeaderboardGroup)
                     .ThenInclude(g => g.Leaderboards)
                     .ThenInclude(glb => glb.Difficulty);
+                    //.Include(lb => lb.FeaturedPlaylists);
 
 
             LeaderboardResponse? leaderboard;
@@ -505,6 +506,7 @@ namespace BeatLeader_Server.Controllers {
                 Changes = l.Changes,
                 ClanRankingContested = l.ClanRankingContested,
                 Clan = l.Clan,
+                FeaturedPlaylists = l.FeaturedPlaylists,
                 LeaderboardGroup = l.LeaderboardGroup.Leaderboards.Select(it =>
                     new LeaderboardGroupEntry {
                         Id = it.Id,
@@ -624,6 +626,18 @@ namespace BeatLeader_Server.Controllers {
 
             return leaderboard;
         }
+
+        //[HttpGet("~/wefwefwef")]
+        //public async Task<ActionResult> wefwefwef()
+        //{
+        //    var lbs = _context.Leaderboards.Include(lb => lb.Difficulty).Where(lb => lb.SongId.ToLower() == "100bills").ToList();
+        //    foreach (var lb in lbs)
+        //    {
+        //        lb.Difficulty.Status = DifficultyStatus.OST;
+        //    }
+        //    _context.SaveChanges();
+        //    return Ok();
+        //}
 
         [HttpGet("~/leaderboard/clanRankings/{leaderboardId}/{clanRankingId}")]
         public async Task<ActionResult<ClanRankingResponse>> GetClanRankingAssociatedScores(
@@ -1544,6 +1558,123 @@ namespace BeatLeader_Server.Controllers {
             }
 
             return result;
+        }
+
+        [HttpPost("~/leaderboards/feature/{id}")]
+        public async Task<ActionResult> FeatureLeaderboards(
+               int id,
+               [FromQuery] string title,
+               [FromQuery] string? owner = null,
+               [FromQuery] string? ownerCover = null,
+               [FromQuery] string? ownerLink = null)
+        {
+            if (HttpContext != null)
+            {
+                string userId = HttpContext.CurrentUserID(_context);
+                var currentPlayer = await _context.Players.FindAsync(userId);
+
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+
+            dynamic? playlist = null;
+
+            using (var stream = await _s3Client.DownloadPlaylist(id + ".bplist"))
+            {
+                if (stream != null)
+                {
+                    playlist = stream.ObjectFromStream();
+                }
+            }
+
+            if (playlist == null)
+            {
+                return BadRequest("Can't find such plist");
+            }
+
+            string fileName = id + "-featured";
+            string? imageUrl = null;
+            try
+            {
+
+                var ms = new MemoryStream(5);
+                await Request.Body.CopyToAsync(ms);
+                ms.Position = 0;
+
+                (string extension, MemoryStream stream2) = ImageUtils.GetFormat(ms);
+                fileName += extension;
+
+                imageUrl = await _s3Client.UploadAsset(fileName, stream2);
+            } catch (Exception)
+            {
+                return BadRequest("Error saving avatar");
+            }
+
+            var featuredPlaylist = new FeaturedPlaylist
+            {
+                PlaylistLink = $"https://beatleader.xyz/playlist/{id}",
+                Cover = imageUrl,
+                Title = title,
+
+                Owner = owner,
+                OwnerCover = ownerCover,
+                OwnerLink = ownerLink
+            };
+
+            var leaderboards = new List<Leaderboard>();
+            foreach (var song in playlist.songs)
+            {
+                foreach (var diff in song.difficulties)
+                {
+                    string hash = song.hash.ToLower();
+                    string diffName = diff.name.ToLower();
+                    string characteristic = diff.characteristic.ToLower();
+
+                    var lb = _context.Leaderboards.Where(lb =>
+                            lb.Song.Hash.ToLower() == hash &&
+                            lb.Difficulty.DifficultyName.ToLower() == diffName &&
+                            lb.Difficulty.ModeName.ToLower() == characteristic)
+                            .Include(lb => lb.FeaturedPlaylists)
+                            .FirstOrDefault();
+
+                    if (lb != null)
+                    {
+                        if (lb.FeaturedPlaylists == null)
+                        {
+                            lb.FeaturedPlaylists = new List<FeaturedPlaylist>();
+                        }
+
+                        lb.FeaturedPlaylists.Add(featuredPlaylist);
+                    }
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpDelete("~/leaderboards/feature/{id}")]
+        public async Task<ActionResult> DeleteFeatureLeaderboards(
+               int id)
+        {
+            if (HttpContext != null)
+            {
+                string userId = HttpContext.CurrentUserID(_context);
+                var currentPlayer = await _context.Players.FindAsync(userId);
+
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+
+            var featuredPlaylist = _context.FeaturedPlaylist.Find(id);
+            _context.FeaturedPlaylist.Remove(featuredPlaylist);
+            _context.SaveChanges();
+            return Ok();
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using BeatLeader_Server.Controllers;
 using BeatLeader_Server.Utils;
 using Discord;
+using Discord.Rest;
 using Discord.WebSocket;
 
 namespace BeatLeader_Server.Bot
@@ -66,6 +67,17 @@ namespace BeatLeader_Server.Bot
                     }
                 }
             }
+        }
+
+        public static async Task PublishAnnouncement(ulong where, ulong what)
+        {
+            try {
+                var message = await (Client.GetGuild(BotService.BLServerID).GetChannel(where) as ISocketMessageChannel)?.GetMessageAsync(what);
+                var announcement = message as RestUserMessage;
+                if (announcement != null) {
+                    await announcement.CrosspostAsync();
+                }
+            } catch { }
         }
     }
 }

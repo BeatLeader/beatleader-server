@@ -207,7 +207,9 @@ namespace BeatLeader_Server.Controllers
             }
 
             info.playerID = authenticatedPlayerID;
-            info.hash = info.hash.Substring(0, 40);
+            if (info.hash.Length >= 40) {
+                info.hash = info.hash.Substring(0, 40);
+            }
 
             Leaderboard? leaderboard;
             using (_serverTiming.TimeAction("ldbrd"))
@@ -263,6 +265,8 @@ namespace BeatLeader_Server.Controllers
                     .Include(s => s.Player)
                     .ThenInclude(p => p.ContextExtensions)
                     .ThenInclude(ce => ce.ScoreStats)
+                    .Include(s => s.Player)
+                    .ThenInclude(p => p.Clans)
                     .Include(s => s.RankVoting)
                     .ThenInclude(v => v.Feedbacks)
                     .Include(s => s.ContextExtensions)
@@ -642,7 +646,7 @@ namespace BeatLeader_Server.Controllers
             List<Score> currentScores,
             Leaderboard leaderboard, 
             Player player,
-            IDbContextTransaction transaction) {
+            IDbContextTransaction? transaction) {
             if (!player.Bot) {
                 var isRanked = leaderboard.Difficulty.Status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.inevent;
                 await RefreshGeneneralContextRank(leaderboard, resultScore, isRanked);
@@ -663,7 +667,9 @@ namespace BeatLeader_Server.Controllers
                     await _context.BulkSaveChangesAsync();
                 }
 
-                await transaction.CommitAsync();
+                if (transaction != null) {
+                    await transaction.CommitAsync();
+                }
             }
         }
 
@@ -789,13 +795,16 @@ namespace BeatLeader_Server.Controllers
             Player player,
             Score resultScore,
             List<CurrentScoreWrapper> currentScores,
-            HttpContext context,
+            HttpContext? context,
             ReplayOffsets offsets,
             bool allow = false) {
 
             var oldPlayerStats = CollectPlayerStats(player);
 
             var transaction = await _context.Database.BeginTransactionAsync();
+
+            resultScore.Replay = await _s3Client.UploadReplay(ReplayUtils.ReplayFilename(replay, resultScore), replayData);
+            _context.Entry(resultScore).Property(x => x.Replay).IsModified = true;
 
             if (!player.Bot && leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
                 _context.RecalculatePPAndRankFast(player, resultScore.ValidContexts);
@@ -861,9 +870,6 @@ namespace BeatLeader_Server.Controllers
                         await MigrateOldReplay(scoreToDelete.Score, leaderboard.Id);
                     }
                 }
-
-                resultScore.Replay = await _s3Client.UploadReplay(ReplayUtils.ReplayFilename(replay, resultScore), replayData);
-                _context.Entry(resultScore).Property(x => x.Replay).IsModified = true;
 
                 if (statistic == null)
                 {
@@ -1023,11 +1029,13 @@ namespace BeatLeader_Server.Controllers
                 transaction = await _context.Database.BeginTransactionAsync();
 
                 // Calculate clan ranking for this leaderboard
-                await ClanUtils.PostChangesWithScore(
-                    _context,
-                    _context.UpdateClanRanking(leaderboard, resultScore),
-                    resultScore,
-                    _configuration.GetValue<string?>("ClanWarsHook"));
+                (var changes, var playerClans) = _context.UpdateClanRanking(leaderboard, resultScore);
+                if (changes?.Count > 0) {
+                    ClanTaskService.AddJob(new ClanRankingChangesDescription {
+                        Score = resultScore,
+                        Changes = changes
+                    });
+                }
 
                 await _context.BulkSaveChangesAsync();
                 await transaction.CommitAsync();
@@ -1101,7 +1109,12 @@ namespace BeatLeader_Server.Controllers
 
             _context.ChangeTracker.AutoDetectChangesEnabled = true;
 
-            await _playerRefreshController.RefreshStats(player.ScoreStats, player.Id, player.Rank);
+            await _playerRefreshController.RefreshStats(
+                player.ScoreStats, 
+                player.Id, 
+                player.Rank,
+                null,
+                null);
 
             foreach (var ce in player.ContextExtensions)
             {

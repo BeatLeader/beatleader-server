@@ -1,6 +1,7 @@
 ﻿using Amazon.S3;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -59,7 +60,9 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string tag,
             [FromQuery] string color,
             [FromQuery] string description = "",
-            [FromQuery] string bio = "")
+            [FromQuery] string bio = "",
+            [FromQuery] string? clanRankingDiscordHook = null,
+            [FromQuery] string? playerChangesCallback = null)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
             if (currentID == null) {
@@ -163,7 +166,9 @@ namespace BeatLeader_Server.Controllers
                 Pp = player.Pp,
                 AverageAccuracy = player.ScoreStats.AverageRankedAccuracy,
                 AverageRank = player.Rank,
-                RankedPoolPercentCaptured = 0
+                RankedPoolPercentCaptured = 0,
+                PlayerChangesCallback = playerChangesCallback,
+                ClanRankingDiscordHook = clanRankingDiscordHook
             };
 
             _context.Clans.Add(newClan);
@@ -173,10 +178,14 @@ namespace BeatLeader_Server.Controllers
             await _context.SaveChangesAsync();
 
             HttpContext.Response.OnCompleted(async () => {
-                var changes = await RecalculateClanRanking(currentID);
 
-                var message = $"{player.Name} created [{newClan.Tag}] which";
-                await ClanUtils.PostChangesWithMessage(_context, changes, message, _configuration.GetValue<string?>("ClanWarsHook"));
+                ClanTaskService.AddJob(new ClanRankingChangesDescription {
+                    PlayerAction = PlayerClanAction.create,
+                    PlayerId = player.Id,
+                    ClanId = newClan.Id,
+                    Clan = newClan,
+                    Changes = await RecalculateClanRanking(currentID)
+                });
             });
 
             return newClan;
@@ -231,6 +240,18 @@ namespace BeatLeader_Server.Controllers
                 _context.ClanRanking.Remove(cr);
             }
 
+            var lbs = _context.Leaderboards.Include(lb => lb.Clan).Where(lb => lb.ClanId == clan.Id).ToList();
+
+            foreach (var lb in lbs)
+            {
+                if (lb.Clan?.Id == clan.Id) {
+                    lb.Clan = null;
+                    lb.ClanId = null;
+                }
+            }
+
+            await _context.BulkSaveChangesAsync();
+
             // Remove the clan
             _context.Clans.Remove(clan);
             
@@ -245,11 +266,15 @@ namespace BeatLeader_Server.Controllers
                         result.AddRange(changes);
                     }
                 }
-
                 await _context.BulkSaveChangesAsync();
 
-                var message = $"{player.Name} dismantled [{clan.Tag}] which";
-                await ClanUtils.PostChangesWithMessage(_context, result, message, _configuration.GetValue<string?>("ClanWarsHook"));
+                ClanTaskService.AddJob(new ClanRankingChangesDescription {
+                    PlayerAction = PlayerClanAction.dismantle,
+                    PlayerId = player.Id,
+                    Clan = clan,
+                    ClanId = clan.Id,
+                    Changes = result,
+                });
             });
 
             return Ok();
@@ -260,6 +285,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int? id = null,
             [FromQuery] string? name = null,
             [FromQuery] string? color = null,
+            [FromQuery] string? clanRankingDiscordHook = null,
+            [FromQuery] string? playerChangesCallback = null,
             [FromQuery] string description = "",
             [FromQuery] string bio = "")
         {
@@ -343,7 +370,6 @@ namespace BeatLeader_Server.Controllers
             }
             catch (Exception)
             {
-                return BadRequest("Error saving avatar");
             }
 
             if (description.Length > 100)
@@ -362,6 +388,15 @@ namespace BeatLeader_Server.Controllers
             else
             {
                 clan.Bio = bio;
+            }
+
+            if (clanRankingDiscordHook != null)
+            {
+                clan.ClanRankingDiscordHook = clanRankingDiscordHook;
+            }
+
+            if (playerChangesCallback != null) {
+                clan.PlayerChangesCallback = playerChangesCallback;
             }
 
             await _context.SaveChangesAsync();
@@ -526,10 +561,13 @@ namespace BeatLeader_Server.Controllers
             await _context.SaveChangesAsync();
 
             HttpContext.Response.OnCompleted(async () => {
-                var changes = await RecalculateClanRanking(player);
-
-                var message = $"{user.Player.Name} was kicked from [{clan.Tag}] which led to";
-                await ClanUtils.PostChangesWithMessage(_context, changes, message, _configuration.GetValue<string?>("ClanWarsHook"));
+                ClanTaskService.AddJob(new ClanRankingChangesDescription {
+                    PlayerAction = PlayerClanAction.kick,
+                    PlayerId = user.Player.Id,
+                    Clan = clan,
+                    ClanId = clan.Id,
+                    Changes = await RecalculateClanRanking(player),
+                });
             });
 
             return Ok();
@@ -582,9 +620,13 @@ namespace BeatLeader_Server.Controllers
             await _context.SaveChangesAsync();
 
             HttpContext.Response.OnCompleted(async () => {
-                var changes = await RecalculateClanRanking(currentID);
-                var message = $"{user.Player.Name} joined [{clan.Tag}] which led to";
-                await ClanUtils.PostChangesWithMessage(_context, changes, message, _configuration.GetValue<string?>("ClanWarsHook"));
+                ClanTaskService.AddJob(new ClanRankingChangesDescription {
+                    PlayerAction = PlayerClanAction.join, 
+                    Clan = clan,
+                    PlayerId = user.Player.Id,
+                    ClanId = clan.Id,
+                    Changes = await RecalculateClanRanking(currentID)
+                });
             });
 
             return Ok();
@@ -640,6 +682,15 @@ namespace BeatLeader_Server.Controllers
             user.BannedClans.Remove(clan);
             await _context.SaveChangesAsync();
 
+            if (clan.PlayerChangesCallback != null) {
+                ClanTaskService.AddJob(new ClanRankingChangesDescription {
+                    PlayerAction = PlayerClanAction.reject,
+                    PlayerId = user.Player.Id,
+                    Clan = clan,
+                    ClanId = clan.Id
+                });
+            }
+
             return Ok();
         }
 
@@ -681,10 +732,13 @@ namespace BeatLeader_Server.Controllers
             await _context.SaveChangesAsync();
 
             HttpContext.Response.OnCompleted(async () => {
-                var changes = await RecalculateClanRanking(currentID);
-
-                var message = $"{user.Player.Name} left [{clan.Tag}] which led to";
-                await ClanUtils.PostChangesWithMessage(_context, changes, message, _configuration.GetValue<string?>("ClanWarsHook"));
+                ClanTaskService.AddJob(new ClanRankingChangesDescription {
+                    PlayerAction = PlayerClanAction.leave,
+                    Clan = clan,
+                    ClanId = clan.Id,
+                    PlayerId = user.Player.Id,
+                    Changes = await RecalculateClanRanking(currentID)
+                });
             });
 
             return Ok();

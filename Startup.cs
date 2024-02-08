@@ -377,7 +377,7 @@ namespace BeatLeader_Server {
             services.AddHostedService<LeaderboardPlayerStatsService>();
             services.AddHostedService<RefreshTaskService>();
             services.AddHostedService<MinuteRefresh>();
-
+            services.AddHostedService<ClanTaskService>();
             services.AddHostedService<SearchService>();
             services.AddHostedService<OauthService>();
 

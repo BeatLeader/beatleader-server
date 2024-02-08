@@ -534,14 +534,71 @@ namespace BeatLeader_Server.Controllers
 
             await _context.BulkSaveChangesAsync();
 
-            var clans = _context.Clans.Select(c => new { Clan = c, CaptureLeaderboardsCount = c.CapturedLeaderboards.Count() }).ToList();
+            var clans = _context
+                .Clans
+                .Select(c => new { Clan = c, CaptureLeaderboardsCount = c.CapturedLeaderboards.Count() })
+                .OrderByDescending(c => c.CaptureLeaderboardsCount)
+                .ToList();
+            var rank = 1;
             foreach (var c in clans)
             {
                 var clan = c.Clan;
                 clan.CaptureLeaderboardsCount = c.CaptureLeaderboardsCount;
                 clan.RankedPoolPercentCaptured = ((float)clan.CaptureLeaderboardsCount) / (float)RankingService.RankedMapCount;
+
+                clan.Rank = rank;
+                rank++;
             }
             await _context.BulkSaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpPut("~/admin/refreshClanRankingsScore")]
+        public async Task<ActionResult> RefreshClanRankingsScore([FromQuery] int scoreId)
+        {
+            // refreshClanRankings: Http Put endpoint that recalculates the clan rankings for all ranked leaderboards.
+
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (!currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            //_context.BulkDelete(_context.ClanRanking);
+
+            var score = _context
+                .Scores
+                .Where(s => s.Id == scoreId)
+                .Include(s => s.Leaderboard)
+                .ThenInclude(lb => lb.Difficulty)
+                .FirstOrDefault();
+
+            _context.UpdateClanRanking(score.Leaderboard, score);
+
+            await _context.BulkSaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpGet("~/admin/deleteunrankedclanranking")]
+        public async Task<ActionResult> DeleteUnrankedClanranking()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (!currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var rankings = _context
+                .ClanRanking
+                .Where(cr => cr.Leaderboard.Difficulty.Status != DifficultyStatus.ranked)
+                .ToList();
+            await _context.BulkDeleteAsync(rankings);
 
             return Ok();
         }

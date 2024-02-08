@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReplayDecoder;
+using System.Dynamic;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -85,6 +86,7 @@ namespace BeatLeader_Server.Controllers
                         SubName = s.Leaderboard.Song.SubName,
                         Author = s.Leaderboard.Song.Author,
                         Mapper = s.Leaderboard.Song.Mapper,
+                        DownloadUrl = s.Leaderboard.Song.DownloadUrl,
                     },
                     Player = new PlayerResponse
                     {
@@ -1042,6 +1044,18 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest(error);
             }
 
+            if (HttpContext != null) {
+                score.AccLeft = statistic.accuracyTracker.accLeft;
+                score.AccRight = statistic.accuracyTracker.accRight;
+                score.MaxCombo = statistic.hitTracker.maxCombo;
+                score.FcAccuracy = statistic.accuracyTracker.fcAcc;
+                score.MaxStreak = statistic.hitTracker.maxStreak;
+                score.LeftTiming = statistic.hitTracker.leftTiming;
+                score.RightTiming = statistic.hitTracker.rightTiming;
+
+                _context.SaveChanges();
+            }
+
             return statistic;
         }
 
@@ -1263,6 +1277,98 @@ namespace BeatLeader_Server.Controllers
                         .Select(s => s.Replay)
                         .ToList()
             };
+        }
+
+        [HttpGet("~/v1/clanScores/{hash}/{diff}/{mode}/page")]
+        public async Task<ActionResult<ResponseWithMetadataAndSelection<ClanScoreResponse>>> ClanScoresV1(
+            string hash,
+            string diff,
+            string mode,
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10)
+        {
+            var result = new ResponseWithMetadataAndSelection<ClanScoreResponse>
+            {
+                Data = new List<ClanScoreResponse>(),
+                Metadata =
+                    {
+                        ItemsPerPage = count,
+                        Page = page,
+                        Total = 0
+                    }
+            };
+
+            if (hash.Length >= 40) {
+                hash = hash.Substring(0, 40);
+            }
+
+            var song = await _context
+                .Songs
+                .Select(s => new { s.Id, s.Hash })
+                .TagWithCallSite()
+                .FirstOrDefaultAsync(s => s.Hash == hash);
+            if (song == null) {
+                return result;
+            }
+
+            if (mode.EndsWith("OldDots")) {
+                mode = mode.Replace("OldDots", "");
+            }
+
+            int modeValue = Song.ModeForModeName(mode);
+            if (modeValue == 0) {
+                var customMode = _context.CustomModes.FirstOrDefault(m => m.Name == mode);
+                if (customMode != null) {
+                    modeValue = customMode.Id + 10;
+                } else {
+                    return result;
+                }
+            }
+
+            var leaderboardId = song.Id + Song.DiffForDiffName(diff).ToString() + modeValue.ToString();
+
+            var query = _context
+                .ClanRanking
+                .Where(s => s.LeaderboardId == leaderboardId);
+
+            result.Metadata.Total = await query.CountAsync();
+
+            var resultList = (await query
+                .OrderBy(p => p.Rank)
+                .Skip((page - 1) * count)
+                .Take(count)
+                .Select(s => new ClanScoreResponse
+                {
+                    Id = s.Id,
+                    ClanId = s.ClanId ?? 0,
+                    ModifiedScore = s.TotalScore,
+                    Accuracy = s.AverageAccuracy,
+                    Pp = s.Pp,
+                    Rank = s.Rank,
+                    Timepost = s.LastUpdateTime.ToString(),
+                    LeaderboardId = s.LeaderboardId,
+                    Clan = new ClanScoreClanResponse
+                    {
+                        Id = s.Clan.Id,
+                        Tag = s.Clan.Tag,
+                        Name = s.Clan.Name,
+                        Avatar = s.Clan.Icon,
+                        Color = s.Clan.Color,
+
+                        Pp = s.Clan.Pp,
+                        Rank = s.Clan.Rank,
+                    },
+                })
+                .TagWithCallSite()
+                .ToListAsync())
+                .OrderByDescending(el => Math.Round(el.Pp, 2))
+                .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                .ThenBy(el => el.Timepost)
+                .ToList();
+
+            result.Data = resultList;
+
+            return result;
         }
 
         [HttpGet("~/scorestats/")]

@@ -1,5 +1,6 @@
 ﻿using BeatLeader_Server.Controllers;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Utils;
 using Microsoft.EntityFrameworkCore;
 
 namespace BeatLeader_Server.Services
@@ -7,10 +8,12 @@ namespace BeatLeader_Server.Services
     public class HistoryService : BackgroundService
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
+        private readonly IConfiguration _configuration;
 
-        public HistoryService(IServiceScopeFactory serviceScopeFactory)
+        public HistoryService(IServiceScopeFactory serviceScopeFactory, IConfiguration configuration)
         {
             _serviceScopeFactory = serviceScopeFactory;
+            _configuration = configuration;
         }
         
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -20,6 +23,7 @@ namespace BeatLeader_Server.Services
                 {
                     await SetHistories();
                     await SetLastWeek();
+                    await SetClanRankingHistories();
                 }
 
                 await Task.Delay(DateTime.Now.Date.AddDays(1) - DateTime.Now, stoppingToken);
@@ -278,6 +282,47 @@ namespace BeatLeader_Server.Services
                         _context.Entry(player).Property(x => x.LastWeekPp).IsModified = true;
                         _context.Entry(player).Property(x => x.LastWeekCountryRank).IsModified = true;
                     }
+                }
+
+                await _context.BulkSaveChangesAsync();
+            }
+        }
+
+        public async Task SetClanRankingHistories()
+        {
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+                var s3 = _configuration.GetS3Client();
+
+                int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+
+                using (var gcstream = await s3.DownloadAsset("clansmap-globalcache.json")) {
+                    if (gcstream != null) {
+                        using (var ms = new MemoryStream(5)) {
+                            await gcstream.CopyToAsync(ms);
+                            await s3.UploadAsset($"clansmap-globalcache-{timeset}.json", ms);
+                        }
+                    }
+                }
+
+                using (var gmstream = await s3.DownloadAsset("global-map-file.json")) {
+                    if (gmstream != null) {
+                        using (var ms = new MemoryStream(5)) {
+                            await gmstream.CopyToAsync(ms);
+                            await s3.UploadAsset($"global-map-file-{timeset}.json", ms);
+                        }
+                    }
+                }
+
+                var clans = _context.Clans.ToList();
+                foreach (var clan in clans)
+                {
+                    _context.GlobalMapHistory.Add(new GlobalMapHistory {
+                        ClanId = clan.Id,
+                        GlobalMapCaptured = clan.RankedPoolPercentCaptured,
+                        Timestamp = timeset
+                    });
                 }
 
                 await _context.BulkSaveChangesAsync();

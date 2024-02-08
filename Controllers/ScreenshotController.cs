@@ -1,6 +1,9 @@
 ﻿
 using Microsoft.AspNetCore.Mvc;
 using PuppeteerSharp;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Gif;
+using SixLabors.ImageSharp.PixelFormats;
 using System.Web;
 
 namespace BeatLeader_Server.Controllers
@@ -9,10 +12,12 @@ namespace BeatLeader_Server.Controllers
     {
         private static BrowserPool? browserPool;
         private readonly IConfiguration configuration;
+        private readonly IWebHostEnvironment _webHostEnvironment;
 
-        public ScreenshotController(IConfiguration configuration)
+        public ScreenshotController(IConfiguration configuration, IWebHostEnvironment webHostEnvironment)
         {
             this.configuration = configuration;
+            _webHostEnvironment = webHostEnvironment;
             if (browserPool == null) {
                 browserPool = new BrowserPool(5);
             }
@@ -80,6 +85,182 @@ namespace BeatLeader_Server.Controllers
 
                 return File(screenshot, "image/png", imagename + ".png");
             }
+        }
+
+        [NonAction]
+        public async Task<byte[]> DownloadFileContent(string context, string path, [FromQuery] Dictionary<string, string> queryStringParameters)
+        {
+            var browser = await browserPool?.GetBrowserAsync();
+            var options = new
+            {
+                Base = $"https://{(context != "general" ? (context + ".") : "")}screenshot.beatleader.xyz/",
+                Params = HttpUtility.ParseQueryString("")
+            };
+
+            foreach (var param in queryStringParameters)
+            {
+                options.Params[param.Key] = param.Value;
+            }
+
+            var url = $"{options.Base}{path}?{options.Params}";
+            var filename = "clansmap.json";
+
+            using (var page = await browser.NewPageAsync())
+            {
+                await page.SetViewportAsync(new ViewPortOptions
+                {
+                    Width = 1024,
+                    Height = 768,
+                    DeviceScaleFactor = 1,
+                });
+
+                if (Request != null) {
+                    var cookies = Request.Headers["Cookie"].ToString().Split(';')
+                        .Select(cookie => cookie.Trim().Split('='))
+                        .Where(parts => parts.Length >= 2)
+                        .Select(parts => new CookieParam
+                        {
+                            Name = parts[0],
+                            Value = string.Join("=", parts.Skip(1)),
+                            Domain = ".beatleader.xyz",
+                            Secure = true,
+                            SameSite = SameSite.None,
+                            Path = "/"
+                        }).ToList();
+
+                    foreach (var cookie in cookies)
+                    {
+                        await page.SetCookieAsync(cookie);
+                    }
+                }
+
+                var downloadDirectory = Path.Combine(_webHostEnvironment.WebRootPath, "downloadChrome");
+                var filePath = Path.Combine(downloadDirectory, filename);
+                if (!Directory.Exists(downloadDirectory)) {
+                    Directory.CreateDirectory(downloadDirectory);
+                }
+                if (System.IO.File.Exists(filePath)) {
+                    System.IO.File.Delete(filePath);
+                }
+
+                await page.Target.CreateCDPSessionAsync().Result.SendAsync("Page.setDownloadBehavior", new
+                {
+                    behavior = "allow",
+                    downloadPath = downloadDirectory
+                }, false);
+
+                await page.GoToAsync(url, WaitUntilNavigation.Networkidle0);
+
+                await Task.Delay(TimeSpan.FromSeconds(30));
+
+                var fileContent = System.IO.File.ReadAllBytes(filePath);
+
+                return fileContent;
+            }
+        }
+
+        [HttpGet("/download/{context}/{*path}")]
+        public async Task<IActionResult> DownloadFile(string context, string path, [FromQuery] Dictionary<string, string> queryStringParameters)
+        {
+            string filePath = "result.json";
+            Response.Headers["Content-Disposition"] = $"attachment; filename={filePath}";
+            return File(await DownloadFileContent(context, path, queryStringParameters), "application/octet-stream", filePath);
+        }
+
+        [NonAction]
+        public async Task<byte[]> DownloadAnimatedScreenshot(int width, int height, string context, string path, [FromQuery] Dictionary<string, string> queryStringParameters)
+        {
+            var browser = await browserPool?.GetBrowserAsync();
+
+            var options = new
+            {
+                Base = $"https://{(context != "general" ? (context + ".") : "")}screenshot.beatleader.xyz/",
+                MaxAge = 60 * 60 * 24 * 7,
+                Params = HttpUtility.ParseQueryString(""),
+                Scale = 1
+            };
+
+            foreach (var param in queryStringParameters)
+            {
+                options.Params[param.Key] = param.Value;
+            }
+
+            var url = $"{options.Base}{path}?{options.Params}";
+
+            using (var page = await browser.NewPageAsync())
+            {
+                await page.SetViewportAsync(new ViewPortOptions
+                {
+                    Width = width,
+                    Height = height,
+                    DeviceScaleFactor = 1
+                });
+
+                if (Request != null) {
+                    var cookies = Request.Headers["Cookie"].ToString().Split(';')
+                        .Select(cookie => cookie.Trim().Split('='))
+                        .Where(parts => parts.Length >= 2)
+                        .Select(parts => new CookieParam
+                        {
+                            Name = parts[0],
+                            Value = string.Join("=", parts.Skip(1)),
+                            Domain = ".beatleader.xyz",
+                            Secure = true,
+                            SameSite = SameSite.None,
+                            Path = "/"
+                        }).ToList();
+                    foreach (var cookie in cookies)
+                    {
+                        await page.SetCookieAsync(cookie);
+                    }
+                }
+
+                await page.GoToAsync(url, WaitUntilNavigation.DOMContentLoaded);
+
+                float duration = 2.0f;
+                int frameRate = 60;
+                int totalFrames = (int)(duration * frameRate);
+                var delayBetweenFrames = 1000 / frameRate; 
+
+                List<byte[]> frames = new List<byte[]>();
+
+                await Task.Delay(600);
+
+                for (int i = 0; i < totalFrames; i++)
+                {
+                    var screenshot = await page.ScreenshotDataAsync(new ScreenshotOptions { OmitBackground = true });
+                    if (screenshot.Skip(100).Any(b => b != 0)) {
+                        frames.Add(screenshot);
+                    }
+                    await Task.Delay(delayBetweenFrames);
+                }
+
+                var containerImage = Image.Load<Rgba32>(frames[0]);
+
+                foreach (var item in frames)
+                {
+                    var frame = containerImage.Frames.AddFrame(Image.Load<Rgba32>(item).Frames.RootFrame);
+                    frame.Metadata.GetFormatMetadata(GifFormat.Instance).FrameDelay = delayBetweenFrames / 3;
+                }
+            
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    GifEncoder encoder = new()
+                    { };
+                    await encoder.EncodeAsync(containerImage, ms, CancellationToken.None);
+
+                    browserPool?.ReturnBrowser(browser);
+
+                    return ms.ToArray();
+                }
+            }
+        }
+
+        [HttpGet("/animatedscreenshot/{width}x{height}/{imagename}/{context}/{*path}")]
+        public async Task<IActionResult> GetAnimatedScreenshot(int width, int height, string context, string imagename, string path, [FromQuery] Dictionary<string, string> queryStringParameters)
+        {
+            Response.Headers["Cache-Control"] = "public, max-age=" + 60 * 60 * 24 * 7;
+            return File(await DownloadAnimatedScreenshot(width, height, context, path, queryStringParameters), "image/gif", imagename + ".gif");
         }
     }
 

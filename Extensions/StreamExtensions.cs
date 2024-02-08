@@ -20,6 +20,11 @@ namespace BeatLeader_Server.Extensions
             }
         }
 
+        public static ExpandoObject? ObjectFromArray(this byte[] ms)
+        {
+            return JsonConvert.DeserializeObject<ExpandoObject>(System.Text.Encoding.Default.GetString(ms), new ExpandoObjectConverter());
+        }
+
         public static T? ObjectFromStream<T>(this Stream ms)
         {
             using (StreamReader reader = new StreamReader(ms))

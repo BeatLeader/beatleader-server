@@ -64,8 +64,34 @@ namespace BeatLeader_Server.Controllers
                     .ThenInclude(diff => diff.ModifierValues)
                 .Include(lb => lb.Difficulty)
                     .ThenInclude(diff => diff.ModifiersRating)
+                .Include(lb => lb.Clan)
                 .Select(lb => new { 
-                    DiffModResponse = ResponseUtils.DiffModResponseFromDiffAndVotes(lb.Difficulty, lb.Scores.Where(score => score.RankVoting != null).Select(score => score.RankVoting!.Rankability).ToArray()), 
+                    DiffModResponse = new DiffModResponse {
+                        DifficultyName = lb.Difficulty.DifficultyName,
+                        ModeName = lb.Difficulty.ModeName,
+                        Stars = lb.Difficulty.Stars,
+                        Status = lb.Difficulty.Status,
+                        Type = lb.Difficulty.Type,
+                        Votes = lb.Scores
+                            .Where(score => score.RankVoting != null)
+                            .Select(score => score.RankVoting!.Rankability)
+                            .ToArray(),
+                        ModifierValues = lb.Difficulty.ModifierValues,
+                        ModifiersRating = lb.Difficulty.ModifiersRating,
+                        PassRating = lb.Difficulty.PassRating,
+                        AccRating = lb.Difficulty.AccRating,
+                        TechRating = lb.Difficulty.TechRating,
+                        ClanStatus = new ClanRankingStatus {
+                            Clan = lb.Clan != null ? new ClanResponse {
+                                Id = lb.Clan.Id,
+                                Color = lb.Clan.Color,
+                                Tag = lb.Clan.Tag,
+                                Name = lb.Clan.Name,
+                            } : null,
+                            ClanRankingContested = lb.ClanRankingContested,
+                            Applicable = lb.Difficulty.Status == DifficultyStatus.ranked
+                        }
+                    }, 
                     SongDiffs = lb.Song.Difficulties 
                 })
                 .ToArray();
@@ -384,7 +410,7 @@ namespace BeatLeader_Server.Controllers
                     Notes = set.Data.Notes.Count(),
                     Bombs = set.Data.Bombs.Count(),
                     Walls = set.Data.Walls.Count(),
-                    MaxScore = ReplayUtils.MaxScoreForNote(set.Data.Notes.Count),
+                    MaxScore = set.MaxScore(),
                     Duration = map.SongLength,
                 };
 
