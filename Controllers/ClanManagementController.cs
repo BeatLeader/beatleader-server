@@ -442,11 +442,6 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("This player are banned!");
             }
 
-            if (user.Player.Clans.Count == 3)
-            {
-                return BadRequest("User already joined maximum amount of clans.");
-            }
-
             if (user.BannedClans.FirstOrDefault(c => c.Id == clan.Id) != null)
             {
                 return BadRequest("This clan was banned by player");
@@ -596,13 +591,12 @@ namespace BeatLeader_Server.Controllers
                 return NotFound("User did not received request to this clan");
             }
 
-            user.ClanRequest.Remove(clan);
-
             if (user.Player.Clans.Count == 3)
             {
-                await _context.SaveChangesAsync();
-                return BadRequest("You already joined maximum amount of clans.");
+                return BadRequest("You already joined maximum amount of clans, please leave some or reject.");
             }
+
+            user.ClanRequest.Remove(clan);
 
             if (user.Player.Clans.FirstOrDefault(c => c.Id == clan.Id) != null)
             {
