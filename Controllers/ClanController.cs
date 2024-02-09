@@ -139,23 +139,17 @@ namespace BeatLeader_Server.Controllers
             }
         }
 
-        [HttpGet("~/clan/{tag}")]
-        public async Task<ActionResult<ResponseWithMetadataAndContainer<PlayerResponse, ClanResponseFull>>> GetClan(
-            string tag,
-            [FromQuery] int page = 1,
-            [FromQuery] int count = 10,
-            [FromQuery] string sortBy = "pp",
-            [FromQuery] Order order = Order.Desc,
-            [FromQuery] string? search = null,
-            [FromQuery] string? capturedLeaderboards = null)
+        [NonAction]
+        public async Task<ActionResult<ResponseWithMetadataAndContainer<PlayerResponse, ClanResponseFull>>> PopulateClan(
+            Clan clan,
+            string? currentID,
+            int page = 1,
+            int count = 10,
+            string sortBy = "pp",
+            Order order = Order.Desc,
+            string? search = null,
+            string? capturedLeaderboards = null)
         {
-            string? currentID = HttpContext.CurrentUserID(_context);
-            Clan? clan = await CurrentClan(tag, currentID);
-            if (clan == null)
-            {
-                return NotFound();
-            }
-
             var players = _context
                 .Players
                 .Include(p => p.ProfileSettings)
@@ -225,8 +219,8 @@ namespace BeatLeader_Server.Controllers
             };
         }
 
-        [HttpGet("~/clan/{tag}/maps")]
-        public async Task<ActionResult<ResponseWithMetadataAndContainer<ClanRankingResponse, ClanResponseFull>>> GetClanWithMaps(
+        [HttpGet("~/clan/{tag}")]
+        public async Task<ActionResult<ResponseWithMetadataAndContainer<PlayerResponse, ClanResponseFull>>> GetClan(
             string tag,
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
@@ -242,6 +236,43 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
+            return await PopulateClan(clan, currentID, page, count, sortBy, order, search, capturedLeaderboards);
+        }
+
+        [HttpGet("~/clan/id/{id}")]
+        public async Task<ActionResult<ResponseWithMetadataAndContainer<PlayerResponse, ClanResponseFull>>> GetClanById(
+            int id,
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10,
+            [FromQuery] string sortBy = "pp",
+            [FromQuery] Order order = Order.Desc,
+            [FromQuery] string? search = null,
+            [FromQuery] string? capturedLeaderboards = null)
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            Clan? clan = await _context
+                    .Clans
+                    .Where(c => c.Id == id)
+                    .FirstOrDefaultAsync();
+            if (clan == null)
+            {
+                return NotFound();
+            }
+
+            return await PopulateClan(clan, currentID, page, count, sortBy, order, search, capturedLeaderboards);
+        }
+
+        [NonAction]
+        public async Task<ActionResult<ResponseWithMetadataAndContainer<ClanRankingResponse, ClanResponseFull>>> PopulateClanWithMaps(
+            Clan clan,
+            string? currentID,
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10,
+            [FromQuery] string sortBy = "pp",
+            [FromQuery] Order order = Order.Desc,
+            [FromQuery] string? search = null,
+            [FromQuery] string? capturedLeaderboards = null)
+        {
             var rankings = _context
                 .ClanRanking
                 .Include(p => p.Leaderboard)
@@ -390,6 +421,49 @@ namespace BeatLeader_Server.Controllers
                     Total = await rankings.CountAsync()
                 }
             };
+        }
+
+        [HttpGet("~/clan/{tag}/maps")]
+        public async Task<ActionResult<ResponseWithMetadataAndContainer<ClanRankingResponse, ClanResponseFull>>> GetClanWithMaps(
+            string tag,
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10,
+            [FromQuery] string sortBy = "pp",
+            [FromQuery] Order order = Order.Desc,
+            [FromQuery] string? search = null,
+            [FromQuery] string? capturedLeaderboards = null)
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            Clan? clan = await CurrentClan(tag, currentID);
+            if (clan == null)
+            {
+                return NotFound();
+            }
+
+            return await PopulateClanWithMaps(clan, currentID, page, count, sortBy, order, search, capturedLeaderboards);
+        }
+
+        [HttpGet("~/clan/id/{id}/maps")]
+        public async Task<ActionResult<ResponseWithMetadataAndContainer<ClanRankingResponse, ClanResponseFull>>> GetClanWithMapsById(
+            int id,
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10,
+            [FromQuery] string sortBy = "pp",
+            [FromQuery] Order order = Order.Desc,
+            [FromQuery] string? search = null,
+            [FromQuery] string? capturedLeaderboards = null)
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            Clan? clan = await _context
+                    .Clans
+                    .Where(c => c.Id == id)
+                    .FirstOrDefaultAsync();
+            if (clan == null)
+            {
+                return NotFound();
+            }
+
+            return await PopulateClanWithMaps(clan, currentID, page, count, sortBy, order, search, capturedLeaderboards);
         }
 
         public class ClanPoint {
