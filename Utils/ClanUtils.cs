@@ -62,7 +62,13 @@ namespace BeatLeader_Server.Utils
                 * Update the map status and captured leaderboard status for whatever clan owns the leaderboard now
                 */
 
-            var playerClans = newScore.Player?.Clans?.ToList();
+            var playerClans = newScore
+                .Player?
+                .Clans?
+                .OrderBy(c => newScore.Player?.ClanOrder.IndexOf(c.Tag) ?? 0)
+                .ThenBy(c => c.Id)
+                .Take(1)
+                .ToList();
             
             if (playerClans == null || playerClans.Count == 0) return (null, null);
             var playerClanIds = playerClans.Select(c => c.Id).ToList();
@@ -196,7 +202,8 @@ namespace BeatLeader_Server.Utils
                         s.Accuracy,
                         s.Rank,
                         s.ModifiedScore,
-                        s.Player.Clans
+                        s.Player.Clans,
+                        s.Player.ClanOrder
                         })
                     .ToList()
                     .OrderByDescending(cr => Math.Round(cr.Pp, 2))
@@ -213,7 +220,12 @@ namespace BeatLeader_Server.Utils
                 {
                     continue;
                 }
-                foreach (Clan clan in score.Clans)
+                foreach (Clan clan in 
+                    score
+                        .Clans
+                        .OrderBy(c => score.ClanOrder.IndexOf(c.Tag))
+                        .ThenBy(c => c.Id)
+                        .Take(1))
                 {
                     if (!clanRankingData.ContainsKey(clan.Id))
                     {
@@ -353,6 +365,27 @@ namespace BeatLeader_Server.Utils
             return changes;
         }
 
+        public static async Task<List<ClanRankingChanges>?> RecalculateClanRankingForPlayer(AppContext context, string playerId) {
+            var leaderboardsRecalc = context
+                .Scores
+                .Where(s => s.Pp > 0 && !s.Qualification && s.PlayerId == playerId)
+                .Include(s => s.Leaderboard)
+                .ThenInclude(lb => lb.Difficulty)
+                .Include(s => s.Leaderboard)
+                .ThenInclude(lb => lb.ClanRanking)
+                .Select(s => s.Leaderboard)
+                .ToList();
+            var result = new List<ClanRankingChanges>(); 
+            foreach (var leaderboard in leaderboardsRecalc)
+            {
+                var changes = context.CalculateClanRankingSlow(leaderboard);
+                if (changes != null) {
+                    result.AddRange(changes);
+                }
+            }
+            await context.BulkSaveChangesAsync();
+            return result;
+        }
         public static async Task UpdateClanRankingRanks(AppContext context) {
             var clans = await context
                 .Clans

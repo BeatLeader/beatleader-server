@@ -594,10 +594,10 @@ namespace BeatLeader_Server.Controllers {
                 .ToListAsync();
             foreach (var score in result.Data)
             {
-                PostProcessSettings(score.Player);
+                PostProcessSettings(score.Player, false);
                 score.MyScore = myScores.FirstOrDefault(s => s.LeaderboardId == score.LeaderboardId);
                 if (score.MyScore != null) {
-                    PostProcessSettings(score.MyScore.Player);
+                    PostProcessSettings(score.MyScore.Player, false);
                 }
             }
 

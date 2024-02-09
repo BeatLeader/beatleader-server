@@ -136,7 +136,7 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
-                return PostProcessSettings(result);
+                return PostProcessSettings(result, true);
             } else {
                 return NotFound();
             }
@@ -536,7 +536,7 @@ namespace BeatLeader_Server.Controllers
 
             foreach (var item in result.Data)
             {
-                PostProcessSettings(item);
+                PostProcessSettings(item, false);
             }
 
             if (ids?.Count > 0)
@@ -772,7 +772,7 @@ namespace BeatLeader_Server.Controllers
                     Clans = p.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                 })
                 .ToListAsync())
-                .Select(PostProcessSettings);
+                .Select(p => PostProcessSettings(p, false));
 
             if (ids?.Count > 0)
             {

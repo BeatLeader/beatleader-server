@@ -84,9 +84,12 @@ namespace BeatLeader_Server.Services
 
         private string? ActionMessage(AppContext _context, ClanRankingChangesDescription description) {
             if (description.GlobalMapEvent == GlobalMapEvent.ranked) return "New batch of maps were ranked:";
-            if (description.PlayerId == null || description.ClanId == null) return null;
+            if (description.PlayerId == null) return null;
 
             var player = _context.Players.Find(description.PlayerId);
+            if (description.GlobalMapEvent == GlobalMapEvent.priorityChange) return $"{player.Name} switched clan order which";
+
+            if (description.ClanId == null) return null;
             var clan = description.Clan ?? _context.Clans.Find(description);
 
             switch (description.GlobalMapEvent)

@@ -212,7 +212,7 @@ namespace BeatLeader_Server.Controllers
                         ProfileSettings = p.ProfileSettings,
                     })
                     .ToListAsync())
-                    .Select(PostProcessSettings),
+                    .Select(p => PostProcessSettings(p, false)),
                 Metadata = new Metadata
                 {
                     Page = 1,

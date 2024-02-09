@@ -107,7 +107,7 @@ namespace BeatLeader_Server.Controllers {
                     .FirstOrDefault() : null,
                 ClanRequest = user.ClanRequest,
                 BannedClans = user.BannedClans,
-                Friends = friends != null ? friends.Friends.Select(ResponseFullFromPlayer).Select(PostProcessSettings).ToList() : new List<PlayerResponseFull>(),
+                Friends = friends != null ? friends.Friends.Select(ResponseFullFromPlayer).Select(p => PostProcessSettings(p, true)).ToList() : new List<PlayerResponseFull>(),
                 Login = _readContext.Auths.FirstOrDefault(a => a.Id == intId)?.Login,
 
                 Migrated = _readContext.AccountLinks.FirstOrDefault(a => a.SteamID == id) != null,
@@ -339,13 +339,14 @@ namespace BeatLeader_Server.Controllers {
                 return BadRequest("You are banned!");
             }
 
+            int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+
             if (name != null || country != null) {
                 var changes = player.Changes;
                 if (changes == null) {
                     changes = player.Changes = new List<PlayerChange>();
                 }
                 PlayerChange? lastChange = changes.Count > 0 ? changes.Where(ch => ch.NewCountry != null).MaxBy(ch => ch.Timestamp) : null;
-                int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                 PlayerChange newChange = new PlayerChange {
                     OldName = player.Name,
                     OldCountry = player.Country,
@@ -431,7 +432,34 @@ namespace BeatLeader_Server.Controllers {
                 player.ProfileSettings = settings;
             }
             if (Request.Query.ContainsKey("clanOrder")) {
-                player.ClanOrder = clanOrder ?? "";
+                var newClanOrder = clanOrder ?? "";
+
+                if (player.ClanOrder != null) {
+                    var lastChange = _context
+                        .ClanOrderChanges
+                        .Where(p => p.PlayerId == userId)
+                        .OrderByDescending(ch => ch.Timestamp)
+                        .FirstOrDefault();
+
+                    if (lastChange != null && !adminChange && (timestamp - lastChange.Timestamp) < 60 * 60 * 24 * 7) {
+                        return BadRequest("Error. You can change clan order after " + (int)(7 - (timestamp - lastChange.Timestamp) / (60 * 60 * 24)) + " day(s)");
+                    }
+
+                    _context.ClanOrderChanges.Add(new ClanOrderChange {
+                        PlayerId = userId,
+                        Timestamp = timestamp,
+                        OldOrder = player.ClanOrder,
+                        NewOrder = newClanOrder
+                    });
+
+                    ClanTaskService.AddJob(new ClanRankingChangesDescription {
+                        GlobalMapEvent = GlobalMapEvent.priorityChange,
+                        PlayerId = player.Id,
+                        Changes = await ClanUtils.RecalculateClanRankingForPlayer(_context, player.Id),
+                    });
+
+                    player.ClanOrder = newClanOrder;
+                }
             }
 
             if (Request.Query.ContainsKey("profileAppearance")) {

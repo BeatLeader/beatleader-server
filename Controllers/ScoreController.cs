@@ -109,7 +109,7 @@ namespace BeatLeader_Server.Controllers
 
             if (score != null)
             {
-                score.Player = PostProcessSettings(score.Player);
+                score.Player = PostProcessSettings(score.Player, false);
                 return score;
             }
             else
@@ -123,6 +123,34 @@ namespace BeatLeader_Server.Controllers
             }
         }
 
+        [HttpGet("~/score/{leaderboardContext}/{playerID}/{hash}/{diff}/{mode}")]
+        public async Task<ActionResult<ScoreResponseWithDifficulty>> GetPlayerScore(
+            LeaderboardContexts leaderboardContext,
+            string playerID, 
+            string hash, 
+            string diff, 
+            string mode)
+        {
+            playerID = _context.PlayerIdToMain(playerID);
+
+            int? score = await _context
+                    .Scores
+                    .Where(s => s.ValidContexts.HasFlag(leaderboardContext) &&
+                                s.Leaderboard.Song.Hash.ToLower() == hash.ToLower() &&
+                                s.Leaderboard.Difficulty.DifficultyName.ToLower() == diff.ToLower() &&
+                                s.Leaderboard.Difficulty.ModeName.ToLower() == mode.ToLower())
+                    .Select(s => s.Id)
+                    .FirstOrDefaultAsync();
+
+            if (score != null)
+            {
+                return await GetScore((int)score, false);
+            }
+            else
+            {
+                return NotFound();
+            }
+        }
         [HttpGet("~/score/random")]
         public async Task<ActionResult<Score>> GetRandomScore()
         {
@@ -543,7 +571,7 @@ namespace BeatLeader_Server.Controllers
                 if (highlightedScore != null)
                 {
                     result.Selection = highlightedScore;
-                    result.Selection.Player = PostProcessSettings(result.Selection.Player);
+                    result.Selection.Player = PostProcessSettings(result.Selection.Player, false);
                     if (scope.ToLower() == "friends" || scope.ToLower() == "country") {
                         result.Selection.Rank = await query.CountAsync(s => s.Rank < result.Selection.Rank) + 1;
                     }
@@ -733,7 +761,7 @@ namespace BeatLeader_Server.Controllers
                 if (highlightedScore != null)
                 {
                     result.Selection = highlightedScore;
-                    result.Selection.Player = PostProcessSettings(result.Selection.Player);
+                    result.Selection.Player = PostProcessSettings(result.Selection.Player, false);
                     if (scope.ToLower() == "friends" || scope.ToLower() == "country") {
                         result.Selection.Rank = query.Count(s => s.Rank < result.Selection.Rank) + 1;
                     }
@@ -941,7 +969,7 @@ namespace BeatLeader_Server.Controllers
                 for (int i = 0; i < resultList.Count; i++)
                 {
                     var score = resultList[i];
-                    score.Player = PostProcessSettings(score.Player);
+                    score.Player = PostProcessSettings(score.Player, false);
                     score.Rank = i + (page - 1) * count + 1;
 
                     if (score.Player.Bot) {

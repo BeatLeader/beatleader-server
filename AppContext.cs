@@ -82,6 +82,7 @@ namespace BeatLeader_Server
         public DbSet<GlobalMapHistory> GlobalMapHistory { get; set; }
         public DbSet<GlobalMapChange> GlobalMapChanges { get; set; }
         public DbSet<FeaturedPlaylist> FeaturedPlaylist { get; set; }
+        public DbSet<ClanOrderChange> ClanOrderChanges { get; set; }
 
         public void RejectChanges()
         {

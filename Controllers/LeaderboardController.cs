@@ -567,7 +567,7 @@ namespace BeatLeader_Server.Controllers {
                 }
 
                 foreach (var score in leaderboard.Scores) {
-                    score.Player = PostProcessSettings(score.Player);
+                    score.Player = PostProcessSettings(score.Player, false);
                 }
             }
 
@@ -639,16 +639,16 @@ namespace BeatLeader_Server.Controllers {
         //    return Ok();
         //}
 
-        [HttpGet("~/leaderboard/clanRankings/{leaderboardId}/{clanRankingId}")]
-        public async Task<ActionResult<ClanRankingResponse>> GetClanRankingAssociatedScores(
+        [HttpGet("~/leaderboard/clanRankings/{leaderboardId}/clan/{clanId}")]
+        public async Task<ActionResult<ClanRankingResponse>> GetClanRankingAssociatedScoresClanId(
             string leaderboardId,
-            int clanRankingId,
+            int clanId,
             [FromQuery] int page = 1,
             [FromQuery] int count = 5)
         {
             var clanRankingScores = _context
                 .ClanRanking
-                .Where(cr => cr.LeaderboardId == leaderboardId && cr.Id == clanRankingId)
+                .Where(cr => cr.LeaderboardId == leaderboardId && cr.ClanId == clanId)
                 .Select(cr => new ClanRankingResponse
                 {
                     Id = cr.Id,
@@ -662,7 +662,11 @@ namespace BeatLeader_Server.Controllers {
                     Leaderboard = cr.Leaderboard,
                     AssociatedScores = _context
                         .Scores
-                        .Where(s => s.LeaderboardId == leaderboardId && s.ValidContexts.HasFlag(LeaderboardContexts.General) && s.Player.Clans.Contains(cr.Clan))
+                        .Where(s => 
+                            s.LeaderboardId == leaderboardId && 
+                            s.ValidContexts.HasFlag(LeaderboardContexts.General) && 
+                            s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Take(1).Contains(cr.Clan))
                         .Include(sc => sc.Player)
                         .ThenInclude(p => p.ProfileSettings)
                         .Include(s => s.Player)
@@ -699,7 +703,8 @@ namespace BeatLeader_Server.Controllers {
                                 CountryRank = s.Player.CountryRank,
                                 Role = s.Player.Role,
                                 ProfileSettings = s.Player.ProfileSettings,
-                                Clans = s.Player.Clans
+                                Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Take(1)
                                     .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                             },
                             RankVoting = null,
@@ -707,7 +712,96 @@ namespace BeatLeader_Server.Controllers {
                         .ToList(),
                     AssociatedScoresCount = _context
                         .Scores
-                        .Where(sc => sc.LeaderboardId == leaderboardId && sc.ValidContexts.HasFlag(LeaderboardContexts.General) && sc.Player.Clans.Contains(cr.Clan))
+                        .Where(sc => 
+                            sc.LeaderboardId == leaderboardId && 
+                            sc.ValidContexts.HasFlag(LeaderboardContexts.General) && 
+                            sc.Player.Clans.OrderBy(c => sc.Player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Take(1).Contains(cr.Clan))
+                        .Count()
+                })
+                .FirstOrDefault();
+
+            return clanRankingScores;
+        }
+
+        [HttpGet("~/leaderboard/clanRankings/{leaderboardId}/{clanRankingId}")]
+        public async Task<ActionResult<ClanRankingResponse>> GetClanRankingAssociatedScores(
+            string leaderboardId,
+            int clanRankingId,
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 5)
+        {
+            var clanRankingScores = _context
+                .ClanRanking
+                .Where(cr => cr.LeaderboardId == leaderboardId && cr.Id == clanRankingId)
+                .Select(cr => new ClanRankingResponse
+                {
+                    Id = cr.Id,
+                    Clan = cr.Clan,
+                    LastUpdateTime = cr.LastUpdateTime,
+                    AverageRank = cr.AverageRank,
+                    Pp = cr.Pp,
+                    AverageAccuracy = cr.AverageAccuracy,
+                    TotalScore = cr.TotalScore,
+                    LeaderboardId = cr.LeaderboardId,
+                    Leaderboard = cr.Leaderboard,
+                    AssociatedScores = _context
+                        .Scores
+                        .Where(s => 
+                            s.LeaderboardId == leaderboardId && 
+                            s.ValidContexts.HasFlag(LeaderboardContexts.General) && 
+                            s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Take(1).Contains(cr.Clan))
+                        .Include(sc => sc.Player)
+                        .ThenInclude(p => p.ProfileSettings)
+                        .Include(s => s.Player)
+                        .ThenInclude(s => s.Clans)
+                        .OrderByDescending(s => s.Pp)
+                        .Skip((page - 1) * count)
+                        .Take(count)
+                        .Select(s => new ScoreResponse
+                        {
+                            Id = s.Id,
+                            BaseScore = s.BaseScore,
+                            ModifiedScore = s.ModifiedScore,
+                            PlayerId = s.PlayerId,
+                            Accuracy = s.Accuracy,
+                            Pp = s.Pp,
+                            Rank = s.Rank,
+                            Modifiers = s.Modifiers,
+                            BadCuts = s.BadCuts,
+                            MissedNotes = s.MissedNotes,
+                            BombCuts = s.BombCuts,
+                            WallsHit = s.WallsHit,
+                            Pauses = s.Pauses,
+                            FullCombo = s.FullCombo,
+                            Timeset = s.Timeset,
+                            Timepost = s.Timepost,
+                            Player = new PlayerResponse
+                            {
+                                Id = s.Player.Id,
+                                Name = s.Player.Name,
+                                Avatar = s.Player.Avatar,
+                                Country = s.Player.Country,
+                                Pp = s.Player.Pp,
+                                Rank = s.Player.Rank,
+                                CountryRank = s.Player.CountryRank,
+                                Role = s.Player.Role,
+                                ProfileSettings = s.Player.ProfileSettings,
+                                Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Take(1)
+                                    .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                            },
+                            RankVoting = null,
+                        })
+                        .ToList(),
+                    AssociatedScoresCount = _context
+                        .Scores
+                        .Where(sc => 
+                            sc.LeaderboardId == leaderboardId && 
+                            sc.ValidContexts.HasFlag(LeaderboardContexts.General) && 
+                            sc.Player.Clans.OrderBy(c => sc.Player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Take(1).Contains(cr.Clan))
                         .Count()
                 })
                 .FirstOrDefault();
