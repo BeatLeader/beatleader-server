@@ -180,7 +180,7 @@ namespace BeatLeader_Server.Controllers
             HttpContext.Response.OnCompleted(async () => {
 
                 ClanTaskService.AddJob(new ClanRankingChangesDescription {
-                    PlayerAction = PlayerClanAction.create,
+                    GlobalMapEvent = GlobalMapEvent.create,
                     PlayerId = player.Id,
                     ClanId = newClan.Id,
                     Clan = newClan,
@@ -269,7 +269,7 @@ namespace BeatLeader_Server.Controllers
                 await _context.BulkSaveChangesAsync();
 
                 ClanTaskService.AddJob(new ClanRankingChangesDescription {
-                    PlayerAction = PlayerClanAction.dismantle,
+                    GlobalMapEvent = GlobalMapEvent.dismantle,
                     PlayerId = player.Id,
                     Clan = clan,
                     ClanId = clan.Id,
@@ -557,7 +557,7 @@ namespace BeatLeader_Server.Controllers
 
             HttpContext.Response.OnCompleted(async () => {
                 ClanTaskService.AddJob(new ClanRankingChangesDescription {
-                    PlayerAction = PlayerClanAction.kick,
+                    GlobalMapEvent = GlobalMapEvent.kick,
                     PlayerId = user.Player.Id,
                     Clan = clan,
                     ClanId = clan.Id,
@@ -615,7 +615,7 @@ namespace BeatLeader_Server.Controllers
 
             HttpContext.Response.OnCompleted(async () => {
                 ClanTaskService.AddJob(new ClanRankingChangesDescription {
-                    PlayerAction = PlayerClanAction.join, 
+                    GlobalMapEvent = GlobalMapEvent.join, 
                     Clan = clan,
                     PlayerId = user.Player.Id,
                     ClanId = clan.Id,
@@ -678,7 +678,7 @@ namespace BeatLeader_Server.Controllers
 
             if (clan.PlayerChangesCallback != null) {
                 ClanTaskService.AddJob(new ClanRankingChangesDescription {
-                    PlayerAction = PlayerClanAction.reject,
+                    GlobalMapEvent = GlobalMapEvent.reject,
                     PlayerId = user.Player.Id,
                     Clan = clan,
                     ClanId = clan.Id
@@ -727,7 +727,7 @@ namespace BeatLeader_Server.Controllers
 
             HttpContext.Response.OnCompleted(async () => {
                 ClanTaskService.AddJob(new ClanRankingChangesDescription {
-                    PlayerAction = PlayerClanAction.leave,
+                    GlobalMapEvent = GlobalMapEvent.leave,
                     Clan = clan,
                     ClanId = clan.Id,
                     PlayerId = user.Player.Id,

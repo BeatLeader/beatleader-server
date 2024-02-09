@@ -19,16 +19,19 @@ namespace BeatLeader_Server.Controllers
 
         IAmazonS3 _s3Client;
         CurrentUserController _userController;
+        ScreenshotController _screenshotController;
         IWebHostEnvironment _environment;
 
         public ClanController(
             AppContext context,
             IWebHostEnvironment env,
             CurrentUserController userController,
+            ScreenshotController screenshotController,
             IConfiguration configuration)
         {
             _context = context;
             _userController = userController;
+            _screenshotController = screenshotController;
             _environment = env;
             _s3Client = configuration.GetS3Client();
         }
@@ -506,7 +509,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/clans/refreshglobalmap")]
-        public async Task<ActionResult> RefreshGlobalMap() {
+        public async Task<ActionResult<byte[]>> RefreshGlobalMap() {
             if (HttpContext != null) {
                 string currentID = HttpContext.CurrentUserID(_context);
                 var currentPlayer = await _context.Players.FindAsync(currentID);
@@ -571,7 +574,11 @@ namespace BeatLeader_Server.Controllers
             {
                 ContractResolver = contractResolver
             })).ToStream());
-            return Ok();
+
+            var file = await _screenshotController.DownloadFileContent("general", "clansmap/save", new Dictionary<string, string> { });
+            await _s3Client.UploadAsset("clansmap-globalcache.json", file);
+
+            return file;
         }
 
         public class SimulationCache {

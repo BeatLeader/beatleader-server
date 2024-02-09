@@ -166,8 +166,6 @@ namespace BeatLeader_Server.Services
                     (float totalpp, int totalRanks) = await RefreshLeaderboardPlayers(leaderboard.Id, _context);
                     await _context.SaveChangesAsync();
 
-                    
-
                     if (dsClient != null)
                     {
                         string message = "The **" + difficulty.DifficultyName + "** diff of **" + leaderboard.Song.Name + "** was ranked! \n";
@@ -198,6 +196,14 @@ namespace BeatLeader_Server.Services
                 }
                 RankedMapCount = RefreshRankedMapCount(_context);
 
+                foreach (var leaderboard in leaderboards)
+                {
+                    ClanTaskService.AddJob(new ClanRankingChangesDescription {
+                        Changes = _context.CalculateClanRankingSlow(leaderboard),
+                        GlobalMapEvent = GlobalMapEvent.ranked
+                    });
+                }
+
                 var _playlistController = scope.ServiceProvider.GetRequiredService<PlaylistController>();
                 await _playlistController.RefreshNominatedPlaylist();
                 await _playlistController.RefreshQualifiedPlaylist();
@@ -211,11 +217,7 @@ namespace BeatLeader_Server.Services
                 var _playerContextController = scope.ServiceProvider.GetRequiredService<PlayerContextRefreshController>();
                 await _playerContextController.RefreshPlayersAllContext();
                 await _playerContextController.RefreshPlayersStatsAllContexts();
-
-                foreach (var leaderboard in leaderboards)
-                {
-                    _ = _context.CalculateClanRankingSlow(leaderboard);
-                }
+                
                 await _context.BulkSaveChangesAsync();
             }
         }

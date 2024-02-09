@@ -62,10 +62,11 @@ namespace BeatLeader_Server.Services
     }
 
     public class ClanRankingChangesDescription {
+        public GlobalMapEvent? GlobalMapEvent { get; set; }
+
         public string? PlayerId { get; set; }
         public int? ClanId { get; set; }
         public Clan? Clan { get; set; }
-        public PlayerClanAction? PlayerAction { get; set; }
         public Score? Score { get; set; }
         public List<ClanRankingChanges>? Changes { get; set; }
     }
@@ -82,22 +83,23 @@ namespace BeatLeader_Server.Services
         }
 
         private string? ActionMessage(AppContext _context, ClanRankingChangesDescription description) {
+            if (description.GlobalMapEvent == GlobalMapEvent.ranked) return "New batch of maps were ranked:";
             if (description.PlayerId == null || description.ClanId == null) return null;
 
             var player = _context.Players.Find(description.PlayerId);
             var clan = description.Clan ?? _context.Clans.Find(description);
 
-            switch (description.PlayerAction)
+            switch (description.GlobalMapEvent)
             {
-                case PlayerClanAction.create:
+                case GlobalMapEvent.create:
                     return $"{player.Name} created [{clan.Tag}] which";
-                case PlayerClanAction.dismantle:
+                case GlobalMapEvent.dismantle:
                     return $"{player.Name} dismantled [{clan.Tag}] which";
-                case PlayerClanAction.kick:
+                case GlobalMapEvent.kick:
                     return $"{player.Name} was kicked from [{clan.Tag}] which";
-                case PlayerClanAction.join:
+                case GlobalMapEvent.join:
                     return $"{player.Name} joined [{clan.Tag}] which";
-                case PlayerClanAction.leave:
+                case GlobalMapEvent.leave:
                     return $"{player.Name} left [{clan.Tag}] which";
                 default:
                     break;
@@ -159,7 +161,7 @@ namespace BeatLeader_Server.Services
                 var changeRecord = change.ChangeRecord;
                 changeRecord.LeaderboardId = change.Leaderboard?.Id;
                 changeRecord.PlayerId = job.PlayerId;
-                changeRecord.PlayerAction = job.PlayerAction;
+                changeRecord.PlayerAction = job.GlobalMapEvent;
                 changeRecord.ScoreId = job.Score?.Id;
 
                 if (change.Leaderboard != null) {
@@ -282,7 +284,7 @@ namespace BeatLeader_Server.Services
                             }
                         }
 
-                        if (job.PlayerAction != null && job.ClanId != null) {
+                        if (job.GlobalMapEvent != null && job.ClanId != null) {
                             var clan = _context.Clans.FirstOrDefault(c => c.Id == job.ClanId);
                             if (clan?.PlayerChangesCallback != null) {
                                 var httpClient = new HttpClient();
@@ -290,18 +292,15 @@ namespace BeatLeader_Server.Services
                                 try {
                                     foreach (var callback in callbacks.Distinct())
                                     {
-                                        await httpClient.GetStringAsync($"{callback}?action={job.PlayerAction}&player={job.PlayerId}");
+                                        await httpClient.GetStringAsync($"{callback}?action={job.GlobalMapEvent}&player={job.PlayerId}");
                                     }
                                 } catch { }
                             }
                         }
                     }
 
-                    await _clanController.RefreshGlobalMap();
-                        
-                    var file = await _screenController.DownloadFileContent("general", "clansmap/save", new Dictionary<string, string> { });
-                    await s3.UploadAsset("clansmap-globalcache.json", file);
-                    var newGlobalMap = file.ObjectFromArray();
+                    var file = (await _clanController.RefreshGlobalMap()).Value;
+                    var newGlobalMap = file?.ObjectFromArray();
 
                     foreach (var job in jobsToProcess) {
                         if (job.Changes != null && job.Changes.Count > 0) {

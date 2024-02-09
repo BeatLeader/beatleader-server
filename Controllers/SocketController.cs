@@ -59,14 +59,14 @@ namespace BeatLeader_Server.Controllers
         public string? PlayerId { get; set; }
         public int? ClanId { get; set; }
         public ClanResponseFull? Clan { get; set; }
-        public PlayerClanAction? PlayerAction { get; set; }
+        public GlobalMapEvent? PlayerAction { get; set; }
         public ScoreResponse? Score { get; set; }
         public List<ClanRankingChangesResponse>? Changes { get; set; }
 
         public ClanRankingChangesDescriptionResponse(ClanRankingChangesDescription description) {
             PlayerId = description.PlayerId;
             ClanId = description.ClanId;
-            PlayerAction = description.PlayerAction;
+            PlayerAction = description.GlobalMapEvent;
 
             var clan = description.Clan;
             if (clan != null) {
