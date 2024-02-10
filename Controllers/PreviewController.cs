@@ -31,19 +31,19 @@ namespace BeatLeader_Server.Controllers
         private readonly IAmazonS3 _s3Client;
         private readonly IServerTiming _serverTiming;
 
-        private Image<Rgba32> StarImage;
-        private Image<Rgba32> AvatarMask;
-        private Image<Rgba32> AvatarShadow;
-        private Image<Rgba32> GradientMask; 
-        private Image<Rgba32> CoverMask;
-        private Image<Rgba32> FinalMask;
-        private Image<Rgba32> GradientMaskBlurred;
-        private FontFamily FontFamily;
-        private FontFamily AudiowideFontFamily;
-        private IReadOnlyList<FontFamily> FallbackFamilies;
+        private static Image<Rgba32> StarImage;
+        private static Image<Rgba32> AvatarMask;
+        private static Image<Rgba32> AvatarShadow;
+        private static Image<Rgba32> GradientMask; 
+        private static Image<Rgba32> CoverMask;
+        private static Image<Rgba32> FinalMask;
+        private static Image<Rgba32> GradientMaskBlurred;
+        private static FontFamily FontFamily;
+        private static FontFamily AudiowideFontFamily;
+        private static IReadOnlyList<FontFamily> FallbackFamilies;
 
-        private EmbedGenerator _generalEmbedGenerator;
-        private EmbedGenerator _twitterEmbedGenerator;
+        private static EmbedGenerator _generalEmbedGenerator;
+        private static EmbedGenerator _twitterEmbedGenerator;
 
         public PreviewController(
             AppContext context,
@@ -56,57 +56,59 @@ namespace BeatLeader_Server.Controllers
             _serverTiming = serverTiming;
             _s3Client = configuration.GetS3Client();
 
-            StarImage = LoadImage("Star.png");
-            AvatarMask = LoadImage("AvatarMask.png");
-            AvatarShadow = LoadImage("AvatarShadow.png");
-            GradientMask = LoadImage("GradientMask.png");
-            CoverMask = LoadImage("CoverMask.png");
-            FinalMask = LoadImage("FinalMask.png");
-            GradientMaskBlurred = LoadImage("GradientMaskBlurred.png");
+            if (StarImage == null) {
+                StarImage = LoadImage("Star.png");
+                AvatarMask = LoadImage("AvatarMask.png");
+                AvatarShadow = LoadImage("AvatarShadow.png");
+                GradientMask = LoadImage("GradientMask.png");
+                CoverMask = LoadImage("CoverMask.png");
+                FinalMask = LoadImage("FinalMask.png");
+                GradientMaskBlurred = LoadImage("GradientMaskBlurred.png");
 
-            var fontCollection = new FontCollection();
-            fontCollection.Add(_webHostEnvironment.WebRootPath + "/fonts/Teko-SemiBold.ttf");
-            FontFamily = fontCollection.Families.First();
+                var fontCollection = new FontCollection();
+                fontCollection.Add(_webHostEnvironment.WebRootPath + "/fonts/Teko-SemiBold.ttf");
+                FontFamily = fontCollection.Families.First();
 
-            var fontCollection2 = new FontCollection();
-            fontCollection2.Add(_webHostEnvironment.WebRootPath + "/fonts/Audiowide-Regular.ttf");
-            AudiowideFontFamily = fontCollection2.Families.First();
+                var fontCollection2 = new FontCollection();
+                fontCollection2.Add(_webHostEnvironment.WebRootPath + "/fonts/Audiowide-Regular.ttf");
+                AudiowideFontFamily = fontCollection2.Families.First();
 
-            var fallbackCollection = new FontCollection();
+                var fallbackCollection = new FontCollection();
 
-            var fonts = Directory.GetFiles(_webHostEnvironment.WebRootPath + "/fonts/", "*.ttf", SearchOption.AllDirectories);
-            foreach (var f in fonts)
-            {
-                fallbackCollection.Add(f);
+                var fonts = Directory.GetFiles(_webHostEnvironment.WebRootPath + "/fonts/", "*.ttf", SearchOption.AllDirectories);
+                foreach (var f in fonts)
+                {
+                    fallbackCollection.Add(f);
+                }
+
+                FallbackFamilies = fallbackCollection.Families.ToList();
+
+                _generalEmbedGenerator = new EmbedGenerator(
+                    new Size(500, 300),
+                    StarImage,
+                    AvatarMask,
+                    AvatarShadow,
+                    GradientMask,
+                    GradientMaskBlurred,
+                    CoverMask,
+                    FinalMask,
+                    FontFamily,
+                    FallbackFamilies
+                );
+
+                _twitterEmbedGenerator = new EmbedGenerator(
+                    new Size(512, 268),
+                    StarImage,
+                    AvatarMask,
+                    AvatarShadow,
+                    GradientMask,
+                    GradientMaskBlurred,
+                    CoverMask,
+                    FinalMask,
+                    FontFamily,
+                    FallbackFamilies
+                );
             }
-
-            FallbackFamilies = fallbackCollection.Families.ToList();
-
-            _generalEmbedGenerator = new EmbedGenerator(
-                new Size(500, 300),
-                StarImage,
-                AvatarMask,
-                AvatarShadow,
-                GradientMask,
-                GradientMaskBlurred,
-                CoverMask,
-                FinalMask,
-                FontFamily,
-                FallbackFamilies
-            );
-
-            _twitterEmbedGenerator = new EmbedGenerator(
-                new Size(512, 268),
-                StarImage,
-                AvatarMask,
-                AvatarShadow,
-                GradientMask,
-                GradientMaskBlurred,
-                CoverMask,
-                FinalMask,
-                FontFamily,
-                FallbackFamilies
-            );
         }
         class SongSelect {
             public string Id { get; set; }
