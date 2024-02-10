@@ -368,8 +368,9 @@ namespace BeatLeader_Server.Controllers
                     clan.Icon = await _s3Client.UploadAsset(fileName, stream);
                 }
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                Console.WriteLine($"EXCEPTION: {e}");
             }
 
             if (description.Length > 100)

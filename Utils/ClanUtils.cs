@@ -482,7 +482,10 @@ namespace BeatLeader_Server.Utils
                 var messageId = await dsClient.SendFileAsync(imagePath, message, flags: MessageFlags.SuppressEmbeds);
                 await Bot.BotService.PublishAnnouncement(1195125703830683678, messageId);
             }
-            } catch { }
+            } catch (Exception e)
+            {
+                Console.WriteLine($"EXCEPTION: {e}");
+            }
         }
 
         public static async Task PostChangesWithMessage(AppContext context, List<ClanRankingChanges>? changes, string postMessage, string? hook) {
@@ -528,7 +531,10 @@ namespace BeatLeader_Server.Utils
                             .Build()
                         });
                     await Bot.BotService.PublishAnnouncement(1195125703830683678, messageId);
-                } catch { }
+                } catch (Exception e)
+                {
+                    Console.WriteLine($"EXCEPTION: {e}");
+                }
             }
         }
     }

@@ -419,7 +419,9 @@ namespace BeatLeader_Server.Controllers {
                 fileName = userId + "R" + rnd.Next(1, 50) + extension;
 
                 player.Avatar = await _s3Client.UploadAsset(fileName, stream);
-            } catch { }
+            } catch (Exception e) { 
+                Console.WriteLine($"EXCEPTION: {e}");
+            }
 
             PatreonFeatures? features = player.PatreonFeatures;
             ProfileSettings? settings = player.ProfileSettings;
@@ -584,7 +586,10 @@ namespace BeatLeader_Server.Controllers {
                 fileName = "cover-" + userId + "R" + rnd.Next(1, 50) + extension;
 
                 player.ProfileSettings.ProfileCover = await _s3Client.UploadAsset(fileName, stream);
-            } catch { }
+            } catch (Exception e)
+            {
+                Console.WriteLine($"EXCEPTION: {e}");
+            }
 
             await _context.SaveChangesAsync();
 

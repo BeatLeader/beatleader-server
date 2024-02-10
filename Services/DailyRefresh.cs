@@ -24,6 +24,7 @@ namespace BeatLeader_Server.Services
 
                 if (hoursUntil21 == 0)
                 {
+                    Console.WriteLine("STARTED DailyRefresh");
                     await RefreshSteamPlayers();
                     await RefreshPatreon();
                     await RefreshBoosters();
@@ -32,6 +33,8 @@ namespace BeatLeader_Server.Services
                     await RefreshSongSuggest();
 
                     hoursUntil21 = 24;
+
+                    Console.WriteLine("DONE DailyRefresh");
                 }
 
                 await Task.Delay(TimeSpan.FromHours(hoursUntil21), stoppingToken);

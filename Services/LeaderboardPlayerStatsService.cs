@@ -36,9 +36,15 @@ namespace BeatLeader_Server.Services {
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
             do {
+                Console.WriteLine("STARTED LeaderboardPlayerStatsService");
                 try {
                     await ProcessJobs();
-                } catch { }
+                } catch (Exception e)
+                {
+                    Console.WriteLine($"EXCEPTION: {e}");
+                }
+
+                Console.WriteLine("DONE LeaderboardPlayerStatsService");
 
                 await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken);
             }

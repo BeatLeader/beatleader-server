@@ -119,9 +119,11 @@ namespace BeatLeader_Server.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
             do {
+                Console.WriteLine("STARTED ClanTaskService");
                 try {
                     await ProcessJobs();
                 } catch { }
+                Console.WriteLine("DONE ClanTaskService");
 
                 await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
                 await ProcessJobs();
@@ -211,9 +213,9 @@ namespace BeatLeader_Server.Services
 
                     if (globalMap != null) {
                         try {
-                            var point = ((IDictionary<string, dynamic>)globalMap.circles)[change.Leaderboard.Id];
-                            changeRecord.OldX = point.x;
-                            changeRecord.OldY = point.y;
+                            var circles = (IDictionary<string, dynamic>)globalMap.circles;
+                            changeRecord.OldX = circles[change.Leaderboard.Id].x;
+                            changeRecord.OldY = circles[change.Leaderboard.Id].y;
                         } catch { }
                     }
                 }
@@ -230,9 +232,9 @@ namespace BeatLeader_Server.Services
                 if (change.Leaderboard != null) {
                     if (globalMap != null) {
                         try {
-                            var point = ((IDictionary<string, dynamic>)globalMap.circles)[change.Leaderboard.Id];
-                            changeRecord.NewX = point.x;
-                            changeRecord.NewY = point.y;
+                            var circles = (IDictionary<string, dynamic>)globalMap.circles;
+                            changeRecord.NewX = circles[change.Leaderboard.Id].x;
+                            changeRecord.NewY = circles[change.Leaderboard.Id].y;
                         } catch { }
                     }
                 }
@@ -297,7 +299,10 @@ namespace BeatLeader_Server.Services
                                     {
                                         await httpClient.GetStringAsync($"{callback}?action={job.GlobalMapEvent}&player={job.PlayerId}");
                                     }
-                                } catch { }
+                                } catch (Exception e)
+                                {
+                                    Console.WriteLine($"EXCEPTION: {e}");
+                                }
                             }
                         }
                     }
@@ -332,8 +337,9 @@ namespace BeatLeader_Server.Services
                     }
 
                     await _context.SaveChangesAsync();
-                } catch (Exception e) {
-
+                } catch (Exception e)
+                {
+                    Console.WriteLine($"EXCEPTION: {e}");
                 }
             }
         }

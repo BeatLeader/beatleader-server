@@ -21,9 +21,13 @@ namespace BeatLeader_Server.Services
             do {
                 if (DateTime.Now.Hour == 0)
                 {
+                    Console.WriteLine("STARTED HistoryService");
+
                     await SetHistories();
                     await SetLastWeek();
                     await SetClanRankingHistories();
+
+                    Console.WriteLine("DONE HistoryService");
                 }
 
                 await Task.Delay(DateTime.Now.Date.AddDays(1) - DateTime.Now, stoppingToken);

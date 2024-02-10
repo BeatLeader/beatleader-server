@@ -27,9 +27,15 @@ namespace BeatLeader_Server.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
             do {
+                Console.WriteLine("STARTED RefreshTaskService");
                 try {
                     await ProcessJobs();
-                } catch { }
+                } catch (Exception e)
+                {
+                    Console.WriteLine($"EXCEPTION: {e}");
+                }
+
+                Console.WriteLine("DONE RefreshTaskService");
 
                 await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken);
                 await ProcessJobs();
