@@ -95,7 +95,11 @@ namespace BeatLeader_Server.Utils
                     .Where(s => 
                         s.ValidContexts.HasFlag(LeaderboardContexts.General) && 
                         s.LeaderboardId == newScore.LeaderboardId && 
-                        s.Player.Clans.Contains(clan))
+                        s.Player.Clans
+                        .OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                        .ThenBy(c => c.Id)
+                        .Take(1)
+                        .Contains(clan))
                     .OrderByDescending(a => Math.Round(a.Pp, 2))
                     .ThenByDescending(a => Math.Round(a.Accuracy, 4))
                     .ThenBy(a => a.Timeset)

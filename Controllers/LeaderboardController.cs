@@ -750,8 +750,13 @@ namespace BeatLeader_Server.Controllers {
                         .Where(s => 
                             s.LeaderboardId == leaderboardId && 
                             s.ValidContexts.HasFlag(LeaderboardContexts.General) && 
-                            s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
-                            .ThenBy(c => c.Id).Take(1).Contains(cr.Clan))
+                            s
+                             .Player
+                             .Clans
+                             .OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                             .ThenBy(c => c.Id)
+                             .Take(1)
+                             .Contains(cr.Clan))
                         .Include(sc => sc.Player)
                         .ThenInclude(p => p.ProfileSettings)
                         .Include(s => s.Player)

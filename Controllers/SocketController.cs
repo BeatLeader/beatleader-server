@@ -11,48 +11,14 @@ using static BeatLeader_Server.Utils.ResponseUtils;
 namespace BeatLeader_Server.Controllers
 {
     public class ClanRankingChangesResponse {
-        public LeaderboardResponse Leaderboard { get; set; }
+        public string LeaderboardId { get; set; }
         public int? PreviousCaptorId { get; set; }
         public int? CurrentCaptorId { get; set; }
 
         public ClanRankingChangesResponse(ClanRankingChanges changes) {
             PreviousCaptorId = changes.PreviousCaptorId;
             CurrentCaptorId = changes.CurrentCaptorId;
-            var l = changes.Leaderboard;
-            Leaderboard = new LeaderboardResponse {
-                Id = l.Id,
-                Song = l.Song,
-                Difficulty = new DifficultyResponse {
-                    Id = l.Difficulty.Id,
-                    Value = l.Difficulty.Value,
-                    Mode = l.Difficulty.Mode,
-                    DifficultyName = l.Difficulty.DifficultyName,
-                    ModeName = l.Difficulty.ModeName,
-                    Status = l.Difficulty.Status,
-                    ModifierValues = l.Difficulty.ModifierValues,
-                    ModifiersRating = l.Difficulty.ModifiersRating,
-                    NominatedTime  = l.Difficulty.NominatedTime,
-                    QualifiedTime  = l.Difficulty.QualifiedTime,
-                    RankedTime = l.Difficulty.RankedTime,
-
-                    Stars  = l.Difficulty.Stars,
-                    PredictedAcc  = l.Difficulty.PredictedAcc,
-                    PassRating  = l.Difficulty.PassRating,
-                    AccRating  = l.Difficulty.AccRating,
-                    TechRating  = l.Difficulty.TechRating,
-                    Type  = l.Difficulty.Type,
-
-                    Njs  = l.Difficulty.Njs,
-                    Nps  = l.Difficulty.Nps,
-                    Notes  = l.Difficulty.Notes,
-                    Bombs  = l.Difficulty.Bombs,
-                    Walls  = l.Difficulty.Walls,
-                    MaxScore = l.Difficulty.MaxScore,
-                    Duration  = l.Difficulty.Duration,
-
-                    Requirements = l.Difficulty.Requirements,
-                }
-            };
+            LeaderboardId = changes.Leaderboard.Id;
         }
     }
     public class ClanRankingChangesDescriptionResponse {
