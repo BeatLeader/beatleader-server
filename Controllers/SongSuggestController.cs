@@ -183,6 +183,7 @@ namespace BeatLeader_Server.Controllers
                     s.Leaderboard.Difficulty.ModeName == "Standard" &&
                     s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked &&
                     s.Player.ScoreStats.RankedPlayCount >= 30 &&
+                    !s.Player.Banned &&
                     s.Player.ScoreStats.LastRankedScoreTime >= activeTreshold)
                 .Select(s => new { 
                     score = new Top10kScore {
