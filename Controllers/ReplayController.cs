@@ -448,6 +448,32 @@ namespace BeatLeader_Server.Controllers
                             _context.Scores.Remove(scoreToRemove);
                         }
                     }
+
+                    foreach (var leaderboardContext in ContextExtensions.NonGeneral) {
+                        if (resultScore.ValidContexts.HasFlag(leaderboardContext)) {
+                            var ce = _context
+                                .ScoreContextExtensions
+                                .Where(ce => 
+                                    ce.Context == leaderboardContext &&
+                                    ce.PlayerId == player.Id &&
+                                    ce.LeaderboardId == leaderboard.Id)
+                                .FirstOrDefault();
+                            if (ce != null) {
+                                _context.ScoreContextExtensions.Remove(ce);
+                            }
+
+                        }
+                    }
+
+                    try
+                    {
+                        await _context.SaveChangesAsync();
+                    }
+                    catch (DbUpdateConcurrencyException ex)
+                    {
+                        await ex.Entries.Single().ReloadAsync();
+                        await _context.SaveChangesAsync();
+                    }
                     
                     resultScore.LeaderboardId = leaderboard.Id;
                     _context.Scores.Add(resultScore);
