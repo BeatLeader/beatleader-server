@@ -454,10 +454,16 @@ namespace BeatLeader_Server.Controllers {
                         NewOrder = newClanOrder
                     });
 
-                    ClanTaskService.AddJob(new ClanRankingChangesDescription {
-                        GlobalMapEvent = GlobalMapEvent.priorityChange,
-                        PlayerId = player.Id,
-                        Changes = await ClanUtils.RecalculateClanRankingForPlayer(_context, player.Id),
+                    HttpContext.Response.OnCompleted(async () => {
+                        try {
+                            ClanTaskService.AddJob(new ClanRankingChangesDescription {
+                                GlobalMapEvent = GlobalMapEvent.priorityChange,
+                                PlayerId = player.Id,
+                                Changes = await ClanUtils.RecalculateClanRankingForPlayer(_context, player.Id),
+                            });
+                        } catch (Exception e) {
+                            Console.WriteLine($"EXCEPTION: {e}");
+                        }
                     });
 
                     player.ClanOrder = newClanOrder;

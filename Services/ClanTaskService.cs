@@ -121,12 +121,12 @@ namespace BeatLeader_Server.Services
             do {
                 Console.WriteLine("STARTED ClanTaskService");
                 try {
-                    await ProcessJobs();
+                    await ProcessJobs(stoppingToken);
                 } catch { }
                 Console.WriteLine("DONE ClanTaskService");
 
                 await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
-                await ProcessJobs();
+                await ProcessJobs(stoppingToken);
             }
             while (!stoppingToken.IsCancellationRequested);
         }
@@ -249,8 +249,10 @@ namespace BeatLeader_Server.Services
             }
         }
 
-        private async Task ProcessJobs() {
+        private async Task ProcessJobs(CancellationToken stoppingToken) {
             var jobsToProcess = new List<ClanRankingChangesDescription>();
+
+            Console.WriteLine("1 ClanTaskService");
 
             lock (jobs) {
                 foreach (var job in jobs) {
@@ -258,6 +260,8 @@ namespace BeatLeader_Server.Services
                 }
                 jobs = new List<ClanRankingChangesDescription>();
             }
+
+            Console.WriteLine("2 ClanTaskService");
 
             if (jobsToProcess.Count == 0) return;
 
@@ -269,15 +273,23 @@ namespace BeatLeader_Server.Services
                     var s3 = _configuration.GetS3Client();
                     var blhook = _configuration.GetValue<string?>("ClanWarsHook");
 
+                    Console.WriteLine("3 ClanTaskService");
+
                     await ClanUtils.UpdateClanRankingRanks(_context);
+
+                    Console.WriteLine("4 ClanTaskService");
                     ExpandoObject? globalMap = null;
                     using (var stream = await s3.DownloadAsset("clansmap-globalcache.json")) {
                        globalMap = stream?.ObjectFromStream();
                     }
 
+                    Console.WriteLine("5 ClanTaskService");
+
                     foreach (var job in jobsToProcess) {
 
                         await PopulateRecords(_context, globalMap, job);
+
+                        Console.WriteLine("6 ClanTaskService");
 
                         var message = ActionMessage(_context, job);
                         if (job.Changes != null && job.Changes.Count > 0 && message != null) {
@@ -288,6 +300,8 @@ namespace BeatLeader_Server.Services
                                 await ClanUtils.PostChangesWithMessage(_context, job.Changes, message, hook);
                             }
                         }
+
+                        Console.WriteLine("7 ClanTaskService");
 
                         if (job.GlobalMapEvent != null && job.ClanId != null) {
                             var clan = _context.Clans.FirstOrDefault(c => c.Id == job.ClanId);
@@ -305,7 +319,11 @@ namespace BeatLeader_Server.Services
                                 }
                             }
                         }
+
+                        await Task.Delay(TimeSpan.FromSeconds(20), stoppingToken);
                     }
+
+                    Console.WriteLine("8 ClanTaskService");
 
                     var file = (await _clanController.RefreshGlobalMap()).Value;
                     var newGlobalMap = file?.ObjectFromArray();
@@ -327,6 +345,8 @@ namespace BeatLeader_Server.Services
                                 }
                             }
 
+                            Console.WriteLine("9 ClanTaskService");
+
                             foreach (var change in job.Changes)
                             {
                                 _context.GlobalMapChanges.Add(change.ChangeRecord);
@@ -334,6 +354,7 @@ namespace BeatLeader_Server.Services
                         }
 
                         await SocketController.ClanRankingChanges(job);
+                        await Task.Delay(TimeSpan.FromSeconds(20), stoppingToken);
                     }
 
                     await _context.SaveChangesAsync();

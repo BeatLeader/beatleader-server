@@ -156,6 +156,7 @@ namespace BeatLeader_Server.Controllers
             var players = _context
                 .Players
                 .Include(p => p.ProfileSettings)
+                .Include(p => p.Socials)
                 .Where(p => !p.Banned && p.Clans.Contains(clan));
             switch (sortBy)
             {
@@ -182,6 +183,7 @@ namespace BeatLeader_Server.Controllers
                     LeaderID = clan.LeaderID,
                     Description = clan.Description,
                     Bio = clan.Bio,
+                    RichBio = clan.RichBio,
                     PlayersCount = clan.PlayersCount,
                     Pp = clan.Pp,
                     Rank = clan.Rank,
@@ -210,6 +212,7 @@ namespace BeatLeader_Server.Controllers
                         CountryRank = p.CountryRank,
                         Role = p.Role,
                         ProfileSettings = p.ProfileSettings,
+                        Socials = p.Socials
                     })
                     .ToListAsync())
                     .Select(p => PostProcessSettings(p, false)),

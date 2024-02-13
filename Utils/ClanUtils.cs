@@ -62,10 +62,11 @@ namespace BeatLeader_Server.Utils
                 * Update the map status and captured leaderboard status for whatever clan owns the leaderboard now
                 */
 
+            var clanOrder = newScore.Player?.ClanOrder ?? "";
             var playerClans = newScore
                 .Player?
                 .Clans?
-                .OrderBy(c => newScore.Player?.ClanOrder.IndexOf(c.Tag) ?? 0)
+                .OrderBy(c => clanOrder.IndexOf(c.Tag))
                 .ThenBy(c => c.Id)
                 .Take(1)
                 .ToList();

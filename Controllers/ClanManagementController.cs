@@ -280,6 +280,57 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpPost("~/clan/manager")]
+        public async Task<ActionResult> UpdateManagers(
+            [FromQuery] string playerId, 
+            [FromQuery] ClanPermissions permissions,
+            [FromQuery] int? id = null) 
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null) {
+                currentID = await HttpContext.CurrentOauthUserID(_context, CustomScopes.Clan);
+            }
+
+            var player = await _context.Players.FindAsync(currentID);
+
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            if (player.Banned)
+            {
+                return BadRequest("You are banned!");
+            }
+
+            Clan? clan = null;
+            if (id != null && player != null && player.Role.Contains("admin"))
+            {
+                clan = await _context.Clans.FindAsync(id);
+            }
+            else
+            {
+                clan = _context.Clans.FirstOrDefault(c => c.LeaderID == currentID);
+            }
+            if (clan == null)
+            {
+                return NotFound();
+            }
+
+            var manager = _context.ClanManagers.FirstOrDefault(cm => cm.ClanId == clan.Id && cm.PlayerId == playerId);
+            if (manager == null) {
+                manager = new ClanManager {
+                    ClanId = clan.Id,
+                    PlayerId = playerId
+                };
+                _context.ClanManagers.Add(manager);
+            }
+            manager.Permissions = permissions;
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
         [HttpPut("~/clan")]
         public async Task<ActionResult> UpdateClan(
             [FromQuery] int? id = null,
@@ -321,6 +372,8 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
+            var changeDescription = "Updated ";
+
             if (name != null)
             {
                 if (name.Length is < 3 or > 30)
@@ -330,6 +383,10 @@ namespace BeatLeader_Server.Controllers
                 if (_context.Clans.FirstOrDefault(c => c.Name == name && c.Id != clan.Id) != null)
                 {
                     return BadRequest("Clan with such name is already exists");
+                }
+
+                if (name != clan.Name) {
+                    changeDescription += "name, ";
                 }
 
                 clan.Name = name;
@@ -350,6 +407,10 @@ namespace BeatLeader_Server.Controllers
                     return BadRequest("Color is not valid");
                 }
 
+                if (clan.Color != color) {
+                    changeDescription += "color, ";
+                }
+
                 clan.Color = color;
             }
             Random rnd = new Random();
@@ -366,6 +427,7 @@ namespace BeatLeader_Server.Controllers
                     fileName += extension;
 
                     clan.Icon = await _s3Client.UploadAsset(fileName, stream);
+                    changeDescription += "icon, ";
                 }
             }
             catch (Exception e)
@@ -379,6 +441,9 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
+                if (clan.Description != description) {
+                    changeDescription += "description, ";
+                }
                 clan.Description = description;
             }
 
@@ -388,17 +453,101 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
+                if (clan.Bio != bio) {
+                    changeDescription += "bio, ";
+                }
                 clan.Bio = bio;
             }
 
             if (clanRankingDiscordHook != null)
             {
+                if (clan.ClanRankingDiscordHook != clanRankingDiscordHook) {
+                    changeDescription += "Discord hook, ";
+                }
                 clan.ClanRankingDiscordHook = clanRankingDiscordHook;
             }
 
             if (playerChangesCallback != null) {
+                if (clan.PlayerChangesCallback != playerChangesCallback) {
+                    changeDescription += "changes callback, ";
+                }
                 clan.PlayerChangesCallback = playerChangesCallback;
             }
+
+            _context.ClanUpdates.Add(new ClanUpdate {
+                Clan = clan,
+                Player = player,
+                Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
+                ChangeDescription = changeDescription
+            });
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpPut("~/clan/richbio")]
+        public async Task<ActionResult> UpdateClanRichBio(
+            [FromQuery] int? id = null)
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null) {
+                currentID = await HttpContext.CurrentOauthUserID(_context, CustomScopes.Clan);
+            }
+
+            var player = await _context.Players.FindAsync(currentID);
+
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            if (player.Banned)
+            {
+                return BadRequest("You are banned!");
+            }
+
+            Clan? clan = null;
+            var clanManager = _context.ClanManagers.FirstOrDefault(cm => 
+                                                cm.ClanId == id && 
+                                                cm.PlayerId == currentID && 
+                                                cm.Permissions.HasFlag(ClanPermissions.Edit));
+            if (id != null && player != null && (clanManager != null || player.Role.Contains("admin")))
+            {
+                clan = await _context.Clans.FindAsync(id);
+            }
+            else
+            {
+                clan = _context.Clans.FirstOrDefault(c => c.LeaderID == currentID);
+            }
+            if (clan == null)
+            {
+                return NotFound();
+            }
+
+            try
+            {
+                var ms = new MemoryStream(5);
+                await Request.Body.CopyToAsync(ms);
+                if (ms.Length > 0)
+                {
+                    ms.Position = 0;
+                    using var sr = new StreamReader(ms);
+
+                    clan.RichBio = sr.ReadToEnd();
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"EXCEPTION: {e}");
+            }
+
+            _context.ClanUpdates.Add(new ClanUpdate {
+                Clan = clan,
+                Player = player,
+                Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
+                ChangeDescription = "Updated rich bio"
+            });
 
             await _context.SaveChangesAsync();
 
@@ -407,7 +556,9 @@ namespace BeatLeader_Server.Controllers
 
 
         [HttpPost("~/clan/invite")]
-        public async Task<ActionResult> InviteToClan([FromQuery] string player)
+        public async Task<ActionResult> InviteToClan(
+            [FromQuery] string player,
+            [FromQuery] int? id = null)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
             if (currentID == null) {
@@ -426,10 +577,23 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("You are banned!");
             }
 
-            Clan? clan = _context.Clans.Include(cl => cl.CapturedLeaderboards).FirstOrDefault(c => c.LeaderID == currentID);
+            Clan? clan = null;
+            var clanManager = _context.ClanManagers.FirstOrDefault(cm => 
+                                                cm.ClanId == id && 
+                                                cm.PlayerId == currentID && 
+                                                cm.Permissions.HasFlag(ClanPermissions.Invite));
+            if (id != null && player != null && (clanManager != null || currentPlayer.Role.Contains("admin")))
+            {
+                clan = await _context.Clans.FindAsync(id);
+            }
+            else
+            {
+                clan = _context.Clans.FirstOrDefault(c => c.LeaderID == currentID);
+            }
+
             if (clan == null)
             {
-                return NotFound("Current user is not leader of any clan");
+                return NotFound();
             }
 
             User? user = await _userController.GetUserLazy(player);
@@ -454,23 +618,56 @@ namespace BeatLeader_Server.Controllers
             }
 
             user.ClanRequest.Add(clan);
+            _context.ClanUpdates.Add(new ClanUpdate {
+                Clan = clan,
+                Player = currentPlayer,
+                Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
+                ChangeDescription = "Invited " + user.Player.Name
+            });
             await _context.SaveChangesAsync();
 
             return Ok();
         }
 
         [HttpPost("~/clan/cancelinvite")]
-        public async Task<ActionResult> CancelinviteToClan([FromQuery] string player)
+        public async Task<ActionResult> CancelinviteToClan(
+            [FromQuery] string player,
+            [FromQuery] int? id = null)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
             if (currentID == null) {
                 currentID = await HttpContext.CurrentOauthUserID(_context, CustomScopes.Clan);
             }
 
-            Clan? clan = _context.Clans.FirstOrDefault(c => c.LeaderID == currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null)
+            {
+                return NotFound();
+            }
+
+            if (currentPlayer.Banned)
+            {
+                return BadRequest("You are banned!");
+            }
+
+            Clan? clan = null;
+            var clanManager = _context.ClanManagers.FirstOrDefault(cm => 
+                                                cm.ClanId == id && 
+                                                cm.PlayerId == currentID && 
+                                                cm.Permissions.HasFlag(ClanPermissions.Invite));
+            if (id != null && player != null && (clanManager != null || currentPlayer.Role.Contains("admin")))
+            {
+                clan = await _context.Clans.FindAsync(id);
+            }
+            else
+            {
+                clan = _context.Clans.FirstOrDefault(c => c.LeaderID == currentID);
+            }
+
             if (clan == null)
             {
-                return NotFound("Current user is not leader of any clan");
+                return NotFound();
             }
 
             User? user = await _userController.GetUserLazy(player);
@@ -517,7 +714,11 @@ namespace BeatLeader_Server.Controllers
             Clan? clan;
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            if (id != null && currentPlayer != null && currentPlayer.Role.Contains("admin"))
+            var clanManager = _context.ClanManagers.FirstOrDefault(cm => 
+                                                cm.ClanId == id && 
+                                                cm.PlayerId == currentID && 
+                                                cm.Permissions.HasFlag(ClanPermissions.Kick));
+            if (id != null && player != null && (clanManager != null || currentPlayer.Role.Contains("admin")))
             {
                 clan = await _context.Clans.FindAsync(id);
             }
@@ -551,6 +752,14 @@ namespace BeatLeader_Server.Controllers
             clan.AverageAccuracy = MathUtils.RemoveFromAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageRankedAccuracy);
             clan.AverageRank = MathUtils.RemoveFromAverage(clan.AverageRank, clan.PlayersCount, user.Player.Rank);
             clan.PlayersCount--;
+
+            _context.ClanUpdates.Add(new ClanUpdate {
+                Clan = clan,
+                Player = currentPlayer,
+                Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
+                ChangeDescription = "Kicked out " + user.Player.Name
+            });
+
             await _context.SaveChangesAsync();
 
             clan.Pp = _context.RecalculateClanPP(clan.Id);
@@ -609,6 +818,10 @@ namespace BeatLeader_Server.Controllers
             clan.PlayersCount++;
             clan.AverageAccuracy = MathUtils.AddToAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageRankedAccuracy);
             clan.AverageRank = MathUtils.AddToAverage(clan.AverageRank, clan.PlayersCount, user.Player.Rank);
+            if (user.Player.ClanOrder.Length > 0) {
+                user.Player.ClanOrder += $",{clan.Tag}";
+            }
+
             await _context.SaveChangesAsync();
 
             clan.Pp = _context.RecalculateClanPP(clan.Id);
@@ -721,6 +934,9 @@ namespace BeatLeader_Server.Controllers
             clan.AverageAccuracy = MathUtils.RemoveFromAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageRankedAccuracy);
             clan.AverageRank = MathUtils.RemoveFromAverage(clan.AverageRank, clan.PlayersCount, user.Player.Rank);
             clan.PlayersCount--;
+            if (user.Player.ClanOrder.Length > 0) {
+                user.Player.ClanOrder = string.Join(",", user.Player.ClanOrder.Split(",").Where(c => c != clan.Tag).ToList());
+            }
             await _context.SaveChangesAsync();
 
             clan.Pp = _context.RecalculateClanPP(clan.Id);

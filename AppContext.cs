@@ -84,6 +84,9 @@ namespace BeatLeader_Server
         public DbSet<FeaturedPlaylist> FeaturedPlaylist { get; set; }
         public DbSet<ClanOrderChange> ClanOrderChanges { get; set; }
 
+        public DbSet<ClanManager> ClanManagers { get; set; }
+        public DbSet<ClanUpdate> ClanUpdates { get; set; }
+
         public void RejectChanges()
         {
             foreach (var entry in ChangeTracker.Entries())
