@@ -86,6 +86,7 @@ namespace BeatLeader_Server
 
         public DbSet<ClanManager> ClanManagers { get; set; }
         public DbSet<ClanUpdate> ClanUpdates { get; set; }
+        public DbSet<ValentineMessage> ValentineMessages { get; set; }
 
         public void RejectChanges()
         {
