@@ -181,7 +181,7 @@ namespace BeatLeader_Server.Controllers
             var query = _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked || lb.Difficulty.Status == DifficultyStatus.nominated || lb.Difficulty.Status == DifficultyStatus.qualified);
 
             
-                query = (leaderboardId != null ? query.Where(s => s.Id == leaderboardId) : query);
+                query = (leaderboardId != null ? _context.Leaderboards.Where(s => s.Id == leaderboardId) : query);
 
                 var allLeaderboards = query
                     .Select(lb => new {
@@ -208,7 +208,7 @@ namespace BeatLeader_Server.Controllers
                         int maxScore = leaderboard.Difficulty.MaxScore > 0 ? leaderboard.Difficulty.MaxScore : ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
                         if (hasPp)
                         {
-                            score.ModifiedScore = (int)(s.BaseScore * modifiers.GetNegativeMultiplier(s.Modifiers));
+                            score.ModifiedScore = (int)(s.BaseScore * modifiers.GetNegativeMultiplier(s.Modifiers, true));
                         }
                         else
                         {

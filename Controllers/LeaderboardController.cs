@@ -592,38 +592,36 @@ namespace BeatLeader_Server.Controllers {
                     DifficultyDescription difficulty = song.Difficulties.First(d => song.Id + d.Value + d.Mode == id);
                     return ResponseFromLeaderboard((await GetByHash(song.Hash, difficulty.DifficultyName, difficulty.ModeName)).Value);
                 }
-            } else if (leaderboard.Difficulty.Status == DifficultyStatus.nominated) {
+            } else if (leaderboard.Difficulty.Status == DifficultyStatus.nominated && isRt) {
+                var qualification = leaderboard.Qualification;
+                var recalculated = leaderboard.Scores.Select(s => {
 
-                if (isRt) {
-                    var qualification = leaderboard.Qualification;
-                    var recalculated = leaderboard.Scores.Select(s => {
+                    s.ModifiedScore = (int)(s.BaseScore * qualification.Modifiers.GetNegativeMultiplier(s.Modifiers, true));
 
-                        s.ModifiedScore = (int)(s.BaseScore * qualification.Modifiers.GetNegativeMultiplier(s.Modifiers));
-
-                        if (leaderboard.Difficulty.MaxScore > 0) {
-                            s.Accuracy = (float)s.BaseScore / (float)leaderboard.Difficulty.MaxScore;
-                        } else {
-                            s.Accuracy = (float)s.BaseScore / (float)ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
-                        }
-                        (s.Pp, s.BonusPp, s.PassPP, s.AccPP, s.TechPP) = ReplayUtils.PpFromScoreResponse(
-                            s,
-                            leaderboard.Difficulty.AccRating ?? 0,
-                            leaderboard.Difficulty.PassRating ?? 0,
-                            leaderboard.Difficulty.TechRating ?? 0,
-                            qualification.Modifiers,
-                            qualification.ModifiersRating
-                            );
-
-                        return s;
-                    }).ToList();
-
-                    var rankedScores = recalculated.OrderByDescending(el => el.Pp).ToList();
-                    foreach ((int i, ScoreResponse s) in rankedScores.Select((value, i) => (i, value))) {
-                        s.Rank = i + 1 + ((page - 1) * count);
+                    if (leaderboard.Difficulty.MaxScore > 0) {
+                        s.Accuracy = (float)s.BaseScore / (float)leaderboard.Difficulty.MaxScore;
+                    } else {
+                        s.Accuracy = (float)s.BaseScore / (float)ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
                     }
 
-                    leaderboard.Scores = recalculated;
+                    (s.Pp, s.BonusPp, s.PassPP, s.AccPP, s.TechPP) = ReplayUtils.PpFromScoreResponse(
+                        s,
+                        leaderboard.Difficulty.AccRating ?? 0,
+                        leaderboard.Difficulty.PassRating ?? 0,
+                        leaderboard.Difficulty.TechRating ?? 0,
+                        leaderboard.Difficulty.ModifierValues,
+                        leaderboard.Difficulty.ModifiersRating
+                        );
+
+                    return s;
+                }).ToList();
+
+                var rankedScores = recalculated.OrderByDescending(el => el.Pp).ToList();
+                foreach ((int i, ScoreResponse s) in rankedScores.Select((value, i) => (i, value))) {
+                    s.Rank = i + 1 + ((page - 1) * count);
                 }
+
+                leaderboard.Scores = recalculated;
             }
 
             for (int i = 0; i < leaderboard.Scores?.Count; i++) {
@@ -1514,10 +1512,16 @@ namespace BeatLeader_Server.Controllers {
                 .Include(p => p.ProfileSettings)
                 .FirstOrDefaultAsync(p => p.Id == currentID) : null;
             sequence = sequence
-                .Filter(_context, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer)
-                .WherePage(page, count, out int totalMatches);
+                .Filter(_context, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
 
-            var ids = sequence.Select(lb => lb.SongId).ToList();
+            var nonuniqueids = sequence.Select(lb => lb.SongId).ToList();
+            var ids = new List<string>();
+            foreach (var item in nonuniqueids)
+            {
+                if (!ids.Contains(item)) {
+                    ids.Add(item);
+                }
+            }
 
             if (searchId != null) {
                 var searchRecords = _context.SongSearches.Where(s => s.SearchId == searchId).ToList();
@@ -1530,13 +1534,16 @@ namespace BeatLeader_Server.Controllers {
                 Metadata = new Metadata() {
                     Page = page,
                     ItemsPerPage = count,
-                    Total = totalMatches
+                    Total = ids.Count
                 }
             };
 
-            sequence = sequence
+            if (ids.Count > 0) {
+                ids = ids.Skip((page - 1) * count).Take(count).ToList();
+            }
+
+            sequence = _context.Leaderboards
                 .Where(lb => ids.Contains(lb.SongId)).Filter(_context, out searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer)
-                .WherePage(page, count, out totalMatches)
                 .Include(lb => lb.Difficulty)
                 .Include(lb => lb.Song);
 

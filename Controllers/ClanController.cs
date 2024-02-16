@@ -285,7 +285,7 @@ namespace BeatLeader_Server.Controllers
                 .ThenInclude(l => l.Song)
                 .ThenInclude(s => s.Difficulties)
                 .ThenInclude(d => d.ModifiersRating)
-                .Where(p => p.ClanId == clan.Id);
+                .Where(p => p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked && p.ClanId == clan.Id);
 
             switch (sortBy)
             {

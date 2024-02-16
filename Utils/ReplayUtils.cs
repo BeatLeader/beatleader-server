@@ -259,7 +259,7 @@ namespace BeatLeader_Server.Utils
             int maxScore = difficulty.MaxScore > 0 ? difficulty.MaxScore : MaxScoreForNote(difficulty.Notes);
             if (hasPp)
             {
-                score.ModifiedScore = (int)(score.BaseScore * modifers.GetNegativeMultiplier(info.modifiers));
+                score.ModifiedScore = (int)(score.BaseScore * modifers.GetNegativeMultiplier(info.modifiers, true));
             } else
             {
                 score.ModifiedScore = (int)((score.BaseScore + (int)((float)(maxScore - score.BaseScore) * (modifers.GetPositiveMultiplier(info.modifiers) - 1))) * modifers.GetNegativeMultiplier(info.modifiers));
@@ -583,13 +583,14 @@ namespace BeatLeader_Server.Utils
             return multiplier;
         }
 
-        public static float GetNegativeMultiplier(this ModifiersMap modifiersObject, string modifiers)
+        public static float GetNegativeMultiplier(this ModifiersMap modifiersObject, string modifiers, bool ignoreNF = false)
         {
             float multiplier = 1;
 
             var modifiersMap = modifiersObject.ToDictionary<float>();
             foreach (var modifier in modifiersMap.Keys)
             {
+                if (ignoreNF && modifier == "NF") continue;
                 if (modifiers.Contains(modifier) && modifiersMap[modifier] < 0) { multiplier += modifiersMap[modifier]; }
             }
 
@@ -712,7 +713,7 @@ namespace BeatLeader_Server.Utils
                 if (newScore.Pp > oldScore.Pp) return true;
                 if (oldScore.Modifiers.Contains("NF") && 
                     newScore.Modifiers.Contains("NF") &&
-                    newScore.ModifiedScore > oldScore.ModifiedScore) {
+                    newScore.BaseScore > oldScore.BaseScore) {
                     return true;
                 }
             } else {
