@@ -698,6 +698,7 @@ namespace BeatLeader_Server.Controllers {
                             FullCombo = s.FullCombo,
                             Timeset = s.Timeset,
                             Timepost = s.Timepost,
+                            Hmd = s.Hmd,
                             Player = new PlayerResponse
                             {
                                 Id = s.Player.Id,
@@ -788,6 +789,7 @@ namespace BeatLeader_Server.Controllers {
                             FullCombo = s.FullCombo,
                             Timeset = s.Timeset,
                             Timepost = s.Timepost,
+                            Hmd = s.Hmd,
                             Player = new PlayerResponse
                             {
                                 Id = s.Player.Id,
