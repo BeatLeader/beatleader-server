@@ -259,6 +259,12 @@ namespace BeatLeader_Server.Controllers
                 _context.Auths.Remove(auth);
             }
 
+            var qualifications = _context.RankQualification.Where(q => q.RTMember == id).ToList();
+            foreach (var qualification in qualifications)
+            {
+                _context.RankQualification.Remove(qualification);
+            }
+
             var scores = _context.Scores.Include(s => s.ContextExtensions).Where(s => s.PlayerId == id).ToList();
             foreach (var score in scores) {
                 string? name = score.Replay.Split("/").LastOrDefault();
