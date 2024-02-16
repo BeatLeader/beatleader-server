@@ -3600,6 +3600,38 @@ namespace BeatLeader_Server.Migrations
                     b.ToTable("VRControllers");
                 });
 
+            modelBuilder.Entity("BeatLeader_Server.Models.ValentineMessage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ReceiverId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SenderId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Timeset")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ViewCount")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Viewed")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ValentineMessages");
+                });
+
             modelBuilder.Entity("BeatLeader_Server.Models.VoterFeedback", b =>
                 {
                     b.Property<int>("Id")

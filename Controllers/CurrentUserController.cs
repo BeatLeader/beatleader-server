@@ -468,7 +468,7 @@ namespace BeatLeader_Server.Controllers {
                         .OrderByDescending(ch => ch.Timestamp)
                         .FirstOrDefault();
 
-                    if (lastChange != null && !adminChange && (timestamp - lastChange.Timestamp) < 60 * 60 * 24 * 7) {
+                    if (!adminChange && lastChange != null && !adminChange && (timestamp - lastChange.Timestamp) < 60 * 60 * 24 * 7) {
                         return BadRequest("Error. You can change clan order after " + (int)(7 - (timestamp - lastChange.Timestamp) / (60 * 60 * 24)) + " day(s)");
                     }
 

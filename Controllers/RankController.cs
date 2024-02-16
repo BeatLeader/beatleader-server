@@ -4,6 +4,7 @@ using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Discord.Rest;
 using Discord.Webhook;
+using Ganss.Xss;
 using Lib.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -964,10 +965,13 @@ namespace BeatLeader_Server.Controllers
             await Request.Body.CopyToAsync(ms);
             ms.Position = 0;
 
+            var sanitizer = new HtmlSanitizer();
+            var commentValue = sanitizer.Sanitize(Encoding.UTF8.GetString(ms.ToArray()));
+
             var result = new QualificationCommentary {
                 PlayerId = currentPlayer.Id,
                 Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
-                Value = Encoding.UTF8.GetString(ms.ToArray()),
+                Value = commentValue,
             };
 
             qualification.Comments.Add(result);
@@ -1002,7 +1006,10 @@ namespace BeatLeader_Server.Controllers
             await Request.Body.CopyToAsync(ms);
             ms.Position = 0;
 
-            comment.Value = Encoding.UTF8.GetString(ms.ToArray());
+            var sanitizer = new HtmlSanitizer();
+            var commentValue = sanitizer.Sanitize(Encoding.UTF8.GetString(ms.ToArray()));
+
+            comment.Value = commentValue;
             comment.Edited = true;
             comment.EditTimeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             await _context.SaveChangesAsync();
@@ -1073,10 +1080,13 @@ namespace BeatLeader_Server.Controllers
             await Request.Body.CopyToAsync(ms);
             ms.Position = 0;
 
+            var sanitizer = new HtmlSanitizer();
+            var commentValue = sanitizer.Sanitize(Encoding.UTF8.GetString(ms.ToArray()));
+
             var result = new CriteriaCommentary {
                 PlayerId = currentPlayer.Id,
                 Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
-                Value = Encoding.UTF8.GetString(ms.ToArray()),
+                Value = commentValue,
             };
 
             qualification.CriteriaComments.Add(result);
@@ -1111,7 +1121,10 @@ namespace BeatLeader_Server.Controllers
             await Request.Body.CopyToAsync(ms);
             ms.Position = 0;
 
-            comment.Value = Encoding.UTF8.GetString(ms.ToArray());
+            var sanitizer = new HtmlSanitizer();
+            var commentValue = sanitizer.Sanitize(Encoding.UTF8.GetString(ms.ToArray()));
+
+            comment.Value = commentValue;
             comment.Edited = true;
             comment.EditTimeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             await _context.SaveChangesAsync();

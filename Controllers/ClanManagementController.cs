@@ -6,6 +6,7 @@ using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
+using Ganss.Xss;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -534,7 +535,18 @@ namespace BeatLeader_Server.Controllers
                     ms.Position = 0;
                     using var sr = new StreamReader(ms);
 
-                    clan.RichBio = sr.ReadToEnd();
+                    var sanitizer = new HtmlSanitizer();
+                    var newClanBio = sanitizer.Sanitize(sr.ReadToEnd());
+
+                    if (newClanBio != clan.RichBio) {
+                        clan.RichBio = newClanBio;
+                        _context.ClanUpdates.Add(new ClanUpdate {
+                            Clan = clan,
+                            Player = player,
+                            Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
+                            ChangeDescription = "Updated rich bio"
+                        });
+                    }
                 }
             }
             catch (Exception e)
@@ -542,12 +554,7 @@ namespace BeatLeader_Server.Controllers
                 Console.WriteLine($"EXCEPTION: {e}");
             }
 
-            _context.ClanUpdates.Add(new ClanUpdate {
-                Clan = clan,
-                Player = player,
-                Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
-                ChangeDescription = "Updated rich bio"
-            });
+            
 
             await _context.SaveChangesAsync();
 
