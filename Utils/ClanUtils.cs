@@ -448,7 +448,7 @@ namespace BeatLeader_Server.Utils
             leaderboard.ClanId = null;
         }
 
-        public static async Task PostChangesWithScore(AppContext context, List<ClanRankingChanges>? changes, Score score, string imagePath, string? hook) {
+        public static async Task PostChangesWithScore(AppContext context, CancellationToken stoppingToken, List<ClanRankingChanges>? changes, Score score, string imagePath, string? hook) {
             if (changes == null || hook == null) return;
 
             try {
@@ -479,9 +479,10 @@ namespace BeatLeader_Server.Utils
                     }
                     message += $" which brings **[{currentCaptor.Tag}]** to {Math.Round(currentCaptor.RankedPoolPercentCaptured * 100, 2)}% of global dominance!";
                 }
-
+                
                 var messageId = await dsClient.SendFileAsync(imagePath, message, flags: MessageFlags.SuppressEmbeds);
                 await Bot.BotService.PublishAnnouncement(1195125703830683678, messageId);
+                await Task.Delay(TimeSpan.FromSeconds(20), stoppingToken);
             }
             } catch (Exception e)
             {
@@ -489,13 +490,13 @@ namespace BeatLeader_Server.Utils
             }
         }
 
-        public static async Task PostChangesWithMessage(AppContext context, List<ClanRankingChanges>? changes, string postMessage, string? hook) {
+        public static async Task PostChangesWithMessage(AppContext context, CancellationToken stoppingToken, List<ClanRankingChanges>? changes, string postMessage, string? hook) {
             if (changes == null || changes.Count == 0 || hook == null) return;
 
             if (changes.Count > 10) {
                 for (int i = 0; i < changes.Count; i += 10)
                 {
-                    await PostChangesWithMessage(context, changes.Skip(i).Take(10).ToList(), postMessage, hook);
+                    await PostChangesWithMessage(context, stoppingToken, changes.Skip(i).Take(10).ToList(), postMessage, hook);
                 }
             } else {
                 try {
@@ -532,6 +533,7 @@ namespace BeatLeader_Server.Utils
                             .Build()
                         });
                     await Bot.BotService.PublishAnnouncement(1195125703830683678, messageId);
+                    await Task.Delay(TimeSpan.FromSeconds(20), stoppingToken);
                 } catch (Exception e)
                 {
                     Console.WriteLine($"EXCEPTION: {e}");

@@ -214,8 +214,8 @@ namespace BeatLeader_Server.Services
                     if (globalMap != null) {
                         try {
                             var circles = (IDictionary<string, dynamic>)globalMap.circles;
-                            changeRecord.OldX = circles[change.Leaderboard.Id].x;
-                            changeRecord.OldY = circles[change.Leaderboard.Id].y;
+                            changeRecord.OldX = (float)circles[change.Leaderboard.Id].x;
+                            changeRecord.OldY = (float)circles[change.Leaderboard.Id].y;
                         } catch { }
                     }
                 }
@@ -233,8 +233,8 @@ namespace BeatLeader_Server.Services
                     if (globalMap != null) {
                         try {
                             var circles = (IDictionary<string, dynamic>)globalMap.circles;
-                            changeRecord.NewX = circles[change.Leaderboard.Id].x;
-                            changeRecord.NewY = circles[change.Leaderboard.Id].y;
+                            changeRecord.NewX = (float)circles[change.Leaderboard.Id].x;
+                            changeRecord.NewY = (float)circles[change.Leaderboard.Id].y;
                         } catch { }
                     }
                 }
@@ -297,7 +297,7 @@ namespace BeatLeader_Server.Services
                             AddCustomHooks(_context, hooks, job.Changes);
                             foreach (var hook in hooks.Distinct())
                             {
-                                await ClanUtils.PostChangesWithMessage(_context, job.Changes, message, hook);
+                                await ClanUtils.PostChangesWithMessage(_context, stoppingToken, job.Changes, message, hook);
                             }
                         }
 
@@ -319,8 +319,6 @@ namespace BeatLeader_Server.Services
                                 }
                             }
                         }
-
-                        await Task.Delay(TimeSpan.FromSeconds(20), stoppingToken);
                     }
 
                     Console.WriteLine("8 ClanTaskService");
@@ -340,7 +338,7 @@ namespace BeatLeader_Server.Services
                                     var gif = await _screenController.DownloadAnimatedScreenshot(620, 280, "general", $"clansmap/leaderboard/{job.Score.LeaderboardId}", new Dictionary<string, string> { });
                                     string path = $"/root/assets/clansmap-change-{(int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds}-{job.Score.LeaderboardId}.gif";
                                     File.WriteAllBytes(path, gif);
-                                    await ClanUtils.PostChangesWithScore(_context, job.Changes, job.Score, path, hook);
+                                    await ClanUtils.PostChangesWithScore(_context, stoppingToken, job.Changes, job.Score, path, hook);
                                     File.Delete(path);
                                 }
                             }
@@ -354,7 +352,6 @@ namespace BeatLeader_Server.Services
                         }
 
                         await SocketController.ClanRankingChanges(job);
-                        await Task.Delay(TimeSpan.FromSeconds(20), stoppingToken);
                     }
 
                     await _context.SaveChangesAsync();

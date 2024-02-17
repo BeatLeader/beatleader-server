@@ -169,7 +169,8 @@ namespace BeatLeader_Server.Controllers
                 AverageRank = player.Rank,
                 RankedPoolPercentCaptured = 0,
                 PlayerChangesCallback = playerChangesCallback,
-                ClanRankingDiscordHook = clanRankingDiscordHook
+                ClanRankingDiscordHook = clanRankingDiscordHook,
+                RichBio = "",
             };
 
             _context.Clans.Add(newClan);
@@ -252,6 +253,8 @@ namespace BeatLeader_Server.Controllers
             }
 
             await _context.BulkSaveChangesAsync();
+
+            await _context.BulkDeleteAsync(_context.ClanUpdates.Where(cu => cu.Clan == clan));
 
             // Remove the clan
             _context.Clans.Remove(clan);
