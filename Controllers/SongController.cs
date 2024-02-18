@@ -441,7 +441,7 @@ namespace BeatLeader_Server.Controllers
                     Notes = set.Data.Notes.Count(),
                     Bombs = set.Data.Bombs.Count(),
                     Walls = set.Data.Walls.Count(),
-                    MaxScore = 0,
+                    MaxScore = set.MaxScore(),
                     Duration = map.SongLength,
                 };
 
