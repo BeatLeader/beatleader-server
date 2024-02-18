@@ -142,6 +142,7 @@ namespace BeatLeader_Server.Controllers
                     originalms,
                     _readContext.Songs.Include(s => s.Difficulties)
                         .SelectMany(s => s.Difficulties, (s, diff) => new { s.Hash, diff })
+                        .Where(a => (a.diff.Stars ?? 0) != 0)
                         .Select(d => new HashDiffStarTuple(d.Hash, d.diff.DifficultyName + d.diff.ModeName, d.diff.Stars ?? 0))
                         .ToArray());
 
