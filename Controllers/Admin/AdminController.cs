@@ -8,6 +8,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReplayDecoder;
+using CsvHelper;
+using CsvHelper.Configuration;
+using System.Threading.Tasks;
+using System.Globalization;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -505,7 +509,7 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
-        [HttpPut("~/admin/refreshClanRankings")]
+        [HttpGet("~/admin/refreshClanRankings")]
         public async Task<ActionResult> RefreshClanRankings([FromQuery] string? lbId = null)
         {
             // refreshClanRankings: Http Put endpoint that recalculates the clan rankings for all ranked leaderboards.
@@ -554,7 +558,7 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
-        [HttpPut("~/admin/refreshClanRankingsScore")]
+        [HttpGet("~/admin/refreshClanRankingsScore")]
         public async Task<ActionResult> RefreshClanRankingsScore([FromQuery] int scoreId)
         {
             // refreshClanRankings: Http Put endpoint that recalculates the clan rankings for all ranked leaderboards.
@@ -597,6 +601,26 @@ namespace BeatLeader_Server.Controllers
             var rankings = _context
                 .ClanRanking
                 .Where(cr => cr.Leaderboard.Difficulty.Status != DifficultyStatus.ranked)
+                .ToList();
+            await _context.BulkDeleteAsync(rankings);
+
+            return Ok();
+        }
+
+        [HttpGet("~/admin/deleteclanorderchanges")]
+        public async Task<ActionResult> deleteclanorderchanges([FromQuery] string id)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (!currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var rankings = _context
+                .ClanOrderChanges
+                .Where(cr => cr.PlayerId == id)
                 .ToList();
             await _context.BulkDeleteAsync(rankings);
 
@@ -1299,6 +1323,109 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        public class YouTubeVideo
+        {
+            public string Link { get; set; }
+            public string Title { get; set; }
+            public string Description { get; set; }
+            public DateTime PublishedDate { get; set; }
+        }
+
+        [HttpPost("~/admin/importCC")]
+        public async Task<IActionResult> importCC()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var videos = new List<YouTubeVideo>();
+            var cultureInfo = new CultureInfo("en-US");
+            var config = new CsvConfiguration(cultureInfo) { HasHeaderRecord = true };
+
+            var ms = new MemoryStream(5);
+            await Request.Body.CopyToAsync(ms);
+            ms.Position = 0;
+
+            using (var reader = new StreamReader(ms))
+            using (var csv = new CsvReader(reader, config))
+            {
+                csv.Context.RegisterClassMap<YouTubeVideoMap>();
+                videos = csv.GetRecords<YouTubeVideo>().ToList();
+            }
+
+            foreach (var video in videos)
+            {
+                if (!video.Title.Contains("Noodle Map Monday")) continue;
+
+                string id = video.Description.Split("https://beatsaver.com/maps/").Last().Split(".").First().Split("\n").First();
+
+                var lastVersion = await SongUtils.GetSongFromBeatSaverId(id);
+
+                if (lastVersion == null) continue;
+                var song = _context.Songs.Where(s => s.Hash.ToLower() == lastVersion.Hash.ToLower()).Include(s => s.ExternalStatuses).FirstOrDefault();
+
+                if (song == null) continue;
+                if (song.ExternalStatuses == null) {
+                    song.ExternalStatuses = new List<ExternalStatus>();
+                }
+                if (song.ExternalStatuses.FirstOrDefault(es => es.Status == SongStatus.NoodleMonday) != null) continue;
+
+                song.ExternalStatuses.Add(new ExternalStatus {
+                    Status = SongStatus.NoodleMonday,
+                    Timeset = (int)video.PublishedDate.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
+                    Link = video.Link
+                });
+            }
+            _context.SaveChanges();
+
+            return Ok(videos);
+        }
+
+        [HttpPost("~/admin/addnoodle")]
+        public async Task<IActionResult> addnoodle(
+            [FromQuery] string hash,
+            [FromQuery] int time)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var song = _context.Songs.Where(s => s.Hash.ToLower() == hash.ToLower()).Include(s => s.ExternalStatuses).FirstOrDefault();
+
+            if (song == null) return BadRequest();
+            if (song.ExternalStatuses == null) {
+                song.ExternalStatuses = new List<ExternalStatus>();
+            }
+            if (song.ExternalStatuses.FirstOrDefault(es => es.Status == SongStatus.NoodleMonday) != null) return BadRequest();
+
+            song.ExternalStatuses.Add(new ExternalStatus {
+                Status = SongStatus.NoodleMonday,
+                Timeset = time,
+                Link = "https://beatsaver.com/playlists/4197"
+            });
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
+        public sealed class YouTubeVideoMap : ClassMap<YouTubeVideo>
+        {
+            public YouTubeVideoMap()
+            {
+                Map(m => m.Link).Index(0);
+                Map(m => m.Title).Index(1);
+                Map(m => m.Description).Index(2);
+                Map(m => m.PublishedDate).Index(3).TypeConverterOption.Format("M/d/yy, h:mm:ss tt");
+            }
+        }
         [NonAction]
         //[HttpPost("~/admin/recalculateIndexes")]
         public async Task<ActionResult> RecalculateIndexes()
@@ -1445,6 +1572,15 @@ namespace BeatLeader_Server.Controllers
                 _context.VoterFeedback.Remove(item);
             }
 
+            foreach (var item in _context.ValentineMessages.ToList()) {
+                _context.ValentineMessages.Remove(item);
+            }
+
+            foreach (var item in _context.Clans.ToList()) {
+                item.ClanRankingDiscordHook = "";
+                item.PlayerChangesCallback = "";
+            }
+
             foreach (var item in _context.CriteriaCommentary.ToList()) {
                 _context.CriteriaCommentary.Remove(item);
             }
@@ -1462,27 +1598,24 @@ namespace BeatLeader_Server.Controllers
             foreach (var item in _context.AccountLinkRequests.ToList()) {
                 _context.AccountLinkRequests.Remove(item);
             }
+            foreach (var item in _context.DeveloperProfile.ToList()) {
+                _context.DeveloperProfile.Remove(item);
+            }
             await _context.BulkSaveChangesAsync();
 
-            foreach (var item in _context.Leaderboards.Where(lb => lb.Qualification != null).Include(lb => lb.Qualification).ToList()) {
+            foreach (var item in _context.Leaderboards.Where(lb => lb.Qualification != null).Include(lb => lb.Qualification).ToList())
+            {
                 item.Qualification = null;
             }
-            foreach (var item in _context.ScoreRemovalLogs.ToList()) {
+            foreach (var item in _context.ScoreRemovalLogs.ToList())
+            {
                 _context.ScoreRemovalLogs.Remove(item);
             }
 
-            foreach (var item in _context.OpenIddictApplications.ToList()) {
-                _context.OpenIddictApplications.Remove(item);
-            }
-            foreach (var item in _context.OpenIddictAuthorizations.ToList()) {
-                _context.OpenIddictAuthorizations.Remove(item);
-            }
-            foreach (var item in _context.OpenIddictScopes.ToList()) {
-                _context.OpenIddictScopes.Remove(item);
-            }
-            foreach (var item in _context.OpenIddictTokens.ToList()) {
-                _context.OpenIddictTokens.Remove(item);
-            }
+            _context.BulkDelete(_context.OpenIddictTokens);
+            _context.BulkDelete(_context.OpenIddictScopes);
+            _context.BulkDelete(_context.OpenIddictAuthorizations);
+            _context.BulkDelete(_context.OpenIddictApplications);
 
             _context.Database.ExecuteSqlRaw("TRUNCATE TABLE PlayerLeaderboardStats;");
 
