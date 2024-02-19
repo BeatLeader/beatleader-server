@@ -212,7 +212,8 @@ namespace BeatLeader_Server.Controllers
                         CountryRank = p.CountryRank,
                         Role = p.Role,
                         ProfileSettings = p.ProfileSettings,
-                        Socials = p.Socials
+                        Socials = p.Socials,
+                        ClanOrder = p.ClanOrder
                     })
                     .ToListAsync())
                     .Select(p => PostProcessSettings(p, false)),

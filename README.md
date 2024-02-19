@@ -27,7 +27,11 @@ After everything is installed:
 2) `dotnet tool install --global dotnet-ef`
 3) `dotnet tool restore`
 4) `dotnet ef database update --context AppContext`
-5) `sudo docker run --cap-add SYS_PTRACE -e 'ACCEPT_EULA=Y' -e 'MSSQL_SA_PASSWORD=SuperStrong!' -p 1433:1433 --name sqledge -d mcr.microsoft.com/azure-sql-edge` (On Windows use " instead of ')
+5) ```
+    sudo docker pull mcr.microsoft.com/mssql/server:2022-latest
+    sudo docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=SuperStrong!" -p 1433:1433 --name sqlserver1 --hostname sqlserver1 -d mcr.microsoft.com/mssql/server:2022-latest
+    sudo docker start sqlserver1
+   ```
 6) Open the .sln in Visual Studio and run the server with "IIS Express".
 
 The server should be accessible at https://localhost:44313/

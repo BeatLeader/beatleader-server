@@ -7,8 +7,18 @@ public static class Program
 
     public static IHostBuilder CreateHostBuilder(string[] args) =>
         Host.CreateDefaultBuilder(args)
-            .ConfigureWebHostDefaults(
-                (webBuilder) => webBuilder.UseStartup<Startup>()).ConfigureLogging((hostingContext, logging) =>
+            .ConfigureServices(services =>
+            {
+                services.Configure<HostOptions>(hostOptions =>
+                {
+                    hostOptions.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
+                });
+            })
+            .ConfigureWebHostDefaults(webBuilder => 
+            {
+                webBuilder.UseStartup<Startup>();
+            })
+            .ConfigureLogging((hostingContext, logging) =>
             {
                 logging.AddConfiguration(hostingContext.Configuration.GetSection("Logging"));
                 logging.AddConsole();

@@ -98,30 +98,6 @@ namespace BeatLeader_Server.Controllers {
                 PostProcessSettings(playerResponse.Role, playerResponse.ProfileSettings, playerResponse.PatreonFeatures, false);
             }
 
-            var valentines = _context
-                    .ValentineMessages
-                    .Where(vm => vm.ReceiverId == id)
-                    .Select(vm => new ValentineMessageResponse {
-                        Id = vm.Id,
-                        SenderId = vm.SenderId,
-                        ReceiverId = vm.ReceiverId,
-
-                        Message = vm.Message,
-                        Timeset = vm.Timeset,
-                        Viewed = vm.Viewed,
-
-                        ViewCount = vm.ViewCount
-                    })
-                    .ToList();
-            if (friends != null) {
-                foreach (var vm in valentines)
-                {
-                    if (friends.Friends.FirstOrDefault(f => f.Id == vm.SenderId) != null) {
-                        vm.Followed = true;
-                    }
-                }
-            }
-
             return new UserReturn {
                 Player = playerResponse,
                 Ban = player.Banned ? _readContext
@@ -136,8 +112,7 @@ namespace BeatLeader_Server.Controllers {
 
                 Migrated = _readContext.AccountLinks.FirstOrDefault(a => a.SteamID == id) != null,
                 Patreoned = await _readContext.PatreonLinks.FindAsync(id) != null,
-                Clan = clanReturn,
-                Valentines = valentines
+                Clan = clanReturn
             };
         }
 

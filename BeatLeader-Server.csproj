@@ -59,6 +59,7 @@
     <PackageReference Include="Discord.Net.Webhook" Version="3.13.0" />
     <PackageReference Include="Discord.Net.WebSocket" Version="3.13.0" />
     <PackageReference Include="geohash-dotnet" Version="2.1.0" />
+    <PackageReference Include="Google.Apis.YouTube.v3" Version="1.66.0.3330" />
     <PackageReference Include="HtmlAgilityPack" Version="1.11.57" />
     <PackageReference Include="HtmlSanitizer" Version="8.0.843" />
     <PackageReference Include="IP2Location.IPGeolocation" Version="9.0.1" />

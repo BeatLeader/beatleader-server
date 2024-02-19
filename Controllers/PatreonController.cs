@@ -323,6 +323,7 @@ namespace BeatLeader_Server.Controllers
         public string? GetUserTier(dynamic user) {
             string? tier = null;
 
+            try {
             foreach (var item in user.included)
             {
                 if (ExpandantoObject.HasProperty(item.attributes, "title"))
@@ -332,6 +333,9 @@ namespace BeatLeader_Server.Controllers
                         break;
                     }
                 }
+            }
+            } catch (Exception e) {
+                Console.WriteLine($"EXCEPTION {e}");
             }
 
             return tier;

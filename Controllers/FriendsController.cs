@@ -381,6 +381,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Filter scores made before unix timestamp, default is null")] int? time_to = null,
             [FromQuery, SwaggerParameter("Show only scores from the event with ID, default is null")] int? eventId = null) {
 
+            search = null;
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
                 return await ContextsFriendsScores(id, sortBy, order, page, count, leaderboardContext, search, diff, type, stars_from, stars_to);
             }
@@ -397,7 +398,7 @@ namespace BeatLeader_Server.Controllers {
             }
 
             bool showRatings = player.ProfileSettings?.ShowAllRatings ?? false;
-            IQueryable<Score> sequence;
+            IQueryable<Score> sequence = _context.Scores.Where(s => s.ValidContexts.HasFlag(leaderboardContext));
 
             using (_serverTiming.TimeAction("sequence")) {
                 var friends = await _context
@@ -409,15 +410,15 @@ namespace BeatLeader_Server.Controllers {
                 if (friends != null) {
                     var friendsList = friends.Friends.Select(f => f.Id).ToList();
                     var json = JsonConvert.SerializeObject(friendsList);
-                    sequence = _context.Scores.Where(s => (s.PlayerId == player.Id || friendsList.Contains(s.PlayerId)) && s.ValidContexts.HasFlag(leaderboardContext));
+                    sequence = sequence.Where(s => s.PlayerId == player.Id || friendsList.Contains(s.PlayerId));
                 } else {
-                    sequence = _context.Scores.Where(s => s.PlayerId == player.Id && s.ValidContexts.HasFlag(leaderboardContext));
+                    sequence = sequence.Where(s => s.PlayerId == player.Id);
                 }
 
                 sequence = sequence.Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             }
 
-            var resultList = sequence
+            var resultList = await sequence
                     .Skip((page - 1) * count)
                     .Take(count)
                     .Include(s => s.Leaderboard)
@@ -509,8 +510,9 @@ namespace BeatLeader_Server.Controllers {
                         AccRight = s.AccRight,
                         MaxStreak = s.MaxStreak
                     })
+                    .AsSplitQuery()
                     .TagWithCallSite()
-                    .ToList();
+                    .ToListAsync();
 
             foreach (var resultScore in resultList) {
                 if (!showRatings && !resultScore.Leaderboard.Difficulty.Status.WithRating()) {
