@@ -171,9 +171,13 @@ namespace BeatLeader_Server.Controllers
             if (int.TryParse(id, out var intId)) {
                 string? currentID = HttpContext.CurrentUserID(_context);
 
-                var playlist = _context.Playlists.FirstOrDefault(p => (p.OwnerId == currentID || p.IsShared) && p.Id == intId);
-                if (playlist == null) {
-                    return Unauthorized("");
+                if (intId != 33) {
+                    var playlist = _context.Playlists.FirstOrDefault(p => p.Id == intId);
+                    if (playlist == null) {
+                        return NotFound();
+                    } else if (playlist.OwnerId != currentID && !playlist.IsShared) {
+                        return Unauthorized("");
+                    }
                 }
             }
 
@@ -216,9 +220,11 @@ namespace BeatLeader_Server.Controllers
             if (int.TryParse(id, out var intId)) {
                 string? currentID = HttpContext.CurrentUserID(_context);
 
-                var playlist = _context.Playlists.FirstOrDefault(p => (p.OwnerId == currentID || p.IsShared) && p.Id == intId);
-                if (playlist == null) {
-                    return Unauthorized("");
+                if (intId != 33) {
+                    var playlist = _context.Playlists.FirstOrDefault(p => (p.OwnerId == currentID || p.IsShared) && p.Id == intId);
+                    if (playlist == null) {
+                        return Unauthorized("");
+                    }
                 }
             }
 
