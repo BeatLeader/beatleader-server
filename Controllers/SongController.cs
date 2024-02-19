@@ -1,5 +1,6 @@
 ﻿using Amazon.S3;
 using beatleader_parser;
+using Parser.Utils;
 using BeatLeader_Server.Bot;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
@@ -136,15 +137,22 @@ namespace BeatLeader_Server.Controllers
         {
             if(!_cache.TryGetValue(allStarsZipFile, out byte[]? zipFile) || zipFile is null)
             {
+                var songs = _context.Songs
+                        .Select(s => 
+                            s.Difficulties.Where(d => d.Stars > 0).Select(d => 
+                                new HashDiffStarTuple(
+                                    s.Hash, 
+                                    d.DifficultyName + d.ModeName, 
+                                    (float)(d.Stars != null ? d.Stars : 0))).ToArray())
+                        .ToArray()
+                        .SelectMany(x => x)
+                        .Distinct()
+                        .Where(d => d.Stars > 0)
+                        .ToArray();
+
                 // Serialize Hashes, Diffs and Stars
                 using MemoryStream originalms = new();
-                Serializer.Serialize(
-                    originalms,
-                    _readContext.Songs.Include(s => s.Difficulties)
-                        .SelectMany(s => s.Difficulties, (s, diff) => new { s.Hash, diff })
-                        .Where(a => (a.diff.Stars ?? 0) != 0)
-                        .Select(d => new HashDiffStarTuple(d.Hash, d.diff.DifficultyName + d.diff.ModeName, d.diff.Stars ?? 0))
-                        .ToArray());
+                Serializer.Serialize(originalms, songs);
 
                 // Zip them in a gzip file
                 originalms.Position = 0;

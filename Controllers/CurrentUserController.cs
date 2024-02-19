@@ -136,8 +136,7 @@ namespace BeatLeader_Server.Controllers {
 
                 Migrated = _readContext.AccountLinks.FirstOrDefault(a => a.SteamID == id) != null,
                 Patreoned = await _readContext.PatreonLinks.FindAsync(id) != null,
-                Clan = clanReturn,
-                Valentines = valentines
+                Clan = clanReturn
             };
         }
 
