@@ -17,6 +17,7 @@ namespace BeatLeader_Server.Controllers {
         private readonly ReadAppContext _readContext;
 
         private readonly IConfiguration _configuration;
+        private readonly IDbContextFactory<AppContext> _dbFactory;
         IWebHostEnvironment _environment;
 
         private readonly IServerTiming _serverTiming;
@@ -26,10 +27,12 @@ namespace BeatLeader_Server.Controllers {
             ReadAppContext readContext,
             IConfiguration configuration, 
             IServerTiming serverTiming,
+            IDbContextFactory<AppContext> dbFactory,
             IWebHostEnvironment env)
         {
             _context = context;
             _readContext = readContext;
+            _dbFactory = dbFactory;
 
             _configuration = configuration;
             _serverTiming = serverTiming;
@@ -155,6 +158,72 @@ namespace BeatLeader_Server.Controllers {
             return Ok();
         }
 
+        [NonAction]
+        private async Task CalculateBatch(
+            List<IGrouping<string, ScoreSelection>> groups, 
+            Dictionary<string, int> playerMap,
+            Dictionary<int, float> weights)
+        {
+            using (var anotherContext = _dbFactory.CreateDbContext()) {
+                anotherContext.ChangeTracker.AutoDetectChangesEnabled = false;
+                foreach (var group in groups)
+                {
+                    try {
+
+                        var player = new PlayerContextExtension { Id = playerMap[group.Key] };
+                        try {
+                            anotherContext.PlayerContextExtensions.Attach(player);
+                        } catch { }
+
+                        float resultPP = 0f;
+                        float accPP = 0f;
+                        float techPP = 0f;
+                        float passPP = 0f;
+
+                        foreach ((int i, var s) in group.OrderByDescending(s => s.Pp).Select((value, i) => (i, value)))
+                        {
+                            float weight = weights[i];
+                            if (s.Weight != weight)
+                            {
+                                var score = new ScoreContextExtension() { Id = s.Id, Weight = weight };
+                                try {
+                                    anotherContext.ScoreContextExtensions.Attach(score);
+                                } catch { }
+                                anotherContext.Entry(score).Property(x => x.Weight).IsModified = true;
+                            }
+                            resultPP += s.Pp * weight;
+                            accPP += s.AccPP * weight;
+                            techPP += s.TechPP * weight;
+                            passPP += s.PassPP * weight;
+                        }
+                        player.Pp = resultPP;
+                        player.AccPp = accPP;
+                        player.TechPp = techPP;
+                        player.PassPp = passPP;
+
+                        anotherContext.Entry(player).Property(x => x.Pp).IsModified = true;
+                        anotherContext.Entry(player).Property(x => x.AccPp).IsModified = true;
+                        anotherContext.Entry(player).Property(x => x.TechPp).IsModified = true;
+                        anotherContext.Entry(player).Property(x => x.PassPp).IsModified = true;
+                    } catch (Exception e) {
+                    }
+                }
+                
+                await anotherContext.BulkSaveChangesAsync();
+            }
+        }
+        private class ScoreSelection {
+            public int Id { get; set; } 
+            public float Accuracy { get; set; } 
+            public int Rank { get; set; } 
+            public float Pp { get; set; } 
+            public float AccPP { get; set; }  
+            public float TechPP { get; set; } 
+            public float PassPP { get; set; } 
+            public float Weight { get; set; } 
+            public string PlayerId { get; set; }
+        }
+
         [HttpGet("~/players/refresh/{context}")]
         [Authorize]
         public async Task<ActionResult> RefreshPlayersContext(LeaderboardContexts context)
@@ -178,72 +247,31 @@ namespace BeatLeader_Server.Controllers {
             var scores = _context
                 .ScoreContextExtensions
                 .Where(s => s.Pp != 0 && s.Context == context && s.ScoreId != null && !s.Banned && !s.Qualification)
-                .OrderByDescending(s => s.Pp)
-                .Select(s => new { s.Id, s.Accuracy, s.Rank, s.Pp, s.AccPP, s.TechPP, s.PassPP, s.Weight, s.PlayerId })
+                .Select(s => new ScoreSelection { 
+                    Id = s.Id, 
+                    Accuracy = s.Accuracy, 
+                    Rank = s.Rank, 
+                    Pp = s.Pp, 
+                    AccPP = s.AccPP, 
+                    TechPP = s.TechPP, 
+                    PassPP = s.PassPP, 
+                    Weight = s.Weight, 
+                    PlayerId = s.PlayerId
+                })
                 .ToList();
+            var playerMap = _context.PlayerContextExtensions.ToDictionary(ce => ce.PlayerId, ce => ce.Id);
 
-            var query = _context.PlayerContextExtensions
-                .Where(ce => ce.Context == context && !ce.Banned)
-                .OrderByDescending(p => p.Pp)
-                .Select(p => new { p.Id, p.PlayerId, p.Country })
-                .ToList();
-
-            var allPlayers = new List<PlayerContextExtension>();
-            foreach (var p in query) {
-
-            
-            //await query.ParallelForEachAsync(async p => {
-                //try {
-                    var player = new PlayerContextExtension { Id = p.Id, PlayerId = p.PlayerId, Country = p.Country };
-                    try {
-                        _context.PlayerContextExtensions.Attach(player);
-                    } catch { }
-                    allPlayers.Add(player);
-
-                //    if (allPlayers.Count(p => p.PlayerId == p.PlayerId) > 1) {
-                //    int x = 4353;
-                //}
-
-                    float resultPP = 0f;
-                    float accPP = 0f;
-                    float techPP = 0f;
-                    float passPP = 0f;
-                    var playerScores = scores.Where(s => s.PlayerId == p.PlayerId).ToList();
-                    foreach ((int i, var s) in playerScores.Select((value, i) => (i, value)))
-                    {
-                        float weight = weights[i];
-                        if (s.Weight != weight)
-                        {
-                            var score = new ScoreContextExtension() { Id = s.Id, Weight = weight };
-                            try {
-                                _context.ScoreContextExtensions.Attach(score);
-                            } catch { }
-                            _context.Entry(score).Property(x => x.Weight).IsModified = true;
-                        }
-                        resultPP += s.Pp * weight;
-                        accPP += s.AccPP * weight;
-                        techPP += s.TechPP * weight;
-                        passPP += s.PassPP * weight;
-                    }
-                    player.Pp = resultPP;
-                    player.AccPp = accPP;
-                    player.TechPp = techPP;
-                    player.PassPp = passPP;
-
-                    _context.Entry(player).Property(x => x.Pp).IsModified = true;
-                    _context.Entry(player).Property(x => x.AccPp).IsModified = true;
-                    _context.Entry(player).Property(x => x.TechPp).IsModified = true;
-                    _context.Entry(player).Property(x => x.PassPp).IsModified = true;
-                //} catch (Exception e) {
-                //}
-                //}, maxDegreeOfParallelism: 50);
-        }
-
-        await _context.BulkSaveChangesAsync();
+            var scoreGroups = scores.GroupBy(s => s.PlayerId).ToList();
+            var tasks = new List<Task>();
+            for (int i = 0; i < scoreGroups.Count; i += 5000)
+            {
+                tasks.Add(CalculateBatch(scoreGroups.Skip(i).Take(5000).ToList(), playerMap, weights));
+            }
+            Task.WaitAll(tasks.ToArray());
 
             Dictionary<string, int> countries = new Dictionary<string, int>();
-            var ranked = allPlayers
-                .Where(p => p.Pp > 0)
+            var ranked = _context.PlayerContextExtensions
+                .Where(ce => ce.Context == context && !ce.Banned && ce.Pp > 0)
                 .OrderByDescending(t => t.Pp)
                 .ToList();
             foreach ((int i, PlayerContextExtension p) in ranked.Select((value, i) => (i, value)))

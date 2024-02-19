@@ -16,6 +16,7 @@ namespace BeatLeader_Server.Controllers
     {
         private readonly AppContext _context;
         private readonly ReadAppContext _readContext;
+        private readonly IDbContextFactory<AppContext> _dbFactory;
 
         private readonly IConfiguration _configuration;
         IWebHostEnvironment _environment;
@@ -27,6 +28,7 @@ namespace BeatLeader_Server.Controllers
             ReadAppContext readContext,
             IConfiguration configuration, 
             IServerTiming serverTiming,
+            IDbContextFactory<AppContext> dbFactory,
             IWebHostEnvironment env)
         {
             _context = context;
@@ -35,36 +37,7 @@ namespace BeatLeader_Server.Controllers
             _configuration = configuration;
             _serverTiming = serverTiming;
             _environment = env;
-        }
-
-        [HttpGet("~/players/steam/refresh")]
-        public async Task<ActionResult> RefreshSteamPlayers()
-        {
-            var players = _context.Players.ToList();
-            foreach (Player p in players)
-            {
-                if (Int64.Parse(p.Id) <= 70000000000000000) { continue; }
-                Player? update = await PlayerUtils.GetPlayerFromSteam(_configuration.GetValue<string>("SteamApi"), p.Id, _configuration.GetValue<string>("SteamKey"));
-
-                if (update != null)
-                {
-                    p.ExternalProfileUrl = update.ExternalProfileUrl;
-
-                    if (p.Avatar.Contains("steamcdn"))
-                    {
-                        p.Avatar = update.Avatar;
-                    }
-
-                    if (p.Country == "not set" && update.Country != "not set")
-                    {
-                        p.Country = update.Country;
-                    }
-                }
-            }
-
-            await _context.SaveChangesAsync();
-
-            return Ok();
+            _dbFactory = dbFactory;
         }
 
         public struct SubScore
@@ -405,6 +378,70 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        private class ScoreSelection {
+            public int Id { get; set; } 
+            public float Accuracy { get; set; } 
+            public int Rank { get; set; } 
+            public float Pp { get; set; } 
+            public float AccPP { get; set; }  
+            public float TechPP { get; set; } 
+            public float PassPP { get; set; } 
+            public float Weight { get; set; } 
+            public string PlayerId { get; set; } 
+            public string Country { get; set; } 
+        }
+
+        [NonAction]
+        private async Task CalculateBatch(List<IGrouping<string, ScoreSelection>> groups, Dictionary<int, float> weights)
+        {
+            using (var anotherContext = _dbFactory.CreateDbContext()) {
+                anotherContext.ChangeTracker.AutoDetectChangesEnabled = false;
+                foreach (var group in groups)
+                {
+                    try {
+                        Player player = new Player { Id = group.Key };
+                        try {
+                            anotherContext.Players.Attach(player);
+                        } catch { }
+
+                        float resultPP = 0f;
+                        float accPP = 0f;
+                        float techPP = 0f;
+                        float passPP = 0f;
+
+                        foreach ((int i, var s) in group.OrderByDescending(s => s.Pp).Select((value, i) => (i, value)))
+                        {
+                            float weight = weights[i];
+                            if (s.Weight != weight)
+                            {
+                                var score = new Score() { Id = s.Id, Weight = weight };
+                                try {
+                                    anotherContext.Scores.Attach(score);
+                                } catch { }
+                                anotherContext.Entry(score).Property(x => x.Weight).IsModified = true;
+                            }
+                            resultPP += s.Pp * weight;
+                            accPP += s.AccPP * weight;
+                            techPP += s.TechPP * weight;
+                            passPP += s.PassPP * weight;
+                        }
+                        player.Pp = resultPP;
+                        player.AccPp = accPP;
+                        player.TechPp = techPP;
+                        player.PassPp = passPP;
+
+                        anotherContext.Entry(player).Property(x => x.Pp).IsModified = true;
+                        anotherContext.Entry(player).Property(x => x.AccPp).IsModified = true;
+                        anotherContext.Entry(player).Property(x => x.TechPp).IsModified = true;
+                        anotherContext.Entry(player).Property(x => x.PassPp).IsModified = true;
+                    } catch (Exception e) {
+                    }
+                }
+                
+                await anotherContext.BulkSaveChangesAsync();
+            }
+        }
+
         [HttpGet("~/players/refresh")]
         [Authorize]
         public async Task<ActionResult> RefreshPlayers()
@@ -419,6 +456,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             _context.ChangeTracker.AutoDetectChangesEnabled = false;
+
             var weights = new Dictionary<int, float>();
             for (int i = 0; i < 10000; i++)
             {
@@ -428,64 +466,33 @@ namespace BeatLeader_Server.Controllers
             var scores = _context
                 .Scores
                 .Where(s => s.Pp != 0 && !s.Banned && !s.Qualification && s.ValidContexts.HasFlag(LeaderboardContexts.General))
-                .OrderByDescending(s => s.Pp)
-                .Select(s => new { s.Id, s.Accuracy, s.Rank, s.Pp, s.AccPP, s.TechPP, s.PassPP, s.Weight, s.PlayerId })
+                .Select(s => new ScoreSelection { 
+                    Id = s.Id, 
+                    Accuracy = s.Accuracy, 
+                    Rank = s.Rank, 
+                    Pp = s.Pp, 
+                    AccPP = s.AccPP, 
+                    TechPP = s.TechPP, 
+                    PassPP = s.PassPP, 
+                    Weight = s.Weight, 
+                    PlayerId = s.PlayerId, 
+                    Country = s.Player.Country 
+                })
                 .ToList();
 
-            var query = _context.Players
-                .OrderByDescending(p => p.Pp)
-                .Where(p => p.Pp != 0 && !p.Banned)
-                .Select(p => new { p.Id, p.Country })
-                .ToList();
-
-            var allPlayers = new List<Player>();
-            await query.ParallelForEachAsync(async p => {
-                try {
-                    Player player = new Player { Id = p.Id, Country = p.Country };
-                    try {
-                        _context.Players.Attach(player);
-                    } catch { }
-                    allPlayers.Add(player);
-
-                    float resultPP = 0f;
-                    float accPP = 0f;
-                    float techPP = 0f;
-                    float passPP = 0f;
-                    var playerScores = scores.Where(s => s.PlayerId == p.Id).ToList();
-                    foreach ((int i, var s) in playerScores.Select((value, i) => (i, value)))
-                    {
-                        float weight = weights[i];
-                        if (s.Weight != weight)
-                        {
-                            var score = new Score() { Id = s.Id, Weight = weight };
-                            try {
-                                _context.Scores.Attach(score);
-                            } catch { }
-                            _context.Entry(score).Property(x => x.Weight).IsModified = true;
-                        }
-                        resultPP += s.Pp * weight;
-                        accPP += s.AccPP * weight;
-                        techPP += s.TechPP * weight;
-                        passPP += s.PassPP * weight;
-                    }
-                    player.Pp = resultPP;
-                    player.AccPp = accPP;
-                    player.TechPp = techPP;
-                    player.PassPp = passPP;
-
-                    _context.Entry(player).Property(x => x.Pp).IsModified = true;
-                    _context.Entry(player).Property(x => x.AccPp).IsModified = true;
-                    _context.Entry(player).Property(x => x.TechPp).IsModified = true;
-                    _context.Entry(player).Property(x => x.PassPp).IsModified = true;
-                } catch (Exception e) {
-                }
-            }, maxDegreeOfParallelism: 50);
-
-            await _context.BulkSaveChangesAsync();
+            var scoreGroups = scores.GroupBy(s => s.PlayerId).ToList();
+            var tasks = new List<Task>();
+            for (int i = 0; i < scoreGroups.Count; i += 5000)
+            {
+                tasks.Add(CalculateBatch(scoreGroups.Skip(i).Take(5000).ToList(), weights));
+            }
+            Task.WaitAll(tasks.ToArray());
+            
 
             Dictionary<string, int> countries = new Dictionary<string, int>();
-            var ranked = allPlayers
-                .Where(p => p.Pp > 0)
+            var ranked = _context
+                .Players
+                .Where(p => p.Pp > 0 && !p.Banned)
                 .OrderByDescending(t => t.Pp)
                 .ToList();
             foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
