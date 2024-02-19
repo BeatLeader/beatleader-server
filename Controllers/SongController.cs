@@ -1,19 +1,17 @@
 ﻿using Amazon.S3;
 using beatleader_parser;
-using BeatLeader_Server.BeatMapEvaluator;
+using Parser.Utils;
 using BeatLeader_Server.Bot;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
-using BeatMapEvaluator;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using System.Dynamic;
+using Microsoft.Extensions.Caching.Memory;
+using Models.Models;
+using ProtoBuf;
 using System.IO.Compression;
-using System.Net;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -26,12 +24,14 @@ namespace BeatLeader_Server.Controllers
         private readonly ReadAppContext _readContext;
         private readonly RTNominationsForum _rtNominationsForum;
         private readonly IAmazonS3 _s3Client;
-        public SongController(AppContext context, ReadAppContext readContext, RTNominationsForum rtNominationsForum, IConfiguration configuration)
+        private readonly IMemoryCache _cache;
+        public SongController(AppContext context, ReadAppContext readContext, RTNominationsForum rtNominationsForum, IConfiguration configuration, IMemoryCache cache)
         {
             _s3Client = configuration.GetS3Client();
             _context = context;      
             _readContext = readContext;
             _rtNominationsForum = rtNominationsForum;
+            _cache = cache;
         }
 
         [HttpGet("~/refreshstatus")]
@@ -128,6 +128,45 @@ namespace BeatLeader_Server.Controllers
             }
 
             return result;
+        }
+
+        const string allStarsZipFile = "allStarsZipFile";
+
+        [HttpGet("~/map/allstars")]
+        public async Task<ActionResult> GetAllStars()
+        {
+            if(!_cache.TryGetValue(allStarsZipFile, out byte[]? zipFile) || zipFile is null)
+            {
+                var songs = _context.Songs
+                        .Select(s => 
+                            s.Difficulties.Where(d => d.Stars > 0).Select(d => 
+                                new HashDiffStarTuple(
+                                    s.Hash, 
+                                    d.DifficultyName + d.ModeName, 
+                                    (float)(d.Stars != null ? d.Stars : 0))).ToArray())
+                        .ToArray()
+                        .SelectMany(x => x)
+                        .Distinct()
+                        .Where(d => d.Stars > 0)
+                        .ToArray();
+
+                // Serialize Hashes, Diffs and Stars
+                using MemoryStream originalms = new();
+                Serializer.Serialize(originalms, songs);
+
+                // Zip them in a gzip file
+                originalms.Position = 0;
+                using MemoryStream compressedms = new();
+                using (var compressor = new GZipStream(compressedms, CompressionLevel.SmallestSize, true))
+                {
+                    await originalms.CopyToAsync(compressor);
+                }
+
+                // And cache the Result until midnight
+                zipFile = compressedms.ToArray();
+                _cache.Set(allStarsZipFile, zipFile, DateTimeOffset.UtcNow.AddDays(1).Date);
+            }
+            return File(zipFile, "application/gzip", "Testfile");
         }
 
         [NonAction]
