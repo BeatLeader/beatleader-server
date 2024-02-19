@@ -1,8 +1,10 @@
 ﻿using BeatLeader_Server.Controllers;
+using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
 
 namespace BeatLeader_Server.Services
 {
@@ -25,11 +27,16 @@ namespace BeatLeader_Server.Services
                 if (hoursUntil21 == 0)
                 {
                     Console.WriteLine("STARTED DailyRefresh");
-                    await RefreshPatreon();
-                    await RefreshBoosters();
-                    await RefreshBanned();
-                    //await FetchMapOfTheWeek();
-                    await RefreshSongSuggest();
+
+                    try {
+                        await RefreshPatreon();
+                        await RefreshBoosters();
+                        await RefreshBanned();
+                        await FetchMapOfTheWeek();
+                        await RefreshSongSuggest();
+                    } catch (Exception e) {
+                        Console.WriteLine($"EXCEPTION DailyRefresh {e}");
+                    }
 
                     hoursUntil21 = 24;
 
@@ -112,33 +119,46 @@ namespace BeatLeader_Server.Services
             using (var scope = _serviceScopeFactory.CreateScope()) {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
 
-                var currentDate = DateTime.UtcNow;
-                var lastUpdateDate = _context.SongsLastUpdateTimes.Where(s => s.Status == SongStatus.MapOfTheWeek).FirstOrDefault()?.Date ?? new DateTime(1970, 1, 1);
-                if (currentDate.Subtract(lastUpdateDate).TotalHours > 20)
+                var existingMOTWs = _context.Songs.Where(s => 
+                    s.ExternalStatuses.FirstOrDefault(es => es.Status == SongStatus.MapOfTheWeek) != null)
+                    .Include(es => es.ExternalStatuses)
+                    .ToList();
+
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://api.beatsaver.com/playlists/id/7483/download/beatsaver-7483.bplist");
+                dynamic? playlist = await request.DynamicResponse();
+
+                Song? lastMotw = null;
+                var hashes = new List<string>();
+
+                foreach (var song in playlist.songs)
                 {
-                    var curated = await SongUtils.GetMapOfTheWeekSongs(lastUpdateDate);
-                    var ids = curated.Select(m => m.Id.ToLower()).ToList();
-                    var songs = _context.Songs.Where(s => ids.Contains(s.Id.ToLower())).Include(s => s.ExternalStatuses).ToList();
-                    foreach (var map in curated)
-                    {
-                        var song = songs.FirstOrDefault(s => s.Id.ToLower() == map.Id.ToLower());
-                        if (song != null && map.ExternalStatuses != null) {
-                            if (song.ExternalStatuses == null) {
-                                song.ExternalStatuses = new List<ExternalStatus>();
+                    string hash = song.hash.ToLower();
+                    hashes.Add(hash);
+
+                    var existingMOTW = existingMOTWs.FirstOrDefault(s => s.Hash.ToLower() == hash);
+                    if (existingMOTW == null) {
+                        var newMOTW = _context.Songs.Where(s => s.Hash.ToLower() == hash).Include(s => s.ExternalStatuses).FirstOrDefault();
+                        if (newMOTW != null) {
+                            int timeset = lastMotw?.ExternalStatuses?.First(s => s.Status == SongStatus.MapOfTheWeek).Timeset ?? 1620421200;
+                            if (newMOTW.ExternalStatuses == null) { 
+                                newMOTW.ExternalStatuses = new List<ExternalStatus>();
                             }
-                            if (song.ExternalStatuses.FirstOrDefault(es => es.Status == SongStatus.MapOfTheWeek) == null) {
-                                foreach (var status in map.ExternalStatuses)
-                                {
-                                    song.ExternalStatuses.Add(status);
-                                }
-                            }
+                            newMOTW.ExternalStatuses.Add(new ExternalStatus {
+                                Status = SongStatus.MapOfTheWeek,
+                                Timeset = timeset + 60 * 60 * 24 * 7,
+                                Link = "https://beatsaver.com/playlists/7483"
+                            });
+                            existingMOTW = newMOTW;
                         }
                     }
+                    lastMotw = existingMOTW;
+                }
 
-                    _context.SongsLastUpdateTimes.Add(new SongsLastUpdateTime {
-                        Date = currentDate,
-                        Status = SongStatus.MapOfTheWeek
-                    });
+                foreach (var existingMOTW in existingMOTWs)
+                {
+                    if (hashes.Contains(existingMOTW.Hash.ToLower())) continue;
+
+                    existingMOTW.ExternalStatuses.Remove(existingMOTW.ExternalStatuses.First(s => s.Status == SongStatus.MapOfTheWeek));
                 }
 
                 await _context.SaveChangesAsync();

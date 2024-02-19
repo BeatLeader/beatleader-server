@@ -7,6 +7,8 @@ using BeatLeader_Server.Extensions;
 using BeatMapEvaluator;
 using BeatLeader_Server.BeatMapEvaluator;
 using BeatLeader_Server.Models;
+using Google.Apis.YouTube.v3;
+using Google.Apis.Services;
 
 namespace BeatLeader_Server.Services {
     public class HourlyRefresh : BackgroundService {
@@ -23,21 +25,23 @@ namespace BeatLeader_Server.Services {
                 int minuteSpan = 60 - DateTime.Now.Minute;
                 int numberOfMinutes = minuteSpan;
 
-                if (minuteSpan == 60) {
+                if (minuteSpan == 60)
+                {
                     Console.WriteLine("STARTED HourlyRefresh");
 
                     await RefreshClans();
                     await FetchCurated();
                     await CheckMaps();
+                    await CheckNoodleMonday();
 
                     Console.WriteLine("DONE HourlyRefresh");
 
-                    minuteSpan = 60 - DateTime.Now.Minute;
-                    numberOfMinutes = minuteSpan;
-                }
+                minuteSpan = 60 - DateTime.Now.Minute;
+                numberOfMinutes = minuteSpan;
+            }
 
                 await Task.Delay(TimeSpan.FromMinutes(numberOfMinutes), stoppingToken);
-            }
+        }
             while (!stoppingToken.IsCancellationRequested);
         }
 
@@ -95,6 +99,72 @@ namespace BeatLeader_Server.Services {
                 }
 
                 await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task CheckNoodleMonday() {
+            using (var scope = _serviceScopeFactory.CreateScope()) {
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+
+                try {
+                    var youtubeService = new YouTubeService(new BaseClientService.Initializer()
+                    {
+                        ApiKey = _configuration.GetValue<string?>("YoutubeAPIKey"),
+                        ApplicationName = this.GetType().ToString()
+                    });
+
+                    var searchListRequest = youtubeService.Search.List("snippet");
+                    searchListRequest.ChannelId = "UCdG9zS8jVcQIKl7plwWXUkg";
+                    searchListRequest.MaxResults = 4;
+                    searchListRequest.Order = Google.Apis.YouTube.v3.SearchResource.ListRequest.OrderEnum.Date;
+
+                    List<string> videoIds = new List<string>();
+                    var searchListResponse = await searchListRequest.ExecuteAsync();
+                    foreach (var searchResult in searchListResponse.Items)
+                    {
+                        if (searchResult == null) continue;
+                        if (searchResult.Id.Kind == "youtube#video")
+                        {
+                            string title = searchResult.Snippet.Title;
+                            if (title.Contains("Noodle Map Monday"))
+                            {
+                                videoIds.Add(searchResult.Id.VideoId);
+                            }
+                        }
+                    }
+
+                    var videoListRequest = youtubeService.Videos.List("snippet");
+                    videoListRequest.Id = string.Join(",", videoIds);
+                    var videoListResponse = await videoListRequest.ExecuteAsync();
+
+                    List<string> videoUrls = new List<string>();
+                    foreach (var video in videoListResponse.Items)
+                    {
+                        string videoUrl = $"https://www.youtube.com/watch?v={video.Id}";
+                        int timeset = (int)(video.Snippet.PublishedAt?.Subtract(new DateTime(1970, 1, 1)).TotalSeconds ?? 0);
+
+                        string id = video.Snippet.Description.Split("https://beatsaver.com/maps/").Last().Split(".").First().Split("\n").First();
+
+                        var lastVersion = await SongUtils.GetSongFromBeatSaverId(id);
+
+                        if (lastVersion == null) continue;
+                        var song = _context.Songs.Where(s => s.Hash.ToLower() == lastVersion.Hash.ToLower()).Include(s => s.ExternalStatuses).FirstOrDefault();
+
+                        if (song == null) continue;
+                        if (song.ExternalStatuses == null) {
+                            song.ExternalStatuses = new List<ExternalStatus>();
+                        }
+                        if (song.ExternalStatuses.FirstOrDefault(es => es.Status == SongStatus.NoodleMonday) != null) continue;
+
+                        song.ExternalStatuses.Add(new ExternalStatus {
+                            Status = SongStatus.NoodleMonday,
+                            Timeset = timeset,
+                            Link = videoUrl
+                        });
+                    }
+
+                    _context.SaveChanges();
+                } catch { }
             }
         }
 
