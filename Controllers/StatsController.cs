@@ -174,6 +174,25 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
+        [HttpGet("~/scorestats")]
+        public async Task<ActionResult> scorestats([FromQuery] string playerId, [FromQuery] string leaderboardId) {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            bool admin = currentID != null ? (_context
+                .Players
+                .Where(p => p.Id == currentID)
+                .Select(p => p.Role)
+                .FirstOrDefault()
+                ?.Contains("admin") ?? false) : false;
+
+            playerId = _context.PlayerIdToMain(playerId);
+
+            if (currentID != playerId && !admin) {
+                return Unauthorized();
+            }
+
+            return Ok(_context.PlayerLeaderboardStats.Where(s => s.PlayerId == playerId && s.LeaderboardId == leaderboardId).ToList());
+        }
+
         [HttpGet("~/watched/{scoreId}/")]
         public async Task<ActionResult<VoteStatus>> Played(
             int scoreId)

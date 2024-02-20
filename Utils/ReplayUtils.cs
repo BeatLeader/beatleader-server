@@ -709,7 +709,7 @@ namespace BeatLeader_Server.Utils
         public static bool IsNewScoreBetter(Score? oldScore, Score newScore) {
             if (oldScore == null) return true;
             if (oldScore.Modifiers.Contains("OP")) return true;
-            if (newScore.Pp != 0) {
+            if (newScore.Pp != 0 || oldScore.Pp != 0) {
                 if (newScore.Pp > oldScore.Pp) return true;
                 if (oldScore.Modifiers.Contains("NF") && 
                     newScore.Modifiers.Contains("NF") &&
