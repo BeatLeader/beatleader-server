@@ -174,8 +174,8 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
-        [HttpGet("~/scorestats")]
-        public async Task<ActionResult> scorestats([FromQuery] string playerId, [FromQuery] string leaderboardId) {
+        [HttpGet("~/map/scorestats")]
+        public async Task<ActionResult> GetScorestatsOnMap([FromQuery] string playerId, [FromQuery] string leaderboardId) {
             string? currentID = HttpContext.CurrentUserID(_context);
             bool admin = currentID != null ? (_context
                 .Players

@@ -213,7 +213,7 @@ namespace BeatLeader_Server.Controllers
                         Role = p.Role,
                         ProfileSettings = p.ProfileSettings,
                         Socials = p.Socials,
-                        ClanOrder = p.ClanOrder
+                        ClanOrder = p.ClanOrder.Length > 0 ? p.ClanOrder : string.Join(",", p.Clans.OrderBy(c => c.Id).Select(c => c.Tag)) 
                     })
                     .ToListAsync())
                     .Select(p => PostProcessSettings(p, false)),
