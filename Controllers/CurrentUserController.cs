@@ -316,6 +316,7 @@ namespace BeatLeader_Server.Controllers {
                 .Include(p => p.ProfileSettings)
                 .Include(p => p.PatreonFeatures)
                 .Include(p => p.Changes)
+                .Include(p => p.Clans)
                 .FirstOrDefaultAsync();
             bool adminChange = false;
 
@@ -443,6 +444,11 @@ namespace BeatLeader_Server.Controllers {
                     if (!adminChange && lastChange != null && !adminChange && (timestamp - lastChange.Timestamp) < 60 * 60 * 24 * 7) {
                         return BadRequest("Error. You can change clan order after " + (int)(7 - (timestamp - lastChange.Timestamp) / (60 * 60 * 24)) + " day(s)");
                     }
+
+                    newClanOrder = string.Join(",", player.Clans
+                        .OrderBy(c => newClanOrder.IndexOf(c.Tag))
+                        .ThenBy(c => c.Id)
+                        .Select(c => c.Tag));
 
                     _context.ClanOrderChanges.Add(new ClanOrderChange {
                         PlayerId = userId,

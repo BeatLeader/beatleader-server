@@ -177,6 +177,7 @@ namespace BeatLeader_Server.Controllers
             await _context.SaveChangesAsync();
 
             player.Clans.Add(newClan);
+            player.RefreshClanOrder();
             await _context.SaveChangesAsync();
 
             HttpContext.Response.OnCompleted(async () => {
@@ -214,11 +215,11 @@ namespace BeatLeader_Server.Controllers
             Clan? clan = null;
             if (id != null && player != null && player.Role.Contains("admin"))
             {
-                clan = await _context.Clans.FindAsync(id);
+                clan = _context.Clans.Include(c => c.Players).ThenInclude(c => c.Clans).FirstOrDefault(c => c.Id == id);
             }
             else
             {
-                clan = _context.Clans.FirstOrDefault(c => c.LeaderID == currentID);
+                clan = _context.Clans.Include(c => c.Players).ThenInclude(c => c.Clans).FirstOrDefault(c => c.LeaderID == currentID);
             }
             if (clan == null)
             {
@@ -260,6 +261,13 @@ namespace BeatLeader_Server.Controllers
             _context.Clans.Remove(clan);
             
             await _context.BulkSaveChangesAsync();
+
+            foreach (var clanPlayer in clan.Players)
+            {
+                clanPlayer.RefreshClanOrder();
+            }
+            await _context.BulkSaveChangesAsync();
+
             HttpContext.Response.OnCompleted(async () => {
                 // Recalculate the clanRankings on each leaderboard where this clan had an impact
                 var result = new List<ClanRankingChanges>(); 
@@ -557,8 +565,6 @@ namespace BeatLeader_Server.Controllers
                 Console.WriteLine($"EXCEPTION: {e}");
             }
 
-            
-
             await _context.SaveChangesAsync();
 
             return Ok();
@@ -758,6 +764,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             user.Player.Clans.Remove(clan);
+            user.Player.RefreshClanOrder();
 
             clan.AverageAccuracy = MathUtils.RemoveFromAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageRankedAccuracy);
             clan.AverageRank = MathUtils.RemoveFromAverage(clan.AverageRank, clan.PlayersCount, user.Player.Rank);
@@ -825,12 +832,10 @@ namespace BeatLeader_Server.Controllers
             }
 
             user.Player.Clans.Add(clan);
+            user.Player.RefreshClanOrder();
             clan.PlayersCount++;
             clan.AverageAccuracy = MathUtils.AddToAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageRankedAccuracy);
             clan.AverageRank = MathUtils.AddToAverage(clan.AverageRank, clan.PlayersCount, user.Player.Rank);
-            if (user.Player.ClanOrder.Length > 0) {
-                user.Player.ClanOrder += $",{clan.Tag}";
-            }
 
             await _context.SaveChangesAsync();
 
@@ -941,12 +946,10 @@ namespace BeatLeader_Server.Controllers
             }
 
             user.Player.Clans.Remove(clan);
+            user.Player.RefreshClanOrder();
             clan.AverageAccuracy = MathUtils.RemoveFromAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageRankedAccuracy);
             clan.AverageRank = MathUtils.RemoveFromAverage(clan.AverageRank, clan.PlayersCount, user.Player.Rank);
             clan.PlayersCount--;
-            if (user.Player.ClanOrder.Length > 0) {
-                user.Player.ClanOrder = string.Join(",", user.Player.ClanOrder.Split(",").Where(c => c != clan.Tag).ToList());
-            }
             await _context.SaveChangesAsync();
 
             clan.Pp = _context.RecalculateClanPP(clan.Id);
