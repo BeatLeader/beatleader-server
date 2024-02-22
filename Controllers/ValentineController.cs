@@ -1,6 +1,5 @@
 ﻿using BeatLeader_Server.Enums;
 using BeatLeader_Server.Extensions;
-using BeatLeader_Server.Migrations.ReadApp;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Lib.ServerTiming;
@@ -23,20 +22,17 @@ namespace BeatLeader_Server.Controllers
     public class ValentineController : Controller
     {
         private readonly AppContext _context;
-        private readonly ReadAppContext _readContext;
 
         private readonly IServerTiming _serverTiming;
         private readonly IConfiguration _configuration;
 
         public ValentineController(
             AppContext context,
-            ReadAppContext readContext,
             IWebHostEnvironment env,
             IServerTiming serverTiming,
             IConfiguration configuration)
         {
             _context = context;
-            _readContext = readContext;
 
             _serverTiming = serverTiming;
             _configuration = configuration;

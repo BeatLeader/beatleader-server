@@ -18,8 +18,6 @@ namespace BeatLeader_Server.Controllers
     public class EventsController : Controller
     {
         private readonly AppContext _context;
-        private readonly ReadAppContext _readContext;
-
         private readonly ScoreRefreshController _scoreRefreshController;
 
         private readonly IConfiguration _configuration;
@@ -30,14 +28,12 @@ namespace BeatLeader_Server.Controllers
 
         public EventsController(
             AppContext context,
-            ReadAppContext readContext,
             ScoreRefreshController scoreRefreshController,
             IConfiguration configuration, 
             IServerTiming serverTiming,
             IWebHostEnvironment env)
         {
             _context = context;
-            _readContext = readContext;
 
             _scoreRefreshController = scoreRefreshController;
             _configuration = configuration;
@@ -57,7 +53,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string countries = ""
             )
         {
-            IQueryable<Player> request = _readContext
+            IQueryable<Player> request = _context
                 .Players
                 .Include(p => p.ScoreStats)
                 .Include(p => p.EventsParticipating)

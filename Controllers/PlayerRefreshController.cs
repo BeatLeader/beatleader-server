@@ -15,7 +15,6 @@ namespace BeatLeader_Server.Controllers
     public class PlayerRefreshController : Controller
     {
         private readonly AppContext _context;
-        private readonly ReadAppContext _readContext;
         private readonly IDbContextFactory<AppContext> _dbFactory;
 
         private readonly IConfiguration _configuration;
@@ -25,14 +24,12 @@ namespace BeatLeader_Server.Controllers
 
         public PlayerRefreshController(
             AppContext context,
-            ReadAppContext readContext,
             IConfiguration configuration, 
             IServerTiming serverTiming,
             IDbContextFactory<AppContext> dbFactory,
             IWebHostEnvironment env)
         {
             _context = context;
-            _readContext = readContext;
 
             _configuration = configuration;
             _serverTiming = serverTiming;
@@ -335,7 +332,7 @@ namespace BeatLeader_Server.Controllers
         {
             if (HttpContext != null) {
                 string? currentId = HttpContext.CurrentUserID(_context);
-                Player? currentPlayer = await _readContext.Players.FindAsync(currentId);
+                Player? currentPlayer = await _context.Players.FindAsync(currentId);
                 if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
                 {
                     return Unauthorized();

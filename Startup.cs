@@ -318,7 +318,6 @@ namespace BeatLeader_Server {
 
                 options.UseOpenIddict();
             });
-            services.AddDbContext<ReadAppContext>(options => options.UseSqlServer(Configuration.GetValue<string>("ReadOnlyConnection")));
 
             services.AddOpenIddict()
             // Register the OpenIddict core components.

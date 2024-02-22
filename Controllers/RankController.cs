@@ -17,7 +17,6 @@ namespace BeatLeader_Server.Controllers
     public class RankController : Controller
     {
         private readonly AppContext _context;
-        private readonly ReadAppContext _readContext;
 
         private readonly IServerTiming _serverTiming;
         private readonly IConfiguration _configuration;
@@ -29,7 +28,6 @@ namespace BeatLeader_Server.Controllers
 
         public RankController(
             AppContext context,
-            ReadAppContext readContext,
             IWebHostEnvironment env,
             IServerTiming serverTiming,
             IConfiguration configuration,
@@ -40,7 +38,6 @@ namespace BeatLeader_Server.Controllers
             RTNominationsForum rtNominationsForum)
         {
             _context = context;
-            _readContext = readContext;
 
             _serverTiming = serverTiming;
             _configuration = configuration;
@@ -795,8 +792,8 @@ namespace BeatLeader_Server.Controllers
         [ApiExplorerSettings(IgnoreApi = true)]
         [HttpGet("~/voting/spread")]
         public ActionResult<Dictionary<int, int>> Spread() {
-            string? currentID = HttpContext.CurrentUserID(_readContext);
-            var currentPlayer = _readContext.Players.Find(currentID);
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = _context.Players.Find(currentID);
 
             if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
             {
@@ -804,7 +801,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             var result = new Dictionary<int, int>();
-            var starsList = _readContext.RankVotings.Where(v => v.Stars > 0).Select(kv => new { Stars = kv.Stars });
+            var starsList = _context.RankVotings.Where(v => v.Stars > 0).Select(kv => new { Stars = kv.Stars });
             foreach (var item in starsList)
             {
                 int key = (int)Math.Round(item.Stars);

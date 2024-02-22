@@ -18,7 +18,6 @@ namespace BeatLeader_Server.Controllers
     public class BadgeController : Controller
     {
         private readonly AppContext _context;
-        private readonly ReadAppContext _readContext;
 
         private readonly IConfiguration _configuration;
         IAmazonS3 _assetsS3Client;
@@ -28,13 +27,11 @@ namespace BeatLeader_Server.Controllers
 
         public BadgeController(
             AppContext context,
-            ReadAppContext readContext,
             IConfiguration configuration, 
             IServerTiming serverTiming,
             IWebHostEnvironment env)
         {
             _context = context;
-            _readContext = readContext;
 
             _configuration = configuration;
             _serverTiming = serverTiming;

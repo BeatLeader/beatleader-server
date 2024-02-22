@@ -16,7 +16,6 @@ namespace BeatLeader_Server.Controllers
     public class ReweightController : Controller
     {
         private readonly AppContext _context;
-        private readonly ReadAppContext _readContext;
 
         private readonly IServerTiming _serverTiming;
         private readonly IConfiguration _configuration;
@@ -28,7 +27,6 @@ namespace BeatLeader_Server.Controllers
 
         public ReweightController(
             AppContext context,
-            ReadAppContext readContext,
             IWebHostEnvironment env,
             IServerTiming serverTiming,
             IConfiguration configuration,
@@ -39,7 +37,6 @@ namespace BeatLeader_Server.Controllers
             RTNominationsForum rtNominationsForum)
         {
             _context = context;
-            _readContext = readContext;
 
             _serverTiming = serverTiming;
             _configuration = configuration;

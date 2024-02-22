@@ -18,7 +18,6 @@ namespace BeatLeader_Server.Controllers
     {
 
         private readonly AppContext _context;
-        private readonly ReadAppContext _readContext;
 
         private readonly IAmazonS3 _assetsS3Client;
         private readonly CurrentUserController _userController;
@@ -29,14 +28,12 @@ namespace BeatLeader_Server.Controllers
             AppContext context,
             IWebHostEnvironment env,
             CurrentUserController userController,
-            ReadAppContext readContext,
             IConfiguration configuration,
             IHttpClientFactory httpClientFactory)
         {
             _context = context;
             _userController = userController;
             _environment = env;
-            _readContext = readContext;
             _assetsS3Client = configuration.GetS3Client();
             _httpClientFactory = httpClientFactory;
         }

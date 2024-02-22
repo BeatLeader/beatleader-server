@@ -21,15 +21,13 @@ namespace BeatLeader_Server.Controllers
     public class SongController : Controller
     {
         private readonly AppContext _context;
-        private readonly ReadAppContext _readContext;
         private readonly RTNominationsForum _rtNominationsForum;
         private readonly IAmazonS3 _s3Client;
         private readonly IMemoryCache _cache;
-        public SongController(AppContext context, ReadAppContext readContext, RTNominationsForum rtNominationsForum, IConfiguration configuration, IMemoryCache cache)
+        public SongController(AppContext context, RTNominationsForum rtNominationsForum, IConfiguration configuration, IMemoryCache cache)
         {
             _s3Client = configuration.GetS3Client();
             _context = context;      
-            _readContext = readContext;
             _rtNominationsForum = rtNominationsForum;
             _cache = cache;
         }
@@ -58,7 +56,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<IEnumerable<DiffModResponse>>> GetModSongInfos(string hash)
         {
 
-            var resFromLB = _readContext.Leaderboards
+            var resFromLB = _context.Leaderboards
                 .Where(lb => lb.Song.Hash == hash)
                 .Include(lb => lb.Difficulty)
                     .ThenInclude(diff => diff.ModifierValues)

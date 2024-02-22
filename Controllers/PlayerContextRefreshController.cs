@@ -14,7 +14,6 @@ namespace BeatLeader_Server.Controllers {
     public class PlayerContextRefreshController : Controller {
 
         private readonly AppContext _context;
-        private readonly ReadAppContext _readContext;
 
         private readonly IConfiguration _configuration;
         private readonly IDbContextFactory<AppContext> _dbFactory;
@@ -24,14 +23,12 @@ namespace BeatLeader_Server.Controllers {
 
         public PlayerContextRefreshController(
             AppContext context,
-            ReadAppContext readContext,
             IConfiguration configuration, 
             IServerTiming serverTiming,
             IDbContextFactory<AppContext> dbFactory,
             IWebHostEnvironment env)
         {
             _context = context;
-            _readContext = readContext;
             _dbFactory = dbFactory;
 
             _configuration = configuration;
@@ -100,7 +97,7 @@ namespace BeatLeader_Server.Controllers {
         public async Task<ActionResult> RefreshPlayerContext(string id, LeaderboardContexts context, [FromQuery] bool refreshRank = true)
         {
             string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = await _readContext.Players.FindAsync(currentId);
+            Player? currentPlayer = await _context.Players.FindAsync(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
@@ -125,7 +122,7 @@ namespace BeatLeader_Server.Controllers {
         public async Task<ActionResult> RefreshPlayerAllContexts(string id, [FromQuery] bool refreshRank = true)
         {
             string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = await _readContext.Players.FindAsync(currentId);
+            Player? currentPlayer = await _context.Players.FindAsync(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();

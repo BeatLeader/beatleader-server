@@ -31,19 +31,16 @@ namespace BeatLeader_Server.Controllers
     public class MapEvaluationController : Controller
     {
         private readonly AppContext _context;
-        private readonly ReadAppContext _readContext;
 
         private readonly IConfiguration _configuration;
         IWebHostEnvironment _environment;
 
         public MapEvaluationController(
             AppContext context,
-            ReadAppContext readContext,
             IConfiguration configuration, 
             IWebHostEnvironment env)
         {
             _context = context;
-            _readContext = readContext;
 
             _configuration = configuration;
             _environment = env;

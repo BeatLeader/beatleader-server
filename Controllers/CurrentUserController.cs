@@ -14,7 +14,6 @@ namespace BeatLeader_Server.Controllers {
     [Route("[controller]")]
     public class CurrentUserController : ControllerBase {
         private readonly AppContext _context;
-        private readonly ReadAppContext _readContext;
 
         PlayerController _playerController;
         PlayerRefreshController _playerRefreshController;
@@ -27,7 +26,6 @@ namespace BeatLeader_Server.Controllers {
 
         public CurrentUserController(
             AppContext context,
-            ReadAppContext readContext,
             IWebHostEnvironment env,
             PlayerController playerController,
             PlayerRefreshController playerRefreshController,
@@ -36,7 +34,6 @@ namespace BeatLeader_Server.Controllers {
             ScoreRefreshController scoreRefreshController,
             IConfiguration configuration) {
             _context = context;
-            _readContext = readContext;
 
             _playerController = playerController;
             _playerRefreshController = playerRefreshController;
@@ -52,7 +49,7 @@ namespace BeatLeader_Server.Controllers {
         public ActionResult<string> GetIdResult() => GetId();
 
         [NonAction]
-        public string? GetId() => HttpContext.CurrentUserID(_readContext);
+        public string? GetId() => HttpContext.CurrentUserID(_context);
 
         [HttpGet("~/user")]
         public async Task<ActionResult<UserReturn>> GetCurrentUser() {
@@ -62,12 +59,12 @@ namespace BeatLeader_Server.Controllers {
             }
             string id = user.Id;
 
-            PlayerFriends? friends = _readContext.Friends.Include(f => f.Friends).ThenInclude(f => f.ProfileSettings).FirstOrDefault(f => f.Id == id);
-            Clan? clan = _readContext.Clans.Include(c => c.Players).FirstOrDefault(f => f.LeaderID == id);
+            PlayerFriends? friends = _context.Friends.Include(f => f.Friends).ThenInclude(f => f.ProfileSettings).FirstOrDefault(f => f.Id == id);
+            Clan? clan = _context.Clans.Include(c => c.Players).FirstOrDefault(f => f.LeaderID == id);
 
             long intId = Int64.Parse(id);
             if (intId > 1000000000000000) {
-                var link = _readContext.AccountLinks.FirstOrDefault(el => el.SteamID == id || el.PCOculusID == id);
+                var link = _context.AccountLinks.FirstOrDefault(el => el.SteamID == id || el.PCOculusID == id);
                 if (link != null) {
                     intId = link.OculusID;
                 }
@@ -89,7 +86,7 @@ namespace BeatLeader_Server.Controllers {
                 RankedPoolPercentCaptured = clan.RankedPoolPercentCaptured,
                 CaptureLeaderboardsCount = clan.CaptureLeaderboardsCount,
                 Players = clan.Players.Select(p => p.Id).ToList(),
-                PendingInvites = _readContext.Users.Where(u => u.ClanRequest.Contains(clan)).Select(f => f.Id).ToList(),
+                PendingInvites = _context.Users.Where(u => u.ClanRequest.Contains(clan)).Select(f => f.Id).ToList(),
             } : null;
             var player = user.Player;
 
@@ -100,7 +97,7 @@ namespace BeatLeader_Server.Controllers {
 
             return new UserReturn {
                 Player = playerResponse,
-                Ban = player.Banned ? _readContext
+                Ban = player.Banned ? _context
                     .Bans
                     .Where(b => b.PlayerId == player.Id)
                     .Select(b => new BanReturn { Reason = b.BanReason, Duration = b.Duration, Timeset = b.Timeset })
@@ -108,10 +105,10 @@ namespace BeatLeader_Server.Controllers {
                 ClanRequest = user.ClanRequest,
                 BannedClans = user.BannedClans,
                 Friends = friends != null ? friends.Friends.Select(ResponseFullFromPlayer).Select(p => PostProcessSettings(p, true)).ToList() : new List<PlayerResponseFull>(),
-                Login = _readContext.Auths.FirstOrDefault(a => a.Id == intId)?.Login,
+                Login = _context.Auths.FirstOrDefault(a => a.Id == intId)?.Login,
 
-                Migrated = _readContext.AccountLinks.FirstOrDefault(a => a.SteamID == id) != null,
-                Patreoned = await _readContext.PatreonLinks.FindAsync(id) != null,
+                Migrated = _context.AccountLinks.FirstOrDefault(a => a.SteamID == id) != null,
+                Patreoned = await _context.PatreonLinks.FindAsync(id) != null,
                 Clan = clanReturn
             };
         }
@@ -157,7 +154,7 @@ namespace BeatLeader_Server.Controllers {
             }
 
             var result = GeneralResponseFromPlayer<PlayerResponseWithFriends>(player);
-            PlayerFriends? friends = _readContext.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == id);
+            PlayerFriends? friends = _context.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == id);
             result.Friends = friends != null ? friends.Friends.Select(f => f.Id).ToList() : new List<string>();
             return result;
         }
@@ -176,12 +173,12 @@ namespace BeatLeader_Server.Controllers {
                 return NotFound();
             }
 
-            var link = _readContext.AccountLinks.FirstOrDefault(l => l.PCOculusID == id);
+            var link = _context.AccountLinks.FirstOrDefault(l => l.PCOculusID == id);
             if (link != null)
             {
                 string playerId = link.SteamID.Length > 0 ? link.SteamID : id;
 
-                var player = await _readContext.Players.FindAsync(playerId);
+                var player = await _context.Players.FindAsync(playerId);
 
                 return new OculusUser
                 {
@@ -1213,12 +1210,12 @@ namespace BeatLeader_Server.Controllers {
             if (playerId == null) {
                 return NotFound();
             }
-            Player? currentPlayer = await _readContext.Players.FindAsync(playerId);
+            Player? currentPlayer = await _context.Players.FindAsync(playerId);
             if (currentPlayer == null) {
                 return Unauthorized();
             }
 
-            IQueryable<FailedScore> query = _readContext.FailedScores.Include(lb => lb.Player).ThenInclude(p => p.ScoreStats).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties);
+            IQueryable<FailedScore> query = _context.FailedScores.Include(lb => lb.Player).ThenInclude(p => p.ScoreStats).Include(lb => lb.Leaderboard).ThenInclude(lb => lb.Song).ThenInclude(lb => lb.Difficulties);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin")) {
                 query = query.Where(t => t.PlayerId == id);

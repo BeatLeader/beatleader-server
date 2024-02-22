@@ -104,19 +104,16 @@ namespace BeatLeader_Server.Controllers
         public static string SocketHost = "wss://sockets.api.beatleader.xyz/";
 
         private readonly AppContext _context;
-        private readonly ReadAppContext _readContext;
 
         private readonly IConfiguration _configuration;
         IWebHostEnvironment _environment;
 
         public SocketController(
             AppContext context,
-            ReadAppContext readContext,
             IConfiguration configuration,
             IWebHostEnvironment env)
         {
             _context = context;
-            _readContext = readContext;
 
             _configuration = configuration;
             _environment = env;
