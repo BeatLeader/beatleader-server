@@ -1323,19 +1323,22 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] float? techrating_from = null,
             [FromQuery] float? techrating_to = null,
             [FromQuery] int? date_from = null,
-            [FromQuery] int? date_to = null) {
+            [FromQuery] int? date_to = null,
+            string? overrideCurrentId = null) {
 
             if (type == Type.Ranking && count == 500) {
                 return Ok((await GetModList(page, count, sortBy, order, date_from, date_to)).Value);
             }
 
-            string? currentID = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = currentID != null ? await _context
+            var dbContext = _dbFactory.CreateDbContext();
+
+            string? currentID = HttpContext == null ? overrideCurrentId : HttpContext.CurrentUserID(dbContext);
+            Player? currentPlayer = currentID != null ? await dbContext
                 .Players
                 .Include(p => p.ProfileSettings)
                 .FirstOrDefaultAsync(p => p.Id == currentID) : null;
 
-            var sequence = _context.Leaderboards.Filter(_context, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
+            var sequence = dbContext.Leaderboards.Filter(dbContext, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
 
             var result = new ResponseWithMetadata<LeaderboardInfoResponse>() {
                 Metadata = new Metadata() {

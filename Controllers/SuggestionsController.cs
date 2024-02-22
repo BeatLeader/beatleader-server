@@ -23,16 +23,41 @@ namespace BeatLeader_Server.Controllers
         private readonly IServerTiming _serverTiming;
         private readonly IConfiguration _configuration;
 
+        private readonly LeaderboardController _leaderboardController;
+
         public SuggestionsController(
             AppContext context,
             IWebHostEnvironment env,
             IServerTiming serverTiming,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            LeaderboardController leaderboardController)
         {
             _context = context;
 
             _serverTiming = serverTiming;
             _configuration = configuration;
+            _leaderboardController = leaderboardController;
+        }
+
+        [HttpGet("~/trending/")]
+        public async Task<ActionResult<ResponseWithMetadata<LeaderboardInfoResponse>>> TrandingMaps()
+        {
+            int timeset = Time.UnixNow();
+            var currentId = HttpContext.CurrentUserID(_context);
+            var topToday = _leaderboardController.GetAll(1, 1, SortBy.PlayCount, date_from: timeset - 60 * 60 * 24, overrideCurrentId: currentId);
+            var topWeek = _leaderboardController.GetAll(1, 1, SortBy.PlayCount, date_from: timeset - 60 * 60 * 24 * 7, overrideCurrentId: currentId);
+            var topVoted = _leaderboardController.GetAll(1, 1, SortBy.VoteCount, date_from: timeset - 60 * 60 * 24 * 30, overrideCurrentId: currentId);
+
+            Task.WaitAll([topToday, topWeek, topVoted]);
+
+            return new ResponseWithMetadata<LeaderboardInfoResponse> {
+                Metadata = new Metadata {
+                    Page = 1,
+                    ItemsPerPage = 3,
+                    Total = topToday.Result.Value.Metadata.Total + topWeek.Result.Value.Metadata.Total + topVoted.Result.Value.Metadata.Total
+                },
+                Data = topToday.Result.Value.Data.Concat(topWeek.Result.Value.Data).Concat(topVoted.Result.Value.Data)
+            };
         }
 
         [HttpGet("~/mytopsimilar/")]

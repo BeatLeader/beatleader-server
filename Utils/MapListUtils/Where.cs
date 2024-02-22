@@ -45,7 +45,7 @@ public static partial class MapListUtils
             return sequence;
         }
 
-        return sequence.Where(leaderboard => leaderboard.Song.ExternalStatuses.FirstOrDefault(s => status.HasFlag(s.Status)) != null);
+        return sequence.Where(leaderboard => leaderboard.Difficulty.Status != DifficultyStatus.outdated && leaderboard.Song.ExternalStatuses.FirstOrDefault(s => status.HasFlag(s.Status)) != null);
     }
 
     private static IQueryable<Leaderboard> WhereMyType(this IQueryable<Leaderboard> sequence, MyType mytype, Player? currentPlayer)
