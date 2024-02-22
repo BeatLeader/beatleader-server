@@ -775,6 +775,7 @@ namespace BeatLeader_Server.Controllers
                     EventsParticipating = p.Player.EventsParticipating,
                     PatreonFeatures = p.Player.PatreonFeatures,
                     ProfileSettings = p.Player.ProfileSettings,
+                    ClanOrder = p.Player.ClanOrder,
                     Clans = p.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                 })
                 .ToListAsync())

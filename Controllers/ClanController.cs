@@ -150,14 +150,21 @@ namespace BeatLeader_Server.Controllers
             int count = 10,
             string sortBy = "pp",
             Order order = Order.Desc,
+            bool primary = false,
             string? search = null,
             string? capturedLeaderboards = null)
         {
-            var players = _context
+            IQueryable<Player> players = _context
                 .Players
                 .Include(p => p.ProfileSettings)
-                .Include(p => p.Socials)
-                .Where(p => !p.Banned && p.Clans.Contains(clan));
+                .Include(p => p.Socials);
+            if (primary) {
+                players = players.Where(p => !p.Banned && p.Clans.OrderBy(c => p.ClanOrder.IndexOf(c.Tag))
+                        .ThenBy(c => c.Id)
+                        .Take(1).Contains(clan));
+            } else {
+                players = players.Where(p => !p.Banned && p.Clans.Contains(clan));
+            }
             switch (sortBy)
             {
                 case "pp":
@@ -233,6 +240,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int count = 10,
             [FromQuery] string sortBy = "pp",
             [FromQuery] Order order = Order.Desc,
+            [FromQuery] bool primary = false,
             [FromQuery] string? search = null,
             [FromQuery] string? capturedLeaderboards = null)
         {
@@ -243,7 +251,7 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            return await PopulateClan(clan, currentID, page, count, sortBy, order, search, capturedLeaderboards);
+            return await PopulateClan(clan, currentID, page, count, sortBy, order, primary, search, capturedLeaderboards);
         }
 
         [HttpGet("~/clan/id/{id}")]
@@ -253,6 +261,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int count = 10,
             [FromQuery] string sortBy = "pp",
             [FromQuery] Order order = Order.Desc,
+            [FromQuery] bool primary = false,
             [FromQuery] string? search = null,
             [FromQuery] string? capturedLeaderboards = null)
         {
@@ -266,7 +275,7 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            return await PopulateClan(clan, currentID, page, count, sortBy, order, search, capturedLeaderboards);
+            return await PopulateClan(clan, currentID, page, count, sortBy, order, primary, search, capturedLeaderboards);
         }
 
         [NonAction]
