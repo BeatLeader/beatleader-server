@@ -548,7 +548,7 @@ namespace BeatLeader_Server.Controllers
             {
                 var clan = c.Clan;
                 clan.CaptureLeaderboardsCount = c.CaptureLeaderboardsCount;
-                clan.RankedPoolPercentCaptured = ((float)clan.CaptureLeaderboardsCount) / (float)RankingService.RankedMapCount;
+                clan.RankedPoolPercentCaptured = ((float)clan.CaptureLeaderboardsCount) / (float)ConstantsService.RankedMapCount;
 
                 clan.Rank = rank;
                 rank++;

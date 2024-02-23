@@ -417,7 +417,7 @@ namespace BeatLeader_Server.Utils
 
                 if (losingClan != null) {
                     losingClan.CaptureLeaderboardsCount--;
-                    losingClan.RankedPoolPercentCaptured = (float)(losingClan.CaptureLeaderboardsCount) / RankingService.RankedMapCount;
+                    losingClan.RankedPoolPercentCaptured = (float)(losingClan.CaptureLeaderboardsCount) / ConstantsService.RankedMapCount;
                 }
             }
 
@@ -428,7 +428,7 @@ namespace BeatLeader_Server.Utils
             var clan = context.Clans.Find(newCaptor);
             if (clan != null) {
                 clan.CaptureLeaderboardsCount++;
-                clan.RankedPoolPercentCaptured = (float)(clan.CaptureLeaderboardsCount) / RankingService.RankedMapCount;
+                clan.RankedPoolPercentCaptured = (float)(clan.CaptureLeaderboardsCount) / ConstantsService.RankedMapCount;
             }
         }
 
@@ -441,7 +441,7 @@ namespace BeatLeader_Server.Utils
 
                 if (clan != null) {
                     clan.CaptureLeaderboardsCount--;
-                    clan.RankedPoolPercentCaptured = (float)(clan.CaptureLeaderboardsCount) / RankingService.RankedMapCount;
+                    clan.RankedPoolPercentCaptured = (float)(clan.CaptureLeaderboardsCount) / ConstantsService.RankedMapCount;
                 }
             }
 

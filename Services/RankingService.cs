@@ -12,7 +12,6 @@ namespace BeatLeader_Server.Services
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly IConfiguration _configuration;
-        public static int RankedMapCount { get; private set; }
 
         public RankingService(
             IServiceScopeFactory serviceScopeFactory,
@@ -24,12 +23,6 @@ namespace BeatLeader_Server.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            // Calculate global initial ranked map count as of server start
-            using (var scope = _serviceScopeFactory.CreateScope())
-            {
-                RankedMapCount = RefreshRankedMapCount(scope.ServiceProvider.GetRequiredService<AppContext>());
-            }
-
             do
             {
                 DateTime today = DateTime.Today;
@@ -60,10 +53,7 @@ namespace BeatLeader_Server.Services
             var oldPp = player.Pp;
             var oldRank = player.Rank;
 
-            (var newPp, var newRank, var newCountryRank) = _context.RecalculatePPAndRankFaster(player);
-
-            player.Rank = newRank;
-            player.Pp = newPp;
+            _context.RecalculatePPAndRankFastGeneral(player);
 
             if (score != null && score.ScoreImprovement != null)
             {
@@ -73,7 +63,7 @@ namespace BeatLeader_Server.Services
 
             await _context.SaveChangesAsync();
 
-            return (newPp - oldPp, newRank - oldRank);
+            return (player.Pp - oldPp, player.Rank - oldRank);
         }
 
         private async Task<(float, int)> RefreshLeaderboardPlayers(string id, AppContext _context)
@@ -97,13 +87,6 @@ namespace BeatLeader_Server.Services
             }
 
             return (pp, ranks);
-        }
-
-        private int RefreshRankedMapCount(AppContext _context)
-        {
-            return _context
-                .Leaderboards
-                .Count(lb => lb.Difficulty.Status == DifficultyStatus.ranked);
         }
 
         private async Task RankMaps()
@@ -194,7 +177,9 @@ namespace BeatLeader_Server.Services
                         }
                     }
                 }
-                RankedMapCount = RefreshRankedMapCount(_context);
+                ConstantsService.RefreshRankedMapCount(_context);
+
+                await _context.BulkSaveChangesAsync();
 
                 foreach (var leaderboard in leaderboards)
                 {
@@ -203,6 +188,25 @@ namespace BeatLeader_Server.Services
                         GlobalMapEvent = GlobalMapEvent.ranked
                     });
                 }
+
+                await _context.BulkSaveChangesAsync();
+
+                var clans = _context
+                    .Clans
+                    .Select(c => new { Clan = c, CaptureLeaderboardsCount = c.CapturedLeaderboards.Count() })
+                    .OrderByDescending(c => c.CaptureLeaderboardsCount)
+                    .ToList();
+                var rank = 1;
+                foreach (var c in clans)
+                {
+                    var clan = c.Clan;
+                    clan.CaptureLeaderboardsCount = c.CaptureLeaderboardsCount;
+                    clan.RankedPoolPercentCaptured = ((float)clan.CaptureLeaderboardsCount) / (float)ConstantsService.RankedMapCount;
+
+                    clan.Rank = rank;
+                    rank++;
+                }
+                await _context.BulkSaveChangesAsync();
 
                 var _playlistController = scope.ServiceProvider.GetRequiredService<PlaylistController>();
                 await _playlistController.RefreshNominatedPlaylist();
