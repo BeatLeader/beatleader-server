@@ -236,7 +236,10 @@ namespace BeatLeader_Server.Controllers
                     hash = lb.Song.Hash,
                     difficulty = lb.Difficulty.DifficultyName,
                     mode = lb.Difficulty.ModeName,
-                    stars = (float)lb.Difficulty.Stars
+                    stars = (float)lb.Difficulty.Stars,
+                    accRating = (float)lb.Difficulty.AccRating,
+                    passRating = (float)lb.Difficulty.PassRating,
+                    techRating = (float)lb.Difficulty.TechRating,
                 })
                 .ToList();
 
