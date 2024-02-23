@@ -26,7 +26,7 @@ namespace BeatLeader_Server.Services
 
                 if (hoursUntil21 == 0)
                 {
-                    Console.WriteLine("STARTED DailyRefresh");
+                    Console.WriteLine("SERVICE-STARTED DailyRefresh");
 
                     try {
                         await RefreshPatreon();
@@ -40,7 +40,7 @@ namespace BeatLeader_Server.Services
 
                     hoursUntil21 = 24;
 
-                    Console.WriteLine("DONE DailyRefresh");
+                    Console.WriteLine("SERVICE-DONE DailyRefresh");
                 }
 
                 await Task.Delay(TimeSpan.FromHours(hoursUntil21), stoppingToken);

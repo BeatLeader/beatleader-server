@@ -27,14 +27,14 @@ namespace BeatLeader_Server.Services {
 
                 if (minuteSpan == 60)
                 {
-                    Console.WriteLine("STARTED HourlyRefresh");
+                    Console.WriteLine("SERVICE-STARTED HourlyRefresh");
 
                     await RefreshClans();
                     await FetchCurated();
                     await CheckMaps();
                     await CheckNoodleMonday();
 
-                    Console.WriteLine("DONE HourlyRefresh");
+                    Console.WriteLine("SERVICE-DONE HourlyRefresh");
 
                 minuteSpan = 60 - DateTime.Now.Minute;
                 numberOfMinutes = minuteSpan;
