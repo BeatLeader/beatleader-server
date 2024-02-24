@@ -164,23 +164,8 @@ namespace BeatLeader_Server.Controllers
             return _context.Playlists.Where(t => t.IsShared).ToList();
         }
 
-        [HttpGet("~/playlist/{id}")]
-        public async Task<ActionResult> GetById(string id)
-        {
-            id = id.Replace(".bplist", "");
-            if (int.TryParse(id, out var intId)) {
-                string? currentID = HttpContext.CurrentUserID(_context);
-
-                if (intId != 33) {
-                    var playlist = _context.Playlists.FirstOrDefault(p => p.Id == intId);
-                    if (playlist == null) {
-                        return NotFound();
-                    } else if (playlist.OwnerId != currentID && !playlist.IsShared) {
-                        return Unauthorized("");
-                    }
-                }
-            }
-
+        [NonAction]
+        private async Task<ActionResult> DownloadPlaylist(string id) {
             var stream = await _s3Client.DownloadPlaylist(id + ".bplist");
             
             if (stream != null) {
@@ -212,6 +197,38 @@ namespace BeatLeader_Server.Controllers
             } else {
                 return NotFound();
             }
+        }
+
+        [HttpGet("~/playlist/{id}")]
+        public async Task<ActionResult> GetById(string id)
+        {
+            id = id.Replace(".bplist", "");
+            if (int.TryParse(id, out var intId)) {
+                string? currentID = HttpContext.CurrentUserID(_context);
+
+                if (intId != 33) {
+                    var playlist = _context.Playlists.FirstOrDefault(p => p.Id == intId);
+                    if (playlist == null) {
+                        return NotFound();
+                    } else if (playlist.OwnerId != currentID && !playlist.IsShared) {
+                        return Unauthorized("");
+                    }
+                }
+            }
+
+            return await DownloadPlaylist(id);
+        }
+
+        [HttpGet("~/playlist/guid/{guid}")]
+        public async Task<ActionResult> GetByGuid(string guid) {
+            guid = guid.Replace(".bplist", "");
+
+            var playlist = _context.Playlists.Where(p => p.Guid == Guid.Parse(guid)).FirstOrDefault();
+            if (playlist == null) {
+                return NotFound();
+            }
+
+            return await DownloadPlaylist(playlist.Id.ToString());
         }
 
         [HttpGet("~/playlist/{id}/link")]
@@ -329,7 +346,7 @@ namespace BeatLeader_Server.Controllers
             playlistRecord.IsShared = shared;
 
             var customData = new CustomData { 
-                syncURL = "https://api.beatleader.xyz/playlist/" + id,
+                syncURL = "https://api.beatleader.xyz/playlist/guid/" + playlistRecord.Guid.ToString().Replace("-", ""),
                 owner = currentID,
                 id = id?.ToString() ?? "",
                 hash = playlistRecord.Hash,
@@ -344,7 +361,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpDelete("~/user/playlist")]
-        public async Task<ActionResult<int>> DeletePlaylist([FromQuery] int id)
+        public async Task<ActionResult<int>> DeletePlaylist([FromQuery] int id, [FromQuery] bool shouldDelete = true)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
             if (currentID == null) return Unauthorized();
@@ -355,9 +372,8 @@ namespace BeatLeader_Server.Controllers
             {
                 return NotFound();
             }
+            playlistRecord.Deleted = shouldDelete;
 
-            //await _playlistContainerClient.DeleteBlobIfExistsAsync(id + ".bplist");
-            _context.Playlists.Remove(playlistRecord);
             await _context.SaveChangesAsync();
 
             return Ok();
