@@ -226,8 +226,8 @@ namespace BeatLeader_Server.Controllers
                     .Select(p => PostProcessSettings(p, false)),
                 Metadata = new Metadata
                 {
-                    Page = 1,
-                    ItemsPerPage = 10,
+                    Page = page,
+                    ItemsPerPage = count,
                     Total = await players.CountAsync()
                 }
             };
@@ -432,8 +432,8 @@ namespace BeatLeader_Server.Controllers
                 Data = rankingList,
                 Metadata = new Metadata
                 {
-                    Page = 1,
-                    ItemsPerPage = 10,
+                    Page = page,
+                    ItemsPerPage = count,
                     Total = await rankings.CountAsync()
                 }
             };
