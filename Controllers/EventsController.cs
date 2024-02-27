@@ -88,12 +88,32 @@ namespace BeatLeader_Server.Controllers
                 request = request.Where((Expression<Func<Player, bool>>)Expression.Lambda(exp, player));
             }
 
-            var players = request.Where(p => p.EventsParticipating.FirstOrDefault(e => e.EventId == id) != null)
-                .AsEnumerable()
-                .Select(ResponseWithStatsFromPlayer)
+            var players = request
+                .Where(p => p.EventsParticipating.FirstOrDefault(e => e.EventId == id) != null)
+                .Select(p => new PlayerResponseWithStats {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Platform = p.Platform,
+                    Avatar = p.Avatar,
+                    Country = p.Country,
+                    ScoreStats = p.ScoreStats,
+
+                    Pp = p.Pp,
+                    Rank = p.Rank,
+                    CountryRank = p.CountryRank,
+                    LastWeekPp = p.LastWeekPp,
+                    LastWeekRank = p.LastWeekRank,
+                    LastWeekCountryRank = p.LastWeekCountryRank,
+                    Role = p.Role,
+                    EventsParticipating = p.EventsParticipating,
+                    PatreonFeatures = p.PatreonFeatures,
+                    ProfileSettings = p.ProfileSettings,
+                    Clans = p.Clans.OrderBy(c => p.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                })
                 .OrderByDescending(p => p.EventsParticipating.First(e => e.EventId == id).Pp);
 
-            var allPlayers = players.Skip((page - 1) * count).Take(count).ToList();
+            var allPlayers = await players.Skip((page - 1) * count).Take(count).ToListAsync();
 
             foreach (var resultPlayer in allPlayers)
             {
@@ -110,7 +130,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     Page = page,
                     ItemsPerPage = count,
-                    Total = players.Count()
+                    Total = await players.CountAsync()
                 },
                 Data = allPlayers
             };
@@ -130,12 +150,12 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            var eventRanking = _context.EventRankings
+            var eventRanking = await _context.EventRankings
                 .Where(e => e.Id == id)
                 .Include(e => e.Leaderboards)
                 .ThenInclude(lb => lb.Scores)
                 .ThenInclude(s => s.Player)
-                .ThenInclude(pl => pl.EventsParticipating).FirstOrDefault();
+                .ThenInclude(pl => pl.EventsParticipating).FirstOrDefaultAsync();
 
             foreach (var lb in eventRanking.Leaderboards)
             {
@@ -156,7 +176,7 @@ namespace BeatLeader_Server.Controllers
 
             foreach (var player in players)
             {
-                _context.RecalculateEventsPP(player, eventRanking.Leaderboards.First());
+                await _context.RecalculateEventsPP(player, eventRanking.Leaderboards.First());
             }
             await _context.SaveChangesAsync();
 
@@ -164,8 +184,8 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/event/{id}")]
-        public ActionResult<EventRanking?> GetEvent(int id) {
-            return _context.EventRankings.FirstOrDefault(e => e.Id == id);
+        public async Task<ActionResult<EventRanking?>> GetEvent(int id) {
+            return await _context.EventRankings.FirstOrDefaultAsync(e => e.Id == id);
         }
 
         [HttpPost("~/event/start/{id}")]
@@ -229,10 +249,14 @@ namespace BeatLeader_Server.Controllers
                     string diffName = diff.name.ToLower();
                     string characteristic = diff.characteristic.ToLower();
 
-                    var lb = _context.Leaderboards.Where(lb => 
+                    var lb = await _context.Leaderboards.Where(lb => 
                         lb.Song.Hash.ToLower() == hash && 
                         lb.Difficulty.DifficultyName.ToLower() == diffName &&
-                        lb.Difficulty.ModeName.ToLower() == characteristic).Include(lb => lb.Difficulty).Include(lb => lb.Scores).ThenInclude(s => s.Player).FirstOrDefault();
+                        lb.Difficulty.ModeName.ToLower() == characteristic)
+                        .Include(lb => lb.Difficulty)
+                        .Include(lb => lb.Scores)
+                        .ThenInclude(s => s.Player)
+                        .FirstOrDefaultAsync();
 
                     if (lb != null && lb.Difficulty.Status != DifficultyStatus.outdated) {
                         if (lb.Difficulty.Stars != null) {
@@ -339,8 +363,8 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            var eventRanking = _context.EventRankings
-                .Where(e => e.Id == id).Include(e => e.Players).FirstOrDefault();
+            var eventRanking = await _context.EventRankings
+                .Where(e => e.Id == id).Include(e => e.Players).FirstOrDefaultAsync();
 
             foreach (var p in eventRanking.Players)
             {
@@ -354,7 +378,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/events")]
-        public ActionResult<ResponseWithMetadata<EventResponse>> GetEvents(
+        public async Task<ActionResult<ResponseWithMetadata<EventResponse>>> GetEvents(
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
             [FromQuery] string? sortBy = "date",
@@ -387,11 +411,11 @@ namespace BeatLeader_Server.Controllers
                 {
                     Page = page,
                     ItemsPerPage = count,
-                    Total = query.Count()
+                    Total = await query.CountAsync()
                 }
             };
 
-            result.Data = query.Select(e => new EventResponse {
+            result.Data = await query.Select(e => new EventResponse {
                 Id = e.Id,
                 Name = e.Name,
                 EndDate = e.EndDate,
@@ -402,11 +426,11 @@ namespace BeatLeader_Server.Controllers
                 Leader = new PlayerResponse {
                     Id = e.Players.OrderByDescending(p => p.Pp).FirstOrDefault().PlayerId
                 }
-            }).Skip((page - 1) * count).Take(count).ToList();
+            }).Skip((page - 1) * count).Take(count).ToListAsync();
 
             foreach (var item in result.Data)
             {
-                item.Leader = ResponseFromPlayer(_context.Players.Include(p => p.Clans).FirstOrDefault(p => p.Id == item.Leader.Id));
+                item.Leader = ResponseFromPlayer(await _context.Players.Include(p => p.Clans).FirstOrDefaultAsync(p => p.Id == item.Leader.Id));
             }
 
             return result;

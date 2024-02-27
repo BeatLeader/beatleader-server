@@ -33,7 +33,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public ActionResult<MiniRankingResponse> GetMiniRankingsContext(
+        public async Task<ActionResult<MiniRankingResponse>> GetMiniRankingsContext(
             [FromQuery] int rank, 
             [FromQuery] string country, 
             [FromQuery] int countryRank,
@@ -55,28 +55,28 @@ namespace BeatLeader_Server.Controllers
 
             var result = new MiniRankingResponse()
             {
-                Global = players.Where(p => p.Rank <= rank + 1 && p.Rank >= rank - 3).OrderBy(s => s.Rank).ToList(),
-                Country = players.Where(p => p.Country == country && p.CountryRank <= countryRank + 1 && p.CountryRank >= countryRank - 3).OrderBy(s => s.CountryRank).ToList()
+                Global = await players.Where(p => p.Rank <= rank + 1 && p.Rank >= rank - 3).OrderBy(s => s.Rank).ToListAsync(),
+                Country = await players.Where(p => p.Country == country && p.CountryRank <= countryRank + 1 && p.CountryRank >= countryRank - 3).OrderBy(s => s.CountryRank).ToListAsync()
             };
 
             if (friends) {
                 string? currentID = HttpContext.CurrentUserID(_context);
                 if (currentID != null) {
-                    var friendsList = _context
+                    var friendsList = (await _context
                         .Friends
                         .Where(f => f.Id == currentID)
                         .Include(f => f.Friends)
                         .Select(f => new { friends = f.Friends.Select(p => new MiniRankingPlayer { Id = p.Id, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Pp = p.Pp }) })
-                        .FirstOrDefault()
+                        .FirstOrDefaultAsync())
                         ?.friends.ToList();
-                    var currentPlayer = players.Where(p => p.Id == currentID).FirstOrDefault();
+                    var currentPlayer = await players.Where(p => p.Id == currentID).FirstOrDefaultAsync();
                     if (currentPlayer == null) {
-                        currentPlayer = _context
+                        currentPlayer = await _context
                         .PlayerContextExtensions
                         .Include(ce => ce.Player)
                         .Where(p => p.PlayerId == currentID && p.Context == leaderboardContext)
                         .Select(p => new MiniRankingPlayer { Id = p.PlayerId, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Pp = p.Pp })
-                        .FirstOrDefault();
+                        .FirstOrDefaultAsync();
                     }
 
                     if (currentPlayer != null) {
@@ -96,7 +96,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/minirankings")]
-        public ActionResult<MiniRankingResponse> GetMiniRankings(
+        public async Task<ActionResult<MiniRankingResponse>> GetMiniRankings(
             [FromQuery] int rank, 
             [FromQuery] string country, 
             [FromQuery] int countryRank,
@@ -111,7 +111,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
-                return GetMiniRankingsContext(rank, country, countryRank, leaderboardContext, friends);
+                return await GetMiniRankingsContext(rank, country, countryRank, leaderboardContext, friends);
             }
 
             var players = _context
@@ -126,27 +126,27 @@ namespace BeatLeader_Server.Controllers
 
             var result = new MiniRankingResponse()
             {
-                Global = players.Where(p => p.Rank <= rank + 1 && p.Rank >= rank - 3).OrderBy(s => s.Rank).ToList(),
-                Country = players.Where(p => p.Country == country && p.CountryRank <= countryRank + 1 && p.CountryRank >= countryRank - 3).OrderBy(s => s.CountryRank).ToList()
+                Global = await players.Where(p => p.Rank <= rank + 1 && p.Rank >= rank - 3).OrderBy(s => s.Rank).ToListAsync(),
+                Country = await players.Where(p => p.Country == country && p.CountryRank <= countryRank + 1 && p.CountryRank >= countryRank - 3).OrderBy(s => s.CountryRank).ToListAsync()
             };
 
             if (friends) {
                 string? currentID = HttpContext.CurrentUserID(_context);
                 if (currentID != null) {
-                    var friendsList = _context
+                    var friendsList = (await _context
                         .Friends
                         .Where(f => f.Id == currentID)
                         .Include(f => f.Friends)
                         .Select(f => new { friends = f.Friends.Select(p => new MiniRankingPlayer { Id = p.Id, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Pp = p.Pp }) })
-                        .FirstOrDefault()
+                        .FirstOrDefaultAsync())
                         ?.friends.ToList();
-                    var currentPlayer = players.Where(p => p.Id == currentID).FirstOrDefault();
+                    var currentPlayer = await players.Where(p => p.Id == currentID).FirstOrDefaultAsync();
                     if (currentPlayer == null) {
-                        currentPlayer = _context
+                        currentPlayer = await _context
                         .Players
                         .Where(p => p.Id == currentID)
                         .Select(p => new MiniRankingPlayer { Id = p.Id, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Pp = p.Pp })
-                        .FirstOrDefault();
+                        .FirstOrDefaultAsync();
                     }
 
                     if (currentPlayer != null) {

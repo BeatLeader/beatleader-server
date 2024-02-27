@@ -415,7 +415,7 @@ namespace BeatLeader_Server.Controllers {
                     sequence = sequence.Where(s => s.PlayerId == player.Id);
                 }
 
-                sequence = sequence.Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+                sequence = await sequence.Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             }
 
             var resultList = await sequence
@@ -623,11 +623,11 @@ namespace BeatLeader_Server.Controllers {
                 return NotFound();
             }
 
-            var friends = _context
+            var friends = await _context
                     .Friends
                     .Where(f => f.Id == player.Id)
                     .Include(f => f.Friends)
-                    .FirstOrDefault();
+                    .FirstOrDefaultAsync();
 
             IQueryable<Achievement> achievementsSequence;
             if (friends != null) {
@@ -649,13 +649,13 @@ namespace BeatLeader_Server.Controllers {
                 Metadata = new Metadata() {
                     Page = page,
                     ItemsPerPage = count,
-                    Total = achievementsSequence.Count()
+                    Total = await achievementsSequence.CountAsync()
                 }
             };
 
             var data = new List<FriendActivity>();
 
-            var achievements = achievementsSequence
+            var achievements = await achievementsSequence
                 .Skip((page - 1) * count)
                 .Take(count)
                 .Select(a => new {
@@ -678,7 +678,7 @@ namespace BeatLeader_Server.Controllers {
                     },
                     Achievement = a
                 })
-                .ToList();
+                .ToListAsync();
             foreach (var achievement in achievements) {
                 data.Add(new FriendActivity {
                     Player = achievement.Player,

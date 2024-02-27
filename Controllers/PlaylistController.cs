@@ -159,9 +159,9 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/playlists")]
-        public ActionResult<IEnumerable<Playlist>> Get()
+        public async Task<ActionResult<IEnumerable<Playlist>>> Get()
         {
-            return _context.Playlists.Where(t => t.IsShared).ToList();
+            return await _context.Playlists.Where(t => t.IsShared).ToListAsync();
         }
 
         [NonAction]
@@ -207,7 +207,7 @@ namespace BeatLeader_Server.Controllers
                 string? currentID = HttpContext.CurrentUserID(_context);
 
                 if (intId != 33) {
-                    var playlist = _context.Playlists.FirstOrDefault(p => p.Id == intId);
+                    var playlist = await _context.Playlists.FirstOrDefaultAsync(p => p.Id == intId);
                     if (playlist == null) {
                         return NotFound();
                     } else if (playlist.OwnerId != currentID && !playlist.IsShared) {
@@ -223,7 +223,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> GetByGuid(string guid) {
             guid = guid.Replace(".bplist", "");
 
-            var playlist = _context.Playlists.Where(p => p.Guid == Guid.Parse(guid)).FirstOrDefault();
+            var playlist = await _context.Playlists.Where(p => p.Guid == Guid.Parse(guid)).FirstOrDefaultAsync();
             if (playlist == null) {
                 return NotFound();
             }
@@ -238,7 +238,7 @@ namespace BeatLeader_Server.Controllers
                 string? currentID = HttpContext.CurrentUserID(_context);
 
                 if (intId != 33) {
-                    var playlist = _context.Playlists.FirstOrDefault(p => (p.OwnerId == currentID || p.IsShared) && p.Id == intId);
+                    var playlist = await _context.Playlists.FirstOrDefaultAsync(p => (p.OwnerId == currentID || p.IsShared) && p.Id == intId);
                     if (playlist == null) {
                         return Unauthorized("");
                     }
@@ -257,7 +257,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> GetImageById(string id)
         {
             if (int.TryParse(id, out int playlistId)) {
-                var playlistRecord = _context.Playlists.Find(playlistId);
+                var playlistRecord = await _context.Playlists.FindAsync(playlistId);
                 if (playlistRecord != null && !playlistRecord.IsShared) {
                     return Unauthorized();
                 }
@@ -283,12 +283,12 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/user/playlists")]
-        public ActionResult<IEnumerable<Playlist>> GetAllPlaylists()
+        public async Task<ActionResult<IEnumerable<Playlist>>> GetAllPlaylists()
         {
             string? currentID = HttpContext.CurrentUserID(_context);
             if (currentID == null) return Unauthorized();
 
-            return _context.Playlists.Where(t => t.OwnerId == currentID).ToList();
+            return await _context.Playlists.Where(t => t.OwnerId == currentID).ToListAsync();
         }
 
         public static string CalculateSha256(dynamic playlist) {
@@ -325,7 +325,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (id != null) {
-                playlistRecord = _context.Playlists.FirstOrDefault(t => t.OwnerId == currentID && t.Id == id);
+                playlistRecord = await _context.Playlists.FirstOrDefaultAsync(t => t.OwnerId == currentID && t.Id == id);
                 if (playlistRecord == null) {
                     return NotFound();
                 }
@@ -366,7 +366,7 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             if (currentID == null) return Unauthorized();
 
-            Playlist? playlistRecord = _context.Playlists.FirstOrDefault(t => t.OwnerId == currentID && t.Id == id);
+            Playlist? playlistRecord = await _context.Playlists.FirstOrDefaultAsync(t => t.OwnerId == currentID && t.Id == id);
 
             if (playlistRecord == null)
             {
@@ -454,7 +454,7 @@ namespace BeatLeader_Server.Controllers
 
             var deleted = DeletedSongs();
 
-            var songs = _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).Where(lb => !deleted.Contains(lb.Song.Hash.ToLower())).Select(lb => new {
+            var songs = await _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).Where(lb => !deleted.Contains(lb.Song.Hash.ToLower())).Select(lb => new {
                 hash = lb.Song.Hash,
                 songName = lb.Song.Name,
                 levelAuthorName = lb.Song.Mapper,
@@ -463,7 +463,7 @@ namespace BeatLeader_Server.Controllers
                     characteristic = d.ModeName
                 }),
                 rankedTime = lb.Difficulty.RankedTime
-            }).ToList();
+            }).ToListAsync();
 
             playlist.songs = songs.DistinctBy(s => s.hash).OrderByDescending(a => a.rankedTime).ToList();
             playlist.customData = new CustomData
@@ -513,7 +513,7 @@ namespace BeatLeader_Server.Controllers
 
             var deleted = DeletedSongs();
 
-            var songs = _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.nominated).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).Where(lb => !deleted.Contains(lb.Song.Hash.ToLower())).Select(lb => new
+            var songs = await _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.nominated).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).Where(lb => !deleted.Contains(lb.Song.Hash.ToLower())).Select(lb => new
             {
                 hash = lb.Song.Hash,
                 songName = lb.Song.Name,
@@ -524,7 +524,7 @@ namespace BeatLeader_Server.Controllers
                     characteristic = d.ModeName
                 }),
                 nominatedTime = lb.Difficulty.NominatedTime
-            }).ToList();
+            }).ToListAsync();
 
             playlist.songs = songs.DistinctBy(s => s.hash).OrderByDescending(a => a.nominatedTime).ToList();
             playlist.customData = new CustomData
@@ -573,7 +573,7 @@ namespace BeatLeader_Server.Controllers
 
             var deleted = DeletedSongs();
 
-            var songs = _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.qualified).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).Where(lb => !deleted.Contains(lb.Song.Hash.ToLower())).Select(lb => new
+            var songs = await _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.qualified).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).Where(lb => !deleted.Contains(lb.Song.Hash.ToLower())).Select(lb => new
             {
                 hash = lb.Song.Hash,
                 songName = lb.Song.Name,
@@ -584,7 +584,7 @@ namespace BeatLeader_Server.Controllers
                     characteristic = d.ModeName
                 }),
                 qualifiedTime = lb.Difficulty.QualifiedTime
-            }).ToList();
+            }).ToListAsync();
 
             playlist.songs = songs.DistinctBy(s => s.hash).OrderByDescending(a => a.qualifiedTime).ToList();
             playlist.customData = new CustomData
@@ -645,8 +645,8 @@ namespace BeatLeader_Server.Controllers
 
             int searchCount = 0;
             sequence = sequence
-                .Filter(_context, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer)
-                .WherePage(0, count, out int totalMatches);
+                .Filter(_context, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
+            (sequence, int totalMatches) = await sequence.WherePage(0, count);
 
             var diffsList = sequence.Select(s => s.Song.Hash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash);
 
@@ -658,7 +658,7 @@ namespace BeatLeader_Server.Controllers
                 .Include(lb => lb.Song)
                 .Take(diffsCount);
 
-            var diffs = sequence.Select(lb => new {
+            var diffs = await sequence.Select(lb => new {
                 hash = lb.Song.Hash,
                 songName = lb.Song.Name,
                 levelAuthorName = lb.Song.Mapper,
@@ -668,10 +668,10 @@ namespace BeatLeader_Server.Controllers
                         characteristic = lb.Difficulty.ModeName
                     }
                 }
-            }).ToList();
+            }).ToListAsync();
 
             if (searchId != null) {
-                var searchRecords = _context.SongSearches.Where(s => s.SearchId == searchId).ToList();
+                var searchRecords = await _context.SongSearches.Where(s => s.SearchId == searchId).ToListAsync();
                 foreach (var item in searchRecords) {
                     _context.SongSearches.Remove(item);
                 }
@@ -761,29 +761,29 @@ namespace BeatLeader_Server.Controllers
             AccountLink? link = null;
             if (oculusId < 1000000000000000)
             {
-                link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
+                link = await _context.AccountLinks.FirstOrDefaultAsync(el => el.OculusID == oculusId);
             }
             if (link == null && oculusId < 70000000000000000)
             {
-                link = _context.AccountLinks.FirstOrDefault(el => el.PCOculusID == playerId);
+                link = await _context.AccountLinks.FirstOrDefaultAsync(el => el.PCOculusID == playerId);
             }
             string userId = (link != null ? (link.SteamID.Length > 0 ? link.SteamID : link.PCOculusID) : playerId);
 
-            var player = _context.Players.FirstOrDefault(p => p.Id == userId);
+            var player = await _context.Players.FirstOrDefaultAsync(p => p.Id == userId);
             if (player == null) {
                 return NotFound();
             }
 
-            IQueryable<Score> sequence = _context
+            IQueryable<Score> sequence = await _context
                 .Scores
                 .Where(t => t.PlayerId == userId)
                 .Filter(_context, !player.Banned, false, sortBy, order, search, diff, mode, requirements, ScoreFilterStatus.None, type, modifiers, stars_from, stars_to, time_from, time_to, eventId); 
 
-            if (sequence.Count() == 0) { return NotFound(); }
+            if (await sequence.CountAsync() == 0) { return NotFound(); }
 
             var diffsCount = sequence.Select(s => s.Leaderboard.Song.Hash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash).Take(count).Last().Index + 1;
 
-            var diffs = sequence.Take(diffsCount).Select(s => new {
+            var diffs = await sequence.Take(diffsCount).Select(s => new {
                 hash = s.Leaderboard.Song.Hash,
                 songName = s.Leaderboard.Song.Name,
                 levelAuthorName = s.Leaderboard.Song.Mapper,
@@ -793,7 +793,7 @@ namespace BeatLeader_Server.Controllers
                         characteristic = s.Leaderboard.Difficulty.ModeName
                     }
                 }
-            }).ToList();
+            }).ToListAsync();
 
             dynamic? playlist = null;
 

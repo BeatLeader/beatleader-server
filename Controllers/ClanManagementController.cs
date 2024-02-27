@@ -35,7 +35,7 @@ namespace BeatLeader_Server.Controllers
 
         [NonAction]
         public async Task<List<ClanRankingChanges>?> RecalculateClanRanking(string playerId) {
-            var leaderboardsRecalc = _context
+            var leaderboardsRecalc = await _context
                 .Scores
                 .Where(s => s.Pp > 0 && !s.Qualification && s.PlayerId == playerId)
                 .Include(s => s.Leaderboard)
@@ -43,11 +43,11 @@ namespace BeatLeader_Server.Controllers
                 .Include(s => s.Leaderboard)
                 .ThenInclude(lb => lb.ClanRanking)
                 .Select(s => s.Leaderboard)
-                .ToList();
+                .ToListAsync();
             var result = new List<ClanRankingChanges>(); 
             foreach (var leaderboard in leaderboardsRecalc)
             {
-                var changes = _context.CalculateClanRankingSlow(leaderboard);
+                var changes = await _context.CalculateClanRankingSlow(leaderboard);
                 if (changes != null) {
                     result.AddRange(changes);
                 }
@@ -74,7 +74,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            var player = _context.Players.Where(p => p.Id == currentID).Include(p => p.Clans).Include(p => p.ScoreStats).FirstOrDefault();
+            var player = await _context.Players.Where(p => p.Id == currentID).Include(p => p.Clans).Include(p => p.ScoreStats).FirstOrDefaultAsync();
             if (player.Clans.Count == 3)
             {
                 return BadRequest("You can join only up to 3 clans.");
@@ -87,17 +87,17 @@ namespace BeatLeader_Server.Controllers
 
             string upperTag = tag.ToUpper();
 
-            if (_context.ReservedTags.FirstOrDefault(t => t.Tag == upperTag) != null)
+            if ((await _context.ReservedTags.FirstOrDefaultAsync(t => t.Tag == upperTag)) != null)
             {
                 return BadRequest("This tag is reserved. Ask someone with #BeatFounder role in discord to allow this tag for you.");
             }
 
-            if (_context.Clans.FirstOrDefault(c => c.Name == name || c.Tag == upperTag) != null)
+            if ((await _context.Clans.FirstOrDefaultAsync(c => c.Name == name || c.Tag == upperTag)) != null)
             {
                 return BadRequest("Clan with such name or tag is already exists");
             }
 
-            if (_context.Clans.FirstOrDefault(c => c.LeaderID == currentID) != null)
+            if ((await _context.Clans.FirstOrDefaultAsync(c => c.LeaderID == currentID)) != null)
             {
                 return BadRequest("You already have a clan");
             }
@@ -216,11 +216,11 @@ namespace BeatLeader_Server.Controllers
             Clan? clan = null;
             if (id != null && player != null && player.Role.Contains("admin"))
             {
-                clan = _context.Clans.Include(c => c.Players).ThenInclude(c => c.Clans).FirstOrDefault(c => c.Id == id);
+                clan = await _context.Clans.Include(c => c.Players).ThenInclude(c => c.Clans).FirstOrDefaultAsync(c => c.Id == id);
             }
             else
             {
-                clan = _context.Clans.Include(c => c.Players).ThenInclude(c => c.Clans).FirstOrDefault(c => c.LeaderID == currentID);
+                clan = await _context.Clans.Include(c => c.Players).ThenInclude(c => c.Clans).FirstOrDefaultAsync(c => c.LeaderID == currentID);
             }
             if (clan == null)
             {
@@ -228,23 +228,23 @@ namespace BeatLeader_Server.Controllers
             }
 
             // Recalculate clanRanking on leaderboards that have this clan in their clanRanking
-            var leaderboardsRecalc = _context
+            var leaderboardsRecalc = await _context
                 .Leaderboards
                 .Include(lb => lb.ClanRanking)
                 .Include(lb => lb.Difficulty)
                 .Where(lb => lb.ClanRanking != null ?
                 lb.ClanRanking.Any(lbClan => lbClan.Clan.Tag == clan.Tag) && lb.Difficulty.Status == DifficultyStatus.ranked :
                 lb.Difficulty.Status == DifficultyStatus.ranked)
-                .ToList();
+                .ToListAsync();
 
             // Remove the clanRankings
-            var clanRankings = _context.ClanRanking.Where(cr => cr.ClanId == clan.Id).ToList();
+            var clanRankings = await _context.ClanRanking.Where(cr => cr.ClanId == clan.Id).ToListAsync();
             foreach (var cr in clanRankings)
             {
                 _context.ClanRanking.Remove(cr);
             }
 
-            var lbs = _context.Leaderboards.Include(lb => lb.Clan).Where(lb => lb.ClanId == clan.Id).ToList();
+            var lbs = await _context.Leaderboards.Include(lb => lb.Clan).Where(lb => lb.ClanId == clan.Id).ToListAsync();
 
             foreach (var lb in lbs)
             {
@@ -274,7 +274,7 @@ namespace BeatLeader_Server.Controllers
                 var result = new List<ClanRankingChanges>(); 
                 foreach (var leaderboard in leaderboardsRecalc)
                 {
-                    var changes = _context.CalculateClanRankingSlow(leaderboard);
+                    var changes = await _context.CalculateClanRankingSlow(leaderboard);
                     if (changes != null) {
                         result.AddRange(changes);
                     }
@@ -323,14 +323,14 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
-                clan = _context.Clans.FirstOrDefault(c => c.LeaderID == currentID);
+                clan = await _context.Clans.FirstOrDefaultAsync(c => c.LeaderID == currentID);
             }
             if (clan == null)
             {
                 return NotFound();
             }
 
-            var manager = _context.ClanManagers.FirstOrDefault(cm => cm.ClanId == clan.Id && cm.PlayerId == playerId);
+            var manager = await _context.ClanManagers.FirstOrDefaultAsync(cm => cm.ClanId == clan.Id && cm.PlayerId == playerId);
             if (manager == null) {
                 manager = new ClanManager {
                     ClanId = clan.Id,
@@ -339,7 +339,7 @@ namespace BeatLeader_Server.Controllers
                 _context.ClanManagers.Add(manager);
             }
             manager.Permissions = permissions;
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
@@ -378,7 +378,7 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
-                clan = _context.Clans.FirstOrDefault(c => c.LeaderID == currentID);
+                clan = await _context.Clans.FirstOrDefaultAsync(c => c.LeaderID == currentID);
             }
             if (clan == null)
             {
@@ -393,7 +393,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     return BadRequest("Use name between the 3 and 30 symbols");
                 }
-                if (_context.Clans.FirstOrDefault(c => c.Name == name && c.Id != clan.Id) != null)
+                if ((await _context.Clans.FirstOrDefaultAsync(c => c.Name == name && c.Id != clan.Id)) != null)
                 {
                     return BadRequest("Clan with such name is already exists");
                 }
@@ -521,7 +521,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             Clan? clan = null;
-            var clanManager = _context.ClanManagers.FirstOrDefault(cm => 
+            var clanManager = await _context.ClanManagers.FirstOrDefaultAsync(cm => 
                                                 cm.ClanId == id && 
                                                 cm.PlayerId == currentID && 
                                                 cm.Permissions.HasFlag(ClanPermissions.Edit));
@@ -531,7 +531,7 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
-                clan = _context.Clans.FirstOrDefault(c => c.LeaderID == currentID);
+                clan = await _context.Clans.FirstOrDefaultAsync(c => c.LeaderID == currentID);
             }
             if (clan == null)
             {
@@ -596,7 +596,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             Clan? clan = null;
-            var clanManager = _context.ClanManagers.FirstOrDefault(cm => 
+            var clanManager = await _context.ClanManagers.FirstOrDefaultAsync(cm => 
                                                 cm.ClanId == id && 
                                                 cm.PlayerId == currentID && 
                                                 cm.Permissions.HasFlag(ClanPermissions.Invite));
@@ -606,7 +606,7 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
-                clan = _context.Clans.FirstOrDefault(c => c.LeaderID == currentID);
+                clan = await _context.Clans.FirstOrDefaultAsync(c => c.LeaderID == currentID);
             }
 
             if (clan == null)
@@ -670,7 +670,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             Clan? clan = null;
-            var clanManager = _context.ClanManagers.FirstOrDefault(cm => 
+            var clanManager = await _context.ClanManagers.FirstOrDefaultAsync(cm => 
                                                 cm.ClanId == id && 
                                                 cm.PlayerId == currentID && 
                                                 cm.Permissions.HasFlag(ClanPermissions.Invite));
@@ -680,7 +680,7 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
-                clan = _context.Clans.FirstOrDefault(c => c.LeaderID == currentID);
+                clan = await _context.Clans.FirstOrDefaultAsync(c => c.LeaderID == currentID);
             }
 
             if (clan == null)
@@ -732,7 +732,7 @@ namespace BeatLeader_Server.Controllers
             Clan? clan;
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            var clanManager = _context.ClanManagers.FirstOrDefault(cm => 
+            var clanManager = await _context.ClanManagers.FirstOrDefaultAsync(cm => 
                                                 cm.ClanId == id && 
                                                 cm.PlayerId == currentID && 
                                                 cm.Permissions.HasFlag(ClanPermissions.Kick));
@@ -742,7 +742,7 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
-                clan = _context.Clans.FirstOrDefault(c => c.LeaderID == currentID);
+                clan = await _context.Clans.FirstOrDefaultAsync(c => c.LeaderID == currentID);
             }
 
             if (clan == null)
@@ -781,7 +781,7 @@ namespace BeatLeader_Server.Controllers
 
             await _context.SaveChangesAsync();
 
-            clan.Pp = _context.RecalculateClanPP(clan.Id);
+            clan.Pp = await _context.RecalculateClanPP(clan.Id);
             await _context.SaveChangesAsync();
 
             HttpContext.Response.OnCompleted(async () => {
@@ -841,7 +841,7 @@ namespace BeatLeader_Server.Controllers
 
             await _context.SaveChangesAsync();
 
-            clan.Pp = _context.RecalculateClanPP(clan.Id);
+            clan.Pp = await _context.RecalculateClanPP(clan.Id);
             await _context.SaveChangesAsync();
 
             HttpContext.Response.OnCompleted(async () => {
@@ -954,7 +954,7 @@ namespace BeatLeader_Server.Controllers
             clan.PlayersCount--;
             await _context.SaveChangesAsync();
 
-            clan.Pp = _context.RecalculateClanPP(clan.Id);
+            clan.Pp = await _context.RecalculateClanPP(clan.Id);
             await _context.SaveChangesAsync();
 
             HttpContext.Response.OnCompleted(async () => {

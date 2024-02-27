@@ -10,7 +10,7 @@ namespace BeatLeader_Server.Utils {
         Suspicious = 1
     }
     public static class ScoreListUtils {
-        public static IQueryable<Score> Filter(
+        public static async Task<IQueryable<Score>> Filter(
             this IQueryable<Score> sequence,
             AppContext context,
             bool excludeBanned,
@@ -81,7 +81,7 @@ namespace BeatLeader_Server.Utils {
                                 p.Leaderboard.Song.Name.ToLower().Contains(lowSearch));
             }
             if (eventId != null) {
-                var leaderboardIds = context.EventRankings.Where(e => e.Id == eventId).Include(e => e.Leaderboards).Select(e => e.Leaderboards.Select(lb => lb.Id)).FirstOrDefault();
+                var leaderboardIds = await context.EventRankings.Where(e => e.Id == eventId).Include(e => e.Leaderboards).Select(e => e.Leaderboards.Select(lb => lb.Id)).FirstOrDefaultAsync();
                 if (leaderboardIds?.Count() != 0) {
                     sequence = sequence.Where(s => leaderboardIds.Contains(s.LeaderboardId));
                 }
@@ -160,7 +160,7 @@ namespace BeatLeader_Server.Utils {
             return sequence;
         }
 
-        public static IQueryable<ScoreContextExtension> Filter(
+        public static async Task<IQueryable<ScoreContextExtension>> Filter(
             this IQueryable<ScoreContextExtension> sequence,
             AppContext context,
             bool excludeBanned,
@@ -231,7 +231,7 @@ namespace BeatLeader_Server.Utils {
                                 p.Leaderboard.Song.Name.ToLower().Contains(lowSearch));
             }
             if (eventId != null) {
-                var leaderboardIds = context.EventRankings.Where(e => e.Id == eventId).Include(e => e.Leaderboards).Select(e => e.Leaderboards.Select(lb => lb.Id)).FirstOrDefault();
+                var leaderboardIds = await context.EventRankings.Where(e => e.Id == eventId).Include(e => e.Leaderboards).Select(e => e.Leaderboards.Select(lb => lb.Id)).FirstOrDefaultAsync();
                 if (leaderboardIds?.Count() != 0) {
                     sequence = sequence.Where(s => leaderboardIds.Contains(s.LeaderboardId));
                 }

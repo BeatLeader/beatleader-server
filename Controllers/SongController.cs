@@ -33,9 +33,9 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/refreshstatus")]
-        public string refreshstatus()
+        public async Task<string> refreshstatus()
         {
-            return _context.Songs.Where(s => s.Refreshed).Count() + " of " +  _context.Songs.Count();
+            return (await _context.Songs.Where(s => s.Refreshed).CountAsync()) + " of " +  (await _context.Songs.CountAsync());
         }
 
         [HttpGet("~/map/hash/{hash}")]
@@ -56,7 +56,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<IEnumerable<DiffModResponse>>> GetModSongInfos(string hash)
         {
 
-            var resFromLB = _context.Leaderboards
+            var resFromLB = await _context.Leaderboards
                 .Where(lb => lb.Song.Hash == hash)
                 .Include(lb => lb.Difficulty)
                     .ThenInclude(diff => diff.ModifierValues)
@@ -92,7 +92,7 @@ namespace BeatLeader_Server.Controllers
                     }, 
                     SongDiffs = lb.Song.Difficulties 
                 })
-                .ToArray();
+                .ToArrayAsync();
 
             ICollection<DifficultyDescription> difficulties;
             if(resFromLB.Length == 0)
@@ -118,7 +118,7 @@ namespace BeatLeader_Server.Controllers
                 ?? ResponseUtils.DiffModResponseFromDiffAndVotes(diff, Array.Empty<float>())).ToArray();
             
             string? currentID = HttpContext.CurrentUserID(_context);
-            bool showRatings = currentID != null ? _context.Players.Include(p => p.ProfileSettings).Where(p => p.Id == currentID).Select(p => p.ProfileSettings).FirstOrDefault()?.ShowAllRatings ?? false : false;
+            bool showRatings = currentID != null ? (await _context.Players.Include(p => p.ProfileSettings).Where(p => p.Id == currentID).Select(p => p.ProfileSettings).FirstOrDefaultAsync())?.ShowAllRatings ?? false : false;
             foreach (var item in result) {
                 if (!showRatings && !item.Status.WithRating()) {
                     item.HideRatings();
@@ -135,14 +135,14 @@ namespace BeatLeader_Server.Controllers
         {
             if(!_cache.TryGetValue(allStarsZipFile, out byte[]? zipFile) || zipFile is null)
             {
-                var songs = _context.Songs
+                var songs = (await _context.Songs
                         .Select(s => 
                             s.Difficulties.Where(d => d.Stars > 0).Select(d => 
                                 new HashDiffStarTuple(
                                     s.Hash, 
                                     d.DifficultyName + d.ModeName, 
                                     (float)(d.Stars != null ? d.Stars : 0))).ToArray())
-                        .ToArray()
+                        .ToArrayAsync())
                         .SelectMany(x => x)
                         .Distinct()
                         .Where(d => d.Stars > 0)
@@ -197,7 +197,7 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         public async Task<Song?> GetOrAddSong(string hash)
         {
-            Song? song = GetSongWithDiffsFromHash(hash);
+            Song? song = await GetSongWithDiffsFromHash(hash);
 
             if (song == null)
             {
@@ -210,11 +210,11 @@ namespace BeatLeader_Server.Controllers
                 else
                 {
                     string songId = song.Id;
-                    Song? existingSong = _context
+                    Song? existingSong = await _context
                         .Songs
                         .Include(s => s.Difficulties)
                         .ThenInclude(d => d.ModifierValues)
-                        .FirstOrDefault(i => i.Id == songId);
+                        .FirstOrDefaultAsync(i => i.Id == songId);
                     Song? baseSong = existingSong;
 
                     List<Song> songsToMigrate = new List<Song>();
@@ -225,7 +225,7 @@ namespace BeatLeader_Server.Controllers
                             songsToMigrate.Add(existingSong);
                         }
                         songId += "x";
-                        existingSong = _context.Songs.Include(s => s.Difficulties).FirstOrDefault(i => i.Id == songId);
+                        existingSong = await _context.Songs.Include(s => s.Difficulties).FirstOrDefaultAsync(i => i.Id == songId);
                     }
 
                     song.Id = songId;
@@ -271,7 +271,7 @@ namespace BeatLeader_Server.Controllers
                 }
                 else
                 {
-                    CustomMode? customMode = _context.CustomModes.FirstOrDefault(m => m.Name == mode);
+                    CustomMode? customMode = await _context.CustomModes.FirstOrDefaultAsync(m => m.Name == mode);
                     if (customMode == null)
                     {
                         customMode = new CustomMode
@@ -301,7 +301,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             string newLeaderboardId = $"{song.Id}{difficulty.Value}{difficulty.Mode}";
-            var leaderboard = _context.Leaderboards.Include(lb => lb.Difficulty).Where(l => l.Id == newLeaderboardId).FirstOrDefault();
+            var leaderboard = await _context.Leaderboards.Include(lb => lb.Difficulty).Where(l => l.Id == newLeaderboardId).FirstOrDefaultAsync();
 
             if (leaderboard == null) {
                 leaderboard = new Leaderboard();
@@ -317,10 +317,10 @@ namespace BeatLeader_Server.Controllers
 
             if (baseSong != null) {
                 var baseId = $"{baseSong.Id}{difficulty.Value}{difficulty.Mode}";
-                var baseLeaderboard = _context.Leaderboards
+                var baseLeaderboard = await _context.Leaderboards
                     .Include(lb => lb.LeaderboardGroup)
                     .ThenInclude(lbg => lbg.Leaderboards)
-                    .FirstOrDefault(lb => lb.Id == baseId);
+                    .FirstOrDefaultAsync(lb => lb.Id == baseId);
 
                 if (baseLeaderboard != null) {
                     var group = baseLeaderboard.LeaderboardGroup ?? new LeaderboardGroup {
@@ -356,27 +356,27 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            Song? baseSong = _context
+            Song? baseSong = await _context
                 .Songs
                 .Include(s => s.Difficulties)
                 .ThenInclude(d => d.ModifierValues)
                 .Include(s => s.Difficulties)
                 .ThenInclude(d => d.ModifiersRating)
-                .FirstOrDefault(i => i.Id == baseSongId);
-            Song? oldSong = _context
+                .FirstOrDefaultAsync(i => i.Id == baseSongId);
+            Song? oldSong = await _context
                 .Songs
                 .Include(s => s.Difficulties)
                 .ThenInclude(d => d.ModifierValues)
                 .Include(s => s.Difficulties)
                 .ThenInclude(d => d.ModifiersRating)
-                .FirstOrDefault(i => i.Id == oldSongId);
-            Song? newSong = _context
+                .FirstOrDefaultAsync(i => i.Id == oldSongId);
+            Song? newSong = await _context
                 .Songs
                 .Include(s => s.Difficulties)
                 .ThenInclude(d => d.ModifierValues)
                 .Include(s => s.Difficulties)
                 .ThenInclude(d => d.ModifiersRating)
-                .FirstOrDefault(i => i.Id == newSongId);
+                .FirstOrDefaultAsync(i => i.Id == newSongId);
 
             if (baseSong == null || oldSong == null || newSong == null) return NotFound();
 
@@ -499,16 +499,16 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        private Song? GetSongWithDiffsFromHash(string hash)
+        private async Task<Song?> GetSongWithDiffsFromHash(string hash)
         {
-            return _context
+            return await _context
                 .Songs
                 .Where(el => el.Hash == hash)
                 .Include(song => song.Difficulties)
                 .ThenInclude(d => d.ModifierValues)
                 .Include(song => song.Difficulties)
                 .ThenInclude(d => d.ModifiersRating)
-                .FirstOrDefault();
+                .FirstOrDefaultAsync();
         }
     }
 }

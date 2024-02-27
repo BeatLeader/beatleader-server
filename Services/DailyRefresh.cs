@@ -65,9 +65,9 @@ namespace BeatLeader_Server.Services
             {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
 
-                var players = _context.Players.Where(p => p.Socials.FirstOrDefault(s => s.Service == "Discord") != null).ToList();
+                var players = await _context.Players.Where(p => p.Socials.FirstOrDefault(s => s.Service == "Discord") != null).ToListAsync();
                 foreach (var player in players) {
-                    var link = _context.DiscordLinks.FirstOrDefault(l => l.Id == player.Id);
+                    var link = await _context.DiscordLinks.FirstOrDefaultAsync(l => l.Id == player.Id);
                     if (link != null) {
                         ulong ulongId = 0;
                         if (ulong.TryParse(link.DiscordId, out ulongId)) {
@@ -84,14 +84,14 @@ namespace BeatLeader_Server.Services
             {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
 
-                var bannedPlayers = _context.Players.Where(p => p.Banned && !p.Bot).ToList();
+                var bannedPlayers = await _context.Players.Where(p => p.Banned && !p.Bot).ToListAsync();
                 var deletionList = new List<string>();
                 var unbanlist = new List<string>();
 
                 var currentTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                 var threshold = currentTime - 60 * 60 * 24 * 30 * 6;
                 foreach (var player in bannedPlayers) {
-                    var ban = _context.Bans.OrderByDescending(b => b.Timeset).Where(b => b.PlayerId == player.Id).FirstOrDefault();
+                    var ban = await _context.Bans.OrderByDescending(b => b.Timeset).Where(b => b.PlayerId == player.Id).FirstOrDefaultAsync();
                     if (ban == null) continue;
 
                     if (ban.PlayerId == ban.BannedBy && ban.Timeset < threshold) {
@@ -119,10 +119,10 @@ namespace BeatLeader_Server.Services
             using (var scope = _serviceScopeFactory.CreateScope()) {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
 
-                var existingMOTWs = _context.Songs.Where(s => 
+                var existingMOTWs = await _context.Songs.Where(s => 
                     s.ExternalStatuses.FirstOrDefault(es => es.Status == SongStatus.MapOfTheWeek) != null)
                     .Include(es => es.ExternalStatuses)
-                    .ToList();
+                    .ToListAsync();
 
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://api.beatsaver.com/playlists/id/7483/download/beatsaver-7483.bplist");
                 dynamic? playlist = await request.DynamicResponse();
@@ -137,7 +137,7 @@ namespace BeatLeader_Server.Services
 
                     var existingMOTW = existingMOTWs.FirstOrDefault(s => s.Hash.ToLower() == hash);
                     if (existingMOTW == null) {
-                        var newMOTW = _context.Songs.Where(s => s.Hash.ToLower() == hash).Include(s => s.ExternalStatuses).FirstOrDefault();
+                        var newMOTW = await _context.Songs.Where(s => s.Hash.ToLower() == hash).Include(s => s.ExternalStatuses).FirstOrDefaultAsync();
                         if (newMOTW != null) {
                             int timeset = lastMotw?.ExternalStatuses?.First(s => s.Status == SongStatus.MapOfTheWeek).Timeset ?? 1620421200;
                             if (newMOTW.ExternalStatuses == null) { 

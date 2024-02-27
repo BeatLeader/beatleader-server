@@ -38,18 +38,18 @@ namespace BeatLeader_Server.Controllers {
 
         [NonAction]
         public async Task RefreshPlayer(Player player, LeaderboardContexts context, bool refreshRank = true, bool refreshStats = true) {
-            _context.RecalculatePPAndRankFastContext(context, player);
+            await _context.RecalculatePPAndRankFastContext(context, player);
             await _context.BulkSaveChangesAsync();
 
             if (refreshRank)
             {
                 _context.ChangeTracker.AutoDetectChangesEnabled = false;
                 Dictionary<string, int> countries = new Dictionary<string, int>();
-                var ranked = _context.PlayerContextExtensions
+                var ranked = await _context.PlayerContextExtensions
                     .Where(p => p.Pp > 0 && p.Context == context)
                     .OrderByDescending(t => t.Pp)
                     .Select(p => new { Id = p.Id, Country = p.Country })
-                    .ToList();
+                    .ToListAsync();
                 foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
                 {
                     PlayerContextExtension? p = new PlayerContextExtension { Id = pp.Id, Country = pp.Country };
@@ -102,13 +102,13 @@ namespace BeatLeader_Server.Controllers {
             {
                 return Unauthorized();
             }
-            Player? player = _context
+            Player? player = await _context
                 .Players
                 .Where(p => p.Id == id)
                 .Include(p => p.ScoreStats)
                 .Include(p => p.ContextExtensions)
                 .ThenInclude(ce => ce.ScoreStats)
-                .FirstOrDefault();
+                .FirstOrDefaultAsync();
             if (player == null)
             {
                 return NotFound();
@@ -241,7 +241,7 @@ namespace BeatLeader_Server.Controllers {
                 weights[i] = MathF.Pow(0.965f, i);
             }
 
-            var scores = _context
+            var scores = await _context
                 .ScoreContextExtensions
                 .Where(s => s.Pp != 0 && s.Context == context && s.ScoreId != null && !s.Banned && !s.Qualification)
                 .Select(s => new ScoreSelection { 
@@ -255,7 +255,7 @@ namespace BeatLeader_Server.Controllers {
                     Weight = s.Weight, 
                     PlayerId = s.PlayerId
                 })
-                .ToList();
+                .ToListAsync();
             var playerMap = _context.PlayerContextExtensions.ToDictionary(ce => ce.PlayerId, ce => ce.Id);
 
             var scoreGroups = scores.GroupBy(s => s.PlayerId).ToList();
@@ -267,10 +267,10 @@ namespace BeatLeader_Server.Controllers {
             Task.WaitAll(tasks.ToArray());
 
             Dictionary<string, int> countries = new Dictionary<string, int>();
-            var ranked = _context.PlayerContextExtensions
+            var ranked = await _context.PlayerContextExtensions
                 .Where(ce => ce.Context == context && !ce.Banned && ce.Pp > 0)
                 .OrderByDescending(t => t.Pp)
-                .ToList();
+                .ToListAsync();
             foreach ((int i, PlayerContextExtension p) in ranked.Select((value, i) => (i, value)))
             {
                 p.Rank = i + 1;
@@ -552,7 +552,7 @@ namespace BeatLeader_Server.Controllers {
                 }
             }
             var allScores =
-                _context.ScoreContextExtensions.Where(s => s.Context == context && (!s.Score.Banned || s.Score.Bot) && !s.Score.IgnoreForStats).Select(s => new SubScore
+                await _context.ScoreContextExtensions.Where(s => s.Context == context && (!s.Score.Banned || s.Score.Bot) && !s.Score.IgnoreForStats).Select(s => new SubScore
                 {
                     PlayerId = s.PlayerId,
                     Platform = s.Score.Platform,
@@ -571,14 +571,14 @@ namespace BeatLeader_Server.Controllers {
                     MaxStreak = s.Score.MaxStreak,
                     RightTiming = s.Score.RightTiming,
                     LeftTiming = s.Score.LeftTiming,
-                }).ToList();
+                }).ToListAsync();
 
-            var players = _context
+            var players = await _context
                     .PlayerContextExtensions
                     .Where(p => p.Context == context && p.ScoreStats != null)
                     .OrderBy(p => p.Rank)
                     .Select(p => new { p.PlayerId, p.ScoreStats })
-                    .ToList();
+                    .ToListAsync();
 
             var scoresById = allScores.GroupBy(s => s.PlayerId).ToDictionary(g => g.Key, g => g.ToList());
 
@@ -664,11 +664,11 @@ namespace BeatLeader_Server.Controllers {
             }
             _context.ChangeTracker.AutoDetectChangesEnabled = false;
             Dictionary<string, int> countries = new Dictionary<string, int>();
-            var ranked = _context.PlayerContextExtensions
+            var ranked = await _context.PlayerContextExtensions
                 .Where(p => !p.Banned && p.Context == context)
                 .OrderByDescending(t => t.Pp)
                 .Select(p => new { Id = p.Id, Country = p.Country })
-                .ToList();
+                .ToListAsync();
             foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
             {
                 var p = new PlayerContextExtension { Id = pp.Id, Country = pp.Country };

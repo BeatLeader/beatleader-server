@@ -48,17 +48,17 @@ namespace BeatLeader_Server.Services {
         public async Task RefreshClans() {
             using (var scope = _serviceScopeFactory.CreateScope()) {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
-                var clans = _context
+                var clans = await _context
                     .Clans
                     .Include(c => c.Players.Where(p => !p.Banned))
                     .ThenInclude(p => p.ScoreStats)
-                    .ToList();
+                    .ToListAsync();
                 foreach (var clan in clans) {
                     if (clan.Players.Count > 0) {
                         clan.AverageAccuracy = clan.Players.Average(p => p.ScoreStats.AverageRankedAccuracy);
                         clan.AverageRank = (float)clan.Players.Average(p => p.Rank);
                         clan.PlayersCount = clan.Players.Count();
-                        clan.Pp = _context.RecalculateClanPP(clan.Id);
+                        clan.Pp = await _context.RecalculateClanPP(clan.Id);
                     }
                 }
 
@@ -71,11 +71,11 @@ namespace BeatLeader_Server.Services {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
 
                 var currentDate = DateTime.UtcNow;
-                var lastUpdateDate = _context.SongsLastUpdateTimes.Where(s => s.Status == SongStatus.Curated).FirstOrDefault()?.Date ?? new DateTime(1970, 1, 1);
+                var lastUpdateDate = (await _context.SongsLastUpdateTimes.Where(s => s.Status == SongStatus.Curated).FirstOrDefaultAsync())?.Date ?? new DateTime(1970, 1, 1);
                 if (currentDate.Subtract(lastUpdateDate).TotalHours > 1) {
                     var curated = await SongUtils.GetCuratedSongsFromBeatSaver(lastUpdateDate);
                     var hashes = curated.Select(m => m.Hash.ToLower()).ToList();
-                    var songs = _context.Songs.Where(s => hashes.Contains(s.Hash.ToLower())).Include(s => s.ExternalStatuses).ToList();
+                    var songs = await _context.Songs.Where(s => hashes.Contains(s.Hash.ToLower())).Include(s => s.ExternalStatuses).ToListAsync();
                     foreach (var map in curated)
                     {
                         var song = songs.FirstOrDefault(s => s.Hash.ToLower() == map.Hash.ToLower());
@@ -148,7 +148,7 @@ namespace BeatLeader_Server.Services {
                         var lastVersion = await SongUtils.GetSongFromBeatSaverId(id);
 
                         if (lastVersion == null) continue;
-                        var song = _context.Songs.Where(s => s.Hash.ToLower() == lastVersion.Hash.ToLower()).Include(s => s.ExternalStatuses).FirstOrDefault();
+                        var song = await _context.Songs.Where(s => s.Hash.ToLower() == lastVersion.Hash.ToLower()).Include(s => s.ExternalStatuses).FirstOrDefaultAsync();
 
                         if (song == null) continue;
                         if (song.ExternalStatuses == null) {
@@ -163,7 +163,7 @@ namespace BeatLeader_Server.Services {
                         });
                     }
 
-                    _context.SaveChanges();
+                    await _context.SaveChangesAsync();
                 } catch { }
             }
         }
@@ -243,17 +243,17 @@ namespace BeatLeader_Server.Services {
                 var _s3Client = _configuration.GetS3Client();
 
                 var query = _context.Songs.Where(s => !s.Refreshed);
-                var count = query.Count();
+                var count = await query.CountAsync();
 
                 for (int i = 0; i < count; i+=1000)
                 {
-                    var songs = query
+                    var songs = await query
                         .OrderByDescending(s => s.UploadTime)
                         .Skip(i)
                         .Take(1000)
                         .Include(s => s.Difficulties)
                         .ThenInclude(d => d.ModifiersRating)
-                        .ToList();
+                        .ToListAsync();
 
                     foreach (var song in songs) {
 

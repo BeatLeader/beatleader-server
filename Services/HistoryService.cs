@@ -44,7 +44,7 @@ namespace BeatLeader_Server.Services
 
                 int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
-                var lastHistory = _context.PlayerScoreStatsHistory.FirstOrDefault();
+                var lastHistory = await _context.PlayerScoreStatsHistory.FirstOrDefaultAsync();
                 if (lastHistory != null && lastHistory.Timestamp > timeset - 60 * 60 * 12) {
                     return;
                 }
@@ -58,10 +58,10 @@ namespace BeatLeader_Server.Services
                 _context.ChangeTracker.AutoDetectChangesEnabled = false;
                 
                 shouldSave = true;
-                var playersCount = _context.Players.Where(p => !p.Banned).Count();
+                var playersCount = await _context.Players.Where(p => !p.Banned).CountAsync();
                 for (int i = 0; i < playersCount; i += 10000)
                 {
-                    var ranked = _context
+                    var ranked = await _context
                         .Players
                         .OrderBy(p => p.Id)
                         .Where(p => !p.Banned || p.Bot)
@@ -75,7 +75,7 @@ namespace BeatLeader_Server.Services
                             CountryRank = p.CountryRank,
                             Id = p.Id
                             })
-                        .ToList();
+                        .ToListAsync();
                     foreach (var p in ranked)
                     {
                         if (p.ScoreStats == null) continue;
@@ -161,14 +161,14 @@ namespace BeatLeader_Server.Services
 
                 foreach (var context in ContextExtensions.NonGeneral)
                 {
-                    var lastHistory = _context.PlayerScoreStatsHistory.OrderByDescending(ps => ps.Timestamp).Where(ps => ps.Context == context).FirstOrDefault();
+                    var lastHistory = await _context.PlayerScoreStatsHistory.OrderByDescending(ps => ps.Timestamp).Where(ps => ps.Context == context).FirstOrDefaultAsync();
                     if (lastHistory != null && lastHistory.Timestamp > timeset - 60 * 60 * 12) {
                         return;
                     }
-                    var playersCount = _context.PlayerContextExtensions.Where(p => p.Context == context).Count();
+                    var playersCount = await _context.PlayerContextExtensions.Where(p => p.Context == context).CountAsync();
                     for (int i = 0; i < playersCount; i += 10000)
                     {
-                        var ranked = _context
+                        var ranked = await _context
                             .PlayerContextExtensions
                             .OrderBy(p => p.Id)
                             .Where(p => p.Context == context)
@@ -182,7 +182,7 @@ namespace BeatLeader_Server.Services
                                 CountryRank = p.CountryRank,
                                 Id = p.PlayerId
                                 })
-                            .ToList();
+                            .ToListAsync();
                         foreach (var p in ranked)
                         {
                             if (p.ScoreStats == null) continue;
@@ -319,7 +319,7 @@ namespace BeatLeader_Server.Services
                     }
                 }
 
-                var clans = _context.Clans.ToList();
+                var clans = await _context.Clans.ToListAsync();
                 foreach (var clan in clans)
                 {
                     _context.GlobalMapHistory.Add(new GlobalMapHistory {

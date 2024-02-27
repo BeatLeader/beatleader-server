@@ -45,7 +45,7 @@ namespace BeatLeader_Server.Controllers.Admin
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin")) {
                 return Unauthorized();
             }
-            Leaderboard? leaderboard = _context.Leaderboards.Where(l => l.Id == leaderboardID).Include(l => l.Scores).FirstOrDefault();
+            Leaderboard? leaderboard = await _context.Leaderboards.Where(l => l.Id == leaderboardID).Include(l => l.Scores).FirstOrDefaultAsync();
             if (leaderboard == null) {
                 return NotFound();
             }

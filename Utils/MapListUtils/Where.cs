@@ -1,6 +1,7 @@
 ﻿using BeatLeader_Server.Enums;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
+using Microsoft.EntityFrameworkCore;
 using Type = BeatLeader_Server.Enums.Type;
 
 namespace BeatLeader_Server.Utils;
@@ -144,14 +145,12 @@ public static partial class MapListUtils
         };
     }
 
-    public static IQueryable<Leaderboard> WherePage(this IQueryable<Leaderboard> sequence, int page, int count, out int totalMatches)
+    public static async Task<(IQueryable<Leaderboard>, int)> WherePage(this IQueryable<Leaderboard> sequence, int page, int count)
     {
         if (page <= 0) {
             page = 1;
         }
 
-        totalMatches = sequence.Count();
-
-        return sequence.Skip((page - 1) * count).Take(count);
+        return (sequence.Skip((page - 1) * count).Take(count), await sequence.CountAsync());
     }
 }

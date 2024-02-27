@@ -48,7 +48,7 @@ namespace BeatLeader_Server.Controllers
                 [FromQuery] int? timeset = null,
                 [FromQuery] string? playerId = null) {
             string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = _context.Players.Find(currentId);
+            Player? currentPlayer = await _context.Players.FindAsync(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
@@ -95,13 +95,13 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<Badge>> UpdateBadge(int id, [FromQuery] string? description, [FromQuery] string? image, [FromQuery] string? link = null)
         {
             string? currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = currentId != null ? _context.Players.Find(currentId) : null;
+            Player? currentPlayer = currentId != null ? await _context.Players.FindAsync(currentId) : null;
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
             }
 
-            var badge = _context.Badges.Find(id);
+            var badge = await _context.Badges.FindAsync(id);
 
             if (badge == null) {
                 return NotFound();
@@ -138,7 +138,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            Player? player = _context.Players.Include(p => p.Badges).FirstOrDefault(p => p.Id == playerId);
+            Player? player = await _context.Players.Include(p => p.Badges).FirstOrDefaultAsync(p => p.Id == playerId);
             if (player == null)
             {
                 return NotFound("Player not found");

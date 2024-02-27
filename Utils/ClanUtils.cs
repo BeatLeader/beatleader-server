@@ -25,9 +25,9 @@ namespace BeatLeader_Server.Utils
     {
         public const float clanRankingWeight = 0.8f;
 
-        public static float RecalculateClanPP(this AppContext context, int clanId)
+        public static async Task<float> RecalculateClanPP(this AppContext context, int clanId)
         {
-            Clan? clan = context.Clans.Where(c => c.Id == clanId).Include(c => c.Players).FirstOrDefault();
+            Clan? clan = await context.Clans.Where(c => c.Id == clanId).Include(c => c.Players).FirstOrDefaultAsync();
             float resultPP = 0f;
             if (clan != null) {
                 var ranked = clan.Players.OrderByDescending(s => s.Pp).ToList();
@@ -41,7 +41,7 @@ namespace BeatLeader_Server.Utils
             return resultPP;
         }
 
-        public static (List<ClanRankingChanges>?, List<Clan>?) UpdateClanRanking(
+        public static async Task<(List<ClanRankingChanges>?, List<Clan>?)> UpdateClanRanking(
             this AppContext context, 
             Leaderboard? leaderboard, 
             Score newScore)
@@ -75,10 +75,10 @@ namespace BeatLeader_Server.Utils
             var playerClanIds = playerClans.Select(c => c.Id).ToList();
 
             var changes = new List<ClanRankingChanges>();
-            var clanRankings = context
+            var clanRankings = await context
                     .ClanRanking
                     .Where(cr => cr.LeaderboardId == newScore.LeaderboardId)
-                    .ToList();
+                    .ToListAsync();
 
             var globalTop = clanRankings
                 .OrderByDescending(cr => cr.Pp)
@@ -91,7 +91,7 @@ namespace BeatLeader_Server.Utils
                     .Where(cr => cr.ClanId == clan.Id)
                     .FirstOrDefault();
 
-                var associatedScores = context
+                var associatedScores = await context
                     .Scores
                     .Where(s => 
                         s.ValidContexts.HasFlag(LeaderboardContexts.General) && 
@@ -105,7 +105,7 @@ namespace BeatLeader_Server.Utils
                     .ThenByDescending(a => Math.Round(a.Accuracy, 4))
                     .ThenBy(a => a.Timeset)
                     .Select(s => new { s.Pp, s.Rank, s.Accuracy, s.ModifiedScore })
-                    .ToList();
+                    .ToListAsync();
 
                 if (clanRanking == null)
                 {
@@ -152,14 +152,14 @@ namespace BeatLeader_Server.Utils
                 {
                     // Add captured leaderboard to new owner
                     changes.Add(new ClanRankingChanges(leaderboard, null, localTop.ClanId, context, clanRankings));
-                    CaptureLeaderboard(context, localTop.ClanId, leaderboard);
+                    await CaptureLeaderboard(context, localTop.ClanId, leaderboard);
                 }
                 else if (leaderboard.ClanId != localTop.ClanId)
                 {
                     // If the leaderboard was previously won, and now it is won by a different clan,
                     // Remove board from old captor, add board to new captor
                     changes.Add(new ClanRankingChanges(leaderboard, globalTop?.ClanId, localTop.ClanId, context, clanRankings));
-                    CaptureLeaderboard(context, localTop.ClanId, leaderboard);
+                    await CaptureLeaderboard(context, localTop.ClanId, leaderboard);
                 }
             }
             else if (clanRankings.Count > 1 &&
@@ -168,7 +168,7 @@ namespace BeatLeader_Server.Utils
             {
                 // If the map was contested before, and its still contested, don't do anything
                 changes.Add(new ClanRankingChanges(leaderboard, globalTop?.ClanId, null, context, clanRankings));
-                ContestLeaderboard(context, leaderboard);
+                await ContestLeaderboard(context, leaderboard);
             }
 
             var rank = 1;
@@ -181,7 +181,7 @@ namespace BeatLeader_Server.Utils
             return (changes, playerClans);
         }
 
-        public static List<ClanRankingChanges>? CalculateClanRankingSlow(this AppContext context, Leaderboard? leaderboard)
+        public static async Task<List<ClanRankingChanges>?> CalculateClanRankingSlow(this AppContext context, Leaderboard? leaderboard)
         {
             // CalculateClanRankingSlow: Function that calculates the clanRanking given a leaderboard
             // This function is called on relevant leaderboards whenever a user sets a new score, a clan is created, a user leaves a clan,
@@ -194,7 +194,7 @@ namespace BeatLeader_Server.Utils
             // Calculate clan captor on this leaderboard
             var clanRankingData = new Dictionary<int, ClanRankingData>();
             var leaderboardScores =
-                context
+                (await context
                     .Scores
                     .Where(s => 
                         s.LeaderboardId == leaderboard.Id && 
@@ -210,7 +210,7 @@ namespace BeatLeader_Server.Utils
                         s.Player.Clans,
                         s.Player.ClanOrder
                         })
-                    .ToList()
+                    .ToListAsync())
                     .OrderByDescending(cr => Math.Round(cr.Pp, 2))
                     .ThenByDescending(cr => Math.Round(cr.Accuracy, 4))
                     .ThenBy(cr => cr.Timepost)
@@ -284,7 +284,7 @@ namespace BeatLeader_Server.Utils
                     {
                         if (!leaderboard.ClanRankingContested) {
                             changes.Add(new ClanRankingChanges(leaderboard, prevCaptor, null, context, clanRanking));
-                            ContestLeaderboard(context, leaderboard);
+                            await ContestLeaderboard(context, leaderboard);
                         }
                     }
                     else
@@ -293,7 +293,7 @@ namespace BeatLeader_Server.Utils
                         if (clanRanking.Count > 1 && leaderboard.ClanRankingContested)
                         {
                             changes.Add(new ClanRankingChanges(leaderboard, null, rankedData.First().Id, context, clanRanking));
-                            CaptureLeaderboard(context, rankedData.First().Id, leaderboard);
+                            await CaptureLeaderboard(context, rankedData.First().Id, leaderboard);
                         }
                         else
                         {
@@ -302,7 +302,7 @@ namespace BeatLeader_Server.Utils
                             if (prevCaptor != rankedData.First().Id)
                             {
                                 changes.Add(new ClanRankingChanges(leaderboard, prevCaptor, rankedData.First().Id, context, clanRanking));
-                                CaptureLeaderboard(context, rankedData.First().Id, leaderboard);
+                                await CaptureLeaderboard(context, rankedData.First().Id, leaderboard);
                             }
                         }
                     }
@@ -319,7 +319,7 @@ namespace BeatLeader_Server.Utils
                     {
                         // Empty --> Won : Add captured leaderboard
                         changes.Add(new ClanRankingChanges(leaderboard, null, rankedData.First().Id, context, clanRanking));
-                        CaptureLeaderboard(context, rankedData.First().Id, leaderboard);
+                        await CaptureLeaderboard(context, rankedData.First().Id, leaderboard);
                     }
                 }
 
@@ -371,7 +371,7 @@ namespace BeatLeader_Server.Utils
         }
 
         public static async Task<List<ClanRankingChanges>?> RecalculateClanRankingForPlayer(AppContext context, string playerId) {
-            var leaderboardsRecalc = context
+            var leaderboardsRecalc = await context
                 .Scores
                 .Where(s => s.Pp > 0 && !s.Qualification && s.PlayerId == playerId)
                 .Include(s => s.Leaderboard)
@@ -379,11 +379,11 @@ namespace BeatLeader_Server.Utils
                 .Include(s => s.Leaderboard)
                 .ThenInclude(lb => lb.ClanRanking)
                 .Select(s => s.Leaderboard)
-                .ToList();
+                .ToListAsync();
             var result = new List<ClanRankingChanges>(); 
             foreach (var leaderboard in leaderboardsRecalc)
             {
-                var changes = context.CalculateClanRankingSlow(leaderboard);
+                var changes = await context.CalculateClanRankingSlow(leaderboard);
                 if (changes != null) {
                     result.AddRange(changes);
                 }
@@ -408,12 +408,12 @@ namespace BeatLeader_Server.Utils
             await context.BulkSaveChangesAsync();
         }
 
-        private static void CaptureLeaderboard(AppContext context, int? newCaptor, Leaderboard leaderboard)
+        private static async Task CaptureLeaderboard(AppContext context, int? newCaptor, Leaderboard leaderboard)
         {
             if (newCaptor == null) return;
 
             if (leaderboard.ClanId != null) {
-                var losingClan = context.Clans.Find(leaderboard.ClanId);
+                var losingClan = await context.Clans.FindAsync(leaderboard.ClanId);
 
                 if (losingClan != null) {
                     losingClan.CaptureLeaderboardsCount--;
@@ -425,19 +425,19 @@ namespace BeatLeader_Server.Utils
             leaderboard.ClanId = newCaptor;
             leaderboard.ClanRankingContested = false;
 
-            var clan = context.Clans.Find(newCaptor);
+            var clan = await context.Clans.FindAsync(newCaptor);
             if (clan != null) {
                 clan.CaptureLeaderboardsCount++;
                 clan.RankedPoolPercentCaptured = (float)(clan.CaptureLeaderboardsCount) / ConstantsService.RankedMapCount;
             }
         }
 
-        private static void ContestLeaderboard(AppContext context, Leaderboard leaderboard)
+        private static async Task ContestLeaderboard(AppContext context, Leaderboard leaderboard)
         {
             leaderboard.ClanRankingContested = true;
 
             if (leaderboard.ClanId != null) {
-                var clan = context.Clans.Find(leaderboard.ClanId);
+                var clan = await context.Clans.FindAsync(leaderboard.ClanId);
 
                 if (clan != null) {
                     clan.CaptureLeaderboardsCount--;
@@ -456,9 +456,9 @@ namespace BeatLeader_Server.Utils
             foreach (var change in changes)
             {
                 var player = score.Player;
-                var currentCaptor = change.CurrentCaptorId != null ? context.Clans.Find(change.CurrentCaptorId) : null;
-                var previousCaptor = change.PreviousCaptorId != null ? context.Clans.Find(change.PreviousCaptorId) : null;
-                var songName = context.Songs.Where(s => s.Id == change.Leaderboard.SongId).Select(s => s.Name).FirstOrDefault();
+                var currentCaptor = change.CurrentCaptorId != null ? await context.Clans.FindAsync(change.CurrentCaptorId) : null;
+                var previousCaptor = change.PreviousCaptorId != null ? await context.Clans.FindAsync(change.PreviousCaptorId) : null;
+                var songName = await context.Songs.Where(s => s.Id == change.Leaderboard.SongId).Select(s => s.Name).FirstOrDefaultAsync();
 
                 string message = $"**{player.Name}** ";
                 if (currentCaptor == null) {
@@ -504,9 +504,9 @@ namespace BeatLeader_Server.Utils
                     string message = "**" + postMessage + "**\n";
                     foreach (var change in changes)
                     {
-                        var currentCaptor = change.CurrentCaptorId != null ? context.Clans.Find(change.CurrentCaptorId) : null;
-                        var previousCaptor = change.PreviousCaptorId != null ? context.Clans.Find(change.PreviousCaptorId) : null;
-                        var songName = context.Songs.Where(s => s.Id == change.Leaderboard.SongId).Select(s => s.Name).FirstOrDefault();
+                        var currentCaptor = change.CurrentCaptorId != null ? await context.Clans.FindAsync(change.CurrentCaptorId) : null;
+                        var previousCaptor = change.PreviousCaptorId != null ? await context.Clans.FindAsync(change.PreviousCaptorId) : null;
+                        var songName = await context.Songs.Where(s => s.Id == change.Leaderboard.SongId).Select(s => s.Name).FirstOrDefaultAsync();
                 
                         if (currentCaptor == null) {
                             message += "introduced a tie on ";

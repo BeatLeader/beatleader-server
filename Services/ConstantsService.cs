@@ -27,15 +27,15 @@ namespace BeatLeader_Server.Services
             // Calculate global initial ranked map count as of server start
             using (var scope = _serviceScopeFactory.CreateScope())
             {
-                RefreshRankedMapCount(scope.ServiceProvider.GetRequiredService<AppContext>());
+                await RefreshRankedMapCountAsync(scope.ServiceProvider.GetRequiredService<AppContext>());
             }
         }
 
-        public static void RefreshRankedMapCount(AppContext _context)
+        public static async Task RefreshRankedMapCountAsync(AppContext _context)
         {
-            RankedMapCount = _context
+            RankedMapCount = await _context
                 .Leaderboards
-                .Count(lb => lb.Difficulty.Status == DifficultyStatus.ranked);
+                .CountAsync(lb => lb.Difficulty.Status == DifficultyStatus.ranked);
         }
     }
 }

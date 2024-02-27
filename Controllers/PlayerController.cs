@@ -52,12 +52,12 @@ namespace BeatLeader_Server.Controllers
             [FromQuery, SwaggerParameter("Whether to keep original ID (for migrated players)")] bool keepOriginalId = false,
             [FromQuery, SwaggerParameter("Leaderboard context, 'general' by default")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
         {
-            string userId = _context.PlayerIdToMain(id);
+            string userId = await _context.PlayerIdToMain(id);
             Player? player;
             using (_serverTiming.TimeAction("player"))
             {
                 if (stats) {
-                    player = _context
+                    player = await _context
                         .Players
                         .Where(p => p.Id == userId)
                         .Include(p => p.ScoreStats)
@@ -67,7 +67,7 @@ namespace BeatLeader_Server.Controllers
                         .Include(p => p.Socials)
                         .Include(p => p.Changes)
                         .AsSplitQuery()
-                        .FirstOrDefault();
+                        .FirstOrDefaultAsync();
                 } else {
                     player = await _context.Players.FindAsync(userId);
                 }
@@ -118,7 +118,7 @@ namespace BeatLeader_Server.Controllers
                         : null
                 };
                 if (result.Banned) {
-                    result.BanDescription = _context.Bans.OrderByDescending(b => b.Timeset).FirstOrDefault(b => b.PlayerId == player.Id);
+                    result.BanDescription = await _context.Bans.OrderByDescending(b => b.Timeset).FirstOrDefaultAsync(b => b.PlayerId == player.Id);
                 }
 
                 if (keepOriginalId && result.Id != id) {
@@ -126,11 +126,11 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
-                    var contextExtension = _context
+                    var contextExtension = await _context
                         .PlayerContextExtensions
                         .Include(p => p.ScoreStats)
                         .Where(p => p.PlayerId == userId && p.Context == leaderboardContext)
-                        .FirstOrDefault();
+                        .FirstOrDefaultAsync();
                     if (contextExtension != null) {
                         result.ToContext(contextExtension);
                     }
@@ -148,7 +148,7 @@ namespace BeatLeader_Server.Controllers
         [SwaggerResponse(404, "Player not found")]
         public async Task<ActionResult<PlayerResponseFull>> GetDiscord([FromRoute, SwaggerParameter("Discord profile ID")] string id)
         {
-            var social = _context.PlayerSocial.Where(s => s.Service == "Discord" && s.UserId == id && s.PlayerId != null).FirstOrDefault();
+            var social = await _context.PlayerSocial.Where(s => s.Service == "Discord" && s.UserId == id && s.PlayerId != null).FirstOrDefaultAsync();
 
             if (social == null || social.PlayerId == null) {
                 return NotFound();
@@ -163,7 +163,7 @@ namespace BeatLeader_Server.Controllers
         [SwaggerResponse(404, "Player not found")]
         public async Task<ActionResult<PlayerResponseFull>> GetBeatSaver([FromRoute, SwaggerParameter("BeatSaver profile ID")] string id)
         {
-            var social = _context.PlayerSocial.Where(s => s.Service == "BeatSaver" && s.UserId == id && s.PlayerId != null).FirstOrDefault();
+            var social = await _context.PlayerSocial.Where(s => s.Service == "BeatSaver" && s.UserId == id && s.PlayerId != null).FirstOrDefaultAsync();
 
             if (social == null || social.PlayerId == null) {
                 return NotFound();
@@ -175,7 +175,7 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         public async Task<ActionResult<Player>> GetLazy(string id, bool addToBase = true)
         {
-            Player? player = _context
+            Player? player = await _context
                 .Players
                 .Include(p => p.ScoreStats)
                 .Include(p => p.EventsParticipating)
@@ -183,7 +183,7 @@ namespace BeatLeader_Server.Controllers
                 .Include(p => p.Clans)
                 .Include(p => p.ContextExtensions)
                 .ThenInclude(ce => ce.ScoreStats)
-                .FirstOrDefault(p => p.Id == id);
+                .FirstOrDefaultAsync(p => p.Id == id);
 
             if (player == null) {
                 Int64 userId = long.Parse(id);
@@ -243,29 +243,29 @@ namespace BeatLeader_Server.Controllers
                     return Unauthorized();
                 }
             }
-            var bslink = _context.BeatSaverLinks.FirstOrDefault(link => link.Id == id);
+            var bslink = await _context.BeatSaverLinks.FirstOrDefaultAsync(link => link.Id == id);
             if (bslink != null) {
                 _context.BeatSaverLinks.Remove(bslink);
             }
 
-            var plink = _context.PatreonLinks.FirstOrDefault(l => l.Id == id);
+            var plink = await _context.PatreonLinks.FirstOrDefaultAsync(l => l.Id == id);
             if (plink != null) {
                 _context.PatreonLinks.Remove(plink);
             }
 
             var intId = long.Parse(id);
-            var auth = _context.Auths.FirstOrDefault(l => l.Id == intId);
+            var auth = await _context.Auths.FirstOrDefaultAsync(l => l.Id == intId);
             if (auth != null) {
                 _context.Auths.Remove(auth);
             }
 
-            var qualifications = _context.RankQualification.Where(q => q.RTMember == id).ToList();
+            var qualifications = await _context.RankQualification.Where(q => q.RTMember == id).ToListAsync();
             foreach (var qualification in qualifications)
             {
                 _context.RankQualification.Remove(qualification);
             }
 
-            var scores = _context.Scores.Include(s => s.ContextExtensions).Where(s => s.PlayerId == id).ToList();
+            var scores = await _context.Scores.Include(s => s.ContextExtensions).Where(s => s.PlayerId == id).ToListAsync();
             foreach (var score in scores) {
                 string? name = score.Replay.Split("/").LastOrDefault();
                 if (name != null) {
@@ -280,11 +280,11 @@ namespace BeatLeader_Server.Controllers
                 _context.Scores.Remove(score);
             }
 
-            Player? player = _context.Players.Where(p => p.Id == id)
+            Player? player = await _context.Players.Where(p => p.Id == id)
                 .Include(p => p.Socials)
                 .Include(p => p.ProfileSettings)
                 .Include(p => p.History)
-                .Include(p => p.Changes).FirstOrDefault();
+                .Include(p => p.Changes).FirstOrDefaultAsync();
 
             if (player == null)
             {
@@ -489,7 +489,7 @@ namespace BeatLeader_Server.Controllers
 
             List<string> playerIds;
             if (searchMatch?.Count > 0) {
-                var matchedAndFiltered = request.Select(p => p.Id).ToList();
+                var matchedAndFiltered = await request.Select(p => p.Id).ToListAsync();
                 playerIds = matchedAndFiltered
                              .OrderByDescending(p => searchMatch.First(m => m.Id == p).Score)
                              .Skip((page - 1) * count)
@@ -587,11 +587,11 @@ namespace BeatLeader_Server.Controllers
                 .ThenInclude(p => p.ProfileSettings);
 
             string? currentID = HttpContext.CurrentUserID(_context);
-            bool showBots = currentID != null ? _context
+            bool showBots = currentID != null ? await _context
                 .Players
                 .Where(p => p.Id == currentID)
                 .Select(p => p.ProfileSettings != null ? p.ProfileSettings.ShowBots : false)
-                .FirstOrDefault() : false;
+                .FirstOrDefaultAsync() : false;
 
             if (banned != null) {
                 var player = await _context.Players.FindAsync(currentID);
@@ -699,7 +699,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     return NotFound();
                 }
-                var friendsContainer = _context.Friends.Where(f => f.Id == player.Id).Include(f => f.Friends).FirstOrDefault();
+                var friendsContainer = await _context.Friends.Where(f => f.Id == player.Id).Include(f => f.Friends).FirstOrDefaultAsync();
                 if (friendsContainer != null)
                 {
                     var friendsList = friendsContainer.Friends.Select(f => f.Id).ToList();
@@ -733,12 +733,12 @@ namespace BeatLeader_Server.Controllers
                 {
                     Page = page,
                     ItemsPerPage = count,
-                    Total = request.Count()
+                    Total = await request.CountAsync()
                 }
             };
 
             if (searchMatch?.Count > 0) {
-                var matchedAndFiltered = request.Select(p => p.PlayerId).ToList();
+                var matchedAndFiltered = await request.Select(p => p.PlayerId).ToListAsync();
                 var sorted = matchedAndFiltered
                              .OrderByDescending(p => searchMatch.First(m => m.Id == p).Score)
                              .Skip((page - 1) * count)
@@ -997,7 +997,7 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         public async Task<Player?> GetPlayerFromBL(string playerID)
         {
-            AuthInfo? authInfo = _context.Auths.FirstOrDefault(el => el.Id.ToString() == playerID);
+            AuthInfo? authInfo = await _context.Auths.FirstOrDefaultAsync(el => el.Id.ToString() == playerID);
 
             if (authInfo == null) return null;
 

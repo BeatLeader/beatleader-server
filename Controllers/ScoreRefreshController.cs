@@ -43,9 +43,9 @@ namespace BeatLeader_Server.Controllers
                     .ThenInclude(d => d.ModifierValues)
                     .Include(l => l.Difficulty)
                     .ThenInclude(d => d.ModifiersRating);
-                var allLeaderboards = (leaderboardId != null ? query.Where(s => s.Id == leaderboardId) : query)
+                var allLeaderboards = await (leaderboardId != null ? query.Where(s => s.Id == leaderboardId) : query)
                     .Select(l => new { l.Scores, l.Difficulty })
-                    .ToList(); // .Skip(iii).Take(1000).ToList();
+                    .ToListAsync(); // .Skip(iii).Take(1000).ToListAsync();
 
                 int counter = 0;
                 var transaction = await _context.Database.BeginTransactionAsync();
@@ -183,13 +183,13 @@ namespace BeatLeader_Server.Controllers
             
                 query = (leaderboardId != null ? _context.Leaderboards.Where(s => s.Id == leaderboardId) : query);
 
-                var allLeaderboards = query
+                var allLeaderboards = await query
                     .Select(lb => new {
                         lb.Difficulty,
                         lb.Difficulty.ModifierValues,
                         lb.Difficulty.ModifiersRating,
                         Scores = lb.Scores.Select(s => new { s.Id, s.Banned, s.LeaderboardId, s.BaseScore, s.Modifiers, s.FcAccuracy, s.ValidContexts })
-                    }).ToList();
+                    }).ToListAsync();
                 await allLeaderboards.ParallelForEachAsync(async leaderboard => {
                     var allScores = leaderboard.Scores.Where(s => !s.Banned && s.ValidContexts.HasFlag(LeaderboardContexts.General)).ToList();
 
@@ -352,13 +352,13 @@ namespace BeatLeader_Server.Controllers
             
                 query = (leaderboardId != null ? query.Where(s => s.Id == leaderboardId) : query);
 
-                var allLeaderboards = query
+                var allLeaderboards = await query
                     .Select(lb => new {
                         lb.Difficulty,
                         lb.Difficulty.ModifierValues,
                         lb.Difficulty.ModifiersRating,
                         Scores = lb.ContextExtensions.Where(s => s.Context == leaderboardContext).Select(s => new { s.Id, s.LeaderboardId, s.BaseScore, s.Modifiers, s.Context })
-                    }).ToList();
+                    }).ToListAsync();
                 await allLeaderboards.ParallelForEachAsync(async leaderboard => {
                     var allScores = leaderboard.Scores.ToList();
 
@@ -516,11 +516,11 @@ namespace BeatLeader_Server.Controllers
 
             _context.ChangeTracker.AutoDetectChangesEnabled = false; 
             
-            var allLeaderboards = _context.Leaderboards
+            var allLeaderboards = await _context.Leaderboards
                 .Select(lb => new {
                     lb.Difficulty,
                     Scores = lb.ContextExtensions.Where(s => s.Context == leaderboardContext).Select(s => new { s.Id, s.Pp, s.Accuracy, s.Timeset, s.ModifiedScore })
-                }).ToList();
+                }).ToListAsync();
                 await allLeaderboards.ParallelForEachAsync(async leaderboard => {
                     var allScores = leaderboard.Scores.ToList();
 
@@ -593,11 +593,11 @@ namespace BeatLeader_Server.Controllers
 
             _context.ChangeTracker.AutoDetectChangesEnabled = false; 
             
-            var allLeaderboards = _context.Leaderboards
+            var allLeaderboards = await _context.Leaderboards
                 .Select(lb => new {
                     lb.Difficulty,
                     Scores = lb.Scores.Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General)).Select(s => new { s.Id, s.Banned, s.Pp, s.Accuracy, s.Timeset, s.ModifiedScore, s.Priority })
-                }).ToList();
+                }).ToListAsync();
 
             for (int i = 0; i < allLeaderboards.Count; i += 1000)
             {

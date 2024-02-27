@@ -319,7 +319,7 @@ namespace BeatLeader_Server.Controllers
                         })
                         .FirstOrDefaultAsync();
                     if (score == null) {
-                        var redirect = _context.ScoreRedirects.FirstOrDefault(sr => sr.OldScoreId == scoreId);
+                        var redirect = await _context.ScoreRedirects.FirstOrDefaultAsync(sr => sr.OldScoreId == scoreId);
                         if (redirect != null && redirect.NewScoreId != scoreId)
                         {
                             return await Get(scoreId: redirect.NewScoreId);
@@ -374,7 +374,7 @@ namespace BeatLeader_Server.Controllers
             long intId = Int64.Parse(playerId);
             if (intId < 70000000000000000)
             {
-                AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+                AccountLink? accountLink = await _context.AccountLinks.FirstOrDefaultAsync(el => el.OculusID == intId);
                 if (accountLink != null) {
                     playerId = accountLink.SteamID.Length > 0 ? accountLink.SteamID : accountLink.PCOculusID;
                 }
@@ -408,8 +408,8 @@ namespace BeatLeader_Server.Controllers
 
             if (playerID != null && id != null)
             {
-                player = _context.Players.FirstOrDefault(p => p.Id == playerID) ?? await GetPlayerFromSS("https://scoresaber.com/api/player/" + playerID + "/full");
-                song = _context.Songs.Select(s => new SongSelect { Id = s.Id, CoverImage = s.CoverImage, Name = s.Name }).FirstOrDefault(s => s.Id == id);
+                player = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerID) ?? await GetPlayerFromSS("https://scoresaber.com/api/player/" + playerID + "/full");
+                song = await _context.Songs.Select(s => new SongSelect { Id = s.Id, CoverImage = s.CoverImage, Name = s.Name }).FirstOrDefaultAsync(s => s.Id == id);
             }
 
             if (player == null || song == null)
@@ -494,7 +494,7 @@ namespace BeatLeader_Server.Controllers
             if (players != null && hash != null)
             {
                 var ids = players.Split(",");
-                playersList = _context.Players.Where(p => ids.Contains(p.Id)).ToList();
+                playersList = await _context.Players.Where(p => ids.Contains(p.Id)).ToListAsync();
                 foreach (var id in ids)
                 {
                     if (playersList.FirstOrDefault(p => p.Id == id) == null)

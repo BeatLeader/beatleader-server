@@ -53,7 +53,7 @@ namespace BeatLeader_Server.Services
             var oldPp = player.Pp;
             var oldRank = player.Rank;
 
-            _context.RecalculatePPAndRankFastGeneral(player);
+            await _context.RecalculatePPAndRankFastGeneral(player);
 
             if (score != null && score.ScoreImprovement != null)
             {
@@ -68,13 +68,13 @@ namespace BeatLeader_Server.Services
 
         private async Task<(float, int)> RefreshLeaderboardPlayers(string id, AppContext _context)
         {
-            Leaderboard? leaderboard = _context.Leaderboards
+            Leaderboard? leaderboard = await _context.Leaderboards
                 .Where(p => p.Id == id)
                 .Include(l => l.Scores)
                 .ThenInclude(s => s.Player)
                 .Include(l => l.Scores)
                 .ThenInclude(s => s.ScoreImprovement)
-                .FirstOrDefault();
+                .FirstOrDefaultAsync();
 
             float pp = 0;
             int ranks = 0;
@@ -177,25 +177,25 @@ namespace BeatLeader_Server.Services
                         }
                     }
                 }
-                ConstantsService.RefreshRankedMapCount(_context);
+                await ConstantsService.RefreshRankedMapCountAsync(_context);
 
                 await _context.BulkSaveChangesAsync();
 
                 foreach (var leaderboard in leaderboards)
                 {
                     ClanTaskService.AddJob(new ClanRankingChangesDescription {
-                        Changes = _context.CalculateClanRankingSlow(leaderboard),
+                        Changes = await _context.CalculateClanRankingSlow(leaderboard),
                         GlobalMapEvent = GlobalMapEvent.ranked
                     });
                 }
 
                 await _context.BulkSaveChangesAsync();
 
-                var clans = _context
+                var clans = await _context
                     .Clans
                     .Select(c => new { Clan = c, CaptureLeaderboardsCount = c.CapturedLeaderboards.Count() })
                     .OrderByDescending(c => c.CaptureLeaderboardsCount)
-                    .ToList();
+                    .ToListAsync();
                 var rank = 1;
                 foreach (var c in clans)
                 {

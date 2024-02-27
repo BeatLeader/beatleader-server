@@ -36,11 +36,11 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/songsuggest")]
         public async Task<ActionResult> GetSongSuggest([FromQuery] int? before_time = null)
         {
-            var refresh = _context
+            var refresh = await _context
                 .SongSuggestRefreshes
                 .OrderByDescending(s => s.Timeset)
                 .Where(s => before_time != null ? s.Timeset < before_time : true)
-                .FirstOrDefault();
+                .FirstOrDefaultAsync();
             if (refresh == null) return NotFound();
 
             var playersUrl = await _s3Client.GetPresignedUrl(refresh.File, S3Container.assets);
@@ -54,11 +54,11 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<List<SongSuggestSong>>> GetSongSuggestSongs(
             [FromQuery] int? before_time = null) {
 
-            var refresh = _context
+            var refresh = await _context
                 .SongSuggestRefreshes
                 .OrderByDescending(s => s.Timeset)
                 .Where(s => before_time != null ? s.Timeset < before_time : true)
-                .FirstOrDefault();
+                .FirstOrDefaultAsync();
             if (refresh == null) return NotFound();
 
             var songsUrl = await _s3Client.GetPresignedUrl(refresh.SongsFile, S3Container.assets);
@@ -71,11 +71,11 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/songsuggest/refreshTime")]
         public async Task<ActionResult<int>> GetSongSuggestLastRefreshTime([FromQuery] int? before_time = null)
         {
-            var refresh = _context
+            var refresh = await _context
                 .SongSuggestRefreshes
                 .OrderByDescending(s => s.Timeset)
                 .Where(s => before_time != null ? s.Timeset < before_time : true)
-                .FirstOrDefault();
+                .FirstOrDefaultAsync();
             if (refresh == null) return NotFound();
 
             return refresh.Timeset;
@@ -85,7 +85,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/songsuggest/biglist")]
         public async Task<ActionResult> GetBigMapsList()
         {
-            if (!HttpContext.ItsAdmin(_context)) return Unauthorized();
+            if (!(await HttpContext.ItsAdmin(_context))) return Unauthorized();
 
             return Ok( _context.Leaderboards
                 .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
@@ -103,14 +103,14 @@ namespace BeatLeader_Server.Controllers
                     cover = lb.Song.CoverImage,
                     time = lb.Difficulty.RankedTime
                 })
-                .ToList());
+                .ToListAsync());
         }
 
         [ApiExplorerSettings(IgnoreApi = true)]
         [HttpGet("~/gigalist")]
         public async Task<ActionResult> GetGigaList([FromQuery] int topCount)
         {
-            if (!HttpContext.ItsAdmin(_context)) return Unauthorized();
+            if (!(await HttpContext.ItsAdmin(_context))) return Unauthorized();
 
             var objec = new { 
                 Maps = _context.Leaderboards
@@ -128,7 +128,7 @@ namespace BeatLeader_Server.Controllers
                         techRating = (float)lb.Difficulty.TechRating,
                         cover = lb.Song.CoverImage
                     })
-                    .ToList(),
+                    .ToListAsync(),
                 Players = _context
                     .Players
                     .Where(p => !p.Banned && p.Rank <= topCount && p.Rank >= 1)
@@ -153,7 +153,7 @@ namespace BeatLeader_Server.Controllers
                         I = s.PlayerId,
                         LI = s.LeaderboardId
                     })
-                    .ToList()
+                    .ToListAsync()
             };
 
             var filename = $"gigalistfile{topCount}.json";
@@ -166,13 +166,13 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/songsuggest/refresh")]
         public async Task<ActionResult> RefreshSongSuggest()
         {
-            if (HttpContext != null && !HttpContext.ItsAdmin(_context)) return Unauthorized();
+            if (HttpContext != null && !(await HttpContext.ItsAdmin(_context))) return Unauthorized();
 
             var timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             var activeTreshold = timeset - 60 * 60 * 24 * 31 * 3;
             var scoreTreshold = timeset - 60 * 60 * 24 * 365;
 
-            var list = _context.Scores
+            var list = (await _context.Scores
                 .Where(s => 
                     s.ValidContexts.HasFlag(LeaderboardContexts.General) &&
                     !s.Qualification &&
@@ -198,7 +198,7 @@ namespace BeatLeader_Server.Controllers
                         rank = s.Player.Rank
                     }
                 })
-                .ToList()
+                .ToListAsync())
                 .GroupBy(m => m.player.id)
                 .OrderBy(group => group.First().player.rank)
                 .Where(g => g.Count() >= 20)
@@ -241,7 +241,7 @@ namespace BeatLeader_Server.Controllers
                     passRating = (float)lb.Difficulty.PassRating,
                     techRating = (float)lb.Difficulty.TechRating,
                 })
-                .ToList();
+                .ToListAsync();
 
             var songsfilename = $"songsuggestions-{timeset}-songs.json";
             await _s3Client.UploadStream(songsfilename, S3Container.assets, new BinaryData(JsonConvert.SerializeObject(songs)).ToStream());

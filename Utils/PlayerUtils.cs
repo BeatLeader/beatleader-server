@@ -12,9 +12,9 @@ namespace BeatLeader_Server.Utils
 {
     public static class PlayerUtils
     {
-        public static void RecalculatePP(this AppContext context, Player player, List<Score>? scores = null)
+        public static async Task RecalculatePP(this AppContext context, Player player, List<Score>? scores = null)
         {
-            var ranked = scores ?? context
+            var ranked = scores ?? await context
                 .Scores
                 .Where(s => 
                     s.ValidContexts.HasFlag(LeaderboardContexts.General) &&
@@ -23,7 +23,7 @@ namespace BeatLeader_Server.Utils
                     !s.Banned && 
                     !s.Qualification)
                 .OrderByDescending(s => s.Pp)
-                .ToList();
+                .ToListAsync();
             float resultPP = 0f;
 
             foreach ((int i, Score s) in ranked.Select((value, i) => (i, value)))
@@ -39,14 +39,14 @@ namespace BeatLeader_Server.Utils
             player.Pp = resultPP;
         }
 
-        public static void RecalculatePPFast(this AppContext context, Player player)
+        public static async Task RecalculatePPFast(this AppContext context, Player player)
         {
-            var rankedScores = context
+            var rankedScores = await context
                 .Scores
                 .Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification)
                 .OrderByDescending(s => s.Pp)
                 .Select(s => new { s.Id, s.Accuracy, s.Rank, s.Pp, s.AccPP, s.PassPP, s.TechPP, s.Weight })
-                .ToList();
+                .ToListAsync();
             float resultPP = 0f;
             float accPP = 0f;
             float techPP = 0f;
@@ -80,34 +80,34 @@ namespace BeatLeader_Server.Utils
             context.Entry(player).Property(x => x.PassPp).IsModified = true;
         }
 
-        public static void RecalculatePPAndRankFast(
+        public static async Task RecalculatePPAndRankFast(
             this AppContext dbcontext, 
             Player player,
             LeaderboardContexts leaderboardContexts)
         {
             if (leaderboardContexts.HasFlag(LeaderboardContexts.General)) {
-                dbcontext.RecalculatePPAndRankFastGeneral(player);
+                await dbcontext.RecalculatePPAndRankFastGeneral(player);
             }
 
             foreach (var context in ContextExtensions.NonGeneral) {
                 if (leaderboardContexts.HasFlag(context)) {
-                    dbcontext.RecalculatePPAndRankFastContext(context, player);
+                    await dbcontext.RecalculatePPAndRankFastContext(context, player);
                 }
             }
         }
 
-        public static void RecalculatePPAndRankFastGeneral(
+        public static async Task RecalculatePPAndRankFastGeneral(
             this AppContext context, 
             Player player)
         {
             float oldPp = player.Pp;
 
-            var rankedScores = context
+            var rankedScores = await context
                 .Scores
                 .Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification)
                 .OrderByDescending(s => s.Pp)
                 .Select(s => new { s.Id, s.Accuracy, s.Rank, s.Pp, s.AccPP, s.PassPP, s.TechPP, s.Weight })
-                .ToList();
+                .ToListAsync();
             float resultPP = 0f;
             float accPP = 0f;
             float techPP = 0f;
@@ -149,7 +149,7 @@ namespace BeatLeader_Server.Utils
                 rankOffset = -1;
             }
 
-            var rankedPlayers = context
+            var rankedPlayers = (await context
                 .Players
                 .Where(t => t.Pp > 0 && t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned)
                 .Select(p => new {
@@ -159,7 +159,7 @@ namespace BeatLeader_Server.Utils
                     CountryRank = p.CountryRank,
                     Pp = p.Pp,
                 })
-                .ToList()
+                .ToListAsync())
                 .Append(new {
                     Id = player.Id,
                     Rank = player.Rank,
@@ -237,7 +237,7 @@ namespace BeatLeader_Server.Utils
             }
         }
 
-        public static void RecalculatePPAndRankFastContext(
+        public static async Task RecalculatePPAndRankFastContext(
             this AppContext dbContext, 
             LeaderboardContexts context,
             Player playerProfile)
@@ -247,12 +247,12 @@ namespace BeatLeader_Server.Utils
 
             float oldPp = player.Pp;
 
-            var rankedScores = dbContext
+            var rankedScores = await dbContext
                 .ScoreContextExtensions
                 .Where(s => s.PlayerId == player.PlayerId && s.Pp != 0 && s.Context == context && !s.Banned && !s.Qualification)
                 .OrderByDescending(s => s.Pp)
                 .Select(s => new { s.Id, s.Accuracy, s.Rank, s.Pp, s.AccPP, s.PassPP, s.TechPP, s.Weight })
-                .ToList();
+                .ToListAsync();
             float resultPP = 0f;
             float accPP = 0f;
             float techPP = 0f;
@@ -294,11 +294,11 @@ namespace BeatLeader_Server.Utils
                 rankOffset = -1;
             }
 
-            var rankedPlayers = dbContext
+            var rankedPlayers = (await dbContext
                 .PlayerContextExtensions
                 .Where(t => t.Context == context && t.Pp > 0 && t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned)
                 .Select(p => new { p.Id, p.Rank, p.Country, p.CountryRank, p.Pp })
-                .ToList()
+                .ToListAsync())
                 .Append(new { player.Id, player.Rank, player.Country, player.CountryRank, player.Pp })
                 .OrderByDescending(t => t.Pp)
                 .ToList();
@@ -369,16 +369,16 @@ namespace BeatLeader_Server.Utils
             }
         }
 
-        public static (float, int, int) RecalculatePPAndRankFaster(this AppContext context, Player player)
+        public static async Task<(float, int, int)> RecalculatePPAndRankFaster(this AppContext context, Player player)
         {
             float oldPp = player.Pp;
 
-            var rankedScores = context
+            var rankedScores = await context
                 .Scores
                 .Where(s => s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification)
                 .OrderByDescending(s => s.Pp)
                 .Select(s => new { Pp = s.Pp })
-                .ToList();
+                .ToListAsync();
             float resultPP = 0f;
             foreach ((int i, float pp) in rankedScores.Select((value, i) => (i, value.Pp)))
             {
@@ -386,12 +386,12 @@ namespace BeatLeader_Server.Utils
                 resultPP += pp * weight;
             }
 
-            var rankedPlayers = context
+            var rankedPlayers = await context
                 .Players
                 .Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned)
                 .OrderByDescending(t => t.Pp)
                 .Select(p => new { Pp = p.Pp, Country = p.Country, Rank = p.Rank, CountryRank = p.CountryRank })
-                .ToList();
+                .ToListAsync();
 
             int rank = player.Rank;
             int countryRank = player.CountryRank;
@@ -410,7 +410,7 @@ namespace BeatLeader_Server.Utils
             return (resultPP, rank, countryRank);
         }
 
-        private static void RecalculatePPAndRankFasterContext(
+        private static async Task RecalculatePPAndRankFasterContext(
             this AppContext context, 
             ScoreResponse scoreResponse, 
             LeaderboardContexts leaderboardContext)
@@ -420,12 +420,12 @@ namespace BeatLeader_Server.Utils
             
             float oldPp = player.Pp;
 
-            var rankedScores = context
+            var rankedScores = await context
                 .ScoreContextExtensions
                 .Where(s => s.Context == leaderboardContext && s.PlayerId == player.PlayerId && s.Pp != 0 && !s.Qualification)
                 .OrderByDescending(s => s.Pp)
                 .Select(s => s.Pp)
-                .ToList();
+                .ToListAsync();
             float resultPP = 0f;
             foreach ((int i, float pp) in rankedScores.Select((value, i) => (i, value)))
             {
@@ -436,11 +436,11 @@ namespace BeatLeader_Server.Utils
             player.Pp = resultPP;
             if (resultPP == 0 && oldPp == 0) return;
 
-            var rankedPlayers = context
+            var rankedPlayers = (await context
                 .PlayerContextExtensions
                 .Where(t => t.Context == leaderboardContext && t.Pp >= oldPp && t.Pp <= resultPP && t.PlayerId != player.PlayerId)
                 .Select(p => new { p.Id, p.Rank, p.Country, p.CountryRank, p.Pp })
-                .ToList()
+                .ToListAsync())
                 .OrderByDescending(t => t.Pp)
                 .ToList();
 
@@ -456,18 +456,18 @@ namespace BeatLeader_Server.Utils
             }
         }
 
-        public static void RecalculatePPAndRankFasterAllContexts(this AppContext dbcontext, ScoreResponse scoreResponse)
+        public static async Task RecalculatePPAndRankFasterAllContexts(this AppContext dbcontext, ScoreResponse scoreResponse)
         {
             var player = scoreResponse.Player;
             
             float oldPp = player.Pp;
 
-            var rankedScores = dbcontext
+            var rankedScores = await dbcontext
                 .Scores
                 .Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification)
                 .OrderByDescending(s => s.Pp)
                 .Select(s => new { Pp = s.Pp })
-                .ToList();
+                .ToListAsync();
             float resultPP = 0f;
             foreach ((int i, float pp) in rankedScores.Select((value, i) => (i, value.Pp)))
             {
@@ -477,11 +477,11 @@ namespace BeatLeader_Server.Utils
 
             player.Pp = resultPP;
 
-            var rankedPlayers = dbcontext
+            var rankedPlayers = (await dbcontext
                 .Players
                 .Where(t => t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned)
                 .Select(p => new { p.Id, p.Rank, p.Country, p.CountryRank, p.Pp })
-                .ToList()
+                .ToListAsync())
                 .OrderByDescending(t => t.Pp)
                 .ToList();
 
@@ -497,24 +497,24 @@ namespace BeatLeader_Server.Utils
             }
 
             foreach (var context in ContextExtensions.NonGeneral) {
-                RecalculatePPAndRankFasterContext(dbcontext, scoreResponse, context);
+                await RecalculatePPAndRankFasterContext(dbcontext, scoreResponse, context);
             }
         }
 
-        public static void RecalculateEventsPP(this AppContext context, Player player, Leaderboard leaderboard)
+        public static async Task RecalculateEventsPP(this AppContext context, Player player, Leaderboard leaderboard)
         {
             int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-            var events = context.EventRankings
+            var events = await context.EventRankings
                 .Where(ev => ev.EndDate >= timestamp && ev.Leaderboards.Contains(leaderboard))
                 .Include(ev => ev.Players)
-                .ToList();
+                .ToListAsync();
             if (events.Count() == 0) {
                 return;
             }
 
             foreach (var eventRanking in events)
             {
-                var ranked = context.Leaderboards.Where(lb => lb.Events.FirstOrDefault(e => e.Id == eventRanking.Id) != null)
+                var ranked = await context.Leaderboards.Where(lb => lb.Events.FirstOrDefault(e => e.Id == eventRanking.Id) != null)
                     .Select(lb => new { Pp = lb.Scores.Where(s =>
                         s.PlayerId == player.Id &&
                         s.Pp != 0 &&
@@ -522,7 +522,7 @@ namespace BeatLeader_Server.Utils
                         s.PlayerId == player.Id &&
                         s.Pp != 0 &&
                         !s.Banned).First().Pp : 0 } )
-                    .OrderByDescending(s => s.Pp).ToList();
+                    .OrderByDescending(s => s.Pp).ToListAsync();
                 if (eventRanking.Players == null)
                 {
                     eventRanking.Players = new List<EventPlayer>();
@@ -540,7 +540,7 @@ namespace BeatLeader_Server.Utils
                         Name = eventRanking.Name
                     };
                     eventRanking.Players.Add(eventPlayer);
-                    context.SaveChanges();
+                    await context.SaveChangesAsync();
                 }
 
                 if (player.EventsParticipating == null || player.EventsParticipating.FirstOrDefault(e => e.EventId == eventRanking.Id) == null)
@@ -725,9 +725,9 @@ namespace BeatLeader_Server.Utils
         }
 
         public static async Task UpdateBoosterRole(AppContext _context, ulong userId) {
-            var discordLink = _context.DiscordLinks.FirstOrDefault(d => d.DiscordId == userId.ToString());
+            var discordLink = await _context.DiscordLinks.FirstOrDefaultAsync(d => d.DiscordId == userId.ToString());
             if (discordLink != null) {
-                var player = _context.Players.FirstOrDefault(p => p.Id == discordLink.Id);
+                var player = await _context.Players.FirstOrDefaultAsync(p => p.Id == discordLink.Id);
                 await RefreshBoosterRole(_context, player, userId);
             }
         }
