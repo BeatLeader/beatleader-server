@@ -131,6 +131,7 @@ namespace BeatLeader_Server.Controllers
                 return await _context
                     .Clans
                     .Where(c => c.LeaderID == currentID)
+                    .Include(c => c.FeaturedPlaylists)
                     .FirstOrDefaultAsync();
             }
             else
@@ -138,6 +139,7 @@ namespace BeatLeader_Server.Controllers
                 return await _context
                     .Clans
                     .Where(c => c.Tag == tag)
+                    .Include(c => c.FeaturedPlaylists)
                     .FirstOrDefaultAsync();
             }
         }
@@ -198,6 +200,17 @@ namespace BeatLeader_Server.Controllers
                     AverageAccuracy = clan.AverageAccuracy,
                     RankedPoolPercentCaptured = clan.RankedPoolPercentCaptured,
                     CaptureLeaderboardsCount = clan.CaptureLeaderboardsCount,
+                    FeaturedPlaylists = clan.FeaturedPlaylists.Select(fp => new FeaturedPlaylistResponse {
+                        Id = fp.Id,
+                        PlaylistLink = fp.PlaylistLink,
+                        Cover = fp.Cover,
+                        Title = fp.Title,
+                        Description = fp.Description,
+
+                        Owner = fp.Owner,
+                        OwnerCover = fp.OwnerCover,
+                        OwnerLink = fp.OwnerLink,
+                    }).ToList(),
                     ClanRankingDiscordHook = currentID == clan.LeaderID ? clan.ClanRankingDiscordHook : null,
                     PlayerChangesCallback = currentID == clan.LeaderID ? clan.PlayerChangesCallback : null
                 },

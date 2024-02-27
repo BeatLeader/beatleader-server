@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
 using Ganss.Xss;
+using System.Net;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -547,6 +548,7 @@ namespace BeatLeader_Server.Controllers
                     using var sr = new StreamReader(ms);
 
                     var sanitizer = new HtmlSanitizer();
+                    sanitizer.AllowedSchemes.Add("data");
                     var newClanBio = sanitizer.Sanitize(sr.ReadToEnd());
 
                     if (newClanBio != clan.RichBio) {
@@ -966,6 +968,176 @@ namespace BeatLeader_Server.Controllers
             });
 
             return Ok();
+        }
+
+        [HttpPut("~/clan/playlist")]
+        public async Task<ActionResult<FeaturedPlaylist>> AddPlaylist(
+            [FromQuery] string title,
+            [FromQuery] string link,
+            [FromQuery] int? id = null,
+            [FromQuery] int? clanId = null,
+            [FromQuery] string? description = null)
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null) {
+                currentID = await HttpContext.CurrentOauthUserID(_context, CustomScopes.Clan);
+            }
+
+            var player = await _context.Players.FindAsync(currentID);
+
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            if (player.Banned)
+            {
+                return BadRequest("You are banned!");
+            }
+
+            Clan? clan = null;
+            var clanManager = await _context.ClanManagers.FirstOrDefaultAsync(cm => 
+                                                cm.ClanId == clanId && 
+                                                cm.PlayerId == currentID && 
+                                                cm.Permissions.HasFlag(ClanPermissions.Edit));
+            if (clanId != null && player != null && (clanManager != null || player.Role.Contains("admin")))
+            {
+                clan = await _context.Clans.Include(c => c.FeaturedPlaylists).FirstOrDefaultAsync(c => c.Id == clanId);
+            }
+            else
+            {
+                clan = await _context.Clans.Include(c => c.FeaturedPlaylists).FirstOrDefaultAsync(c => c.LeaderID == currentID);
+            }
+
+            if (clan == null)
+            {
+                return NotFound();
+            }
+            if (clan.FeaturedPlaylists == null) {
+                clan.FeaturedPlaylists = new List<FeaturedPlaylist>();
+            }
+
+            FeaturedPlaylist? playlist = null;
+            if (id != null) {
+                playlist = clan.FeaturedPlaylists.FirstOrDefault(p => p.Id == id);
+                if (playlist == null) {
+                    return NotFound();
+                }
+            } else {
+                if (clan.FeaturedPlaylists.Count > 2) {
+                    return BadRequest("Up to 3 playlists allowed");
+                }
+
+                playlist = new FeaturedPlaylist();
+                clan.FeaturedPlaylists.Add(playlist);
+            }
+            string playlistLink = "";
+            if (link.Contains("beatleader.xyz") || link.Contains("beatleader.net")) {
+                playlistLink = "https://api.beatleader.xyz/playlist/" + link.Split("/").Last();
+            } else if (link.Contains("beatsaver.com")) {
+                playlistLink = $"https://api.beatsaver.com/playlists/id/{link.Split("/").Last()}/download";
+            } else if (link.Contains("hitbloq.com")) {
+                playlist.Owner = "HitBloq";
+                playlist.OwnerCover = "https://cdn.assets.beatleader.xyz/hitbloq-cover.png"; 
+                playlist.OwnerLink = "https://hitbloq.com/";
+
+                playlistLink = $"https://hitbloq.com/static/hashlists/{link.Split("/").Last()}.bplist";
+            } else {
+                return BadRequest("Only BeatLeader, BeatSaver and HitBloq playlist links");
+            }
+
+            string fileName = clan.Tag + "-featured-playlist-" + clan.FeaturedPlaylists.Count;
+            string? imageUrl = null;
+            try
+            {
+                var ms = new MemoryStream(5);
+                await Request.Body.CopyToAsync(ms);
+                ms.Position = 0;
+
+                (string extension, MemoryStream stream2) = ImageUtils.GetFormat(ms);
+                fileName += extension;
+
+                imageUrl = await _s3Client.UploadAsset(fileName, stream2);
+            } catch (Exception)
+            {
+            }
+
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(playlistLink);
+            var playlistFile = await request.DynamicResponse();
+            if (playlistFile == null || !ExpandantoObject.HasProperty(playlistFile, "songs"))
+            {
+                return BadRequest("Can't decode playlist");
+            }
+
+            if (imageUrl == null && playlist.Cover == null) {
+                string image = playlistFile.image;
+                image = image.Replace("data:image/png;base64,", "").Replace("data:image/jpeg;base64,", "");
+
+                imageUrl = await _s3Client.UploadAsset(fileName, new MemoryStream(Convert.FromBase64String(image)));
+            } else {
+                imageUrl = playlist.Cover;
+            }
+
+            playlist.PlaylistLink = link;
+            playlist.Cover = imageUrl;
+            playlist.Title = title;
+            playlist.Description = description;
+
+            await _context.SaveChangesAsync();
+
+            return playlist;
+        }
+
+        [HttpDelete("~/clan/playlist")]
+        public async Task<ActionResult<FeaturedPlaylist>> DeletePlaylist(
+            [FromQuery] int id,
+            [FromQuery] int? clanId = null)
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null) {
+                currentID = await HttpContext.CurrentOauthUserID(_context, CustomScopes.Clan);
+            }
+
+            var player = await _context.Players.FindAsync(currentID);
+
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            if (player.Banned)
+            {
+                return BadRequest("You are banned!");
+            }
+
+            Clan? clan = null;
+            var clanManager = await _context.ClanManagers.FirstOrDefaultAsync(cm => 
+                                                cm.ClanId == clanId && 
+                                                cm.PlayerId == currentID && 
+                                                cm.Permissions.HasFlag(ClanPermissions.Edit));
+            if (clanId != null && player != null && (clanManager != null || player.Role.Contains("admin")))
+            {
+                clan = await _context.Clans.Include(c => c.FeaturedPlaylists).FirstOrDefaultAsync(c => c.Id == clanId);
+            }
+            else
+            {
+                clan = await _context.Clans.Include(c => c.FeaturedPlaylists).FirstOrDefaultAsync(c => c.LeaderID == currentID);
+            }
+
+            if (clan == null)
+            {
+                return NotFound();
+            }
+
+            FeaturedPlaylist? playlist = clan.FeaturedPlaylists?.FirstOrDefault(p => p.Id == id);
+            if (playlist == null) {
+                return NotFound();
+            }
+
+            clan.FeaturedPlaylists.Remove(playlist);
+            await _context.SaveChangesAsync();
+
+            return playlist;
         }
     }
 }
