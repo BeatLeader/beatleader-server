@@ -546,7 +546,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            var points = _context
+            var points = await _context
                     .Leaderboards
                     .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
                     .Select(lb => new ClanGlobalMapPoint {
@@ -563,7 +563,7 @@ namespace BeatLeader_Server.Controllers
                                    })
                                    .ToList()
                     })
-                    .ToList();
+                    .ToListAsync();
 
             var clanIds = new List<int>();
             foreach (var item in points)
@@ -578,7 +578,7 @@ namespace BeatLeader_Server.Controllers
 
             var map = new ClanGlobalMap {
                 Points = points,
-                Clans = _context
+                Clans = await _context
                     .Clans
                     .Where(c => clanIds.Contains(c.Id))
                     .Select(c => new ClanPoint {
@@ -588,7 +588,7 @@ namespace BeatLeader_Server.Controllers
                         X = c.GlobalMapX,
                         Y = c.GlobalMapY
                     })
-                    .ToList()
+                    .ToListAsync()
             };
 
             DefaultContractResolver contractResolver = new DefaultContractResolver
@@ -622,7 +622,7 @@ namespace BeatLeader_Server.Controllers
                     return Unauthorized();
                 }
             }
-            var clans = _context.Clans.ToList();
+            var clans = await _context.Clans.ToListAsync();
             foreach (var clan in clans)
             {
                 if (cache.Clans.ContainsKey(clan.Id)) {

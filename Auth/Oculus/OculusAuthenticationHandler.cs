@@ -15,6 +15,7 @@ using BeatLeader_Server.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -76,7 +77,7 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
 
         if (action == "login")
         {
-            LoginAttempt? loginAttempt = dbContext.LoginAttempts.FirstOrDefault(el => el.IP == iPAddress);
+            LoginAttempt? loginAttempt = await dbContext.LoginAttempts.FirstOrDefaultAsync(el => el.IP == iPAddress);
             int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
             if (loginAttempt != null && loginAttempt.Count == 10 && (timestamp - loginAttempt.Timestamp) < 60 * 60 * 24) {
@@ -84,7 +85,7 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
                 await Context.Response.WriteAsync("Too many login attempts in one day");
                 return AuthenticateResult.Fail("Too many login attempts in one day");
             }
-            AuthInfo? authInfo = dbContext.Auths.FirstOrDefault(el => el.Login == login);
+            AuthInfo? authInfo = await dbContext.Auths.FirstOrDefaultAsync(el => el.Login == login);
             if (authInfo == null || authInfo.Password != password)
             {
                 if (loginAttempt == null) {
@@ -108,7 +109,7 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
             }
             id = authInfo.Id.ToString();
 
-            AuthID? authID = dbContext.AuthIDs.FirstOrDefault(a => a.Id == id);
+            AuthID? authID = await dbContext.AuthIDs.FirstOrDefaultAsync(a => a.Id == id);
             if (authID == null) {
                 authID = new AuthID {
                     Id = id,
@@ -124,7 +125,7 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
         }
         else
         {
-            AuthInfo? authInfo = dbContext.Auths.FirstOrDefault(el => el.Login == login);
+            AuthInfo? authInfo = await dbContext.Auths.FirstOrDefaultAsync(el => el.Login == login);
             if (authInfo != null)
             {
                 Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -147,7 +148,7 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
             }
             string ip = iPAddress.ToString();
             int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-            if (dbContext.AuthIPs.FirstOrDefault(el => el.IP == ip && (timestamp - el.Timestamp) < 60 * 60 * 24) != null)
+            if ((await dbContext.AuthIPs.FirstOrDefaultAsync(el => el.IP == ip && (timestamp - el.Timestamp) < 60 * 60 * 24)) != null)
             {
                 Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 await Context.Response.WriteAsync("You can create only one account a day, sorry");

@@ -32,7 +32,7 @@ namespace BeatLeader_Server.Services {
                         Name = CustomScopes.Clan,
                         DisplayName = "Clan management"
                     });
-                    context.SaveChanges();
+                    await context.SaveChangesAsync();
                 }
 
                 var manager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();

@@ -7,19 +7,18 @@ namespace BeatLeader_Server.Utils;
 
 public static partial class MapListUtils
 {
-    public static IQueryable<Leaderboard> FilterRanking(this IQueryable<Leaderboard> source,
+    public static async Task<(IQueryable<Leaderboard>, int)> FilterRanking(this IQueryable<Leaderboard> source,
                                                  AppContext _context,
                                                  int page,
                                                  int count,
-                                                 out int totalMatches,
                                                  SortBy sortBy = SortBy.None,
                                                  Order order = Order.Desc,
                                                  int? dateFrom = null,
                                                  int? dateTo = null) =>
-        source
+        await source
               .WhereType(Type.Ranking)
               .Sort(sortBy, order, Type.Ranking, MyType.None, dateFrom, dateTo, null, null)
-              .WherePage(page, count, out totalMatches);
+              .WherePage(page, count);
 
     public static IQueryable<Leaderboard> Filter(this IQueryable<Leaderboard> source,
                                                  AppContext _context,

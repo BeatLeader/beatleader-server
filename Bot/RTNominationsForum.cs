@@ -108,11 +108,11 @@ namespace BeatLeader_Server.Bot
             if (channel != null) {
                 string message = "**REUPLOADED**";
 
-                var criteriaCheckers = context.RankQualification
+                var criteriaCheckers = (await context.RankQualification
                     .Where(lb => lb.Id == qualification.Id)
                     .Include(q => q.CriteriaComments)
                     .Select(lb => lb.CriteriaComments.Select(v => v.PlayerId))
-                    .FirstOrDefault()
+                    .FirstOrDefaultAsync())
                     ?.ToList() ?? new List<string>();
 
                 if (qualification.CriteriaChecker != null) {
@@ -123,7 +123,7 @@ namespace BeatLeader_Server.Bot
                     bool pings = false;
                     foreach (var playerid in criteriaCheckers.Distinct())
                     {
-                        var discord = context.PlayerSocial.Where(s => s.PlayerId == playerid && s.Service == "Discord").FirstOrDefault();
+                        var discord = await context.PlayerSocial.Where(s => s.PlayerId == playerid && s.Service == "Discord").FirstOrDefaultAsync();
                         if (discord != null)
                         {
                             try {
@@ -299,7 +299,7 @@ namespace BeatLeader_Server.Bot
                 }
             }
 
-            context.SaveChanges();
+            await context.SaveChangesAsync();
 
             return qualification.Votes.ToList();
         }

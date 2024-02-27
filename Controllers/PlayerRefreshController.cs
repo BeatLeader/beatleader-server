@@ -285,18 +285,18 @@ namespace BeatLeader_Server.Controllers
 
         [NonAction]
         public async Task RefreshPlayer(Player player, bool refreshRank = true, bool refreshStats = true) {
-            _context.RecalculatePP(player);
+            await _context.RecalculatePP(player);
             await _context.SaveChangesAsync();
 
             if (refreshRank)
             {
                 _context.ChangeTracker.AutoDetectChangesEnabled = false;
                 Dictionary<string, int> countries = new Dictionary<string, int>();
-                var ranked = _context.Players
+                var ranked = await _context.Players
                     .Where(p => p.Pp > 0 && !p.Banned)
                     .OrderByDescending(t => t.Pp)
                     .Select(p => new { p.Id, p.Country, p.Rank })
-                    .ToList();
+                    .ToListAsync();
                 foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
                 {
                     Player? p = new Player { Id = pp.Id, Country = pp.Country, Rank = pp.Rank };
@@ -338,7 +338,7 @@ namespace BeatLeader_Server.Controllers
                     return Unauthorized();
                 }
             }
-            Player? player = _context.Players.Where(p => p.Id == id).Include(p => p.ScoreStats).FirstOrDefault();
+            Player? player = await _context.Players.Where(p => p.Id == id).Include(p => p.ScoreStats).FirstOrDefaultAsync();
             if (player == null)
             {
                 return NotFound();
@@ -360,7 +360,7 @@ namespace BeatLeader_Server.Controllers
                     return Unauthorized();
                 }
             }
-            Leaderboard? leaderboard = _context.Leaderboards.Where(p => p.Id == id).Include(l => l.Scores).ThenInclude(s => s.Player).ThenInclude(s => s.ScoreStats).FirstOrDefault();
+            Leaderboard? leaderboard = await _context.Leaderboards.Where(p => p.Id == id).Include(l => l.Scores).ThenInclude(s => s.Player).ThenInclude(s => s.ScoreStats).FirstOrDefaultAsync();
 
             if (leaderboard == null)
             {
@@ -460,7 +460,7 @@ namespace BeatLeader_Server.Controllers
                 weights[i] = MathF.Pow(0.965f, i);
             }
 
-            var scores = _context
+            var scores = await _context
                 .Scores
                 .Where(s => s.Pp != 0 && !s.Banned && !s.Qualification && s.ValidContexts.HasFlag(LeaderboardContexts.General))
                 .Select(s => new ScoreSelection { 
@@ -475,7 +475,7 @@ namespace BeatLeader_Server.Controllers
                     PlayerId = s.PlayerId, 
                     Country = s.Player.Country 
                 })
-                .ToList();
+                .ToListAsync();
 
             var scoreGroups = scores.GroupBy(s => s.PlayerId).ToList();
             var tasks = new List<Task>();
@@ -487,11 +487,11 @@ namespace BeatLeader_Server.Controllers
             
 
             Dictionary<string, int> countries = new Dictionary<string, int>();
-            var ranked = _context
+            var ranked = await _context
                 .Players
                 .Where(p => p.Pp > 0 && !p.Banned)
                 .OrderByDescending(t => t.Pp)
-                .ToList();
+                .ToListAsync();
             foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
             {
                 p.Rank = i + 1;
@@ -641,11 +641,11 @@ namespace BeatLeader_Server.Controllers
             }
             _context.ChangeTracker.AutoDetectChangesEnabled = false;
             Dictionary<string, int> countries = new Dictionary<string, int>();
-            var ranked = _context.Players
+            var ranked = await _context.Players
                 .Where(p => p.Pp > 0 && !p.Banned)
                 .OrderByDescending(t => t.Pp)
                 .Select(p => new { Id = p.Id, Country = p.Country })
-                .ToList();
+                .ToListAsync();
             foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
             {
                 Player? p = new Player { Id = pp.Id, Country = pp.Country };

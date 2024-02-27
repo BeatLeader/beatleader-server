@@ -45,14 +45,14 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int? eventId = null)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
-            bool admin = currentID != null ? (_context
+            bool admin = currentID != null ? ((await _context
                 .Players
                 .Where(p => p.Id == currentID)
                 .Select(p => p.Role)
-                .FirstOrDefault()
+                .FirstOrDefaultAsync())
                 ?.Contains("admin") ?? false) : false;
 
-            id = _context.PlayerIdToMain(id);
+            id = await _context.PlayerIdToMain(id);
 
             if (currentID != id && !admin) {
                 return Unauthorized();
@@ -105,8 +105,8 @@ namespace BeatLeader_Server.Controllers
                 //}
                 //if (eventId != null)
                 //{
-                //    var leaderboardIds = _context.EventRankings.Where(e => e.Id == eventId).Include(e => e.Leaderboards).Select(e => e.Leaderboards.Select(lb => lb.Id)).FirstOrDefault();
-                //    if (leaderboardIds?.Count() != 0)
+                //    var leaderboardIds = _context.EventRankings.Where(e => e.Id == eventId).Include(e => e.Leaderboards).Select(e => e.Leaderboards.Select(lb => lb.Id)).FirstOrDefaultAsync();
+                //    if (leaderboardIds?.CountAsync() != 0)
                 //    {
                 //        sequence = sequence.Where(s => leaderboardIds.Contains(s.LeaderboardId));
                 //    }
@@ -138,9 +138,9 @@ namespace BeatLeader_Server.Controllers
                     {
                         Page = page,
                         ItemsPerPage = count,
-                        Total = sequence.Count()
+                        Total = await sequence.CountAsync()
                     },
-                    Data = sequence
+                    Data = await sequence
                             .Skip((page - 1) * count)
                             .Take(count)
                             .Include(lb => lb.Leaderboard)
@@ -151,19 +151,19 @@ namespace BeatLeader_Server.Controllers
                                 .ThenInclude(d => d.ModifierValues)
                             //.Include(sc => sc.ScoreImprovement)
                             //.Select(ScoreWithMyScore)
-                            .ToList()
+                            .ToListAsync()
                 };
             }
 
             //string? currentID = HttpContext.CurrentUserID(_readContext);
             //if (currentID != null && currentID != id)
             //{
-            //    var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
+            //    var leaderboards = result.Data.Select(s => s.LeaderboardId).ToListAsync();
 
-            //    var myScores = _readContext.Scores.Where(s => s.PlayerId == currentID && leaderboards.Contains(s.LeaderboardId)).Select(RemoveLeaderboard).ToList();
+            //    var myScores = _readContext.Scores.Where(s => s.PlayerId == currentID && leaderboards.Contains(s.LeaderboardId)).Select(RemoveLeaderboard).ToListAsync();
             //    foreach (var score in result.Data)
             //    {
-            //        score.MyScore = myScores.FirstOrDefault(s => s.LeaderboardId == score.LeaderboardId);
+            //        score.MyScore = myScores.FirstOrDefaultAsync(s => s.LeaderboardId == score.LeaderboardId);
             //    }
             //}
 
@@ -173,20 +173,20 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/map/scorestats")]
         public async Task<ActionResult> GetScorestatsOnMap([FromQuery] string playerId, [FromQuery] string leaderboardId) {
             string? currentID = HttpContext.CurrentUserID(_context);
-            bool admin = currentID != null ? (_context
+            bool admin = currentID != null ? ((await _context
                 .Players
                 .Where(p => p.Id == currentID)
                 .Select(p => p.Role)
-                .FirstOrDefault()
+                .FirstOrDefaultAsync())
                 ?.Contains("admin") ?? false) : false;
 
-            playerId = _context.PlayerIdToMain(playerId);
+            playerId = await _context.PlayerIdToMain(playerId);
 
             if (currentID != playerId && !admin) {
                 return Unauthorized();
             }
 
-            return Ok(_context.PlayerLeaderboardStats.Where(s => s.PlayerId == playerId && s.LeaderboardId == leaderboardId).ToList());
+            return Ok(_context.PlayerLeaderboardStats.Where(s => s.PlayerId == playerId && s.LeaderboardId == leaderboardId).ToListAsync());
         }
 
         [HttpGet("~/watched/{scoreId}/")]

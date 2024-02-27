@@ -67,7 +67,7 @@ namespace BeatLeader_Server.Controllers
 
             if (currentID == null) return Unauthorized();
 
-            var playerIds = _context
+            var playerIds = await _context
                 .Scores
                 .Where(s => 
                     s.PlayerId == currentID && 
@@ -78,7 +78,7 @@ namespace BeatLeader_Server.Controllers
                     .Where(s => 
                         s.ValidContexts.HasFlag(LeaderboardContexts.General))
                     .Select(s => new { s.PlayerId, s.Player.ScoreStats.TotalPlayCount }))
-                .ToList();
+                .ToListAsync();
             
             var playersDictionary = new Dictionary<string, float>();
             foreach (var l in playerIds)

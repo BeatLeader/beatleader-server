@@ -5,6 +5,7 @@ using BeatLeader_Server.Extensions;
 using BeatMapEvaluator;
 using BeatLeader_Server.Utils;
 using System.Dynamic;
+using Microsoft.EntityFrameworkCore;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -49,7 +50,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/criteria/check/{id}")]
         public async Task<ActionResult<MapCheckResult>> Get(string id)
         {
-            var song = _context.Songs.Where(s => s.Id == id).FirstOrDefault();
+            var song = await _context.Songs.Where(s => s.Id == id).FirstOrDefaultAsync();
             if (song == null) {
                 return NotFound();
             }

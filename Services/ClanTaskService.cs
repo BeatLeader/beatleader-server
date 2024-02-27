@@ -2,6 +2,7 @@
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System.Dynamic;
@@ -82,15 +83,15 @@ namespace BeatLeader_Server.Services
             _configuration = configuration;
         }
 
-        private string? ActionMessage(AppContext _context, ClanRankingChangesDescription description) {
+        private async Task<string?> ActionMessage(AppContext _context, ClanRankingChangesDescription description) {
             if (description.GlobalMapEvent == GlobalMapEvent.ranked) return "New batch of maps were ranked:";
             if (description.PlayerId == null) return null;
 
-            var player = _context.Players.Find(description.PlayerId);
+            var player = await _context.Players.FindAsync(description.PlayerId);
             if (description.GlobalMapEvent == GlobalMapEvent.priorityChange) return $"{player.Name} switched clan order which";
 
             if (description.ClanId == null) return null;
-            var clan = description.Clan ?? _context.Clans.Find(description);
+            var clan = description.Clan ?? await _context.Clans.FindAsync(description);
 
             switch (description.GlobalMapEvent)
             {
@@ -131,26 +132,26 @@ namespace BeatLeader_Server.Services
             while (!stoppingToken.IsCancellationRequested);
         }
 
-        private void AddCustomHooks(AppContext _context, List<string> hooks, List<ClanRankingChanges> changes) {
+        private async Task AddCustomHooks(AppContext _context, List<string> hooks, List<ClanRankingChanges> changes) {
             foreach (var change in changes)
             {
                if (change.CurrentCaptorId != null) {
-                    var customHooks = _context
+                    var customHooks = await _context
                         .Clans
                         .Where(cl => cl.Id == change.CurrentCaptorId)
                         .Select(cl => cl.ClanRankingDiscordHook)
-                        .FirstOrDefault();
+                        .FirstOrDefaultAsync();
                     if (customHooks != null) {
                         hooks.AddRange(customHooks.Split(","));
                     }
                 }
 
                 if (change.PreviousCaptorId != null) {
-                    var customHooks = _context
+                    var customHooks = await _context
                         .Clans
                         .Where(cl => cl.Id == change.PreviousCaptorId)
                         .Select(cl => cl.ClanRankingDiscordHook)
-                        .FirstOrDefault();
+                        .FirstOrDefaultAsync();
                     if (customHooks != null) {
                         hooks.AddRange(customHooks.Split(","));
                     }
@@ -170,7 +171,7 @@ namespace BeatLeader_Server.Services
                 changeRecord.ScoreId = job.Score?.Id;
 
                 if (change.Leaderboard != null) {
-                    var clanRankings = _context
+                    var clanRankings = await _context
                     .ClanRanking
                     .Where(cr => cr.LeaderboardId == change.Leaderboard.Id)
                     .OrderByDescending(cr => cr.Pp)
@@ -178,36 +179,36 @@ namespace BeatLeader_Server.Services
                     .Select(cr => new {
                         cr.ClanId, cr.Pp, cr.Clan.RankedPoolPercentCaptured
                     })
-                    .ToList();
+                    .ToListAsync();
 
                     if (clanRankings.Count > 0) {
                         var clan1Id = clanRankings[0].ClanId;
                         changeRecord.NewClan1Id = clan1Id;
-                        changeRecord.NewClan1Capture = _context
+                        changeRecord.NewClan1Capture = await _context
                             .Clans
                             .Where(c => c.Id == clan1Id)
                             .Select(c => c.RankedPoolPercentCaptured)
-                            .FirstOrDefault();
+                            .FirstOrDefaultAsync();
                         changeRecord.NewClan1Pp = clanRankings[0].Pp;
                     }
                     if (clanRankings.Count > 1) {
                         var clan2Id = clanRankings[1].ClanId;
                         changeRecord.NewClan2Id = clan2Id;
-                        changeRecord.NewClan2Capture = _context
+                        changeRecord.NewClan2Capture = await _context
                             .Clans
                             .Where(c => c.Id == clan2Id)
                             .Select(c => c.RankedPoolPercentCaptured)
-                            .FirstOrDefault();
+                            .FirstOrDefaultAsync();
                         changeRecord.NewClan2Pp = clanRankings[1].Pp;
                     }
                     if (clanRankings.Count > 2) {
                         var clan3Id = clanRankings[2].ClanId;
                         changeRecord.NewClan3Id = clan3Id;
-                        changeRecord.NewClan3Capture = _context
+                        changeRecord.NewClan3Capture = await _context
                             .Clans
                             .Where(c => c.Id == clan3Id)
                             .Select(c => c.RankedPoolPercentCaptured)
-                            .FirstOrDefault();
+                            .FirstOrDefaultAsync();
                         changeRecord.NewClan3Pp = clanRankings[2].Pp;
                     }
 
@@ -291,10 +292,10 @@ namespace BeatLeader_Server.Services
 
                         Console.WriteLine("6 ClanTaskService");
 
-                        var message = ActionMessage(_context, job);
+                        var message = await ActionMessage(_context, job);
                         if (job.Changes != null && job.Changes.Count > 0 && message != null) {
                             var hooks = new List<string> { blhook };
-                            AddCustomHooks(_context, hooks, job.Changes);
+                            await AddCustomHooks(_context, hooks, job.Changes);
                             foreach (var hook in hooks.Distinct())
                             {
                                 await ClanUtils.PostChangesWithMessage(_context, stoppingToken, job.Changes, message, hook);
@@ -304,7 +305,7 @@ namespace BeatLeader_Server.Services
                         Console.WriteLine("7 ClanTaskService");
 
                         if (job.GlobalMapEvent != null && job.ClanId != null) {
-                            var clan = _context.Clans.FirstOrDefault(c => c.Id == job.ClanId);
+                            var clan = await _context.Clans.FirstOrDefaultAsync(c => c.Id == job.ClanId);
                             if (clan?.PlayerChangesCallback != null) {
                                 var httpClient = new HttpClient();
                                 var callbacks = clan.PlayerChangesCallback.Split(",");
@@ -332,7 +333,7 @@ namespace BeatLeader_Server.Services
 
                             if (job.Score != null) {
                                 var hooks = new List<string> { blhook };
-                                AddCustomHooks(_context, hooks, job.Changes);
+                                await AddCustomHooks(_context, hooks, job.Changes);
                                 foreach (var hook in hooks.Distinct())
                                 {
                                     var gif = await _screenController.DownloadAnimatedScreenshot(620, 280, "general", $"clansmap/leaderboard/{job.Score.LeaderboardId}", new Dictionary<string, string> { });

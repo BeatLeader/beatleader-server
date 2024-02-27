@@ -88,7 +88,7 @@ namespace BeatLeader_Server.Controllers
             long intId = long.Parse(id);
             if (intId < 70000000000000000)
             {
-                AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.PCOculusID == id);
+                AccountLink? accountLink = await _context.AccountLinks.FirstOrDefaultAsync(el => el.PCOculusID == id);
                 if (accountLink != null && accountLink.SteamID.Length > 0) {
                     id = accountLink.SteamID;
                 }
@@ -451,13 +451,13 @@ namespace BeatLeader_Server.Controllers
 
                     foreach (var leaderboardContext in ContextExtensions.NonGeneral) {
                         if (resultScore.ValidContexts.HasFlag(leaderboardContext)) {
-                            var ce = _context
+                            var ce = await _context
                                 .ScoreContextExtensions
                                 .Where(ce => 
                                     ce.Context == leaderboardContext &&
                                     ce.PlayerId == player.Id &&
                                     ce.LeaderboardId == leaderboard.Id)
-                                .FirstOrDefault();
+                                .FirstOrDefaultAsync();
                             if (ce != null) {
                                 _context.ScoreContextExtensions.Remove(ce);
                             }
@@ -510,7 +510,7 @@ namespace BeatLeader_Server.Controllers
 
                 var result = RemoveLeaderboard(resultScore, resultScore.Rank);
                 if (!player.Bot && leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
-                    _context.RecalculatePPAndRankFasterAllContexts(result);
+                    await _context.RecalculatePPAndRankFasterAllContexts(result);
                 }
 
                 return (result, false);
@@ -536,7 +536,7 @@ namespace BeatLeader_Server.Controllers
                 currentScore.ValidContexts &= ~LeaderboardContexts.General;
                 resultScore.PlayCount = currentScore.PlayCount;
             } else {
-                resultScore.PlayCount = _context.PlayerLeaderboardStats.Where(st => st.PlayerId == player.Id && st.LeaderboardId == leaderboard.Id).Count();
+                resultScore.PlayCount = await _context.PlayerLeaderboardStats.Where(st => st.PlayerId == player.Id && st.LeaderboardId == leaderboard.Id).CountAsync();
             }
 
             resultScore.ValidContexts |= LeaderboardContexts.General;
@@ -678,7 +678,7 @@ namespace BeatLeader_Server.Controllers
                 await RefreshGeneneralContextRank(leaderboard, resultScore, isRanked);
                 
                 foreach (var leaderboardContext in ContextExtensions.NonGeneral) {
-                    RefreshContextRank(leaderboardContext, resultScore, leaderboard, isRanked);
+                    await RefreshContextRank(leaderboardContext, resultScore, leaderboard, isRanked);
                 }
             }
 
@@ -738,7 +738,7 @@ namespace BeatLeader_Server.Controllers
             public int Rank { get; set; }
         }
 
-        private void RefreshContextRank(
+        private async Task RefreshContextRank(
             LeaderboardContexts context,
             Score resultScore,
             Leaderboard leaderboard,
@@ -750,7 +750,7 @@ namespace BeatLeader_Server.Controllers
             List<ScoreSelection> rankedScores;
             if (isRanked) {
                 if (context != LeaderboardContexts.Golf) {
-                    rankedScores = _context
+                    rankedScores = await _context
                     .ScoreContextExtensions
                     .Where(s => s.LeaderboardId == leaderboard.Id && s.Context == context && !s.Banned)
                     .OrderByDescending(el => Math.Round(el.Pp, 2))
@@ -758,9 +758,9 @@ namespace BeatLeader_Server.Controllers
                     .ThenByDescending(el => el.ModifiedScore)
                     .ThenBy(el => el.Timeset)
                     .Select(s => new ScoreSelection() { Id = s.Id, Rank = s.Rank })
-                    .ToList();
+                    .ToListAsync();
                 } else {
-                    rankedScores = _context
+                    rankedScores = await _context
                     .ScoreContextExtensions
                     .Where(s => s.LeaderboardId == leaderboard.Id && s.Context == context && !s.Banned)
                     .OrderByDescending(el => Math.Round(el.Pp, 2))
@@ -768,11 +768,11 @@ namespace BeatLeader_Server.Controllers
                     .ThenBy(el => el.ModifiedScore)
                     .ThenBy(el => el.Timeset)
                     .Select(s => new ScoreSelection() { Id = s.Id, Rank = s.Rank })
-                    .ToList();
+                    .ToListAsync();
                 }
             } else {
                 if (context != LeaderboardContexts.Golf) {
-                    rankedScores = _context
+                    rankedScores = await _context
                     .ScoreContextExtensions
                     .Where(s => s.LeaderboardId == leaderboard.Id && s.Context == context && !s.Banned)
                     .OrderBy(el => el.Priority)
@@ -780,9 +780,9 @@ namespace BeatLeader_Server.Controllers
                     .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                     .ThenBy(el => el.Timeset)
                     .Select(s => new ScoreSelection() { Id = s.Id, Rank = s.Rank })
-                    .ToList();
+                    .ToListAsync();
                 } else {
-                    rankedScores = _context
+                    rankedScores = await _context
                     .ScoreContextExtensions
                     .Where(s => s.LeaderboardId == leaderboard.Id && s.Context == context && !s.Banned)
                     .OrderByDescending(el => el.Priority)
@@ -790,7 +790,7 @@ namespace BeatLeader_Server.Controllers
                     .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                     .ThenBy(el => el.Timeset)
                     .Select(s => new ScoreSelection() { Id = s.Id, Rank = s.Rank })
-                    .ToList();
+                    .ToListAsync();
                 }
             }
 
@@ -833,7 +833,7 @@ namespace BeatLeader_Server.Controllers
             _context.Entry(resultScore).Property(x => x.Replay).IsModified = true;
 
             if (!player.Bot && leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
-                _context.RecalculatePPAndRankFast(player, resultScore.ValidContexts);
+                await _context.RecalculatePPAndRankFast(player, resultScore.ValidContexts);
             }
 
             try
@@ -874,7 +874,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             resultScore.ReplayOffsets = offsets;
-            _context.RecalculateEventsPP(player, leaderboard);
+            await _context.RecalculateEventsPP(player, leaderboard);
 
             try
             {
@@ -940,7 +940,7 @@ namespace BeatLeader_Server.Controllers
 
                 if (leaderboard.Difficulty.Notes > 30 && !allow)
                 {
-                    var sameAccScore = _context
+                    var sameAccScore = await _context
                         .Scores
                         .Where(s => s.LeaderboardId == leaderboard.Id &&
                                              s.PlayerId != resultScore.PlayerId && 
@@ -950,7 +950,7 @@ namespace BeatLeader_Server.Controllers
                                              s.AccRight == statistic.accuracyTracker.accRight &&
                                              s.BaseScore == resultScore.BaseScore)
                         .Select(s => s.PlayerId)
-                        .FirstOrDefault();
+                        .FirstOrDefaultAsync();
                     if (sameAccScore != null)
                     {
                         await SaveFailedScore(transaction, resultScore, leaderboard, "Acc is suspiciously exact same as: " + sameAccScore + "'s score");
@@ -979,20 +979,20 @@ namespace BeatLeader_Server.Controllers
                         leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
                 }
 
-                resultScore.Country = context.Request.Headers["cf-ipcountry"] == StringValues.Empty ? "not set" : context.Request.Headers["cf-ipcountry"].ToString();
+                resultScore.Country = (context?.Request.Headers["cf-ipcountry"] ?? "") == StringValues.Empty ? "not set" : context?.Request.Headers["cf-ipcountry"].ToString();
 
-                UpdateTop4(resultScore, currentScores, player, oldPlayerStats, leaderboard);
+                await UpdateTop4(resultScore, currentScores, player, oldPlayerStats, leaderboard);
                 UpdateImprovements(resultScore, currentScores, player, oldPlayerStats, leaderboard);
                 UpdatePlayerStats(resultScore, currentScores, player, oldPlayerStats, leaderboard);
 
-                if (resultScore.Hmd == HMD.unknown && _context.Headsets.FirstOrDefault(h => h.Name == replay.info.hmd) == null) {
+                if (resultScore.Hmd == HMD.unknown && (await _context.Headsets.FirstOrDefaultAsync(h => h.Name == replay.info.hmd)) == null) {
                     _context.Headsets.Add(new Headset {
                         Name = replay.info.hmd,
                         Player = replay.info.playerID,
                     });
                 }
 
-                if (resultScore.Controller == ControllerEnum.unknown && _context.VRControllers.FirstOrDefault(h => h.Name == replay.info.controller) == null) {
+                if (resultScore.Controller == ControllerEnum.unknown && (await _context.VRControllers.FirstOrDefaultAsync(h => h.Name == replay.info.controller)) == null) {
                     _context.VRControllers.Add(new VRController {
                         Name = replay.info.controller,
                         Player = replay.info.playerID,
@@ -1016,17 +1016,17 @@ namespace BeatLeader_Server.Controllers
 
                     if (dsClient != null)
                     {
-                        var song = _context.Leaderboards.Where(lb => lb.Id == leaderboard.Id).Include(lb => lb.Song).Select(lb => lb.Song).FirstOrDefault();
+                        var song = await _context.Leaderboards.Where(lb => lb.Id == leaderboard.Id).Include(lb => lb.Song).Select(lb => lb.Song).FirstOrDefaultAsync();
                         string message = "**" + player.Name + "** has become No 1 on **" + (song != null ? song?.Name : leaderboard.Id) + "** :tada: \n";
                         message += Math.Round(resultScore.Accuracy * 100, 2) + "% " + Math.Round(resultScore.Pp, 2) + "pp (" + Math.Round(resultScore.Weight * resultScore.Pp, 2) + "pp)\n";
-                        var secondScore = _context
+                        var secondScore = await _context
                             .Scores
                             .Where(s => s.LeaderboardId == leaderboard.Id && !s.Banned && s.LeaderboardId != null && s.ValidContexts.HasFlag(LeaderboardContexts.General))
                             .OrderByDescending(s => s.Pp)
                             .Skip(1)
                             .Take(1)
                             .Select(s => new { s.Pp, s.Accuracy })
-                            .FirstOrDefault();
+                            .FirstOrDefaultAsync();
                         if (secondScore != null)
                         {
                             message += "This beats previous record by **" + Math.Round(resultScore.Pp - secondScore.Pp, 2) + "pp** and **" + Math.Round((resultScore.Accuracy - secondScore.Accuracy) * 100, 2) + "%** ";
@@ -1055,7 +1055,7 @@ namespace BeatLeader_Server.Controllers
                 transaction = await _context.Database.BeginTransactionAsync();
 
                 // Calculate clan ranking for this leaderboard
-                (var changes, var playerClans) = _context.UpdateClanRanking(leaderboard, resultScore);
+                (var changes, var playerClans) = await _context.UpdateClanRanking(leaderboard, resultScore);
                 if (changes?.Count > 0) {
                     ClanTaskService.AddJob(new ClanRankingChangesDescription {
                         Score = resultScore,
@@ -1129,7 +1129,7 @@ namespace BeatLeader_Server.Controllers
             _context.ChangeTracker.AutoDetectChangesEnabled = false;
 
             if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
-                _context.RecalculatePPAndRankFast(player, score.ValidContexts);
+                await _context.RecalculatePPAndRankFast(player, score.ValidContexts);
             }
             await _leaderboardRefreshController.RefreshLeaderboardsRankAllContexts(leaderboard.Id);
 
@@ -1254,7 +1254,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        private void UpdateTop4(
+        private async Task UpdateTop4(
             Score resultScore,
             List<CurrentScoreWrapper> currentScores, 
             Player player,
@@ -1268,7 +1268,7 @@ namespace BeatLeader_Server.Controllers
                 resultScore.Rank < 4 &&
 
                 (generalCurrentScore == null || generalCurrentScore.Score.Rank != resultScore.Rank)) {
-                var scores = _context
+                var scores = await _context
                     .Scores
                     .Where(s =>                                                                                            
                         s.LeaderboardId == leaderboard.Id && 
@@ -1279,7 +1279,7 @@ namespace BeatLeader_Server.Controllers
                         s.Rank,
                         s.Player.ScoreStats
                     })
-                    .ToList();
+                    .ToListAsync();
                 foreach (var score in scores) {
                     if (score.ScoreStats == null) continue;
                     var scoreStats = score.ScoreStats;
@@ -1310,7 +1310,7 @@ namespace BeatLeader_Server.Controllers
 
                     if (ce.Rank < 4 &&
                         (currentScoreExtenstion == null || currentScoreExtenstion.Rank != ce.Rank)) {
-                        var scores = _context
+                        var scores = await _context
                             .ScoreContextExtensions
                             .Where(s =>                                                                                            
                                 s.LeaderboardId == leaderboard.Id && 
@@ -1322,7 +1322,7 @@ namespace BeatLeader_Server.Controllers
                                 s.Rank,
                                 s.Player.ContextExtensions.Where(ce => ce.Context == ce.Context).FirstOrDefault().ScoreStats
                             })
-                            .ToList();
+                            .ToListAsync();
                         foreach (var score in scores) {
                             if (score.ScoreStats == null) continue;
                             var scoreStats = score.ScoreStats;

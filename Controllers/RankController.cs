@@ -153,7 +153,7 @@ namespace BeatLeader_Server.Controllers
             long intId = Int64.Parse(id);
             if (intId < 70000000000000000)
             {
-                AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.PCOculusID == id);
+                AccountLink? accountLink = await _context.AccountLinks.FirstOrDefaultAsync(el => el.PCOculusID == id);
                 if (accountLink != null && accountLink.SteamID.Length > 0) {
                     id = accountLink.SteamID;
                 }
@@ -187,7 +187,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int type = 0)
         {
             Int64 oculusId = Int64.Parse(player);
-            AccountLink? link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
+            AccountLink? link = await _context.AccountLinks.FirstOrDefaultAsync(el => el.OculusID == oculusId);
             string userId = (link != null ? (link.SteamID.Length > 0 ? link.SteamID : link.PCOculusID) : player);
 
             var score = await _context
@@ -251,7 +251,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            var voting = _context.RankVotings.Where(v => v.ScoreId == scoreId).Include(v => v.Feedbacks).FirstOrDefault();
+            var voting = await _context.RankVotings.Where(v => v.ScoreId == scoreId).Include(v => v.Feedbacks).FirstOrDefaultAsync();
             if (voting == null) {
                 return NotFound("No such voting");
             }
@@ -290,7 +290,7 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.Where(p => p.Id == currentID).Include(p => p.Socials).FirstOrDefaultAsync();
 
-            Leaderboard? leaderboard = _context.Leaderboards.Include(l => l.Difficulty).Include(l => l.Song).FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+            Leaderboard? leaderboard = await _context.Leaderboards.Include(l => l.Difficulty).Include(l => l.Song).FirstOrDefaultAsync(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             bool isRT = true;
             bool verified = false;
@@ -301,7 +301,7 @@ namespace BeatLeader_Server.Controllers
 
             if (leaderboard != null)
             {
-                var qualifiedLeaderboards = _context
+                var qualifiedLeaderboards = await _context
                        .Leaderboards
                        .Include(lb => lb.Song)
                        .Include(lb => lb.Qualification)
@@ -309,7 +309,8 @@ namespace BeatLeader_Server.Controllers
                        .ThenInclude(d => d.ModifierValues)
                        .Include(lb => lb.Difficulty)
                        .ThenInclude(d => d.ModifiersRating)
-                       .Where(lb => lb.Song.Id == leaderboard.Song.Id && lb.Qualification != null).ToList();
+                       .Where(lb => lb.Song.Id == leaderboard.Song.Id && lb.Qualification != null)
+                       .ToListAsync();
                 string? alreadyApproved = qualifiedLeaderboards.Count() == 0 ? null : qualifiedLeaderboards.FirstOrDefault(lb => lb.Qualification.MapperAllowed)?.Qualification.MapperId;
 
                 if (!isRT) {
@@ -317,7 +318,7 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 if (!isRT && alreadyApproved == null) {
-                    int? previous = PrevQualificationTime(leaderboard.Song.Hash).Value?.Time;
+                    int? previous = (await PrevQualificationTime(leaderboard.Song.Hash)).Value?.Time;
                     int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                     int timeFromPrevious = (int)(timestamp - previous);
 
@@ -377,7 +378,7 @@ namespace BeatLeader_Server.Controllers
                     await dsClient.SendMessageAsync(message);
                 }
 
-                var mapper = _context.Players.Include(p => p.Socials).FirstOrDefault(p => p.MapperId == leaderboard.Song.MapperId);
+                var mapper = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.MapperId == leaderboard.Song.MapperId);
 
                 leaderboard.Qualification.DiscordRTChannelId = (await _rtNominationsForum.OpenNomination(mapper ?? currentPlayer, leaderboard)).ToString();
                 await _context.SaveChangesAsync();
@@ -407,7 +408,7 @@ namespace BeatLeader_Server.Controllers
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            Leaderboard? leaderboard = _context.Leaderboards
+            Leaderboard? leaderboard = await _context.Leaderboards
                 .Include(l => l.Difficulty)
                 .Include(l => l.Song)
                 .Include(l => l.Difficulty)
@@ -420,7 +421,7 @@ namespace BeatLeader_Server.Controllers
                 .ThenInclude(ch => ch.NewModifiers)
                 .Include(l => l.Qualification)
                 .ThenInclude(q => q.Modifiers)
-                .FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+                .FirstOrDefaultAsync(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             bool isRT = true;
             if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
@@ -460,7 +461,7 @@ namespace BeatLeader_Server.Controllers
                         if (dsClient != null)
                         {
                             string message = currentPlayer.Name + " qualified **" + diff + "** diff of **" + leaderboard.Song.Name + "**! \n";
-                            var mapper = _context.Players.Include(p => p.Socials).FirstOrDefault(p => p.Id == qualification.MapperId);
+                            var mapper = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == qualification.MapperId);
                             if (mapper != null) {
                                 var discord = mapper.Socials?.FirstOrDefault(s => s.Service == "Discord");
                                 if (discord != null)
@@ -676,14 +677,14 @@ namespace BeatLeader_Server.Controllers
             }
 
             var transaction = await _context.Database.BeginTransactionAsync();
-            Leaderboard? leaderboard = _context.Leaderboards
+            Leaderboard? leaderboard = await _context.Leaderboards
                 .Include(l => l.Difficulty)
                 .ThenInclude(d => d.ModifierValues)
                 .Include(l => l.Song)
                 .Include(l => l.Qualification)
                 .Include(l => l.Changes)
                 .Include(l => l.ClanRanking)
-                .FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+                .FirstOrDefaultAsync(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             if (leaderboard != null)
             {
@@ -770,11 +771,11 @@ namespace BeatLeader_Server.Controllers
 
         [Authorize]
         [HttpGet("~/prevQualTime/{hash}")]
-        public ActionResult<PrevQualification> PrevQualificationTime(string hash)
+        public async Task<ActionResult<PrevQualification>> PrevQualificationTime(string hash)
         {
             string? userId = HttpContext.CurrentUserID(_context);
 
-            if (_context.Leaderboards.FirstOrDefault(lb => lb.Difficulty.Status == DifficultyStatus.nominated && lb.Song.Hash == hash) != null) {
+            if ((await _context.Leaderboards.FirstOrDefaultAsync(lb => lb.Difficulty.Status == DifficultyStatus.nominated && lb.Song.Hash == hash)) != null) {
                 return new PrevQualification
                 {
                     Time = 0
@@ -791,9 +792,9 @@ namespace BeatLeader_Server.Controllers
         [Authorize]
         [ApiExplorerSettings(IgnoreApi = true)]
         [HttpGet("~/voting/spread")]
-        public ActionResult<Dictionary<int, int>> Spread() {
+        public async Task<ActionResult<Dictionary<int, int>>> Spread() {
             string? currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
             {
@@ -820,14 +821,14 @@ namespace BeatLeader_Server.Controllers
             string playerId)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null || currentID == playerId || currentPlayer.Role.Contains("juniorrankedteam") || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
             {
                 return Unauthorized();
             }
 
-            Player? player = _context.Players.FirstOrDefault(p => p.Id == playerId);
+            Player? player = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId);
             if (player == null) {
                 return NotFound();
             }
@@ -848,14 +849,14 @@ namespace BeatLeader_Server.Controllers
             string playerId)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null || currentID == playerId || currentPlayer.Role.Contains("juniorrankedteam") || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
             {
                 return Unauthorized();
             }
 
-            Player? player = _context.Players.FirstOrDefault(p => p.Id == playerId);
+            Player? player = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId);
             if (player == null)
             {
                 return NotFound();
@@ -877,14 +878,14 @@ namespace BeatLeader_Server.Controllers
             string playerId)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null || currentID == playerId || (!currentPlayer.Role.Contains("admin") && (!currentPlayer.Role.Contains("rankedteam") || !currentPlayer.Role.Contains("creator"))))
             {
                 return Unauthorized();
             }
 
-            Player? player = _context.Players.FirstOrDefault(p => p.Id == playerId);
+            Player? player = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId);
             if (player == null) {
                 return NotFound();
             }
@@ -905,14 +906,14 @@ namespace BeatLeader_Server.Controllers
             string playerId)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null || currentID == playerId || (!currentPlayer.Role.Contains("admin") && (!currentPlayer.Role.Contains("rankedteam") || !currentPlayer.Role.Contains("creator"))))
             {
                 return Unauthorized();
             }
 
-            Player? player = _context.Players.FirstOrDefault(p => p.Id == playerId);
+            Player? player = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId);
             if (player == null)
             {
                 return NotFound();
@@ -935,10 +936,10 @@ namespace BeatLeader_Server.Controllers
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == currentID);
 
-            RankQualification? qualification = _context
+            RankQualification? qualification = await _context
                 .RankQualification
                 .Include(q => q.Comments)
-                .FirstOrDefault(l => l.Id == id);
+                .FirstOrDefaultAsync(l => l.Id == id);
 
             if (qualification == null) {
                 return NotFound();
@@ -1050,10 +1051,10 @@ namespace BeatLeader_Server.Controllers
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == currentID);
 
-            RankQualification? qualification = _context
+            RankQualification? qualification = await _context
                 .RankQualification
                 .Include(q => q.CriteriaComments)
-                .FirstOrDefault(l => l.Id == id);
+                .FirstOrDefaultAsync(l => l.Id == id);
 
             if (qualification == null) {
                 return NotFound();
@@ -1160,7 +1161,7 @@ namespace BeatLeader_Server.Controllers
 
         public async Task QualityUnnominate(RankQualification q) {
 
-            Leaderboard? leaderboard = _context.Leaderboards
+            Leaderboard? leaderboard = await _context.Leaderboards
                 .Include(l => l.Difficulty)
                 .Include(l => l.Song)
                 .Include(l => l.Difficulty)
@@ -1173,7 +1174,7 @@ namespace BeatLeader_Server.Controllers
                 .ThenInclude(ch => ch.NewModifiers)
                 .Include(l => l.Qualification)
                 .ThenInclude(q => q.Modifiers)
-                .FirstOrDefault(l => l.Qualification == q);
+                .FirstOrDefaultAsync(l => l.Qualification == q);
 
             var qualification = leaderboard?.Qualification;
 
@@ -1228,10 +1229,10 @@ namespace BeatLeader_Server.Controllers
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == currentID);
 
-            RankQualification? qualification = _context
+            RankQualification? qualification = await _context
                 .RankQualification
                 .Include(q => q.Votes)
-                .FirstOrDefault(l => l.Id == id);
+                .FirstOrDefaultAsync(l => l.Id == id);
 
             if (qualification == null)
             {

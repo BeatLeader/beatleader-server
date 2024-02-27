@@ -43,7 +43,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] string description,
             [FromQuery] string? link = null) {
             string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = _context.Players.Find(currentId);
+            Player? currentPlayer = await _context.Players.FindAsync(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin")) {
                 return Unauthorized();
             }
@@ -74,15 +74,15 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] string? link = null) {
 
             string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = _context.Players.Find(currentId);
+            Player? currentPlayer = await _context.Players.FindAsync(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin")) {
                 return Unauthorized();
             }
 
-            AchievementDescription? achievementDescription = _context
+            AchievementDescription? achievementDescription = await _context
                 .AchievementDescriptions
                 .Include(a => a.Levels)
-                .FirstOrDefault(a => a.Id == id);
+                .FirstOrDefaultAsync(a => a.Id == id);
 
             if (achievementDescription == null) {
                 return NotFound();
@@ -109,20 +109,20 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [HttpGet("~/achievements")]
-        public ActionResult<ICollection<AchievementDescription>> AllAchievements(string id) {
-            return _context.AchievementDescriptions
+        public async Task<ActionResult<ICollection<AchievementDescription>>> AllAchievements(string id) {
+            return await _context.AchievementDescriptions
                 .Include(a => a.Levels)
-                .ToList();
+                .ToListAsync();
         }
 
         [HttpGet("~/player/{id}/achievements")]
-        public ActionResult<ICollection<Achievement>> GetAchievements(string id) {
-            return _context.Achievements
+        public async Task<ActionResult<ICollection<Achievement>>> GetAchievements(string id) {
+            return await _context.Achievements
                 .Where(a => a.PlayerId == id)
                 .Include(a => a.Level)
                 .Include(a => a.AchievementDescription)
                 .ThenInclude(a => a.Levels)
-                .ToList();
+                .ToListAsync();
         }
 
         [HttpPost("~/player/{id}/achievement")]
@@ -132,23 +132,23 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] int level) {
 
             string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = _context.Players.Find(currentId);
+            Player? currentPlayer = await _context.Players.FindAsync(currentId);
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin")) {
                 return Unauthorized();
             }
 
-            Player? player = _context
+            Player? player = await _context
                 .Players
                 .Include(p => p.Achievements)
-                .FirstOrDefault(p => p.Id == id);
+                .FirstOrDefaultAsync(p => p.Id == id);
             if (player == null) {
                 return NotFound("Player not found");
             }
 
-            AchievementDescription? achievementDescription = _context
+            AchievementDescription? achievementDescription = await _context
                 .AchievementDescriptions
                 .Include(a => a.Levels)
-                .FirstOrDefault(a => a.Id == achievemntId);
+                .FirstOrDefaultAsync(a => a.Id == achievemntId);
             if (achievementDescription == null) {
                 return NotFound("Achievement not found");
             }
@@ -201,18 +201,18 @@ namespace BeatLeader_Server.Controllers {
         [HttpGet("~/survey/achievement")]
         public async Task<ActionResult<Achievement>> AssignAchievement() {
             string currentId = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = _context.Players
+            Player? currentPlayer = await _context.Players
                 .Include(p => p.Achievements)
                 .ThenInclude(a => a.Level)
                 .Include(p => p.Achievements)
                 .ThenInclude(a => a.AchievementDescription)
-                .FirstOrDefault(p => p.Id == currentId);
+                .FirstOrDefaultAsync(p => p.Id == currentId);
             if (currentPlayer == null) {
                 return Unauthorized();
             }
 
             var profileUrl = $"beatleader.xyz/u/{currentId}";
-            var existingResponse = _context.SurveyResponses.FirstOrDefault(
+            var existingResponse = await _context.SurveyResponses.FirstOrDefaultAsync(
                 r => r.PlayerId == currentId || 
                 r.PlayerId.EndsWith(profileUrl) ||
                 r.PlayerId.Contains(profileUrl + "?") ||
@@ -231,7 +231,7 @@ namespace BeatLeader_Server.Controllers {
             if (achievement == null) {
                 achievement = new Achievement {
                     AchievementDescriptionId = 1,
-                    Level = _context.AchievementLevels.FirstOrDefault(l => l.AchievementDescriptionId == 1 && l.Level == 1),
+                    Level = await _context.AchievementLevels.FirstOrDefaultAsync(l => l.AchievementDescriptionId == 1 && l.Level == 1),
                     Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds
                 };
                 currentPlayer.Achievements.Add(achievement);

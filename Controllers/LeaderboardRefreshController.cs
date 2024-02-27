@@ -1,6 +1,7 @@
 ﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -47,12 +48,12 @@ namespace BeatLeader_Server.Controllers
                 query = query.Where(lb => lb.Id == id);
             }
 
-            int count = query.Count();
+            int count = await query.CountAsync();
 
             for (int i = 0; i < count; i += 1000)
             {
                 var leaderboards =
-                query
+                await query
                 .OrderBy(lb => lb.Id)
                 .Skip(i)
                 .Take(1000)
@@ -69,7 +70,7 @@ namespace BeatLeader_Server.Controllers
                             .Where(s => !s.Banned && s.Context == leaderboardContext)
                             .Select(s => new { s.Id, s.Pp, s.Accuracy, s.ModifiedScore, s.Timeset, s.Priority })
                 })
-                .ToArray();
+                .ToArrayAsync();
 
                 foreach (var leaderboard in leaderboards)
                 {

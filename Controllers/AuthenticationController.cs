@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
@@ -152,7 +153,7 @@ namespace BeatLeader_Server.Controllers {
                 string? iPAddress = Request.HttpContext.GetIpAddress();
                 if (iPAddress != null && migrateTo != null) {
                     string ip = iPAddress;
-                    AccountLinkRequest? request = _context.AccountLinkRequests.FirstOrDefault(a => a.IP == ip && a.Random == Random && a.OculusID == migrateTo);
+                    AccountLinkRequest? request = await _context.AccountLinkRequests.FirstOrDefaultAsync(a => a.IP == ip && a.Random == Random && a.OculusID == migrateTo);
 
                     if (request != null) {
                         _context.AccountLinkRequests.Remove(request);
@@ -317,7 +318,7 @@ namespace BeatLeader_Server.Controllers {
                         nameType: Claims.Name,
                         roleType: Claims.Role);
 
-                    var player = _context.Players.FirstOrDefault(p => p.Id == userId);
+                    var player = await _context.Players.FirstOrDefaultAsync(p => p.Id == userId);
 
                     // Add the claims that will be persisted in the tokens.
                     identity.SetClaim(Claims.Subject, userId)
@@ -403,7 +404,7 @@ namespace BeatLeader_Server.Controllers {
                 nameType: Claims.Name,
                 roleType: Claims.Role);
 
-            var player = _context.Players.FirstOrDefault(p => p.Id == userId);
+            var player = await _context.Players.FirstOrDefaultAsync(p => p.Id == userId);
 
             // Add the claims that will be persisted in the tokens.
             identity.SetClaim(Claims.Subject, userId)

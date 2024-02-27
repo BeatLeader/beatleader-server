@@ -110,13 +110,13 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            var lbs = _context
+            var lbs = await _context
                 .Leaderboards
                 .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
                 .Include(lb => lb.Scores.Where(s => s.Rank == 1))
                 .Include(lb => lb.Difficulty)
                 .Include(lb => lb.Song)
-                .ToList();
+                .ToListAsync();
             var result = new List<ComparisonResult>();
 
             foreach (var lb in lbs)

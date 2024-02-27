@@ -67,7 +67,7 @@ namespace BeatLeader_Server.Controllers
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            Leaderboard? leaderboard = _context.Leaderboards
+            Leaderboard? leaderboard = await _context.Leaderboards
                 .Include(l => l.Difficulty)
                 .Include(l => l.Song)
                 .Include(l => l.Difficulty)
@@ -76,7 +76,7 @@ namespace BeatLeader_Server.Controllers
                 .ThenInclude(q => q.Changes)
                 .Include(l => l.Reweight)
                 .ThenInclude(q => q.Modifiers)
-                .FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+                .FirstOrDefaultAsync(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             bool isRT = true;
             if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
@@ -201,14 +201,14 @@ namespace BeatLeader_Server.Controllers
             }
 
             var transaction = await _context.Database.BeginTransactionAsync();
-            Leaderboard? leaderboard = _context.Leaderboards
+            Leaderboard? leaderboard = await _context.Leaderboards
                 .Include(l => l.Difficulty)
                 .ThenInclude(d => d.ModifierValues)
                 .Include(l => l.Song)
                 .Include(l => l.Changes)
                 .Include(l => l.Reweight)
                 .ThenInclude(r => r.Modifiers)
-                .FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+                .FirstOrDefaultAsync(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             if (leaderboard != null && leaderboard.Reweight != null)
             {
@@ -317,12 +317,12 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            Leaderboard? leaderboard = _context.Leaderboards
+            Leaderboard? leaderboard = await _context.Leaderboards
                 .Include(l => l.Difficulty)
                 .ThenInclude(d => d.ModifierValues)
                 .Include(l => l.Song)
                 .Include(l => l.Reweight)
-                .FirstOrDefault(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+                .FirstOrDefaultAsync(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             if (leaderboard != null && leaderboard.Reweight != null)
             {

@@ -67,8 +67,8 @@ namespace BeatLeader_Server.Services {
                 foreach (var job in jobsToProcess) {
                     var score = job.score;
 
-                    var leaderboard = _context.Leaderboards.Where(l => l.Id == job.leaderboardId).Include(lb => lb.PlayerStats).FirstOrDefault();
-                    var playerRole = _context.Players.Where(p => p.Id == job.playerId).Select(p => p.Role).FirstOrDefault();
+                    var leaderboard = await _context.Leaderboards.Where(l => l.Id == job.leaderboardId).Include(lb => lb.PlayerStats).FirstOrDefaultAsync();
+                    var playerRole = await _context.Players.Where(p => p.Id == job.playerId).Select(p => p.Role).FirstOrDefaultAsync();
                     var anySupporter = Player.RoleIsAnySupporter(playerRole);
 
                     if (leaderboard.PlayerStats == null) {
@@ -87,7 +87,7 @@ namespace BeatLeader_Server.Services {
                     if (job.replayData == null) {
                         replayLink = job.fileName;
                     } else if (anySupporter && job.saveReplay) {
-                        var role = _context.Players.Where(p => p.Id == job.playerId).Select(p => p.Role).FirstOrDefault();
+                        var role = await _context.Players.Where(p => p.Id == job.playerId).Select(p => p.Role).FirstOrDefaultAsync();
                         if (role != null && Player.RoleIsAnySupporter(role)) {
                             try {
                                 string fileName = job.fileName;
@@ -108,12 +108,12 @@ namespace BeatLeader_Server.Services {
                     };
                     stats.FromScore(score);
 
-                    var currentScore = _context
+                    var currentScore = await _context
                             .Scores
                             .Where(s =>
                                 s.LeaderboardId == job.leaderboardId &&
                                 s.PlayerId == job.playerId)
-                            .FirstOrDefault();
+                            .FirstOrDefaultAsync();
                     if (currentScore != null) {
                         currentScore.PlayCount++;
                     }

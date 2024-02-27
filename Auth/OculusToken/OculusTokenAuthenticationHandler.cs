@@ -12,6 +12,7 @@ using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -58,11 +59,11 @@ public partial class OculusTokenAuthenticationHandler<TOptions> : Authentication
                 var scope = _serviceProvider.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<BeatLeader_Server.AppContext>();
 
-                var link = dbContext.AccountLinks.Where(l => l.PCOculusID == id).FirstOrDefault();
+                var link = await dbContext.AccountLinks.Where(l => l.PCOculusID == id).FirstOrDefaultAsync();
 
-                    if (link != null && link.SteamID.Length > 0) {
-                        id = link.SteamID;
-                    }
+                if (link != null && link.SteamID.Length > 0) {
+                    id = link.SteamID;
+                }
 
                 var claims = new[] { new Claim(ClaimTypes.NameIdentifier, id) };
                 var identity = new ClaimsIdentity(claims, "Test");

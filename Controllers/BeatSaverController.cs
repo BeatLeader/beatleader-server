@@ -47,11 +47,11 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized("Could find mapper");
             }
 
-            var leaderboards = _context.Leaderboards
+            var leaderboards = await _context.Leaderboards
                 .Where(lb => lb.Qualification != null && lb.Song.MapperId == player.MapperId)
                 .Include(lb => lb.Qualification)
                 .Include(lb => lb.Song)
-                .ToList();
+                .ToListAsync();
             var leaderboard = leaderboards.FirstOrDefault(lb => lb.Id == leaderboardId);
             var leaderboardsToApprove = leaderboard != null ? leaderboards.Where(lb => lb.Song.Id == leaderboard.Song.Id).ToList() : null;
 
@@ -78,7 +78,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized(error);
             }
 
-            var actionResult = await ApproveWithMapper(leaderboardId, _context.Players.Where(p => p.MapperId == id).FirstOrDefault());
+            var actionResult = await ApproveWithMapper(leaderboardId, await _context.Players.Where(p => p.MapperId == id).FirstOrDefaultAsync());
             
 
             return returnUrl != null ? Redirect(returnUrl) : actionResult;
@@ -114,12 +114,12 @@ namespace BeatLeader_Server.Controllers
                 return (null, "Need to login with BeatSaver first");  
             }
 
-            var bslink = _context.BeatSaverLinks.FirstOrDefault(link => link.BeatSaverId == beatSaverId);
+            var bslink = await _context.BeatSaverLinks.FirstOrDefaultAsync(link => link.BeatSaverId == beatSaverId);
             string? playerId = HttpContext.CurrentUserID(_context);
 
             if (playerId != null && bslink != null && bslink.Id != playerId) {
                 if (long.Parse(bslink.Id) > 30000000 && long.Parse(bslink.Id) < 1000000000000000) {
-                    var lbs = _context.Leaderboards.Where(lb => lb.Qualification != null && lb.Qualification.MapperId == bslink.Id).Include(lb => lb.Qualification).ToList();
+                    var lbs = await _context.Leaderboards.Where(lb => lb.Qualification != null && lb.Qualification.MapperId == bslink.Id).Include(lb => lb.Qualification).ToListAsync();
 
                     foreach (var lb in lbs)
                     {
@@ -133,17 +133,17 @@ namespace BeatLeader_Server.Controllers
                         }
                     }
 
-                    var oldplayer = _context.Players
+                    var oldplayer = await _context.Players
                         .Where(p => p.Id == bslink.Id)
                         .Include(p => p.Socials)
                         .Include(p => p.ProfileSettings)
                         .Include(p => p.History)
                         .Include(p => p.Changes)
                         .Include(p => p.Achievements)
-                        .FirstOrDefault();
+                        .FirstOrDefaultAsync();
                     if (oldplayer != null)
                     {
-                        var plink = _context.PatreonLinks.Where(l => l.Id == oldplayer.Id).FirstOrDefault();
+                        var plink = await _context.PatreonLinks.Where(l => l.Id == oldplayer.Id).FirstOrDefaultAsync();
                         if (plink != null) {
                             _context.PatreonLinks.Remove(plink);
                         }
@@ -208,7 +208,7 @@ namespace BeatLeader_Server.Controllers
 
                 await AddMapperRole(playerId);
 
-                player ??= _context.Players.Include(p => p.Socials).FirstOrDefault(p => p.Id == playerId);
+                player ??= await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == playerId);
                 if (player != null) {
                     player.MapperId = Int32.Parse(beatSaverId);
                     player.Socials ??= new List<PlayerSocial>();
@@ -237,7 +237,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            var link = _context.BeatSaverLinks.Where(bs => bs.Id == id).FirstOrDefault();
+            var link = await _context.BeatSaverLinks.Where(bs => bs.Id == id).FirstOrDefaultAsync();
             _context.BeatSaverLinks.Remove(link);
             await _context.SaveChangesAsync();
 
@@ -257,7 +257,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            var mappers = _context.Players.Where(p => p.MapperId != 0).Include(p => p.Socials).ToList();
+            var mappers = await _context.Players.Where(p => p.MapperId != 0).Include(p => p.Socials).ToListAsync();
             foreach (var mapper in mappers)
             {
                 if (mapper.Socials == null) {

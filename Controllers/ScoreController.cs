@@ -40,7 +40,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/score/{id}")]
         public async Task<ActionResult<ScoreResponseWithDifficulty>> GetScore(int id, [FromQuery] bool fallbackToRedirect = false)
         {
-            var score = _context
+            var score = await _context
                 .Scores
                 .Where(l => l.Id == id)
                 .Include(s => s.Leaderboard)
@@ -105,7 +105,7 @@ namespace BeatLeader_Server.Controllers
                         PatreonFeatures = s.Player.PatreonFeatures
                     }
                 })
-                .FirstOrDefault();
+                .FirstOrDefaultAsync();
 
             if (score != null)
             {
@@ -114,7 +114,7 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
-                var redirect = fallbackToRedirect ? _context.ScoreRedirects.FirstOrDefault(sr => sr.OldScoreId == id) : null;
+                var redirect = fallbackToRedirect ? await _context.ScoreRedirects.FirstOrDefaultAsync(sr => sr.OldScoreId == id) : null;
                 if (redirect != null && redirect.NewScoreId != id) {
                     return await GetScore(redirect.NewScoreId);
                 } else {
@@ -131,7 +131,7 @@ namespace BeatLeader_Server.Controllers
             string diff, 
             string mode)
         {
-            playerID = _context.PlayerIdToMain(playerID);
+            playerID = await _context.PlayerIdToMain(playerID);
 
             int? score = await _context
                     .Scores
@@ -182,7 +182,7 @@ namespace BeatLeader_Server.Controllers
             {
                 return Unauthorized();
             }
-            var score = _context.Scores
+            var score = await _context.Scores
                 .Where(s => s.Id == id)
                 .Include(s => s.ContextExtensions)
                 .Include(s => s.Leaderboard)
@@ -191,7 +191,7 @@ namespace BeatLeader_Server.Controllers
                 .ThenInclude(l => l.Scores)
                 .Include(s => s.Player)
                 .ThenInclude(p => p.ScoreStats)
-                .FirstOrDefault();
+                .FirstOrDefaultAsync();
             if (score == null)
             {
                 return NotFound();
@@ -265,9 +265,9 @@ namespace BeatLeader_Server.Controllers
             leaderboard.Plays = rankedScores.Count;
 
             await _context.SaveChangesAsync();
-            _context.RecalculatePP(player);
+            await _context.RecalculatePP(player);
 
-            var ranked = _context.Players.OrderByDescending(t => t.Pp).ToList();
+            var ranked = await _context.Players.OrderByDescending(t => t.Pp).ToListAsync();
             var country = player.Country; var countryRank = 1;
             foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
             {
@@ -325,7 +325,7 @@ namespace BeatLeader_Server.Controllers
 
             int modeValue = Song.ModeForModeName(mode);
             if (modeValue == 0) {
-                var customMode = _context.CustomModes.FirstOrDefault(m => m.Name == mode);
+                var customMode = await _context.CustomModes.FirstOrDefaultAsync(m => m.Name == mode);
                 if (customMode != null) {
                     modeValue = customMode.Id + 10;
                 } else {
@@ -371,7 +371,7 @@ namespace BeatLeader_Server.Controllers
         //        .Scores
         //        .Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.Golf) && s.Accuracy < 0.05)
         //        .Include(s => s.ContextExtensions)
-        //        .ToList();
+        //        .ToListAsync();
 
         //    var modifers = new ModifiersMap();
 
@@ -379,7 +379,7 @@ namespace BeatLeader_Server.Controllers
 
         //        //if (modifers.GetNegativeMultiplier(score.Modifiers) < 1) {
         //            score.ValidContexts &= ~LeaderboardContexts.Golf;
-        //            var extension = score.ContextExtensions.FirstOrDefault(s => s.Context == LeaderboardContexts.Golf);
+        //            var extension = score.ContextExtensions.FirstOrDefaultAsync(s => s.Context == LeaderboardContexts.Golf);
         //            _context.ScoreContextExtensions.Remove(extension);
         //        //}
         //        //if (score.Modifiers == "IF" || score.Modifiers == "BE") {
@@ -391,7 +391,7 @@ namespace BeatLeader_Server.Controllers
         //    }
         //    await _context.BulkSaveChangesAsync();
 
-        //    //var history = _context.PlayerScoreStatsHistory.ToList();
+        //    //var history = _context.PlayerScoreStatsHistory.ToListAsync();
         //    //foreach (var item in history) {
         //    //    item.Context = LeaderboardContexts.General;
         //    //}
@@ -487,7 +487,7 @@ namespace BeatLeader_Server.Controllers
 
             if (scope.ToLower() == "friends")
             {
-                PlayerFriends? friends = _context.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == player);
+                PlayerFriends? friends = await _context.Friends.Include(f => f.Friends).FirstOrDefaultAsync(f => f.Id == player);
 
                 if (friends != null) {
                     var idList = friends.Friends.Select(f => f.Id).ToArray();
@@ -507,7 +507,7 @@ namespace BeatLeader_Server.Controllers
 
             if (method.ToLower() == "around")
             {
-                var playerScore = query.Select(s => new { s.PlayerId, s.Rank }).FirstOrDefault(el => el.PlayerId == player);
+                var playerScore = await query.Select(s => new { s.PlayerId, s.Rank }).FirstOrDefaultAsync(el => el.PlayerId == player);
                 if (playerScore != null)
                 {
                     int rank = await query.CountAsync(s => s.Rank < playerScore.Rank);
@@ -674,7 +674,7 @@ namespace BeatLeader_Server.Controllers
 
             if (scope.ToLower() == "friends")
             {
-                PlayerFriends? friends = _context.Friends.Include(f => f.Friends).FirstOrDefault(f => f.Id == player);
+                PlayerFriends? friends = await _context.Friends.Include(f => f.Friends).FirstOrDefaultAsync(f => f.Id == player);
 
                 if (friends != null) {
                     var idList = friends.Friends.Select(f => f.Id).ToArray();
@@ -694,7 +694,7 @@ namespace BeatLeader_Server.Controllers
 
             if (method.ToLower() == "around")
             {
-                var playerScore = query.Select(s => new { s.PlayerId, s.Rank }).FirstOrDefault(el => el.PlayerId == player);
+                var playerScore = await query.Select(s => new { s.PlayerId, s.Rank }).FirstOrDefaultAsync(el => el.PlayerId == player);
                 if (playerScore != null)
                 {
                     int rank = await query.CountAsync(s => s.Rank < playerScore.Rank);
@@ -931,7 +931,7 @@ namespace BeatLeader_Server.Controllers
 
             int modeValue = Song.ModeForModeName(mode);
             if (modeValue == 0) {
-                var customMode = _context.CustomModes.FirstOrDefault(m => m.Name == mode);
+                var customMode = await _context.CustomModes.FirstOrDefaultAsync(m => m.Name == mode);
                 if (customMode != null) {
                     modeValue = customMode.Id + 10;
                 } else {
@@ -990,7 +990,7 @@ namespace BeatLeader_Server.Controllers
             string mode,
             [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
         {
-            playerID = _context.PlayerIdToMain(playerID);
+            playerID = await _context.PlayerIdToMain(playerID);
 
             var score = await _context
                     .Scores
@@ -1034,7 +1034,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/score/calculatestatistic/{id}")]
         public async Task<ActionResult<ScoreStatistic?>> CalculateStatistic(string id)
         {
-            Score? score = _context.Scores.Where(s => s.Id == Int64.Parse(id)).Include(s => s.Leaderboard).ThenInclude(l => l.Song).Include(s => s.Leaderboard).ThenInclude(l => l.Difficulty).FirstOrDefault();
+            Score? score = await _context.Scores.Where(s => s.Id == Int64.Parse(id)).Include(s => s.Leaderboard).ThenInclude(l => l.Song).Include(s => s.Leaderboard).ThenInclude(l => l.Difficulty).FirstOrDefaultAsync();
             if (score == null)
             {
                 return NotFound("Score not found");
@@ -1081,7 +1081,7 @@ namespace BeatLeader_Server.Controllers
                 score.LeftTiming = statistic.hitTracker.leftTiming;
                 score.RightTiming = statistic.hitTracker.rightTiming;
 
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
             }
 
             return statistic;
@@ -1154,11 +1154,11 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("The description is too long");
             }
 
-            var scores = _context
+            var scores = await _context
                 .Scores
                 .Where(s => s.PlayerId == currentPlayer.Id && (s.Id == id || s.Metadata != null))
                 .Include(s => s.Metadata)
-                .ToList();
+                .ToListAsync();
             if (scores.Count() == 0 || scores.FirstOrDefault(s => s.Id == id) == null)
             {
                 return NotFound("Score not found");
@@ -1297,13 +1297,13 @@ namespace BeatLeader_Server.Controllers
                     {
                         Page = page,
                         ItemsPerPage = count,
-                        Total = scores.Count()
+                        Total = await scores.CountAsync()
                     },
-                    Data = scores
+                    Data = await scores
                         .Skip((page - 1) * count)
                         .Take(count)
                         .Select(s => s.Replay)
-                        .ToList()
+                        .ToListAsync()
             };
         }
 
@@ -1345,7 +1345,7 @@ namespace BeatLeader_Server.Controllers
 
             int modeValue = Song.ModeForModeName(mode);
             if (modeValue == 0) {
-                var customMode = _context.CustomModes.FirstOrDefault(m => m.Name == mode);
+                var customMode = await _context.CustomModes.FirstOrDefaultAsync(m => m.Name == mode);
                 if (customMode != null) {
                     modeValue = customMode.Id + 10;
                 } else {
@@ -1412,7 +1412,7 @@ namespace BeatLeader_Server.Controllers
             string result = "Count,Count >80%,Count >95%,Count/80,Count/95,Average,Top250,Total PP,PP/topPP filtered,PP/topPP unfiltered,Acc Rating,Pass Rating,Tech Rating,Name,Link\n";
             float weightTreshold = MathF.Pow(0.965f, 40);
 
-            var leaderboards = _context
+            var leaderboards = await _context
                 .Leaderboards
                 .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
                 .Select(lb => new { 
@@ -1435,7 +1435,7 @@ namespace BeatLeader_Server.Controllers
                     lb.Difficulty.AccRating,
                     lb.Difficulty.PassRating,
                     lb.Difficulty.TechRating})
-                .ToList();
+                .ToListAsync();
 
             foreach (var item in leaderboards)
             {

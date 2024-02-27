@@ -4,6 +4,7 @@ using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -68,7 +69,7 @@ namespace BeatLeader_Server.Controllers
             {
                 return Unauthorized();
             }
-            AuthInfo? info = _context.Auths.FirstOrDefault(el => el.Login == login);
+            AuthInfo? info = await _context.Auths.FirstOrDefaultAsync(el => el.Login == login);
             if (info == null)
             {
                 return NotFound("No info");
@@ -89,7 +90,7 @@ namespace BeatLeader_Server.Controllers
             {
                 return Unauthorized();
             }
-            var info = _context.AuthIPs.ToArray();
+            var info = await _context.AuthIPs.ToArrayAsync();
             foreach (var item in info)
             {
                 _context.AuthIPs.Remove(item);
@@ -110,7 +111,7 @@ namespace BeatLeader_Server.Controllers
             {
                 return Unauthorized();
             }
-            var info = _context.LoginAttempts.ToArray();
+            var info = await _context.LoginAttempts.ToArrayAsync();
             foreach (var item in info)
             {
                 _context.LoginAttempts.Remove(item);
@@ -131,12 +132,12 @@ namespace BeatLeader_Server.Controllers
             {
                 return Unauthorized();
             }
-            AccountLink? link = _context.AccountLinks.FirstOrDefault(el => el.SteamID == id);
+            AccountLink? link = await _context.AccountLinks.FirstOrDefaultAsync(el => el.SteamID == id);
             if (link == null)
             {
                 return NotFound();
             }
-            AuthInfo? info = _context.Auths.FirstOrDefault(el => el.Id == link.OculusID);
+            AuthInfo? info = await _context.Auths.FirstOrDefaultAsync(el => el.Id == link.OculusID);
             if (info == null)
             {
                 return NotFound();
@@ -170,7 +171,7 @@ namespace BeatLeader_Server.Controllers
             var timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             var activeTreshold = timeset - 60 * 60 * 24 * 31 * 3;
 
-            var scores = _context
+            var scores = await _context
                 .Scores
                 .Where(s => s.Timepost > activeTreshold)
                 .Select(s => new {
@@ -178,7 +179,7 @@ namespace BeatLeader_Server.Controllers
                     s.Hmd,
                     s.Platform
                 })
-                .ToList();
+                .ToListAsync();
 
             var keys = scores.DistinctBy(s => s.Hmd.ToString() + "," + s.Platform.Split(",").First()).Select(s => s.Hmd.ToString() + "," + s.Platform.Split(",").First()).ToList();
             var groups = scores.GroupBy(s => s.PlayerId + s.Hmd + s.Platform.Split(",").First()).ToList();
@@ -221,14 +222,14 @@ namespace BeatLeader_Server.Controllers
             var timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             var activeTreshold = timeset - time;
 
-            var scores = _context
+            var scores = (await _context
                 .Scores
                 .Where(s => s.Timepost > activeTreshold)
                 .Select(s => new {
                     s.PlayerId,
                     s.Platform
                 })
-                .ToList()
+                .ToListAsync())
                 .Select(s => new {
                     s.PlayerId,
                     Platform = s.Platform.Split(",")[1].Split("_").First()
@@ -268,14 +269,14 @@ namespace BeatLeader_Server.Controllers
             var timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             var activeTreshold = timeset - time;
 
-            var scores = _context
+            var scores = (await _context
                 .Scores
                 .Where(s => s.Timepost > activeTreshold)
                 .Select(s => new {
                     s.PlayerId,
                     s.Platform
                 })
-                .ToList()
+                .ToListAsync())
                 .Select(s => new {
                     s.PlayerId,
                     Platform = s.Platform.Split(",")[1].Split("_").First()
@@ -334,7 +335,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            var rt = _context.ReservedTags.FirstOrDefault(rt => rt.Tag == tag);
+            var rt = await _context.ReservedTags.FirstOrDefaultAsync(rt => rt.Tag == tag);
             if (rt == null)
             {
                 return NotFound();
@@ -357,11 +358,11 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            return Ok(_context
+            return Ok((await _context
                 .Players
                 .Where(p => !p.Banned && p.Pp > 16000)
                 .Select(p => new { p.Id, PassPp = p.PassPp / 6000f, TechPp = p.TechPp / 1300f, AccPp = p.AccPp / 15000f })
-                .ToList()
+                .ToListAsync())
                 .OrderBy(p => Math.Abs(p.PassPp - 0.5) + Math.Abs(p.TechPp - 0.5) + Math.Abs(p.AccPp - 0.5))
                 .ThenByDescending(p => p.PassPp + p.AccPp + p.TechPp)
                 .Take(3));

@@ -35,14 +35,14 @@ namespace BeatLeader_Server.Controllers {
             int? time_to = null,
             int? eventId = null) {
 
-            id = _context.PlayerIdToMain(id);
+            id = await _context.PlayerIdToMain(id);
 
-            var player = _context.Players.FirstOrDefault(p => p.Id == id);
+            var player = await _context.Players.FirstOrDefaultAsync(p => p.Id == id);
             if (player == null) {
                 return (null, "");
             }
 
-            return (_context
+            return (await _context
                .ScoreContextExtensions
                .Where(t => t.PlayerId == id && t.Context == leaderboardContext)
                .Include(c => c.Score)
@@ -83,11 +83,11 @@ namespace BeatLeader_Server.Controllers {
                 Metadata = new Metadata() {
                     Page = page,
                     ItemsPerPage = count,
-                    Total = sequence.Count()
+                    Total = await sequence.CountAsync()
                 }
             };
 
-            var resultList = sequence
+            var resultList = await sequence
                     .Include(s => s.Leaderboard)
                     .ThenInclude(l => l.Difficulty)
                     .ThenInclude(d => d.ModifiersRating)
@@ -170,7 +170,7 @@ namespace BeatLeader_Server.Controllers {
                         MaxStreak = s.Score.MaxStreak,
                         ContextExtensions = s.Score.ContextExtensions
                     })
-                    .ToList();
+                    .ToListAsync();
 
             foreach (var resultScore in resultList) {
                 if (!showRatings && !resultScore.Leaderboard.Difficulty.Status.WithRating()) {
@@ -182,12 +182,76 @@ namespace BeatLeader_Server.Controllers {
             if (currentID != null && currentID != userId) {
                 var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
 
-                var myScores = _context
+                var myScores = await _context
                             .ScoreContextExtensions
                             .Include(ce => ce.Score)
                             .Where(s => s.PlayerId == currentID && s.Context == leaderboardContext && leaderboards.Contains(s.LeaderboardId))
-                            .Select(ToScoreCEResponseWithAcc)
-                            .ToList();
+                            .Select(s => new ScoreResponseWithMyScore {
+                                    Id = s.Id,
+                                    BaseScore = s.BaseScore,
+                                    ModifiedScore = s.ModifiedScore,
+                                    PlayerId = s.PlayerId,
+                                    Accuracy = s.Accuracy,
+                                    Pp = s.Pp,
+                                    FcAccuracy = s.Score.FcAccuracy,
+                                    FcPp = s.Score.FcPp,
+                                    BonusPp = s.BonusPp,
+                                    Rank = s.Rank,
+                                    Replay = s.Score.Replay,
+                                    Modifiers = s.Modifiers,
+                                    BadCuts = s.Score.BadCuts,
+                                    MissedNotes = s.Score.MissedNotes,
+                                    BombCuts = s.Score.BombCuts,
+                                    WallsHit = s.Score.WallsHit,
+                                    Pauses = s.Score.Pauses,
+                                    FullCombo = s.Score.FullCombo,
+                                    Hmd = s.Score.Hmd,
+                                    Controller = s.Score.Controller,
+                                    MaxCombo = s.Score.MaxCombo,
+                                    Timeset = s.Score.Timeset,
+                                    ReplaysWatched = s.Score.AnonimusReplayWatched + s.Score.AuthorizedReplayWatched,
+                                    Timepost = s.Timeset,
+                                    LeaderboardId = s.LeaderboardId,
+                                    Platform = s.Score.Platform,
+                                    Weight = s.Weight,
+                                    AccLeft = s.Score.AccLeft,
+                                    AccRight = s.Score.AccRight,
+                                    Player = s.Player != null ? new PlayerResponse {
+                                        Id = s.Player.Id,
+                                        Name = s.Player.Name,
+                                        Platform = s.Player.Platform,
+                                        Avatar = s.Player.Avatar,
+                                        Country = s.Player.Country,
+
+                                        Pp = s.Player.Pp,
+                                        Rank = s.Player.Rank,
+                                        CountryRank = s.Player.CountryRank,
+                                        Role = s.Player.Role,
+                                        Socials = s.Player.Socials,
+                                        PatreonFeatures = s.Player.PatreonFeatures,
+                                        ProfileSettings = s.Player.ProfileSettings,
+                                        ContextExtensions = s.Player.ContextExtensions != null ? s.Player.ContextExtensions.Select(ce => new PlayerContextExtension {
+                                            Context = ce.Context,
+                                            Pp = ce.Pp,
+                                            AccPp = ce.AccPp,
+                                            TechPp = ce.TechPp,
+                                            PassPp = ce.PassPp,
+
+                                            Rank = ce.Rank,
+                                            Country  = ce.Country,
+                                            CountryRank  = ce.CountryRank,
+                                        }).ToList() : null,
+                                        Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                                                .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                                    } : null,
+                                    ScoreImprovement = s.ScoreImprovement,
+                                    RankVoting = s.Score.RankVoting,
+                                    Metadata = s.Score.Metadata,
+                                    Country = s.Score.Country,
+                                    Offsets = s.Score.ReplayOffsets,
+                                    MaxStreak = s.Score.MaxStreak
+                                })
+                            .ToListAsync();
                 foreach (var score in result.Data) {
                     score.MyScore = myScores.FirstOrDefault(s => s.LeaderboardId == score.LeaderboardId);
                 }
@@ -228,9 +292,9 @@ namespace BeatLeader_Server.Controllers {
                 Metadata = new Metadata() {
                     Page = page,
                     ItemsPerPage = count,
-                    Total = sequence.Count()
+                    Total = await sequence.CountAsync()
                 },
-                Data = sequence
+                Data = await sequence
                     .Skip((page - 1) * count)
                     .Take(count)
                     .Include(s => s.Leaderboard)
@@ -250,7 +314,7 @@ namespace BeatLeader_Server.Controllers {
                             SongHash = s.Leaderboard.Song.Hash
                         }
                     })
-                    .ToList()
+                    .ToListAsync()
             };
         }
 
@@ -287,36 +351,36 @@ namespace BeatLeader_Server.Controllers {
 
             switch (sortBy) {
                 case "date":
-                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Timeset).ToList(), (int)(batch > 60 * 60 ? batch : 60 * 60 * 24), count);
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Timeset).ToListAsync(), (int)(batch > 60 * 60 ? batch : 60 * 60 * 24), count);
                 case "pp":
-                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Pp).ToList(), Math.Max(batch ?? 5, 1), count);
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Pp).ToListAsync(), Math.Max(batch ?? 5, 1), count);
                 case "acc":
-                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Accuracy).ToList(), Math.Max(batch ?? 0.0025f, 0.001f), count);
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Accuracy).ToListAsync(), Math.Max(batch ?? 0.0025f, 0.001f), count);
                 case "pauses":
-                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Score.Pauses).ToList(), Math.Max((int)(batch ?? 1), 1), count);
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Score.Pauses).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
                 case "maxStreak":
-                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Score.MaxStreak ?? 0).ToList(), Math.Max((int)(batch ?? 1), 1), count);
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Score.MaxStreak ?? 0).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
                 case "rank":
-                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Rank).ToList(), Math.Max((int)(batch ?? 1), 1), count);
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Rank).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
                 case "stars":
-                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Leaderboard.Difficulty.Stars ?? 0).ToList(), Math.Max(batch ?? 0.15f, 0.01f), count);
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Leaderboard.Difficulty.Stars ?? 0).ToListAsync(), Math.Max(batch ?? 0.15f, 0.01f), count);
                 case "replaysWatched":
-                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Score.AnonimusReplayWatched + s.Score.AuthorizedReplayWatched).ToList(), Math.Max((int)(batch ?? 1), 1), count);
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Score.AnonimusReplayWatched + s.Score.AuthorizedReplayWatched).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
                 case "mistakes":
-                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Score.BadCuts + s.Score.MissedNotes + s.Score.BombCuts + s.Score.WallsHit).ToList(), (int)(batch ?? 1), count);
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Score.BadCuts + s.Score.MissedNotes + s.Score.BombCuts + s.Score.WallsHit).ToListAsync(), (int)(batch ?? 1), count);
                 default:
                     return BadRequest();
             }
         }
 
         [NonAction]
-        public ActionResult<ICollection<GraphResponse>> AccGraph(
+        public async Task<ActionResult<ICollection<GraphResponse>>> AccGraph(
             string id, 
             bool showRatings,
             LeaderboardContexts leaderboardContext = LeaderboardContexts.General) {
-            id = _context.PlayerIdToMain(id);
+            id = await _context.PlayerIdToMain(id);
 
-            var result = _context
+            var result = await _context
                 .ScoreContextExtensions
                 .Include(ce => ce.Score)
                 .Where(s => s.PlayerId == id && s.Context == leaderboardContext && !s.Score.IgnoreForStats && ((showRatings && s.Leaderboard.Difficulty.Stars != null) || s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked))
@@ -338,7 +402,7 @@ namespace BeatLeader_Server.Controllers {
                     PassRating = s.Leaderboard.Difficulty.PassRating,
                     TechRating = s.Leaderboard.Difficulty.TechRating,
                 })
-                .ToList();
+                .ToListAsync();
             var defaultModifiers = new ModifiersMap();
 
             foreach (var score in result) {
@@ -374,15 +438,15 @@ namespace BeatLeader_Server.Controllers {
 
         [NonAction]
         public async Task<ActionResult<ICollection<PlayerScoreStatsHistory>>> GetHistory(string id, [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General, [FromQuery] int count = 50) {
-            id = _context.PlayerIdToMain(id);
-            var result = _context
+            id = await _context.PlayerIdToMain(id);
+            var result = await _context
                     .PlayerScoreStatsHistory
                     .Where(p => p.PlayerId == id && p.Context == leaderboardContext)
                     .OrderByDescending(s => s.Timestamp)
                     .Take(count)
-                    .ToList();
+                    .ToListAsync();
             if (result.Count == 0) {
-                var player = _context.PlayerContextExtensions.Where(p => p.PlayerId == id && p.Context == leaderboardContext).FirstOrDefault();
+                var player = await _context.PlayerContextExtensions.Where(p => p.PlayerId == id && p.Context == leaderboardContext).FirstOrDefaultAsync();
                 int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - 60 * 60 * 24;
                 result = new List<PlayerScoreStatsHistory> { new PlayerScoreStatsHistory { Timestamp = timeset, Rank = player?.Rank ?? 0, Pp = player?.Pp ?? 0, CountryRank = player?.CountryRank ?? 0 } };
             }

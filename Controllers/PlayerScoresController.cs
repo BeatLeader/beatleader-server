@@ -61,7 +61,7 @@ namespace BeatLeader_Server.Controllers {
                 .TagWithCallSite()
                 .FirstOrDefaultAsync() : false;
 
-            id = _context.PlayerIdToMain(id);
+            id = await _context.PlayerIdToMain(id);
 
             var player = await _context
                     .Players
@@ -72,7 +72,7 @@ namespace BeatLeader_Server.Controllers {
                 return (null, false, "", "");
             }
 
-            return (_context
+            return (await _context
                .Scores
                .Where(t => t.PlayerId == id && t.ValidContexts.HasFlag(leaderboardContext))
                .TagWithCallSite()
@@ -137,7 +137,7 @@ namespace BeatLeader_Server.Controllers {
                     Metadata = new Metadata() {
                         Page = page,
                         ItemsPerPage = count,
-                        Total = sequence.Count()
+                        Total = await sequence.CountAsync()
                     }
                 };
             }
@@ -245,11 +245,76 @@ namespace BeatLeader_Server.Controllers {
                 if (currentID != null && currentID != userId) {
                     var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
 
-                    var myScores = _context
+                    var myScores = await _context
                         .Scores
                         .Where(s => s.PlayerId == currentID && s.ValidContexts.HasFlag(LeaderboardContexts.General) && leaderboards.Contains(s.LeaderboardId))
-                        .Select(ToScoreResponseWithAcc)
-                        .ToList();
+                        .Select(s => new ScoreResponseWithMyScore {
+                            Id = s.Id,
+                            BaseScore = s.BaseScore,
+                            ModifiedScore = s.ModifiedScore,
+                            PlayerId = s.PlayerId,
+                            Accuracy = s.Accuracy,
+                            Pp = s.Pp,
+                            FcAccuracy = s.FcAccuracy,
+                            FcPp = s.FcPp,
+                            BonusPp = s.BonusPp,
+                            Rank = s.Rank,
+                            Replay = s.Replay,
+                            Modifiers = s.Modifiers,
+                            BadCuts = s.BadCuts,
+                            MissedNotes = s.MissedNotes,
+                            BombCuts = s.BombCuts,
+                            WallsHit = s.WallsHit,
+                            Pauses = s.Pauses,
+                            FullCombo = s.FullCombo,
+                            Hmd = s.Hmd,
+                            Controller = s.Controller,
+                            MaxCombo = s.MaxCombo,
+                            Timeset = s.Timeset,
+                            ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
+                            Timepost = s.Timepost,
+                            LeaderboardId = s.LeaderboardId,
+                            Platform = s.Platform,
+                            Weight = s.Weight,
+                            AccLeft = s.AccLeft,
+                            AccRight = s.AccRight,
+                            Player = s.Player != null ? new PlayerResponse {
+                                Id = s.Player.Id,
+                                Name = s.Player.Name,
+                                Platform = s.Player.Platform,
+                                Avatar = s.Player.Avatar,
+                                Country = s.Player.Country,
+
+                                Pp = s.Player.Pp,
+                                Rank = s.Player.Rank,
+                                CountryRank = s.Player.CountryRank,
+                                Role = s.Player.Role,
+                                Socials = s.Player.Socials,
+                                PatreonFeatures = s.Player.PatreonFeatures,
+                                ProfileSettings = s.Player.ProfileSettings,
+                                ContextExtensions = s.Player.ContextExtensions != null ? s.Player.ContextExtensions.Select(ce => new PlayerContextExtension {
+                                    Context = ce.Context,
+                                    Pp = ce.Pp,
+                                    AccPp = ce.AccPp,
+                                    TechPp = ce.TechPp,
+                                    PassPp = ce.PassPp,
+                                    PlayerId = ce.PlayerId,
+
+                                    Rank = ce.Rank,
+                                    Country  = ce.Country,
+                                    CountryRank  = ce.CountryRank,
+                                }).ToList() : null,
+                                Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                                        .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                            } : null,
+                            ScoreImprovement = s.ScoreImprovement,
+                            RankVoting = s.RankVoting,
+                            Metadata = s.Metadata,
+                            Country = s.Country,
+                            Offsets = s.ReplayOffsets,
+                            MaxStreak = s.MaxStreak
+                        })
+                        .ToListAsync();
                     foreach (var score in result.Data) {
                         score.MyScore = myScores.FirstOrDefault(s => s.LeaderboardId == score.LeaderboardId);
                     }
@@ -288,11 +353,11 @@ namespace BeatLeader_Server.Controllers {
             }
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
                 string? currentID2 = HttpContext.CurrentUserID(_context);
-                bool showRatings2 = currentID2 != null ? _context
+                bool showRatings2 = currentID2 != null ? await _context
                     .Players
                     .Where(p => p.Id == currentID2 && p.ProfileSettings != null)
                     .Select(p => p.ProfileSettings.ShowAllRatings)
-                    .FirstOrDefault() : false;
+                    .FirstOrDefaultAsync() : false;
                 return await _playerContextScoresController.GetCompactScores(id, showRatings2, sortBy, order, page, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             }
             (IQueryable<Score>? sequence, bool showRatings, string currentID, string userId) = await ScoresQuery(id, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
@@ -395,12 +460,12 @@ namespace BeatLeader_Server.Controllers {
 
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
                 string? currentID2 = HttpContext.CurrentUserID(_context);
-                bool showRatings2 = currentID2 != null ? _context
+                bool showRatings2 = currentID2 != null ? await _context
                     .Players
                     .Where(p => p.Id == currentID2 && p.ProfileSettings != null)
                     .Select(p => p.ProfileSettings.ShowAllRatings)
                     .TagWithCallSite()
-                    .FirstOrDefault() : false;
+                    .FirstOrDefaultAsync() : false;
                 return await _playerContextScoresController.GetPlayerHistogram(id, showRatings2, sortBy, order, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId, batch); 
             }
             (IQueryable<Score>? sequence, bool showRatings, string currentID, string userId) = await ScoresQuery(id, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
@@ -410,23 +475,23 @@ namespace BeatLeader_Server.Controllers {
 
             switch (sortBy) {
                 case "date":
-                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Timepost > 0 ? s.Timepost.ToString() : s.Timeset).Select(s => Int32.Parse(s)).ToList(), (int)(batch > 60 * 60 ? batch : 60 * 60 * 24), count);
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Timepost > 0 ? s.Timepost.ToString() : s.Timeset).Select(s => Int32.Parse(s)).ToListAsync(), (int)(batch > 60 * 60 ? batch : 60 * 60 * 24), count);
                 case "pp":
-                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Pp).ToList(), Math.Max(batch ?? 5, 1), count);
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Pp).ToListAsync(), Math.Max(batch ?? 5, 1), count);
                 case "acc":
-                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Accuracy).ToList(), Math.Max(batch ?? 0.0025f, 0.001f), count);
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Accuracy).ToListAsync(), Math.Max(batch ?? 0.0025f, 0.001f), count);
                 case "pauses":
-                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Pauses).ToList(), Math.Max((int)(batch ?? 1), 1), count);
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Pauses).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
                 case "maxStreak":
-                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.MaxStreak ?? 0).ToList(), Math.Max((int)(batch ?? 1), 1), count);
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.MaxStreak ?? 0).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
                 case "rank":
-                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Rank).ToList(), Math.Max((int)(batch ?? 1), 1), count);
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Rank).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
                 case "stars":
-                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.Leaderboard.Difficulty.Stars ?? 0).ToList(), Math.Max(batch ?? 0.15f, 0.01f), count);
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Leaderboard.Difficulty.Stars ?? 0).ToListAsync(), Math.Max(batch ?? 0.15f, 0.01f), count);
                 case "replaysWatched":
-                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.AnonimusReplayWatched + s.AuthorizedReplayWatched).ToList(), Math.Max((int)(batch ?? 1), 1), count);
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.AnonimusReplayWatched + s.AuthorizedReplayWatched).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
                 case "mistakes":
-                    return HistogramUtils.GetHistogram(order, sequence.Select(s => s.BadCuts + s.MissedNotes + s.BombCuts + s.WallsHit).ToList(), Math.Max((int)(batch ?? 1), 1), count);
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.BadCuts + s.MissedNotes + s.BombCuts + s.WallsHit).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
                 default:
                     return BadRequest();
             }
@@ -437,30 +502,30 @@ namespace BeatLeader_Server.Controllers {
         [SwaggerResponse(200, "Accuracy graph retrieved successfully")]
         [SwaggerResponse(400, "Invalid request parameters")]
         [SwaggerResponse(404, "No accuracy graph available for the given player ID")]
-        public ActionResult<ICollection<GraphResponse>> AccGraph(
+        public async Task<ActionResult<ICollection<GraphResponse>>> AccGraph(
             [FromRoute, SwaggerParameter("Player's unique identifier")] string id, 
             [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General) {
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
                 string? currentID2 = HttpContext.CurrentUserID(_context);
-                bool showRatings2 = currentID2 != null ? _context
+                bool showRatings2 = currentID2 != null ? await _context
                     .Players
                     .Where(p => p.Id == currentID2 && p.ProfileSettings != null)
                     .Select(p => p.ProfileSettings.ShowAllRatings)
                     .TagWithCallSite()
-                    .FirstOrDefault() : false;
-                return _playerContextScoresController.AccGraph(id, showRatings2, leaderboardContext); 
+                    .FirstOrDefaultAsync() : false;
+                return await _playerContextScoresController.AccGraph(id, showRatings2, leaderboardContext); 
             }
-            id = _context.PlayerIdToMain(id);
+            id = await _context.PlayerIdToMain(id);
             string? currentID = HttpContext.CurrentUserID(_context);
-            bool showRatings = currentID != null ? _context
+            bool showRatings = currentID != null ? (await _context
                 .Players
                 .Include(p => p.ProfileSettings)
                 .Where(p => p.Id == currentID)
                 .Select(p => p.ProfileSettings)
                 .TagWithCallSite()
-                .FirstOrDefault()?.ShowAllRatings ?? false : false;
+                .FirstOrDefaultAsync())?.ShowAllRatings ?? false : false;
 
-            var result = _context
+            var result = await _context
                 .Scores
                 .Where(s => s.PlayerId == id && s.ValidContexts.HasFlag(leaderboardContext) && !s.IgnoreForStats && ((showRatings && s.Leaderboard.Difficulty.Stars != null) || s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked))
                 .TagWithCallSite()
@@ -482,7 +547,7 @@ namespace BeatLeader_Server.Controllers {
                     PassRating = s.Leaderboard.Difficulty.PassRating,
                     TechRating = s.Leaderboard.Difficulty.TechRating,
                 })
-                .ToList();
+                .ToListAsync();
             var defaultModifiers = new ModifiersMap();
 
             foreach (var score in result) {
@@ -529,16 +594,16 @@ namespace BeatLeader_Server.Controllers {
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
                 return await _playerContextScoresController.GetHistory(id, leaderboardContext, count); 
             }
-            id = _context.PlayerIdToMain(id);
-            var result = _context
+            id = await _context.PlayerIdToMain(id);
+            var result = await _context
                     .PlayerScoreStatsHistory
                     .Where(p => p.PlayerId == id && p.Context == leaderboardContext)
                     .TagWithCallSite()
                     .OrderByDescending(s => s.Timestamp)
                     .Take(count)
-                    .ToList();
+                    .ToListAsync();
             if (result.Count == 0) {
-                var player = _context.Players.Where(p => p.Id == id).FirstOrDefault();
+                var player = await _context.Players.Where(p => p.Id == id).FirstOrDefaultAsync();
                 int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - 60 * 60 * 24;
                 result = new List<PlayerScoreStatsHistory> { new PlayerScoreStatsHistory { Timestamp = timeset, Rank = player?.Rank ?? 0, Pp = player?.Pp ?? 0, CountryRank = player?.CountryRank ?? 0 } };
             }
@@ -555,7 +620,7 @@ namespace BeatLeader_Server.Controllers {
             [FromRoute, SwaggerParameter("Player's unique identifier")]string id,
             [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General) {
 
-            id = _context.PlayerIdToMain(id);
+            id = await _context.PlayerIdToMain(id);
 
             var query = _context
                     .Scores
@@ -660,10 +725,10 @@ namespace BeatLeader_Server.Controllers {
             {
                 var scoreIds = resultList.Select(s => s.Id).ToList();
 
-                var contexts = _context
+                var contexts = await _context
                     .ScoreContextExtensions
                     .Where(s => s.Context == leaderboardContext && s.ScoreId != null && scoreIds.Contains((int)s.ScoreId))
-                    .ToList();
+                    .ToListAsync();
 
                 for (int i = 0; i < resultList.Count && i < contexts.Count; i++)
                 {

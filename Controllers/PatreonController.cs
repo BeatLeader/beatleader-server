@@ -42,7 +42,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            var link = _context.PatreonLinks.Where(p => p.Id == currentPlayer.Id).FirstOrDefault();
+            var link = await _context.PatreonLinks.Where(p => p.Id == currentPlayer.Id).FirstOrDefaultAsync();
 
             if (link == null) {
                 return BadRequest("No existing Patreon link");
@@ -52,9 +52,9 @@ namespace BeatLeader_Server.Controllers
 
             if (user != null) {
                 string? tier = GetUserTier(user);
-                string userId = _context.PlayerIdToMain(link.Id);
+                string userId = await _context.PlayerIdToMain(link.Id);
 
-                var player = _context.Players.FirstOrDefault(p => p.Id == userId);
+                var player = await _context.Players.FirstOrDefaultAsync(p => p.Id == userId);
                 if (player != null) {
                     if (tier != null) {
                         if (tier.Contains("tipper"))
@@ -84,16 +84,16 @@ namespace BeatLeader_Server.Controllers
                     link.Token = newToken.access_token;
                     link.RefreshToken = newToken.refresh_token;
                 } else {
-                    var player = _context.Players.FirstOrDefault(p => p.Id == link.Id);
+                    var player = await _context.Players.FirstOrDefaultAsync(p => p.Id == link.Id);
                     if (player == null) {
                         long intId = Int64.Parse(link.Id);
                         if (intId < 70000000000000000) {
-                            AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+                            AccountLink? accountLink = await _context.AccountLinks.FirstOrDefaultAsync(el => el.OculusID == intId);
 
                             if (accountLink != null) {
                                 string playerId = accountLink.SteamID.Length > 0 ? accountLink.SteamID : accountLink.PCOculusID;
 
-                                player = _context.Players.FirstOrDefault(p => p.Id == playerId);
+                                player = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId);
                             }
                         }
                     }
@@ -132,7 +132,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     string id = user.data.id;
 
-                    var existingPatreonLink = _context.PatreonLinks.FirstOrDefault(pl => pl.PatreonId == id);
+                    var existingPatreonLink = await _context.PatreonLinks.FirstOrDefaultAsync(pl => pl.PatreonId == id);
                     if (existingPatreonLink != null)
                     {
                         return Redirect(returnUrl);
@@ -173,13 +173,13 @@ namespace BeatLeader_Server.Controllers
 
         [ApiExplorerSettings(IgnoreApi = true)]
         [HttpGet("~/refreshpatreon")]
-        public async Task<ActionResult> RefreshPatreon()
+        public async Task<ActionResult> RefreshPatreon([FromQuery] string? id = null)
         {
-            if (!HttpContext.ItsAdmin(_context)) {
+            if (!(await HttpContext.ItsAdmin(_context))) {
                 return Unauthorized();
             }
 
-            var links = _context.PatreonLinks.ToList();
+            var links = await _context.PatreonLinks.Where(pl => id == null || pl.Id == id).ToListAsync();
 
             foreach (var link in links)
             {
@@ -189,16 +189,16 @@ namespace BeatLeader_Server.Controllers
                     string? tier = GetUserTier(user);
 
                     if (tier != link.Tier) {
-                        var player = _context.Players.FirstOrDefault(p => p.Id == link.Id);
+                        var player = await _context.Players.FirstOrDefaultAsync(p => p.Id == link.Id);
                         if (player == null) {
                             long intId = Int64.Parse(link.Id);
                             if (intId < 70000000000000000) {
-                                AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+                                AccountLink? accountLink = await _context.AccountLinks.FirstOrDefaultAsync(el => el.OculusID == intId);
 
                                 if (accountLink != null) {
                                     string playerId = accountLink.SteamID.Length > 0 ? accountLink.SteamID : accountLink.PCOculusID;
 
-                                    player = _context.Players.FirstOrDefault(p => p.Id == playerId);
+                                    player = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId);
                                 }
                             }
                         }
@@ -232,16 +232,16 @@ namespace BeatLeader_Server.Controllers
                         link.Token = newToken.access_token;
                         link.RefreshToken = newToken.refresh_token;
                     } else {
-                        var player = _context.Players.FirstOrDefault(p => p.Id == link.Id);
+                        var player = await _context.Players.FirstOrDefaultAsync(p => p.Id == link.Id);
                         if (player == null) {
                             long intId = Int64.Parse(link.Id);
                             if (intId < 70000000000000000) {
-                                AccountLink? accountLink = _context.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+                                AccountLink? accountLink = await _context.AccountLinks.FirstOrDefaultAsync(el => el.OculusID == intId);
 
                                 if (accountLink != null) {
                                     string playerId = accountLink.SteamID.Length > 0 ? accountLink.SteamID : accountLink.PCOculusID;
 
-                                    player = _context.Players.FirstOrDefault(p => p.Id == playerId);
+                                    player = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId);
                                 }
                             }
                         }
@@ -268,7 +268,7 @@ namespace BeatLeader_Server.Controllers
             {
                 return NotFound();
             }
-            Player? currentPlayer = _context.Players.Include(p => p.ProfileSettings).FirstOrDefault(p => p.Id == playerId);
+            Player? currentPlayer = await _context.Players.Include(p => p.ProfileSettings).FirstOrDefaultAsync(p => p.Id == playerId);
             if (currentPlayer != null)
             {
                 currentPlayer.Role += "," + role;

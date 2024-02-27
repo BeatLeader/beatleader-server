@@ -99,7 +99,7 @@ namespace BeatLeader_Server.Extensions
                 long intId = Int64.Parse(currentID);
                 if (intId < 70000000000000000) {
 
-                   AccountLink? accountLink = dbcontext.AccountLinks.FirstOrDefault(el => el.OculusID == intId);
+                   AccountLink? accountLink = await dbcontext.AccountLinks.FirstOrDefaultAsync(el => el.OculusID == intId);
 
                     return accountLink != null ? (accountLink.SteamID.Length > 0 ? accountLink.SteamID : accountLink.PCOculusID) : currentID;
                 } else {
@@ -112,11 +112,11 @@ namespace BeatLeader_Server.Extensions
             }
         }
 
-        public static bool ItsAdmin(this HttpContext? context, AppContext dbcontext) {
+        public static async Task<bool> ItsAdmin(this HttpContext? context, AppContext dbcontext) {
             if (context != null) {
                 string? currentID = context.CurrentUserID(dbcontext);
                 if (currentID == null) return false;
-                var currentPlayer = dbcontext.Players.Find(currentID);
+                var currentPlayer = await dbcontext.Players.FindAsync(currentID);
 
                 return currentPlayer != null && currentPlayer.Role.Contains("admin");
             }
@@ -135,7 +135,7 @@ namespace BeatLeader_Server.Extensions
                 : false;
         }
 
-        public static string PlayerIdToMain(this AppContext _context, string id) {
+        public static async Task<string> PlayerIdToMain(this AppContext _context, string id) {
             Int64 oculusId = 0;
             try {
                 oculusId = Int64.Parse(id);
@@ -144,10 +144,10 @@ namespace BeatLeader_Server.Extensions
             }
             AccountLink? link = null;
             if (oculusId < 1000000000000000) {
-                link = _context.AccountLinks.FirstOrDefault(el => el.OculusID == oculusId);
+                link = await _context.AccountLinks.FirstOrDefaultAsync(el => el.OculusID == oculusId);
             }
             if (link == null && oculusId < 70000000000000000) {
-                link = _context.AccountLinks.FirstOrDefault(el => el.PCOculusID == id);
+                link = await _context.AccountLinks.FirstOrDefaultAsync(el => el.PCOculusID == id);
             }
             return (link != null ? (link.SteamID.Length > 0 ? link.SteamID : link.PCOculusID) : id);
         }

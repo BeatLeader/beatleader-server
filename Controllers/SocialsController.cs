@@ -37,7 +37,7 @@ namespace BeatLeader_Server.Controllers
             }
             var auth = await HttpContext.AuthenticateAsync("Twitch");
 
-            var player = _context.Players.Include(p => p.Socials).FirstOrDefault(p => p.Id == playerId);
+            var player = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == playerId);
             if (player != null && (player.Socials == null || player.Socials.FirstOrDefault(s => s.Service == "Twitch") == null)) {
                 player.Socials ??= new List<PlayerSocial>();
 
@@ -83,7 +83,7 @@ namespace BeatLeader_Server.Controllers
             }
             var auth = await HttpContext.AuthenticateAsync("Twitter");
 
-            var player = _context.Players.Include(p => p.Socials).FirstOrDefault(p => p.Id == playerId);
+            var player = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == playerId);
             if (player != null && (player.Socials?.FirstOrDefault(s => s.Service == "Twitter") == null))
             {
                 player.Socials ??= new List<PlayerSocial>();
@@ -134,7 +134,7 @@ namespace BeatLeader_Server.Controllers
             }
             var auth = await HttpContext.AuthenticateAsync("Discord");
 
-            var player = _context.Players.Include(p => p.Socials).FirstOrDefault(p => p.Id == playerId);
+            var player = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == playerId);
             if (player != null && (player.Socials?.FirstOrDefault(s => s.Service == "Discord") == null))
             {
                 player.Socials ??= new List<PlayerSocial>();
@@ -195,7 +195,7 @@ namespace BeatLeader_Server.Controllers
             }
             var auth = await HttpContext.AuthenticateAsync("Google");
 
-            var player = _context.Players.Include(p => p.Socials).FirstOrDefault(p => p.Id == playerId);
+            var player = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == playerId);
             if (player != null && (player.Socials?.FirstOrDefault(s => s.Service == "YouTube") == null))
             {
                 player.Socials ??= new List<PlayerSocial>();
@@ -294,7 +294,7 @@ namespace BeatLeader_Server.Controllers
                 return Redirect(returnUrl);
             }
 
-            var player = _context.Players.Where(p => p.Id == playerId).Include(p => p.Socials).FirstOrDefault();
+            var player = await _context.Players.Where(p => p.Id == playerId).Include(p => p.Socials).FirstOrDefaultAsync();
 
             if (player == null)
             {
@@ -314,34 +314,34 @@ namespace BeatLeader_Server.Controllers
                 case "BeatSaver":
                     player.MapperId = 0;
                     player.Role = string.Join(",", player.Role.Split(",").Where(r => r != "mapper"));
-                    var link = _context.BeatSaverLinks.FirstOrDefault(l => l.Id == player.Id);
+                    var link = await _context.BeatSaverLinks.FirstOrDefaultAsync(l => l.Id == player.Id);
                     if (link != null) {
                         _context.BeatSaverLinks.Remove(link);
                     }
                     break;
                 case "Twitter":
-                    var link1 = _context.TwitterLinks.FirstOrDefault(l => l.Id == player.Id);
+                    var link1 = await _context.TwitterLinks.FirstOrDefaultAsync(l => l.Id == player.Id);
                     if (link1 != null)
                     {
                         _context.TwitterLinks.Remove(link1);
                     }
                     break;
                 case "Twitch":
-                    var link2 = _context.TwitchLinks.FirstOrDefault(l => l.Id == player.Id);
+                    var link2 = await _context.TwitchLinks.FirstOrDefaultAsync(l => l.Id == player.Id);
                     if (link2 != null)
                     {
                         _context.TwitchLinks.Remove(link2);
                     }
                     break;
                 case "Google":
-                    var link3 = _context.YouTubeLinks.FirstOrDefault(l => l.Id == player.Id);
+                    var link3 = await _context.YouTubeLinks.FirstOrDefaultAsync(l => l.Id == player.Id);
                     if (link3 != null)
                     {
                         _context.YouTubeLinks.Remove(link3);
                     }
                     break;
                 case "Discord":
-                    var link4 = _context.DiscordLinks.FirstOrDefault(l => l.Id == player.Id);
+                    var link4 = await _context.DiscordLinks.FirstOrDefaultAsync(l => l.Id == player.Id);
                     if (link4 != null)
                     {
                         _context.DiscordLinks.Remove(link4);

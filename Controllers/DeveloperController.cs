@@ -94,7 +94,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             // Retrieve the player and check for a developer profile
-            var player = _context.Players.Include(p => p.DeveloperProfile).ThenInclude(dp => dp.OauthApps).FirstOrDefault(p => p.Id == currentID);
+            var player = await _context.Players.Include(p => p.DeveloperProfile).ThenInclude(dp => dp.OauthApps).FirstOrDefaultAsync(p => p.Id == currentID);
             if (player == null) {
                 return NotFound("Player not found.");
             }
@@ -104,7 +104,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (player.DeveloperProfile == null) {
-                if (_context.DiscordLinks.FirstOrDefault(d => d.Id == player.Id) == null) {
+                if ((await _context.DiscordLinks.FirstOrDefaultAsync(d => d.Id == player.Id)) == null) {
                     return BadRequest("Please link Discord account first");
                 }
 

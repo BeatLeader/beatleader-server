@@ -83,7 +83,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     Page = page,
                     ItemsPerPage = count,
-                    Total = sequence.Count()
+                    Total = await sequence.CountAsync()
                 },
                 Data = pageData
             };
@@ -99,7 +99,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? search = null,
             [FromQuery] string? capturedLeaderboards = null)
         {
-            var preset = _context
+            var preset = await _context
                     .ReeSabersPresets
                     .Where(c => c.Id == id)
                     .Include(p => p.Owner)
@@ -107,7 +107,7 @@ namespace BeatLeader_Server.Controllers
                     .ThenInclude(p => p.Author)
                     .Include(p => p.Comments)
                     .ThenInclude(p => p.Player)
-                    .FirstOrDefault();
+                    .FirstOrDefaultAsync();
             if (preset == null)
             {
                 return NotFound();
@@ -130,7 +130,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     Page = 1,
                     ItemsPerPage = 10,
-                    Total = comments.Count()
+                    Total = await comments.CountAsync()
                 }
             };
         }
@@ -291,7 +291,7 @@ namespace BeatLeader_Server.Controllers
             var currentId = HttpContext.CurrentUserID(_context);
             if (currentId != null)
             {
-               if (_context.ReePresetDownloads.FirstOrDefault(pd => pd.Player == currentId && pd.PresetId == id) == null) {
+               if ((await _context.ReePresetDownloads.FirstOrDefaultAsync(pd => pd.Player == currentId && pd.PresetId == id)) == null) {
                     preset.DownloadsCount++;
                     preset.QuestDownloadsCount++;
                     _context.ReePresetDownloads.Add(new ReePresetDownload {
@@ -325,7 +325,7 @@ namespace BeatLeader_Server.Controllers
             var currentId = HttpContext.CurrentUserID(_context);
             if (currentId != null)
             {
-               if (_context.ReePresetDownloads.FirstOrDefault(pd => pd.Player == currentId && pd.PresetId == id) == null) {
+               if ((await _context.ReePresetDownloads.FirstOrDefaultAsync(pd => pd.Player == currentId && pd.PresetId == id)) == null) {
                     preset.DownloadsCount++;
                     preset.PCDownloadsCount++;
                     _context.ReePresetDownloads.Add(new ReePresetDownload {
@@ -475,12 +475,12 @@ namespace BeatLeader_Server.Controllers
         [HttpDelete("~/reepreset/{id}")]
         public async Task<IActionResult> DeletePreset(int id)
         {
-            var preset = _context
+            var preset = await _context
                 .ReeSabersPresets
                 .Where(rp => rp.Id == id)
                 .Include(rp => rp.Comments)
                 .Include(rp => rp.Reactions)
-                .FirstOrDefault();
+                .FirstOrDefaultAsync();
 
             if (preset == null)
             {
@@ -519,10 +519,10 @@ namespace BeatLeader_Server.Controllers
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == currentID);
 
-            var preset = _context
+            var preset = await _context
                 .ReeSabersPresets
                 .Include(q => q.Comments)
-                .FirstOrDefault(l => l.Id == id);
+                .FirstOrDefaultAsync(l => l.Id == id);
 
             if (preset == null)
             {
