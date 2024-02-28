@@ -275,9 +275,6 @@ namespace BeatLeader_Server.Controllers {
             if (id == null) {
                 return Unauthorized();
             }
-            if (playerId == id) {
-                return BadRequest("Couldnt remove user as a friend from himself");
-            }
             PlayerFriends? playerFriends = await _context.Friends.Where(u => u.Id == id).Include(p => p.Friends).FirstOrDefaultAsync();
             if (playerFriends == null) {
                 return NotFound();
@@ -997,6 +994,8 @@ namespace BeatLeader_Server.Controllers {
             }
             if (currentPlayerFriends != null && playerFriends != null) {
                 foreach (var friend in currentPlayerFriends.Friends) {
+                    if (friend.Id == currentPlayer.Id || friend.Id == migratedToPlayer.Id) continue;
+
                     if (playerFriends.Friends.FirstOrDefault(p => p.Id == friend.Id) == null) {
                         playerFriends.Friends.Add(friend);
                     }
