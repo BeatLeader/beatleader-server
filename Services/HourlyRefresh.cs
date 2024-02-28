@@ -217,9 +217,11 @@ namespace BeatLeader_Server.Services {
                                 using (var coverStream = coverFile.Open()) {
                                     using (var ms = new MemoryStream(5)) {
                                         await coverStream.CopyToAsync(ms);
-                                        var fileName = ($"songcover-{song.Id}-" + info._coverImageFilename).Replace(" ", "").Replace("(", "").Replace(")", "");
-                                        
-                                        song.FullCoverImage = await _s3Client.UploadAsset(fileName, ms);
+                                        ms.Position = 0;
+                                        (string extension, MemoryStream imageStream) = ImageUtils.GetFormat(ms);
+                                        var fileName = $"songcover-{song.Id}-full{extension}";
+
+                                        song.FullCoverImage = await _s3Client.UploadAsset(fileName, imageStream);
                                     }
                                 }
                             }
