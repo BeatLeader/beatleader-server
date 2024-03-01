@@ -16,7 +16,8 @@ public static partial class MapListUtils
                                                 int? dateFrom,
                                                 int? dateTo,
                                                 int? searchId,
-                                                Player? currentPlayer) {
+                                                Player? currentPlayer,
+                                                LeaderboardContexts leaderboardContext = LeaderboardContexts.General) {
         var result = sortBy switch
         {
             SortBy.Timestamp  => sequence.SortByTimestamp(order, type, dateFrom, dateTo, searchId),
@@ -26,7 +27,7 @@ public static partial class MapListUtils
             SortBy.AccRating  => sequence.SortByAccRating(order, dateFrom, dateTo, searchId, currentPlayer),
             SortBy.TechRating => sequence.SortByTechRating(order, dateFrom, dateTo, searchId, currentPlayer),
             SortBy.ScoreTime  => sequence.SortByScoreTime(order, mytype, dateFrom, searchId, dateTo, currentPlayer?.Id),
-            SortBy.PlayCount  => sequence.SortByPlayCount(order, dateFrom, dateTo, searchId),
+            SortBy.PlayCount  => sequence.SortByPlayCount(order, dateFrom, dateTo, searchId, leaderboardContext),
             SortBy.Voting     => sequence.SortByVoting(order, dateFrom, dateTo, searchId),
             SortBy.VoteCount  => sequence.SortByVoteCount(order, dateFrom, dateTo, searchId),
             SortBy.VoteRatio  => sequence.SortByVoteRatio(order, dateFrom, dateTo, searchId),
@@ -155,11 +156,11 @@ public static partial class MapListUtils
                                                                .Max(score => score.Timepost));
     }
 
-    private static IOrderedQueryable<Leaderboard> SortByPlayCount(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo, int? searchId) => 
+    private static IOrderedQueryable<Leaderboard> SortByPlayCount(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo, int? searchId, LeaderboardContexts leaderboardContext = LeaderboardContexts.General) => 
         sequence
         .Where(leaderboard => (dateFrom == null || leaderboard.Song.UploadTime >= dateFrom) && (dateTo == null || leaderboard.Song.UploadTime <= dateTo))
         .OrderByDescending(l => searchId != null ? l.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-        .ThenOrder(order, leaderboard => leaderboard.Scores.Count(score => (dateFrom == null || score.Timepost >= dateFrom) && (dateTo == null || score.Timepost <= dateTo)));
+        .ThenOrder(order, leaderboard => leaderboard.Scores.Where(s => s.ValidContexts.HasFlag(leaderboardContext)).Count(score => (dateFrom == null || score.Timepost >= dateFrom) && (dateTo == null || score.Timepost <= dateTo)));
 
     private static IOrderedQueryable<Leaderboard> SortByVoting(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo, int? searchId) => 
         sequence

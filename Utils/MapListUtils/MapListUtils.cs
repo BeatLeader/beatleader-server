@@ -34,6 +34,7 @@ public static partial class MapListUtils
                                                  Requirements mapRequirements = Requirements.Ignore,
                                                  Operation allRequirements = Operation.Any,
                                                  SongStatus songStatus = SongStatus.None,
+                                                 LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
                                                  MyType mytype = MyType.None,
                                                  float? starsFrom = null,
                                                  float? starsTo = null,
@@ -72,7 +73,7 @@ public static partial class MapListUtils
               .WhereMode(mode)
               .WhereMapRequirements(mapRequirements, allRequirements)
               .WhereSongStatus(songStatus)
-              .WhereMyType(mytype, currentPlayer)
+              .WhereMyType(mytype, currentPlayer, leaderboardContext)
               .WhereRatingFrom(RatingType.Stars, starsFrom)
               .WhereRatingFrom(RatingType.Acc, accRatingFrom)
               .WhereRatingFrom(RatingType.Pass, passRatingFrom)
@@ -81,5 +82,5 @@ public static partial class MapListUtils
               .WhereRatingTo(RatingType.Acc, accRatingTo)
               .WhereRatingTo(RatingType.Pass, passRatingTo)
               .WhereRatingTo(RatingType.Tech, techRatingTo)
-              .Sort(sortBy, order, type, mytype, dateFrom, dateTo, searchId, currentPlayer);
+              .Sort(sortBy, order, type, mytype, dateFrom, dateTo, searchId, currentPlayer, leaderboardContext);
 }

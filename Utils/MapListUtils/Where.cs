@@ -20,7 +20,7 @@ public static partial class MapListUtils
             Type.Reweighted  => sequence.Where(leaderboard => leaderboard.Reweight != null && leaderboard.Reweight.Finished),
             Type.Unranked    => sequence.Where(leaderboard => leaderboard.Difficulty.Status == DifficultyStatus.unranked),
             Type.Ost         => sequence.Where(leaderboard => leaderboard.Difficulty.Status == DifficultyStatus.OST),
-            _                => sequence,
+            _                => sequence.Where(leaderboard => leaderboard.Difficulty.Status != DifficultyStatus.outdated),
         };
 
     private static IQueryable<Leaderboard> WhereMapType(this IQueryable<Leaderboard> sequence, int? mapType, Operation allTypes)
@@ -49,7 +49,7 @@ public static partial class MapListUtils
         return sequence.Where(leaderboard => leaderboard.Difficulty.Status != DifficultyStatus.outdated && leaderboard.Song.ExternalStatuses.FirstOrDefault(s => status.HasFlag(s.Status)) != null);
     }
 
-    private static IQueryable<Leaderboard> WhereMyType(this IQueryable<Leaderboard> sequence, MyType mytype, Player? currentPlayer)
+    private static IQueryable<Leaderboard> WhereMyType(this IQueryable<Leaderboard> sequence, MyType mytype, Player? currentPlayer, LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
     {
         int mapperId = 0;
         string? currentId = currentPlayer?.Id;
@@ -68,8 +68,8 @@ public static partial class MapListUtils
 
         return mytype switch
         {
-            MyType.Played          => sequence.Where(leaderboard => leaderboard.Scores.FirstOrDefault(score => score.PlayerId == currentId) != null),
-            MyType.Unplayed        => sequence.Where(leaderboard => leaderboard.Scores.FirstOrDefault(score => score.PlayerId == currentId) == null),
+            MyType.Played          => sequence.Where(leaderboard => leaderboard.Scores.FirstOrDefault(score => score.PlayerId == currentId && score.ValidContexts.HasFlag(leaderboardContext)) != null),
+            MyType.Unplayed        => sequence.Where(leaderboard => leaderboard.Scores.FirstOrDefault(score => score.PlayerId == currentId && score.ValidContexts.HasFlag(leaderboardContext)) == null),
             MyType.MyNominated     => sequence.Where(leaderboard => leaderboard.Qualification != null && leaderboard.Qualification.RTMember == currentId),
             MyType.OthersNominated => sequence.Where(leaderboard => leaderboard.Qualification != null && leaderboard.Qualification.RTMember != currentId),
             MyType.MyMaps          => sequence.Where(leaderboard => leaderboard.Song.MapperId == mapperId),

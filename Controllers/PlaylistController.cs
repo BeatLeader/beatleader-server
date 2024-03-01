@@ -618,6 +618,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] Requirements mapRequirements = Requirements.Ignore,
             [FromQuery] Operation allRequirements = Operation.Any,
             [FromQuery] SongStatus songStatus = SongStatus.None,
+            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery] MyType mytype = MyType.None,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
@@ -645,7 +646,7 @@ namespace BeatLeader_Server.Controllers
 
             int searchCount = 0;
             sequence = sequence
-                .Filter(_context, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
+                .Filter(_context, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
             (sequence, int totalMatches) = await sequence.WherePage(0, count);
 
             var diffsList = sequence.Select(s => s.Song.Hash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash);
