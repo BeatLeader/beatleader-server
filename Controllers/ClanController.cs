@@ -193,6 +193,7 @@ namespace BeatLeader_Server.Controllers
                     Description = clan.Description,
                     Bio = clan.Bio,
                     RichBio = clan.RichBio,
+                    DiscordInvite = clan.DiscordInvite,
                     PlayersCount = clan.PlayersCount,
                     Pp = clan.Pp,
                     Rank = clan.Rank,
@@ -353,7 +354,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             var rankingList = await rankings
-            .TagWithCallSite()
+            
             .Skip((page - 1) * count)
             .Take(count)
             .Select(cr => new ClanRankingResponse {
@@ -399,11 +400,12 @@ namespace BeatLeader_Server.Controllers
                     MaxStreak = s.MaxStreak,
                 }).FirstOrDefault(),
             })
+            .TagWithCallSite()
+            .AsSplitQuery()
             .ToListAsync();
 
             if (sortBy == "tohold" || sortBy == "toconquer") {
                 var pps = await rankings
-                    .TagWithCallSite()
                     .Skip((page - 1) * count)
                     .Take(count)
                     .Select(t => new { t.LeaderboardId, Pp = t.Pp - t
@@ -413,6 +415,8 @@ namespace BeatLeader_Server.Controllers
                         .Select(cr => cr.Pp)
                         .First()
                     })
+                    .TagWithCallSite()
+                    .AsSplitQuery()
                     .ToListAsync();
 
                 foreach (var item in pps)

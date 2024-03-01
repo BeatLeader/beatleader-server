@@ -394,17 +394,19 @@ namespace BeatLeader_Server.Utils
         public static async Task UpdateClanRankingRanks(AppContext context) {
             var clans = await context
                 .Clans
-                .Where(c => c.CaptureLeaderboardsCount > 0)
+                .Select(c => new { Clan = c, CaptureLeaderboardsCount = c.CapturedLeaderboards.Count() })
                 .OrderByDescending(c => c.CaptureLeaderboardsCount)
                 .ToListAsync();
-
             var rank = 1;
-            foreach (var clan in clans)
+            foreach (var c in clans)
             {
+                var clan = c.Clan;
+                clan.CaptureLeaderboardsCount = c.CaptureLeaderboardsCount;
+                clan.RankedPoolPercentCaptured = ((float)clan.CaptureLeaderboardsCount) / (float)ConstantsService.RankedMapCount;
+
                 clan.Rank = rank;
                 rank++;
             }
-
             await context.BulkSaveChangesAsync();
         }
 

@@ -572,6 +572,61 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpPut("~/clan/discordInvite")]
+        public async Task<ActionResult> UpdateDiscordInvite(
+            [FromQuery] string link,
+            [FromQuery] int? id = null)
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null) {
+                currentID = await HttpContext.CurrentOauthUserID(_context, CustomScopes.Clan);
+            }
+
+            var player = await _context.Players.FindAsync(currentID);
+
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            if (player.Banned)
+            {
+                return BadRequest("You are banned!");
+            }
+
+            Clan? clan = null;
+            var clanManager = await _context.ClanManagers.FirstOrDefaultAsync(cm => 
+                                                cm.ClanId == id && 
+                                                cm.PlayerId == currentID && 
+                                                cm.Permissions.HasFlag(ClanPermissions.Edit));
+            if (id != null && player != null && (clanManager != null || player.Role.Contains("admin")))
+            {
+                clan = await _context.Clans.FindAsync(id);
+            }
+            else
+            {
+                clan = await _context.Clans.FirstOrDefaultAsync(c => c.LeaderID == currentID);
+            }
+            if (clan == null)
+            {
+                return NotFound();
+            }
+
+            if (link != clan.DiscordInvite) {
+                clan.DiscordInvite = link;
+                _context.ClanUpdates.Add(new ClanUpdate {
+                    Clan = clan,
+                    Player = player,
+                    Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
+                    ChangeDescription = "Updated Discord invite"
+                });
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
 
         [HttpPost("~/clan/invite")]
         public async Task<ActionResult> InviteToClan(
