@@ -10,6 +10,7 @@ using static BeatLeader_Server.Utils.ResponseUtils;
 using Type = BeatLeader_Server.Enums.Type;
 using Lib.ServerTiming;
 using Microsoft.EntityFrameworkCore.Infrastructure.Internal;
+using System.Net;
 
 namespace BeatLeader_Server.Controllers {
     public class LeaderboardController : Controller {
@@ -1679,13 +1680,15 @@ namespace BeatLeader_Server.Controllers {
             return result;
         }
 
-        [HttpPost("~/leaderboards/feature/{id}")]
+        [HttpPost("~/leaderboards/feature")]
         public async Task<ActionResult> FeatureLeaderboards(
-               int id,
                [FromQuery] string title,
                [FromQuery] string? owner = null,
                [FromQuery] string? ownerCover = null,
-               [FromQuery] string? ownerLink = null)
+               [FromQuery] string? ownerLink = null,
+               [FromQuery] int? id = null,
+               [FromQuery] string? playlistLink = null,
+               [FromQuery] string? linkToSave = null)
         {
             if (HttpContext != null)
             {
@@ -1700,12 +1703,17 @@ namespace BeatLeader_Server.Controllers {
 
             dynamic? playlist = null;
 
-            using (var stream = await _s3Client.DownloadPlaylist(id + ".bplist"))
-            {
-                if (stream != null)
+            if (id != null) {
+                using (var stream = await _s3Client.DownloadPlaylist(id + ".bplist"))
                 {
-                    playlist = stream.ObjectFromStream();
+                    if (stream != null)
+                    {
+                        playlist = stream.ObjectFromStream();
+                    }
                 }
+            } else {
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(playlistLink);
+                playlist = await request.DynamicResponse();
             }
 
             if (playlist == null)
@@ -1733,7 +1741,7 @@ namespace BeatLeader_Server.Controllers {
 
             var featuredPlaylist = new FeaturedPlaylist
             {
-                PlaylistLink = $"https://beatleader.xyz/playlist/{id}",
+                PlaylistLink = linkToSave ?? $"https://beatleader.xyz/playlist/{id}",
                 Cover = imageUrl,
                 Title = title,
 
@@ -1745,28 +1753,47 @@ namespace BeatLeader_Server.Controllers {
             var leaderboards = new List<Leaderboard>();
             foreach (var song in playlist.songs)
             {
-                foreach (var diff in song.difficulties)
-                {
-                    string hash = song.hash.ToLower();
-                    string diffName = diff.name.ToLower();
-                    string characteristic = diff.characteristic.ToLower();
-
-                    var lb = await _context.Leaderboards.Where(lb =>
-                            lb.Song.Hash.ToLower() == hash &&
-                            lb.Difficulty.DifficultyName.ToLower() == diffName &&
-                            lb.Difficulty.ModeName.ToLower() == characteristic)
-                            .Include(lb => lb.FeaturedPlaylists)
-                            .FirstOrDefaultAsync();
-
-                    if (lb != null)
+                string hash = song.hash.ToLower();
+                if (ExpandantoObject.HasProperty(song, "difficulties")){
+                    foreach (var diff in song.difficulties)
                     {
-                        if (lb.FeaturedPlaylists == null)
-                        {
-                            lb.FeaturedPlaylists = new List<FeaturedPlaylist>();
-                        }
+                        string diffName = diff.name.ToLower();
+                        string characteristic = diff.characteristic.ToLower();
 
-                        lb.FeaturedPlaylists.Add(featuredPlaylist);
+                        var lb = await _context.Leaderboards.Where(lb =>
+                                lb.Song.Hash.ToLower() == hash &&
+                                lb.Difficulty.DifficultyName.ToLower() == diffName &&
+                                lb.Difficulty.ModeName.ToLower() == characteristic)
+                                .Include(lb => lb.FeaturedPlaylists)
+                                .FirstOrDefaultAsync();
+
+                        if (lb != null)
+                        {
+                            if (lb.FeaturedPlaylists == null)
+                            {
+                                lb.FeaturedPlaylists = new List<FeaturedPlaylist>();
+                            }
+
+                            lb.FeaturedPlaylists.Add(featuredPlaylist);
+                        }
                     }
+                } else {
+                    var lbs = await _context.Leaderboards.Where(lb =>
+                                lb.Song.Hash.ToLower() == hash)
+                                .Include(lb => lb.FeaturedPlaylists)
+                                .ToListAsync();
+                    foreach (var lb in lbs)
+                    {
+                        if (lb != null)
+                        {
+                            if (lb.FeaturedPlaylists == null)
+                            {
+                                lb.FeaturedPlaylists = new List<FeaturedPlaylist>();
+                            }
+
+                            lb.FeaturedPlaylists.Add(featuredPlaylist);
+                        }
+                    }  
                 }
             }
 

@@ -327,7 +327,7 @@ namespace BeatLeader_Server.Controllers
                     break;
                 case "tohold":
                     rankings = rankings
-                        .Where(cr => cr.Rank == 1)
+                        .Where(cr => cr.Rank == 1 && cr.Leaderboard.ClanRanking.Count > 1)
                         .Order(
                             order.Reverse(), 
                             t => t.Pp - t
@@ -408,12 +408,12 @@ namespace BeatLeader_Server.Controllers
                 var pps = await rankings
                     .Skip((page - 1) * count)
                     .Take(count)
-                    .Select(t => new { t.LeaderboardId, Pp = t.Pp - t
+                    .Select(t => new { t.LeaderboardId, Pp = t.Pp, SecondPp = t
                         .Leaderboard
                         .ClanRanking
                         .Where(cr => cr.ClanId != clan.Id && (cr.Rank == (sortBy == "tohold" ? 2 : 1)))
                         .Select(cr => cr.Pp)
-                        .First()
+                        .FirstOrDefault()
                     })
                     .TagWithCallSite()
                     .AsSplitQuery()
@@ -421,7 +421,7 @@ namespace BeatLeader_Server.Controllers
 
                 foreach (var item in pps)
                 {
-                    rankingList.First(cr => cr.LeaderboardId == item.LeaderboardId).Pp = item.Pp;
+                    rankingList.First(cr => cr.LeaderboardId == item.LeaderboardId).Pp = item.Pp - item.SecondPp;
                 }
             }
 
