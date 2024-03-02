@@ -53,7 +53,9 @@ namespace BeatLeader_Server.Services
             var oldPp = player.Pp;
             var oldRank = player.Rank;
 
-            await _context.RecalculatePPAndRankFastGeneral(player);
+            (var newPp, var newRank, var newCountryRank) = await _context.RecalculatePPAndRankFaster(player);
+            player.Rank = newRank;
+            player.Pp = newPp;
 
             if (score != null && score.ScoreImprovement != null)
             {
@@ -63,7 +65,7 @@ namespace BeatLeader_Server.Services
 
             await _context.SaveChangesAsync();
 
-            return (player.Pp - oldPp, player.Rank - oldRank);
+            return (newPp - oldPp, newRank - oldRank);
         }
 
         private async Task<(float, int)> RefreshLeaderboardPlayers(string id, AppContext _context)
