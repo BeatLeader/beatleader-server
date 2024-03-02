@@ -411,7 +411,6 @@ namespace BeatLeader_Server.Controllers
             bool allow = false) {
 
             if (!player.Bot && player.Banned) return (BadRequest("You are banned!"), false);
-            if (resultScore.BaseScore > maxScore) return (BadRequest("Score is bigger than max possible on this map!"), false);
 
             var wrappedCurrentScores = currentScores.Select(s => new CurrentScoreWrapper {
                 Score = s,
@@ -900,6 +899,16 @@ namespace BeatLeader_Server.Controllers
                 if (statistic == null)
                 {
                     await SaveFailedScore(transaction, resultScore, leaderboard, "Could not recalculate score from replay. Error: " + statisticError);
+                    return;
+                }
+
+                float maxScore = leaderboard.Difficulty.MaxScore;
+                // V3 notes at the start may lead to 100+ accuracy in some cases
+                if (leaderboard.Difficulty.Requirements.HasFlag(Requirements.V3)) {
+                    maxScore *= 1.1f;
+                }
+                if (resultScore.BaseScore > maxScore) {
+                    await SaveFailedScore(transaction, resultScore, leaderboard, "Score is bigger than max possible on this map!");
                     return;
                 }
 
