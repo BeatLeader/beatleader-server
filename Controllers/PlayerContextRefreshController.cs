@@ -256,7 +256,7 @@ namespace BeatLeader_Server.Controllers {
                     PlayerId = s.PlayerId
                 })
                 .ToListAsync();
-            var playerMap = _context.PlayerContextExtensions.ToDictionary(ce => ce.PlayerId, ce => ce.Id);
+            var playerMap = _context.PlayerContextExtensions.Where(ce => ce.Context == context).ToDictionary(ce => ce.PlayerId, ce => ce.Id);
 
             var scoreGroups = scores.GroupBy(s => s.PlayerId).ToList();
             var tasks = new List<Task>();

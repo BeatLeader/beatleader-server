@@ -172,6 +172,7 @@ namespace BeatLeader_Server.Controllers
                 PlayerChangesCallback = playerChangesCallback,
                 ClanRankingDiscordHook = clanRankingDiscordHook,
                 RichBio = "",
+                DiscordInvite = ""
             };
 
             _context.Clans.Add(newClan);
