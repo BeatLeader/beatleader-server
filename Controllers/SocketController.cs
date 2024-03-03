@@ -167,7 +167,22 @@ namespace BeatLeader_Server.Controllers
             try {
                 var scoreToPublish = ScoreWithMyScore(score, 0);
                 if (scoreToPublish.Leaderboard.Song == null) {
-                    scoreToPublish.Leaderboard.Song = await context.Songs.Where(s => s.Id == score.Leaderboard.SongId).FirstOrDefaultAsync();
+                    scoreToPublish.Leaderboard.Song = await context
+                        .Songs
+                        .Where(s => s.Id == score.Leaderboard.SongId)
+                        .Select(s => new CompactSongResponse {
+                            Id = s.Id,
+                            Hash = s.Hash,
+                            Name = s.Name,
+            
+                            SubName = s.SubName,
+                            Author = s.Author,
+                            Mapper = s.Mapper,
+                            MapperId = s.MapperId,
+                            CollaboratorIds = s.CollaboratorIds,
+                            CoverImage = s.CoverImage
+                        })
+                        .FirstOrDefaultAsync();
                 }
                 if (scoreToPublish.Leaderboard.Difficulty != null && !scoreToPublish.Leaderboard.Difficulty.Status.WithRating()) {
                     scoreToPublish.Leaderboard.HideRatings();
@@ -192,7 +207,22 @@ namespace BeatLeader_Server.Controllers
             try {
                 var scoreToPublish = ScoreWithMyScore(score, 0);
                 if (score.Leaderboard?.SongId != null && scoreToPublish.Leaderboard.Song == null) {
-                    scoreToPublish.Leaderboard.Song = await context.Songs.Where(s => s.Id == score.Leaderboard.SongId).FirstOrDefaultAsync();
+                    scoreToPublish.Leaderboard.Song = await context
+                        .Songs
+                        .Where(s => s.Id == score.Leaderboard.SongId)
+                        .Select(s => new CompactSongResponse {
+                            Id = s.Id,
+                            Hash = s.Hash,
+                            Name = s.Name,
+            
+                            SubName = s.SubName,
+                            Author = s.Author,
+                            Mapper = s.Mapper,
+                            MapperId = s.MapperId,
+                            CollaboratorIds = s.CollaboratorIds,
+                            CoverImage = s.CoverImage
+                        })
+                        .FirstOrDefaultAsync();
                 }
                 var socketMessage = new SocketMessage { Message = action, Data = score };
 

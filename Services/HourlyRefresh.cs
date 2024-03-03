@@ -9,6 +9,7 @@ using BeatLeader_Server.BeatMapEvaluator;
 using BeatLeader_Server.Models;
 using Google.Apis.YouTube.v3;
 using Google.Apis.Services;
+using BeatLeader_Server.Controllers;
 
 namespace BeatLeader_Server.Services {
     public class HourlyRefresh : BackgroundService {
@@ -31,6 +32,7 @@ namespace BeatLeader_Server.Services {
 
                     await RefreshClans();
                     await FetchCurated();
+                    await RefreshMapsPageEndpoints();
                     await CheckMaps();
                     await CheckNoodleMonday();
 
@@ -236,6 +238,13 @@ namespace BeatLeader_Server.Services {
                 }
 
                 await _context.SaveChangesAsync();
+            }
+        }
+        public async Task RefreshMapsPageEndpoints() {
+            using (var scope = _serviceScopeFactory.CreateScope()) {
+                var songSuggestController = scope.ServiceProvider.GetRequiredService<SongSuggestController>();
+                await songSuggestController.RefreshTrending();
+                await songSuggestController.RefreshCurated();
             }
         }
 

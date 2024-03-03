@@ -145,9 +145,6 @@ namespace BeatLeader_Server.Controllers {
             var resultList = await sequence
                     .Skip((page - 1) * count)
                     .Take(count)
-                    .Include(s => s.Leaderboard)
-                    .ThenInclude(l => l.Difficulty)
-                    .ThenInclude(d => d.ModifiersRating)
                     .Select(s => new ScoreResponseWithMyScore {
                         Id = s.Id,
                         BaseScore = s.BaseScore,
@@ -179,27 +176,29 @@ namespace BeatLeader_Server.Controllers {
                             Id = s.Player.Id,
                             Name = s.Player.Name,
                             Platform = s.Player.Platform,
-                            Avatar = s.Player.Avatar,
                             Country = s.Player.Country,
 
                             Pp = s.Player.Pp,
                             Rank = s.Player.Rank,
                             CountryRank = s.Player.CountryRank,
                             Role = s.Player.Role,
-                            Socials = s.Player.Socials,
-                            PatreonFeatures = s.Player.PatreonFeatures,
-                            ProfileSettings = s.Player.ProfileSettings,
-                            Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
-                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                         },
                         ScoreImprovement = s.ScoreImprovement,
-                        RankVoting = s.Score.RankVoting,
-                        Metadata = s.Score.Metadata,
-                        Country = s.Score.Country,
                         Offsets = s.Score.ReplayOffsets,
-                        Leaderboard = new LeaderboardResponse {
+                        Leaderboard = new CompactLeaderboardResponse {
                             Id = s.LeaderboardId,
-                            Song = s.Leaderboard.Song,
+                            Song = new CompactSongResponse {
+                                Id = s.Leaderboard.Song.Id,
+                                Hash = s.Leaderboard.Song.Hash,
+                                Name = s.Leaderboard.Song.Name,
+            
+                                SubName = s.Leaderboard.Song.SubName,
+                                Author = s.Leaderboard.Song.Author,
+                                Mapper = s.Leaderboard.Song.Mapper,
+                                MapperId = s.Leaderboard.Song.MapperId,
+                                CollaboratorIds = s.Leaderboard.Song.CollaboratorIds,
+                                CoverImage = s.Leaderboard.Song.CoverImage,
+                            },
                             Difficulty = new DifficultyResponse {
                                 Id = s.Leaderboard.Difficulty.Id,
                                 Value = s.Leaderboard.Difficulty.Value,
@@ -207,8 +206,6 @@ namespace BeatLeader_Server.Controllers {
                                 DifficultyName = s.Leaderboard.Difficulty.DifficultyName,
                                 ModeName = s.Leaderboard.Difficulty.ModeName,
                                 Status = s.Leaderboard.Difficulty.Status,
-                                ModifierValues = s.Leaderboard.Difficulty.ModifierValues,
-                                ModifiersRating = s.Leaderboard.Difficulty.ModifiersRating,
                                 NominatedTime  = s.Leaderboard.Difficulty.NominatedTime,
                                 QualifiedTime  = s.Leaderboard.Difficulty.QualifiedTime,
                                 RankedTime = s.Leaderboard.Difficulty.RankedTime,
@@ -309,9 +306,20 @@ namespace BeatLeader_Server.Controllers {
                         Metadata = s.Score.Metadata,
                         Country = s.Score.Country,
                         Offsets = s.Score.ReplayOffsets,
-                        Leaderboard = new LeaderboardResponse {
+                        Leaderboard = new CompactLeaderboardResponse {
                             Id = s.LeaderboardId,
-                            Song = s.Leaderboard.Song,
+                            Song = new CompactSongResponse {
+                                Id = s.Leaderboard.Song.Id,
+                                Hash = s.Leaderboard.Song.Hash,
+                                Name = s.Leaderboard.Song.Name,
+            
+                                SubName = s.Leaderboard.Song.SubName,
+                                Author = s.Leaderboard.Song.Author,
+                                Mapper = s.Leaderboard.Song.Mapper,
+                                MapperId = s.Leaderboard.Song.MapperId,
+                                CollaboratorIds = s.Leaderboard.Song.CollaboratorIds,
+                                CoverImage = s.Leaderboard.Song.CoverImage,
+                            },
                             Difficulty = new DifficultyResponse {
                                 Id = s.Leaderboard.Difficulty.Id,
                                 Value = s.Leaderboard.Difficulty.Value,
@@ -421,9 +429,6 @@ namespace BeatLeader_Server.Controllers {
             var resultList = await sequence
                     .Skip((page - 1) * count)
                     .Take(count)
-                    .Include(s => s.Leaderboard)
-                    .ThenInclude(l => l.Difficulty)
-                    .ThenInclude(d => d.ModifiersRating)
                     .Select(s => new ScoreResponseWithMyScore {
                         Id = s.Id,
                         BaseScore = s.BaseScore,
@@ -455,25 +460,28 @@ namespace BeatLeader_Server.Controllers {
                             Id = s.Player.Id,
                             Name = s.Player.Name,
                             Platform = s.Player.Platform,
-                            Avatar = s.Player.Avatar,
                             Country = s.Player.Country,
 
                             Pp = s.Player.Pp,
                             Rank = s.Player.Rank,
                             CountryRank = s.Player.CountryRank,
-                            Role = s.Player.Role,
-                            Socials = s.Player.Socials,
-                            ProfileSettings = s.Player.ProfileSettings,
-                            Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                         },
                         ScoreImprovement = s.ScoreImprovement,
-                        RankVoting = s.RankVoting,
-                        Metadata = s.Metadata,
-                        Country = s.Country,
                         Offsets = s.ReplayOffsets,
-                        Leaderboard = new LeaderboardResponse {
+                        Leaderboard = new CompactLeaderboardResponse {
                             Id = s.LeaderboardId,
-                            Song = s.Leaderboard.Song,
+                            Song = new CompactSongResponse {
+                                Id = s.Leaderboard.Song.Id,
+                                Hash = s.Leaderboard.Song.Hash,
+                                Name = s.Leaderboard.Song.Name,
+            
+                                SubName = s.Leaderboard.Song.SubName,
+                                Author = s.Leaderboard.Song.Author,
+                                Mapper = s.Leaderboard.Song.Mapper,
+                                MapperId = s.Leaderboard.Song.MapperId,
+                                CollaboratorIds = s.Leaderboard.Song.CollaboratorIds,
+                                CoverImage = s.Leaderboard.Song.CoverImage,
+                            },
                             Difficulty = new DifficultyResponse {
                                 Id = s.Leaderboard.Difficulty.Id,
                                 Value = s.Leaderboard.Difficulty.Value,
@@ -481,8 +489,6 @@ namespace BeatLeader_Server.Controllers {
                                 DifficultyName = s.Leaderboard.Difficulty.DifficultyName,
                                 ModeName = s.Leaderboard.Difficulty.ModeName,
                                 Status = s.Leaderboard.Difficulty.Status,
-                                ModifierValues = s.Leaderboard.Difficulty.ModifierValues,
-                                ModifiersRating = s.Leaderboard.Difficulty.ModifiersRating,
                                 NominatedTime  = s.Leaderboard.Difficulty.NominatedTime,
                                 QualifiedTime  = s.Leaderboard.Difficulty.QualifiedTime,
                                 RankedTime = s.Leaderboard.Difficulty.RankedTime,

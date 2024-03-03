@@ -1,4 +1,5 @@
 ﻿using Amazon.S3;
+using BeatLeader_Server.Enums;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Models.SongSuggest;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -20,17 +22,21 @@ namespace BeatLeader_Server.Controllers
 
         private readonly IServerTiming _serverTiming;
         private readonly IConfiguration _configuration;
+        private readonly LeaderboardController _leaderboardController;
 
         public SongSuggestController(
             AppContext context,
             IWebHostEnvironment env,
             IServerTiming serverTiming,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            LeaderboardController leaderboardController)
         {
             _context = context;
             _serverTiming = serverTiming;
             _s3Client = configuration.GetS3Client();
             _configuration = configuration;
+            
+            _leaderboardController = leaderboardController;
         }
 
         [HttpGet("~/songsuggest")]
@@ -252,6 +258,83 @@ namespace BeatLeader_Server.Controllers
                 SongsFile = songsfilename
             });
             await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpGet("~/maps/curated/")]
+        public async Task<ActionResult<ResponseWithMetadata<LeaderboardInfoResponse>>> CuratedMaps()
+        {
+            var stream = await _s3Client.DownloadAsset("curatedmaps-list.json");
+
+            return File(stream, "application/json");
+        }
+
+        [HttpGet("~/maps/curated/refresh")]
+        public async Task<ActionResult> RefreshCurated()
+        {
+            if (HttpContext != null && !(await HttpContext.ItsAdmin(_context))) return Unauthorized();
+
+            var currentId = HttpContext.CurrentUserID(_context);
+            var curated = _leaderboardController.GetAllGroupped(1, 3, SortBy.Timestamp, Order.Desc, type: Enums.Type.All, songStatus: SongStatus.Curated);
+
+            var response = curated.Result.Value;
+            DefaultContractResolver contractResolver = new DefaultContractResolver
+            {
+                NamingStrategy = new CamelCaseNamingStrategy()
+            };
+            await _s3Client.UploadStream("curatedmaps-list.json", S3Container.assets, new BinaryData(JsonConvert.SerializeObject(response, new JsonSerializerSettings
+            {
+                ContractResolver = contractResolver
+            })).ToStream());
+
+            return Ok();
+        }
+
+        [HttpGet("~/maps/trending/")]
+        public async Task<ActionResult<ResponseWithMetadata<LeaderboardInfoResponse>>> TrendingMaps()
+        {
+            var stream = await _s3Client.DownloadAsset("trendingmaps-list.json");
+
+            return File(stream, "application/json");
+        }
+
+        [HttpGet("~/maps/trending/refresh")]
+        public async Task<ActionResult> RefreshTrending()
+        {
+            if (HttpContext != null && !(await HttpContext.ItsAdmin(_context))) return Unauthorized();
+
+            int timeset = Time.UnixNow();
+            var currentId = HttpContext.CurrentUserID(_context);
+            var topToday = _leaderboardController.GetAll(1, 1, SortBy.PlayCount, date_from: timeset - 60 * 60 * 24, overrideCurrentId: currentId);
+            var topWeek = _leaderboardController.GetAll(1, 1, SortBy.PlayCount, date_from: timeset - 60 * 60 * 24 * 7, overrideCurrentId: currentId);
+            var topVoted = _leaderboardController.GetAll(1, 1, SortBy.VoteCount, date_from: timeset - 60 * 60 * 24 * 30, overrideCurrentId: currentId);
+
+            Task.WaitAll([topToday, topWeek, topVoted]);
+
+            var response = new ResponseWithMetadata<LeaderboardInfoResponse> {
+                Metadata = new Metadata {
+                    Page = 1,
+                    ItemsPerPage = 3,
+                    Total = topToday.Result.Value.Metadata.Total + topWeek.Result.Value.Metadata.Total + topVoted.Result.Value.Metadata.Total
+                },
+                Data = topToday.Result.Value.Data.Concat(topWeek.Result.Value.Data).Concat(topVoted.Result.Value.Data)
+            };
+            DefaultContractResolver contractResolver = new DefaultContractResolver
+            {
+                NamingStrategy = new CamelCaseNamingStrategy()
+            };
+            var songsfilename = $"trendingmaps-{timeset}-list.json";
+            await _s3Client.UploadStream(songsfilename, S3Container.assets, new BinaryData(JsonConvert.SerializeObject(response, new JsonSerializerSettings
+            {
+                ContractResolver = contractResolver
+            })).ToStream());
+
+            songsfilename = "trendingmaps-list.json";
+            await _s3Client.UploadStream(songsfilename, S3Container.assets, new BinaryData(JsonConvert.SerializeObject(response, new JsonSerializerSettings
+            {
+                ContractResolver = contractResolver
+            })).ToStream());
 
             return Ok();
         }
