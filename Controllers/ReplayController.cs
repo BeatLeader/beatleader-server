@@ -157,28 +157,17 @@ namespace BeatLeader_Server.Controllers
             ReplayOffsets? offsets;
             byte[] replayData;
 
-            int length = 0;
-            List<byte> replayDataList = new List<byte>(); 
-            byte[] buffer = ArrayPool<byte>.Shared.Rent(4096);
-
-            while (true)
+            using (var ms = new MemoryStream(5))
             {
-                var bytesRemaining = await replayStream.ReadAsync(buffer, offset: 0, buffer.Length);
-                if (bytesRemaining == 0)
+                await replayStream.CopyToAsync(ms);
+                long length = ms.Length;
+                if (length > 200000000)
                 {
-                    break;
-                }
-                length += bytesRemaining;
-                if (length > 200000000) {
-                    ArrayPool<byte>.Shared.Return(buffer);
                     return BadRequest("Replay is too big to save, sorry");
                 }
-                replayDataList.AddRange(new Span<byte>(buffer, 0, bytesRemaining).ToArray());
+                replayData = ms.ToArray();
             }
 
-            ArrayPool<byte>.Shared.Return(buffer);
-
-            replayData = replayDataList.ToArray();
             try
             {
                 (replay, offsets) = ReplayDecoder.ReplayDecoder.Decode(replayData);
