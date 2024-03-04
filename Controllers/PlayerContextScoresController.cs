@@ -97,7 +97,7 @@ namespace BeatLeader_Server.Controllers {
                     .Include(s => s.ScoreImprovement)
                     .Skip((page - 1) * count)
                     .Take(count)
-                    .Select(s => new ScoreResponseWithMyScore {
+                    .Select(s => new ScoreResponseWithMyScoreAndContexts {
                         Id = s.ScoreId ?? 0,
                         BaseScore = s.BaseScore,
                         ModifiedScore = s.ModifiedScore,
@@ -182,7 +182,25 @@ namespace BeatLeader_Server.Controllers {
                         AccLeft = s.Score.AccLeft,
                         AccRight = s.Score.AccRight,
                         MaxStreak = s.Score.MaxStreak,
-                        ContextExtensions = s.Score.ContextExtensions
+                        ContextExtensions = s.Score.ContextExtensions.Select(ce => new ScoreContextExtensionResponse {
+                            Id = ce.Id,
+                            PlayerId = ce.PlayerId,
+        
+                            Weight = ce.Weight,
+                            Rank = ce.Rank,
+                            BaseScore = ce.BaseScore,
+                            ModifiedScore = ce.ModifiedScore,
+                            Accuracy = ce.Accuracy,
+                            Pp = ce.Pp,
+                            PassPP = ce.PassPP,
+                            AccPP = ce.AccPP,
+                            TechPP = ce.TechPP,
+                            BonusPp = ce.BonusPp,
+                            Modifiers = ce.Modifiers,
+
+                            Context = ce.Context,
+                            ScoreImprovement = ce.ScoreImprovement,
+                        }).ToList()
                     })
                     .ToListAsync();
 

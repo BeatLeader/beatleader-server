@@ -178,7 +178,6 @@ namespace BeatLeader_Server.Controllers
             Player? player = await _context
                 .Players
                 .Include(p => p.ScoreStats)
-                .Include(p => p.EventsParticipating)
                 .Include(p => p.ProfileSettings)
                 .Include(p => p.Clans)
                 .Include(p => p.ContextExtensions)
@@ -772,7 +771,6 @@ namespace BeatLeader_Server.Controllers
                     LastWeekRank = p.LastWeekRank,
                     LastWeekCountryRank = p.LastWeekCountryRank,
                     Role = p.Player.Role,
-                    EventsParticipating = p.Player.EventsParticipating,
                     PatreonFeatures = p.Player.PatreonFeatures,
                     ProfileSettings = p.Player.ProfileSettings,
                     ClanOrder = p.Player.ClanOrder,
@@ -992,6 +990,23 @@ namespace BeatLeader_Server.Controllers
             }
 
             return request;
+        }
+
+        [HttpGet("~/player/{id}/eventsparticipating")]
+        [SwaggerOperation(Summary = "Get events where player participated", Description = "Retrieves a chronological list of events player with such ID took part of.")]
+        [SwaggerResponse(200, "Returns list of events player took part", typeof(ParticipatingEventResponse))]
+        [SwaggerResponse(404, "Player not found")]
+        public async Task<ActionResult<ICollection<ParticipatingEventResponse>>> GetParticipatingEvents(
+            [FromRoute, SwaggerParameter("The ID of the player")] string id)
+        {
+            return await _context
+                .EventPlayer
+                .Where(ep => ep.PlayerId == id)
+                .OrderByDescending(ep => ep.Event.EndDate)
+                .Select(ep => new ParticipatingEventResponse {
+                    Id = ep.EventRankingId,
+                    Name = ep.EventName
+                }).ToListAsync();
         }
 
         [NonAction]

@@ -53,16 +53,13 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string countries = ""
             )
         {
-            IQueryable<Player> request = _context
-                .Players
-                .Include(p => p.ScoreStats)
-                .Include(p => p.EventsParticipating)
-                .Include(p => p.ProfileSettings)
-                .Where(p => !p.Banned);
+            IQueryable<EventPlayer> request = _context
+                .EventPlayer
+                .Where(p => p.EventRankingId == id);
             
             if (countries.Length != 0)
             {
-                var player = Expression.Parameter(typeof(Player), "p");
+                var player = Expression.Parameter(typeof(EventPlayer), "p");
 
                 // 1 != 2 is here to trigger `OrElse` further the line.
                 var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
@@ -70,12 +67,12 @@ namespace BeatLeader_Server.Controllers
                 {
                     exp = Expression.OrElse(exp, Expression.Equal(Expression.Property(player, "Country"), Expression.Constant(term)));
                 }
-                request = request.Where((Expression<Func<Player, bool>>)Expression.Lambda(exp, player));
+                request = request.Where((Expression<Func<EventPlayer, bool>>)Expression.Lambda(exp, player));
             }
 
             if (search.Length != 0)
             {
-                var player = Expression.Parameter(typeof(Player), "p");
+                var player = Expression.Parameter(typeof(EventPlayer), "p");
 
                 var contains = "".GetType().GetMethod("Contains", new[] { typeof(string) });
 
@@ -83,13 +80,17 @@ namespace BeatLeader_Server.Controllers
                 var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
                 foreach (var term in search.ToLower().Split(","))
                 {
-                    exp = Expression.OrElse(exp, Expression.Call(Expression.Property(player, "Name"), contains, Expression.Constant(term)));
+                    exp = Expression.OrElse(exp, Expression.Call(Expression.Property(player, "PlayerName"), contains, Expression.Constant(term)));
                 }
-                request = request.Where((Expression<Func<Player, bool>>)Expression.Lambda(exp, player));
+                request = request.Where((Expression<Func<EventPlayer, bool>>)Expression.Lambda(exp, player));
             }
 
-            var players = request
-                .Where(p => p.EventsParticipating.FirstOrDefault(e => e.EventId == id) != null)
+            var eventPlayers = request.OrderByDescending(ep => ep.Pp).Skip((page - 1) * count).Take(count).ToList();
+            var ids = eventPlayers.Select(ep => ep.PlayerId).ToList();
+
+            var players = await _context
+                .Players
+                .Where(p => ids.Contains(p.Id))
                 .Select(p => new PlayerResponseWithStats {
                     Id = p.Id,
                     Name = p.Name,
@@ -105,19 +106,15 @@ namespace BeatLeader_Server.Controllers
                     LastWeekRank = p.LastWeekRank,
                     LastWeekCountryRank = p.LastWeekCountryRank,
                     Role = p.Role,
-                    EventsParticipating = p.EventsParticipating,
                     PatreonFeatures = p.PatreonFeatures,
                     ProfileSettings = p.ProfileSettings,
                     Clans = p.Clans.OrderBy(c => p.ClanOrder.IndexOf(c.Tag))
                             .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                })
-                .OrderByDescending(p => p.EventsParticipating.First(e => e.EventId == id).Pp);
+                }).ToListAsync();
 
-            var allPlayers = await players.Skip((page - 1) * count).Take(count).ToListAsync();
-
-            foreach (var resultPlayer in allPlayers)
+            foreach (var resultPlayer in players)
             {
-                var eventPlayer = resultPlayer.EventsParticipating.First(e => e.EventId == id);
+                var eventPlayer = eventPlayers.First(p => p.PlayerId == resultPlayer.Id);
 
                 resultPlayer.Rank = eventPlayer.Rank;
                 resultPlayer.Pp = eventPlayer.Pp;
@@ -130,9 +127,9 @@ namespace BeatLeader_Server.Controllers
                 {
                     Page = page,
                     ItemsPerPage = count,
-                    Total = await players.CountAsync()
+                    Total = await request.CountAsync()
                 },
-                Data = allPlayers
+                Data = players.OrderByDescending(ep => ep.Pp)
             };
         }
 
@@ -276,7 +273,8 @@ namespace BeatLeader_Server.Controllers
                                 players.Add(new EventPlayer {
                                     PlayerId = score.PlayerId,
                                     Country = score.Player.Country,
-                                    Name = name,
+                                    EventName = name,
+                                    PlayerName = score.Player.Name
                                 });
                                 basicPlayers.Add(score.Player);
                                 playerScores[score.PlayerId] = new List<Score> { score };
@@ -341,8 +339,9 @@ namespace BeatLeader_Server.Controllers
                     }
                     basicPlayer.EventsParticipating.Add(player);
                 }
-                player.EventId = eventRanking.Id;
-                player.Name = eventRanking.Name;
+                player.EventRankingId = eventRanking.Id;
+                player.EventName = eventRanking.Name;
+                player.PlayerName = basicPlayer.Name;
             }
             await _context.SaveChangesAsync();
 

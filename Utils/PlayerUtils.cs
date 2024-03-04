@@ -536,14 +536,15 @@ namespace BeatLeader_Server.Utils
                     {
                         PlayerId = player.Id,
                         Country = player.Country,
-                        EventId = eventRanking.Id,
-                        Name = eventRanking.Name
+                        EventRankingId = eventRanking.Id,
+                        EventName = eventRanking.Name,
+                        PlayerName = player.Name
                     };
                     eventRanking.Players.Add(eventPlayer);
                     await context.SaveChangesAsync();
                 }
 
-                if (player.EventsParticipating == null || player.EventsParticipating.FirstOrDefault(e => e.EventId == eventRanking.Id) == null)
+                if (player.EventsParticipating == null || player.EventsParticipating.FirstOrDefault(e => e.EventRankingId == eventRanking.Id) == null)
                 {
                     if (player.EventsParticipating == null)
                     {

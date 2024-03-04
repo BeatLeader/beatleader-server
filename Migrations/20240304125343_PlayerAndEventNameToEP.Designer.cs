@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20240304125343_PlayerAndEventNameToEP")]
+    partial class PlayerAndEventNameToEP
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -791,12 +794,19 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int>("CountryRank")
                         .HasColumnType("int");
 
+                    b.Property<int>("EventId")
+                        .HasColumnType("int");
+
                     b.Property<string>("EventName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("EventRankingId")
                         .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PlayerId")
                         .IsRequired()
@@ -4167,19 +4177,15 @@ namespace BeatLeader_Server.Migrations
 
             modelBuilder.Entity("BeatLeader_Server.Models.EventPlayer", b =>
                 {
-                    b.HasOne("BeatLeader_Server.Models.EventRanking", "Event")
+                    b.HasOne("BeatLeader_Server.Models.EventRanking", null)
                         .WithMany("Players")
                         .HasForeignKey("EventRankingId");
 
-                    b.HasOne("BeatLeader_Server.Models.Player", "Player")
+                    b.HasOne("BeatLeader_Server.Models.Player", null)
                         .WithMany("EventsParticipating")
                         .HasForeignKey("PlayerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Event");
-
-                    b.Navigation("Player");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ExternalStatus", b =>

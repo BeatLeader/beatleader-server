@@ -120,27 +120,31 @@ namespace BeatLeader_Server.Controllers {
                 return NotFound();
             }
 
-            Player? player;
-
-            User? user = await _context
-                .Users
+            PlayerResponseWithFriends? result = await _context
+                .Players
                 .Where(u => u.Id == id)
-                .Include(u => u.Player)
-                .ThenInclude(p => p.ScoreStats)
-                .Include(u => u.Player)
-                .ThenInclude(p => p.Socials)
-                .Include(u => u.Player)
-                .ThenInclude(p => p.ProfileSettings)
-                .Include(u => u.Player)
-                .ThenInclude(p => p.ContextExtensions)
-                .Include(u => u.Player)
-                .ThenInclude(p => p.Clans)
+                .Select(p => new PlayerResponseWithFriends {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Platform = p.Platform,
+                    Avatar = p.Avatar,
+                    Country = p.Country,
+
+                    Pp = p.Pp,
+                    Rank = p.Rank,
+                    CountryRank = p.CountryRank,
+                    Role = p.Role,
+                    Socials = p.Socials,
+                    PatreonFeatures = p.PatreonFeatures,
+                    ProfileSettings = p.ProfileSettings,
+                    ContextExtensions = p.ContextExtensions,
+                    Clans = p.Clans.OrderBy(c => p.ClanOrder.IndexOf(c.Tag))
+                                .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color, Name = c.Name })
+                })
                 .AsSplitQuery()
                 .FirstOrDefaultAsync();
-
-
-            if (user == null) {
-                player = (await _playerController.GetLazy(id)).Value;
+            if (result == null) {
+                Player? player = (await _playerController.GetLazy(id)).Value;
                 if (player == null) {
                     return NotFound();
                 }
@@ -149,13 +153,11 @@ namespace BeatLeader_Server.Controllers {
                     Player = player
                 });
                 await _context.SaveChangesAsync();
-            } else {
-                player = user.Player;
+                result = GeneralResponseFromPlayer<PlayerResponseWithFriends>(player);
             }
-
-            var result = GeneralResponseFromPlayer<PlayerResponseWithFriends>(player);
-            PlayerFriends? friends = await _context.Friends.Include(f => f.Friends).FirstOrDefaultAsync(f => f.Id == id);
-            result.Friends = friends != null ? friends.Friends.Select(f => f.Id).ToList() : new List<string>();
+            
+            var friends = await _context.Friends.Where(f => f.Id == id).Select(f => new { Friends = f.Friends.Select(f => f.Id) }).FirstOrDefaultAsync();
+            result.Friends = friends?.Friends.ToList() ?? new List<string>();
             return result;
         }
 
