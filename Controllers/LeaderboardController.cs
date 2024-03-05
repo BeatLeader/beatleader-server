@@ -1299,6 +1299,48 @@ namespace BeatLeader_Server.Controllers {
             return result;
         }
 
+        [HttpPost("~/leaderboard/tags")]
+        public async Task<ActionResult> UpdateTags(
+            [FromQuery] string id,
+            [FromQuery] string tagType, 
+            [FromQuery] int tagValue) {
+
+            string? currentID = HttpContext.CurrentUserID(_context);
+            Player? currentPlayer = currentID != null ? await _context
+                .Players
+                .Include(p => p.ProfileSettings)
+                .FirstOrDefaultAsync(p => p.Id == currentID) : null;
+
+            bool isLoloppe = currentPlayer?.Id == "76561198073989976" || currentPlayer?.Role?.Contains("admin") == true;
+            if (!isLoloppe) {
+                return BadRequest("Not Loloppe");
+            }
+
+            var lb = _context.Leaderboards.Where(lb => lb.Id == id).Include(lb => lb.Difficulty).FirstOrDefault();
+            if (lb == null) {
+                return NotFound();
+            }
+
+            switch (tagType)
+            {
+                case "speed":
+                    lb.Difficulty.SpeedTags = tagValue;
+                    break;
+                case "style":
+                    lb.Difficulty.StyleTags = tagValue;
+                    break;
+                case "features":
+                    lb.Difficulty.FeatureTags = tagValue;
+                    break;
+                default:
+                    break;
+            }
+
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
         [HttpGet("~/leaderboards/")]
         public async Task<ActionResult<ResponseWithMetadata<LeaderboardInfoResponse>>> GetAll(
             [FromQuery] int page = 1,
@@ -1406,6 +1448,10 @@ namespace BeatLeader_Server.Controllers {
                             TechRating  = lb.Difficulty.TechRating,
                             Type  = lb.Difficulty.Type,
 
+                            SpeedTags = lb.Difficulty.SpeedTags,
+                            StyleTags = lb.Difficulty.StyleTags,
+                            FeatureTags = lb.Difficulty.FeatureTags,
+
                             Njs  = lb.Difficulty.Njs,
                             Nps  = lb.Difficulty.Nps,
                             Notes  = lb.Difficulty.Notes,
@@ -1465,6 +1511,13 @@ namespace BeatLeader_Server.Controllers {
                 foreach (var leaderboard in result.Data) {
                     if (!showRatings && !leaderboard.Difficulty.Status.WithRating()) {
                         leaderboard.HideRatings();
+                    }
+                }
+
+                bool isLoloppe = currentPlayer?.Id == "76561198073989976" || currentPlayer?.Role?.Contains("admin") == true;
+                if (!isLoloppe) {
+                    foreach (var leaderboard in result.Data) {
+                        leaderboard.HideTags();
                     }
                 }
 
