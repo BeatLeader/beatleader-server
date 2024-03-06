@@ -12,6 +12,7 @@ using System.Text.Encodings.Web;
 using AspNet.Security.OpenId.Events;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.WebUtilities;
@@ -86,7 +87,7 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
                 return AuthenticateResult.Fail("Too many login attempts in one day");
             }
             AuthInfo? authInfo = await dbContext.Auths.FirstOrDefaultAsync(el => el.Login == login);
-            if (authInfo == null || authInfo.Password != password)
+            if (authInfo == null || authInfo.Password != AuthUtils.HashPasswordWithSalt(password, authInfo.Salt))
             {
                 if (loginAttempt == null) {
                     loginAttempt = new LoginAttempt {
@@ -155,9 +156,12 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
                 return AuthenticateResult.Fail("You can create only one account a day, sorry");
             }
             
+            var salt = AuthUtils.GenerateSalt();
             authInfo = new AuthInfo
             {
-                Password = password,
+                Password = AuthUtils.HashPasswordWithSalt(password, salt),
+                Hint = new string(password.TakeLast(2).ToArray()),
+                Salt = salt,
                 Login = login
             };
             dbContext.Auths.Add(authInfo);
@@ -215,27 +219,27 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
             return (response, authenticateResult);
         }, request);
 
-            return stream.ContinueWith(t => ReadStreamFromResponse(t.Result));
-        }
+        return stream.ContinueWith(t => ReadStreamFromResponse(t.Result));
+    }
 
-        private dynamic? ReadStreamFromResponse((WebResponse, dynamic?) response)
-        {
-            if (response.Item1 != null) {
-                using (Stream responseStream = response.Item1.GetResponseStream())
-                using (StreamReader reader = new StreamReader(responseStream))
+    private dynamic? ReadStreamFromResponse((WebResponse, dynamic?) response)
+    {
+        if (response.Item1 != null) {
+            using (Stream responseStream = response.Item1.GetResponseStream())
+            using (StreamReader reader = new StreamReader(responseStream))
+            {
+                string results = reader.ReadToEnd();
+                if (!string.IsNullOrEmpty(results))
                 {
-                    string results = reader.ReadToEnd();
-                    if (!string.IsNullOrEmpty(results))
-                    {
                     
-                    }
-                    dynamic? info = JsonConvert.DeserializeObject<ExpandoObject>(results, new ExpandoObjectConverter());
-                    return info;
                 }
-            } else {
-                Response.StatusCode = 401;
-                return response.Item2;
+                dynamic? info = JsonConvert.DeserializeObject<ExpandoObject>(results, new ExpandoObjectConverter());
+                return info;
             }
-            
+        } else {
+            Response.StatusCode = 401;
+            return response.Item2;
         }
+            
+    }
 }

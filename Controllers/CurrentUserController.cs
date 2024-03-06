@@ -658,9 +658,9 @@ namespace BeatLeader_Server.Controllers {
             if (currentID == null) return Unauthorized("Login or password is incorrect");
 
             long intId = Int64.Parse(currentID);
-            AuthInfo? authInfo = await _context.Auths.FirstOrDefaultAsync(a => a.Login == login && a.Password == oldPassword && intId == a.Id);
+            AuthInfo? authInfo = await _context.Auths.FirstOrDefaultAsync(a => a.Login == login && intId == a.Id);
 
-            if (authInfo == null) {
+            if (authInfo == null || authInfo.Password != AuthUtils.HashPasswordWithSalt(oldPassword, authInfo.Salt)) {
                 if (loginAttempt == null) {
                     loginAttempt = new LoginAttempt {
                         IP = iPAddress,
@@ -681,8 +681,10 @@ namespace BeatLeader_Server.Controllers {
                 return Unauthorized("Come on, type at least 8 symbols password");
             }
 
-            authInfo.Password = newPassword;
-            _context.Auths.Update(authInfo);
+            authInfo.Salt = AuthUtils.GenerateSalt();
+            authInfo.Password = AuthUtils.HashPasswordWithSalt(newPassword, authInfo.Salt);
+            authInfo.Hint = new string(newPassword.TakeLast(2).ToArray());
+
             await _context.SaveChangesAsync();
 
             return Ok();
@@ -704,8 +706,9 @@ namespace BeatLeader_Server.Controllers {
                 return Unauthorized("Come on, type at least 8 symbols password");
             }
 
-            authInfo.Password = newPassword;
-            _context.Auths.Update(authInfo);
+            authInfo.Salt = AuthUtils.GenerateSalt();
+            authInfo.Password = AuthUtils.HashPasswordWithSalt(newPassword, authInfo.Salt);
+
             await _context.SaveChangesAsync();
 
             return Ok();
