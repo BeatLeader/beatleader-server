@@ -233,7 +233,7 @@ namespace BeatLeader_Server.Controllers
             var filename = $"songsuggestions-{timeset}.json";
             await _s3Client.UploadStream(filename, S3Container.assets, new BinaryData(JsonConvert.SerializeObject(list)).ToStream());
 
-            var songs = _context.Leaderboards
+            var songs = await _context.Leaderboards
                 .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
                 .OrderByDescending(lb => lb.Difficulty.Stars)
                 .Select(lb => new SongSuggestSong {

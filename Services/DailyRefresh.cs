@@ -29,11 +29,23 @@ namespace BeatLeader_Server.Services
                     Console.WriteLine("SERVICE-STARTED DailyRefresh");
 
                     try {
+                        await FetchMapOfTheWeek();
+                    } catch (Exception e) {
+                        Console.WriteLine($"EXCEPTION DailyRefresh {e}");
+                    }
+                    try {
+                        await RefreshSongSuggest();
+                    } catch (Exception e) {
+                        Console.WriteLine($"EXCEPTION DailyRefresh {e}");
+                    }
+                    try {
                         await RefreshPatreon();
                         await RefreshBoosters();
+                    } catch (Exception e) {
+                        Console.WriteLine($"EXCEPTION DailyRefresh {e}");
+                    }
+                    try {
                         await RefreshBanned();
-                        await FetchMapOfTheWeek();
-                        await RefreshSongSuggest();
                     } catch (Exception e) {
                         Console.WriteLine($"EXCEPTION DailyRefresh {e}");
                     }

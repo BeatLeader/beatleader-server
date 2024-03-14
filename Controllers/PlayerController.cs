@@ -258,13 +258,13 @@ namespace BeatLeader_Server.Controllers
                 _context.Auths.Remove(auth);
             }
 
-            var qualifications = await _context.RankQualification.Where(q => q.RTMember == id).ToListAsync();
-            foreach (var qualification in qualifications)
-            {
-                _context.RankQualification.Remove(qualification);
-            }
-
-            var scores = await _context.Scores.Include(s => s.ContextExtensions).Where(s => s.PlayerId == id).ToListAsync();
+            var scores = await _context
+                .Scores
+                .Include(s => s.ContextExtensions)
+                .Include(s => s.RankVoting)
+                .ThenInclude(rv => rv.Feedbacks)
+                .Where(s => s.PlayerId == id)
+                .ToListAsync();
             foreach (var score in scores) {
                 string? name = score.Replay.Split("/").LastOrDefault();
                 if (name != null) {
@@ -274,6 +274,16 @@ namespace BeatLeader_Server.Controllers
                 foreach (var item in score.ContextExtensions)
                 {
                     _context.ScoreContextExtensions.Remove(item);
+                }
+
+                if (score.RankVoting != null) {
+                    if (score.RankVoting.Feedbacks != null) {
+                        foreach (var item in score.RankVoting.Feedbacks)
+                        {
+                            score.RankVoting.Feedbacks.Remove(item);
+                        }
+                    }
+                    _context.RankVotings.Remove(score.RankVoting);
                 }
 
                 _context.Scores.Remove(score);
