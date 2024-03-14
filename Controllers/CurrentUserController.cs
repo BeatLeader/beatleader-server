@@ -794,7 +794,7 @@ namespace BeatLeader_Server.Controllers {
             string steamID = HttpContext.CurrentUserID();
 
             AuthInfo? authInfo = await _context.Auths.FirstOrDefaultAsync(el => el.Login == login);
-            if (authInfo == null || authInfo.Password != password) {
+            if (authInfo == null || authInfo.Password != AuthUtils.HashPasswordWithSalt(password, authInfo.Salt)) {
                 return Unauthorized("Login or password is invalid");
             }
 
