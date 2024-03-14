@@ -45,7 +45,7 @@
 
   <ItemGroup>
     <PackageReference Include="Anemonis.AspNetCore.RequestDecompression" Version="1.14.0" />
-    <PackageReference Include="AngleSharp" Version="1.1.0" />
+    <PackageReference Include="AngleSharp" Version="1.1.1" />
     <PackageReference Include="AspNet.Security.OAuth.Discord" Version="8.0.0" />
     <PackageReference Include="AspNet.Security.OAuth.Patreon" Version="8.0.0" />
     <PackageReference Include="AspNet.Security.OAuth.Twitch" Version="8.0.0" />
@@ -53,14 +53,14 @@
     <PackageReference Include="AspNet.Security.OpenId.Steam" Version="8.0.0" />
     <PackageReference Include="AspNetCoreRateLimit" Version="5.0.0" />
     <PackageReference Include="AsyncEnumerator" Version="4.0.2" />
-    <PackageReference Include="AWSSDK.S3" Version="3.7.305.3" />
+    <PackageReference Include="AWSSDK.S3" Version="3.7.305.30" />
     <PackageReference Include="BeatLeader.ReplayDecoder" Version="1.0.0" />
     <PackageReference Include="CoreHtmlToImage" Version="1.0.6" />
-    <PackageReference Include="Discord.Net.Webhook" Version="3.13.0" />
-    <PackageReference Include="Discord.Net.WebSocket" Version="3.13.0" />
+    <PackageReference Include="Discord.Net.Webhook" Version="3.13.1" />
+    <PackageReference Include="Discord.Net.WebSocket" Version="3.13.1" />
     <PackageReference Include="geohash-dotnet" Version="2.1.0" />
-    <PackageReference Include="Google.Apis.YouTube.v3" Version="1.66.0.3330" />
-    <PackageReference Include="HtmlAgilityPack" Version="1.11.57" />
+    <PackageReference Include="Google.Apis.YouTube.v3" Version="1.67.0.3343" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.11.59" />
     <PackageReference Include="HtmlSanitizer" Version="8.0.843" />
     <PackageReference Include="IP2Location.IPGeolocation" Version="9.0.1" />
     <PackageReference Include="Lib.AspNetCore.ServerTiming" Version="6.0.0" />
@@ -88,13 +88,13 @@
     <PackageReference Include="Prometheus.Client.HttpRequestDurations" Version="3.6.0" />
     <PackageReference Include="Prometheus.Client.MetricPusher" Version="3.1.0" />
     <PackageReference Include="protobuf-net" Version="3.2.30" />
-    <PackageReference Include="PuppeteerSharp" Version="13.0.2" />
+    <PackageReference Include="PuppeteerSharp" Version="14.1.0" />
     <PackageReference Include="SharpZipLib" Version="1.4.2" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.2" />
-    <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="1.0.0" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.3" />
+    <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.2" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
     <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.5.0" />
-    <PackageReference Include="System.Drawing.Common" Version="7.0.0" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.2" />
     <PackageReference Include="Z.EntityFramework.Extensions.EFCore" Version="8.102.1.1" />
   </ItemGroup>
 

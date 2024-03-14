@@ -135,7 +135,8 @@ namespace BeatLeader_Server.Controllers
 
             int? score = await _context
                     .Scores
-                    .Where(s => s.ValidContexts.HasFlag(leaderboardContext) &&
+                    .Where(s => s.PlayerId == playerID &&
+                                s.ValidContexts.HasFlag(leaderboardContext) &&
                                 s.Leaderboard.Song.Hash.ToLower() == hash.ToLower() &&
                                 s.Leaderboard.Difficulty.DifficultyName.ToLower() == diff.ToLower() &&
                                 s.Leaderboard.Difficulty.ModeName.ToLower() == mode.ToLower())
