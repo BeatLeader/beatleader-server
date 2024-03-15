@@ -253,7 +253,7 @@ namespace BeatLeader_Server.Utils
 
             var status = difficulty.Status;
             var modifers = difficulty.ModifierValues ?? new ModifiersMap();
-            bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
+            bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent || (difficulty.ModeName != "NoArrows" && status == DifficultyStatus.OST);
             bool hasPp = status == DifficultyStatus.ranked || qualification;
 
             int maxScore = difficulty.MaxScore > 0 ? difficulty.MaxScore : MaxScoreForNote(difficulty.Notes);
