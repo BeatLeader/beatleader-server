@@ -1875,5 +1875,25 @@ namespace BeatLeader_Server.Controllers {
             await _context.SaveChangesAsync();
             return Ok();
         }
+
+        [HttpGet("~/leaderboard/{id}/scoregraph")]
+        public async Task<ActionResult> GetScoregraph(string id) {
+            return Ok(await _context.Scores.Where(s => 
+                    s.LeaderboardId == id &&
+                    s.ValidContexts.HasFlag(LeaderboardContexts.General) &&
+                    s.Pp > 0 &&
+                    !s.Banned)
+                    .Select(s => new {
+                        s.PlayerId,
+                        s.Weight,
+                        s.Modifiers,
+                        s.Player.Rank,
+                        s.Player.Name,
+                        s.Accuracy,
+                        s.Pp,
+                        s.Player.Avatar,
+                        s.Timepost
+                    }).ToListAsync());
+        }
     }
 }

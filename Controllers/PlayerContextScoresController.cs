@@ -406,7 +406,7 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [NonAction]
-        public async Task<ActionResult<ICollection<GraphResponse>>> AccGraph(
+        public async Task<ActionResult<ICollection<AccGraphResponse>>> AccGraph(
             string id, 
             bool showRatings,
             LeaderboardContexts leaderboardContext = LeaderboardContexts.General) {
@@ -416,7 +416,7 @@ namespace BeatLeader_Server.Controllers {
                 .ScoreContextExtensions
                 .Include(ce => ce.Score)
                 .Where(s => s.PlayerId == id && s.Context == leaderboardContext && !s.Score.IgnoreForStats && ((showRatings && s.Leaderboard.Difficulty.Stars != null) || s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked))
-                .Select(s => new GraphResponse {
+                .Select(s => new AccGraphResponse {
                     LeaderboardId = s.Leaderboard.Id,
                     Diff = s.Leaderboard.Difficulty.DifficultyName,
                     SongName = s.Leaderboard.Song.Name,
