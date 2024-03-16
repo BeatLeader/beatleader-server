@@ -61,6 +61,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     lb.Id,
                     lb.Difficulty.Status,
+                    lb.Difficulty.ModeName,
                     Scores = 
                         leaderboardContext == LeaderboardContexts.General 
                         ? lb.Scores
@@ -76,7 +77,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     var status = leaderboard.Status;
 
-                    var rankedScores = status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.inevent
+                    var rankedScores = (status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.inevent) || (leaderboard.ModeName != "NoArrows" && status == DifficultyStatus.OST)
                         ? leaderboard
                             .Scores
                             .OrderByDescending(el => Math.Round(el.Pp, 2))
