@@ -119,6 +119,7 @@ namespace BeatLeader_Server.Controllers
                 resultPlayer.Rank = eventPlayer.Rank;
                 resultPlayer.Pp = eventPlayer.Pp;
                 resultPlayer.CountryRank = eventPlayer.CountryRank;
+                PostProcessSettings(resultPlayer, false);
             }
 
             return new ResponseWithMetadata<PlayerResponseWithStats>()

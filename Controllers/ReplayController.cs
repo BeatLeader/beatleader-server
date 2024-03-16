@@ -500,6 +500,7 @@ namespace BeatLeader_Server.Controllers
                 if (!player.Bot && leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
                     await _context.RecalculatePPAndRankFasterAllContexts(result);
                 }
+                result.Player = PostProcessSettings(result.Player, false);
 
                 return (result, false);
             }
