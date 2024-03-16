@@ -355,7 +355,7 @@ namespace BeatLeader_Server.Controllers {
                     // Regex to remove Unity rich text tags
                     name = Regex.Replace(name, "<(/)?(align|alpha|color|b|i|cspace|font|indent|line-height|line-indent|link|lowercase|uppercase|smallcaps|margin|mark|mspace|noparse|nobr|page|pos|size|space|sprite|s|u|style|sub|sup|voffset|width)(.*?)>|<#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6}|[A-Fa-f0-9]{8})>", string.Empty);
                     // Regex to remove unprintable, control, and specific whitespace-like characters
-                    name = Regex.Replace(name, @"[\p{C}\p{Z}\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Cn}]+", string.Empty);
+                    name = Regex.Replace(name, @"[\p{C}\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Cn}]+", string.Empty);
                     // Explicitly include known problematic characters like the Hangul Filler (U+3164), ZERO WIDTH SPACE (U+200B), etc.
                     name = Regex.Replace(name, @"[\u3164\u200B\u200C\u200D\u2060\uFEFF]+", string.Empty);
 
