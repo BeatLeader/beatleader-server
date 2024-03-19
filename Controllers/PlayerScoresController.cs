@@ -511,24 +511,82 @@ namespace BeatLeader_Server.Controllers {
             }
         }
 
+        private IQueryable<AccGraphResponse> GetAccGraphResponse(IQueryable<IScore> query) {
+            return query.Select(s => new AccGraphResponse {
+                LeaderboardId = s.Leaderboard.Id,
+                Diff = s.Leaderboard.Difficulty.DifficultyName,
+                SongName = s.Leaderboard.Song.Name,
+                Hash = s.Leaderboard.Song.Hash,
+                Mapper = s.Leaderboard.Song.Author,
+                Mode = s.Leaderboard.Difficulty.ModeName,
+                Stars = s.Leaderboard.Difficulty.Stars,
+                Acc = s.Accuracy,
+                Timeset = s.Timepost,
+                Modifiers = s.Modifiers,
+
+                ModifiersRating = s.Leaderboard.Difficulty.ModifiersRating,
+                ModifierValues = s.Leaderboard.Difficulty.ModifierValues,
+                AccRating = s.Leaderboard.Difficulty.AccRating,
+                PassRating = s.Leaderboard.Difficulty.PassRating,
+                TechRating = s.Leaderboard.Difficulty.TechRating,
+            });
+        }
+
+        private IQueryable<RankGraphResponse> GetRankGraphResponse(IQueryable<IScore> query) {
+            return query.Select(s => new RankGraphResponse {
+                LeaderboardId = s.Leaderboard.Id,
+                Diff = s.Leaderboard.Difficulty.DifficultyName,
+                SongName = s.Leaderboard.Song.Name,
+                Hash = s.Leaderboard.Song.Hash,
+                Mapper = s.Leaderboard.Song.Author,
+                Mode = s.Leaderboard.Difficulty.ModeName,
+                Stars = s.Leaderboard.Difficulty.Stars,
+                Rank = s.Rank,
+                Weight = s.Weight,
+                ScoreCount = s.Leaderboard.PlayCount,
+                Timeset = s.Timepost,
+                Modifiers = s.Modifiers,
+
+                ModifiersRating = s.Leaderboard.Difficulty.ModifiersRating,
+                ModifierValues = s.Leaderboard.Difficulty.ModifierValues,
+                AccRating = s.Leaderboard.Difficulty.AccRating,
+                PassRating = s.Leaderboard.Difficulty.PassRating,
+                TechRating = s.Leaderboard.Difficulty.TechRating,
+            });
+        }
+
+        private IQueryable<WeightGraphResponse> GetWeightGraphResponse(IQueryable<IScore> query) {
+            return query.Select(s => new WeightGraphResponse {
+                LeaderboardId = s.Leaderboard.Id,
+                Diff = s.Leaderboard.Difficulty.DifficultyName,
+                SongName = s.Leaderboard.Song.Name,
+                Hash = s.Leaderboard.Song.Hash,
+                Mapper = s.Leaderboard.Song.Author,
+                Mode = s.Leaderboard.Difficulty.ModeName,
+                Stars = s.Leaderboard.Difficulty.Stars,
+                Weight = s.Weight,
+                Pp = s.Pp,
+                Timeset = s.Timepost,
+                Modifiers = s.Modifiers,
+
+                ModifiersRating = s.Leaderboard.Difficulty.ModifiersRating,
+                ModifierValues = s.Leaderboard.Difficulty.ModifierValues,
+                AccRating = s.Leaderboard.Difficulty.AccRating,
+                PassRating = s.Leaderboard.Difficulty.PassRating,
+                TechRating = s.Leaderboard.Difficulty.TechRating,
+            });
+        }
+
         [HttpGet("~/player/{id}/accgraph")]
         [SwaggerOperation(Summary = "Retrieve player's accuracy graph", Description = "Usefull to visualise player's performance relative to map's complexity")]
         [SwaggerResponse(200, "Accuracy graph retrieved successfully")]
         [SwaggerResponse(400, "Invalid request parameters")]
         [SwaggerResponse(404, "No accuracy graph available for the given player ID")]
-        public async Task<ActionResult<ICollection<AccGraphResponse>>> AccGraph(
+        public async Task<ActionResult> AccGraph(
             [FromRoute, SwaggerParameter("Player's unique identifier")] string id, 
+            [FromQuery, SwaggerParameter("Type of the graph: acc, rank, weight or pp")] string type = "acc", 
             [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General) {
-            if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
-                string? currentID2 = HttpContext.CurrentUserID(_context);
-                bool showRatings2 = currentID2 != null ? await _context
-                    .Players
-                    .Where(p => p.Id == currentID2 && p.ProfileSettings != null)
-                    .Select(p => p.ProfileSettings.ShowAllRatings)
-                    .TagWithCallSite()
-                    .FirstOrDefaultAsync() : false;
-                return await _playerContextScoresController.AccGraph(id, showRatings2, leaderboardContext); 
-            }
+
             id = await _context.PlayerIdToMain(id);
             string? currentID = HttpContext.CurrentUserID(_context);
             bool showRatings = currentID != null ? (await _context
@@ -539,110 +597,53 @@ namespace BeatLeader_Server.Controllers {
                 .TagWithCallSite()
                 .FirstOrDefaultAsync())?.ShowAllRatings ?? false : false;
 
-            var result = await _context
+            object? result = null;
+
+            IQueryable<IScore> baseQuery;
+            if (leaderboardContext != LeaderboardContexts.None && leaderboardContext != LeaderboardContexts.General) {
+                baseQuery = _context
+                .ScoreContextExtensions
+                .Where(s => 
+                    s.PlayerId == id && 
+                    s.Context == leaderboardContext && 
+                    s.Score != null &&
+                    !s.Score.IgnoreForStats && 
+                    ((showRatings && s.Leaderboard.Difficulty.Stars != null) || s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked))
+                .TagWithCallSite();
+            } else {
+              baseQuery = _context
                 .Scores
-                .Where(s => s.PlayerId == id && s.ValidContexts.HasFlag(leaderboardContext) && !s.IgnoreForStats && ((showRatings && s.Leaderboard.Difficulty.Stars != null) || s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked))
-                .TagWithCallSite()
-                .Select(s => new AccGraphResponse {
-                    LeaderboardId = s.Leaderboard.Id,
-                    Diff = s.Leaderboard.Difficulty.DifficultyName,
-                    SongName = s.Leaderboard.Song.Name,
-                    Hash = s.Leaderboard.Song.Hash,
-                    Mapper = s.Leaderboard.Song.Author,
-                    Mode = s.Leaderboard.Difficulty.ModeName,
-                    Stars = s.Leaderboard.Difficulty.Stars,
-                    Acc = s.Accuracy,
-                    Timeset = s.Timeset,
-                    Modifiers = s.Modifiers,
-
-                    ModifiersRating = s.Leaderboard.Difficulty.ModifiersRating,
-                    ModifierValues = s.Leaderboard.Difficulty.ModifierValues,
-                    AccRating = s.Leaderboard.Difficulty.AccRating,
-                    PassRating = s.Leaderboard.Difficulty.PassRating,
-                    TechRating = s.Leaderboard.Difficulty.TechRating,
-                })
-                .ToListAsync();
-            var defaultModifiers = new ModifiersMap();
-
-            foreach (var score in result) {
-                if (score.Modifiers.Length > 0) {
-                    var modifierValues = score.ModifierValues ?? defaultModifiers; 
-                    var modifiersRating = score.ModifiersRating;
-                    float mp = modifierValues.GetTotalMultiplier(score.Modifiers, modifiersRating == null);
-
-                    if (modifiersRating != null) {
-                        var modifiersMap = modifiersRating.ToDictionary<float>();
-                        foreach (var modifier in score.Modifiers.ToUpper().Split(","))
-                        {
-                            if (modifiersMap.ContainsKey(modifier + "AccRating")) { 
-                                score.AccRating = modifiersMap[modifier + "AccRating"]; 
-                                score.PassRating = modifiersMap[modifier + "PassRating"]; 
-                                score.TechRating = modifiersMap[modifier + "TechRating"]; 
-
-                                break;
-                            }
-                        }
-                    }
-
-                    score.AccRating *= mp;
-                    score.PassRating *= mp;
-                    score.TechRating *= mp;
-
-                    score.Stars = ReplayUtils.ToStars(score.AccRating ?? 0, score.PassRating ?? 0, score.TechRating ?? 0);
-                }
+                .Where(s => 
+                    s.PlayerId == id && 
+                    s.ValidContexts.HasFlag(leaderboardContext) && 
+                    !s.IgnoreForStats && 
+                    ((showRatings && s.Leaderboard.Difficulty.Stars != null) || s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked))
+                .TagWithCallSite();
             }
-
-            return result;
-
-        }
-
-        [HttpGet("~/player/{id}/rankgraph")]
-        [SwaggerOperation(Summary = "Retrieve player's accuracy graph", Description = "Usefull to visualise player's performance relative to map's complexity")]
-        [SwaggerResponse(200, "Accuracy graph retrieved successfully")]
-        [SwaggerResponse(400, "Invalid request parameters")]
-        [SwaggerResponse(404, "No accuracy graph available for the given player ID")]
-        public async Task<ActionResult<ICollection<RankGraphResponse>>> RankGraph(
-            [FromRoute, SwaggerParameter("Player's unique identifier")] string id, 
-            [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General) {
             
-            id = await _context.PlayerIdToMain(id);
-            string? currentID = HttpContext.CurrentUserID(_context);
-            bool showRatings = currentID != null ? (await _context
-                .Players
-                .Include(p => p.ProfileSettings)
-                .Where(p => p.Id == currentID)
-                .Select(p => p.ProfileSettings)
-                .TagWithCallSite()
-                .FirstOrDefaultAsync())?.ShowAllRatings ?? false : false;
+            switch (type)
+            {
+                case "acc":
+                    result = await GetAccGraphResponse(baseQuery).ToListAsync();
+                    break;
+                case "rank":
+                    result = await GetRankGraphResponse(baseQuery).ToListAsync();
+                    break;
+                case "weight":
+                    result = await GetWeightGraphResponse(baseQuery).ToListAsync();
+                    break;
+                default:
+                    break;
+            }
 
-            var result = await _context
-                .Scores
-                .Where(s => s.PlayerId == id && s.ValidContexts.HasFlag(leaderboardContext) && !s.IgnoreForStats && ((showRatings && s.Leaderboard.Difficulty.Stars != null) || s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked))
-                .TagWithCallSite()
-                .Select(s => new RankGraphResponse {
-                    LeaderboardId = s.Leaderboard.Id,
-                    Diff = s.Leaderboard.Difficulty.DifficultyName,
-                    SongName = s.Leaderboard.Song.Name,
-                    Hash = s.Leaderboard.Song.Hash,
-                    Mapper = s.Leaderboard.Song.Author,
-                    Mode = s.Leaderboard.Difficulty.ModeName,
-                    Stars = s.Leaderboard.Difficulty.Stars,
-                    Rank = s.Rank,
-                    ScoreCount = s.Leaderboard.PlayCount,
-                    Timeset = s.Timeset,
-                    Modifiers = s.Modifiers,
+            if (result == null) {
+                return BadRequest("Unknow graph `type`");
+            }
 
-                    ModifiersRating = s.Leaderboard.Difficulty.ModifiersRating,
-                    ModifierValues = s.Leaderboard.Difficulty.ModifierValues,
-                    AccRating = s.Leaderboard.Difficulty.AccRating,
-                    PassRating = s.Leaderboard.Difficulty.PassRating,
-                    TechRating = s.Leaderboard.Difficulty.TechRating,
-                })
-                .ToListAsync();
             var defaultModifiers = new ModifiersMap();
-
-            foreach (var score in result) {
-                score.Ratio = score.Rank / (float)score.ScoreCount;
+            var listResponse = result as System.Collections.IEnumerable;
+            foreach (var item in listResponse!) {
+                var score = (item as GraphResponse)!;
                 if (score.Modifiers.Length > 0) {
                     var modifierValues = score.ModifierValues ?? defaultModifiers; 
                     var modifiersRating = score.ModifiersRating;
@@ -670,7 +671,7 @@ namespace BeatLeader_Server.Controllers {
                 }
             }
 
-            return result;
+            return Ok(result);
         }
 
         [HttpGet("~/player/{id}/history")]

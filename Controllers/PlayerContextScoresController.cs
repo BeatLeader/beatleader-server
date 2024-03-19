@@ -406,69 +406,6 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [NonAction]
-        public async Task<ActionResult<ICollection<AccGraphResponse>>> AccGraph(
-            string id, 
-            bool showRatings,
-            LeaderboardContexts leaderboardContext = LeaderboardContexts.General) {
-            id = await _context.PlayerIdToMain(id);
-
-            var result = await _context
-                .ScoreContextExtensions
-                .Include(ce => ce.Score)
-                .Where(s => s.PlayerId == id && s.Context == leaderboardContext && !s.Score.IgnoreForStats && ((showRatings && s.Leaderboard.Difficulty.Stars != null) || s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked))
-                .Select(s => new AccGraphResponse {
-                    LeaderboardId = s.Leaderboard.Id,
-                    Diff = s.Leaderboard.Difficulty.DifficultyName,
-                    SongName = s.Leaderboard.Song.Name,
-                    Hash = s.Leaderboard.Song.Hash,
-                    Mapper = s.Leaderboard.Song.Author,
-                    Mode = s.Leaderboard.Difficulty.ModeName,
-                    Stars = s.Leaderboard.Difficulty.Stars,
-                    Acc = s.Accuracy,
-                    Timeset = s.Timeset.ToString(),
-                    Modifiers = s.Modifiers,
-
-                    ModifiersRating = s.Leaderboard.Difficulty.ModifiersRating,
-                    ModifierValues = s.Leaderboard.Difficulty.ModifierValues,
-                    AccRating = s.Leaderboard.Difficulty.AccRating,
-                    PassRating = s.Leaderboard.Difficulty.PassRating,
-                    TechRating = s.Leaderboard.Difficulty.TechRating,
-                })
-                .ToListAsync();
-            var defaultModifiers = new ModifiersMap();
-
-            foreach (var score in result) {
-                if (score.Modifiers.Length > 0) {
-                    var modifierValues = score.ModifierValues ?? defaultModifiers;
-                    var modifiersRating = score.ModifiersRating;
-                    float mp = modifierValues.GetTotalMultiplier(score.Modifiers, modifiersRating == null);
-
-                    if (modifiersRating != null) {
-                        var modifiersMap = modifiersRating.ToDictionary<float>();
-                        foreach (var modifier in score.Modifiers.ToUpper().Split(",")) {
-                            if (modifiersMap.ContainsKey(modifier + "AccRating")) {
-                                score.AccRating = modifiersMap[modifier + "AccRating"];
-                                score.PassRating = modifiersMap[modifier + "PassRating"];
-                                score.TechRating = modifiersMap[modifier + "TechRating"];
-
-                                break;
-                            }
-                        }
-                    }
-
-                    score.AccRating *= mp;
-                    score.PassRating *= mp;
-                    score.TechRating *= mp;
-
-                    score.Stars = ReplayUtils.ToStars(score.AccRating ?? 0, score.PassRating ?? 0, score.TechRating ?? 0);
-                }
-            }
-
-            return result;
-
-        }
-
-        [NonAction]
         public async Task<ActionResult<ICollection<PlayerScoreStatsHistory>>> GetHistory(string id, [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General, [FromQuery] int count = 50) {
             id = await _context.PlayerIdToMain(id);
             var result = await _context
