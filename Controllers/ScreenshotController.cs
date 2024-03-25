@@ -78,8 +78,12 @@ namespace BeatLeader_Server.Controllers
                 });
 
                 var maxAge = options.MaxAge;
-                Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
-                Response.Headers["Expires"] = "0";
+                if (queryStringParameters.ContainsKey("nocache")) {
+                    Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+                    Response.Headers["Expires"] = "0";
+                } else {
+                    Response.Headers["Cache-Control"] = "public, max-age=604800";
+                }
 
                 browserPool?.ReturnBrowser(browser);
 
