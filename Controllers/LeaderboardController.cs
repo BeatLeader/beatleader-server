@@ -49,7 +49,8 @@ namespace BeatLeader_Server.Controllers {
             string? countries,
             string? search,
             string? modifiers,
-            List<string>? friendsList) {
+            List<string>? friendsList,
+            bool offsets = false) {
             IQueryable<Score> scoreQuery = _context
                 .Scores
                 .Where(s => s.LeaderboardId == leaderboard.Id && s.ValidContexts.HasFlag(LeaderboardContexts.General));
@@ -197,6 +198,8 @@ namespace BeatLeader_Server.Controllers {
                     Platform = s.Platform,
                     Controller = s.Controller,
                     FcPp = s.FcPp,
+                    Offsets = offsets ? s.ReplayOffsets : null,
+                    Replay = offsets ? s.Replay : null,
                     Player = new PlayerResponse {
                         Id = s.Player.Id,
                         Name = s.Player.Name,
@@ -237,7 +240,8 @@ namespace BeatLeader_Server.Controllers {
             string? countries,
             string? search,
             string? modifiers,
-            List<string>? friendsList) {
+            List<string>? friendsList,
+            bool offsets = false) {
             IQueryable<ScoreContextExtension> scoreQuery = _context
                 .ScoreContextExtensions
                 .Include(s => s.Score)
@@ -372,6 +376,8 @@ namespace BeatLeader_Server.Controllers {
                     Controller = s.Score.Controller,
                     FcAccuracy = s.Score.FcAccuracy,
                     FcPp = s.Score.FcPp,
+                    Offsets = offsets ? s.Score.ReplayOffsets : null,
+                    Replay = offsets ? s.Score.Replay : null,
                     Player = new PlayerResponse {
                         Id = s.Player.Id,
                         Name = s.Player.Name,
@@ -623,6 +629,132 @@ namespace BeatLeader_Server.Controllers {
                 }
 
                 leaderboard.Scores = recalculated;
+            }
+
+            for (int i = 0; i < leaderboard.Scores?.Count; i++) {
+                leaderboard.Scores[i].Rank = i + (page - 1) * count + 1;
+            }
+
+            return leaderboard;
+        }
+
+        [HttpGet("~/leaderboard/scores/{id}")]
+        public async Task<ActionResult<LeaderboardResponse>> GetScores(
+            string id,
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10,
+            [FromQuery] string sortBy = "rank",
+            [FromQuery] Order order = Order.Desc,
+            [FromQuery] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
+            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
+            [FromQuery] string? countries = null,
+            [FromQuery] string? search = null,
+            [FromQuery] string? modifiers = null,
+            [FromQuery] bool friends = false,
+            [FromQuery] bool voters = false) {
+
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = currentID != null ? await _context
+                .Players
+                .Where(p => p.Id == currentID)
+                .Select(p => new { 
+                    p.Role, 
+                    ShowBots = p.ProfileSettings != null ? p.ProfileSettings.ShowBots : false, 
+                    ShowAllRatings = p.ProfileSettings != null ? p.ProfileSettings.ShowAllRatings : false, 
+                    p.MapperId })
+                .FirstOrDefaultAsync() : null;
+
+            bool showBots = currentPlayer?.ShowBots ?? false;
+
+            IQueryable<Leaderboard> query = _context
+                    .Leaderboards
+                    .Where(lb => lb.Id == id)
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(d => d.ModifierValues)
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(d => d.ModifiersRating);
+
+
+            LeaderboardResponse? leaderboard;
+            using (_serverTiming.TimeAction("leaderboard")) {
+                leaderboard = await query
+                .AsSplitQuery()
+                .Select(l => new LeaderboardResponse {
+                Id = l.Id,
+                Song = l.Song,
+                Difficulty = new DifficultyResponse {
+                    Id = l.Difficulty.Id,
+                    Value = l.Difficulty.Value,
+                    Mode = l.Difficulty.Mode,
+                    DifficultyName = l.Difficulty.DifficultyName,
+                    ModeName = l.Difficulty.ModeName,
+                    Status = l.Difficulty.Status,
+                    ModifierValues = l.Difficulty.ModifierValues,
+                    ModifiersRating = l.Difficulty.ModifiersRating,
+                    NominatedTime  = l.Difficulty.NominatedTime,
+                    QualifiedTime  = l.Difficulty.QualifiedTime,
+                    RankedTime = l.Difficulty.RankedTime,
+
+                    Stars  = l.Difficulty.Stars,
+                    PredictedAcc  = l.Difficulty.PredictedAcc,
+                    PassRating  = l.Difficulty.PassRating,
+                    AccRating  = l.Difficulty.AccRating,
+                    TechRating  = l.Difficulty.TechRating,
+                    Type  = l.Difficulty.Type,
+
+                    Njs  = l.Difficulty.Njs,
+                    Nps  = l.Difficulty.Nps,
+                    Notes  = l.Difficulty.Notes,
+                    Bombs  = l.Difficulty.Bombs,
+                    Walls  = l.Difficulty.Walls,
+                    MaxScore = l.Difficulty.MaxScore,
+                    Duration  = l.Difficulty.Duration,
+
+                    Requirements = l.Difficulty.Requirements,
+                },
+                Plays = l.Plays,
+                })
+               .FirstOrDefaultAsync();
+            }
+
+            if (leaderboard != null) {
+
+                bool showRatings = currentPlayer?.ShowAllRatings ?? false;
+                if (!showRatings && !leaderboard.Difficulty.Status.WithRating()) {
+                    leaderboard.HideRatings();
+                }
+
+                List<string>? friendsList = null;
+
+                if (friends) {
+                    if (currentID == null) {
+                        return NotFound();
+                    }
+                    using (_serverTiming.TimeAction("friends")) {
+                    var friendsContainer = await _context
+                        .Friends
+                        .Where(f => f.Id == currentID)
+                        .Include(f => f.Friends)
+                        .Select(f => f.Friends.Select(fs => fs.Id))
+                        .FirstOrDefaultAsync();
+                    if (friendsContainer != null) {
+                        friendsList = friendsContainer.ToList();
+                        friendsList.Add(currentID);
+                    } else {
+                        friendsList = new List<string> { currentID };
+                    }
+                    }
+                }
+
+                if (leaderboardContext == LeaderboardContexts.General || leaderboardContext == LeaderboardContexts.None) {
+                    await GeneralScores(leaderboard, showBots, voters, false, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, true);
+                } else {
+                    await ContextScores(leaderboard, leaderboardContext, showBots, voters, false, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, true);
+                }
+
+                foreach (var score in leaderboard.Scores) {
+                    score.Player = PostProcessSettings(score.Player, false);
+                }
             }
 
             for (int i = 0; i < leaderboard.Scores?.Count; i++) {
