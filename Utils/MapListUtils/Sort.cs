@@ -91,7 +91,8 @@ public static partial class MapListUtils
                     showRatings || 
                     leaderboard.Difficulty.Status == DifficultyStatus.nominated || 
                     leaderboard.Difficulty.Status == DifficultyStatus.qualified || 
-                    leaderboard.Difficulty.Status == DifficultyStatus.ranked) ? leaderboard.Difficulty.Stars : 0);
+                    leaderboard.Difficulty.Status == DifficultyStatus.ranked || 
+                    leaderboard.Difficulty.Status == DifficultyStatus.OST) ? leaderboard.Difficulty.Stars : 0);
     }
 
     private static IOrderedQueryable<Leaderboard> SortByPassRating(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo, int? searchId, Player? player) {
@@ -102,7 +103,8 @@ public static partial class MapListUtils
                     showRatings || 
                     leaderboard.Difficulty.Status == DifficultyStatus.nominated || 
                     leaderboard.Difficulty.Status == DifficultyStatus.qualified || 
-                    leaderboard.Difficulty.Status == DifficultyStatus.ranked) ? leaderboard.Difficulty.PassRating : 0);
+                    leaderboard.Difficulty.Status == DifficultyStatus.ranked || 
+                    leaderboard.Difficulty.Status == DifficultyStatus.OST) ? leaderboard.Difficulty.PassRating : 0);
     }
 
     private static IOrderedQueryable<Leaderboard> SortByAccRating(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo, int? searchId, Player? player) {
@@ -113,7 +115,8 @@ public static partial class MapListUtils
                     showRatings || 
                     leaderboard.Difficulty.Status == DifficultyStatus.nominated || 
                     leaderboard.Difficulty.Status == DifficultyStatus.qualified || 
-                    leaderboard.Difficulty.Status == DifficultyStatus.ranked) ? leaderboard.Difficulty.AccRating : 0);
+                    leaderboard.Difficulty.Status == DifficultyStatus.ranked || 
+                    leaderboard.Difficulty.Status == DifficultyStatus.OST) ? leaderboard.Difficulty.AccRating : 0);
     }
 
     private static IOrderedQueryable<Leaderboard> SortByTechRating(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo, int? searchId, Player? player) {
@@ -124,7 +127,8 @@ public static partial class MapListUtils
                     showRatings || 
                     leaderboard.Difficulty.Status == DifficultyStatus.nominated || 
                     leaderboard.Difficulty.Status == DifficultyStatus.qualified || 
-                    leaderboard.Difficulty.Status == DifficultyStatus.ranked) ? leaderboard.Difficulty.TechRating : 0);
+                    leaderboard.Difficulty.Status == DifficultyStatus.ranked || 
+                    leaderboard.Difficulty.Status == DifficultyStatus.OST) ? leaderboard.Difficulty.TechRating : 0);
     }
 
     private static IQueryable<Leaderboard> FilterRated(this IQueryable<Leaderboard> sequence, int? dateFrom, int? dateTo, int? searchId) => sequence
