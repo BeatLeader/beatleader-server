@@ -120,8 +120,11 @@ namespace BeatLeader_Server.Controllers
             }
 
             var scopeList = scopes.Split(',');
-            if (scopeList.Length == 0 || scopeList.Any(s => s != Permissions.Scopes.Profile && s != CustomScopePermissions.Clan)) {
-                return BadRequest($"Only {Permissions.Scopes.Profile} and {CustomScopePermissions.Clan} scopes are supported");
+            if (scopeList.Length == 0 || scopeList.Any(s => 
+                s != Permissions.Scopes.Profile && 
+                s != "scp:offline_access" && 
+                s != CustomScopePermissions.Clan)) {
+                return BadRequest($"Only {Permissions.Scopes.Profile}, {CustomScopePermissions.Clan} and scp:offline_access scopes are supported");
             }
 
             // Generate a new client secret
