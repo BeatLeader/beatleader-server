@@ -133,9 +133,16 @@ namespace BeatLeader_Server.Controllers
                     string id = user.data.id;
 
                     var existingPatreonLink = await _context.PatreonLinks.FirstOrDefaultAsync(pl => pl.PatreonId == id);
+                    
                     if (existingPatreonLink != null)
                     {
-                        return Redirect(returnUrl);
+                        var player = _context.Players.FirstOrDefault(p => p.Id == existingPatreonLink.Id);
+                        if (player != null) {
+                            return Redirect(returnUrl);
+                        } else {
+                            _context.PatreonLinks.Remove(existingPatreonLink);
+                            _context.SaveChanges();
+                        }
                     }
 
                     string? tier = GetUserTier(user);
