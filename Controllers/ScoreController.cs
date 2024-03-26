@@ -1176,7 +1176,7 @@ namespace BeatLeader_Server.Controllers
 
             if (pinnedScores.Count() > pinLimit 
                 && pin 
-                && score.Metadata?.PinnedContexts.HasFlag(leaderboardContext) == false)
+                && score.Metadata?.PinnedContexts.HasFlag(leaderboardContext) != true)
             {
                 return BadRequest("Too many scores pinned");
             }
