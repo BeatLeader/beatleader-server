@@ -54,6 +54,7 @@ namespace BeatLeader_Server
         public DbSet<EventRanking> EventRankings { get; set; }
         public DbSet<EventPlayer> EventPlayer { get; set; }
         public DbSet<CountryChangeBan> CountryChangeBans { get; set; }
+        public DbSet<UsernamePfpChangeBan> UsernamePfpChangeBans { get; set; }
         public DbSet<RankQualification> RankQualification { get; set; }
         public DbSet<QualificationCommentary> QualificationCommentary { get; set; }
         public DbSet<CriteriaCommentary> CriteriaCommentary { get; set; }

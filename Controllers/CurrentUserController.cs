@@ -371,6 +371,11 @@ namespace BeatLeader_Server.Controllers {
                         return BadRequest("Use name between the 3 and 30 symbols");
                     }
 
+                    var changeBan = await _context.UsernamePfpChangeBans.FirstOrDefaultAsync(b => b.PlayerId == player.Id);
+                    if (changeBan != null) {
+                        return BadRequest("Username/profile picture change is banned for you!");
+                    }
+
                     player.Name = name;
                     newChange.NewName = name;
 
@@ -419,6 +424,11 @@ namespace BeatLeader_Server.Controllers {
                 (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(ms);
                 Random rnd = new Random();
                 fileName = userId + "R" + rnd.Next(1, 50) + extension;
+
+                var changeBan = await _context.UsernamePfpChangeBans.FirstOrDefaultAsync(b => b.PlayerId == player.Id);
+                if (changeBan != null) {
+                    return BadRequest("Username/profile picture change is banned for you!");
+                }
 
                 player.Avatar = await _s3Client.UploadAsset(fileName, stream);
             } catch (Exception e) { 
