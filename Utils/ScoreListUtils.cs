@@ -37,6 +37,15 @@ namespace BeatLeader_Server.Utils {
                 case "pp":
                     orderedSequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.Pp);
                     break;
+                case "accPP":
+                    orderedSequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.AccPP);
+                    break;
+                case "passPP":
+                    orderedSequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.PassPP);
+                    break;
+                case "techPP":
+                    orderedSequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.TechPP);
+                    break;
                 case "acc":
                     orderedSequence = sequence.Order(order, t => t.Accuracy);
                     break;
@@ -186,6 +195,15 @@ namespace BeatLeader_Server.Utils {
                     break;
                 case "pp":
                     orderedSequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.Pp);
+                    break;
+                case "accPP":
+                    orderedSequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.AccPP);
+                    break;
+                case "passPP":
+                    orderedSequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.PassPP);
+                    break;
+                case "techPP":
+                    orderedSequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.TechPP);
                     break;
                 case "acc":
                     orderedSequence = sequence.Order(order, t => t.Accuracy);
