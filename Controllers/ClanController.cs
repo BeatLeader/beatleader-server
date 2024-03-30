@@ -299,6 +299,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
             [FromQuery] string sortBy = "pp",
+            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery] Order order = Order.Desc,
             [FromQuery] string? search = null,
             [FromQuery] string? capturedLeaderboards = null)
@@ -368,7 +369,7 @@ namespace BeatLeader_Server.Controllers
                 LeaderboardId = cr.LeaderboardId,
                 Leaderboard = cr.Leaderboard,
                 Rank = cr.Rank,
-                MyScore = currentID == null ? null : cr.Leaderboard.Scores.Where(s => s.PlayerId == currentID && !s.Banned).Select(s => new ScoreResponseWithAcc {
+                MyScore = currentID == null ? null : cr.Leaderboard.Scores.Where(s => s.PlayerId == currentID && s.ValidContexts.HasFlag(leaderboardContext) && !s.Banned).Select(s => new ScoreResponseWithAcc {
                     Id = s.Id,
                     BaseScore = s.BaseScore,
                     ModifiedScore = s.ModifiedScore,
@@ -462,6 +463,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
             [FromQuery] string sortBy = "pp",
+            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery] Order order = Order.Desc,
             [FromQuery] string? search = null,
             [FromQuery] string? capturedLeaderboards = null)
@@ -473,7 +475,7 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            return await PopulateClanWithMaps(clan, currentID, page, count, sortBy, order, search, capturedLeaderboards);
+            return await PopulateClanWithMaps(clan, currentID, page, count, sortBy, leaderboardContext, order, search, capturedLeaderboards);
         }
 
         [HttpGet("~/clan/id/{id}/maps")]
@@ -482,6 +484,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
             [FromQuery] string sortBy = "pp",
+            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery] Order order = Order.Desc,
             [FromQuery] string? search = null,
             [FromQuery] string? capturedLeaderboards = null)
@@ -496,7 +499,7 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            return await PopulateClanWithMaps(clan, currentID, page, count, sortBy, order, search, capturedLeaderboards);
+            return await PopulateClanWithMaps(clan, currentID, page, count, sortBy, leaderboardContext, order, search, capturedLeaderboards);
         }
 
         public class ClanPoint {
