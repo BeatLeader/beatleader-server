@@ -11,7 +11,7 @@ namespace BeatLeader_Server.Extensions
 
         public static bool WithPP(this DifficultyStatus context)
         {
-            return context == DifficultyStatus.ranked || context == DifficultyStatus.qualified || context == DifficultyStatus.inevent || context == DifficultyStatus.OST;
+            return context == DifficultyStatus.ranked || context == DifficultyStatus.qualified || context == DifficultyStatus.inevent;
         }
     }
 }

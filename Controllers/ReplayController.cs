@@ -663,7 +663,7 @@ namespace BeatLeader_Server.Controllers
             Player player,
             IDbContextTransaction? transaction) {
             if (!player.Bot) {
-                var isRanked = leaderboard.Difficulty.Status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.inevent || (leaderboard.Difficulty.ModeName != "NoArrows" && leaderboard.Difficulty.Status == DifficultyStatus.OST);
+                var isRanked = leaderboard.Difficulty.Status is DifficultyStatus.ranked or DifficultyStatus.qualified or DifficultyStatus.inevent;
                 await RefreshGeneneralContextRank(leaderboard, resultScore, isRanked);
                 
                 foreach (var leaderboardContext in ContextExtensions.NonGeneral) {

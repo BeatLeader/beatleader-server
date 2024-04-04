@@ -55,7 +55,7 @@ namespace BeatLeader_Server.Controllers
                     var allScores = leaderboard.Scores.Where(s => !s.Banned && s.ValidContexts.HasFlag(LeaderboardContexts.General)).ToList();
                     var status = leaderboard.Difficulty.Status;
                     var modifiers = leaderboard.Difficulty.ModifierValues ?? new ModifiersMap();
-                    bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent || (leaderboard.Difficulty.ModeName != "NoArrows" && status == DifficultyStatus.OST);
+                    bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
                     bool hasPp = status == DifficultyStatus.ranked || qualification;
 
                     foreach (Score s in allScores)
@@ -195,7 +195,7 @@ namespace BeatLeader_Server.Controllers
 
                     var status = leaderboard.Difficulty.Status;
                     var modifiers = leaderboard.Difficulty.ModifierValues;
-                    bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent || (leaderboard.Difficulty.ModeName != "NoArrows" && status == DifficultyStatus.OST);
+                    bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
                     bool hasPp = status == DifficultyStatus.ranked || qualification;
                     var newScores = new List<Score>();
 
@@ -364,7 +364,7 @@ namespace BeatLeader_Server.Controllers
 
                     var status = leaderboard.Difficulty.Status;
                     var modifiers = leaderboard.Difficulty.ModifierValues;
-                    bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent || (leaderboard.Difficulty.ModeName != "NoArrows" && status == DifficultyStatus.OST);
+                    bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
                     bool hasPp = status == DifficultyStatus.ranked || qualification;
                     var newScores = new List<ScoreContextExtension>();
 
@@ -525,7 +525,7 @@ namespace BeatLeader_Server.Controllers
                     var allScores = leaderboard.Scores.ToList();
 
                     var status = leaderboard.Difficulty.Status;
-                    bool hasPp = status == DifficultyStatus.ranked || status == DifficultyStatus.qualified || status == DifficultyStatus.inevent || (leaderboard.Difficulty.ModeName != "NoArrows" && status == DifficultyStatus.OST);
+                    bool hasPp = status == DifficultyStatus.ranked || status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
                     var newScores = new List<ScoreContextExtension>();
 
                     foreach (var s in allScores)
@@ -605,7 +605,7 @@ namespace BeatLeader_Server.Controllers
                     var allScores = leaderboard.Scores.Where(s => !s.Banned).ToList();
 
                     var status = leaderboard.Difficulty.Status;
-                    bool hasPp = status == DifficultyStatus.ranked || status == DifficultyStatus.qualified || status == DifficultyStatus.inevent || (leaderboard.Difficulty.ModeName != "NoArrows" && status == DifficultyStatus.OST);
+                    bool hasPp = status == DifficultyStatus.ranked || status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
                     var newScores = new List<Score>();
 
                     foreach (var s in allScores)
