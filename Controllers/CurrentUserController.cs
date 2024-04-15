@@ -117,7 +117,7 @@ namespace BeatLeader_Server.Controllers {
         public async Task<ActionResult<PlayerResponseWithFriends>> GetCurrentUserMod() {
             string? id = GetId();
             if (id == null) {
-                return NotFound();
+                return Unauthorized();
             }
 
             PlayerResponseWithFriends? result = await _context
@@ -146,7 +146,7 @@ namespace BeatLeader_Server.Controllers {
             if (result == null) {
                 Player? player = (await _playerController.GetLazy(id)).Value;
                 if (player == null) {
-                    return NotFound();
+                    return Unauthorized();
                 }
                 _context.Users.Add(new User {
                     Id = id,
@@ -158,6 +158,7 @@ namespace BeatLeader_Server.Controllers {
             
             var friends = await _context.Friends.Where(f => f.Id == id).Select(f => new { Friends = f.Friends.Select(f => f.Id) }).FirstOrDefaultAsync();
             result.Friends = friends?.Friends.ToList() ?? new List<string>();
+            result.QuestId = (await _context.AccountLinks.Where(al => al.SteamID == id).FirstOrDefaultAsync())?.OculusID.ToString();
             return result;
         }
 
@@ -355,7 +356,7 @@ namespace BeatLeader_Server.Controllers {
                     // Regex to remove Unity rich text tags
                     name = Regex.Replace(name, "<(/)?(align|alpha|color|b|i|cspace|font|indent|line-height|line-indent|link|lowercase|uppercase|smallcaps|margin|mark|mspace|noparse|nobr|page|pos|size|space|sprite|s|u|style|sub|sup|voffset|width)(.*?)>|<#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6}|[A-Fa-f0-9]{8})>", string.Empty);
                     // Regex to remove unprintable, control, and specific whitespace-like characters
-                    name = Regex.Replace(name, @"[\p{C}\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Cn}]+", string.Empty);
+                    name = Regex.Replace(name, @"[\p{Cc}\p{Cf}\p{Co}\p{Cn}]+", string.Empty);
                     // Explicitly include known problematic characters like the Hangul Filler (U+3164), ZERO WIDTH SPACE (U+200B), etc.
                     name = Regex.Replace(name, @"[\u3164\u200B\u200C\u200D\u2060\uFEFF]+", string.Empty);
 
@@ -1205,6 +1206,11 @@ namespace BeatLeader_Server.Controllers {
                     }
                     migratedToPlayer.Clans.Add(clan);
                 }
+            }
+
+            var clanUpdates = _context.ClanUpdates.Where(cu => cu.Player == currentPlayer).ToList();
+            foreach (var cu in clanUpdates) {
+                _context.ClanUpdates.Remove(cu);
             }
 
             currentPlayer.History = null;
