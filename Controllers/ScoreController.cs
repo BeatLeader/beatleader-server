@@ -562,6 +562,7 @@ namespace BeatLeader_Server.Controllers
                         Role = s.Player.Role,
                         Socials = s.Player.Socials,
                         ProfileSettings = s.Player.ProfileSettings,
+                        ClanOrder = s.Player.ClanOrder,
                         Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                     },
                     ScoreImprovement = s.ScoreImprovement
