@@ -68,13 +68,7 @@ namespace BeatLeader_Server.Services
                         .Include(p => p.ScoreStats)
                         .Skip(i)
                         .Take(10000)
-                        .Select(p => new { 
-                            Pp = p.Pp, 
-                            ScoreStats = p.ScoreStats, 
-                            Rank = p.Rank, 
-                            CountryRank = p.CountryRank,
-                            Id = p.Id
-                            })
+                        .Select(p => new { p.Pp, p.AccPp, p.PassPp, p.TechPp, p.ScoreStats, p.Rank, p.CountryRank, p.Id })
                         .ToListAsync();
                     foreach (var p in ranked)
                     {
@@ -83,7 +77,12 @@ namespace BeatLeader_Server.Services
                             PlayerId = p.Id,
                             Timestamp = timeset,
                             Rank = p.Rank,
+
                             Pp = p.Pp,
+                            AccPp = p.AccPp,
+                            PassPp = p.PassPp,
+                            TechPp = p.TechPp,
+
                             CountryRank = p.CountryRank,
                             Context = LeaderboardContexts.General,
 
@@ -175,13 +174,7 @@ namespace BeatLeader_Server.Services
                             .Include(p => p.ScoreStats)
                             .Skip(i)
                             .Take(10000)
-                            .Select(p => new { 
-                                Pp = p.Pp, 
-                                ScoreStats = p.ScoreStats, 
-                                Rank = p.Rank, 
-                                CountryRank = p.CountryRank,
-                                Id = p.PlayerId
-                                })
+                            .Select(p => new { p.Pp, p.AccPp, p.PassPp, p.TechPp, p.ScoreStats, p.Rank, p.CountryRank, Id = p.PlayerId })
                             .ToListAsync();
                         foreach (var p in ranked)
                         {
@@ -190,7 +183,12 @@ namespace BeatLeader_Server.Services
                                 PlayerId = p.Id,
                                 Timestamp = timeset,
                                 Rank = p.Rank,
+
                                 Pp = p.Pp,
+                                AccPp = p.AccPp,
+                                PassPp = p.PassPp,
+                                TechPp = p.TechPp,
+
                                 CountryRank = p.CountryRank,
                                 Context = context,
 

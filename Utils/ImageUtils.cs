@@ -28,8 +28,7 @@ namespace BeatLeader_Server.Utils
             string extension;
 
             if (format.Name == "GIF") {
-                memoryStream.Position = 0;
-                memoryStream.CopyTo(ms);
+                image.SaveAsGif(ms);
                 extension = ".gif";
             } else {
                 image.SaveAsPng(ms);
@@ -38,6 +37,29 @@ namespace BeatLeader_Server.Utils
             ms.Position = 0;
 
             return (extension, ms);
+        }
+
+        public static MemoryStream ResizeToWebp(MemoryStream memoryStream)
+        {
+            Image image = Image.Load(memoryStream);
+            Size size = image.Size;
+
+            int width = Math.Min(300, size.Width);
+            int height = (int)(((float)size.Height / (float)size.Width) * (float)width);
+
+            if (width < height) {
+                image.Mutate(i => i.Resize(width, height).Crop(new Rectangle(0, height / 2 - width / 2, width, width)));
+            } else if (width > height) {
+                image.Mutate(i => i.Resize(width, height).Crop(new Rectangle(width / 2 - height / 2, 0, height, height)));
+            } else {
+                image.Mutate(i => i.Resize(width, height));
+            }
+
+            var ms = new MemoryStream(5);
+            image.SaveAsWebp(ms);
+            ms.Position = 0;
+
+            return ms;
         }
         
         public static (string, MemoryStream) GetFormat(MemoryStream memoryStream)

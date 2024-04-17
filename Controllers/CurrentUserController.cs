@@ -432,6 +432,9 @@ namespace BeatLeader_Server.Controllers {
                 }
 
                 player.Avatar = await _s3Client.UploadAsset(fileName, stream);
+
+                MemoryStream webpstream = ImageUtils.ResizeToWebp(ms);
+                player.WebAvatar = await _s3Client.UploadAsset(fileName.Replace(extension, "webp"), webpstream);
             } catch (Exception e) { 
                 Console.WriteLine($"EXCEPTION: {e}");
             }
