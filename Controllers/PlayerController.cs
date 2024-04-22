@@ -804,6 +804,10 @@ namespace BeatLeader_Server.Controllers
             string ppType,
             Order order, 
             string mapsType) where T : IPlayer {
+            if (sortBy == "dailyImprovements") {
+                return request.Order(order, p => p.ScoreStats.DailyImprovements);
+            }
+
             if (sortBy == "pp") {
                 switch (ppType)
                 {
