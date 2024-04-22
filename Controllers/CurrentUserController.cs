@@ -3,6 +3,7 @@ using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
+using Ganss.Xss;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -432,7 +433,7 @@ namespace BeatLeader_Server.Controllers {
                 }
 
                 player.Avatar = await _s3Client.UploadAsset(fileName, stream);
-
+                ms.Position = 0;
                 MemoryStream webpstream = ImageUtils.ResizeToWebp(ms);
                 player.WebAvatar = await _s3Client.UploadAsset(fileName.Replace(extension, "webp"), webpstream);
             } catch (Exception e) { 
@@ -657,6 +658,60 @@ namespace BeatLeader_Server.Controllers {
             await _context.SaveChangesAsync();
 
             return Ok();
+        }
+
+        [HttpPut("~/user/richbio")]
+        public async Task<ActionResult> UpdatePlayerRichBio(
+            [FromQuery] string? id = null) {
+            var currentID = HttpContext.CurrentUserID(_context);
+
+            var player = await _context.Players.FindAsync(currentID);
+
+            if (player == null) {
+                return NotFound();
+            }
+
+            if (player.Banned) {
+                return BadRequest("You are banned!");
+            }
+
+            if (id != null && player != null && player.Role.Contains("admin")) {
+                player = await _context
+                    .Players
+                    .Include(p => p.ProfileSettings)
+                    .FirstOrDefaultAsync(p => p.Id == id);
+            }
+
+            var timeset = Time.UnixNow();
+            try {
+                var ms = new MemoryStream(5);
+                await Request.Body.CopyToAsync(ms);
+                if (ms.Length > 0) {
+                    ms.Position = 0;
+                    using var sr = new StreamReader(ms);
+
+                    var sanitizer = new HtmlSanitizer();
+                    sanitizer.AllowedSchemes.Add("data");
+                    var newBio = sanitizer.Sanitize(sr.ReadToEnd());
+
+                    if (player.RichBioTimeset > 0) {
+                        await _s3Client.DeleteAsset($"player-{player.Id}-richbio-{player.RichBioTimeset}.html");
+                    }
+
+                    
+                    var fileName = $"player-{player.Id}-richbio-{timeset}.html";
+
+                    player.RichBioTimeset = timeset;
+                    _ = await _s3Client.UploadAsset(fileName, newBio);
+                }
+            } catch (Exception e) {
+                Console.WriteLine($"EXCEPTION: {e}");
+                return BadRequest("Failed to save rich bio");
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(timeset);
         }
 
         [HttpPatch("~/user/changePassword")]

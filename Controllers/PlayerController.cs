@@ -96,6 +96,7 @@ namespace BeatLeader_Server.Controllers
                     Bot = player.Bot,
 
                     ExternalProfileUrl = player.ExternalProfileUrl,
+                    RichBioTimeset = player.RichBioTimeset,
 
                     Badges = player.Badges,
                     Changes = player.Changes,
