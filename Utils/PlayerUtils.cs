@@ -869,10 +869,6 @@ namespace BeatLeader_Server.Utils
                     if (currentScore != null) {
                         playerScoreStats.RankedImprovementsCount++;
                         playerScoreStats.TotalImprovementsCount++;
-
-                        if (resultScore.Timepost - currentScore.Timepost > 60 * 60 * 24 * 7 && !currentScore.Modifiers.Contains("OP")) {
-                            playerScoreStats.DailyImprovements++;
-                        }
                     }
                 } else {
                     if (resultScore.Rank == 1 && (currentScore == null || currentScore.Rank != 1)) {
@@ -884,10 +880,6 @@ namespace BeatLeader_Server.Utils
                     if (currentScore != null) {
                         playerScoreStats.UnrankedImprovementsCount++;
                         playerScoreStats.TotalImprovementsCount++;
-
-                        if (resultScore.Timepost - currentScore.Timepost > 60 * 60 * 24 * 7 && !currentScore.Modifiers.Contains("OP")) {
-                            playerScoreStats.DailyImprovements++;
-                        }
                     }
                 }
             }
