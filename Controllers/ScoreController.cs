@@ -78,6 +78,8 @@ namespace BeatLeader_Server.Controllers
                     Platform = s.Platform,
                     LeaderboardId = s.LeaderboardId,
                     Difficulty = s.Leaderboard.Difficulty,
+                    ValidContexts = s.ValidContexts,
+                    ScoreImprovement = s.ScoreImprovement,
                     Song = new ScoreSongResponse {
                         Id = s.Leaderboard.Song.Id,
                         Hash = s.Leaderboard.Song.Hash,
@@ -103,7 +105,26 @@ namespace BeatLeader_Server.Controllers
                         Socials = s.Player.Socials,
                         ProfileSettings = s.Player.ProfileSettings,
                         PatreonFeatures = s.Player.PatreonFeatures
-                    }
+                    },
+                    ContextExtensions = s.ContextExtensions.Select(ce => new ScoreContextExtensionResponse {
+                        Id = ce.Id,
+                        PlayerId = ce.PlayerId,
+        
+                        Weight = ce.Weight,
+                        Rank = ce.Rank,
+                        BaseScore = ce.BaseScore,
+                        ModifiedScore = ce.ModifiedScore,
+                        Accuracy = ce.Accuracy,
+                        Pp = ce.Pp,
+                        PassPP = ce.PassPP,
+                        AccPP = ce.AccPP,
+                        TechPP = ce.TechPP,
+                        BonusPp = ce.BonusPp,
+                        Modifiers = ce.Modifiers,
+
+                        Context = ce.Context,
+                        ScoreImprovement = ce.ScoreImprovement,
+                    }).ToList()
                 })
                 .FirstOrDefaultAsync();
 
