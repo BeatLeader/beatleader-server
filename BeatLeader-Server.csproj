@@ -54,7 +54,6 @@
     <PackageReference Include="AspNetCoreRateLimit" Version="5.0.0" />
     <PackageReference Include="AsyncEnumerator" Version="4.0.2" />
     <PackageReference Include="AWSSDK.S3" Version="3.7.307.10" />
-    <PackageReference Include="BeatLeader.ReplayDecoder" Version="1.0.0" />
     <PackageReference Include="CoreHtmlToImage" Version="1.0.6" />
     <PackageReference Include="Discord.Net.Webhook" Version="3.14.1" />
     <PackageReference Include="Discord.Net.WebSocket" Version="3.14.1" />
@@ -117,6 +116,7 @@
   <ItemGroup>
     <ProjectReference Include="beatleader-parser\beatleader-parser\Parser.csproj" />
     <ProjectReference Include="beatleader-server-models\Models.csproj" />
+    <ProjectReference Include="ReplayDecoder\ReplayDecoder\ReplayDecoder.csproj" />
   </ItemGroup>
   <ProjectExtensions>
     <MonoDevelop>

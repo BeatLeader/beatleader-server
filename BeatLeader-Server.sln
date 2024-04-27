@@ -11,6 +11,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models", "beatleader-server
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Parser", "beatleader-parser\beatleader-parser\Parser.csproj", "{0E9624AC-1C17-4762-8995-394DDC5C5C30}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReplayDecoder", "ReplayDecoder\ReplayDecoder\ReplayDecoder.csproj", "{8AF76585-A77C-4C3E-9EB6-7DD4C609416C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{0E9624AC-1C17-4762-8995-394DDC5C5C30}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0E9624AC-1C17-4762-8995-394DDC5C5C30}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0E9624AC-1C17-4762-8995-394DDC5C5C30}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8AF76585-A77C-4C3E-9EB6-7DD4C609416C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8AF76585-A77C-4C3E-9EB6-7DD4C609416C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8AF76585-A77C-4C3E-9EB6-7DD4C609416C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8AF76585-A77C-4C3E-9EB6-7DD4C609416C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
