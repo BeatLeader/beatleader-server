@@ -257,6 +257,20 @@ namespace BeatLeader_Server.Utils
             bool hasPp = status == DifficultyStatus.ranked || qualification;
 
             int maxScore = difficulty.MaxScore > 0 ? difficulty.MaxScore : MaxScoreForNote(difficulty.Notes);
+            if (replay.info.failTime > 0 && difficulty.MaxScoreGraph != null) {
+                var scoreList = difficulty.MaxScoreGraph.LoadList();
+                var maxScoreNote = scoreList?.FirstOrDefault(s => s.Item1 >= replay.info.failTime);
+                if (maxScoreNote != null) {
+                    maxScore = maxScoreNote?.Item2 ?? 0;
+                }
+
+                if (replay.info.startTime > 0) {
+                    var maxStartNote = scoreList?.FirstOrDefault(s => s.Item1 >= replay.info.startTime);
+                    if (maxStartNote != null) {
+                        maxScore -= maxStartNote?.Item2 ?? 0;
+                    }
+                }
+            }
             if (hasPp)
             {
                 score.ModifiedScore = (int)(score.BaseScore * modifers.GetNegativeMultiplier(info.modifiers, true));

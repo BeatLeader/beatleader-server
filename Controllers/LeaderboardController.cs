@@ -1255,6 +1255,8 @@ namespace BeatLeader_Server.Controllers {
                 .ThenInclude(d => d.ModifierValues)
                 .Include(lb => lb.Difficulty)
                 .ThenInclude(d => d.ModifiersRating)
+                .Include(lb => lb.Difficulty)
+                .ThenInclude(d => d.MaxScoreGraph)
                 .TagWithCallSite()
                 .AsSplitQuery()
                 .FirstOrDefaultAsync(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff);

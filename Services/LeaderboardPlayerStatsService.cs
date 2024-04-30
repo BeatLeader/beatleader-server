@@ -1,8 +1,6 @@
 ﻿using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.EntityFrameworkCore;
-using Prometheus.Client;
-using System.Net;
 
 namespace BeatLeader_Server.Services {
     public class PlayerStatsJob {
@@ -75,10 +73,6 @@ namespace BeatLeader_Server.Services {
                         leaderboard.PlayerStats = new List<PlayerLeaderboardStats>();
                     }
 
-                    if (leaderboard.PlayerStats.Count > 0 &&
-                        leaderboard.PlayerStats.FirstOrDefault(s => s.PlayerId == job.playerId && s.Score == score.BaseScore) != null) {
-                        continue;
-                    }
                     leaderboard.PlayCount++;
 
                     int timeset = job.timeset ?? (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
@@ -87,14 +81,11 @@ namespace BeatLeader_Server.Services {
                     if (job.replayData == null) {
                         replayLink = job.fileName;
                     } else if (anySupporter && job.saveReplay) {
-                        var role = await _context.Players.Where(p => p.Id == job.playerId).Select(p => p.Role).FirstOrDefaultAsync();
-                        if (role != null && Player.RoleIsAnySupporter(role)) {
-                            try {
-                                string fileName = job.fileName;
-                                await _s3Client.UploadOtherReplay(fileName, job.replayData);
-                                replayLink = $"https://api.beatleader.xyz/otherreplays/{fileName}";
-                            } catch {
-                            }
+                        try {
+                            string fileName = job.fileName;
+                            await _s3Client.UploadOtherReplay(fileName, job.replayData);
+                            replayLink = $"https://api.beatleader.xyz/otherreplays/{fileName}";
+                        } catch {
                         }
                     }
 
@@ -106,6 +97,9 @@ namespace BeatLeader_Server.Services {
                         PlayerId = job.playerId,
                         Replay = replayLink
                     };
+                    if (job.leaderboardId != null) {
+                        stats.LeaderboardId = job.leaderboardId;
+                    }
                     stats.FromScore(score);
 
                     var currentScore = await _context
@@ -121,9 +115,7 @@ namespace BeatLeader_Server.Services {
                     leaderboard.PlayerStats.Add(stats);
                 }
 
-                try {
-                    await _context.SaveChangesAsync();
-                } catch { }
+                await _context.SaveChangesAsync();
             }
         }
     }

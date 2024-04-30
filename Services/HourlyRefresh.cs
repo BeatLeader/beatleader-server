@@ -10,6 +10,8 @@ using BeatLeader_Server.Models;
 using Google.Apis.YouTube.v3;
 using Google.Apis.Services;
 using BeatLeader_Server.Controllers;
+using beatleader_parser;
+using Parser.Utils;
 
 namespace BeatLeader_Server.Services {
     public class HourlyRefresh : BackgroundService {
@@ -182,7 +184,9 @@ namespace BeatLeader_Server.Services {
                         HttpWebResponse res = (HttpWebResponse)await WebRequest.Create(song.DownloadUrl).GetResponseAsync();
                         if (res.StatusCode != HttpStatusCode.OK) continue;
 
-                        var archive = new ZipArchive(res.GetResponseStream());
+                        var memoryStream = new MemoryStream();
+                        await res.GetResponseStream().CopyToAsync(memoryStream);
+                        var archive = new ZipArchive(memoryStream);
 
                         var infoFile = archive.Entries.FirstOrDefault(e => e.Name.ToLower() == "info.dat");
                         if (infoFile == null) continue;
@@ -197,15 +201,12 @@ namespace BeatLeader_Server.Services {
 
                                 var diff = diffFile.Open().ObjectFromStream<DiffFileV3>();
                                 if (diff != null) {
-                                    if (diff.burstSliders?.Length > 0 || diff.sliders?.Length > 0) {
-                                        var songDiff = song.Difficulties.FirstOrDefault(d => d.DifficultyName == beatmap._difficulty && d.ModeName == set._beatmapCharacteristicName);
-                                        if (songDiff != null) {
+                                    var songDiff = song.Difficulties.FirstOrDefault(d => d.DifficultyName == beatmap._difficulty && d.ModeName == set._beatmapCharacteristicName);
+                                    if (songDiff != null) {
+                                        if (diff.burstSliders?.Length > 0 || diff.sliders?.Length > 0) {
                                             songDiff.Requirements |= Models.Requirements.V3;
                                         }
-                                    }
-                                    if (diff.colorNotes?.FirstOrDefault(n => n.Optional()) != null) {
-                                        var songDiff = song.Difficulties.FirstOrDefault(d => d.DifficultyName == beatmap._difficulty && d.ModeName == set._beatmapCharacteristicName);
-                                        if (songDiff != null) {
+                                        if (diff.colorNotes?.FirstOrDefault(n => n.Optional()) != null) {
                                             songDiff.Requirements |= Models.Requirements.OptionalProperties;
                                         }
                                     }
@@ -225,6 +226,22 @@ namespace BeatLeader_Server.Services {
 
                                         song.FullCoverImage = await _s3Client.UploadAsset(fileName, imageStream);
                                     }
+                                }
+                            }
+                        }
+
+                        var parse = new Parse();
+                        memoryStream.Position = 0;
+                        var map = parse.TryLoadZip(memoryStream)?.FirstOrDefault();
+                        if (map != null) {
+                            foreach (var set in map.Difficulties)
+                            {
+                                var songDiff = song.Difficulties.FirstOrDefault(d => d.DifficultyName == set.Difficulty && d.ModeName == set.Characteristic);
+                                if (songDiff == null || songDiff.MaxScoreGraph != null) continue;
+                                songDiff.MaxScoreGraph = new MaxScoreGraph();
+                                songDiff.MaxScoreGraph.SaveList(set.MaxScoreGraph());
+                                if (songDiff.MaxScore == 0) {
+                                    songDiff.MaxScore = set.MaxScore();
                                 }
                             }
                         }

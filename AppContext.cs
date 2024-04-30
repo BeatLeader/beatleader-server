@@ -91,6 +91,7 @@ namespace BeatLeader_Server
         public DbSet<ValentineMessage> ValentineMessages { get; set; }
         public DbSet<DeveloperProfile> DeveloperProfile { get; set; }
         public DbSet<ExternalStatus> ExternalStatus { get; set; }
+        public DbSet<MaxScoreGraph> MaxScoreGraph { get; set; }
 
         public void RejectChanges()
         {

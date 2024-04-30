@@ -1,4 +1,5 @@
-﻿using BeatLeader_Server.Enums;
+﻿using Amazon.S3;
+using BeatLeader_Server.Enums;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
@@ -6,6 +7,7 @@ using Lib.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ReplayDecoder;
 using static BeatLeader_Server.Controllers.RankController;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
@@ -17,6 +19,7 @@ namespace BeatLeader_Server.Controllers
 
         private readonly IServerTiming _serverTiming;
         private readonly IConfiguration _configuration;
+        private readonly IAmazonS3 _s3Client;
 
         public StatsController(
             AppContext context,
@@ -28,6 +31,7 @@ namespace BeatLeader_Server.Controllers
 
             _serverTiming = serverTiming;
             _configuration = configuration;
+            _s3Client = configuration.GetS3Client();
         }
 
         [HttpGet("~/player/{id}/scoresstats")]
@@ -54,7 +58,13 @@ namespace BeatLeader_Server.Controllers
 
             id = await _context.PlayerIdToMain(id);
 
-            if (currentID != id && !admin) {
+            var features = await _context
+                .Players
+                .Where(p => p.Id == id)
+                .Select(p => p.ProfileSettings)
+                .FirstOrDefaultAsync();
+
+            if (!(currentID == id || admin || (features != null && features.ShowStatsPublic))) {
                 return Unauthorized();
             }
 
@@ -182,13 +192,57 @@ namespace BeatLeader_Server.Controllers
 
             playerId = await _context.PlayerIdToMain(playerId);
 
-            if (currentID != playerId && !admin) {
+            var features = await _context
+                .Players
+                .Where(p => p.Id == playerId)
+                .Select(p => p.ProfileSettings)
+                .FirstOrDefaultAsync();
+
+            if (!(currentID == playerId || admin || (features != null && features.ShowStatsPublic))) {
                 return Unauthorized();
             }
 
-            return Ok(_context.PlayerLeaderboardStats.Where(s => s.PlayerId == playerId && s.LeaderboardId == leaderboardId).ToListAsync());
+            return Ok(
+                await _context
+                .PlayerLeaderboardStats
+                .Where(s => s.PlayerId == playerId && s.LeaderboardId == leaderboardId)
+                .ToListAsync());
         }
 
+        [HttpGet("~/otherreplays/{name}")]
+        public async Task<ActionResult> GetOtherReplay(string name) {
+            var stat = await _context
+                .PlayerLeaderboardStats
+                .Where(s => s.Replay == $"https://api.beatleader.xyz/otherreplays/${name}")
+                .FirstOrDefaultAsync();
+            if (stat == null) {
+                return NotFound();
+            }
+
+            string? currentID = HttpContext.CurrentUserID(_context);
+            bool admin = currentID != null ? ((await _context
+                .Players
+                .Where(p => p.Id == currentID)
+                .Select(p => p.Role)
+                .FirstOrDefaultAsync())
+                ?.Contains("admin") ?? false) : false;
+
+            var playerId = await _context.PlayerIdToMain(stat.PlayerId);
+
+            var features = await _context
+                .Players
+                .Where(p => p.Id == playerId)
+                .Select(p => p.ProfileSettings)
+                .FirstOrDefaultAsync();
+
+            if (!(currentID == playerId || admin || (features != null && features.ShowStatsPublic))) {
+                return Unauthorized();
+            }
+
+            return Redirect(await _s3Client.GetPresignedUrl(name, S3Container.otherreplays));
+        }
+
+        [ApiExplorerSettings(IgnoreApi = true)]
         [HttpGet("~/watched/{scoreId}/")]
         public async Task<ActionResult<VoteStatus>> Played(
             int scoreId)
