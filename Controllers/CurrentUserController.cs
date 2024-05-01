@@ -309,6 +309,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] string? clanOrder = null,
             [FromQuery] bool? showBots = null,
             [FromQuery] bool? showAllRatings = null,
+            [FromQuery] bool? showStatsPublic = null,
             [FromQuery] string? id = null) {
             string userId = GetId();
             var player = await _context
@@ -567,6 +568,9 @@ namespace BeatLeader_Server.Controllers {
             }
             if (!player.AnySupporter()) {
                 settings.ShowAllRatings = false;
+            }
+            if (Request.Query.ContainsKey("showStatsPublic")) {
+                settings.ShowStatsPublic = showStatsPublic ?? false;
             }
 
             await _context.SaveChangesAsync();

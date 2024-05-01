@@ -162,6 +162,20 @@ namespace BeatLeader_Server.Utils
             return null;
         }
 
+        public static async Task<string?> GetPresignedUrlUnsafe(this IAmazonS3 client, string filename, S3Container container)
+        {
+            AWSConfigsS3.UseSignatureVersion4 = true;
+            var request = new GetPreSignedUrlRequest
+            {
+                BucketName = container.ToString(),
+                Key = filename,
+                Expires = DateTime.UtcNow.AddMinutes(5),
+                Verb = HttpVerb.GET
+            };
+
+            return client.GetPreSignedURL(request);
+        }
+
         public static async Task<Stream?> DownloadStreamOffset(
             this IAmazonS3 client, 
             string filename, 

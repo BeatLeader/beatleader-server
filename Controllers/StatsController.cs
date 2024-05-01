@@ -210,10 +210,10 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/otherreplays/{name}")]
-        public async Task<ActionResult> GetOtherReplay(string name) {
+        public async Task<ActionResult<string>> GetOtherReplay(string name) {
             var stat = await _context
                 .PlayerLeaderboardStats
-                .Where(s => s.Replay == $"https://api.beatleader.xyz/otherreplays/${name}")
+                .Where(s => s.Replay == $"https://api.beatleader.xyz/otherreplays/{name}")
                 .FirstOrDefaultAsync();
             if (stat == null) {
                 return NotFound();
@@ -239,7 +239,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            return Redirect(await _s3Client.GetPresignedUrl(name, S3Container.otherreplays));
+            return await _s3Client.GetPresignedUrlUnsafe(name, S3Container.otherreplays);
         }
 
         [ApiExplorerSettings(IgnoreApi = true)]
