@@ -1275,6 +1275,11 @@ namespace BeatLeader_Server.Controllers {
                 _context.ClanUpdates.Remove(cu);
             }
 
+            var predictedScores = _context.PredictedScores.Where(s => s.PlayerId == currentPlayer.Id).ToList();
+            foreach (var score in predictedScores) {
+                _context.PredictedScores.Remove(score);
+            }
+
             currentPlayer.History = null;
             currentPlayer.ProfileSettings = null;
             currentPlayer.Socials = null;

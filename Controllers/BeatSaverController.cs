@@ -190,6 +190,12 @@ namespace BeatLeader_Server.Controllers
                 var result = AuthenticateResult.Success(ticket);
             }
 
+            var leftoverlink = await _context.BeatSaverLinks.FirstOrDefaultAsync(link => link.Id == playerId);
+            if (leftoverlink != null) {
+                _context.BeatSaverLinks.Remove(leftoverlink);
+                _context.SaveChanges();
+            }
+
             if (bslink == null) {
                 string? token = auth?.Properties?.Items[".Token.access_token"];
                 string? refreshToken = auth?.Properties?.Items[".Token.refresh_token"];

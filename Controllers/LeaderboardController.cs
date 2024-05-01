@@ -226,6 +226,154 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [NonAction]
+        public async Task PredictedScores(
+            LeaderboardResponse leaderboard,
+            bool showBots,
+            bool voters,
+            bool showVoters,
+            int page,
+            int count,
+            string sortBy,
+            Order order,
+            ScoreFilterStatus scoreStatus,
+            string? countries,
+            string? search,
+            string? modifiers,
+            List<string>? friendsList,
+            bool offsets = false) {
+            var scoreQuery = _context
+                .PredictedScores
+                .Where(s => s.LeaderboardId == leaderboard.Id);
+
+            if (modifiers != null) {
+                if (!modifiers.Contains("none")) {
+                    var score = Expression.Parameter(typeof(PredictedScore), "s");
+
+                    var contains = typeof(string).GetMethod("Contains", new[] { typeof(string) });
+
+                    var any = modifiers.Contains("any");
+                    var not = modifiers.Contains("not");
+                    // 1 != 2 is here to trigger `OrElse` further the line.
+                    var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(any ? 2 : 1));
+                    var modifiersList = modifiers.Split(",").Where(m => m != "any" && m != "none" && m != "not");
+
+                    foreach (var term in modifiersList) {
+                        var subexpression = Expression.Call(Expression.Property(score, "Modifiers"), contains, Expression.Constant(term));
+                        if (not) {
+                            exp = Expression.And(exp, Expression.Not(subexpression));
+                        } else {
+                            if (any) {
+                                exp = Expression.OrElse(exp, subexpression);
+                            } else {
+                                exp = Expression.And(exp, subexpression);
+                            }
+                        }
+                    }
+                    scoreQuery = scoreQuery.Where((Expression<Func<PredictedScore, bool>>)Expression.Lambda(exp, score));
+                } else {
+                    scoreQuery = scoreQuery.Where(s => s.Modifiers.Length == 0);
+                }
+            }
+
+            Order oppositeOrder = order.Reverse();
+
+            switch (sortBy) {
+                case "date":
+                    scoreQuery = scoreQuery.Order(order, s => s.Timepost).ThenOrder(oppositeOrder, s => s.Rank);
+                    break;
+                case "pp":
+                    scoreQuery = scoreQuery.Order(order, s => s.Pp).ThenOrder(oppositeOrder, s => s.Rank);
+                    break;
+                case "acc":
+                    scoreQuery = scoreQuery.Order(order, s => s.Accuracy);
+                    break;
+                case "rank":
+                    scoreQuery = leaderboard.Difficulty.Status.WithPP() 
+                                ? scoreQuery
+                                    .Order(order, el => Math.Round(el.Pp, 2))
+                                    .ThenOrder(order, el => Math.Round(el.Accuracy, 4))
+                                    .ThenOrder(oppositeOrder, el => el.Timepost)
+                                : scoreQuery
+                                    .Order(oppositeOrder, el => el.Priority)
+                                    .ThenOrder(order, el => el.ModifiedScore)
+                                    .ThenOrder(order, el => Math.Round(el.Accuracy, 4))
+                                    .ThenOrder(oppositeOrder, el => el.Timepost);
+                        break;
+                    break;
+                case "mistakes":
+                    scoreQuery = scoreQuery.Order(order, s => s.BadCuts + s.MissedNotes + s.BombCuts + s.WallsHit);
+                    break;
+                case "weight":
+                    scoreQuery = scoreQuery.Order(order, s => s.Weight);
+                    break;
+                case "weightedPp":
+                    scoreQuery = scoreQuery.Order(order, s => s.Weight * s.Pp);
+                    break;
+                default:
+                    break;
+            }
+            if (search != null) {
+                string lowSearch = search.ToLower();
+                scoreQuery = scoreQuery
+                    .Where(s => s.Player.Name.ToLower().Contains(lowSearch) ||
+                                s.Player.Clans.FirstOrDefault(c => c.Name.ToLower().Contains(lowSearch)) != null ||
+                                s.Player.Clans.FirstOrDefault(c => c.Tag.ToLower().Contains(lowSearch)) != null);
+            }
+            using (_serverTiming.TimeAction("scorecount")) {
+            leaderboard.Plays = await scoreQuery.CountAsync();
+            }
+            using (_serverTiming.TimeAction("scorelist")) {
+            leaderboard.Scores = await scoreQuery
+                .AsSplitQuery()
+                .TagWithCallSite()
+                .Skip((page - 1) * count)
+                .Take(count)
+                .Select(s => new ScoreResponse {
+                    Id = s.Id,
+                    BaseScore = s.BaseScore,
+                    ModifiedScore = s.ModifiedScore,
+                    PlayerId = s.PlayerId,
+                    Accuracy = s.Accuracy,
+                    Pp = s.Pp,
+                    Rank = s.Rank,
+                    Modifiers = s.Modifiers,
+                    BadCuts = s.BadCuts,
+                    MissedNotes = s.MissedNotes,
+                    BombCuts = s.BombCuts,
+                    WallsHit = s.WallsHit,
+                    FullCombo = s.FullCombo,
+                    Timepost = s.Timepost,
+                    AccPP = s.AccPP,
+                    TechPP = s.TechPP,
+                    PassPP = s.PassPP,
+                    Weight = s.Weight,
+                    FcAccuracy = s.FcAccuracy,
+                    FcPp = s.FcPp,
+                    Player = new PlayerResponse {
+                        Id = s.Player.Id,
+                        Name = s.Player.Name,
+                        Avatar = s.Player.Avatar,
+                        Country = s.Player.Country,
+
+                        Bot = s.Player.Bot,
+                        Pp = s.Player.Pp,
+                        Rank = s.Player.Rank,
+                        CountryRank = s.Player.CountryRank,
+                        Role = s.Player.Role,
+                        ProfileSettings = s.Player.ProfileSettings,
+                        Clans = s.Player
+                            .Clans
+                            .OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                            .ThenBy(c => c.Id)
+                            .Take(1)
+                                .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                    },
+                })
+                .ToListAsync();
+            }
+        }
+
+        [NonAction]
         public async Task ContextScores(
             LeaderboardResponse leaderboard,
             LeaderboardContexts context,
@@ -415,7 +563,8 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] string? search = null,
             [FromQuery] string? modifiers = null,
             [FromQuery] bool friends = false,
-            [FromQuery] bool voters = false) {
+            [FromQuery] bool voters = false,
+            [FromQuery] bool prediction = false) {
 
             string? currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = currentID != null ? await _context
@@ -573,10 +722,14 @@ namespace BeatLeader_Server.Controllers {
                     }
                 }
 
-                if (leaderboardContext == LeaderboardContexts.General || leaderboardContext == LeaderboardContexts.None) {
-                    await GeneralScores(leaderboard, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList);
+                if (prediction) {
+                    await PredictedScores(leaderboard, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList);
                 } else {
-                    await ContextScores(leaderboard, leaderboardContext, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList);
+                    if (leaderboardContext == LeaderboardContexts.General || leaderboardContext == LeaderboardContexts.None) {
+                        await GeneralScores(leaderboard, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList);
+                    } else {
+                        await ContextScores(leaderboard, leaderboardContext, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList);
+                    }
                 }
 
                 foreach (var score in leaderboard.Scores) {

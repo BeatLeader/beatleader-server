@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20240424153040_PredictedLeaderboards")]
+    partial class PredictedLeaderboards
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -687,9 +690,6 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int>("MaxScore")
                         .HasColumnType("int");
 
-                    b.Property<int?>("MaxScoreGraphId")
-                        .HasColumnType("int");
-
                     b.Property<int>("Mode")
                         .HasColumnType("int");
 
@@ -758,8 +758,6 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("MaxScoreGraphId");
 
                     b.HasIndex("ModifierValuesModifierId");
 
@@ -1385,23 +1383,6 @@ namespace BeatLeader_Server.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("LoginChanges");
-                });
-
-            modelBuilder.Entity("BeatLeader_Server.Models.MaxScoreGraph", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<byte[]>("Graph")
-                        .IsRequired()
-                        .HasColumnType("varbinary(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("MaxScoreGraph");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ModifiersMap", b =>
@@ -2520,9 +2501,6 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("bit");
 
                     b.Property<bool>("ShowBots")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("ShowStatsPublic")
                         .HasColumnType("bit");
 
                     b.Property<string>("StarredFriends")
@@ -4342,10 +4320,6 @@ namespace BeatLeader_Server.Migrations
 
             modelBuilder.Entity("BeatLeader_Server.Models.DifficultyDescription", b =>
                 {
-                    b.HasOne("BeatLeader_Server.Models.MaxScoreGraph", "MaxScoreGraph")
-                        .WithMany()
-                        .HasForeignKey("MaxScoreGraphId");
-
                     b.HasOne("BeatLeader_Server.Models.ModifiersMap", "ModifierValues")
                         .WithMany()
                         .HasForeignKey("ModifierValuesModifierId");
@@ -4357,8 +4331,6 @@ namespace BeatLeader_Server.Migrations
                     b.HasOne("BeatLeader_Server.Models.Song", null)
                         .WithMany("Difficulties")
                         .HasForeignKey("SongId");
-
-                    b.Navigation("MaxScoreGraph");
 
                     b.Navigation("ModifierValues");
 
