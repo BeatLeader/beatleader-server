@@ -42,6 +42,72 @@ namespace BeatLeader_Server.Controllers
             _s3Client = configuration.GetS3Client();
         }
 
+        [HttpGet("~/events")]
+        public async Task<ActionResult<ResponseWithMetadata<EventResponse>>> GetEvents(
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10,
+            [FromQuery] string? sortBy = "date",
+            [FromQuery] string? search = null,
+            [FromQuery] Order order = Order.Desc)
+        {
+            IQueryable<EventRanking> query = _context.EventRankings.Include(e => e.Players);
+
+            switch (sortBy)
+            {
+                case "date":
+                    query = query.Order(order, p => p.EndDate);
+                    break;
+                case "name":
+                    query = query.Order(order, t => t.Name);
+                    break;
+                default:
+                    break;
+            }
+
+            if (search != null)
+            {
+                string lowSearch = search.ToLower();
+                query = query.Where(p => p.Name.ToLower().Contains(lowSearch));
+            }
+
+            var result = new ResponseWithMetadata<EventResponse>
+            {
+                Metadata = new Metadata
+                {
+                    Page = page,
+                    ItemsPerPage = count,
+                    Total = await query.CountAsync()
+                }
+            };
+
+            int[] undownloadable = [48, 46, 32];
+            result.Data = await query.Select(e => new EventResponse {
+                Id = e.Id,
+                Name = e.Name,
+                EndDate = e.EndDate,
+                PlaylistId = e.PlaylistId,
+                Image = e.Image,
+                Downloadable = !undownloadable.Contains(e.Id), 
+
+                PlayerCount = e.Players.Count(),
+                Leader = new PlayerResponse {
+                    Id = e.Players.OrderByDescending(p => p.Pp).FirstOrDefault().PlayerId
+                }
+            }).Skip((page - 1) * count).Take(count).ToListAsync();
+
+            foreach (var item in result.Data)
+            {
+                item.Leader = ResponseFromPlayer(await _context.Players.Include(p => p.Clans).FirstOrDefaultAsync(p => p.Id == item.Leader.Id));
+            }
+
+            return result;
+        }
+
+        [HttpGet("~/event/{id}")]
+        public async Task<ActionResult<EventRanking?>> GetEvent(int id) {
+            return await _context.EventRankings.FirstOrDefaultAsync(e => e.Id == id);
+        }
+
         [HttpGet("~/event/{id}/players")]
         public async Task<ActionResult<ResponseWithMetadata<PlayerResponseWithStats>>> GetEventPlayers(
             int id,
@@ -134,6 +200,7 @@ namespace BeatLeader_Server.Controllers
             };
         }
 
+        [ApiExplorerSettings(IgnoreApi = true)]
         [HttpGet("~/event/{id}/refresh")]
         public async Task<ActionResult> RefreshEvent(int id)
         {
@@ -181,11 +248,7 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
-        [HttpGet("~/event/{id}")]
-        public async Task<ActionResult<EventRanking?>> GetEvent(int id) {
-            return await _context.EventRankings.FirstOrDefaultAsync(e => e.Id == id);
-        }
-
+        [ApiExplorerSettings(IgnoreApi = true)]
         [HttpPost("~/event/start/{id}")]
         public async Task<ActionResult> StartEvent(
                int id, 
@@ -317,8 +380,7 @@ namespace BeatLeader_Server.Controllers
                 ii++;
             }
 
-            var eventRanking = new EventRanking
-            {
+            var eventRanking = new EventRanking {
                 Name = name,
                 Leaderboards = leaderboards,
                 Players = players,
@@ -331,8 +393,7 @@ namespace BeatLeader_Server.Controllers
 
             await _context.SaveChangesAsync();
 
-            foreach (var player in players)
-            {
+            foreach (var player in players) {
                 var basicPlayer = basicPlayers.FirstOrDefault(p => p.Id == player.PlayerId);
                 if (basicPlayer != null) {
                     if (basicPlayer.EventsParticipating == null) {
@@ -349,6 +410,7 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [ApiExplorerSettings(IgnoreApi = true)]
         [HttpDelete("~/event/{id}")]
         public async Task<ActionResult> DeleteEvent(int id)
         {
@@ -375,65 +437,6 @@ namespace BeatLeader_Server.Controllers
             await _context.SaveChangesAsync();
 
             return Ok();
-        }
-
-        [HttpGet("~/events")]
-        public async Task<ActionResult<ResponseWithMetadata<EventResponse>>> GetEvents(
-            [FromQuery] int page = 1,
-            [FromQuery] int count = 10,
-            [FromQuery] string? sortBy = "date",
-            [FromQuery] string? search = null,
-            [FromQuery] Order order = Order.Desc)
-        {
-            IQueryable<EventRanking> query = _context.EventRankings.Include(e => e.Players);
-
-            switch (sortBy)
-            {
-                case "date":
-                    query = query.Order(order, p => p.EndDate);
-                    break;
-                case "name":
-                    query = query.Order(order, t => t.Name);
-                    break;
-                default:
-                    break;
-            }
-
-            if (search != null)
-            {
-                string lowSearch = search.ToLower();
-                query = query.Where(p => p.Name.ToLower().Contains(lowSearch));
-            }
-
-            var result = new ResponseWithMetadata<EventResponse>
-            {
-                Metadata = new Metadata
-                {
-                    Page = page,
-                    ItemsPerPage = count,
-                    Total = await query.CountAsync()
-                }
-            };
-
-            result.Data = await query.Select(e => new EventResponse {
-                Id = e.Id,
-                Name = e.Name,
-                EndDate = e.EndDate,
-                PlaylistId = e.PlaylistId,
-                Image = e.Image,
-
-                PlayerCount = e.Players.Count(),
-                Leader = new PlayerResponse {
-                    Id = e.Players.OrderByDescending(p => p.Pp).FirstOrDefault().PlayerId
-                }
-            }).Skip((page - 1) * count).Take(count).ToListAsync();
-
-            foreach (var item in result.Data)
-            {
-                item.Leader = ResponseFromPlayer(await _context.Players.Include(p => p.Clans).FirstOrDefaultAsync(p => p.Id == item.Leader.Id));
-            }
-
-            return result;
         }
     }
 }
