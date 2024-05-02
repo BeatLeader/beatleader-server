@@ -261,7 +261,7 @@ namespace BeatLeader_Server.Utils
                 var scoreList = difficulty.MaxScoreGraph.LoadList();
                 var maxScoreNote = scoreList?.FirstOrDefault(s => s.Item1 >= replay.info.failTime);
                 if (maxScoreNote != null) {
-                    maxScore = maxScoreNote?.Item2 ?? 0;
+                    maxScore = maxScoreNote?.Item2 ?? maxScore;
                 }
 
                 if (replay.info.startTime > 0) {
@@ -277,6 +277,9 @@ namespace BeatLeader_Server.Utils
             } else
             {
                 score.ModifiedScore = (int)((score.BaseScore + (int)((float)(maxScore - score.BaseScore) * (modifers.GetPositiveMultiplier(info.modifiers) - 1))) * modifers.GetNegativeMultiplier(info.modifiers));
+            }
+            if (maxScore == 0) {
+                maxScore = MaxScoreForNote(difficulty.Notes);
             }
             
             score.Accuracy = (float)score.BaseScore / (float)maxScore;

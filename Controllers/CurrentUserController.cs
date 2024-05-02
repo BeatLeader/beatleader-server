@@ -437,8 +437,7 @@ namespace BeatLeader_Server.Controllers {
                 ms.Position = 0;
                 MemoryStream webpstream = ImageUtils.ResizeToWebp(ms);
                 player.WebAvatar = await _s3Client.UploadAsset(fileName.Replace(extension, "webp"), webpstream);
-            } catch (Exception e) { 
-                Console.WriteLine($"EXCEPTION: {e}");
+            } catch {
             }
 
             PatreonFeatures? features = player.PatreonFeatures;

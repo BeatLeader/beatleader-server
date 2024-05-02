@@ -17,6 +17,7 @@ namespace BeatLeader_Server.Services {
 
     public class LeaderboardPlayerStatsService : BackgroundService {
         private static List<PlayerStatsJob> jobs = new List<PlayerStatsJob>();
+        private static readonly object _lock = new object();
 
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly IConfiguration _configuration;
@@ -27,7 +28,7 @@ namespace BeatLeader_Server.Services {
         }
 
         public static void AddJob(PlayerStatsJob newJob) {
-            lock (jobs) {
+            lock (_lock) {
                 jobs.Add(newJob);
             }
         }
@@ -39,7 +40,7 @@ namespace BeatLeader_Server.Services {
                     await ProcessJobs();
                 } catch (Exception e)
                 {
-                    Console.WriteLine($"EXCEPTION: {e}");
+                    Console.WriteLine($"LeaderboardPlayerStatsService EXCEPTION: {e}");
                 }
 
                 Console.WriteLine("SERVICE-DONE LeaderboardPlayerStatsService");
@@ -52,15 +53,15 @@ namespace BeatLeader_Server.Services {
         private async Task ProcessJobs() {
             var jobsToProcess = new List<PlayerStatsJob>();
 
-            lock (jobs) {
+            lock (_lock) {
                 foreach (var job in jobs) {
                     jobsToProcess.Add(job);
                 }
                 jobs = new List<PlayerStatsJob>();
             }
 
-            using (var scope = _serviceScopeFactory.CreateScope()) {
-                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+            using (var scope = _serviceScopeFactory.CreateScope())
+            using (var _context = scope.ServiceProvider.GetRequiredService<AppContext>()) {
                 var _s3Client = _configuration.GetS3Client();
                 foreach (var job in jobsToProcess) {
                     var score = job.score;
@@ -113,9 +114,14 @@ namespace BeatLeader_Server.Services {
                     }
 
                     leaderboard.PlayerStats.Add(stats);
-                }
 
-                await _context.SaveChangesAsync();
+                    try {
+                        await _context.SaveChangesAsync();
+                    } catch (Exception e) {
+                        Console.WriteLine($"LeaderboardPlayerStatsService EXCEPTION: {e}");
+                        _context.RejectChanges();
+                    }
+                }
             }
         }
     }

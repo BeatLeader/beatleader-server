@@ -750,7 +750,13 @@ namespace BeatLeader_Server.Controllers {
                     }
                 } else {
                     DifficultyDescription difficulty = song.Difficulties.First(d => song.Id + d.Value + d.Mode == id);
-                    return ResponseFromLeaderboard((await GetByHash(song.Hash, difficulty.DifficultyName, difficulty.ModeName)).Value);
+
+                    var newLeaderboard = (await GetByHash(song.Hash, difficulty.DifficultyName, difficulty.ModeName)).Value;
+                    if (newLeaderboard != null) {
+                        return ResponseFromLeaderboard(newLeaderboard);
+                    } else {
+                        return NotFound();
+                    }
                 }
             } else if (leaderboard.Difficulty.Status == DifficultyStatus.nominated && isRt) {
                 var qualification = leaderboard.Qualification;
