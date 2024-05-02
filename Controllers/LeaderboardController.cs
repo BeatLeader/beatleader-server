@@ -9,8 +9,8 @@ using BeatLeader_Server.Enums;
 using static BeatLeader_Server.Utils.ResponseUtils;
 using Type = BeatLeader_Server.Enums.Type;
 using Lib.ServerTiming;
-using Microsoft.EntityFrameworkCore.Infrastructure.Internal;
 using System.Net;
+using BeatLeader_Server.ControllerHelpers;
 
 namespace BeatLeader_Server.Controllers {
     public class LeaderboardController : Controller {
@@ -18,7 +18,6 @@ namespace BeatLeader_Server.Controllers {
         private readonly AppContext _context;
         private readonly IDbContextFactory<AppContext> _dbFactory;
 
-        private readonly SongController _songController;
         private readonly IAmazonS3 _s3Client;
         private readonly IServerTiming _serverTiming;
 
@@ -26,11 +25,9 @@ namespace BeatLeader_Server.Controllers {
             AppContext context,
             IDbContextFactory<AppContext> dbFactory,
             IConfiguration configuration,
-            SongController songController,
             IServerTiming serverTiming) {
             _context = context;
             _dbFactory = dbFactory;
-            _songController = songController;
             _s3Client = configuration.GetS3Client();
             _serverTiming = serverTiming;
         }
@@ -751,7 +748,7 @@ namespace BeatLeader_Server.Controllers {
                 } else {
                     DifficultyDescription difficulty = song.Difficulties.First(d => song.Id + d.Value + d.Mode == id);
 
-                    var newLeaderboard = (await GetByHash(song.Hash, difficulty.DifficultyName, difficulty.ModeName)).Value;
+                    var newLeaderboard = await LeaderboardControllerHelper.GetByHash(_context, song.Hash, difficulty.DifficultyName, difficulty.ModeName);
                     if (newLeaderboard != null) {
                         return ResponseFromLeaderboard(newLeaderboard);
                     } else {
@@ -1403,42 +1400,6 @@ namespace BeatLeader_Server.Controllers {
 
         //    return Ok();
         //}
-
-        [NonAction]
-        public async Task<ActionResult<Leaderboard>> GetByHash(string hash, string diff, string mode, bool recursive = true) {
-            Leaderboard? leaderboard;
-
-            leaderboard = await _context
-                .Leaderboards
-                .Include(lb => lb.Difficulty)
-                .ThenInclude(d => d.ModifierValues)
-                .Include(lb => lb.Difficulty)
-                .ThenInclude(d => d.ModifiersRating)
-                .Include(lb => lb.Difficulty)
-                .ThenInclude(d => d.MaxScoreGraph)
-                .TagWithCallSite()
-                .AsSplitQuery()
-                .FirstOrDefaultAsync(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff);
-
-            if (leaderboard == null) {
-                Song? song = await _songController.GetOrAddSong(hash);
-                if (song == null) {
-                    return NotFound();
-                }
-                // Song migrated leaderboards
-                if (recursive) {
-                    return await GetByHash(hash, diff, mode, false);
-                } else {
-                    leaderboard = await _songController.NewLeaderboard(song, null, diff, mode);
-                }
-
-                if (leaderboard == null) {
-                    return NotFound();
-                }
-            }
-
-            return leaderboard;
-        }
 
         public class QualificationInfo {
             public int Id { get; set; }

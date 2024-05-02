@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using BeatLeader_Server.ControllerHelpers;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using Microsoft.AspNetCore;
@@ -16,28 +17,28 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 namespace BeatLeader_Server.Controllers {
 
     public class AuthenticationController : Controller {
-        PlayerController _playerController;
         CurrentUserController _currentUserController;
         private readonly IOpenIddictApplicationManager _applicationManager;
         private readonly IOpenIddictAuthorizationManager _authorizationManager;
         private readonly IOpenIddictScopeManager _scopeManager;
+        private readonly IConfiguration _configuration;
         AppContext _context;
 
         string _websiteUrl;
 
         public AuthenticationController(
             AppContext context,
-            PlayerController playerController,
             CurrentUserController currentUserController,
             IOpenIddictApplicationManager applicationManager,
             IOpenIddictAuthorizationManager authorizationManager,
             IOpenIddictScopeManager scopeManager,
+            IConfiguration configuration,
             IWebHostEnvironment environment) {
             _context = context;
-            _playerController = playerController;
             _currentUserController = currentUserController;
             _applicationManager = applicationManager;
             _authorizationManager = authorizationManager;
+            _configuration = configuration;
             _scopeManager = scopeManager;
 
             _websiteUrl = (environment.IsDevelopment() ? "http://localhost:8888" : "https://beatleader.xyz") + "/signin/oauth2";
@@ -148,7 +149,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] string? oauthState = null) {
             string? userId = HttpContext.CurrentUserID();
             if (userId != null) {
-                await _playerController.GetLazy(userId);
+                await PlayerControllerHelper.GetLazy(_context, _configuration, userId);
 
                 string? iPAddress = Request.HttpContext.GetIpAddress();
                 if (iPAddress != null && migrateTo != null) {

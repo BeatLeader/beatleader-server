@@ -189,7 +189,8 @@ namespace BeatLeader_Server.Controllers
                 }
                 var message = JsonConvert.SerializeObject(scoreToPublish, new JsonSerializerSettings 
                 { 
-                    ContractResolver = new CamelCasePropertyNamesContractResolver() 
+                    ContractResolver = new CamelCasePropertyNamesContractResolver(),
+                    ReferenceLoopHandling = ReferenceLoopHandling.Ignore
                 });
                 await PublishNewMessage(message, "scores");
             } catch {
@@ -228,7 +229,8 @@ namespace BeatLeader_Server.Controllers
 
                 var message = JsonConvert.SerializeObject(socketMessage, new JsonSerializerSettings 
                 { 
-                    ContractResolver = new CamelCasePropertyNamesContractResolver() 
+                    ContractResolver = new CamelCasePropertyNamesContractResolver(),
+                    ReferenceLoopHandling = ReferenceLoopHandling.Ignore
                 });
                 await PublishNewMessage(message, "general");
             } catch { }

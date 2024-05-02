@@ -1,4 +1,5 @@
 ﻿using Amazon.S3;
+using BeatLeader_Server.ControllerHelpers;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
@@ -21,20 +22,16 @@ namespace BeatLeader_Server.Controllers
         private readonly IServerTiming _serverTiming;
         private readonly IConfiguration _configuration;
 
-        private readonly LeaderboardController _leaderboardController;
-
         public ScoreController(
             AppContext context,
             IWebHostEnvironment env,
             IServerTiming serverTiming,
-            IConfiguration configuration,
-            LeaderboardController leaderboardController)
+            IConfiguration configuration)
         {
             _context = context;
             _serverTiming = serverTiming;
             _s3Client = configuration.GetS3Client();
             _configuration = configuration;
-            _leaderboardController = leaderboardController;
         }
 
         [HttpGet("~/score/{id}")]
@@ -386,43 +383,6 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
-        //[HttpGet("~/wfwfwfewefwef")]
-        //public async Task<ActionResult> wfwfwfewefwef()
-        //{
-        //    var scores = _context
-        //        .Scores
-        //        .Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.Golf) && s.Accuracy < 0.05)
-        //        .Include(s => s.ContextExtensions)
-        //        .ToListAsync();
-
-        //    var modifers = new ModifiersMap();
-
-        //    foreach (var score in scores) {
-
-        //        //if (modifers.GetNegativeMultiplier(score.Modifiers) < 1) {
-        //            score.ValidContexts &= ~LeaderboardContexts.Golf;
-        //            var extension = score.ContextExtensions.FirstOrDefaultAsync(s => s.Context == LeaderboardContexts.Golf);
-        //            _context.ScoreContextExtensions.Remove(extension);
-        //        //}
-        //        //if (score.Modifiers == "IF" || score.Modifiers == "BE") {
-        //        //    //score.Modifiers = "";
-        //        //} else {
-        //        //    score.ValidContexts &= ~LeaderboardContexts.NoMods;
-        //        //    //_context.ScoreContextExtensions.Remove(score);
-        //        //}
-        //    }
-        //    await _context.BulkSaveChangesAsync();
-
-        //    //var history = _context.PlayerScoreStatsHistory.ToListAsync();
-        //    //foreach (var item in history) {
-        //    //    item.Context = LeaderboardContexts.General;
-        //    //}
-
-        //    //await _context.BulkSaveChangesAsync();
-
-        //    return Ok();
-        //}
-
         [HttpGet("~/v5/scores/{hash}/{diff}/{mode}")]
         public async Task<ActionResult<ResponseWithMetadataAndContainer<SaverScoreResponse, SaverContainerResponse>>> GetByHash5(
             string hash,
@@ -451,7 +411,7 @@ namespace BeatLeader_Server.Controllers
                 hash = hash.Substring(0, 40);
             }
 
-            var leaderboard = (await _leaderboardController.GetByHash(hash, diff, mode, false)).Value;
+            var leaderboard = await LeaderboardControllerHelper.GetByHash(_context, hash, diff, mode, false);
             if (leaderboard == null) {
                 return result;
             }
@@ -1065,95 +1025,12 @@ namespace BeatLeader_Server.Controllers
             {
                 return NotFound("Score not found");
             }
-            return await CalculateStatisticScore(score);
-        }
-
-        [NonAction]
-        public async Task<ActionResult<ScoreStatistic?>> CalculateStatisticScore(Score score)
-        {
-            string fileName = score.Replay.Split("/").Last();
-            Replay? replay;
-
-            using (var replayStream = await _s3Client.DownloadReplay(fileName))
-            {
-                if (replayStream == null) return NotFound();
-
-                using (var ms = new MemoryStream(5))
-                {
-                    await replayStream.CopyToAsync(ms);
-                    long length = ms.Length;
-                    try
-                    {
-                        (replay, _) = ReplayDecoder.ReplayDecoder.Decode(ms.ToArray());
-                    }
-                    catch (Exception)
-                    {
-                        return BadRequest("Error decoding replay");
-                    }
-                }
-            }
-
-            (ScoreStatistic? statistic, string? error) = await CalculateAndSaveStatistic(replay, score);
-            if (statistic == null) {
+            (var result, var error) = await ScoreControllerHelper.CalculateStatisticScore(_context, _s3Client, score);
+            if (result != null) {
+                return result;
+            } else {
                 return BadRequest(error);
             }
-
-            if (HttpContext != null) {
-                score.AccLeft = statistic.accuracyTracker.accLeft;
-                score.AccRight = statistic.accuracyTracker.accRight;
-                score.MaxCombo = statistic.hitTracker.maxCombo;
-                score.FcAccuracy = statistic.accuracyTracker.fcAcc;
-                score.MaxStreak = statistic.hitTracker.maxStreak;
-                score.LeftTiming = statistic.hitTracker.leftTiming;
-                score.RightTiming = statistic.hitTracker.rightTiming;
-
-                await _context.SaveChangesAsync();
-            }
-
-            return statistic;
-        }
-
-        [NonAction]
-        public (ScoreStatistic?, string?) CalculateStatisticFromReplay(Replay? replay, Leaderboard leaderboard)
-        {
-            ScoreStatistic? statistic;
-
-            if (replay == null)
-            {
-                return (null, "Could not calculate statistics");
-            }
-
-            try
-            {
-                (statistic, string? error) = ReplayStatisticUtils.ProcessReplay(replay, leaderboard);
-                if (statistic == null && error != null) {
-                    return (null, error);
-                }
-            } catch (Exception e) {
-                return (null, e.ToString());
-            }
-
-            if (statistic == null)
-            {
-                return (null, "Could not calculate statistics");
-            }
-
-            return (statistic, null);
-        }
-
-        [NonAction]
-        public async Task<(ScoreStatistic?, string?)> CalculateAndSaveStatistic(Replay? replay, Score score)
-        {
-            (ScoreStatistic? statistic, string? error) = CalculateStatisticFromReplay(replay, score.Leaderboard);
-
-            if (statistic == null)
-            {
-                return (null, error);
-            }
-
-            await _s3Client.UploadScoreStats(score.Id + ".json", statistic);
-
-            return (statistic, null);
         }
 
         [HttpPut("~/score/{id}/pin")]

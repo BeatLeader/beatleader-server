@@ -50,10 +50,10 @@ namespace BeatLeader_Server.Services
                 }
 
                 var _playerController = scope.ServiceProvider.GetRequiredService<PlayerRefreshController>();
-                await _playerController.RefreshPlayersStatsSlowly();
+                await _playerController.RefreshPlayersStats();
 
                 var _playerContextController = scope.ServiceProvider.GetRequiredService<PlayerContextRefreshController>();
-                await _playerContextController.RefreshPlayersStatsAllContextsSlowly();
+                await _playerContextController.RefreshPlayersStatsAllContexts();
 
                 _context.ChangeTracker.AutoDetectChangesEnabled = false;
                 

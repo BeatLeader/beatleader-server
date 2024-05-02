@@ -390,7 +390,6 @@ namespace BeatLeader_Server {
             }
             
             services.AddHostedService<ConstantsService>();
-            services.AddHostedService<LeaderboardPlayerStatsService>();
             services.AddHostedService<RefreshTaskService>();
             services.AddHostedService<MinuteRefresh>();
             services.AddHostedService<ClanTaskService>();

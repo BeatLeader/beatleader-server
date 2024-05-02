@@ -12,6 +12,7 @@ using BeatLeader_Server.Enums;
 using Swashbuckle.AspNetCore.Annotations;
 using static BeatLeader_Server.Services.SearchService;
 using static BeatLeader_Server.Utils.ResponseUtils;
+using BeatLeader_Server.ControllerHelpers;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -77,7 +78,7 @@ namespace BeatLeader_Server.Controllers
             {
                 using (_serverTiming.TimeAction("lazy"))
                 {
-                    player = (await GetLazy(id, false)).Value;
+                    player = await PlayerControllerHelper.GetLazy(_context, _configuration, id, false);
                 }
             }
             if (player != null) {
@@ -171,63 +172,6 @@ namespace BeatLeader_Server.Controllers
             }
 
             return await Get(social.PlayerId, true);
-        }
-
-        [NonAction]
-        public async Task<ActionResult<Player>> GetLazy(string id, bool addToBase = true)
-        {
-            Player? player = await _context
-                .Players
-                .Include(p => p.ScoreStats)
-                .Include(p => p.ProfileSettings)
-                .Include(p => p.Clans)
-                .Include(p => p.ContextExtensions)
-                .ThenInclude(ce => ce.ScoreStats)
-                .FirstOrDefaultAsync(p => p.Id == id);
-
-            if (player == null) {
-                Int64 userId = long.Parse(id);
-                if (userId > 70000000000000000) {
-                    player = await PlayerUtils.GetPlayerFromSteam(_configuration.GetValue<string>("SteamApi"), id, _configuration.GetValue<string>("SteamKey"));
-                    if (player == null) {
-                        return NotFound();
-                    }
-                } else if (userId > 1000000000000000) {
-                    player = await PlayerUtils.GetPlayerFromOculus(id, _configuration.GetValue<string>("OculusToken"));
-                    if (player == null)
-                    {
-                        return NotFound();
-                    }
-                    if (addToBase) {
-                        var net = new System.Net.WebClient();
-                        var data = net.DownloadData(player.Avatar);
-                        var readStream = new MemoryStream(data);
-                        string fileName = player.Id;
-
-                        (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(readStream);
-                        fileName += extension;
-
-                        player.Avatar = await _assetsS3Client.UploadAsset(fileName, stream);
-                    }
-                } else {
-                    player = await GetPlayerFromBL(id);
-                    if (player == null)
-                    {
-                        return NotFound();
-                    }
-                }
-                player.Id = id;
-                player.ScoreStats = new PlayerScoreStats();
-                if (addToBase) {
-                    _context.Players.Add(player);
-                    
-                    await _context.SaveChangesAsync();
-
-                    PlayerSearchService.AddNewPlayer(player);
-                }
-            }
-
-            return player;
         }
 
         //[HttpDelete("~/player/{id}")]
@@ -1022,22 +966,6 @@ namespace BeatLeader_Server.Controllers
                     Id = ep.EventRankingId,
                     Name = ep.EventName
                 }).ToListAsync();
-        }
-
-        [NonAction]
-        public async Task<Player?> GetPlayerFromBL(string playerID)
-        {
-            AuthInfo? authInfo = await _context.Auths.FirstOrDefaultAsync(el => el.Id.ToString() == playerID);
-
-            if (authInfo == null) return null;
-
-            Player result = new Player();
-            result.Id = playerID;
-            result.Name = authInfo.Login;
-            result.Platform = "oculus";
-            result.SetDefaultAvatar();
-
-            return result;
         }
     }
 }

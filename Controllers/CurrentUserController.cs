@@ -1,4 +1,5 @@
 using Amazon.S3;
+using BeatLeader_Server.ControllerHelpers;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
@@ -16,7 +17,6 @@ namespace BeatLeader_Server.Controllers {
     public class CurrentUserController : ControllerBase {
         private readonly AppContext _context;
 
-        PlayerController _playerController;
         PlayerRefreshController _playerRefreshController;
         PlayerContextRefreshController _playerContextRefreshController;
         ReplayController _replayController;
@@ -28,7 +28,6 @@ namespace BeatLeader_Server.Controllers {
         public CurrentUserController(
             AppContext context,
             IWebHostEnvironment env,
-            PlayerController playerController,
             PlayerRefreshController playerRefreshController,
             PlayerContextRefreshController playerContextRefreshController,
             ReplayController replayController,
@@ -36,7 +35,6 @@ namespace BeatLeader_Server.Controllers {
             IConfiguration configuration) {
             _context = context;
 
-            _playerController = playerController;
             _playerRefreshController = playerRefreshController;
             _playerContextRefreshController = playerContextRefreshController;
             _replayController = replayController;
@@ -145,7 +143,7 @@ namespace BeatLeader_Server.Controllers {
                 .AsSplitQuery()
                 .FirstOrDefaultAsync();
             if (result == null) {
-                Player? player = (await _playerController.GetLazy(id)).Value;
+                var player = await PlayerControllerHelper.GetLazy(_context, _configuration, id);
                 if (player == null) {
                     return Unauthorized();
                 }
@@ -230,7 +228,7 @@ namespace BeatLeader_Server.Controllers {
                 .AsSplitQuery()
                 .FirstOrDefaultAsync();
             if (user == null) {
-                Player? player = (await _playerController.GetLazy(id)).Value;
+                var player = await PlayerControllerHelper.GetLazy(_context, _configuration, id);
                 if (player == null) {
                     return null;
                 }
@@ -885,13 +883,13 @@ namespace BeatLeader_Server.Controllers {
             if (id == null) {
                 return Unauthorized("Token seems to be wrong");
             }
-            var player = await _playerController.GetLazy(id, true);
+            var player = await PlayerControllerHelper.GetLazy(_context, _configuration, id, true);
             if (player == null) {
                 return BadRequest("Can't find player");
             }
 
             if (long.Parse(currentId) < 1000000000000000) {
-                await _playerController.GetLazy(currentId, true);
+                await PlayerControllerHelper.GetLazy(_context, _configuration, currentId, true);
                 await MigratePrivate(id, currentId);
             } else {
                 await MigratePrivate(currentId, id);

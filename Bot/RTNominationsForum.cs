@@ -14,7 +14,7 @@ namespace BeatLeader_Server.Bot
 
         public RTNominationsForum() {}
 
-        private async Task<SocketThreadChannel?> ReturnOrUnarchiveThread(string id) {
+        private static async Task<SocketThreadChannel?> ReturnOrUnarchiveThread(string id) {
             var guild = BotService.Client.GetGuild(BotService.BLServerID);
             ulong longId = ulong.Parse(id); 
             var channel = guild.GetThreadChannel(longId);
@@ -99,7 +99,7 @@ namespace BeatLeader_Server.Bot
             }
         }
 
-        public async Task NominationReuploaded(
+        public static async Task NominationReuploaded(
             AppContext context,
             RankQualification qualification, 
             string newLeaderboardId) {
