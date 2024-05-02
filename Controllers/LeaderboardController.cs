@@ -50,6 +50,7 @@ namespace BeatLeader_Server.Controllers {
             bool offsets = false) {
             IQueryable<Score> scoreQuery = _context
                 .Scores
+                .AsNoTracking()
                 .Where(s => s.LeaderboardId == leaderboard.Id && s.ValidContexts.HasFlag(LeaderboardContexts.General));
 
             
@@ -240,6 +241,7 @@ namespace BeatLeader_Server.Controllers {
             bool offsets = false) {
             var scoreQuery = _context
                 .PredictedScores
+                .AsNoTracking()
                 .Where(s => s.LeaderboardId == leaderboard.Id);
 
             if (modifiers != null) {
@@ -389,6 +391,7 @@ namespace BeatLeader_Server.Controllers {
             bool offsets = false) {
             IQueryable<ScoreContextExtension> scoreQuery = _context
                 .ScoreContextExtensions
+                .AsNoTracking()
                 .Include(s => s.Score)
                 .Where(s => s.LeaderboardId == leaderboard.Id && s.Context == context);
 
@@ -566,6 +569,7 @@ namespace BeatLeader_Server.Controllers {
             string? currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = currentID != null ? await _context
                 .Players
+                .AsNoTracking()
                 .Where(p => p.Id == currentID)
                 .Select(p => new { 
                     p.Role, 
@@ -583,6 +587,7 @@ namespace BeatLeader_Server.Controllers {
 
             IQueryable<Leaderboard> query = _context
                     .Leaderboards
+                    .AsNoTracking()
                     .Where(lb => lb.Id == id)
                     .Include(lb => lb.Difficulty)
                     .ThenInclude(d => d.ModifierValues)
@@ -812,6 +817,7 @@ namespace BeatLeader_Server.Controllers {
             string? currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = currentID != null ? await _context
                 .Players
+                .AsNoTracking()
                 .Where(p => p.Id == currentID)
                 .Select(p => new { 
                     p.Role, 
@@ -824,6 +830,7 @@ namespace BeatLeader_Server.Controllers {
 
             IQueryable<Leaderboard> query = _context
                     .Leaderboards
+                    .AsNoTracking()
                     .Where(lb => lb.Id == id)
                     .Include(lb => lb.Difficulty)
                     .ThenInclude(d => d.ModifierValues)
@@ -920,18 +927,6 @@ namespace BeatLeader_Server.Controllers {
             return leaderboard;
         }
 
-        //[HttpGet("~/wefwefwef")]
-        //public async Task<ActionResult> wefwefwef()
-        //{
-        //    var lbs = _context.Leaderboards.Include(lb => lb.Difficulty).Where(lb => lb.SongId.ToLower() == "100bills").ToListAsync();
-        //    foreach (var lb in lbs)
-        //    {
-        //        lb.Difficulty.Status = DifficultyStatus.OST;
-        //    }
-        //    _context.SaveChanges();
-        //    return Ok();
-        //}
-
         [HttpGet("~/leaderboard/clanRankings/{leaderboardId}/clan/{clanId}")]
         public async Task<ActionResult<ClanRankingResponse>> GetClanRankingAssociatedScoresClanId(
             string leaderboardId,
@@ -941,6 +936,7 @@ namespace BeatLeader_Server.Controllers {
         {
             var clanRankingScores = await _context
                 .ClanRanking
+                .AsNoTracking()
                 .Where(cr => cr.LeaderboardId == leaderboardId && cr.ClanId == clanId)
                 .Select(cr => new ClanRankingResponse
                 {
@@ -1027,6 +1023,7 @@ namespace BeatLeader_Server.Controllers {
         {
             var clanRankingScores = await _context
                 .ClanRanking
+                .AsNoTracking()
                 .Where(cr => cr.LeaderboardId == leaderboardId && cr.Id == clanRankingId)
                 .Select(cr => new ClanRankingResponse
                 {
@@ -1119,6 +1116,7 @@ namespace BeatLeader_Server.Controllers {
             string? currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = currentID != null ? await _context
                 .Players
+                .AsNoTracking()
                 .Where(p => p.Id == currentID)
                 .Select(p => new {
                     p.Role,
@@ -1137,6 +1135,7 @@ namespace BeatLeader_Server.Controllers {
 
             IQueryable<Leaderboard> query = _context
                     .Leaderboards
+                    .AsNoTracking()
                     .Where(lb => lb.Id == id)
                     .Include(lb => lb.Difficulty)
                     .ThenInclude(d => d.ModifierValues)
@@ -1251,6 +1250,7 @@ namespace BeatLeader_Server.Controllers {
                 // This clanRanking data is required for displaying clanRankings on each leaderboard
                 leaderboard.ClanRanking = await _context
                     .ClanRanking
+                    .AsNoTracking()
                     .Include(cr => cr.Clan)
                     .Where(cr => cr.LeaderboardId == leaderboard.Id)
                     .OrderByDescending(cr => cr.Pp)
@@ -1289,6 +1289,7 @@ namespace BeatLeader_Server.Controllers {
 
             var song = await _context
                 .Songs
+                .AsNoTracking()
                 .Where(s => s.Hash == hash)
                 .Include(s => s.Difficulties)
                 .ThenInclude(d => d.ModifierValues)
@@ -1303,6 +1304,7 @@ namespace BeatLeader_Server.Controllers {
 
             var query = _context
             .Leaderboards
+            .AsNoTracking()
             .Where(lb => lb.SongId == song.Id && lb.Difficulty.Mode <= 7);
 
             if (my_scores && currentID != null) {
@@ -1633,10 +1635,11 @@ namespace BeatLeader_Server.Controllers {
             string? currentID = HttpContext == null ? overrideCurrentId : HttpContext.CurrentUserID(dbContext);
             Player? currentPlayer = currentID != null ? await dbContext
                 .Players
+                .AsNoTracking()
                 .Include(p => p.ProfileSettings)
                 .FirstOrDefaultAsync(p => p.Id == currentID) : null;
 
-            var sequence = dbContext.Leaderboards.Filter(dbContext, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
+            var sequence = dbContext.Leaderboards.AsNoTracking().Filter(dbContext, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
 
             var result = new ResponseWithMetadata<LeaderboardInfoResponse>() {
                 Metadata = new Metadata() {
@@ -1660,6 +1663,7 @@ namespace BeatLeader_Server.Controllers {
             using (var anotherContext = _dbFactory.CreateDbContext()) {
                 var lbsequence = anotherContext
                     .Leaderboards
+                    .AsNoTracking()
                     .Include(lb => lb.Difficulty)
                     .ThenInclude(d => d.ModifierValues)
                     .Include(lb => lb.Difficulty)

@@ -56,6 +56,7 @@ namespace BeatLeader_Server.Controllers {
             string? currentID = HttpContext.CurrentUserID(_context);
             bool showRatings = currentID != null ? await _context
                 .Players
+                .AsNoTracking()
                 .Where(p => p.Id == currentID && p.ProfileSettings != null)
                 .Select(p => p.ProfileSettings.ShowAllRatings)
                 .TagWithCallSite()
@@ -65,6 +66,7 @@ namespace BeatLeader_Server.Controllers {
 
             var player = await _context
                     .Players
+                    .AsNoTracking()
                     .Where(p => p.Id == id)
                     .Select(p => new { p.Banned })
                     .FirstOrDefaultAsync();
@@ -74,6 +76,7 @@ namespace BeatLeader_Server.Controllers {
 
             return (await _context
                .Scores
+               .AsNoTracking()
                .Where(t => t.PlayerId == id && t.ValidContexts.HasFlag(leaderboardContext))
                .TagWithCallSite()
                .Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId),
@@ -115,6 +118,7 @@ namespace BeatLeader_Server.Controllers {
                 string? currentID2 = HttpContext.CurrentUserID(_context);
                 bool showRatings2 = currentID2 != null ? await _context
                     .Players
+                    .AsNoTracking()
                     .Where(p => p.Id == currentID2 && p.ProfileSettings != null)
                     .Select(p => p.ProfileSettings.ShowAllRatings)
                     .FirstOrDefaultAsync() : false;
@@ -261,6 +265,7 @@ namespace BeatLeader_Server.Controllers {
 
                     var myScores = await _context
                         .Scores
+                        .AsNoTracking()
                         .Where(s => s.PlayerId == currentID && s.ValidContexts.HasFlag(LeaderboardContexts.General) && leaderboards.Contains(s.LeaderboardId))
                         .Select(s => new ScoreResponseWithMyScore {
                             Id = s.Id,
@@ -436,6 +441,7 @@ namespace BeatLeader_Server.Controllers {
             [FromRoute, SwaggerParameter("Maps's characteristic(Standard, OneSaber, etc)")] string mode) {
             int? score = await _context
                 .Scores
+                .AsNoTracking()
                 .TagWithCallSite()
                 .Where(s => s.PlayerId == id && s.Leaderboard.Song.Hash == hash && s.Leaderboard.Difficulty.DifficultyName == difficulty && s.Leaderboard.Difficulty.ModeName == mode)
                 .Select(s => s.ModifiedScore)
@@ -476,6 +482,7 @@ namespace BeatLeader_Server.Controllers {
                 string? currentID2 = HttpContext.CurrentUserID(_context);
                 bool showRatings2 = currentID2 != null ? await _context
                     .Players
+                    .AsNoTracking()
                     .Where(p => p.Id == currentID2 && p.ProfileSettings != null)
                     .Select(p => p.ProfileSettings.ShowAllRatings)
                     .TagWithCallSite()
@@ -603,6 +610,7 @@ namespace BeatLeader_Server.Controllers {
             if (leaderboardContext != LeaderboardContexts.None && leaderboardContext != LeaderboardContexts.General) {
                 baseQuery = _context
                 .ScoreContextExtensions
+                .AsNoTracking()
                 .Where(s => 
                     s.PlayerId == id && 
                     s.Context == leaderboardContext && 
@@ -613,6 +621,7 @@ namespace BeatLeader_Server.Controllers {
             } else {
               baseQuery = _context
                 .Scores
+                .AsNoTracking()
                 .Where(s => 
                     s.PlayerId == id && 
                     s.ValidContexts.HasFlag(leaderboardContext) && 
@@ -689,6 +698,7 @@ namespace BeatLeader_Server.Controllers {
             id = await _context.PlayerIdToMain(id);
             var result = await _context
                     .PlayerScoreStatsHistory
+                    .AsNoTracking()
                     .Where(p => p.PlayerId == id && p.Context == leaderboardContext)
                     .TagWithCallSite()
                     .OrderByDescending(s => s.Timestamp)
@@ -716,6 +726,7 @@ namespace BeatLeader_Server.Controllers {
 
             var query = _context
                     .Scores
+                    .AsNoTracking()
                     .Where(s => 
                         s.PlayerId == id && 
                         s.ValidContexts.HasFlag(leaderboardContext) &&
@@ -833,6 +844,7 @@ namespace BeatLeader_Server.Controllers {
 
                 var contexts = await _context
                     .ScoreContextExtensions
+                    .AsNoTracking()
                     .Where(s => s.Context == leaderboardContext && s.ScoreId != null && scoreIds.Contains((int)s.ScoreId))
                     .ToListAsync();
 

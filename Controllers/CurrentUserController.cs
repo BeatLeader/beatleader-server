@@ -52,18 +52,18 @@ namespace BeatLeader_Server.Controllers {
 
         [HttpGet("~/user")]
         public async Task<ActionResult<UserReturn>> GetCurrentUser() {
-            User? user = await GetCurrentUserLazy();
+            User? user = await GetUserLazy(GetId(), true);
             if (user == null) {
                 return NotFound();
             }
             string id = user.Id;
 
-            PlayerFriends? friends = await _context.Friends.Include(f => f.Friends).ThenInclude(f => f.ProfileSettings).FirstOrDefaultAsync(f => f.Id == id);
-            Clan? clan = await _context.Clans.Include(c => c.Players).FirstOrDefaultAsync(f => f.LeaderID == id);
+            PlayerFriends? friends = await _context.Friends.AsNoTracking().Include(f => f.Friends).ThenInclude(f => f.ProfileSettings).FirstOrDefaultAsync(f => f.Id == id);
+            Clan? clan = await _context.Clans.AsNoTracking().Include(c => c.Players).FirstOrDefaultAsync(f => f.LeaderID == id);
 
             long intId = Int64.Parse(id);
             if (intId > 1000000000000000) {
-                var link = await _context.AccountLinks.FirstOrDefaultAsync(el => el.SteamID == id || el.PCOculusID == id);
+                var link = await _context.AccountLinks.AsNoTracking().FirstOrDefaultAsync(el => el.SteamID == id || el.PCOculusID == id);
                 if (link != null) {
                     intId = link.OculusID;
                 }
@@ -85,7 +85,7 @@ namespace BeatLeader_Server.Controllers {
                 RankedPoolPercentCaptured = clan.RankedPoolPercentCaptured,
                 CaptureLeaderboardsCount = clan.CaptureLeaderboardsCount,
                 Players = clan.Players.Select(p => p.Id).ToList(),
-                PendingInvites = await _context.Users.Where(u => u.ClanRequest.Contains(clan)).Select(f => f.Id).ToListAsync(),
+                PendingInvites = await _context.Users.AsNoTracking().Where(u => u.ClanRequest.Contains(clan)).Select(f => f.Id).ToListAsync(),
             } : null;
             var player = user.Player;
 
@@ -98,15 +98,16 @@ namespace BeatLeader_Server.Controllers {
                 Player = playerResponse,
                 Ban = player.Banned ? (await _context
                     .Bans
+                    .AsNoTracking()
                     .Where(b => b.PlayerId == player.Id)
                     .Select(b => new BanReturn { Reason = b.BanReason, Duration = b.Duration, Timeset = b.Timeset })
                     .FirstOrDefaultAsync()) : null,
                 ClanRequest = user.ClanRequest,
                 BannedClans = user.BannedClans,
                 Friends = friends != null ? friends.Friends.Select(ResponseFullFromPlayer).Select(p => PostProcessSettings(p, true)).ToList() : new List<PlayerResponseFull>(),
-                Login = (await _context.Auths.FirstOrDefaultAsync(a => a.Id == intId))?.Login,
+                Login = (await _context.Auths.AsNoTracking().FirstOrDefaultAsync(a => a.Id == intId))?.Login,
 
-                Migrated = (await _context.AccountLinks.FirstOrDefaultAsync(a => a.SteamID == id)) != null,
+                Migrated = (await _context.AccountLinks.AsNoTracking().FirstOrDefaultAsync(a => a.SteamID == id)) != null,
                 Patreoned = await _context.PatreonLinks.FindAsync(id) != null,
                 Clan = clanReturn
             };
@@ -121,6 +122,7 @@ namespace BeatLeader_Server.Controllers {
 
             PlayerResponseWithFriends? result = await _context
                 .Players
+                .AsNoTracking()
                 .Where(u => u.Id == id)
                 .Select(p => new PlayerResponseWithFriends {
                     Id = p.Id,
@@ -157,7 +159,7 @@ namespace BeatLeader_Server.Controllers {
             
             var friends = await _context.Friends.Where(f => f.Id == id).Select(f => new { Friends = f.Friends.Select(f => f.Id) }).FirstOrDefaultAsync();
             result.Friends = friends?.Friends.ToList() ?? new List<string>();
-            result.QuestId = (await _context.AccountLinks.Where(al => al.SteamID == id).FirstOrDefaultAsync())?.OculusID.ToString();
+            result.QuestId = (await _context.AccountLinks.AsNoTracking().Where(al => al.SteamID == id).FirstOrDefaultAsync())?.OculusID.ToString();
             return result;
         }
 
@@ -202,16 +204,14 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [NonAction]
-        public async Task<User?> GetCurrentUserLazy() => await GetUserLazy(GetId());
-
-        [NonAction]
-        public async Task<User?> GetUserLazy(string? id) {
+        public async Task<User?> GetUserLazy(string? id, bool notracking = false) {
             if (string.IsNullOrEmpty(id)) {
                 return null;
             }
 
-            User? user = await _context
-                .Users
+            User? user =  await (notracking 
+                ? _context.Users.AsNoTracking() 
+                : _context.Users)
                 .Where(u => u.Id == id)
                 .Include(u => u.Player)
                 .ThenInclude(p => p.Clans)

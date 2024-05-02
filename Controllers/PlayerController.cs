@@ -4,13 +4,11 @@ using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Lib.ServerTiming;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 using BeatLeader_Server.Enums;
 using Swashbuckle.AspNetCore.Annotations;
-using static BeatLeader_Server.Services.SearchService;
 using static BeatLeader_Server.Utils.ResponseUtils;
 using BeatLeader_Server.ControllerHelpers;
 
@@ -60,6 +58,7 @@ namespace BeatLeader_Server.Controllers
                 if (stats) {
                     player = await _context
                         .Players
+                        .AsNoTracking()
                         .Where(p => p.Id == userId)
                         .Include(p => p.ScoreStats)
                         .Include(p => p.Badges.OrderBy(b => b.Timeset))
@@ -70,7 +69,11 @@ namespace BeatLeader_Server.Controllers
                         .AsSplitQuery()
                         .FirstOrDefaultAsync();
                 } else {
-                    player = await _context.Players.FindAsync(userId);
+                    player = await _context
+                        .Players
+                        .AsNoTracking()
+                        .Where(p => p.Id == userId)
+                        .FirstOrDefaultAsync();
                 }
                 
             }
@@ -130,6 +133,7 @@ namespace BeatLeader_Server.Controllers
                 if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
                     var contextExtension = await _context
                         .PlayerContextExtensions
+                        .AsNoTracking()
                         .Include(p => p.ScoreStats)
                         .Where(p => p.PlayerId == userId && p.Context == leaderboardContext)
                         .FirstOrDefaultAsync();
@@ -294,6 +298,7 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             bool showBots = currentID != null ? await _context
                 .Players
+                .AsNoTracking()
                 .Where(p => p.Id == currentID)
                 .Select(p => p.ProfileSettings != null ? p.ProfileSettings.ShowBots : false)
                 .FirstOrDefaultAsync() : false;
@@ -533,6 +538,7 @@ namespace BeatLeader_Server.Controllers
             IQueryable<PlayerContextExtension> request = 
                 _context
                 .PlayerContextExtensions
+                .AsNoTracking()
                 .Where(p => p.Context == leaderboardContext)
                 .Include(p => p.ScoreStats)
                 .Include(p => p.Player)
@@ -960,6 +966,7 @@ namespace BeatLeader_Server.Controllers
         {
             return await _context
                 .EventPlayer
+                .AsNoTracking()
                 .Where(ep => ep.PlayerId == id)
                 .OrderByDescending(ep => ep.Event.EndDate)
                 .Select(ep => new ParticipatingEventResponse {

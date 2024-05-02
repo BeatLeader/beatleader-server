@@ -48,6 +48,7 @@ namespace BeatLeader_Server.Controllers
         {
             var sequence = _context
                 .Clans
+                .AsNoTracking()
                 .Include(cl => cl.CapturedLeaderboards)
                 .AsQueryable();
             if (sortBy != null)
@@ -158,6 +159,7 @@ namespace BeatLeader_Server.Controllers
         {
             IQueryable<Player> players = _context
                 .Players
+                .AsNoTracking()
                 .Include(p => p.ProfileSettings)
                 .Include(p => p.Socials);
             if (primary) {
@@ -282,6 +284,7 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             Clan? clan = await _context
                     .Clans
+                    .AsNoTracking()
                     .Where(c => c.Id == id)
                     .FirstOrDefaultAsync();
             if (clan == null)
@@ -306,6 +309,7 @@ namespace BeatLeader_Server.Controllers
         {
             var rankings = _context
                 .ClanRanking
+                .AsNoTracking()
                 .Include(p => p.Leaderboard)
                 .ThenInclude(l => l.Song)
                 .ThenInclude(s => s.Difficulties)
@@ -492,6 +496,7 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             Clan? clan = await _context
                     .Clans
+                    .AsNoTracking()
                     .Where(c => c.Id == id)
                     .FirstOrDefaultAsync();
             if (clan == null)
@@ -555,6 +560,7 @@ namespace BeatLeader_Server.Controllers
 
             var points = await _context
                     .Leaderboards
+                    .AsNoTracking()
                     .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
                     .Select(lb => new ClanGlobalMapPoint {
                         LeaderboardId = lb.Id,
@@ -587,6 +593,7 @@ namespace BeatLeader_Server.Controllers
                 Points = points,
                 Clans = await _context
                     .Clans
+                    .AsNoTracking()
                     .Where(c => clanIds.Contains(c.Id))
                     .Select(c => new ClanPoint {
                         Id = c.Id,

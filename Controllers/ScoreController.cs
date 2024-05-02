@@ -39,6 +39,7 @@ namespace BeatLeader_Server.Controllers
         {
             var score = await _context
                 .Scores
+                .AsNoTracking()
                 .Where(l => l.Id == id)
                 .Include(s => s.Leaderboard)
                 .ThenInclude(l => l.Difficulty)
@@ -153,6 +154,7 @@ namespace BeatLeader_Server.Controllers
 
             int? score = await _context
                     .Scores
+                    .AsNoTracking()
                     .Where(s => s.PlayerId == playerID &&
                                 s.ValidContexts.HasFlag(leaderboardContext) &&
                                 s.Leaderboard.Song.Hash.ToLower() == hash.ToLower() &&
@@ -176,6 +178,7 @@ namespace BeatLeader_Server.Controllers
             var offset = Random.Shared.Next(1, await _context.Scores.CountAsync());
             var score = await _context
                 .Scores
+                .AsNoTracking()
                 .OrderBy(s => s.Id)
                 .Skip(offset)
                 .Take(1)
@@ -201,7 +204,8 @@ namespace BeatLeader_Server.Controllers
             {
                 return Unauthorized();
             }
-            var score = await _context.Scores
+            var score = await _context
+                .Scores
                 .Where(s => s.Id == id)
                 .Include(s => s.ContextExtensions)
                 .Include(s => s.Leaderboard)
@@ -332,6 +336,7 @@ namespace BeatLeader_Server.Controllers
 
             var song = await _context
                 .Songs
+                .AsNoTracking()
                 .Select(s => new { Id = s.Id, Hash = s.Hash })
                 .FirstOrDefaultAsync(s => s.Hash == hash);
             if (song == null) {
@@ -356,6 +361,7 @@ namespace BeatLeader_Server.Controllers
 
             IQueryable<Score> query = _context
                 .Scores
+                .AsNoTracking()
                 .Where(s => !s.Banned && s.LeaderboardId == leaderboardId)
                 .OrderBy(p => p.Rank);
 
@@ -418,6 +424,7 @@ namespace BeatLeader_Server.Controllers
 
             IQueryable<Score> query = _context
                 .Scores
+                .AsNoTracking()
                 .Where(s => !s.Banned && 
                              s.LeaderboardId == leaderboard.Id &&
                              s.ValidContexts.HasFlag(LeaderboardContexts.General))
@@ -463,6 +470,7 @@ namespace BeatLeader_Server.Controllers
             PlayerResponse? currentPlayer) {
             IQueryable<Score> query = _context
                 .Scores
+                .AsNoTracking()
                 .Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && 
                             (!s.Banned || (s.Bot && showBots)) && 
                             s.LeaderboardId == leaderboardId);
@@ -656,6 +664,7 @@ namespace BeatLeader_Server.Controllers
 
             IQueryable<ScoreContextExtension> query = _context
                 .ScoreContextExtensions
+                .AsNoTracking()
                 .Where(s => s.Context == context && (!s.Score.Banned || (s.Score.Bot && showBots)) && s.LeaderboardId == leaderboardId);
 
             if (scope.ToLower() == "friends")
@@ -885,6 +894,7 @@ namespace BeatLeader_Server.Controllers
             PlayerResponse? currentPlayer = 
                 await _context
                 .Players
+                .AsNoTracking()
                 .Select(p => new PlayerResponse {
                     Id = p.Id,
                     Name = p.Name,
@@ -904,6 +914,7 @@ namespace BeatLeader_Server.Controllers
                 .FirstOrDefaultAsync(p => p.Id == player);
             var song = await _context
                 .Songs
+                .AsNoTracking()
                 .Select(s => new { Id = s.Id, Hash = s.Hash })
                 .TagWithCallSite()
                 .FirstOrDefaultAsync(s => s.Hash == hash);
@@ -980,6 +991,7 @@ namespace BeatLeader_Server.Controllers
 
             var score = await _context
                     .Scores
+                    .AsNoTracking()
                     .Where(l => 
                         l.Leaderboard.Song.Hash == hash && 
                         l.Leaderboard.Difficulty.DifficultyName == diff && 
@@ -1185,6 +1197,7 @@ namespace BeatLeader_Server.Controllers
             }
             IQueryable<Score> scores = _context
                 .Scores
+                .AsNoTracking()
                 .OrderBy(s => s.Id);
 
             if (date_from != null) {
@@ -1235,6 +1248,7 @@ namespace BeatLeader_Server.Controllers
 
             var song = await _context
                 .Songs
+                .AsNoTracking()
                 .Select(s => new { s.Id, s.Hash })
                 .TagWithCallSite()
                 .FirstOrDefaultAsync(s => s.Hash == hash);
@@ -1260,6 +1274,7 @@ namespace BeatLeader_Server.Controllers
 
             var query = _context
                 .ClanRanking
+                .AsNoTracking()
                 .Where(s => s.LeaderboardId == leaderboardId);
 
             result.Metadata.Total = await query.CountAsync();
