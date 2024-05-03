@@ -311,6 +311,8 @@ namespace BeatLeader_Server.Controllers
                 .ClanRanking
                 .AsNoTracking()
                 .Include(p => p.Leaderboard)
+                .ThenInclude(l => l.Difficulty)
+                .Include(p => p.Leaderboard)
                 .ThenInclude(l => l.Song)
                 .ThenInclude(s => s.Difficulties)
                 .ThenInclude(d => d.ModifiersRating)

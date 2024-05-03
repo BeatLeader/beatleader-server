@@ -42,26 +42,29 @@ namespace BeatLeader_Server.ControllerHelpers {
 
                     song.Id = songId;
                     song.Hash = hash;
+
                     try {
                         dbContext.Songs.Add(song);
                         await dbContext.SaveChangesAsync();
                         SongSearchService.AddNewSong(song);
+
+                        foreach (var oldSong in songsToMigrate)
+                        {
+                            foreach (var item in oldSong.Difficulties)
+                            {
+                                await MigrateLeaderboards(dbContext, song, oldSong, baseSong, item);
+                                item.Status = DifficultyStatus.outdated;
+                                item.Stars = 0;
+                            }
+                        }
                     } catch {
                         dbContext.RejectChanges();
                     }
                     
-                    foreach (var oldSong in songsToMigrate)
-                    {
-                        foreach (var item in oldSong.Difficulties)
-                        {
-                            await MigrateLeaderboards(dbContext, song, oldSong, baseSong, item);
-                            item.Status = DifficultyStatus.outdated;
-                            item.Stars = 0;
-                        }
-                    }
                     try {
                         await dbContext.SaveChangesAsync();
                     } catch {
+                        dbContext.RejectChanges();
                     }
                 }
             }

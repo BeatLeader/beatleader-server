@@ -59,7 +59,7 @@
     <PackageReference Include="Discord.Net.WebSocket" Version="3.14.1" />
     <PackageReference Include="geohash-dotnet" Version="2.1.0" />
     <PackageReference Include="Google.Apis.YouTube.v3" Version="1.67.0.3358" />
-    <PackageReference Include="HtmlAgilityPack" Version="1.11.60" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.11.61" />
     <PackageReference Include="HtmlSanitizer" Version="8.0.843" />
     <PackageReference Include="IP2Location.IPGeolocation" Version="9.0.2" />
     <PackageReference Include="Lib.AspNetCore.ServerTiming" Version="6.0.0" />
@@ -94,7 +94,7 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
     <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.5.0" />
     <PackageReference Include="System.Drawing.Common" Version="8.0.3" />
-    <PackageReference Include="Z.EntityFramework.Extensions.EFCore" Version="8.102.2.1" />
+    <PackageReference Include="Z.EntityFramework.Extensions.EFCore" Version="8.102.2.4" />
   </ItemGroup>
 
   <ItemGroup>
