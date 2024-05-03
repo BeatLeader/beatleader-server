@@ -228,6 +228,10 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Replay missing frame data past note data.");
             }
 
+            if (leaderboard.Difficulty.Notes > 0 && replay.notes.Count >= leaderboard.Difficulty.Notes * 2) {
+                return BadRequest("Excessive note duplication detected, please contact on Discord");
+            }
+
             if (replay.info.score <= 0) {
                 Thread.Sleep(8000); // Error may not show if returned too quick
                 return BadRequest("The score should be positive");
