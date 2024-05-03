@@ -218,11 +218,11 @@ namespace BeatLeader_Server.Services
                 var _playerController = scope.ServiceProvider.GetRequiredService<PlayerRefreshController>();
                 await _playerController.RefreshRanks();
                 await _playerController.RefreshPlayers();
-                await _playerController.RefreshPlayersStats();
+                await _playerController.RefreshPlayersStatsSlowly();
 
                 var _playerContextController = scope.ServiceProvider.GetRequiredService<PlayerContextRefreshController>();
                 await _playerContextController.RefreshPlayersAllContext();
-                await _playerContextController.RefreshPlayersStatsAllContexts();
+                await _playerContextController.RefreshPlayersStatsAllContextsSlowly();
                 
                 await _context.BulkSaveChangesAsync();
             }

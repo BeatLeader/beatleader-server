@@ -47,6 +47,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                         await dbContext.SaveChangesAsync();
                         SongSearchService.AddNewSong(song);
                     } catch {
+                        dbContext.RejectChanges();
                     }
                     
                     foreach (var oldSong in songsToMigrate)

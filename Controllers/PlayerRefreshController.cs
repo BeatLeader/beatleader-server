@@ -341,6 +341,51 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpGet("~/players/stats/refresh/slowly")]
+        public async Task<ActionResult> RefreshPlayersStatsSlowly()
+        {
+            if (HttpContext != null) {
+                // Not fetching player here to not mess up context
+                if (HttpContext.CurrentUserID(_context) != AdminController.GolovaID)
+                {
+                    return Unauthorized();
+                }
+            }
+
+            var playerCount = await _context
+                    .Players
+                    .Where(p => (!p.Banned || p.Bot) && p.ScoreStats != null)
+                    .CountAsync();
+
+            for (int i = 0; i < playerCount; i += 10000)
+            {
+                var players = await _context
+                    .Players
+                    .OrderBy(p => p.Id)
+                    .Skip(i)
+                    .Take(10000)
+                    .Where(p => (!p.Banned || p.Bot) && p.ScoreStats != null)
+                    .Select(p => new { p.Id, p.ScoreStats, p.Rank })
+                    .ToListAsync();
+
+                foreach (var player in players)
+                {
+                    await PlayerRefreshControllerHelper.RefreshStats(
+                        _context,
+                        player.ScoreStats, 
+                        player.Id, 
+                        player.Rank,
+                        null,
+                        null,
+                        LeaderboardContexts.General);
+                }
+
+                await _context.BulkSaveChangesAsync();
+            }
+
+            return Ok();
+        }
+
         [HttpGet("~/players/rankrefresh")]
         [Authorize]
         public async Task<ActionResult> RefreshRanks()

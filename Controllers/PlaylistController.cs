@@ -184,12 +184,7 @@ namespace BeatLeader_Server.Controllers
                     {
                         return NotFound();
                     }
-                    System.Net.Mime.ContentDisposition cd = new System.Net.Mime.ContentDisposition
-                    {
-                        FileName = playlistObject.playlistTitle + ".bplist",
-                        Inline = false
-                    };
-                    Response.Headers.Add("Content-Disposition", cd.ToString());
+                    Response.Headers.Add("Content-Disposition", $"attachment; filename=\"{Uri.EscapeUriString(playlistObject.playlistTitle)}.bplist\"");
                     Response.Headers.Add("X-Content-Type-Options", "nosniff");
                     return File(outputStream, "application/json");
                 }

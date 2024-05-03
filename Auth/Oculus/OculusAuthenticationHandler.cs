@@ -122,7 +122,11 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
                 dbContext.AuthIDs.Update(authID);
             }
 
-            await dbContext.SaveChangesAsync();
+            try {
+                await dbContext.SaveChangesAsync();
+            } catch {
+                dbContext.RejectChanges();
+            }
         }
         else
         {

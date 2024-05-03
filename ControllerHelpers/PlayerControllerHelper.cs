@@ -21,7 +21,12 @@ namespace BeatLeader_Server.ControllerHelpers {
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (player == null) {
-                Int64 userId = long.Parse(id);
+                Int64 userId = 0;
+                try {
+                    userId = long.Parse(id);
+                } catch { 
+                    return null;
+                }
                 if (userId > 70000000000000000) {
                     player = await PlayerUtils.GetPlayerFromSteam(_configuration.GetValue<string>("SteamApi"), id, _configuration.GetValue<string>("SteamKey"));
                     if (player == null) {

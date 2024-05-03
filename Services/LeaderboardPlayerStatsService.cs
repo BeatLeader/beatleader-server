@@ -22,7 +22,7 @@ namespace BeatLeader_Server.Services {
 
             var leaderboard = await _context.Leaderboards.Where(l => l.Id == job.leaderboardId).Include(lb => lb.PlayerStats).FirstOrDefaultAsync();
             var playerRole = await _context.Players.Where(p => p.Id == job.playerId).Select(p => p.Role).FirstOrDefaultAsync();
-            var anySupporter = Player.RoleIsAnySupporter(playerRole);
+            var anySupporter = Player.RoleIsAnySupporter(playerRole ?? "");
 
             if (leaderboard.PlayerStats == null) {
                 leaderboard.PlayerStats = new List<PlayerLeaderboardStats>();
@@ -65,6 +65,10 @@ namespace BeatLeader_Server.Services {
                     .FirstOrDefaultAsync();
             if (currentScore != null) {
                 currentScore.PlayCount++;
+            }
+
+            if (float.IsNaN(stats.Accuracy) || float.IsNegativeInfinity(stats.Accuracy) || float.IsPositiveInfinity(stats.Accuracy)) {
+                stats.Accuracy = 0;
             }
 
             leaderboard.PlayerStats.Add(stats);

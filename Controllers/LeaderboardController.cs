@@ -754,7 +754,7 @@ namespace BeatLeader_Server.Controllers {
                     DifficultyDescription difficulty = song.Difficulties.First(d => song.Id + d.Value + d.Mode == id);
 
                     var newLeaderboard = await LeaderboardControllerHelper.GetByHash(_context, song.Hash, difficulty.DifficultyName, difficulty.ModeName);
-                    if (newLeaderboard != null) {
+                    if (newLeaderboard != null && leaderboard.Difficulty != null) {
                         return ResponseFromLeaderboard(newLeaderboard);
                     } else {
                         return NotFound();

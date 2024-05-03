@@ -378,6 +378,63 @@ namespace BeatLeader_Server.Controllers {
             return Ok();
         }
 
+        [HttpGet("~/players/stats/refresh/allContexts/slowly")]
+        public async Task<ActionResult> RefreshPlayersStatsAllContextsSlowly()
+        {
+            if (HttpContext != null) {
+                // Not fetching player here to not mess up context
+                if (HttpContext.CurrentUserID(_context) != AdminController.GolovaID)
+                {
+                    return Unauthorized();
+                }
+            }
+
+            foreach (var context in ContextExtensions.NonGeneral) {
+                await RefreshPlayersStatsSlowly(context);
+            }
+
+            return Ok();
+        }
+
+        [HttpGet("~/players/stats/refresh/{context}/slowly")]
+        public async Task<ActionResult> RefreshPlayersStatsSlowly(LeaderboardContexts context)
+        {
+            if (HttpContext != null) {
+                // Not fetching player here to not mess up context
+                if (HttpContext.CurrentUserID(_context) != AdminController.GolovaID)
+                {
+                    return Unauthorized();
+                }
+            }
+
+            var playerCount = await _context
+                    .PlayerContextExtensions
+                    .Where(p => p.Context == context && p.ScoreStats != null)
+                    .CountAsync();
+
+            for (int i = 0; i < playerCount; i += 10000)
+            {
+                var players = await _context
+                        .PlayerContextExtensions
+                        .OrderBy(p => p.Id)
+                        .Skip(i)
+                        .Take(10000)
+                        .Where(p => p.Context == context && p.ScoreStats != null)
+                        .OrderBy(p => p.Rank)
+                        .Select(p => new { p.PlayerId, p.ScoreStats, p.Player.Rank })
+                        .ToListAsync();
+
+                foreach (var player in players)
+                {
+                    await PlayerRefreshControllerHelper.RefreshStats(_context, player.ScoreStats, player.PlayerId, player.Rank, null, null, context);
+                }
+
+                await _context.BulkSaveChangesAsync();
+            }
+
+            return Ok();
+        }
+
         [HttpGet("~/players/rankrefresh/{context}")]
         [Authorize]
         public async Task<ActionResult> RefreshRanks(LeaderboardContexts context)

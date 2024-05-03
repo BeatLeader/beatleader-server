@@ -412,11 +412,12 @@ namespace BeatLeader_Server.Controllers {
             }
 
             bool showRatings = player.ProfileSettings?.ShowAllRatings ?? false;
-            IQueryable<Score> sequence = _context.Scores.Where(s => s.ValidContexts.HasFlag(leaderboardContext));
+            IQueryable<Score> sequence = _context.Scores.AsNoTracking().Where(s => s.ValidContexts.HasFlag(leaderboardContext));
 
             using (_serverTiming.TimeAction("sequence")) {
                 var friends = await _context
                     .Friends
+                    .AsNoTracking()
                     .Where(f => f.Id == player.Id)
                     .Include(f => f.Friends)
                     .FirstOrDefaultAsync();
