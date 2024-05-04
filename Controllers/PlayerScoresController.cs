@@ -35,8 +35,10 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [NonAction]
-        public async Task<(IQueryable<Score>?, bool, string, string)> ScoresQuery(
+        public async Task<(IQueryable<Score>?, string)> ScoresQuery(
             string id,
+            string currentID,
+            bool showRatings,
             string sortBy = "date",
             Order order = Order.Desc,
             string? search = null,
@@ -53,17 +55,6 @@ namespace BeatLeader_Server.Controllers {
             int? time_to = null,
             int? eventId = null) {
 
-            string? currentID = HttpContext.CurrentUserID(_context);
-            bool showRatings = currentID != null ? await _context
-                .Players
-                .AsNoTracking()
-                .Where(p => p.Id == currentID && p.ProfileSettings != null)
-                .Select(p => p.ProfileSettings.ShowAllRatings)
-                .TagWithCallSite()
-                .FirstOrDefaultAsync() : false;
-
-            id = await _context.PlayerIdToMain(id);
-
             var player = await _context
                     .Players
                     .AsNoTracking()
@@ -71,7 +62,7 @@ namespace BeatLeader_Server.Controllers {
                     .Select(p => new { p.Banned })
                     .FirstOrDefaultAsync();
             if (player == null) {
-                return (null, false, "", "");
+                return (null, "");
             }
 
             return (await _context
@@ -80,7 +71,7 @@ namespace BeatLeader_Server.Controllers {
                .Where(t => t.PlayerId == id && t.ValidContexts.HasFlag(leaderboardContext))
                .TagWithCallSite()
                .Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId),
-               showRatings, currentID, id);
+               id);
         }
 
         [HttpGet("~/player/{id}/scores")]
@@ -114,23 +105,37 @@ namespace BeatLeader_Server.Controllers {
                 page = 1;
             }
 
+            id = await _context.PlayerIdToMain(id);
+
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var currentProfileSettings = currentID != null ? await _context
+                .Players
+                .AsNoTracking()
+                .Where(p => p.Id == currentID && p.ProfileSettings != null)
+                .Select(p => p.ProfileSettings)
+                .FirstOrDefaultAsync() : null;
+            var profileSettings = await _context
+                .Players
+                .AsNoTracking()
+                .Where(p => p.Id == id && p.ProfileSettings != null)
+                .Select(p => p.ProfileSettings)
+                .FirstOrDefaultAsync();
+
+            bool showRatings = currentProfileSettings?.ShowAllRatings ?? false;
+            bool publicHistory = profileSettings?.ShowStatsPublic ?? false;
+            if (sortBy == "playCount" && !publicHistory) {
+                sortBy = "pp";
+            }
+
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
-                string? currentID2 = HttpContext.CurrentUserID(_context);
-                bool showRatings2 = currentID2 != null ? await _context
-                    .Players
-                    .AsNoTracking()
-                    .Where(p => p.Id == currentID2 && p.ProfileSettings != null)
-                    .Select(p => p.ProfileSettings.ShowAllRatings)
-                    .FirstOrDefaultAsync() : false;
-                return await _playerContextScoresController.GetScores(id, showRatings2, currentID2, sortBy, order, page, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+                
+                return await _playerContextScoresController.GetScores(id, showRatings, publicHistory, currentID, sortBy, order, page, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             }
 
             (
-                IQueryable<Score>? sequence, 
-                bool showRatings, 
-                string currentID, 
+                IQueryable<Score>? sequence,
                 string userId
-            ) = await ScoresQuery(id, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+            ) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             if (sequence == null) {
                 return NotFound();
             }
@@ -183,6 +188,7 @@ namespace BeatLeader_Server.Controllers {
                         BombCuts = s.BombCuts,
                         WallsHit = s.WallsHit,
                         Pauses = s.Pauses,
+                        PlayCount = publicHistory ? s.PlayCount : 0,
                         FullCombo = s.FullCombo,
                         Hmd = s.Hmd,
                         Controller = s.Controller,
@@ -286,6 +292,7 @@ namespace BeatLeader_Server.Controllers {
                             WallsHit = s.WallsHit,
                             Pauses = s.Pauses,
                             FullCombo = s.FullCombo,
+                            PlayCount = s.PlayCount,
                             Hmd = s.Hmd,
                             Controller = s.Controller,
                             MaxCombo = s.MaxCombo,
@@ -370,16 +377,26 @@ namespace BeatLeader_Server.Controllers {
             if (count > 100 || count < 0) {
                 return BadRequest("Please use `count` value in range of 0 to 100");
             }
-            if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
-                string? currentID2 = HttpContext.CurrentUserID(_context);
-                bool showRatings2 = currentID2 != null ? await _context
-                    .Players
-                    .Where(p => p.Id == currentID2 && p.ProfileSettings != null)
-                    .Select(p => p.ProfileSettings.ShowAllRatings)
-                    .FirstOrDefaultAsync() : false;
-                return await _playerContextScoresController.GetCompactScores(id, showRatings2, sortBy, order, page, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+
+            id = await _context.PlayerIdToMain(id);
+
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var profileSettings = currentID != null ? await _context
+                .Players
+                .AsNoTracking()
+                .Where(p => p.Id == currentID && p.ProfileSettings != null)
+                .Select(p => p.ProfileSettings)
+                .FirstOrDefaultAsync() : null;
+
+            bool showRatings = profileSettings?.ShowAllRatings ?? false;
+            bool publicHistory = profileSettings?.ShowStatsPublic ?? false;
+            if (sortBy == "playCount" && !publicHistory) {
+                sortBy = "pp";
             }
-            (IQueryable<Score>? sequence, bool showRatings, string currentID, string userId) = await ScoresQuery(id, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+            if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
+                return await _playerContextScoresController.GetCompactScores(id, showRatings, sortBy, order, page, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+            }
+            (IQueryable<Score>? sequence, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             if (sequence == null) {
                 return NotFound();
             }
@@ -478,18 +495,34 @@ namespace BeatLeader_Server.Controllers {
                 return BadRequest("Please use `count` value in range of 0 to 100");
             }
 
-            if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
-                string? currentID2 = HttpContext.CurrentUserID(_context);
-                bool showRatings2 = currentID2 != null ? await _context
-                    .Players
-                    .AsNoTracking()
-                    .Where(p => p.Id == currentID2 && p.ProfileSettings != null)
-                    .Select(p => p.ProfileSettings.ShowAllRatings)
-                    .TagWithCallSite()
-                    .FirstOrDefaultAsync() : false;
-                return await _playerContextScoresController.GetPlayerHistogram(id, showRatings2, sortBy, order, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId, batch); 
+            id = await _context.PlayerIdToMain(id);
+
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var currentProfileSettings = currentID != null ? await _context
+                .Players
+                .AsNoTracking()
+                .Where(p => p.Id == currentID && p.ProfileSettings != null)
+                .Select(p => p.ProfileSettings)
+                .FirstOrDefaultAsync() : null;
+
+            var profileSettings = await _context
+                .Players
+                .AsNoTracking()
+                .Where(p => p.Id == id && p.ProfileSettings != null)
+                .Select(p => p.ProfileSettings)
+                .FirstOrDefaultAsync();
+
+            bool showRatings = currentProfileSettings?.ShowAllRatings ?? false;
+            bool publicHistory = profileSettings?.ShowStatsPublic ?? false;
+
+            if (sortBy == "playCount" && !publicHistory) {
+                sortBy = "pp";
             }
-            (IQueryable<Score>? sequence, bool showRatings, string currentID, string userId) = await ScoresQuery(id, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+
+            if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
+                return await _playerContextScoresController.GetPlayerHistogram(id, showRatings, sortBy, order, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId, batch); 
+            }
+            (IQueryable<Score>? sequence, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             if (sequence == null) {
                 return NotFound();
             }
@@ -503,6 +536,8 @@ namespace BeatLeader_Server.Controllers {
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Accuracy).ToListAsync(), Math.Max(batch ?? 0.0025f, 0.001f), count);
                 case "pauses":
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Pauses).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
+                case "playCount":
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.PlayCount).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
                 case "maxStreak":
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.MaxStreak ?? 0).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
                 case "rank":
@@ -592,11 +627,12 @@ namespace BeatLeader_Server.Controllers {
         public async Task<ActionResult> AccGraph(
             [FromRoute, SwaggerParameter("Player's unique identifier")] string id, 
             [FromQuery, SwaggerParameter("Type of the graph: acc, rank, weight or pp")] string type = "acc", 
-            [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General) {
+            [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
+            [FromQuery, SwaggerParameter("Exclude unranked scores")] bool no_unranked_stars = false) {
 
             id = await _context.PlayerIdToMain(id);
             string? currentID = HttpContext.CurrentUserID(_context);
-            bool showRatings = currentID != null ? (await _context
+            bool showRatings = !no_unranked_stars && currentID != null ? (await _context
                 .Players
                 .Include(p => p.ProfileSettings)
                 .Where(p => p.Id == currentID)
@@ -692,9 +728,6 @@ namespace BeatLeader_Server.Controllers {
             [FromRoute, SwaggerParameter("Player's unique identifier")] string id, 
             [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General, 
             [FromQuery, SwaggerParameter("Amount of days to include")] int count = 50) {
-            if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
-                return await _playerContextScoresController.GetHistory(id, leaderboardContext, count); 
-            }
             id = await _context.PlayerIdToMain(id);
             var result = await _context
                     .PlayerScoreStatsHistory
@@ -705,9 +738,43 @@ namespace BeatLeader_Server.Controllers {
                     .Take(count)
                     .ToListAsync();
             if (result.Count == 0) {
-                var player = await _context.Players.Where(p => p.Id == id).FirstOrDefaultAsync();
                 int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - 60 * 60 * 24;
-                result = new List<PlayerScoreStatsHistory> { new PlayerScoreStatsHistory { Timestamp = timeset, Rank = player?.Rank ?? 0, Pp = player?.Pp ?? 0, CountryRank = player?.CountryRank ?? 0 } };
+
+                PlayerScoreStatsHistory? tempStatsHistory;
+
+                if (leaderboardContext == LeaderboardContexts.General || leaderboardContext == LeaderboardContexts.None) {
+                    tempStatsHistory = await _context
+                        .Players
+                        .AsNoTracking()
+                        .Where(p => p.Id == id)
+                        .Select(player => new PlayerScoreStatsHistory {
+                            Rank = player.Rank, 
+                            Pp = player.Pp, 
+                            CountryRank = player.CountryRank
+                        })
+                        .FirstOrDefaultAsync();
+                } else {
+                    tempStatsHistory = await _context
+                        .PlayerContextExtensions
+                        .Where(p => p.PlayerId == id && p.Context == leaderboardContext)
+                        .Select(player => new PlayerScoreStatsHistory {
+                            Rank = player.Rank, 
+                            Pp = player.Pp, 
+                            CountryRank = player.CountryRank
+                        })
+                        .FirstOrDefaultAsync();
+                }
+                
+                if (tempStatsHistory == null) {
+                    tempStatsHistory = new PlayerScoreStatsHistory {
+                        Rank = 0, 
+                        Pp = 0, 
+                        CountryRank = 0
+                    };
+                }
+
+                tempStatsHistory.Timestamp = timeset;
+                result = new List<PlayerScoreStatsHistory> { tempStatsHistory };
             }
 
             return result;

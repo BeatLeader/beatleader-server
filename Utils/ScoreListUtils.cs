@@ -52,6 +52,9 @@ namespace BeatLeader_Server.Utils {
                 case "pauses":
                     orderedSequence = sequence.Order(order, t => t.Pauses);
                     break;
+                case "playCount":
+                    orderedSequence = sequence.Order(order, t => t.PlayCount);
+                    break;
                 case "rank":
                     orderedSequence = sequence.Order(order, t => t.Rank);
                     break;
@@ -210,6 +213,9 @@ namespace BeatLeader_Server.Utils {
                     break;
                 case "pauses":
                     orderedSequence = sequence.Order(order, t => t.Score.Pauses);
+                    break;
+                case "playCount":
+                    orderedSequence = sequence.Order(order, t => t.Score.PlayCount);
                     break;
                 case "rank":
                     orderedSequence = sequence.Order(order, t => t.Rank);

@@ -8,6 +8,7 @@ using Newtonsoft.Json;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers {
+    // TODO: DELETE THIS!
     public class PlayerContextScoresController : Controller {
         private readonly AppContext _context;
 
@@ -35,8 +36,6 @@ namespace BeatLeader_Server.Controllers {
             int? time_to = null,
             int? eventId = null) {
 
-            id = await _context.PlayerIdToMain(id);
-
             var player = await _context.Players.FirstOrDefaultAsync(p => p.Id == id);
             if (player == null) {
                 return (null, "");
@@ -49,10 +48,11 @@ namespace BeatLeader_Server.Controllers {
                .Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId), id);
         }
 
-        [HttpGet("~/player/{id}/contextscores")]
+        [NonAction]
         public async Task<ActionResult<ResponseWithMetadata<ScoreResponseWithMyScore>>> GetScores(
             string id,
             bool showRatings,
+            bool publicHistory,
             string currentID,
             [FromQuery] string sortBy = "date",
             [FromQuery] Order order = Order.Desc,
@@ -119,6 +119,7 @@ namespace BeatLeader_Server.Controllers {
                         WallsHit = s.Score.WallsHit,
                         Pauses = s.Score.Pauses,
                         FullCombo = s.Score.FullCombo,
+                        PlayCount = publicHistory ? s.Score.PlayCount : 0,
                         Hmd = s.Score.Hmd,
                         Controller = s.Score.Controller,
                         MaxCombo = s.Score.MaxCombo,
@@ -238,6 +239,7 @@ namespace BeatLeader_Server.Controllers {
                                     Pauses = s.Score.Pauses,
                                     FullCombo = s.Score.FullCombo,
                                     Hmd = s.Score.Hmd,
+                                    PlayCount = s.Score.PlayCount,
                                     Controller = s.Score.Controller,
                                     MaxCombo = s.Score.MaxCombo,
                                     Timeset = s.Score.Timeset,
@@ -390,6 +392,8 @@ namespace BeatLeader_Server.Controllers {
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Accuracy).ToListAsync(), Math.Max(batch ?? 0.0025f, 0.001f), count);
                 case "pauses":
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Score.Pauses).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
+                case "playCount":
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Score.PlayCount).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
                 case "maxStreak":
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Score.MaxStreak ?? 0).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
                 case "rank":
@@ -403,24 +407,6 @@ namespace BeatLeader_Server.Controllers {
                 default:
                     return BadRequest();
             }
-        }
-
-        [NonAction]
-        public async Task<ActionResult<ICollection<PlayerScoreStatsHistory>>> GetHistory(string id, [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General, [FromQuery] int count = 50) {
-            id = await _context.PlayerIdToMain(id);
-            var result = await _context
-                    .PlayerScoreStatsHistory
-                    .Where(p => p.PlayerId == id && p.Context == leaderboardContext)
-                    .OrderByDescending(s => s.Timestamp)
-                    .Take(count)
-                    .ToListAsync();
-            if (result.Count == 0) {
-                var player = await _context.PlayerContextExtensions.Where(p => p.PlayerId == id && p.Context == leaderboardContext).FirstOrDefaultAsync();
-                int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - 60 * 60 * 24;
-                result = new List<PlayerScoreStatsHistory> { new PlayerScoreStatsHistory { Timestamp = timeset, Rank = player?.Rank ?? 0, Pp = player?.Pp ?? 0, CountryRank = player?.CountryRank ?? 0 } };
-            }
-
-            return result;
         }
     }
 }
