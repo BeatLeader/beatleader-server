@@ -106,6 +106,38 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
+        //[HttpPut("~/replayoculusadmin/{playerId}"), DisableRequestSizeLimit]
+        [NonAction]
+        [Authorize]
+        public async Task<ActionResult<ScoreResponse>> PostOculusReplayAdmin(
+            string playerId,
+            [FromQuery] float time = 0,
+            [FromQuery] EndType type = 0)
+        {
+            // DB Context disposed manually
+            var dbContext = _dbFactory.CreateDbContext();
+            string? userId = HttpContext.CurrentUserID(dbContext);
+
+            if (userId == null)
+            {
+                dbContext.Dispose();
+                return Unauthorized("User is not authorized");
+            }
+
+            var currentPlayer = await dbContext.Players.FindAsync(userId);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+            
+            var result = await PostReplayFromBody(dbContext, playerId, time, type);
+            if (result.Value == null) {
+                await dbContext.DisposeAsync();
+            }
+            return result;
+        }
+
         [NonAction]
         public async Task<ActionResult<ScoreResponse>> PostReplayFromBody(AppContext dbContext, string authenticatedPlayerID, float time = 0, EndType type = 0)
         {
