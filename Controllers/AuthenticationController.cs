@@ -319,6 +319,7 @@ namespace BeatLeader_Server.Controllers {
                         nameType: Claims.Name,
                         roleType: Claims.Role);
 
+                    userId = await _context.PlayerIdToMain(userId);
                     var player = await _context.Players.FirstOrDefaultAsync(p => p.Id == userId);
 
                     // Add the claims that will be persisted in the tokens.
@@ -405,6 +406,7 @@ namespace BeatLeader_Server.Controllers {
                 nameType: Claims.Name,
                 roleType: Claims.Role);
 
+            userId = await _context.PlayerIdToMain(userId);
             var player = await _context.Players.FirstOrDefaultAsync(p => p.Id == userId);
 
             // Add the claims that will be persisted in the tokens.

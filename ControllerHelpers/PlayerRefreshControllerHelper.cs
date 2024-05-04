@@ -37,53 +37,55 @@ namespace BeatLeader_Server.ControllerHelpers {
         {
             var allScores = scores;
 
-            if (leaderboardContext == LeaderboardContexts.General || leaderboardContext == LeaderboardContexts.None) {
-                allScores = await dbContext
-                    .Scores.Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && (!s.Banned || s.Bot) && s.PlayerId == playerId && !s.IgnoreForStats)
-                    .Select(s => new SubScore
-                    {
-                        PlayerId = s.PlayerId,
-                        Platform = s.Platform,
-                        Hmd = s.Hmd,
-                        ModifiedScore = s.ModifiedScore,
-                        Accuracy = s.Accuracy,
-                        Pp = s.Pp,
-                        BonusPp = s.BonusPp,
-                        PassPP = s.PassPP,
-                        AccPP = s.AccPP,
-                        TechPP = s.TechPP,
-                        Rank = s.Rank,
-                        Timeset = s.Timepost,
-                        Weight = s.Weight,
-                        Qualification = s.Qualification,
-                        MaxStreak = s.MaxStreak,
-                        RightTiming = s.RightTiming,
-                        LeftTiming = s.LeftTiming,
-                    }).ToListAsync();
-            } else {
-                allScores = await dbContext
-                    .ScoreContextExtensions
-                    .Where(s => s.PlayerId == playerId && s.Context == leaderboardContext && !s.Score.IgnoreForStats)
-                    .Select(s => new SubScore
-                    {
-                        PlayerId = s.PlayerId,
-                        Platform = s.Score.Platform,
-                        Hmd = s.Score.Hmd,
-                        ModifiedScore = s.ModifiedScore,
-                        Accuracy = s.Accuracy,
-                        Pp = s.Pp,
-                        BonusPp = s.BonusPp,
-                        PassPP = s.PassPP,
-                        AccPP = s.AccPP,
-                        TechPP = s.TechPP,
-                        Rank = s.Rank,
-                        Timeset = s.Score.Timepost,
-                        Weight = s.Weight,
-                        Qualification = s.Score.Qualification,
-                        MaxStreak = s.Score.MaxStreak,
-                        RightTiming = s.Score.RightTiming,
-                        LeftTiming = s.Score.LeftTiming,
-                    }).ToListAsync();
+            if (scores == null) {
+                if (leaderboardContext == LeaderboardContexts.General || leaderboardContext == LeaderboardContexts.None) {
+                    allScores = await dbContext
+                        .Scores.Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && (!s.Banned || s.Bot) && s.PlayerId == playerId && !s.IgnoreForStats)
+                        .Select(s => new SubScore
+                        {
+                            PlayerId = s.PlayerId,
+                            Platform = s.Platform,
+                            Hmd = s.Hmd,
+                            ModifiedScore = s.ModifiedScore,
+                            Accuracy = s.Accuracy,
+                            Pp = s.Pp,
+                            BonusPp = s.BonusPp,
+                            PassPP = s.PassPP,
+                            AccPP = s.AccPP,
+                            TechPP = s.TechPP,
+                            Rank = s.Rank,
+                            Timeset = s.Timepost,
+                            Weight = s.Weight,
+                            Qualification = s.Qualification,
+                            MaxStreak = s.MaxStreak,
+                            RightTiming = s.RightTiming,
+                            LeftTiming = s.LeftTiming,
+                        }).ToListAsync();
+                } else {
+                    allScores = await dbContext
+                        .ScoreContextExtensions
+                        .Where(s => s.PlayerId == playerId && s.Context == leaderboardContext && !s.Score.IgnoreForStats)
+                        .Select(s => new SubScore
+                        {
+                            PlayerId = s.PlayerId,
+                            Platform = s.Score.Platform,
+                            Hmd = s.Score.Hmd,
+                            ModifiedScore = s.ModifiedScore,
+                            Accuracy = s.Accuracy,
+                            Pp = s.Pp,
+                            BonusPp = s.BonusPp,
+                            PassPP = s.PassPP,
+                            AccPP = s.AccPP,
+                            TechPP = s.TechPP,
+                            Rank = s.Rank,
+                            Timeset = s.Score.Timepost,
+                            Weight = s.Weight,
+                            Qualification = s.Score.Qualification,
+                            MaxStreak = s.Score.MaxStreak,
+                            RightTiming = s.Score.RightTiming,
+                            LeftTiming = s.Score.LeftTiming,
+                        }).ToListAsync();
+                }
             }
 
             List<SubScore> rankedScores = new();
