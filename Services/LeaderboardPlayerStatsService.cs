@@ -65,6 +65,7 @@ namespace BeatLeader_Server.Services {
                     .FirstOrDefaultAsync();
             if (currentScore != null) {
                 currentScore.PlayCount++;
+                currentScore.LastTryTime = score.Timepost;
             }
 
             if (float.IsNaN(stats.Accuracy) || float.IsNegativeInfinity(stats.Accuracy) || float.IsPositiveInfinity(stats.Accuracy)) {

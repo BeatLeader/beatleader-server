@@ -386,7 +386,7 @@ namespace BeatLeader_Server.Controllers
                     maxScore,
                     allow);
                 if (stats) {
-                    await CollectStats(dbContext, replay, replayData, resultScore.Replay, authenticatedPlayerID, leaderboard, replay.frames.Last().time, EndType.Clear, resultScore);
+                    await CollectStats(dbContext, replay, replayData, null, authenticatedPlayerID, leaderboard, replay.frames.Last().time, EndType.Clear, null);
                 }
             } catch (Exception e) {
 

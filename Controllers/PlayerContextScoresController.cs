@@ -120,6 +120,7 @@ namespace BeatLeader_Server.Controllers {
                         Pauses = s.Score.Pauses,
                         FullCombo = s.Score.FullCombo,
                         PlayCount = publicHistory ? s.Score.PlayCount : 0,
+                        LastTryTime = publicHistory ? s.Score.LastTryTime : 0,
                         Hmd = s.Score.Hmd,
                         Controller = s.Score.Controller,
                         MaxCombo = s.Score.MaxCombo,
@@ -240,6 +241,7 @@ namespace BeatLeader_Server.Controllers {
                                     FullCombo = s.Score.FullCombo,
                                     Hmd = s.Score.Hmd,
                                     PlayCount = s.Score.PlayCount,
+                                    LastTryTime = s.Score.LastTryTime,
                                     Controller = s.Score.Controller,
                                     MaxCombo = s.Score.MaxCombo,
                                     Timeset = s.Score.Timeset,
@@ -394,6 +396,8 @@ namespace BeatLeader_Server.Controllers {
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Score.Pauses).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
                 case "playCount":
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Score.PlayCount).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
+                case "lastTryTime":
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Score.LastTryTime).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
                 case "maxStreak":
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Score.MaxStreak ?? 0).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
                 case "rank":

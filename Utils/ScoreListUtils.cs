@@ -55,6 +55,9 @@ namespace BeatLeader_Server.Utils {
                 case "playCount":
                     orderedSequence = sequence.Order(order, t => t.PlayCount);
                     break;
+                case "lastTryTime":
+                    orderedSequence = sequence.Order(order, t => t.LastTryTime);
+                    break;
                 case "rank":
                     orderedSequence = sequence.Order(order, t => t.Rank);
                     break;
@@ -216,6 +219,9 @@ namespace BeatLeader_Server.Utils {
                     break;
                 case "playCount":
                     orderedSequence = sequence.Order(order, t => t.Score.PlayCount);
+                    break;
+                case "lastTryTime":
+                    orderedSequence = sequence.Order(order, t => t.Score.LastTryTime);
                     break;
                 case "rank":
                     orderedSequence = sequence.Order(order, t => t.Rank);
