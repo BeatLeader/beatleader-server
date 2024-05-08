@@ -284,6 +284,7 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             Clan? clan = await _context
                     .Clans
+                    .Include(c => c.FeaturedPlaylists)
                     .AsNoTracking()
                     .Where(c => c.Id == id)
                     .FirstOrDefaultAsync();
