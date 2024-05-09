@@ -781,8 +781,10 @@ namespace BeatLeader_Server.Controllers
                 playerContext = new PlayerContextExtension {
                     Context = context,
                     PlayerId = player.Id,
-                    ScoreStats = new PlayerScoreStats()
+                    ScoreStats = new PlayerScoreStats(),
+                    Country = player.Country ?? "not set"
                 };
+                player.ContextExtensions.Add(playerContext);
             }
             playerContext.ScoreStats?.UpdateScoreExtensionStats(currentExtension, resultExtension, resultScore.IgnoreForStats, leaderboard.Difficulty.Status == DifficultyStatus.ranked);
         }
