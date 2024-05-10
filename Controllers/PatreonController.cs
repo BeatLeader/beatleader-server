@@ -320,6 +320,7 @@ namespace BeatLeader_Server.Controllers
         {
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://www.patreon.com/api/oauth2/v2/identity?include=memberships.currently_entitled_tiers&fields%5Btier%5D=title");
             request.Method = "GET";
+            request.UserAgent = "\r\n\"Chromium\";v=\"124\", \"Google Chrome\";v=\"124\", \"Not-A.Brand\";v=\"99\"";
             request.Headers.Add("Authorization", "Bearer " + token);
             request.Proxy = null;
 
