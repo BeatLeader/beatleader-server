@@ -131,11 +131,46 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
             
-            var result = await PostReplayFromBody(dbContext, playerId, time, type);
+            var result = await PostReplay(dbContext, playerId, Request.Body, HttpContext, time, type, false, 0);
             if (result.Value == null) {
                 await dbContext.DisposeAsync();
             }
             return result;
+        }
+
+        //[HttpPut("~/replayoculusadminfolder/{playerId}"), DisableRequestSizeLimit]
+        [NonAction]
+        [Authorize]
+        public async Task<ActionResult<ScoreResponse>> PostOculusReplayAdminFolder(
+            string playerId,
+            [FromQuery] string directory,
+            [FromQuery] float time = 0,
+            [FromQuery] EndType type = 0)
+        {
+            // DB Context disposed manually
+            var dbContext = _dbFactory.CreateDbContext();
+            string? userId = HttpContext.CurrentUserID(dbContext);
+
+            if (userId == null)
+            {
+                dbContext.Dispose();
+                return Unauthorized("User is not authorized");
+            }
+
+            var currentPlayer = await dbContext.Players.FindAsync(userId);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            foreach (var file in System.IO.Directory.EnumerateFiles(directory)) {
+                if (file.Contains("exit")) {
+                    await PostReplay(dbContext, playerId, System.IO.File.OpenRead(file), HttpContext, time, type, false, 0);
+                }
+            } 
+
+            return Ok();
         }
 
         [NonAction]
@@ -160,13 +195,13 @@ namespace BeatLeader_Server.Controllers
 
                 // Use FileMode.Create to overwrite the file if it already exists.
                 using (FileStream stream = new FileStream(filePath, FileMode.Open)) {
-                    result = await PostReplay(dbContext, authenticatedPlayerID, stream, context, allow: allow, timesetForce: timeset);
+                    result = await PostReplay(dbContext, authenticatedPlayerID, stream, context, allow: allow, timesetForce: int.Parse(timeset));
                 }
             } else {
                 using (var stream = await _s3Client.DownloadReplay(name)) {
                     
                     if (stream != null) {
-                        result = await PostReplay(dbContext, authenticatedPlayerID, stream, context, allow: allow, timesetForce: timeset);
+                        result = await PostReplay(dbContext, authenticatedPlayerID, stream, context, allow: allow, timesetForce: int.Parse(timeset));
                     } else {
                         result = NotFound();
                     }
@@ -188,7 +223,7 @@ namespace BeatLeader_Server.Controllers
             float time = 0, 
             EndType type = 0,
             bool allow = false,
-            string? timesetForce = null)
+            int? timesetForce = null)
         {
             Replay? replay;
             ReplayOffsets? offsets;
@@ -248,7 +283,12 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (type != EndType.Unknown && type != EndType.Clear) {
-                await CollectStats(dbContext, replay, replayData, null, authenticatedPlayerID, leaderboard, time, type);
+                int? forcetimeset = null;
+                if (timesetForce == 0) {
+                    time = replay.info.failTime;
+                    forcetimeset = int.Parse(replay.info.timestamp);
+                }
+                await CollectStats(dbContext, replay, replayData, null, authenticatedPlayerID, leaderboard, time, type, null, forcetimeset);
                 return Ok();
             }
 
@@ -279,7 +319,11 @@ namespace BeatLeader_Server.Controllers
             (Score resultScore, int maxScore) = ReplayUtils.ProcessReplay(replay, leaderboard.Difficulty);
 
             if (timesetForce != null) {
-                resultScore.Timepost = int.Parse(timesetForce);
+                if (timesetForce == 0) {
+                    resultScore.Timepost = int.Parse(replay.info.timestamp) + (int)(leaderboard.Song?.Duration ?? 0) + 3;
+                } else {
+                    resultScore.Timepost = (int)timesetForce;
+                }
             }
 
             List<Score> currentScores;
@@ -1277,9 +1321,10 @@ namespace BeatLeader_Server.Controllers
             Leaderboard leaderboard,
             float time = 0, 
             EndType type = 0,
-            Score? resultScore = null) {
+            Score? resultScore = null,
+            int? forceTimeset = null) {
 
-            int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+            int timeset = forceTimeset ?? (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
             if (resultScore == null) {
                 (resultScore, int maxScore) = ReplayUtils.ProcessReplay(replay, leaderboard.Difficulty);
