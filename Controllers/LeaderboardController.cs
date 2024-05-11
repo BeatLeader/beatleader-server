@@ -2139,18 +2139,21 @@ namespace BeatLeader_Server.Controllers {
             return Ok(await _context.Scores.Where(s => 
                     s.LeaderboardId == id &&
                     s.ValidContexts.HasFlag(LeaderboardContexts.General) &&
-                    s.Pp > 0 &&
                     !s.Banned)
                     .Select(s => new {
                         s.PlayerId,
                         s.Weight,
+                        s.Rank,
+                        s.Timepost,
+                        s.Pauses,
+                        s.MaxStreak,
+                        Mistakes = s.BadCuts + s.MissedNotes + s.WallsHit + s.BombCuts,
                         s.Modifiers,
-                        s.Player.Rank,
-                        s.Player.Name,
-                        s.Accuracy,
+                        PlayerRank = s.Player.Rank,
+                        PlayerName = s.Player.Name,
+                        Accuracy = s.Accuracy * 100f,
                         s.Pp,
-                        s.Player.Avatar,
-                        s.Timepost
+                        PlayerAvatar = s.Player.Avatar
                     }).ToListAsync());
         }
     }
