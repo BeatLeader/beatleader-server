@@ -878,10 +878,13 @@ namespace BeatLeader_Server.Controllers {
 
         [HttpGet("~/user/migrateoculuspc")]
         public async Task<ActionResult<int>> MigrateOculusPC([FromQuery] string ReturnUrl, [FromQuery] string Token) {
-            string currentId = HttpContext.CurrentUserID();
+            string? currentId = HttpContext.CurrentUserID(_context);
             (string? id, string? error) = await SteamHelper.GetPlayerIDFromTicket(Token, _configuration);
             if (id == null) {
                 return Unauthorized("Token seems to be wrong");
+            }
+            if (currentId == null) {
+                return Unauthorized("Something went wrong with original auth");
             }
             var player = await PlayerControllerHelper.GetLazy(_context, _configuration, id, true);
             if (player == null) {
@@ -942,7 +945,7 @@ namespace BeatLeader_Server.Controllers {
                 .Include(p => p.Socials)
                 .Include(p => p.ContextExtensions)
                 .FirstOrDefaultAsync();
-            Player? migratedToPlayer = await _context.Players.Where(p => p.Id == migrateToId)
+            Player? migrateToPlayer = await _context.Players.Where(p => p.Id == migrateToId)
                 .Include(p => p.Clans)
                 .Include(p => p.PatreonFeatures)
                 .Include(p => p.ProfileSettings)
@@ -955,21 +958,21 @@ namespace BeatLeader_Server.Controllers {
                 .Include(p => p.ContextExtensions)
                 .FirstOrDefaultAsync();
 
-            if (currentPlayer == null || migratedToPlayer == null) {
+            if (currentPlayer == null || migrateToPlayer == null) {
                 return BadRequest("Could not find one of the players =( Make sure you posted at least one score from the mod.");
             }
 
-            if (currentPlayer.Banned || migratedToPlayer.Banned) {
+            if (currentPlayer.Banned || migrateToPlayer.Banned) {
                 return BadRequest("Some of the players are banned");
             }
 
-            if (migratedToPlayer.Clans.Select(c => c.Tag).Union(currentPlayer.Clans.Select(c => c.Tag)).Count() > 3) {
+            if (migrateToPlayer.Clans.Select(c => c.Tag).Union(currentPlayer.Clans.Select(c => c.Tag)).Count() > 3) {
                 return BadRequest("Leave some clans as there is too many of them for one account.");
             }
 
             Clan? currentPlayerClan = currentPlayer.Clans.FirstOrDefault(c => c.LeaderID == currentPlayer.Id);
 
-            if (migratedToPlayer.Clans.FirstOrDefault(c => c.LeaderID == migratedToPlayer.Id) != null &&
+            if (migrateToPlayer.Clans.FirstOrDefault(c => c.LeaderID == migrateToPlayer.Id) != null &&
                 currentPlayerClan != null) {
                 return BadRequest("Both players are clan leaders, delete one of the clans");
             }
@@ -1029,16 +1032,16 @@ namespace BeatLeader_Server.Controllers {
             }
 
 
-            if (migratedToPlayer.Country == "not set" && currentPlayer.Country != "not set") {
-                migratedToPlayer.Country = currentPlayer.Country;
+            if (migrateToPlayer.Country == "not set" && currentPlayer.Country != "not set") {
+                migrateToPlayer.Country = currentPlayer.Country;
             }
 
-            if (currentPlayer.History?.Count >= migratedToPlayer.History?.Count) {
+            if (currentPlayer.History?.Count >= migrateToPlayer.History?.Count) {
                 foreach (var item in currentPlayer.History) {
                     item.PlayerId = migrateToId;
                 }
-                if (migratedToPlayer.History != null) {
-                    foreach (var item in migratedToPlayer.History) {
+                if (migrateToPlayer.History != null) {
+                    foreach (var item in migrateToPlayer.History) {
                         _context.PlayerScoreStatsHistory.Remove(item);
                     }
                 }
@@ -1058,7 +1061,7 @@ namespace BeatLeader_Server.Controllers {
 
             if (currentPlayer.Achievements?.Count >= 0) {
                 foreach (var item in currentPlayer.Achievements) {
-                    var existing = migratedToPlayer.Achievements?.FirstOrDefault(a => a.AchievementDescriptionId == item.AchievementDescriptionId);
+                    var existing = migrateToPlayer.Achievements?.FirstOrDefault(a => a.AchievementDescriptionId == item.AchievementDescriptionId);
                     if (existing == null) {
                         item.PlayerId = migrateToId;
                     }
@@ -1066,28 +1069,34 @@ namespace BeatLeader_Server.Controllers {
             }
 
             PlayerFriends? currentPlayerFriends = await _context.Friends.Where(u => u.Id == currentPlayer.Id).Include(f => f.Friends).FirstOrDefaultAsync();
-            PlayerFriends? playerFriends = await _context.Friends.Where(u => u.Id == migratedToPlayer.Id).Include(f => f.Friends).FirstOrDefaultAsync();
-            if (playerFriends == null && currentPlayerFriends != null) {
-                playerFriends = new PlayerFriends();
-                playerFriends.Id = migratedToPlayer.Id;
-                _context.Friends.Add(playerFriends);
-            }
-            if (currentPlayerFriends != null && playerFriends != null) {
+            PlayerFriends? migrateToPlayerFriends = await _context.Friends.Where(u => u.Id == migrateToPlayer.Id).Include(f => f.Friends).FirstOrDefaultAsync();
+            
+            if (currentPlayerFriends != null && migrateToPlayerFriends != null) {
                 foreach (var friend in currentPlayerFriends.Friends) {
-                    if (friend.Id == currentPlayer.Id || friend.Id == migratedToPlayer.Id) continue;
+                    if (friend.Id == currentPlayer.Id || friend.Id == migrateToPlayer.Id) continue;
 
-                    if (playerFriends.Friends.FirstOrDefault(p => p.Id == friend.Id) == null) {
-                        playerFriends.Friends.Add(friend);
+                    if (migrateToPlayerFriends.Friends.FirstOrDefault(p => p.Id == friend.Id) == null) {
+                        migrateToPlayerFriends.Friends.Add(friend);
                     }
+                }
+                _context.Friends.Remove(currentPlayerFriends);
+            } else if (migrateToPlayerFriends == null && currentPlayerFriends != null) {
+                migrateToPlayerFriends = new PlayerFriends();
+                migrateToPlayerFriends.Id = migrateToPlayer.Id;
+                _context.Friends.Add(migrateToPlayerFriends);
+                foreach (var friend in currentPlayerFriends.Friends) {
+                    if (friend.Id == currentPlayer.Id || friend.Id == migrateToPlayer.Id) continue;
+
+                    migrateToPlayerFriends.Friends.Add(friend);
                 }
             }
 
             if (currentPlayer.Badges != null) {
-                if (migratedToPlayer.Badges == null) {
-                    migratedToPlayer.Badges = new List<Badge>();
+                if (migrateToPlayer.Badges == null) {
+                    migrateToPlayer.Badges = new List<Badge>();
                 }
                 foreach (var badge in currentPlayer.Badges) {
-                    migratedToPlayer.Badges.Add(badge);
+                    migrateToPlayer.Badges.Add(badge);
                 }
             }
 
@@ -1108,30 +1117,31 @@ namespace BeatLeader_Server.Controllers {
             var saverLink = await _context.BeatSaverLinks.FindAsync(currentPlayer.Id);
             if (saverLink != null) {
                 var newLink = new BeatSaverLink {
-                    Id = migratedToPlayer.Id,
+                    Id = migrateToPlayer.Id,
                     BeatSaverId = saverLink.BeatSaverId,
                     Token = saverLink.Token,
                     RefreshToken = saverLink.RefreshToken,
                     Timestamp = saverLink.Timestamp,
                 };
-                migratedToPlayer.MapperId = int.Parse(saverLink.BeatSaverId);
+                migrateToPlayer.MapperId = int.Parse(saverLink.BeatSaverId);
                 _context.BeatSaverLinks.Remove(saverLink);
                 _context.BeatSaverLinks.Add(newLink);
             }
 
-            PatreonFeatures? features = migratedToPlayer.PatreonFeatures;
+            PatreonFeatures? features = migrateToPlayer.PatreonFeatures;
             if (features == null) {
-                migratedToPlayer.PatreonFeatures = currentPlayer.PatreonFeatures;
+                migrateToPlayer.PatreonFeatures = currentPlayer.PatreonFeatures;
             }
 
-            ProfileSettings? settings = migratedToPlayer.ProfileSettings;
+            ProfileSettings? settings = migrateToPlayer.ProfileSettings;
             if (settings == null) {
-                migratedToPlayer.ProfileSettings = currentPlayer.ProfileSettings;
+                migrateToPlayer.ProfileSettings = currentPlayer.ProfileSettings;
             }
 
-            migratedToPlayer.Role += currentPlayer.Role;
+            migrateToPlayer.Role += currentPlayer.Role;
 
             var scoresGroups = (await _context.Scores
+                .Include(el => el.ContextExtensions)
                 .Include(el => el.Player)
                 .Include(el => el.ContextExtensions)
                 .Where(el => el.Player.Id == currentPlayer.Id || el.Player.Id == migrateToId)
@@ -1249,7 +1259,7 @@ namespace BeatLeader_Server.Controllers {
                     foreach (var score in scores) {
 
                         if (score.ValidContexts != LeaderboardContexts.None) {
-                            score.Player = migratedToPlayer;
+                            score.Player = migrateToPlayer;
                             score.PlayerId = migrateToId;
                         }
                     }
@@ -1259,11 +1269,11 @@ namespace BeatLeader_Server.Controllers {
             }
 
             foreach (var clan in currentPlayer.Clans) {
-                if (migratedToPlayer.Clans.FirstOrDefault(c => c.Id == clan.Id) == null) {
+                if (migrateToPlayer.Clans.FirstOrDefault(c => c.Id == clan.Id) == null) {
                     if (currentPlayerClan == clan) {
-                        clan.LeaderID = migratedToPlayer.Id;
+                        clan.LeaderID = migrateToPlayer.Id;
                     }
-                    migratedToPlayer.Clans.Add(clan);
+                    migrateToPlayer.Clans.Add(clan);
                 }
             }
 
@@ -1288,7 +1298,7 @@ namespace BeatLeader_Server.Controllers {
 
             if (scoresGroups.Count() > 0) {
                 RefreshTaskService.AddJob(new MigrationJob {
-                    PlayerId = migratedToPlayer.Id,
+                    PlayerId = migrateToPlayer.Id,
                     Leaderboards = scoresGroups.Select(g => g.Key).ToList()
                 });
             }
