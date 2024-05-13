@@ -15,7 +15,11 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/mod/lastVersions")]
         public ActionResult GetLastVersions()
         {
-            return Content(_configuration.GetValue<string>("ModVersions"), "application/json");
+            if (HttpContext.Request.Headers["User-Agent"].Contains("0.8.0")) {
+                return Content(_configuration.GetValue<string>("ModVersionsLatest"), "application/json");
+            } else {
+                return Content(_configuration.GetValue<string>("ModVersions"), "application/json");
+            }
         }
 
         [HttpGet("~/servername")]

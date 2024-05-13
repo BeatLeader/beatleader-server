@@ -178,6 +178,22 @@ namespace BeatLeader_Server.Controllers
             return await Get(social.PlayerId, true);
         }
 
+        [HttpGet("~/player/patreon/{id}")]
+        [SwaggerOperation(Summary = "Get player with Patreon", Description = "Retrieves a BeatLeader profile data with linked Discord profile.")]
+        [SwaggerResponse(200, "Returns the player's full profile", typeof(PlayerResponseFull))]
+        [SwaggerResponse(404, "Player not found")]
+        public async Task<ActionResult<PlayerResponseFull>> GetPatreon([FromRoute, SwaggerParameter("Discord profile ID")] string id)
+        {
+            var socialy = await _context.AccountLinks.Where(s => s.SteamID == id).FirstOrDefaultAsync();
+            var social = await _context.PatreonLinks.Where(s => s.Id == socialy.OculusID.ToString()).FirstOrDefaultAsync();
+
+            if (social == null) {
+                return NotFound();
+            }
+
+            return await Get(social.Id, true);
+        }
+
         //[HttpDelete("~/player/{id}")]
         //[Authorize]
         [NonAction]
