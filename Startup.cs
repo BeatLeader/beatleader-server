@@ -422,9 +422,13 @@ namespace BeatLeader_Server {
                     return $"{controllerName}_{actionName}";
                 });
                 c.EnableAnnotations();
-                var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+                var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
                 var xmlPath = Path.Combine(System.AppContext.BaseDirectory, xmlFile);
                 c.IncludeXmlComments(xmlPath);
+                c.IncludeXmlComments(Path.Combine(System.AppContext.BaseDirectory, "Models.xml"));
+                c.IncludeXmlComments(Path.Combine(System.AppContext.BaseDirectory, "Parser.xml"));
+
+                c.SchemaFilter<Utils.EnumSchemaFilter>();
             });
 
             services.AddResponseCompression(options =>
@@ -501,9 +505,15 @@ namespace BeatLeader_Server {
                 endpoints.MapDefaultControllerRoute ();
             });
 
-            app.UseSwagger();
-            app.UseSwaggerUI(c =>
-            {
+            app.UseSwagger(c => {
+                c.PreSerializeFilters.Add((swagger, httpReq) =>
+                {
+                    swagger.Info.Title = "BeatLeader API. Get various Beat Saber information.";
+                    swagger.Info.Description = "Retrieves players, scores, rankings, maps, leaderboards and much more for Beat Saber.";
+                    swagger.Servers = new List<OpenApiServer> { new OpenApiServer { Url = $"{httpReq.Scheme}://{httpReq.Host.Value}" } };
+                });
+            });
+            app.UseSwaggerUI(c => {
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "API.BL V1");
             });
         }

@@ -33,17 +33,23 @@ namespace BeatLeader_Server.Controllers {
 
         [NonAction]
         internal async Task<ActionResult<ResponseWithMetadata<ScoreResponseWithMyScore>>> ContextsFriendsScores(
-            string id,
-            [FromQuery] string sortBy = "date",
-            [FromQuery] Order order = Order.Desc,
-            [FromQuery] int page = 1,
-            [FromQuery] int count = 8,
-            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            [FromQuery] string? search = null,
-            [FromQuery] string? diff = null,
-            [FromQuery] string? type = null,
-            [FromQuery] float? stars_from = null,
-            [FromQuery] float? stars_to = null) {
+            ScoresSortBy sortBy = ScoresSortBy.Date,
+            Order order = Order.Desc,
+            int page = 1,
+            int count = 8,
+            string? search = null,
+            string? diff = null,
+            string? mode = null,
+            Requirements requirements = Requirements.None,
+            ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
+            LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
+            DifficultyStatus? type = null,
+            string? modifiers = null,
+            float? stars_from = null,
+            float? stars_to = null,
+            int? time_from = null,
+            int? time_to = null,
+            int? eventId = null) {
 
             string? userId = HttpContext.CurrentUserID(_context);
             var player = userId != null 
@@ -77,69 +83,7 @@ namespace BeatLeader_Server.Controllers {
                         .Where(s => s.PlayerId == player.Id && s.Context == leaderboardContext);
                 }
 
-                switch (sortBy) {
-                    case "date":
-                        sequence = sequence.Order(order, t => t.Timeset);
-                        break;
-                    case "pp":
-                        sequence = sequence.Order(order, t => t.Pp);
-                        break;
-                    case "acc":
-                        sequence = sequence.Order(order, t => t.Accuracy);
-                        break;
-                    case "pauses":
-                        sequence = sequence.Order(order, t => t.Score.Pauses);
-                        break;
-                    case "rank":
-                        sequence = sequence.Order(order, t => t.Rank);
-                        break;
-                    case "passRating":
-                        sequence = sequence.Order(order, s => showAllRatings || 
-                        s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
-                        s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
-                        s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked ? s.Leaderboard.Difficulty.PassRating : 0);
-                        break;
-                    case "techRating":
-                        sequence = sequence.Order(order, s => showAllRatings || 
-                        s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
-                        s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
-                        s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked ? s.Leaderboard.Difficulty.TechRating : 0);
-                        break;
-                    case "stars":
-                        sequence = sequence.Order(order, s => showAllRatings || 
-                        s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
-                        s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
-                        s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked ? s.Leaderboard.Difficulty.Stars : 0);
-                        break;
-                    case "mistakes":
-                        sequence = sequence.Order(order, t => t.Score.BadCuts + t.Score.BombCuts + t.Score.MissedNotes + t.Score.WallsHit);
-                        break;
-                    default:
-                        break;
-                }
-                if (search != null) {
-                    string lowSearch = search.ToLower();
-                    sequence = sequence
-                        .Where(p => p.Leaderboard.Song.Author.ToLower().Contains(lowSearch) ||
-                                    p.Leaderboard.Song.Mapper.ToLower().Contains(lowSearch) ||
-                                    p.Leaderboard.Song.Name.ToLower().Contains(lowSearch));
-                }
-                if (diff != null) {
-                    sequence = sequence.Where(p => p.Leaderboard.Difficulty.DifficultyName.ToLower().Contains(diff.ToLower()));
-                }
-                if (type != null) {
-                    sequence = sequence.Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked : p.Leaderboard.Difficulty.Status != DifficultyStatus.ranked);
-                }
-                if (stars_from != null) {
-                    sequence = sequence.Where(p => (p.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
-                        p.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
-                        p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) && p.Leaderboard.Difficulty.Stars >= stars_from);
-                }
-                if (stars_to != null) {
-                    sequence = sequence.Where(p => (p.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
-                        p.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
-                        p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) && p.Leaderboard.Difficulty.Stars <= stars_to);
-                }
+                sequence = await sequence.Filter(_context, !player.Banned, showAllRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             }
 
             var resultList = await sequence
@@ -377,7 +321,7 @@ namespace BeatLeader_Server.Controllers {
         [Authorize]
         public async Task<ActionResult<ResponseWithMetadata<ScoreResponseWithMyScore>>> FriendsScores(
             string id,
-            [FromQuery, SwaggerParameter("Sorting criteria for scores, default is by 'date'")] string sortBy = "date",
+            [FromQuery, SwaggerParameter("Sorting criteria for scores, default is by 'date'")] ScoresSortBy sortBy = ScoresSortBy.Date,
             [FromQuery, SwaggerParameter("Order of sorting, default is descending")] Order order = Order.Desc,
             [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
             [FromQuery, SwaggerParameter("Number of scores per page, default is 8")] int count = 8,
@@ -387,7 +331,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Filter scores by map requirements, default is 'None'")] Requirements requirements = Requirements.None,
             [FromQuery, SwaggerParameter("Filter scores by score status, default is 'None'")] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
             [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            [FromQuery, SwaggerParameter("Filter scores by map status, default is null")] string? type = null,
+            [FromQuery, SwaggerParameter("Filter scores by map status, default is null")] DifficultyStatus? type = null,
             [FromQuery, SwaggerParameter("Filter scores by modifiers(GN, SF, etc), default is null")] string? modifiers = null,
             [FromQuery, SwaggerParameter("Filter scores on ranked maps with stars greater than, default is null")] float? stars_from = null,
             [FromQuery, SwaggerParameter("Filter scores on ranked maps with stars lower than, default is null")] float? stars_to = null,
@@ -397,7 +341,7 @@ namespace BeatLeader_Server.Controllers {
 
             search = null;
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
-                return await ContextsFriendsScores(id, sortBy, order, page, count, leaderboardContext, search, diff, type, stars_from, stars_to);
+                return await ContextsFriendsScores(sortBy, order, page, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             }
 
             string? userId = HttpContext.CurrentUserID(_context);

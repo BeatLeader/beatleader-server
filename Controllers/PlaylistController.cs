@@ -726,11 +726,11 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int count = 100,
 
             [FromQuery] string playerId = "1",
-            [FromQuery] string sortBy = "date",
+            [FromQuery] ScoresSortBy sortBy = ScoresSortBy.Date,
             [FromQuery] Order order = Order.Desc,
             [FromQuery] string? search = null,
             [FromQuery] string? diff = null,
-            [FromQuery] string? type = null,
+            [FromQuery] DifficultyStatus? type = null,
             [FromQuery] string? mode = null,
             [FromQuery] Requirements requirements = Requirements.None,
             [FromQuery] string? modifiers = null,

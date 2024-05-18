@@ -39,7 +39,7 @@ namespace BeatLeader_Server.Controllers {
             string id,
             string currentID,
             bool showRatings,
-            string sortBy = "date",
+            ScoresSortBy sortBy = ScoresSortBy.Date,
             Order order = Order.Desc,
             string? search = null,
             string? diff = null,
@@ -47,7 +47,7 @@ namespace BeatLeader_Server.Controllers {
             Requirements requirements = Requirements.None,
             ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
             LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            string? type = null,
+            DifficultyStatus? type = null,
             string? modifiers = null,
             float? stars_from = null,
             float? stars_to = null,
@@ -81,7 +81,7 @@ namespace BeatLeader_Server.Controllers {
         [SwaggerResponse(404, "Scores not found for the given player ID")]
         public async Task<ActionResult<ResponseWithMetadata<ScoreResponseWithMyScore>>> GetScores(
             [FromRoute, SwaggerParameter("Player's unique identifier")] string id,
-            [FromQuery, SwaggerParameter("Sorting criteria for scores, default is by 'date'")] string sortBy = "date",
+            [FromQuery, SwaggerParameter("Sorting criteria for scores, default is by 'date'")] ScoresSortBy sortBy = ScoresSortBy.Pp,
             [FromQuery, SwaggerParameter("Order of sorting, default is descending")] Order order = Order.Desc,
             [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
             [FromQuery, SwaggerParameter("Number of scores per page, default is 8")] int count = 8,
@@ -91,7 +91,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Filter scores by map requirements, default is 'None'")] Requirements requirements = Requirements.None,
             [FromQuery, SwaggerParameter("Filter scores by score status, default is 'None'")] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
             [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            [FromQuery, SwaggerParameter("Filter scores by map status, default is null")] string? type = null,
+            [FromQuery, SwaggerParameter("Filter scores by map status, default is null")] DifficultyStatus? type = null,
             [FromQuery, SwaggerParameter("Filter scores by modifiers(GN, SF, etc), default is null")] string? modifiers = null,
             [FromQuery, SwaggerParameter("Filter scores on ranked maps with stars greater than, default is null")] float? stars_from = null,
             [FromQuery, SwaggerParameter("Filter scores on ranked maps with stars lower than, default is null")] float? stars_to = null,
@@ -123,8 +123,8 @@ namespace BeatLeader_Server.Controllers {
 
             bool showRatings = currentProfileSettings?.ShowAllRatings ?? false;
             bool publicHistory = id == currentID || (profileSettings?.ShowStatsPublic ?? false);
-            if (sortBy == "playCount" && !publicHistory) {
-                sortBy = "pp";
+            if (sortBy == ScoresSortBy.PlayCount && !publicHistory) {
+                sortBy = ScoresSortBy.Pp;
             }
 
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
@@ -359,7 +359,7 @@ namespace BeatLeader_Server.Controllers {
         [SwaggerResponse(404, "Scores not found for the given player ID")]
         public async Task<ActionResult<ResponseWithMetadata<CompactScoreResponse>>> GetCompactScores(
             [FromRoute, SwaggerParameter("Player's unique identifier")] string id,
-            [FromQuery, SwaggerParameter("Sorting criteria for scores, default is by 'date'")] string sortBy = "date",
+            [FromQuery, SwaggerParameter("Sorting criteria for scores, default is by 'date'")] ScoresSortBy sortBy = ScoresSortBy.Date,
             [FromQuery, SwaggerParameter("Order of sorting, default is descending")] Order order = Order.Desc,
             [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
             [FromQuery, SwaggerParameter("Number of scores per page, default is 8")] int count = 8,
@@ -369,7 +369,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Filter scores by map requirements, default is 'None'")] Requirements requirements = Requirements.None,
             [FromQuery, SwaggerParameter("Filter scores by score status, default is 'None'")] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
             [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            [FromQuery, SwaggerParameter("Filter scores by map status, default is null")] string? type = null,
+            [FromQuery, SwaggerParameter("Filter scores by map status, default is null")] DifficultyStatus? type = null,
             [FromQuery, SwaggerParameter("Filter scores by modifiers(GN, SF, etc), default is null")] string? modifiers = null,
             [FromQuery, SwaggerParameter("Filter scores on ranked maps with stars greater than, default is null")] float? stars_from = null,
             [FromQuery, SwaggerParameter("Filter scores on ranked maps with stars lower than, default is null")] float? stars_to = null,
@@ -392,8 +392,8 @@ namespace BeatLeader_Server.Controllers {
 
             bool showRatings = profileSettings?.ShowAllRatings ?? false;
             bool publicHistory = profileSettings?.ShowStatsPublic ?? false;
-            if (sortBy == "playCount" && !publicHistory) {
-                sortBy = "pp";
+            if (sortBy == ScoresSortBy.PlayCount && !publicHistory) {
+                sortBy = ScoresSortBy.Pp;
             }
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
                 return await _playerContextScoresController.GetCompactScores(id, showRatings, sortBy, order, page, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
@@ -476,7 +476,7 @@ namespace BeatLeader_Server.Controllers {
         [HttpGet("~/player/{id}/histogram")]
         public async Task<ActionResult<string>> GetPlayerHistogram(
             string id,
-            [FromQuery] string sortBy = "date",
+            [FromQuery] ScoresSortBy sortBy = ScoresSortBy.Date,
             [FromQuery] Order order = Order.Desc,
             [FromQuery] int count = 8,
             [FromQuery] string? search = null,
@@ -485,7 +485,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] Requirements requirements = Requirements.None,
             [FromQuery] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
             [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            [FromQuery] string? type = null,
+            [FromQuery] DifficultyStatus? type = null,
             [FromQuery] string? modifiers = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
@@ -517,8 +517,8 @@ namespace BeatLeader_Server.Controllers {
             bool showRatings = currentProfileSettings?.ShowAllRatings ?? false;
             bool publicHistory = id == currentID || (profileSettings?.ShowStatsPublic ?? false);
 
-            if (sortBy == "playCount" && !publicHistory) {
-                sortBy = "pp";
+            if (sortBy == ScoresSortBy.PlayCount && !publicHistory) {
+                sortBy = ScoresSortBy.Pp;
             }
 
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
@@ -530,31 +530,31 @@ namespace BeatLeader_Server.Controllers {
             }
 
             switch (sortBy) {
-                case "date":
+                case ScoresSortBy.Date:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Timepost > 0 ? s.Timepost.ToString() : s.Timeset).Select(s => Int32.Parse(s)).ToListAsync(), (int)(batch > 60 * 60 ? batch : 60 * 60 * 24), count);
-                case "pp":
+                case ScoresSortBy.Pp:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Pp).ToListAsync(), Math.Max(batch ?? 5, 1), count);
-                case "acc":
+                case ScoresSortBy.Acc:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Accuracy).ToListAsync(), Math.Max(batch ?? 0.0025f, 0.001f), count);
-                case "pauses":
+                case ScoresSortBy.Pauses:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Pauses).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
-                case "playCount":
+                case ScoresSortBy.PlayCount:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.PlayCount).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
-                case "lastTryTime":
+                case ScoresSortBy.LastTryTime:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.LastTryTime).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
-                case "maxStreak":
+                case ScoresSortBy.MaxStreak:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.MaxStreak ?? 0).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
-                case "rank":
+                case ScoresSortBy.Rank:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Rank).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
-                case "stars":
+                case ScoresSortBy.Stars:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Leaderboard.Difficulty.Stars ?? 0).ToListAsync(), Math.Max(batch ?? 0.15f, 0.01f), count);
-                case "replaysWatched":
+                case ScoresSortBy.ReplaysWatched:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.AnonimusReplayWatched + s.AuthorizedReplayWatched).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
-                case "mistakes":
-                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.BadCuts + s.MissedNotes + s.BombCuts + s.WallsHit).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
-                default:
-                    return BadRequest();
+                case ScoresSortBy.Mistakes:
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.BadCuts + s.MissedNotes + s.BombCuts + s.WallsHit).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);   
             }
+
+            return BadRequest();
         }
 
         private IQueryable<AccGraphResponse> GetAccGraphResponse(IQueryable<IScore> query) {
@@ -834,7 +834,7 @@ namespace BeatLeader_Server.Controllers {
                         WallsHit = s.WallsHit,
                         Pauses = s.Pauses,
                         FullCombo = s.FullCombo,
-                        PlayCount = s.Metadata.HighlightedInfo.HasFlag(InfoToHighlight.PlayCount) ? s.PlayCount : 0,
+                        PlayCount = s.PlayCount,
                         Hmd = s.Hmd,
                         Controller = s.Controller,
                         MaxCombo = s.MaxCombo,

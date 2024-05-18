@@ -20,7 +20,7 @@ namespace BeatLeader_Server.Controllers {
         public async Task<(IQueryable<ScoreContextExtension>?, string)> ScoresQuery(
             string id,
             bool showRatings,
-            string sortBy = "date",
+            ScoresSortBy sortBy = ScoresSortBy.Date,
             Order order = Order.Desc,
             string? search = null,
             string? diff = null,
@@ -28,7 +28,7 @@ namespace BeatLeader_Server.Controllers {
             Requirements requirements = Requirements.None,
             ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
             LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            string? type = null,
+            DifficultyStatus? type = null,
             string? modifiers = null,
             float? stars_from = null,
             float? stars_to = null,
@@ -54,7 +54,7 @@ namespace BeatLeader_Server.Controllers {
             bool showRatings,
             bool publicHistory,
             string currentID,
-            [FromQuery] string sortBy = "date",
+            [FromQuery] ScoresSortBy sortBy = ScoresSortBy.Date,
             [FromQuery] Order order = Order.Desc,
             [FromQuery] int page = 1,
             [FromQuery] int count = 8,
@@ -64,7 +64,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] Requirements requirements = Requirements.None,
             [FromQuery] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
             [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            [FromQuery] string? type = null,
+            [FromQuery] DifficultyStatus? type = null,
             [FromQuery] string? modifiers = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
@@ -302,7 +302,7 @@ namespace BeatLeader_Server.Controllers {
         public async Task<ActionResult<ResponseWithMetadata<CompactScoreResponse>>> GetCompactScores(
             string id,
             bool showRatings,
-            [FromQuery] string sortBy = "date",
+            [FromQuery] ScoresSortBy sortBy = ScoresSortBy.Date,
             [FromQuery] Order order = Order.Desc,
             [FromQuery] int page = 1,
             [FromQuery] int count = 8,
@@ -312,7 +312,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] Requirements requirements = Requirements.None,
             [FromQuery] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
             [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            [FromQuery] string? type = null,
+            [FromQuery] DifficultyStatus? type = null,
             [FromQuery] string? modifiers = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
@@ -363,7 +363,7 @@ namespace BeatLeader_Server.Controllers {
         public async Task<ActionResult<string>> GetPlayerHistogram(
             string id,
             bool showRatings,
-            [FromQuery] string sortBy = "date",
+            [FromQuery] ScoresSortBy sortBy = ScoresSortBy.Date,
             [FromQuery] Order order = Order.Desc,
             [FromQuery] int count = 8,
             [FromQuery] string? search = null,
@@ -372,7 +372,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] Requirements requirements = Requirements.None,
             [FromQuery] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
             [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            [FromQuery] string? type = null,
+            [FromQuery] DifficultyStatus? type = null,
             [FromQuery] string? modifiers = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
@@ -386,31 +386,31 @@ namespace BeatLeader_Server.Controllers {
             }
 
             switch (sortBy) {
-                case "date":
+                case ScoresSortBy.Date:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Timeset).ToListAsync(), (int)(batch > 60 * 60 ? batch : 60 * 60 * 24), count);
-                case "pp":
+                case ScoresSortBy.Pp:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Pp).ToListAsync(), Math.Max(batch ?? 5, 1), count);
-                case "acc":
+                case ScoresSortBy.Acc:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Accuracy).ToListAsync(), Math.Max(batch ?? 0.0025f, 0.001f), count);
-                case "pauses":
+                case ScoresSortBy.Pauses:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Score.Pauses).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
-                case "playCount":
+                case ScoresSortBy.PlayCount:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Score.PlayCount).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
-                case "lastTryTime":
+                case ScoresSortBy.LastTryTime:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Score.LastTryTime).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
-                case "maxStreak":
+                case ScoresSortBy.MaxStreak:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Score.MaxStreak ?? 0).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
-                case "rank":
+                case ScoresSortBy.Rank:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Rank).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
-                case "stars":
+                case ScoresSortBy.Stars:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Leaderboard.Difficulty.Stars ?? 0).ToListAsync(), Math.Max(batch ?? 0.15f, 0.01f), count);
-                case "replaysWatched":
+                case ScoresSortBy.ReplaysWatched:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Score.AnonimusReplayWatched + s.Score.AuthorizedReplayWatched).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
-                case "mistakes":
+                case ScoresSortBy.Mistakes:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Score.BadCuts + s.Score.MissedNotes + s.Score.BombCuts + s.Score.WallsHit).ToListAsync(), (int)(batch ?? 1), count);
-                default:
-                    return BadRequest();
             }
+
+            return BadRequest();
         }
     }
 }

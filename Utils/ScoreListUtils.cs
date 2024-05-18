@@ -15,14 +15,14 @@ namespace BeatLeader_Server.Utils {
             AppContext context,
             bool excludeBanned,
             bool showAllRatings,
-            string sortBy = "date",
+            ScoresSortBy sortBy = ScoresSortBy.Date,
             Order order = Order.Desc,
             string? search = null,
             string? diff = null,
             string? mode = null,
             Requirements requirements = Requirements.None,
             ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
-            string? type = null,
+            DifficultyStatus? type = null,
             string? modifiers = null,
             float? stars_from = null,
             float? stars_to = null,
@@ -31,53 +31,53 @@ namespace BeatLeader_Server.Utils {
             int? eventId = null) {
             IOrderedQueryable<Score>? orderedSequence = null;
             switch (sortBy) {
-                case "date":
+                case ScoresSortBy.Date:
                     orderedSequence = sequence.Order(order, t => t.Timepost);
                     break;
-                case "pp":
+                case ScoresSortBy.Pp:
                     orderedSequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.Pp);
                     break;
-                case "accPP":
+                case ScoresSortBy.AccPP:
                     orderedSequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.AccPP);
                     break;
-                case "passPP":
+                case ScoresSortBy.PassPP:
                     orderedSequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.PassPP);
                     break;
-                case "techPP":
+                case ScoresSortBy.TechPP:
                     orderedSequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.TechPP);
                     break;
-                case "acc":
+                case ScoresSortBy.Acc:
                     orderedSequence = sequence.Order(order, t => t.Accuracy);
                     break;
-                case "pauses":
+                case ScoresSortBy.Pauses:
                     orderedSequence = sequence.Order(order, t => t.Pauses);
                     break;
-                case "playCount":
+                case ScoresSortBy.PlayCount:
                     orderedSequence = sequence.Order(order, t => t.PlayCount);
                     break;
-                case "lastTryTime":
+                case ScoresSortBy.LastTryTime:
                     orderedSequence = sequence.Order(order, t => t.LastTryTime);
                     break;
-                case "rank":
+                case ScoresSortBy.Rank:
                     orderedSequence = sequence.Order(order, t => t.Rank);
                     break;
-                case "maxStreak":
+                case ScoresSortBy.MaxStreak:
                     orderedSequence = sequence.Where(s => !s.IgnoreForStats && s.MaxStreak != null).Order(order, t => t.MaxStreak);
                     break;
-                case "timing":
+                case ScoresSortBy.Timing:
                     orderedSequence = sequence.Order(order, t => (t.LeftTiming + t.RightTiming) / 2);
                     break;
-                case "stars":
+                case ScoresSortBy.Stars:
                     orderedSequence = sequence.Order(order, s => 
                         showAllRatings || 
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked ? s.Leaderboard.Difficulty.Stars : 0);
                     break;
-                case "mistakes":
+                case ScoresSortBy.Mistakes:
                     orderedSequence = sequence.Order(order, t => t.BadCuts + t.BombCuts + t.MissedNotes + t.WallsHit);
                     break;
-                case "replaysWatched":
+                case ScoresSortBy.ReplaysWatched:
                     orderedSequence = sequence.Order(order, t => t.AnonimusReplayWatched + t.AuthorizedReplayWatched);
                     break;
                 default:
@@ -111,7 +111,7 @@ namespace BeatLeader_Server.Utils {
                 sequence = sequence.Where(p => p.Leaderboard.Difficulty.Requirements.HasFlag(requirements));
             }
             if (type != null) {
-                sequence = sequence.Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked : p.Leaderboard.Difficulty.Status != DifficultyStatus.ranked);
+                sequence = sequence.Where(p => p.Leaderboard.Difficulty.Status == type);
             }
             if (stars_from != null) {
                 sequence = sequence.Where(p => (p.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
@@ -180,14 +180,14 @@ namespace BeatLeader_Server.Utils {
             AppContext context,
             bool excludeBanned,
             bool showAllRatings,
-            string sortBy = "date",
+            ScoresSortBy sortBy = ScoresSortBy.Date,
             Order order = Order.Desc,
             string? search = null,
             string? diff = null,
             string? mode = null,
             Requirements requirements = Requirements.None,
             ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
-            string? type = null,
+            DifficultyStatus? type = null,
             string? modifiers = null,
             float? stars_from = null,
             float? stars_to = null,
@@ -196,53 +196,53 @@ namespace BeatLeader_Server.Utils {
             int? eventId = null) {
             IOrderedQueryable<ScoreContextExtension>? orderedSequence = null;
             switch (sortBy) {
-                case "date":
+                case ScoresSortBy.Date:
                     orderedSequence = sequence.Order(order, t => t.Timeset);
                     break;
-                case "pp":
+                case ScoresSortBy.Pp:
                     orderedSequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.Pp);
                     break;
-                case "accPP":
+                case ScoresSortBy.AccPP:
                     orderedSequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.AccPP);
                     break;
-                case "passPP":
+                case ScoresSortBy.PassPP:
                     orderedSequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.PassPP);
                     break;
-                case "techPP":
+                case ScoresSortBy.TechPP:
                     orderedSequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.TechPP);
                     break;
-                case "acc":
+                case ScoresSortBy.Acc:
                     orderedSequence = sequence.Order(order, t => t.Accuracy);
                     break;
-                case "pauses":
+                case ScoresSortBy.Pauses:
                     orderedSequence = sequence.Order(order, t => t.Score.Pauses);
                     break;
-                case "playCount":
+                case ScoresSortBy.PlayCount:
                     orderedSequence = sequence.Order(order, t => t.Score.PlayCount);
                     break;
-                case "lastTryTime":
+                case ScoresSortBy.LastTryTime:
                     orderedSequence = sequence.Order(order, t => t.Score.LastTryTime);
                     break;
-                case "rank":
+                case ScoresSortBy.Rank:
                     orderedSequence = sequence.Order(order, t => t.Rank);
                     break;
-                case "maxStreak":
+                case ScoresSortBy.MaxStreak:
                     orderedSequence = sequence.Where(s => !s.Score.IgnoreForStats && s.Score.MaxStreak != null).Order(order, t => t.Score.MaxStreak);
                     break;
-                case "timing":
+                case ScoresSortBy.Timing:
                     orderedSequence = sequence.Order(order, t => (t.Score.LeftTiming + t.Score.RightTiming) / 2);
                     break;
-                case "stars":
+                case ScoresSortBy.Stars:
                     orderedSequence = sequence.Order(order, s => 
                         showAllRatings || 
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked ? s.Leaderboard.Difficulty.Stars : 0);
                     break;
-                case "mistakes":
+                case ScoresSortBy.Mistakes:
                     orderedSequence = sequence.Order(order, t => t.Score.BadCuts + t.Score.BombCuts + t.Score.MissedNotes + t.Score.WallsHit);
                     break;
-                case "replaysWatched":
+                case ScoresSortBy.ReplaysWatched:
                     orderedSequence = sequence.Order(order, t => t.Score.AnonimusReplayWatched + t.Score.AuthorizedReplayWatched);
                     break;
                 default:
@@ -276,7 +276,7 @@ namespace BeatLeader_Server.Utils {
                 sequence = sequence.Where(p => p.Leaderboard.Difficulty.Requirements.HasFlag(requirements));
             }
             if (type != null) {
-                sequence = sequence.Where(p => type == "ranked" ? p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked : p.Leaderboard.Difficulty.Status != DifficultyStatus.ranked);
+                sequence = sequence.Where(p => p.Leaderboard.Difficulty.Status == type);
             }
             if (stars_from != null) {
                 sequence = sequence.Where(p => (p.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
