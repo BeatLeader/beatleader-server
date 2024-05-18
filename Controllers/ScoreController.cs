@@ -839,25 +839,33 @@ namespace BeatLeader_Server.Controllers
                     score?.Player?.ToContext(contextPlayer);
                 }
             }
-
-            if (resultList.FirstOrDefault()?.Pp > 0) {
-                resultList = resultList
-                        .OrderByDescending(el => Math.Round(el.Pp, 2))
-                        .ThenByDescending(el => Math.Round(el.Accuracy, 4))
-                        .ThenBy(el => el.Timeset)
-                        .ToList();
-            } else if (context == LeaderboardContexts.Golf) {
-                resultList = resultList
+            if (context == LeaderboardContexts.Golf) {
+                if (resultList.FirstOrDefault()?.Pp > 0) {
+                    resultList = resultList
+                        .OrderBy(el => Math.Round(el.Pp, 2))
+                        .ThenBy(el => Math.Round(el.Accuracy, 4))
+                        .ThenBy(el => el.Timeset).ToList();
+                } else {
+                    resultList = resultList
                         .OrderBy(el => el.Priority)
                         .ThenBy(el => el.ModifiedScore)
                         .ThenBy(el => Math.Round(el.Accuracy, 4))
                         .ThenBy(el => el.Timeset).ToList();
+                }
             } else {
-                resultList = resultList
-                        .OrderBy(el => el.Priority)
-                        .ThenByDescending(el => el.ModifiedScore)
-                        .ThenByDescending(el => Math.Round(el.Accuracy, 4))
-                        .ThenBy(el => el.Timeset).ToList();
+                if (resultList.FirstOrDefault()?.Pp > 0) {
+                    resultList = resultList
+                            .OrderByDescending(el => Math.Round(el.Pp, 2))
+                            .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                            .ThenBy(el => el.Timeset)
+                            .ToList();
+                } else {
+                    resultList = resultList
+                            .OrderBy(el => el.Priority)
+                            .ThenByDescending(el => el.ModifiedScore)
+                            .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                            .ThenBy(el => el.Timeset).ToList();
+                }
             }
 
             return (resultList, page);

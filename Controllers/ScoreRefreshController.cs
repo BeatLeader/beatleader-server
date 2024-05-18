@@ -555,7 +555,7 @@ namespace BeatLeader_Server.Controllers
                         rankedScores = hasPp 
                         ? newScores
                             .OrderByDescending(el => Math.Round(el.Pp, 2))
-                            .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                            .ThenBy(el => Math.Round(el.Accuracy, 4))
                             .ThenBy(el => el.Timeset).ToList() 
                         : newScores
                             .OrderBy(el => el.ModifiedScore)
