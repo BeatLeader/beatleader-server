@@ -372,15 +372,17 @@ namespace BeatLeader_Server.Controllers {
                         return BadRequest("Use name between the 3 and 30 symbols");
                     }
 
-                    var changeBan = await _context.UsernamePfpChangeBans.FirstOrDefaultAsync(b => b.PlayerId == player.Id);
-                    if (changeBan != null) {
-                        return BadRequest("Username/profile picture change is banned for you!");
+                    if (name != player.Name) {
+                        var changeBan = await _context.UsernamePfpChangeBans.FirstOrDefaultAsync(b => b.PlayerId == player.Id);
+                        if (changeBan != null) {
+                            return BadRequest("Username/profile picture change is banned for you!");
+                        }
+
+                        player.Name = name;
+                        newChange.NewName = name;
+
+                        PlayerSearchService.PlayerChangedName(player);
                     }
-
-                    player.Name = name;
-                    newChange.NewName = name;
-
-                    PlayerSearchService.PlayerChangedName(player);
                 }
 
                 if (country != null) {
