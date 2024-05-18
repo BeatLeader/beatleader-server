@@ -72,7 +72,12 @@ namespace BeatLeader_Server.Utils {
                         showAllRatings || 
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
-                        s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked ? s.Leaderboard.Difficulty.Stars : 0);
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked ? 
+                        (s.Modifiers.Contains("SF") ? s.Leaderboard.Difficulty.ModifiersRating.SFStars :
+                        (s.Modifiers.Contains("SS") ? s.Leaderboard.Difficulty.ModifiersRating.SSStars :
+                        (s.Modifiers.Contains("FS") ? s.Leaderboard.Difficulty.ModifiersRating.FSStars :
+                        s.Leaderboard.Difficulty.Stars)))
+                        : 0);
                     break;
                 case ScoresSortBy.Mistakes:
                     orderedSequence = sequence.Order(order, t => t.BadCuts + t.BombCuts + t.MissedNotes + t.WallsHit);
@@ -237,7 +242,12 @@ namespace BeatLeader_Server.Utils {
                         showAllRatings || 
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
-                        s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked ? s.Leaderboard.Difficulty.Stars : 0);
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked ? 
+                        (s.Modifiers.Contains("SF") ? s.Leaderboard.Difficulty.ModifiersRating.SFStars :
+                        (s.Modifiers.Contains("SS") ? s.Leaderboard.Difficulty.ModifiersRating.SSStars :
+                        (s.Modifiers.Contains("FS") ? s.Leaderboard.Difficulty.ModifiersRating.FSStars :
+                        s.Leaderboard.Difficulty.Stars)))
+                        : 0);
                     break;
                 case ScoresSortBy.Mistakes:
                     orderedSequence = sequence.Order(order, t => t.Score.BadCuts + t.Score.BombCuts + t.Score.MissedNotes + t.Score.WallsHit);
