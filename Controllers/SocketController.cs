@@ -4,8 +4,8 @@ using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -187,10 +187,10 @@ namespace BeatLeader_Server.Controllers
                 if (scoreToPublish.Leaderboard.Difficulty != null && !scoreToPublish.Leaderboard.Difficulty.Status.WithRating()) {
                     scoreToPublish.Leaderboard.HideRatings();
                 }
-                var message = JsonConvert.SerializeObject(scoreToPublish, new JsonSerializerSettings 
+                var message = JsonSerializer.Serialize(scoreToPublish, new JsonSerializerOptions 
                 { 
-                    ContractResolver = new CamelCasePropertyNamesContractResolver(),
-                    ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    ReferenceHandler = ReferenceHandler.IgnoreCycles
                 });
                 await PublishNewMessage(message, "scores");
             } catch {
@@ -225,12 +225,12 @@ namespace BeatLeader_Server.Controllers
                         })
                         .FirstOrDefaultAsync();
                 }
-                var socketMessage = new SocketMessage { Message = action, Data = score };
+                var socketMessage = new SocketMessage { Message = action, Data = scoreToPublish };
 
-                var message = JsonConvert.SerializeObject(socketMessage, new JsonSerializerSettings 
+                var message = JsonSerializer.Serialize(socketMessage, new JsonSerializerOptions 
                 { 
-                    ContractResolver = new CamelCasePropertyNamesContractResolver(),
-                    ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    ReferenceHandler = ReferenceHandler.IgnoreCycles
                 });
                 await PublishNewMessage(message, "general");
             } catch { }
@@ -242,10 +242,10 @@ namespace BeatLeader_Server.Controllers
                 if (changes.Changes.Count == 0) return;
                 var socketMessage = new SocketMessage { Message = "globalmap", Data = new ClanRankingChangesDescriptionResponse(changes) };
 
-                var message = JsonConvert.SerializeObject(socketMessage, new JsonSerializerSettings 
+                var message = JsonSerializer.Serialize(socketMessage, new JsonSerializerOptions 
                 { 
-                    ContractResolver = new CamelCasePropertyNamesContractResolver(),
-                    ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    ReferenceHandler = ReferenceHandler.IgnoreCycles
                 });
                 await PublishNewMessage(message, "clansocket");
             } catch (Exception e)
