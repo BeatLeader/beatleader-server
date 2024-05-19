@@ -18,6 +18,8 @@ using ReplayDecoder;
 using System.Security.Cryptography.X509Certificates;
 using Prometheus.Client;
 using System.Diagnostics;
+using BeatLeader_Server.Utils;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace BeatLeader_Server {
 
@@ -414,7 +416,9 @@ namespace BeatLeader_Server {
 
             services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "API.BL", Version = "v1" });
+                c.SwaggerDoc("blapi", new OpenApiInfo { Title = "API.BL", Version = "v1" });
+                c.SwaggerDoc("blapifull", new OpenApiInfo { Title = "API.BL.FULL", Version = "v1" });
+
                 c.CustomOperationIds(apiDesc =>
                 {
                     var controllerName = apiDesc.ActionDescriptor.RouteValues["controller"];
@@ -428,7 +432,23 @@ namespace BeatLeader_Server {
                 c.IncludeXmlComments(Path.Combine(System.AppContext.BaseDirectory, "Models.xml"));
                 c.IncludeXmlComments(Path.Combine(System.AppContext.BaseDirectory, "Parser.xml"));
 
-                c.SchemaFilter<Utils.EnumSchemaFilter>();
+                c.DocInclusionPredicate((documentName, apiDescription) =>
+                {
+                    if (documentName == "blapifull")
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        var swaggerOperationAttribute = apiDescription.ActionDescriptor.EndpointMetadata
+                            .OfType<SwaggerOperationAttribute>()
+                            .FirstOrDefault();
+
+                        return swaggerOperationAttribute?.Summary != null;
+                    }
+                });
+
+                c.SchemaFilter<EnumSchemaFilter>();
             });
 
             services.AddResponseCompression(options =>
@@ -513,8 +533,12 @@ namespace BeatLeader_Server {
                     swagger.Servers = new List<OpenApiServer> { new OpenApiServer { Url = $"{httpReq.Scheme}://{httpReq.Host.Value}" } };
                 });
             });
-            app.UseSwaggerUI(c => {
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "API.BL V1");
+
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/blapi/swagger.json", "BeatLeader API v1");
+                c.SwaggerEndpoint("/swagger/blapifull/swagger.json", "Full(Undocumented) BL API v1");
+                c.RoutePrefix = "swagger";
             });
         }
     }

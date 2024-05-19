@@ -1,9 +1,6 @@
-﻿using AngleSharp.Common;
-using BeatLeader_Server.Extensions;
+﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using ReplayDecoder;
-using System.Runtime.ConstrainedExecution;
-using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Utils
 {
@@ -631,24 +628,6 @@ namespace BeatLeader_Server.Utils
             }
 
             return (String.Join(",", modifierArray), multiplier);
-        }
-
-        public static Dictionary<string, float> LegacyModifiers()
-        {
-            return new Dictionary<string, float>
-            {
-                ["DA"] = 0.005f,
-                ["FS"] = 0.11f,
-                ["SS"] = -0.3f,
-                ["SF"] = 0.25f,
-                ["GN"] = 0.04f,
-                ["NA"] = -0.3f,
-                ["NB"] = -0.2f,
-                ["NF"] = -0.5f,
-                ["NO"] = -0.2f,
-                ["PM"] = 0.0f,
-                ["SC"] = 0.0f
-            };
         }
 
         public static string? RemoveDuplicates(Replay replay, Leaderboard leaderboard) {
