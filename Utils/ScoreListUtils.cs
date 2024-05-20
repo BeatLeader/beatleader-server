@@ -107,26 +107,36 @@ namespace BeatLeader_Server.Utils {
                 }
             }
             if (diff != null) {
-                sequence = sequence.Where(p => p.Leaderboard.Difficulty.DifficultyName == diff);
+                sequence = sequence.Where(s => s.Leaderboard.Difficulty.DifficultyName == diff);
             }
             if (mode != null) {
-                sequence = sequence.Where(p => p.Leaderboard.Difficulty.ModeName == mode);
+                sequence = sequence.Where(s => s.Leaderboard.Difficulty.ModeName == mode);
             }
             if (requirements != null) {
-                sequence = sequence.Where(p => p.Leaderboard.Difficulty.Requirements.HasFlag(requirements));
+                sequence = sequence.Where(s => s.Leaderboard.Difficulty.Requirements.HasFlag(requirements));
             }
             if (type != null) {
-                sequence = sequence.Where(p => p.Leaderboard.Difficulty.Status == type);
+                sequence = sequence.Where(s => s.Leaderboard.Difficulty.Status == type);
             }
             if (stars_from != null) {
-                sequence = sequence.Where(p => (p.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
-                        p.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
-                        p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) && p.Leaderboard.Difficulty.Stars >= stars_from);
+                sequence = sequence.Where(s => (
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) && 
+                        (s.Modifiers.Contains("SF") ? s.Leaderboard.Difficulty.ModifiersRating.SFStars :
+                        (s.Modifiers.Contains("SS") ? s.Leaderboard.Difficulty.ModifiersRating.SSStars :
+                        (s.Modifiers.Contains("FS") ? s.Leaderboard.Difficulty.ModifiersRating.FSStars :
+                        s.Leaderboard.Difficulty.Stars))) >= stars_from);
             }
             if (stars_to != null) {
-                sequence = sequence.Where(p => (p.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
-                        p.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
-                        p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) && p.Leaderboard.Difficulty.Stars <= stars_to);
+                sequence = sequence.Where(s => (
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) && 
+                        (s.Modifiers.Contains("SF") ? s.Leaderboard.Difficulty.ModifiersRating.SFStars :
+                        (s.Modifiers.Contains("SS") ? s.Leaderboard.Difficulty.ModifiersRating.SSStars :
+                        (s.Modifiers.Contains("FS") ? s.Leaderboard.Difficulty.ModifiersRating.FSStars :
+                        s.Leaderboard.Difficulty.Stars))) <= stars_to);
             }
             if (time_from != null) {
                 sequence = sequence.Where(s => s.Timepost >= time_from);
@@ -289,14 +299,24 @@ namespace BeatLeader_Server.Utils {
                 sequence = sequence.Where(p => p.Leaderboard.Difficulty.Status == type);
             }
             if (stars_from != null) {
-                sequence = sequence.Where(p => (p.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
-                        p.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
-                        p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) && p.Leaderboard.Difficulty.Stars >= stars_from);
+                sequence = sequence.Where(s => (
+                    s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
+                    s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
+                    s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) && 
+                    (s.Modifiers.Contains("SF") ? s.Leaderboard.Difficulty.ModifiersRating.SFStars :
+                    (s.Modifiers.Contains("SS") ? s.Leaderboard.Difficulty.ModifiersRating.SSStars :
+                    (s.Modifiers.Contains("FS") ? s.Leaderboard.Difficulty.ModifiersRating.FSStars :
+                    s.Leaderboard.Difficulty.Stars))) >= stars_from);
             }
             if (stars_to != null) {
-                sequence = sequence.Where(p => (p.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
-                        p.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
-                        p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) && p.Leaderboard.Difficulty.Stars <= stars_to);
+                sequence = sequence.Where(s => (
+                    s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
+                    s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
+                    s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) && 
+                    (s.Modifiers.Contains("SF") ? s.Leaderboard.Difficulty.ModifiersRating.SFStars :
+                    (s.Modifiers.Contains("SS") ? s.Leaderboard.Difficulty.ModifiersRating.SSStars :
+                    (s.Modifiers.Contains("FS") ? s.Leaderboard.Difficulty.ModifiersRating.FSStars :
+                    s.Leaderboard.Difficulty.Stars))) <= stars_to);
             }
             if (time_from != null) {
                 sequence = sequence.Where(s => s.Timeset >= time_from);
