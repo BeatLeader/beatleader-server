@@ -171,7 +171,6 @@ namespace BeatLeader_Server.Controllers
                 RankedPoolPercentCaptured = 0,
                 PlayerChangesCallback = playerChangesCallback,
                 ClanRankingDiscordHook = clanRankingDiscordHook,
-                RichBio = "",
                 DiscordInvite = ""
             };
 
@@ -539,38 +538,36 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            try
-            {
+            var timeset = Time.UnixNow();
+            try {
                 var ms = new MemoryStream(5);
                 await Request.Body.CopyToAsync(ms);
-                if (ms.Length > 0)
-                {
+                if (ms.Length > 0) {
                     ms.Position = 0;
                     using var sr = new StreamReader(ms);
 
                     var sanitizer = new HtmlSanitizer();
                     sanitizer.AllowedSchemes.Add("data");
-                    var newClanBio = sanitizer.Sanitize(sr.ReadToEnd());
+                    var newBio = sanitizer.Sanitize(sr.ReadToEnd());
 
-                    if (newClanBio != clan.RichBio) {
-                        clan.RichBio = newClanBio;
-                        _context.ClanUpdates.Add(new ClanUpdate {
-                            Clan = clan,
-                            Player = player,
-                            Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
-                            ChangeDescription = "Updated rich bio"
-                        });
+                    if (clan.RichBioTimeset > 0) {
+                        await _s3Client.DeleteAsset($"clan-{clan.Tag}-richbio-{clan.RichBioTimeset}.html");
                     }
+
+                    
+                    var fileName = $"clan-{clan.Tag}-richbio-{timeset}.html";
+
+                    clan.RichBioTimeset = timeset;
+                    _ = await _s3Client.UploadAsset(fileName, newBio);
                 }
-            }
-            catch (Exception e)
-            {
+            } catch (Exception e) {
                 Console.WriteLine($"EXCEPTION: {e}");
+                return BadRequest("Failed to save rich bio");
             }
 
             await _context.SaveChangesAsync();
 
-            return Ok();
+            return Ok(timeset);
         }
 
         [HttpPut("~/clan/discordInvite")]
@@ -670,6 +667,8 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
+            player = await _context.PlayerIdToMain(player);
+
             User? user = await _userController.GetUserLazy(player);
             if (user == null)
             {
@@ -744,6 +743,8 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
+            player = await _context.PlayerIdToMain(player);
+
             User? user = await _userController.GetUserLazy(player);
             if (user == null)
             {
@@ -809,6 +810,8 @@ namespace BeatLeader_Server.Controllers
             {
                 return BadRequest("You cannot leave your own clan");
             }
+
+            player = await _context.PlayerIdToMain(player);
 
             User? user = await _userController.GetUserLazy(player);
             if (user == null)

@@ -201,6 +201,7 @@ namespace BeatLeader_Server.Controllers {
                     Player = new PlayerResponse {
                         Id = s.Player.Id,
                         Name = s.Player.Name,
+                        Alias = s.Player.Alias,
                         Avatar = s.Player.Avatar,
                         Country = s.Player.Country,
 
@@ -351,6 +352,7 @@ namespace BeatLeader_Server.Controllers {
                     Player = new PlayerResponse {
                         Id = s.Player.Id,
                         Name = s.Player.Name,
+                        Alias = s.Player.Alias,
                         Avatar = s.Player.Avatar,
                         Country = s.Player.Country,
 
@@ -529,6 +531,7 @@ namespace BeatLeader_Server.Controllers {
                     Player = new PlayerResponse {
                         Id = s.Player.Id,
                         Name = s.Player.Name,
+                        Alias = s.Player.Alias,
                         Avatar = s.Player.Avatar,
                         Country = s.Player.Country,
 
@@ -986,6 +989,7 @@ namespace BeatLeader_Server.Controllers {
                             {
                                 Id = s.Player.Id,
                                 Name = s.Player.Name,
+                                Alias = s.Player.Alias,
                                 Avatar = s.Player.Avatar,
                                 Country = s.Player.Country,
                                 Pp = s.Player.Pp,
@@ -1078,6 +1082,7 @@ namespace BeatLeader_Server.Controllers {
                             {
                                 Id = s.Player.Id,
                                 Name = s.Player.Name,
+                                Alias = s.Player.Alias,
                                 Avatar = s.Player.Avatar,
                                 Country = s.Player.Country,
                                 Pp = s.Player.Pp,
@@ -2151,6 +2156,7 @@ namespace BeatLeader_Server.Controllers {
                         s.Modifiers,
                         PlayerRank = s.Player.Rank,
                         PlayerName = s.Player.Name,
+                        PlayerAlias = s.Player.Alias,
                         Accuracy = s.Accuracy * 100f,
                         s.Pp,
                         PlayerAvatar = s.Player.Avatar

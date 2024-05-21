@@ -309,6 +309,7 @@ namespace BeatLeader_Server.Controllers {
                             Player = s.Player != null ? new PlayerResponse {
                                 Id = s.Player.Id,
                                 Name = s.Player.Name,
+                                Alias = s.Player.Alias,
                                 Platform = s.Player.Platform,
                                 Avatar = s.Player.Avatar,
                                 Country = s.Player.Country,

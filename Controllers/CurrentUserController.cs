@@ -92,7 +92,9 @@ namespace BeatLeader_Server.Controllers {
             var playerResponse = ResponseFullFromPlayer(player);
             if (playerResponse != null) {
                 PostProcessSettings(playerResponse.Role, playerResponse.ProfileSettings, playerResponse.PatreonFeatures, false);
-            }
+            } 
+
+            int timeset = Time.UnixNow();
 
             return new UserReturn {
                 Player = playerResponse,
@@ -105,6 +107,11 @@ namespace BeatLeader_Server.Controllers {
                 ClanRequest = user.ClanRequest,
                 BannedClans = user.BannedClans,
                 Friends = friends != null ? friends.Friends.Select(ResponseFullFromPlayer).Select(p => PostProcessSettings(p, true)).ToList() : new List<PlayerResponseFull>(),
+                HideFriends = friends?.HideFriends ?? false,
+                AliasRequest = await _context
+                    .AliasRequests
+                    .Where(ar => ar.PlayerId == id && (ar.Status == AliasRequestStatus.open || (timeset - ar.Timeset) < 60 * 60 * 24 * 7))
+                    .FirstOrDefaultAsync(),
                 Login = (await _context.Auths.AsNoTracking().FirstOrDefaultAsync(a => a.Id == intId))?.Login,
 
                 Migrated = (await _context.AccountLinks.AsNoTracking().FirstOrDefaultAsync(a => a.SteamID == id)) != null,
@@ -127,6 +134,7 @@ namespace BeatLeader_Server.Controllers {
                 .Select(p => new PlayerResponseWithFriends {
                     Id = p.Id,
                     Name = p.Name,
+                    Alias = p.Alias,
                     Platform = p.Platform,
                     Avatar = p.Avatar,
                     Country = p.Country,
@@ -287,6 +295,25 @@ namespace BeatLeader_Server.Controllers {
             }
 
             playerFriends.Friends.Remove(friend);
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpPatch("~/user/friends")]
+        public async Task<ActionResult> ChangeFriendsSettings([FromQuery] bool is_public) {
+            string? id = GetId();
+            if (id == null) {
+                return Unauthorized();
+            }
+
+            PlayerFriends? playerFriends = await _context.Friends.Where(u => u.Id == id).FirstOrDefaultAsync();
+            if (playerFriends == null) {
+                playerFriends = new PlayerFriends { Id = id, Friends = new List<Player>() };
+                _context.Friends.Add(playerFriends);
+            }
+
+            playerFriends.HideFriends = !is_public;
             await _context.SaveChangesAsync();
 
             return Ok();
@@ -685,16 +712,26 @@ namespace BeatLeader_Server.Controllers {
                     .FirstOrDefaultAsync(p => p.Id == id);
             }
 
+            if (!player.AnySupporter()) {
+                return BadRequest("Please support on Patreon and link your profile");
+            }
+
             var timeset = Time.UnixNow();
             try {
                 var ms = new MemoryStream(5);
                 await Request.Body.CopyToAsync(ms);
+                if (ms.Length > 10000000)
+                {
+                    return BadRequest("Bio is too big to save, sorry");
+                }
+
                 if (ms.Length > 0) {
                     ms.Position = 0;
                     using var sr = new StreamReader(ms);
 
                     var sanitizer = new HtmlSanitizer();
                     sanitizer.AllowedSchemes.Add("data");
+                    sanitizer.AllowedTags.Add("iframe");
                     var newBio = sanitizer.Sanitize(sr.ReadToEnd());
 
                     if (player.RichBioTimeset > 0) {
@@ -715,6 +752,39 @@ namespace BeatLeader_Server.Controllers {
             await _context.SaveChangesAsync();
 
             return Ok(timeset);
+        }
+
+        [HttpDelete("~/user/richbio")]
+        public async Task<ActionResult> DeletePlayerRichBio(
+            [FromQuery] string? id = null) {
+            var currentID = HttpContext.CurrentUserID(_context);
+
+            var player = await _context.Players.FindAsync(currentID);
+
+            if (player == null) {
+                return NotFound();
+            }
+
+            if (player.Banned) {
+                return BadRequest("You are banned!");
+            }
+
+            if (id != null && player != null && player.Role.Contains("admin")) {
+                player = await _context
+                    .Players
+                    .Include(p => p.ProfileSettings)
+                    .FirstOrDefaultAsync(p => p.Id == id);
+            }
+
+            if (player.RichBioTimeset > 0) {
+                await _s3Client.DeleteAsset($"player-{player.Id}-richbio-{player.RichBioTimeset}.html");
+            }
+
+            player.RichBioTimeset = 0;
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
         }
 
         [HttpPatch("~/user/changePassword")]

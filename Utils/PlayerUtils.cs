@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using BeatLeader_Server.Bot;
 using Discord;
 using static BeatLeader_Server.Utils.ResponseUtils;
+using BeatLeader_Server.Extensions;
 
 namespace BeatLeader_Server.Utils
 {
@@ -595,6 +596,7 @@ namespace BeatLeader_Server.Utils
             Player result = new Player();
             result.Name = playerInfo.personaname;
             result.Avatar = playerInfo.avatarfull;
+            result.CreatedAt = Time.UnixNow();
             result.Platform = "steam";
             result.SanitizeName();
             if (ExpandantoObject.HasProperty(playerInfo, "loccountrycode"))
@@ -618,6 +620,7 @@ namespace BeatLeader_Server.Utils
             Player result = new Player();
             result.Name = info.alias;
             result.Id = info.id;
+            result.CreatedAt = Time.UnixNow();
             result.Platform = "oculuspc";
             result.Country = "not set";
             result.SanitizeName();
@@ -644,6 +647,7 @@ namespace BeatLeader_Server.Utils
             result.Name = info.name;
             result.Id = (30000000 + info.id) + "";
             result.MapperId = (int)info.id;
+            result.CreatedAt = Time.UnixNow();
             result.Platform = "beatsaver";
             result.Country = "not set";
             result.Avatar = info.avatar;

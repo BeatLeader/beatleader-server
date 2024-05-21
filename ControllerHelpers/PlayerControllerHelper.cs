@@ -1,4 +1,5 @@
-﻿using BeatLeader_Server.Models;
+﻿using BeatLeader_Server.Extensions;
+using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Microsoft.EntityFrameworkCore;
@@ -81,6 +82,7 @@ namespace BeatLeader_Server.ControllerHelpers {
             result.Id = playerID;
             result.Name = authInfo.Login;
             result.Platform = "oculus";
+            result.CreatedAt = Time.UnixNow();
             result.SetDefaultAvatar();
 
             return result;

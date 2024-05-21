@@ -89,9 +89,10 @@ namespace BeatLeader_Server.Controllers
                     Id = player.Id,
                     Name = player.Name,
                     Platform = player.Platform,
-                    Avatar = player.Avatar,
+                    Avatar = player.WebAvatar,
                     Country = player.Country,
                     ScoreStats = player.ScoreStats,
+                    Alias = player.Alias,
 
                     MapperId = player.MapperId,
 
@@ -184,8 +185,7 @@ namespace BeatLeader_Server.Controllers
         [SwaggerResponse(404, "Player not found")]
         public async Task<ActionResult<PlayerResponseFull>> GetPatreon([FromRoute, SwaggerParameter("Discord profile ID")] string id)
         {
-            var socialy = await _context.AccountLinks.Where(s => s.SteamID == id).FirstOrDefaultAsync();
-            var social = await _context.PatreonLinks.Where(s => s.Id == socialy.OculusID.ToString()).FirstOrDefaultAsync();
+            var social = await _context.PatreonLinks.Where(s => s.PatreonId == id).FirstOrDefaultAsync();
 
             if (social == null) {
                 return NotFound();
@@ -497,6 +497,7 @@ namespace BeatLeader_Server.Controllers
                         Avatar = p.Avatar,
                         Country = p.Country,
                         ScoreStats = p.ScoreStats,
+                        Alias = p.Alias,
 
                         Pp = p.Pp,
                         TechPp= p.TechPp,
@@ -737,6 +738,7 @@ namespace BeatLeader_Server.Controllers
                     Avatar = p.Player.Avatar,
                     Country = p.Country,
                     ScoreStats = p.ScoreStats,
+                    Alias = p.Player.Alias,
 
                     Pp = p.Pp,
                     TechPp= p.TechPp,
@@ -989,6 +991,172 @@ namespace BeatLeader_Server.Controllers
                     Id = ep.EventRankingId,
                     Name = ep.EventName
                 }).ToListAsync();
+        }
+
+        [HttpGet("~/player/{id}/followersInfo")]
+        [SwaggerOperation(Summary = "Get events where player participated", Description = "Retrieves a chronological list of events player with such ID took part of.")]
+        [SwaggerResponse(200, "Returns list of events player took part", typeof(ParticipatingEventResponse))]
+        [SwaggerResponse(404, "Player not found")]
+        public async Task<ActionResult<PlayerFollowersInfoResponse>> GetFollowersInfo(
+            [FromRoute, SwaggerParameter("The ID of the player")] string id) {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            id = await _context.PlayerIdToMain(id);
+
+            Player? currentPlayer = await _context.Players.FindAsync(currentID);
+            if (currentPlayer == null || (id != currentID && !currentPlayer.Role.Contains("admin")))
+            {
+                return Unauthorized();
+            }
+
+            var allFollowersIds = await _context
+                .Friends
+                .Where(f => f.Friends.FirstOrDefault(p => p.Id == id) != null)
+                .Select(f => f.Id)
+                .ToListAsync();
+
+            var followersCounts = new Dictionary<string, int>();
+            foreach (var followerId in allFollowersIds) {
+                var followingOfFollowers = await _context
+                    .Friends
+                    .Where(f => f.Id == followerId)
+                    .Select(f => f.Friends.Select(ff => ff.Id))
+                    .FirstOrDefaultAsync();
+                if (followingOfFollowers == null) continue;
+
+                followersCounts[followerId] = allFollowersIds.Intersect(followingOfFollowers).Count();
+            }
+
+            var followersIds = allFollowersIds.OrderByDescending(id => {
+                if (followersCounts.ContainsKey(id)) {
+                    return followersCounts[id];
+                } else {
+                    return 0;
+                }
+            }).Take(3).ToList();
+
+            List<string> allFollowingIds = await _context
+                .Friends
+                .Where(f => f.Id == id)
+                .Select(f => f.Friends.Select(f => f.Id).ToList())
+                .FirstOrDefaultAsync() ?? new List<string>();
+
+            var followingIds = await _context
+                .Friends
+                .Where(f => allFollowingIds.Contains(f.Id))
+                .OrderByDescending(f => f.Friends.Count)
+                .Take(3)
+                .Select(f => f.Id)
+                .ToListAsync();
+
+            return new PlayerFollowersInfoResponse {
+                FollowingCount = allFollowingIds.Count,
+                MeFollowing = allFollowingIds.FirstOrDefault(f => f == currentID) != null,
+                Following = await _context.Players.Where(p => followingIds.Contains(p.Id)).Select(p => new PlayerFollower {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Avatar = p.Avatar
+                }).ToListAsync(),
+
+                FollowersCount = allFollowersIds.Count,
+                IFollow = allFollowersIds.FirstOrDefault(f => f == currentID) != null,
+                Followers = await _context.Players.Where(p => followersIds.Contains(p.Id)).Select(p => new PlayerFollower {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Avatar = p.Avatar
+                }).ToListAsync()
+            };
+        }
+
+        //[HttpGet("~/player/{id}/followers")]
+        //[SwaggerOperation(Summary = "Get events where player participated", Description = "Retrieves a chronological list of events player with such ID took part of.")]
+        //[SwaggerResponse(200, "Returns list of events player took part", typeof(ParticipatingEventResponse))]
+        //[SwaggerResponse(404, "Player not found")]
+        //public async Task<ActionResult<PlayerFollowersResponse>> GetFollowers(
+        //    [FromRoute, SwaggerParameter("The ID of the player")] string id) {
+        //    var ids = await _context.Friends.Where(f => f.Friends.FirstOrDefault(p => p.Id == id) != null).Select(f => f.Id).ToListAsync();
+
+        //    return new PlayerFollowersResponse {
+        //        Following = await _context.Friends.Where(f => f.Id == id).Select(f => f.Friends.Select(p => new PlayerFollower {
+        //            Id = p.Id,
+        //            Name = p.Name,
+        //            Avatar = p.Avatar
+        //        }).ToList()).FirstOrDefaultAsync(),
+        //        Followers = await _context.Players.Where(p => ids.Contains(p.Id)).Select(p => new PlayerFollower {
+        //            Id = p.Id,
+        //            Name = p.Name,
+        //            Avatar = p.Avatar
+        //        }).ToListAsync()
+        //    };
+        //}
+
+        [HttpGet("~/player/{id}/foundedClan")]
+        [SwaggerOperation(Summary = "Get events where player participated", Description = "Retrieves a chronological list of events player with such ID took part of.")]
+        [SwaggerResponse(200, "Returns list of events player took part", typeof(ParticipatingEventResponse))]
+        [SwaggerResponse(404, "Player not found")]
+        public async Task<ActionResult<ClanBiggerResponse>> GetFoundedClan(
+            [FromRoute, SwaggerParameter("The ID of the player")] string id) {
+            id = await _context.PlayerIdToMain(id);
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var result = await _context.Clans.Where(c => c.LeaderID == id).Select(c => new ClanBiggerResponse {
+                Id = c.Id,
+                Tag = c.Tag,
+                Color = c.Color,
+                Name = c.Name,
+                Icon = c.Icon,
+                RankedPoolPercentCaptured = c.RankedPoolPercentCaptured,
+
+                PlayersCount = c.PlayersCount,
+                Joined = currentID != null && c.Players.FirstOrDefault(p => p.Id == currentID) != null
+            }).FirstOrDefaultAsync();
+            if (result == null) {
+                return NotFound();
+            }
+            return result;
+        }
+
+        [HttpGet("~/player/{id}/rankedMaps")]
+        [SwaggerOperation(Summary = "Get events where player participated", Description = "Retrieves a chronological list of events player with such ID took part of.")]
+        [SwaggerResponse(200, "Returns list of events player took part", typeof(ParticipatingEventResponse))]
+        [SwaggerResponse(404, "Player not found")]
+        public async Task<ActionResult<RankedMapperResponse>> GetRankedMaps(
+            [FromRoute, SwaggerParameter("The ID of the player")] int id) {
+
+            var lbs = await _context
+                .Leaderboards
+                .Where(lb =>
+                    lb.Difficulty.Status == DifficultyStatus.ranked &&
+                    lb.Song.MapperId == id)
+                .Select(lb => new { 
+                    lb.Plays, 
+                    Pp = lb.Scores.Sum(s => s.Pp) })
+                .ToListAsync();
+
+            if (lbs.Count == 0) {
+                return NotFound();
+            }
+
+            var result = new RankedMapperResponse();
+            result.TotalMapCount = lbs.Count;
+            result.TotalPp = lbs.Sum(lb => lb.Pp);
+            result.PlayersCount = lbs.Sum(lb => lb.Plays);
+
+            result.Maps = _context
+                .Songs
+                .Where(s => 
+                    s.MapperId == id && 
+                    s.Difficulties.FirstOrDefault(d => d.Status == DifficultyStatus.ranked) != null)
+                .OrderByDescending(s => s.UploadTime)
+                .Take(4)
+                .Select(s => new RankedMap {
+                    Name = s.Name,
+                    SongId = s.Id,
+                    Stars = s.Difficulties.OrderByDescending(d => d.Stars).Select(d => d.Stars).First(),
+                    Cover = s.CoverImage
+                })
+                .ToList();
+
+            return result;
+
         }
     }
 }

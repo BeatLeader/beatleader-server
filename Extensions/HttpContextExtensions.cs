@@ -138,10 +138,14 @@ namespace BeatLeader_Server.Extensions
 
         public static async Task<string> PlayerIdToMain(this AppContext _context, string id) {
             Int64 oculusId = 0;
-            try {
-                oculusId = Int64.Parse(id);
-            } catch {
-                return id;
+            id = id.ToLower();
+            if (!Int64.TryParse(id, out oculusId)) {
+                var alias = _context.Players.Where(p => p.Alias == id || p.OldAlias == id).Select(p => p.Id).FirstOrDefault();
+                if (alias != null) {
+                    return alias;
+                } else {
+                    return id;
+                }
             }
             AccountLink? link = null;
             if (oculusId < 1000000000000000) {

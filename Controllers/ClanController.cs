@@ -194,7 +194,7 @@ namespace BeatLeader_Server.Controllers
                     LeaderID = clan.LeaderID,
                     Description = clan.Description,
                     Bio = clan.Bio,
-                    RichBio = clan.RichBio,
+                    RichBioTimeset = clan.RichBioTimeset,
                     DiscordInvite = clan.DiscordInvite,
                     PlayersCount = clan.PlayersCount,
                     Pp = clan.Pp,
@@ -225,6 +225,7 @@ namespace BeatLeader_Server.Controllers
                     {
                         Id = p.Id,
                         Name = p.Name,
+                        Alias = p.Alias,
                         Platform = p.Platform,
                         Avatar = p.Avatar,
                         Country = p.Country,

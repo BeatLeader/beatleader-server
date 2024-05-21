@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20240513234449_PublicFollowersAliasesAndModders")]
+    partial class PublicFollowersAliasesAndModders
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -172,33 +175,6 @@ namespace BeatLeader_Server.Migrations
                     b.HasIndex("AchievementDescriptionId");
 
                     b.ToTable("AchievementLevels");
-                });
-
-            modelBuilder.Entity("BeatLeader_Server.Models.AliasRequest", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("PlayerId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Timeset")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("AliasRequests");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.AuthID", b =>
@@ -424,8 +400,9 @@ namespace BeatLeader_Server.Migrations
                     b.Property<float>("RankedPoolPercentCaptured")
                         .HasColumnType("real");
 
-                    b.Property<int>("RichBioTimeset")
-                        .HasColumnType("int");
+                    b.Property<string>("RichBio")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Tag")
                         .IsRequired()

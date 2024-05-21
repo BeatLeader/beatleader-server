@@ -94,6 +94,8 @@ namespace BeatLeader_Server
         public DbSet<PredictedScore> PredictedScores { get; set; }
         public DbSet<MaxScoreGraph> MaxScoreGraph { get; set; }
 
+        public DbSet<AliasRequest> AliasRequests { get; set; }
+
         public void RejectChanges()
         {
             foreach (var entry in ChangeTracker.Entries())

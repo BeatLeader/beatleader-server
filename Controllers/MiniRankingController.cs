@@ -19,6 +19,7 @@ namespace BeatLeader_Server.Controllers
         public class MiniRankingPlayer {
             public string Name { get; set; }
             public string Id { get; set; }
+            public string Alias { get; set; }
             public string Country { get; set; }
 
             public int Rank { get; set; }
@@ -51,7 +52,7 @@ namespace BeatLeader_Server.Controllers
                         (p.Country == country && p.CountryRank <= countryRank + 1 && p.CountryRank >= countryRank - 3) || 
                         (p.Rank <= rank + 1 && p.Rank >= rank - 3)
                     ))
-                .Select(p => new MiniRankingPlayer { Id = p.PlayerId, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Pp = p.Pp });
+                .Select(p => new MiniRankingPlayer { Id = p.PlayerId, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Alias = p.Player.Alias, Pp = p.Pp });
 
             var result = new MiniRankingResponse()
             {
@@ -75,7 +76,7 @@ namespace BeatLeader_Server.Controllers
                         .PlayerContextExtensions
                         .Include(ce => ce.Player)
                         .Where(p => p.PlayerId == currentID && p.Context == leaderboardContext)
-                        .Select(p => new MiniRankingPlayer { Id = p.PlayerId, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Pp = p.Pp })
+                        .Select(p => new MiniRankingPlayer { Id = p.PlayerId, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Alias = p.Player.Alias, Pp = p.Pp })
                         .FirstOrDefaultAsync();
                     }
 
@@ -122,7 +123,7 @@ namespace BeatLeader_Server.Controllers
                         (p.Country == country && p.CountryRank <= countryRank + 1 && p.CountryRank >= countryRank - 3) || 
                         (p.Rank <= rank + 1 && p.Rank >= rank - 3)
                     ))
-                .Select(p => new MiniRankingPlayer { Id = p.Id, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Pp = p.Pp });
+                .Select(p => new MiniRankingPlayer { Id = p.Id, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Alias = p.Alias, Pp = p.Pp });
 
             var result = new MiniRankingResponse()
             {
@@ -137,7 +138,7 @@ namespace BeatLeader_Server.Controllers
                         .Friends
                         .Where(f => f.Id == currentID)
                         .Include(f => f.Friends)
-                        .Select(f => new { friends = f.Friends.Select(p => new MiniRankingPlayer { Id = p.Id, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Pp = p.Pp }) })
+                        .Select(f => new { friends = f.Friends.Select(p => new MiniRankingPlayer { Id = p.Id, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Alias = p.Alias, Pp = p.Pp }) })
                         .FirstOrDefaultAsync())
                         ?.friends.ToList();
                     var currentPlayer = await players.Where(p => p.Id == currentID).FirstOrDefaultAsync();
@@ -145,7 +146,7 @@ namespace BeatLeader_Server.Controllers
                         currentPlayer = await _context
                         .Players
                         .Where(p => p.Id == currentID)
-                        .Select(p => new MiniRankingPlayer { Id = p.Id, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Pp = p.Pp })
+                        .Select(p => new MiniRankingPlayer { Id = p.Id, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Alias = p.Alias, Pp = p.Pp })
                         .FirstOrDefaultAsync();
                     }
 

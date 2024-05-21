@@ -256,6 +256,7 @@ namespace BeatLeader_Server.Controllers {
                                         Id = s.Player.Id,
                                         Name = s.Player.Name,
                                         Platform = s.Player.Platform,
+                                        Alias = s.Player.Alias,
                                         Avatar = s.Player.Avatar,
                                         Country = s.Player.Country,
 
