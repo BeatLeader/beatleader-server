@@ -20,6 +20,7 @@ using Prometheus.Client;
 using System.Diagnostics;
 using BeatLeader_Server.Utils;
 using Swashbuckle.AspNetCore.Annotations;
+using Prometheus.Client.Collectors.ProcessStats;
 
 namespace BeatLeader_Server {
 
@@ -40,13 +41,14 @@ namespace BeatLeader_Server {
         {
             try
             {
+                var guid = Guid.NewGuid();
                 float before = (float)(Process.GetCurrentProcess().WorkingSet64 / 1000l) / 1000000.0f;
                 if (context.Request.Path != "/servername") {
-                    _logger.LogWarning(null, $"STARTED {before} GB {context.Request.Path}{context.Request.QueryString}");
+                    _logger.LogWarning(null, $"STARTED {guid} {before} GB {context.Request.Path}{context.Request.QueryString}");
                 }
                 await _next(context);
                 if (context.Request.Path != "/servername") {
-                    _logger.LogWarning(null, $"FINISHED {before} {(float)(Process.GetCurrentProcess().WorkingSet64 / 1000l) / 1000000.0f} GB {context.Request.Path}{context.Request.QueryString}");
+                    _logger.LogWarning(null, $"FINISHED {guid} {before} {(float)(Process.GetCurrentProcess().WorkingSet64 / 1000l) / 1000000.0f} GB {context.Request.Path}{context.Request.QueryString}");
                 }
             }
             catch (Exception e)
@@ -496,8 +498,16 @@ namespace BeatLeader_Server {
         {
             app.UseMiddleware<ErrorLoggingMiddleware>();
             app.UseMiddleware<LocalstatsMiddleware>();
+            
             app.UsePrometheusServer();
             app.UsePrometheusRequestDurations();
+            var sqlServerProcess = Process.GetProcessesByName("sqlservr").FirstOrDefault();
+            if (sqlServerProcess != null)
+            {
+                Console.WriteLine("SQLSERVER!");
+                Metrics.DefaultCollectorRegistry.Add(new ProcessCollector(sqlServerProcess, "sql_"));
+            }
+
             app.UseMiddleware<GrafanaTimingMiddleware>();
             app.UseStaticFiles();
             app.UseForwardedHeaders();

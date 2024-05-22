@@ -391,22 +391,22 @@ namespace BeatLeader_Server.Controllers {
             IQueryable<ScoreContextExtension> scoreQuery = _context
                 .ScoreContextExtensions
                 .AsNoTracking()
-                .Include(s => s.Score)
+                .Include(s => s.ScoreInstance)
                 .Where(s => s.LeaderboardId == leaderboard.Id && s.Context == context);
 
             if (countries == null) {
                 if (friendsList != null) {
-                    scoreQuery = scoreQuery.Where(s => (!s.Score.Banned || (showBots && s.Score.Bot)) && friendsList.Contains(s.PlayerId));
+                    scoreQuery = scoreQuery.Where(s => (!s.ScoreInstance.Banned || (showBots && s.ScoreInstance.Bot)) && friendsList.Contains(s.PlayerId));
                 } else if (voters) {
-                    scoreQuery = scoreQuery.Where(s => (!s.Score.Banned || (showBots && s.Score.Bot)) && s.Score.RankVoting != null);
+                    scoreQuery = scoreQuery.Where(s => (!s.ScoreInstance.Banned || (showBots && s.ScoreInstance.Bot)) && s.ScoreInstance.RankVoting != null);
                 } else {
-                    scoreQuery = scoreQuery.Where(s => (!s.Score.Banned || (showBots && s.Score.Bot)));
+                    scoreQuery = scoreQuery.Where(s => (!s.ScoreInstance.Banned || (showBots && s.ScoreInstance.Bot)));
                 }
             } else {
                 if (friendsList != null) {
-                    scoreQuery = scoreQuery.Where(s => (!s.Score.Banned || (showBots && s.Score.Bot)) && friendsList.Contains(s.PlayerId) && countries.ToLower().Contains(s.Player.Country.ToLower()));
+                    scoreQuery = scoreQuery.Where(s => (!s.ScoreInstance.Banned || (showBots && s.ScoreInstance.Bot)) && friendsList.Contains(s.PlayerId) && countries.ToLower().Contains(s.Player.Country.ToLower()));
                 } else {
-                    scoreQuery = scoreQuery.Where(s => (!s.Score.Banned || (showBots && s.Score.Bot)) && countries.ToLower().Contains(s.Player.Country.ToLower()));
+                    scoreQuery = scoreQuery.Where(s => (!s.ScoreInstance.Banned || (showBots && s.ScoreInstance.Bot)) && countries.ToLower().Contains(s.Player.Country.ToLower()));
                 }
             }
 
@@ -453,16 +453,16 @@ namespace BeatLeader_Server.Controllers {
                     scoreQuery = scoreQuery.Order(order, s => s.Accuracy);
                     break;
                 case LeaderboardSortBy.Pauses:
-                    scoreQuery = scoreQuery.Order(order, s => s.Score.Pauses).ThenOrder(oppositeOrder, s => s.Rank);
+                    scoreQuery = scoreQuery.Order(order, s => s.ScoreInstance.Pauses).ThenOrder(oppositeOrder, s => s.Rank);
                     break;
                 case LeaderboardSortBy.Rank:
                     scoreQuery = scoreQuery.Order(oppositeOrder, s => s.Rank);
                     break;
                 case LeaderboardSortBy.MaxStreak:
-                    scoreQuery = scoreQuery.Order(order, s => s.Score.MaxStreak).ThenOrder(oppositeOrder, s => s.Rank);
+                    scoreQuery = scoreQuery.Order(order, s => s.ScoreInstance.MaxStreak).ThenOrder(oppositeOrder, s => s.Rank);
                     break;
                 case LeaderboardSortBy.Mistakes:
-                    scoreQuery = scoreQuery.Order(order, s => s.Score.BadCuts + s.Score.MissedNotes + s.Score.BombCuts + s.Score.WallsHit);
+                    scoreQuery = scoreQuery.Order(order, s => s.ScoreInstance.BadCuts + s.ScoreInstance.MissedNotes + s.ScoreInstance.BombCuts + s.ScoreInstance.WallsHit);
                     break;
                 case LeaderboardSortBy.Weight:
                     scoreQuery = scoreQuery.Order(order, s => s.Weight);
@@ -477,7 +477,7 @@ namespace BeatLeader_Server.Controllers {
                 case ScoreFilterStatus.None:
                     break;
                 case ScoreFilterStatus.Suspicious:
-                    scoreQuery = scoreQuery.Where(s => s.Score.Suspicious);
+                    scoreQuery = scoreQuery.Where(s => s.ScoreInstance.Suspicious);
                     break;
                 default:
                     break;
@@ -505,26 +505,26 @@ namespace BeatLeader_Server.Controllers {
                     Pp = s.Pp,
                     Rank = s.Rank,
                     Modifiers = s.Modifiers,
-                    BadCuts = s.Score.BadCuts,
-                    MissedNotes = s.Score.MissedNotes,
-                    BombCuts = s.Score.BombCuts,
-                    WallsHit = s.Score.WallsHit,
-                    Pauses = s.Score.Pauses,
-                    FullCombo = s.Score.FullCombo,
-                    Timeset = s.Score.Timeset,
-                    Timepost = s.Score.Timepost,
-                    MaxStreak = s.Score.MaxStreak,
+                    BadCuts = s.ScoreInstance.BadCuts,
+                    MissedNotes = s.ScoreInstance.MissedNotes,
+                    BombCuts = s.ScoreInstance.BombCuts,
+                    WallsHit = s.ScoreInstance.WallsHit,
+                    Pauses = s.ScoreInstance.Pauses,
+                    FullCombo = s.ScoreInstance.FullCombo,
+                    Timeset = s.ScoreInstance.Timeset,
+                    Timepost = s.ScoreInstance.Timepost,
+                    MaxStreak = s.ScoreInstance.MaxStreak,
                     AccPP = s.AccPP,
                     TechPP = s.TechPP,
                     PassPP = s.PassPP,
                     Weight = s.Weight,
-                    Hmd = s.Score.Hmd,
-                    Platform = s.Score.Platform,
-                    Controller = s.Score.Controller,
-                    FcAccuracy = s.Score.FcAccuracy,
-                    FcPp = s.Score.FcPp,
-                    Offsets = offsets ? s.Score.ReplayOffsets : null,
-                    Replay = offsets ? s.Score.Replay : null,
+                    Hmd = s.ScoreInstance.Hmd,
+                    Platform = s.ScoreInstance.Platform,
+                    Controller = s.ScoreInstance.Controller,
+                    FcAccuracy = s.ScoreInstance.FcAccuracy,
+                    FcPp = s.ScoreInstance.FcPp,
+                    Offsets = offsets ? s.ScoreInstance.ReplayOffsets : null,
+                    Replay = offsets ? s.ScoreInstance.Replay : null,
                     Player = new PlayerResponse {
                         Id = s.Player.Id,
                         Name = s.Player.Name,
@@ -545,7 +545,7 @@ namespace BeatLeader_Server.Controllers {
                             .Take(1)
                             .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                     },
-                    RankVoting = showVoters ? s.Score.RankVoting : null,
+                    RankVoting = showVoters ? s.ScoreInstance.RankVoting : null,
                 })
                 .ToListAsync();
         }

@@ -322,12 +322,12 @@ namespace BeatLeader_Server.Controllers {
             }
             var allScores =
                 await _context.ScoreContextExtensions
-                .Where(s => s.Context == context && (!s.Score.Banned || s.Score.Bot) && !s.Score.IgnoreForStats)
+                .Where(s => s.Context == context && (!s.ScoreInstance.Banned || s.ScoreInstance.Bot) && !s.ScoreInstance.IgnoreForStats)
                 .Select(s => new SubScore
                 {
                     PlayerId = s.PlayerId,
-                    Platform = s.Score.Platform,
-                    Hmd = s.Score.Hmd,
+                    Platform = s.ScoreInstance.Platform,
+                    Hmd = s.ScoreInstance.Hmd,
                     ModifiedScore = s.ModifiedScore,
                     Accuracy = s.Accuracy,
                     Pp = s.Pp,
@@ -336,12 +336,12 @@ namespace BeatLeader_Server.Controllers {
                     AccPP = s.AccPP,
                     TechPP = s.TechPP,
                     Rank = s.Rank,
-                    Timeset = s.Score.Timepost,
+                    Timeset = s.ScoreInstance.Timepost,
                     Weight = s.Weight,
-                    Qualification = s.Score.Qualification,
-                    MaxStreak = s.Score.MaxStreak,
-                    RightTiming = s.Score.RightTiming,
-                    LeftTiming = s.Score.LeftTiming,
+                    Qualification = s.ScoreInstance.Qualification,
+                    MaxStreak = s.ScoreInstance.MaxStreak,
+                    RightTiming = s.ScoreInstance.RightTiming,
+                    LeftTiming = s.ScoreInstance.LeftTiming,
                 }).ToListAsync();
 
             var players = await _context
@@ -360,20 +360,23 @@ namespace BeatLeader_Server.Controllers {
                 .Where(p => p.Pp > 0)
                 .GroupBy(p => p.Country)
                 .ToDictionary(g => g.Key, g => g.Count());
-            
-            await playersWithScores.ParallelForEachAsync(async player => {
-                await PlayerRefreshControllerHelper.RefreshStats(
-                    _context, 
-                    player.ScoreStats, 
-                    player.Id, 
-                    player.Rank, 
-                    player.Pp > 0 ? player.Rank / (float)playerCount : 0,
-                    player.Pp > 0 ? player.CountryRank / (float)countryCounts[player.Country] : 0, 
-                    context, 
-                    player.Scores);
-            }, maxDegreeOfParallelism: 50);
 
-            await _context.BulkSaveChangesAsync();
+            for (int i = 0; i < playersWithScores.Count; i += 1000) {
+                await playersWithScores.Skip(i).Take(1000).ParallelForEachAsync(async player => {
+                    await PlayerRefreshControllerHelper.RefreshStats(
+                        _context, 
+                        player.ScoreStats, 
+                        player.Id, 
+                        player.Rank, 
+                        player.Pp > 0 ? player.Rank / (float)playerCount : 0,
+                        player.Pp > 0 ? player.CountryRank / (float)countryCounts[player.Country] : 0, 
+                        context, 
+                        player.Scores);
+                }, maxDegreeOfParallelism: 50);
+
+                await _context.BulkSaveChangesAsync();
+            }
+            
 
             return Ok();
         }

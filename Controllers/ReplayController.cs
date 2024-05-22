@@ -1578,7 +1578,7 @@ namespace BeatLeader_Server.Controllers
                         if (currentScore != null && currentScoreExtenstion != null) {
                             improvement.AccLeft = resultScore.AccLeft - currentScore.Score.AccLeft;
                             improvement.AccRight = resultScore.AccRight - currentScore.Score.AccRight;
-                            improvement.Rank = ce.Rank - currentScoreExtenstion.Score?.Rank ?? 0;
+                            improvement.Rank = ce.Rank - currentScoreExtenstion.ScoreInstance?.Rank ?? 0;
                         }
                     }
                 }

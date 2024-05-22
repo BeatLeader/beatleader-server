@@ -214,6 +214,7 @@ namespace BeatLeader_Server.Controllers
             var stat = await _context
                 .PlayerLeaderboardStats
                 .Where(s => s.Replay == $"https://api.beatleader.xyz/otherreplays/{name}")
+                .Select(s => s.PlayerId)
                 .FirstOrDefaultAsync();
             if (stat == null) {
                 return NotFound();
@@ -227,7 +228,7 @@ namespace BeatLeader_Server.Controllers
                 .FirstOrDefaultAsync())
                 ?.Contains("admin") ?? false) : false;
 
-            var playerId = await _context.PlayerIdToMain(stat.PlayerId);
+            var playerId = await _context.PlayerIdToMain(stat);
 
             var features = await _context
                 .Players

@@ -668,7 +668,7 @@ namespace BeatLeader_Server.Controllers
             IQueryable<ScoreContextExtension> query = _context
                 .ScoreContextExtensions
                 .AsNoTracking()
-                .Where(s => s.Context == context && (!s.Score.Banned || (s.Score.Bot && showBots)) && s.LeaderboardId == leaderboardId);
+                .Where(s => s.Context == context && (!s.ScoreInstance.Banned || (s.ScoreInstance.Bot && showBots)) && s.LeaderboardId == leaderboardId);
 
             if (scope.ToLower() == "friends")
             {
@@ -707,7 +707,7 @@ namespace BeatLeader_Server.Controllers
             else
             {
                 ScoreResponse? highlightedScore = await query
-                    .Where(s => s.Context == context && (!s.Score.Banned || (s.Score.Bot && showBots)) && s.LeaderboardId == leaderboardId && s.PlayerId == player)
+                    .Where(s => s.Context == context && (!s.ScoreInstance.Banned || (s.ScoreInstance.Bot && showBots)) && s.LeaderboardId == leaderboardId && s.PlayerId == player)
                     .Select(s => new ScoreResponse
                 {
                     Id = s.ScoreId != null ? (int)s.ScoreId : 0,
@@ -716,23 +716,23 @@ namespace BeatLeader_Server.Controllers
                     ModifiedScore = s.ModifiedScore,
                     Accuracy = s.Accuracy,
                     Pp = s.Pp,
-                    FcAccuracy = s.Score.FcAccuracy,
-                    FcPp = s.Score.FcPp,
+                    FcAccuracy = s.ScoreInstance.FcAccuracy,
+                    FcPp = s.ScoreInstance.FcPp,
                     Rank = s.Rank,
-                    Replay = s.Score.Replay,
+                    Replay = s.ScoreInstance.Replay,
                     Modifiers = s.Modifiers,
-                    BadCuts = s.Score.BadCuts,
-                    MissedNotes = s.Score.MissedNotes,
-                    BombCuts = s.Score.BombCuts,
-                    WallsHit = s.Score.WallsHit,
-                    Pauses = s.Score.Pauses,
-                    FullCombo = s.Score.FullCombo,
-                    Hmd = s.Score.Hmd,
-                    Controller = s.Score.Controller,
-                    MaxCombo = s.Score.MaxCombo,
-                    Timeset = s.Score.Timeset,
-                    Timepost = s.Score.Timepost,
-                    Platform = s.Score.Platform,
+                    BadCuts = s.ScoreInstance.BadCuts,
+                    MissedNotes = s.ScoreInstance.MissedNotes,
+                    BombCuts = s.ScoreInstance.BombCuts,
+                    WallsHit = s.ScoreInstance.WallsHit,
+                    Pauses = s.ScoreInstance.Pauses,
+                    FullCombo = s.ScoreInstance.FullCombo,
+                    Hmd = s.ScoreInstance.Hmd,
+                    Controller = s.ScoreInstance.Controller,
+                    MaxCombo = s.ScoreInstance.MaxCombo,
+                    Timeset = s.ScoreInstance.Timeset,
+                    Timepost = s.ScoreInstance.Timepost,
+                    Platform = s.ScoreInstance.Platform,
                     LeaderboardId = s.LeaderboardId,
                     Player = new PlayerResponse
                     {
@@ -794,23 +794,23 @@ namespace BeatLeader_Server.Controllers
                     ModifiedScore = s.ModifiedScore,
                     Accuracy = s.Accuracy,
                     Pp = s.Pp,
-                    FcAccuracy = s.Score.FcAccuracy,
-                    FcPp = s.Score.FcPp,
+                    FcAccuracy = s.ScoreInstance.FcAccuracy,
+                    FcPp = s.ScoreInstance.FcPp,
                     Rank = s.Rank,
-                    Replay = s.Score.Replay,
+                    Replay = s.ScoreInstance.Replay,
                     Modifiers = s.Modifiers,
-                    BadCuts = s.Score.BadCuts,
-                    MissedNotes = s.Score.MissedNotes,
-                    BombCuts = s.Score.BombCuts,
-                    WallsHit = s.Score.WallsHit,
-                    Pauses = s.Score.Pauses,
-                    FullCombo = s.Score.FullCombo,
-                    Hmd = s.Score.Hmd,
-                    Controller = s.Score.Controller,
-                    MaxCombo = s.Score.MaxCombo,
-                    Timeset = s.Score.Timeset,
-                    Timepost = s.Score.Timepost,
-                    Platform = s.Score.Platform,
+                    BadCuts = s.ScoreInstance.BadCuts,
+                    MissedNotes = s.ScoreInstance.MissedNotes,
+                    BombCuts = s.ScoreInstance.BombCuts,
+                    WallsHit = s.ScoreInstance.WallsHit,
+                    Pauses = s.ScoreInstance.Pauses,
+                    FullCombo = s.ScoreInstance.FullCombo,
+                    Hmd = s.ScoreInstance.Hmd,
+                    Controller = s.ScoreInstance.Controller,
+                    MaxCombo = s.ScoreInstance.MaxCombo,
+                    Timeset = s.ScoreInstance.Timeset,
+                    Timepost = s.ScoreInstance.Timepost,
+                    Platform = s.ScoreInstance.Platform,
                     Priority = s.Priority,
                     LeaderboardId = s.LeaderboardId,
                     Player = new PlayerResponse

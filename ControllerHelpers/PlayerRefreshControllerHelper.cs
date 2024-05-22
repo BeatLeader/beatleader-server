@@ -64,12 +64,12 @@ namespace BeatLeader_Server.ControllerHelpers {
                 } else {
                     allScores = await dbContext
                         .ScoreContextExtensions
-                        .Where(s => s.PlayerId == playerId && s.Context == leaderboardContext && !s.Score.IgnoreForStats)
+                        .Where(s => s.PlayerId == playerId && s.Context == leaderboardContext && !s.ScoreInstance.IgnoreForStats)
                         .Select(s => new SubScore
                         {
                             PlayerId = s.PlayerId,
-                            Platform = s.Score.Platform,
-                            Hmd = s.Score.Hmd,
+                            Platform = s.ScoreInstance.Platform,
+                            Hmd = s.ScoreInstance.Hmd,
                             ModifiedScore = s.ModifiedScore,
                             Accuracy = s.Accuracy,
                             Pp = s.Pp,
@@ -78,12 +78,12 @@ namespace BeatLeader_Server.ControllerHelpers {
                             AccPP = s.AccPP,
                             TechPP = s.TechPP,
                             Rank = s.Rank,
-                            Timeset = s.Score.Timepost,
+                            Timeset = s.ScoreInstance.Timepost,
                             Weight = s.Weight,
-                            Qualification = s.Score.Qualification,
-                            MaxStreak = s.Score.MaxStreak,
-                            RightTiming = s.Score.RightTiming,
-                            LeftTiming = s.Score.LeftTiming,
+                            Qualification = s.ScoreInstance.Qualification,
+                            MaxStreak = s.ScoreInstance.MaxStreak,
+                            RightTiming = s.ScoreInstance.RightTiming,
+                            LeftTiming = s.ScoreInstance.LeftTiming,
                         }).ToListAsync();
                 }
             }

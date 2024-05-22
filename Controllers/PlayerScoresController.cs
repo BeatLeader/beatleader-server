@@ -69,7 +69,7 @@ namespace BeatLeader_Server.Controllers {
                    .TagWithCallSite()
                 : _context.ScoreContextExtensions
                    .AsNoTracking()
-                   .Include(ce => ce.Score)
+                   .Include(ce => ce.ScoreInstance)
                    .Where(t => t.PlayerId == id && t.Context == leaderboardContext)
                    .TagWithCallSite();
 
@@ -646,8 +646,8 @@ namespace BeatLeader_Server.Controllers {
                 .Where(s => 
                     s.PlayerId == id && 
                     s.Context == leaderboardContext && 
-                    s.Score != null &&
-                    !s.Score.IgnoreForStats && 
+                    s.ScoreInstance != null &&
+                    !s.ScoreInstance.IgnoreForStats && 
                     ((showRatings && s.Leaderboard.Difficulty.Stars != null) || s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked))
                 .TagWithCallSite();
             } else {
