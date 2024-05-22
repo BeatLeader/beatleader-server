@@ -160,6 +160,7 @@ namespace BeatLeader_Server.Controllers
                 .Select(p => new PlayerResponseWithStats {
                     Id = p.Id,
                     Name = p.Name,
+                    Alias = p.Alias,
                     Platform = p.Platform,
                     Avatar = p.Avatar,
                     Country = p.Country,

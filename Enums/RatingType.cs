@@ -7,3 +7,11 @@ public enum RatingType
     Pass,
     Tech,
 }
+
+public enum PpType
+{
+    General,
+    Acc,
+    Pass,
+    Tech,
+}

@@ -13,3 +13,14 @@ public enum Type
     Unranked,
     Ost
 }
+
+public enum MapsType {
+    Ranked,
+    Unranked,
+    All
+}
+
+public enum FollowerType {
+    Followers,
+    Following
+}

@@ -4,12 +4,10 @@ using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Text.RegularExpressions;
 using BeatLeader_Server.Enums;
 using static BeatLeader_Server.Utils.ResponseUtils;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 using SixLabors.ImageSharp;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -18,61 +16,59 @@ namespace BeatLeader_Server.Controllers
         private readonly AppContext _context;
 
         IAmazonS3 _s3Client;
-        CurrentUserController _userController;
-        ScreenshotController _screenshotController;
         IWebHostEnvironment _environment;
 
         public ClanController(
             AppContext context,
             IWebHostEnvironment env,
-            CurrentUserController userController,
-            ScreenshotController screenshotController,
             IConfiguration configuration)
         {
             _context = context;
-            _userController = userController;
-            _screenshotController = screenshotController;
             _environment = env;
             _s3Client = configuration.GetS3Client();
         }
 
         [HttpGet("~/clans/")]
+        [SwaggerOperation(Summary = "Retrieve a list of clans", Description = "Fetches a paginated and optionally filtered list of clans (group of players). Filters include sorting by performance points, search, name, rank, and more.")]
+        [SwaggerResponse(200, "List of clans retrieved successfully", typeof(ResponseWithMetadata<ClanResponseFull>))]
+        [SwaggerResponse(400, "Invalid request parameters")]
+        [SwaggerResponse(404, "Clans not found")]
         public async Task<ActionResult<ResponseWithMetadata<ClanResponseFull>>> GetAll(
-            [FromQuery] int page = 1,
-            [FromQuery] int count = 10,
-            [FromQuery] string sort = "captures",
+            [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
+            [FromQuery, SwaggerParameter("Number of players per page, default is 10")] int count = 10,
+            [FromQuery] ClanSortBy sort = ClanSortBy.Captures,
             [FromQuery] Order order = Order.Desc,
             [FromQuery] string? search = null,
-            [FromQuery] string? type = null,
-            [FromQuery] string? sortBy = null)
+            [FromQuery] ClanSortBy? sortBy = null)
         {
             var sequence = _context
                 .Clans
                 .AsNoTracking()
                 .Include(cl => cl.CapturedLeaderboards)
                 .AsQueryable();
+
             if (sortBy != null)
             {
-                sort = sortBy;
+                sort = (ClanSortBy)sortBy;
             }
             switch (sort)
             {
-                case "name":
+                case ClanSortBy.Name:
                     sequence = sequence.Order(order, t => t.Name);
                     break;
-                case "pp":
+                case ClanSortBy.Pp:
                     sequence = sequence.Order(order, t => t.Pp);
                     break;
-                case "acc":
+                case ClanSortBy.Acc:
                     sequence = sequence.Where(c => c.PlayersCount > 2).Order(order, t => t.AverageAccuracy);
                     break;
-                case "rank":
+                case ClanSortBy.Rank:
                     sequence = sequence.Where(c => c.PlayersCount > 2 && c.AverageRank > 0).Order(order.Reverse(), t => t.AverageRank);
                     break;
-                case "count":
+                case ClanSortBy.Count:
                     sequence = sequence.Order(order, t => t.PlayersCount);
                     break;
-                case "captures":
+                case ClanSortBy.Captures:
                     sequence = sequence.Order(order, c => c.CaptureLeaderboardsCount);
                     break;
                 default:
@@ -151,11 +147,9 @@ namespace BeatLeader_Server.Controllers
             string? currentID,
             int page = 1,
             int count = 10,
-            string sortBy = "pp",
+            PlayerSortBy sortBy = PlayerSortBy.Pp,
             Order order = Order.Desc,
-            bool primary = false,
-            string? search = null,
-            string? capturedLeaderboards = null)
+            bool primary = false)
         {
             IQueryable<Player> players = _context
                 .Players
@@ -171,17 +165,16 @@ namespace BeatLeader_Server.Controllers
             }
             switch (sortBy)
             {
-                case "pp":
+                case PlayerSortBy.Pp:
                     players = players.Order(order, t => t.Pp);
                     break;
-                case "acc":
+                case PlayerSortBy.Acc:
                     players = players.Order(order, t => t.ScoreStats.AverageRankedAccuracy);
                     break;
-                case "rank":
+                case PlayerSortBy.Rank:
                     players = players.Order(order, t => t.Rank);
                     break;
-                default:
-                    break;
+                
             }
             return new ResponseWithMetadataAndContainer<PlayerResponse, ClanResponseFull>
             {
@@ -251,15 +244,16 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/clan/{tag}")]
+        [SwaggerOperation(Summary = "Retrieve details of a specific clan by tag", Description = "Fetches details of a specific clan identified by its tag.")]
+        [SwaggerResponse(200, "Clan details retrieved successfully", typeof(ResponseWithMetadataAndContainer<PlayerResponse, ClanResponseFull>))]
+        [SwaggerResponse(404, "Clan not found")]
         public async Task<ActionResult<ResponseWithMetadataAndContainer<PlayerResponse, ClanResponseFull>>> GetClan(
-            string tag,
-            [FromQuery] int page = 1,
-            [FromQuery] int count = 10,
-            [FromQuery] string sortBy = "pp",
-            [FromQuery] Order order = Order.Desc,
-            [FromQuery] bool primary = false,
-            [FromQuery] string? search = null,
-            [FromQuery] string? capturedLeaderboards = null)
+            [SwaggerParameter("Tag of the clan to retrieve details for")] string tag,
+            [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
+            [FromQuery, SwaggerParameter("Number of players per page, default is 10")] int count = 10,
+            [FromQuery, SwaggerParameter("Field to sort players by, default is Pp")] PlayerSortBy sortBy = PlayerSortBy.Pp,
+            [FromQuery, SwaggerParameter("Order of sorting, default is Desc")] Order order = Order.Desc,
+            [FromQuery, SwaggerParameter("Whether to include only players for whom this clan is primary, default is false")] bool primary = false)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
             Clan? clan = await CurrentClan(tag, currentID);
@@ -268,19 +262,20 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            return await PopulateClan(clan, currentID, page, count, sortBy, order, primary, search, capturedLeaderboards);
+            return await PopulateClan(clan, currentID, page, count, sortBy, order, primary);
         }
 
         [HttpGet("~/clan/id/{id}")]
+        [SwaggerOperation(Summary = "Retrieve details of a specific clan by ID", Description = "Fetches details of a specific clan identified by its ID.")]
+        [SwaggerResponse(200, "Clan details retrieved successfully", typeof(ResponseWithMetadataAndContainer<PlayerResponse, ClanResponseFull>))]
+        [SwaggerResponse(404, "Clan not found")]
         public async Task<ActionResult<ResponseWithMetadataAndContainer<PlayerResponse, ClanResponseFull>>> GetClanById(
-            int id,
-            [FromQuery] int page = 1,
-            [FromQuery] int count = 10,
-            [FromQuery] string sortBy = "pp",
-            [FromQuery] Order order = Order.Desc,
-            [FromQuery] bool primary = false,
-            [FromQuery] string? search = null,
-            [FromQuery] string? capturedLeaderboards = null)
+            [SwaggerParameter("ID of the clan to retrieve details for")] int id,
+            [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
+            [FromQuery, SwaggerParameter("Number of players per page, default is 10")] int count = 10,
+            [FromQuery, SwaggerParameter("Field to sort players by, default is Pp")] PlayerSortBy sortBy = PlayerSortBy.Pp,
+            [FromQuery, SwaggerParameter("Order of sorting, default is Desc")] Order order = Order.Desc,
+            [FromQuery, SwaggerParameter("Whether to include only players for whom this clan is primary, default is false")] bool primary = false)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
             Clan? clan = await _context
@@ -294,7 +289,7 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            return await PopulateClan(clan, currentID, page, count, sortBy, order, primary, search, capturedLeaderboards);
+            return await PopulateClan(clan, currentID, page, count, sortBy, order, primary);
         }
 
         [NonAction]
@@ -303,11 +298,9 @@ namespace BeatLeader_Server.Controllers
             string? currentID,
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
-            [FromQuery] string sortBy = "pp",
+            [FromQuery] ClanMapsSortBy sortBy = ClanMapsSortBy.Pp,
             [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            [FromQuery] Order order = Order.Desc,
-            [FromQuery] string? search = null,
-            [FromQuery] string? capturedLeaderboards = null)
+            [FromQuery] Order order = Order.Desc)
         {
             var rankings = _context
                 .ClanRanking
@@ -322,19 +315,19 @@ namespace BeatLeader_Server.Controllers
 
             switch (sortBy)
             {
-                case "pp":
+                case ClanMapsSortBy.Pp:
                     rankings = rankings.Order(order, t => t.Pp);
                     break;
-                case "acc":
+                case ClanMapsSortBy.Acc:
                     rankings = rankings.Order(order, t => t.AverageAccuracy);
                     break;
-                case "rank":
+                case ClanMapsSortBy.Rank:
                     rankings = rankings.Order(order, t => t.Rank);
                     break;
-                case "date":
+                case ClanMapsSortBy.Date:
                     rankings = rankings.Order(order, t => t.LastUpdateTime);
                     break;
-                case "tohold":
+                case ClanMapsSortBy.Tohold:
                     rankings = rankings
                         .Where(cr => cr.Rank == 1 && cr.Leaderboard.ClanRanking.Count > 1)
                         .Order(
@@ -346,7 +339,7 @@ namespace BeatLeader_Server.Controllers
                                     .Select(cr => cr.Pp)
                                     .First());
                     break;
-                case "toconquer":
+                case ClanMapsSortBy.Toconquer:
                     rankings = rankings
                         .Where(cr => cr.Rank != 1 || cr.Leaderboard.ClanRankingContested)
                         .Order(
@@ -413,14 +406,14 @@ namespace BeatLeader_Server.Controllers
             .AsSplitQuery()
             .ToListAsync();
 
-            if (sortBy == "tohold" || sortBy == "toconquer") {
+            if (sortBy == ClanMapsSortBy.Tohold || sortBy == ClanMapsSortBy.Toconquer) {
                 var pps = await rankings
                     .Skip((page - 1) * count)
                     .Take(count)
                     .Select(t => new { t.LeaderboardId, Pp = t.Pp, SecondPp = t
                         .Leaderboard
                         .ClanRanking
-                        .Where(cr => cr.ClanId != clan.Id && (cr.Rank == (sortBy == "tohold" ? 2 : 1)))
+                        .Where(cr => cr.ClanId != clan.Id && (cr.Rank == (sortBy == ClanMapsSortBy.Tohold ? 2 : 1)))
                         .Select(cr => cr.Pp)
                         .FirstOrDefault()
                     })
@@ -466,15 +459,16 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/clan/{tag}/maps")]
+        [SwaggerOperation(Summary = "Retrieve clan maps by tag", Description = "Fetches ranked maps(maps that can be captured on the global map) for where players of clan made scores identified by its tag, with optional sorting and filtering.")]
+        [SwaggerResponse(200, "Clan maps retrieved successfully", typeof(ResponseWithMetadataAndContainer<ClanRankingResponse, ClanResponseFull>))]
+        [SwaggerResponse(404, "Clan not found")]
         public async Task<ActionResult<ResponseWithMetadataAndContainer<ClanRankingResponse, ClanResponseFull>>> GetClanWithMaps(
-            string tag,
-            [FromQuery] int page = 1,
-            [FromQuery] int count = 10,
-            [FromQuery] string sortBy = "pp",
-            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            [FromQuery] Order order = Order.Desc,
-            [FromQuery] string? search = null,
-            [FromQuery] string? capturedLeaderboards = null)
+            [SwaggerParameter("Tag of the clan to retrieve maps for")] string tag,
+            [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
+            [FromQuery, SwaggerParameter("Number of maps per page, default is 10")] int count = 10,
+            [FromQuery, SwaggerParameter("Field to sort maps by, default is Pp")] ClanMapsSortBy sortBy = ClanMapsSortBy.Pp,
+            [FromQuery, SwaggerParameter("Context of the leaderboard, default is General")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
+            [FromQuery, SwaggerParameter("Order of sorting, default is Desc")] Order order = Order.Desc)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
             Clan? clan = await CurrentClan(tag, currentID);
@@ -483,19 +477,20 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            return await PopulateClanWithMaps(clan, currentID, page, count, sortBy, leaderboardContext, order, search, capturedLeaderboards);
+            return await PopulateClanWithMaps(clan, currentID, page, count, sortBy, leaderboardContext, order);
         }
 
         [HttpGet("~/clan/id/{id}/maps")]
+        [SwaggerOperation(Summary = "Retrieve clan maps by ID", Description = "Fetches ranked maps(maps that can be captured on the global map) for where players of clan made scores identified by its ID, with optional sorting and filtering.")]
+        [SwaggerResponse(200, "Clan maps retrieved successfully", typeof(ResponseWithMetadataAndContainer<ClanRankingResponse, ClanResponseFull>))]
+        [SwaggerResponse(404, "Clan not found")]
         public async Task<ActionResult<ResponseWithMetadataAndContainer<ClanRankingResponse, ClanResponseFull>>> GetClanWithMapsById(
-            int id,
-            [FromQuery] int page = 1,
-            [FromQuery] int count = 10,
-            [FromQuery] string sortBy = "pp",
-            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            [FromQuery] Order order = Order.Desc,
-            [FromQuery] string? search = null,
-            [FromQuery] string? capturedLeaderboards = null)
+            [SwaggerParameter("ID of the clan to retrieve maps for")] int id,
+            [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
+            [FromQuery, SwaggerParameter("Number of maps per page, default is 10")] int count = 10,
+            [FromQuery, SwaggerParameter("Field to sort maps by, default is Pp")] ClanMapsSortBy sortBy = ClanMapsSortBy.Pp,
+            [FromQuery, SwaggerParameter("Context of the leaderboard, default is General")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
+            [FromQuery, SwaggerParameter("Order of sorting, default is Desc")] Order order = Order.Desc)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
             Clan? clan = await _context
@@ -508,7 +503,7 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            return await PopulateClanWithMaps(clan, currentID, page, count, sortBy, leaderboardContext, order, search, capturedLeaderboards);
+            return await PopulateClanWithMaps(clan, currentID, page, count, sortBy, leaderboardContext, order);
         }
 
         public class ClanPoint {
@@ -541,117 +536,17 @@ namespace BeatLeader_Server.Controllers
             public List<ClanPoint> Clans { get; set; }
         }
 
+        // Returns link to ClanGlobalMap
         [HttpGet("~/clans/globalmap")]
+        [SwaggerOperation(Summary = "Retrieve the global clan map", Description = "Fetches a global map showing clan captured maps and rankings.")]
+        [SwaggerResponse(200, "Global map retrieved successfully", typeof(ClanGlobalMap))]
+        [SwaggerResponse(404, "Global map not found")]
         public async Task<ActionResult> GlobalMap() {
             var mapUrl = await _s3Client.GetPresignedUrl("global-map-file.json", S3Container.assets);
             if (mapUrl == null) {
                 return NotFound();
             }
             return Redirect(mapUrl);
-        }
-
-        [HttpGet("~/clans/refreshglobalmap")]
-        public async Task<ActionResult<byte[]>> RefreshGlobalMap() {
-            if (HttpContext != null) {
-                string currentID = HttpContext.CurrentUserID(_context);
-                var currentPlayer = await _context.Players.FindAsync(currentID);
-
-                if (!currentPlayer.Role.Contains("admin"))
-                {
-                    return Unauthorized();
-                }
-            }
-
-            var points = await _context
-                    .Leaderboards
-                    .AsNoTracking()
-                    .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
-                    .Select(lb => new ClanGlobalMapPoint {
-                        LeaderboardId = lb.Id,
-                        CoverImage = lb.Song.CoverImage,
-                        Stars = lb.Difficulty.Stars,
-                        Tie = lb.ClanRankingContested,
-                        Clans = lb.ClanRanking
-                                   .OrderByDescending(cr => cr.Pp)
-                                   .Take(3)
-                                   .Select(cr => new ClanMapConnection {
-                                       Id = cr.ClanId,
-                                       Pp = cr.Pp,
-                                   })
-                                   .ToList()
-                    })
-                    .ToListAsync();
-
-            var clanIds = new List<int>();
-            foreach (var item in points)
-            {
-                foreach (var clan in item.Clans)
-                {
-                    if (clan.Id != null && !clanIds.Contains((int)clan.Id)) {
-                        clanIds.Add((int)clan.Id);
-                    }
-                }
-            }
-
-            var map = new ClanGlobalMap {
-                Points = points,
-                Clans = await _context
-                    .Clans
-                    .AsNoTracking()
-                    .Where(c => clanIds.Contains(c.Id))
-                    .Select(c => new ClanPoint {
-                        Id = c.Id,
-                        Tag = c.Tag,
-                        Color = c.Color,
-                        X = c.GlobalMapX,
-                        Y = c.GlobalMapY
-                    })
-                    .ToListAsync()
-            };
-
-            DefaultContractResolver contractResolver = new DefaultContractResolver
-            {
-                NamingStrategy = new CamelCaseNamingStrategy()
-            };
-
-            await _s3Client.UploadStream("global-map-file.json", S3Container.assets, new BinaryData(JsonConvert.SerializeObject(map, new JsonSerializerSettings
-            {
-                ContractResolver = contractResolver
-            })).ToStream());
-
-            var file = await _screenshotController.DownloadFileContent("general", "clansmap/save", new Dictionary<string, string> { });
-            await _s3Client.UploadAsset("clansmap-globalcache.json", file);
-
-            return file;
-        }
-
-        public class SimulationCache {
-            public Dictionary<int, PointF> Clans { get; set; }
-        }
-
-        [HttpPost("~/clans/importLocations")]
-        public async Task<ActionResult> ImportLocations([FromBody] SimulationCache cache) {
-            if (HttpContext != null) {
-                string currentID = HttpContext.CurrentUserID(_context);
-                var currentPlayer = await _context.Players.FindAsync(currentID);
-
-                if (!currentPlayer.Role.Contains("admin"))
-                {
-                    return Unauthorized();
-                }
-            }
-            var clans = await _context.Clans.ToListAsync();
-            foreach (var clan in clans)
-            {
-                if (cache.Clans.ContainsKey(clan.Id)) {
-                    clan.GlobalMapX = cache.Clans[clan.Id].X;
-                    clan.GlobalMapY = cache.Clans[clan.Id].Y;
-                }
-            }
-
-            await _context.BulkSaveChangesAsync();
-
-            return Ok();
         }
     }
 }

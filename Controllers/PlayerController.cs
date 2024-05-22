@@ -89,7 +89,7 @@ namespace BeatLeader_Server.Controllers
                     Id = player.Id,
                     Name = player.Name,
                     Platform = player.Platform,
-                    Avatar = player.WebAvatar,
+                    Avatar = player.Avatar,
                     Country = player.Country,
                     ScoreStats = player.ScoreStats,
                     Alias = player.Alias,
@@ -180,10 +180,10 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/player/patreon/{id}")]
-        [SwaggerOperation(Summary = "Get player with Patreon", Description = "Retrieves a BeatLeader profile data with linked Discord profile.")]
+        [SwaggerOperation(Summary = "Get player with Patreon", Description = "Retrieves a BeatLeader profile data with linked Patreon profile.")]
         [SwaggerResponse(200, "Returns the player's full profile", typeof(PlayerResponseFull))]
         [SwaggerResponse(404, "Player not found")]
-        public async Task<ActionResult<PlayerResponseFull>> GetPatreon([FromRoute, SwaggerParameter("Discord profile ID")] string id)
+        public async Task<ActionResult<PlayerResponseFull>> GetPatreon([FromRoute, SwaggerParameter("Patreon profile ID")] string id)
         {
             var social = await _context.PatreonLinks.Where(s => s.PatreonId == id).FirstOrDefaultAsync();
 
@@ -194,100 +194,20 @@ namespace BeatLeader_Server.Controllers
             return await Get(social.Id, true);
         }
 
-        //[HttpDelete("~/player/{id}")]
-        //[Authorize]
-        [NonAction]
-        public async Task<ActionResult> DeletePlayer(string id)
-        {
-            if (HttpContext != null) {
-                string currentId = HttpContext.CurrentUserID(_context);
-                Player? currentPlayer = await _context.Players.FindAsync(currentId);
-                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-                {
-                    return Unauthorized();
-                }
-            }
-            var bslink = await _context.BeatSaverLinks.FirstOrDefaultAsync(link => link.Id == id);
-            if (bslink != null) {
-                _context.BeatSaverLinks.Remove(bslink);
-            }
-
-            var plink = await _context.PatreonLinks.FirstOrDefaultAsync(l => l.Id == id);
-            if (plink != null) {
-                _context.PatreonLinks.Remove(plink);
-            }
-
-            var intId = long.Parse(id);
-            var auth = await _context.Auths.FirstOrDefaultAsync(l => l.Id == intId);
-            if (auth != null) {
-                _context.Auths.Remove(auth);
-            }
-
-            var scores = await _context
-                .Scores
-                .Include(s => s.ContextExtensions)
-                .Include(s => s.RankVoting)
-                .ThenInclude(rv => rv.Feedbacks)
-                .Where(s => s.PlayerId == id)
-                .ToListAsync();
-            foreach (var score in scores) {
-                string? name = score.Replay.Split("/").LastOrDefault();
-                if (name != null) {
-                    await _assetsS3Client.DeleteReplay(name);
-                }
-
-                foreach (var item in score.ContextExtensions)
-                {
-                    _context.ScoreContextExtensions.Remove(item);
-                }
-
-                if (score.RankVoting != null) {
-                    if (score.RankVoting.Feedbacks != null) {
-                        foreach (var item in score.RankVoting.Feedbacks)
-                        {
-                            score.RankVoting.Feedbacks.Remove(item);
-                        }
-                    }
-                    _context.RankVotings.Remove(score.RankVoting);
-                }
-
-                _context.Scores.Remove(score);
-            }
-
-            Player? player = await _context.Players.Where(p => p.Id == id)
-                .Include(p => p.Socials)
-                .Include(p => p.ProfileSettings)
-                .Include(p => p.History)
-                .Include(p => p.Changes).FirstOrDefaultAsync();
-
-            if (player == null)
-            {
-                return NotFound();
-            }
-
-            player.Socials = null;
-            player.ProfileSettings = null;
-            player.History = null;
-            _context.Players.Remove(player);
-            await _context.SaveChangesAsync();
-
-            return Ok();
-        }
-
         [HttpGet("~/players")]
         [SwaggerOperation(Summary = "Retrieve a list of players (ranking)", Description = "Fetches a paginated and optionally filtered list of players. Filters include sorting by performance points, search, country, maps type, platform, and more.")]
         [SwaggerResponse(200, "List of players retrieved successfully", typeof(ResponseWithMetadata<PlayerResponseWithStats>))]
         [SwaggerResponse(400, "Invalid request parameters")]
         [SwaggerResponse(404, "Players not found")]
         public async Task<ActionResult<ResponseWithMetadata<PlayerResponseWithStats>>> GetPlayers(
-            [FromQuery, SwaggerParameter("Sorting criteria, default is 'pp' (performance points)")] string sortBy = "pp",
+            [FromQuery, SwaggerParameter("Sorting criteria, default is 'pp' (performance points)")] PlayerSortBy sortBy = PlayerSortBy.Pp,
             [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
             [FromQuery, SwaggerParameter("Number of players per page, default is 50")] int count = 50,
             [FromQuery, SwaggerParameter("Search term for filtering players by username")] string search = "",
             [FromQuery, SwaggerParameter("Order of sorting, default is descending")] Order order = Order.Desc,
             [FromQuery, SwaggerParameter("Comma-separated list of countries for filtering")] string countries = "",
-            [FromQuery, SwaggerParameter("Type of maps to consider, default is 'ranked'")] string mapsType = "ranked",
-            [FromQuery, SwaggerParameter("Type of performance points, default is 'general'")] string ppType = "general",
+            [FromQuery, SwaggerParameter("Type of maps to consider, default is 'ranked'")] MapsType mapsType = MapsType.Ranked,
+            [FromQuery, SwaggerParameter("Type of performance points, default is 'general'")] PpType ppType = PpType.General,
             [FromQuery, SwaggerParameter("Context of the leaderboard, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery, SwaggerParameter("Flag to filter only friends, default is false")] bool friends = false,
             [FromQuery, SwaggerParameter("Comma-separated range to filter by amount of pp, default is null")] string? pp_range = null,
@@ -403,13 +323,13 @@ namespace BeatLeader_Server.Controllers
                     if (!float.IsNaN(from) && !float.IsNaN(to)) {
                         switch (mapsType)
                         {
-                            case "ranked":
+                            case MapsType.Ranked:
                                 request = request.Where(p => p.ScoreStats.RankedPlayCount >= from && p.ScoreStats.RankedPlayCount <= to);
                                 break;
-                            case "unranked":
+                            case MapsType.Unranked:
                                 request = request.Where(p => p.ScoreStats.UnrankedPlayCount >= from && p.ScoreStats.UnrankedPlayCount <= to);
                                 break;
-                            case "all":
+                            case MapsType.All:
                                 request = request.Where(p => p.ScoreStats.TotalPlayCount >= from && p.ScoreStats.TotalPlayCount <= to);
                                 break;
                         }
@@ -441,13 +361,13 @@ namespace BeatLeader_Server.Controllers
 
                 switch (mapsType)
                 {
-                    case "ranked":
+                    case MapsType.Ranked:
                         request = request.Where(p => p.ScoreStats.LastRankedScoreTime >= timetreshold);
                         break;
-                    case "unranked":
+                    case MapsType.Unranked:
                         request = request.Where(p => p.ScoreStats.LastUnrankedScoreTime >= timetreshold);
                         break;
-                    case "all":
+                    case MapsType.All:
                         request = request.Where(p => p.ScoreStats.LastScoreTime >= timetreshold);
                         break;
                 }
@@ -533,14 +453,14 @@ namespace BeatLeader_Server.Controllers
 
         [NonAction]
         public async Task<ActionResult<ResponseWithMetadata<PlayerResponseWithStats>>> GetContextPlayers(
-            [FromQuery] string sortBy = "pp", 
+            [FromQuery] PlayerSortBy sortBy = PlayerSortBy.Pp, 
             [FromQuery] int page = 1, 
             [FromQuery] int count = 50, 
             [FromQuery] string search = "",
             [FromQuery] Order order = Order.Desc,
             [FromQuery] string countries = "",
-            [FromQuery] string mapsType = "ranked",
-            [FromQuery] string ppType = "general",
+            [FromQuery] MapsType mapsType = MapsType.Ranked,
+            [FromQuery] PpType ppType = PpType.General,
             [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery] bool friends = false,
             [FromQuery] string? pp_range = null,
@@ -654,13 +574,13 @@ namespace BeatLeader_Server.Controllers
                     if (!float.IsNaN(from) && !float.IsNaN(to)) {
                         switch (mapsType)
                         {
-                            case "ranked":
+                            case MapsType.Ranked:
                                 request = request.Where(p => p.ScoreStats.RankedPlayCount >= from && p.ScoreStats.RankedPlayCount <= to);
                                 break;
-                            case "unranked":
+                            case MapsType.Unranked:
                                 request = request.Where(p => p.ScoreStats.UnrankedPlayCount >= from && p.ScoreStats.UnrankedPlayCount <= to);
                                 break;
-                            case "all":
+                            case MapsType.All:
                                 request = request.Where(p => p.ScoreStats.TotalPlayCount >= from && p.ScoreStats.TotalPlayCount <= to);
                                 break;
                         }
@@ -692,13 +612,13 @@ namespace BeatLeader_Server.Controllers
 
                 switch (mapsType)
                 {
-                    case "ranked":
+                    case MapsType.Ranked:
                         request = request.Where(p => p.ScoreStats.LastRankedScoreTime >= timetreshold);
                         break;
-                    case "unranked":
+                    case MapsType.Unranked:
                         request = request.Where(p => p.ScoreStats.LastUnrankedScoreTime >= timetreshold);
                         break;
-                    case "all":
+                    case MapsType.All:
                         request = request.Where(p => p.ScoreStats.LastScoreTime >= timetreshold);
                         break;
                 }
@@ -768,40 +688,40 @@ namespace BeatLeader_Server.Controllers
 
         private IQueryable<T> Sorted<T>(
             IQueryable<T> request, 
-            string sortBy, 
-            string ppType,
+            PlayerSortBy sortBy, 
+            PpType ppType,
             Order order, 
-            string mapsType) where T : IPlayer {
-            if (sortBy == "dailyImprovements") {
+            MapsType mapsType) where T : IPlayer {
+            if (sortBy == PlayerSortBy.DailyImprovements) {
                 return request.Order(order, p => p.ScoreStats.DailyImprovements);
             }
 
-            if (sortBy == "pp") {
+            if (sortBy == PlayerSortBy.Pp) {
                 switch (ppType)
                 {
-                    case "acc":
+                    case PpType.Acc:
                         request = request.Order(order, p => p.AccPp);
                         break;
-                    case "tech":
+                    case PpType.Tech:
                         request = request.Order(order, p => p.TechPp);
                         break;
-                    case "pass":
+                    case PpType.Pass:
                         request = request.Order(order, p => p.PassPp);
                         break;
                     default:
                         request = request.Order(order, p => p.Pp);
                         break;
                 }
-            } else if (sortBy == "topPp") {
+            } else if (sortBy == PlayerSortBy.TopPp) {
                 switch (ppType)
                 {
-                    case "acc":
+                    case PpType.Acc:
                         request = request.Order(order, p => p.ScoreStats.TopAccPP);
                         break;
-                    case "tech":
+                    case PpType.Tech:
                         request = request.Order(order, p => p.ScoreStats.TopTechPP);
                         break;
-                    case "pass":
+                    case PpType.Pass:
                         request = request.Order(order, p => p.ScoreStats.TopPassPP);
                         break;
                     default:
@@ -812,156 +732,156 @@ namespace BeatLeader_Server.Controllers
 
             switch (mapsType)
             {
-                case "ranked":
+                case MapsType.Ranked:
                     switch (sortBy)
                     {
-                        case "name":
+                        case PlayerSortBy.Name:
                             request = request.Order(order, p => p.Name);
                             break;
-                        case "rank":
+                        case PlayerSortBy.Rank:
                             request = request
                                 .Where(p => p.ScoreStats.AverageRankedRank != 0)
                                 .Order(order.Reverse(), p => Math.Round(p.ScoreStats.AverageRankedRank))
                                 .ThenOrder(order, p => p.ScoreStats.RankedPlayCount); 
                             break;
-                        case "acc":
+                        case PlayerSortBy.Acc:
                             request = request.Order(order, p => p.ScoreStats.AverageRankedAccuracy);
                             break;
-                        case "weightedAcc":
+                        case PlayerSortBy.WeightedAcc:
                             request = request.Order(order, p => p.ScoreStats.AverageWeightedRankedAccuracy);
                             break;
-                        case "top1Count":
+                        case PlayerSortBy.Top1Count:
                             request = request.Order(order, p => p.ScoreStats.RankedTop1Count);
                             break;
-                        case "top1Score":
+                        case PlayerSortBy.Top1Score:
                             request = request.Order(order, p => p.ScoreStats.RankedTop1Score);
                             break;
-                        case "weightedRank":
+                        case PlayerSortBy.WeightedRank:
                             request = request
                                 .Where(p => p.ScoreStats != null && p.ScoreStats.AverageWeightedRankedRank != 0)
                                 .Order(order.Reverse(), p => p.ScoreStats.AverageWeightedRankedRank);
                             break;
-                        case "topAcc":
+                        case PlayerSortBy.TopAcc:
                             request = request.Order(order, p => p.ScoreStats.TopRankedAccuracy);
                             break;
-                        case "hmd":
+                        case PlayerSortBy.Hmd:
                             request = request.Order(order, p => p.ScoreStats.TopHMD);
                             break;
-                        case "playCount":
+                        case PlayerSortBy.PlayCount:
                             request = request.Order(order, p => p.ScoreStats.RankedPlayCount);
                             break;
-                        case "score":
+                        case PlayerSortBy.Score:
                             request = request.Order(order, p => p.ScoreStats.TotalRankedScore);
                             break;
-                        case "lastplay":
+                        case PlayerSortBy.Lastplay:
                             request = request.Order(order, p => p.ScoreStats.LastRankedScoreTime);
                             break;
-                        case "maxStreak":
+                        case PlayerSortBy.MaxStreak:
                             request = request.Order(order, p => p.ScoreStats.RankedMaxStreak);
                             break;
-                        case "replaysWatched":
+                        case PlayerSortBy.ReplaysWatched:
                             request = request.Order(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
                             break;
                         default:
                             break;
                     }
                     break;
-                case "unranked":
+                case MapsType.Unranked:
                     switch (sortBy)
                     {
-                        case "name":
+                        case PlayerSortBy.Name:
                             request = request.Order(order, p => p.Name);
                             break;
-                        case "rank":
+                        case PlayerSortBy.Rank:
                             request = request
                                 .Where(p => p.ScoreStats.AverageUnrankedRank != 0)
                                 .Order(order.Reverse(), p => Math.Round(p.ScoreStats.AverageUnrankedRank))
                                 .ThenOrder(order, p => p.ScoreStats.UnrankedPlayCount);
                             break;
-                        case "acc":
+                        case PlayerSortBy.Acc:
                             request = request.Order(order, p => p.ScoreStats.AverageUnrankedAccuracy);
                             break;
-                        case "weightedAcc":
+                        case PlayerSortBy.WeightedAcc:
                             request = request.Order(order, p => p.ScoreStats.AverageUnrankedAccuracy);
                             break;
-                        case "top1Count":
+                        case PlayerSortBy.Top1Count:
                             request = request.Order(order, p => p.ScoreStats.UnrankedTop1Count);
                             break;
-                        case "top1Score":
+                        case PlayerSortBy.Top1Score:
                             request = request.Order(order, p => p.ScoreStats.UnrankedTop1Score);
                             break;
                         
-                        case "topAcc":
+                        case PlayerSortBy.TopAcc:
                             request = request.Order(order, p => p.ScoreStats.TopUnrankedAccuracy);
                             break;
-                        case "hmd":
+                        case PlayerSortBy.Hmd:
                             request = request.Order(order, p => p.ScoreStats.TopHMD);
                             break;
-                        case "playCount":
+                        case PlayerSortBy.PlayCount:
                             request = request.Order(order, p => p.ScoreStats.UnrankedPlayCount);
                             break;
-                        case "score":
+                        case PlayerSortBy.Score:
                             request = request.Order(order, p => p.ScoreStats.TotalUnrankedScore);
                             break;
-                        case "lastplay":
+                        case PlayerSortBy.Lastplay:
                             request = request.Order(order, p => p.ScoreStats.LastUnrankedScoreTime);
                             break;
-                        case "maxStreak":
+                        case PlayerSortBy.MaxStreak:
                             request = request.Order(order, p => p.ScoreStats.UnrankedMaxStreak);
                             break;
-                        case "replaysWatched":
+                        case PlayerSortBy.ReplaysWatched:
                             request = request.Order(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
                             break;
                         default:
                             break;
                     }
                     break;
-                case "all":
+                case MapsType.All:
                     switch (sortBy)
                     {
-                        case "name":
+                        case PlayerSortBy.Name:
                             request = request.Order(order, p => p.Name);
                             break;
-                        case "rank":
+                        case PlayerSortBy.Rank:
                             request = request
                                 .Where(p => p.ScoreStats.AverageRank != 0)
                                 .Order(order.Reverse(), p => Math.Round(p.ScoreStats.AverageRank))
                                 .ThenOrder(order, p => p.ScoreStats.TotalPlayCount);
                             break;
-                        case "top1Count":
+                        case PlayerSortBy.Top1Count:
                             request = request.Order(order, p => p.ScoreStats.Top1Count);
                             break;
-                        case "top1Score":
+                        case PlayerSortBy.Top1Score:
                             request = request.Order(order, p => p.ScoreStats.Top1Score);
                             break;
-                        case "acc":
+                        case PlayerSortBy.Acc:
                             request = request.Order(order, p => p.ScoreStats.AverageAccuracy);
                             break;
-                        case "weightedAcc":
+                        case PlayerSortBy.WeightedAcc:
                             request = request.Order(order, p => p.ScoreStats.AverageWeightedRankedAccuracy);
                             break;
-                        case "topAcc":
+                        case PlayerSortBy.TopAcc:
                             request = request.Order(order, p => p.ScoreStats.TopAccuracy);
                             break;
-                        case "hmd":
+                        case PlayerSortBy.Hmd:
                             request = request.Order(order, p => p.ScoreStats.TopHMD);
                             break;
-                        case "playCount":
+                        case PlayerSortBy.PlayCount:
                             request = request.Order(order, p => p.ScoreStats.TotalPlayCount);
                             break;
-                        case "score":
+                        case PlayerSortBy.Score:
                             request = request.Order(order, p => p.ScoreStats.TotalScore);
                             break;
-                        case "lastplay":
+                        case PlayerSortBy.Lastplay:
                             request = request.Order(order, p => p.ScoreStats.LastScoreTime);
                             break;
-                        case "maxStreak":
+                        case PlayerSortBy.MaxStreak:
                             request = request.Order(order, p => p.ScoreStats.MaxStreak);
                             break;
-                        case "timing":
+                        case PlayerSortBy.Timing:
                             request = request.Order(order, p => (p.ScoreStats.AverageLeftTiming + p.ScoreStats.AverageRightTiming) / 2);
                             break;
-                        case "replaysWatched":
+                        case PlayerSortBy.ReplaysWatched:
                             request = request.Order(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
                             break;
                         default:
@@ -994,8 +914,8 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/player/{id}/followersInfo")]
-        [SwaggerOperation(Summary = "Get events where player participated", Description = "Retrieves a chronological list of events player with such ID took part of.")]
-        [SwaggerResponse(200, "Returns list of events player took part", typeof(ParticipatingEventResponse))]
+        [SwaggerOperation(Summary = "Get player' followers and players they follow", Description = "Retrieves an info about player' followers such as count and 3 closest followers. Also 3 most followed players this player follows")]
+        [SwaggerResponse(200, "Returns brief info about player followers.", typeof(PlayerFollowersInfoResponse))]
         [SwaggerResponse(404, "Player not found")]
         public async Task<ActionResult<PlayerFollowersInfoResponse>> GetFollowersInfo(
             [FromRoute, SwaggerParameter("The ID of the player")] string id) {
@@ -1067,32 +987,46 @@ namespace BeatLeader_Server.Controllers
             };
         }
 
-        //[HttpGet("~/player/{id}/followers")]
-        //[SwaggerOperation(Summary = "Get events where player participated", Description = "Retrieves a chronological list of events player with such ID took part of.")]
-        //[SwaggerResponse(200, "Returns list of events player took part", typeof(ParticipatingEventResponse))]
-        //[SwaggerResponse(404, "Player not found")]
-        //public async Task<ActionResult<PlayerFollowersResponse>> GetFollowers(
-        //    [FromRoute, SwaggerParameter("The ID of the player")] string id) {
-        //    var ids = await _context.Friends.Where(f => f.Friends.FirstOrDefault(p => p.Id == id) != null).Select(f => f.Id).ToListAsync();
+        [HttpGet("~/player/{id}/followers")]
+        [SwaggerOperation(Summary = "Get player's full follower list", Description = "Retrieves a full list of player' followers and players this player follow.")]
+        [SwaggerResponse(200, "Returns list of players", typeof(ICollection<PlayerFollower>))]
+        [SwaggerResponse(404, "Player not found")]
+        public async Task<ActionResult<ICollection<PlayerFollower>>> GetFollowers(
+            [FromRoute, SwaggerParameter("The ID of the player")] string id,
+            [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
+            [FromQuery, SwaggerParameter("Number of players per page, default is 10")] int count = 10,
+            [FromQuery, SwaggerParameter("Relationship type: followers or following")] FollowerType type = FollowerType.Followers) {
 
-        //    return new PlayerFollowersResponse {
-        //        Following = await _context.Friends.Where(f => f.Id == id).Select(f => f.Friends.Select(p => new PlayerFollower {
-        //            Id = p.Id,
-        //            Name = p.Name,
-        //            Avatar = p.Avatar
-        //        }).ToList()).FirstOrDefaultAsync(),
-        //        Followers = await _context.Players.Where(p => ids.Contains(p.Id)).Select(p => new PlayerFollower {
-        //            Id = p.Id,
-        //            Name = p.Name,
-        //            Avatar = p.Avatar
-        //        }).ToListAsync()
-        //    };
-        //}
+            string? currentID = HttpContext.CurrentUserID(_context);
+            Player? currentPlayer = await _context.Players.FindAsync(currentID);
+            if (currentPlayer == null || (id != currentID && !currentPlayer.Role.Contains("admin")))
+            {
+                return Unauthorized();
+            }
+
+            switch (type) {
+                case FollowerType.Followers:
+                    var ids = await _context.Friends.Where(f => f.Friends.FirstOrDefault(p => p.Id == id) != null).Select(f => f.Id).ToListAsync();
+                    return await _context.Players.Where(p => ids.Contains(p.Id)).Select(p => new PlayerFollower {
+                        Id = p.Id,
+                        Name = p.Name,
+                        Avatar = p.Avatar
+                    }).ToListAsync();
+                case FollowerType.Following:
+                    return await _context.Friends.Where(f => f.Id == id).Select(f => f.Friends.Select(p => new PlayerFollower {
+                        Id = p.Id,
+                        Name = p.Name,
+                        Avatar = p.Avatar
+                    }).ToList()).FirstOrDefaultAsync();
+            }
+
+            return BadRequest("Invalid relationship type");
+        }
 
         [HttpGet("~/player/{id}/foundedClan")]
-        [SwaggerOperation(Summary = "Get events where player participated", Description = "Retrieves a chronological list of events player with such ID took part of.")]
-        [SwaggerResponse(200, "Returns list of events player took part", typeof(ParticipatingEventResponse))]
-        [SwaggerResponse(404, "Player not found")]
+        [SwaggerOperation(Summary = "Get info about the clan this player founded", Description = "Retrieves an information about the clan this player created and manage.")]
+        [SwaggerResponse(200, "Returns brief info about the clan", typeof(ClanBiggerResponse))]
+        [SwaggerResponse(404, "Player not found or player doesn't found any clans")]
         public async Task<ActionResult<ClanBiggerResponse>> GetFoundedClan(
             [FromRoute, SwaggerParameter("The ID of the player")] string id) {
             id = await _context.PlayerIdToMain(id);
@@ -1115,8 +1049,8 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/player/{id}/rankedMaps")]
-        [SwaggerOperation(Summary = "Get events where player participated", Description = "Retrieves a chronological list of events player with such ID took part of.")]
-        [SwaggerResponse(200, "Returns list of events player took part", typeof(ParticipatingEventResponse))]
+        [SwaggerOperation(Summary = "Get ranked maps this player mapped", Description = "Retrieves a list of maps this player created that later became ranked and give PP now.")]
+        [SwaggerResponse(200, "Returns brief stats about maps this player ranked, like count, total PP gained, etc...", typeof(ParticipatingEventResponse))]
         [SwaggerResponse(404, "Player not found")]
         public async Task<ActionResult<RankedMapperResponse>> GetRankedMaps(
             [FromRoute, SwaggerParameter("The ID of the player")] int id) {

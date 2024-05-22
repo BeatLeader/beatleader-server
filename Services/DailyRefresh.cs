@@ -1,4 +1,5 @@
-﻿using BeatLeader_Server.Controllers;
+﻿using BeatLeader_Server.ControllerHelpers;
+using BeatLeader_Server.Controllers;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
@@ -178,9 +179,8 @@ namespace BeatLeader_Server.Services
                     }
                 }
 
-                var playerController = scope.ServiceProvider.GetRequiredService<PlayerController>();
                 foreach (var playerToDelete in deletionList) {
-                    await playerController.DeletePlayer(playerToDelete);
+                    await PlayerControllerHelper.DeletePlayer(_context, _configuration.GetS3Client(), playerToDelete);
                 }
 
                 var userController = scope.ServiceProvider.GetRequiredService<CurrentUserController>();

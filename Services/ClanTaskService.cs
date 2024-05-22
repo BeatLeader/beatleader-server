@@ -270,7 +270,7 @@ namespace BeatLeader_Server.Services
                 try {
                     var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
                     var _screenController = scope.ServiceProvider.GetRequiredService<ScreenshotController>();
-                    var _clanController = scope.ServiceProvider.GetRequiredService<ClanController>();
+                    var _clanController = scope.ServiceProvider.GetRequiredService<ClanAdminController>();
                     var s3 = _configuration.GetS3Client();
                     var blhook = _configuration.GetValue<string?>("ClanWarsHook");
 
