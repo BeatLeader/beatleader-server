@@ -31,298 +31,9 @@ namespace BeatLeader_Server.Controllers {
             _configuration = configuration;
         }
 
-        [NonAction]
-        internal async Task<ActionResult<ResponseWithMetadata<ScoreResponseWithMyScore>>> ContextsFriendsScores(
-            ScoresSortBy sortBy = ScoresSortBy.Date,
-            Order order = Order.Desc,
-            int page = 1,
-            int count = 8,
-            string? search = null,
-            string? diff = null,
-            string? mode = null,
-            Requirements requirements = Requirements.None,
-            ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
-            LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            DifficultyStatus? type = null,
-            string? modifiers = null,
-            float? stars_from = null,
-            float? stars_to = null,
-            int? time_from = null,
-            int? time_to = null,
-            int? eventId = null) {
-
-            string? userId = HttpContext.CurrentUserID(_context);
-            var player = userId != null 
-                ? await _context
-                    .Players
-                    .Include(p => p.ProfileSettings)
-                    .FirstOrDefaultAsync(p => p.Id == userId)
-                : null;
-            if (player == null) {
-                return NotFound();
-            }
-
-            bool showAllRatings = player.ProfileSettings?.ShowAllRatings ?? false; 
-            IQueryable<ScoreContextExtension> sequence;
-
-            using (_serverTiming.TimeAction("sequence")) {
-                var friends = await _context
-                    .Friends
-                    .Where(f => f.Id == player.Id)
-                    .Include(f => f.Friends)
-                    .FirstOrDefaultAsync();
-
-                if (friends != null) {
-                    var friendsList = friends.Friends.Select(f => f.Id).ToList();
-                    sequence = _context
-                        .ScoreContextExtensions
-                        .Where(s => (s.PlayerId == player.Id || friendsList.Contains(s.PlayerId)) && s.Context == leaderboardContext);
-                } else {
-                    sequence = _context
-                        .ScoreContextExtensions
-                        .Where(s => s.PlayerId == player.Id && s.Context == leaderboardContext);
-                }
-
-                sequence = await sequence.Filter(_context, !player.Banned, showAllRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
-            }
-
-            var resultList = await sequence
-                    .Skip((page - 1) * count)
-                    .Take(count)
-                    .Select(s => new ScoreResponseWithMyScore {
-                        Id = s.Id,
-                        BaseScore = s.BaseScore,
-                        ModifiedScore = s.ModifiedScore,
-                        PlayerId = s.PlayerId,
-                        Accuracy = s.Accuracy,
-                        Pp = s.Pp,
-                        FcAccuracy = s.Score.FcAccuracy,
-                        FcPp = s.Score.FcPp,
-                        BonusPp = s.BonusPp,
-                        Rank = s.Rank,
-                        Replay = s.Score.Replay,
-                        Modifiers = s.Modifiers,
-                        BadCuts = s.Score.BadCuts,
-                        MissedNotes = s.Score.MissedNotes,
-                        BombCuts = s.Score.BombCuts,
-                        WallsHit = s.Score.WallsHit,
-                        Pauses = s.Score.Pauses,
-                        FullCombo = s.Score.FullCombo,
-                        Hmd = s.Score.Hmd,
-                        Controller = s.Score.Controller,
-                        MaxCombo = s.Score.MaxCombo,
-                        Timeset = s.Score.Timeset,
-                        ReplaysWatched = s.Score.AnonimusReplayWatched + s.Score.AuthorizedReplayWatched,
-                        Timepost = s.Score.Timepost,
-                        LeaderboardId = s.LeaderboardId,
-                        Platform = s.Score.Platform,
-                        Player = new PlayerResponse {
-                            Id = s.Player.Id,
-                            Name = s.Player.Name,
-                            Alias = s.Player.Alias,
-                            Platform = s.Player.Platform,
-                            Country = s.Player.Country,
-
-                            Pp = s.Player.Pp,
-                            Rank = s.Player.Rank,
-                            CountryRank = s.Player.CountryRank,
-                            Role = s.Player.Role,
-                        },
-                        ScoreImprovement = s.ScoreImprovement,
-                        Offsets = s.Score.ReplayOffsets,
-                        Leaderboard = new CompactLeaderboardResponse {
-                            Id = s.LeaderboardId,
-                            Song = new CompactSongResponse {
-                                Id = s.Leaderboard.Song.Id,
-                                Hash = s.Leaderboard.Song.Hash,
-                                Name = s.Leaderboard.Song.Name,
-            
-                                SubName = s.Leaderboard.Song.SubName,
-                                Author = s.Leaderboard.Song.Author,
-                                Mapper = s.Leaderboard.Song.Mapper,
-                                MapperId = s.Leaderboard.Song.MapperId,
-                                CollaboratorIds = s.Leaderboard.Song.CollaboratorIds,
-                                CoverImage = s.Leaderboard.Song.CoverImage,
-                                FullCoverImage = s.Leaderboard.Song.FullCoverImage,
-                                Bpm = s.Leaderboard.Song.Bpm,
-                                Duration = s.Leaderboard.Song.Duration,
-                            },
-                            Difficulty = new DifficultyResponse {
-                                Id = s.Leaderboard.Difficulty.Id,
-                                Value = s.Leaderboard.Difficulty.Value,
-                                Mode = s.Leaderboard.Difficulty.Mode,
-                                DifficultyName = s.Leaderboard.Difficulty.DifficultyName,
-                                ModeName = s.Leaderboard.Difficulty.ModeName,
-                                Status = s.Leaderboard.Difficulty.Status,
-                                NominatedTime  = s.Leaderboard.Difficulty.NominatedTime,
-                                QualifiedTime  = s.Leaderboard.Difficulty.QualifiedTime,
-                                RankedTime = s.Leaderboard.Difficulty.RankedTime,
-
-                                Stars  = s.Leaderboard.Difficulty.Stars,
-                                PredictedAcc  = s.Leaderboard.Difficulty.PredictedAcc,
-                                PassRating  = s.Leaderboard.Difficulty.PassRating,
-                                AccRating  = s.Leaderboard.Difficulty.AccRating,
-                                TechRating  = s.Leaderboard.Difficulty.TechRating,
-                                Type  = s.Leaderboard.Difficulty.Type,
-
-                                Njs  = s.Leaderboard.Difficulty.Njs,
-                                Nps  = s.Leaderboard.Difficulty.Nps,
-                                Notes  = s.Leaderboard.Difficulty.Notes,
-                                Bombs  = s.Leaderboard.Difficulty.Bombs,
-                                Walls  = s.Leaderboard.Difficulty.Walls,
-                                MaxScore = s.Leaderboard.Difficulty.MaxScore,
-                                Duration  = s.Leaderboard.Difficulty.Duration,
-
-                                Requirements = s.Leaderboard.Difficulty.Requirements,
-                            }
-                        },
-                        Weight = s.Weight,
-                        AccLeft = s.Score.AccLeft,
-                        AccRight = s.Score.AccRight,
-                        MaxStreak = s.Score.MaxStreak
-                    })
-                    .TagWithCallSite()
-                    .AsSplitQuery()
-                    .ToListAsync();
-
-            foreach (var resultScore in resultList) {
-                if (!showAllRatings && !resultScore.Leaderboard.Difficulty.Status.WithRating()) {
-                    resultScore.Leaderboard.HideRatings();
-                }
-            }
-
-            var result = new ResponseWithMetadata<ScoreResponseWithMyScore>() {
-                Metadata = new Metadata() {
-                    Page = page,
-                    ItemsPerPage = count,
-                    Total = await sequence.CountAsync()
-                },
-                Data = resultList
-            };
-
-            var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
-
-            var myScores = await _context
-                .ScoreContextExtensions
-                .Where(s => s.PlayerId == userId && leaderboards.Contains(s.LeaderboardId))
-                .Select(s => new ScoreResponseWithMyScore {
-                        Id = s.Id,
-                        BaseScore = s.BaseScore,
-                        ModifiedScore = s.ModifiedScore,
-                        PlayerId = s.PlayerId,
-                        Accuracy = s.Accuracy,
-                        Pp = s.Pp,
-                        FcAccuracy = s.Score.FcAccuracy,
-                        FcPp = s.Score.FcPp,
-                        BonusPp = s.BonusPp,
-                        Rank = s.Rank,
-                        Replay = s.Score.Replay,
-                        Modifiers = s.Modifiers,
-                        BadCuts = s.Score.BadCuts,
-                        MissedNotes = s.Score.MissedNotes,
-                        BombCuts = s.Score.BombCuts,
-                        WallsHit = s.Score.WallsHit,
-                        Pauses = s.Score.Pauses,
-                        FullCombo = s.Score.FullCombo,
-                        Hmd = s.Score.Hmd,
-                        Controller = s.Score.Controller,
-                        MaxCombo = s.Score.MaxCombo,
-                        Timeset = s.Score.Timeset,
-                        ReplaysWatched = s.Score.AnonimusReplayWatched + s.Score.AuthorizedReplayWatched,
-                        Timepost = s.Score.Timepost,
-                        LeaderboardId = s.LeaderboardId,
-                        Platform = s.Score.Platform,
-                        Player = new PlayerResponse {
-                            Id = s.Player.Id,
-                            Name = s.Player.Name,
-                            Alias = s.Player.Alias,
-                            Platform = s.Player.Platform,
-                            Avatar = s.Player.Avatar,
-                            Country = s.Player.Country,
-
-                            Pp = s.Player.Pp,
-                            Rank = s.Player.Rank,
-                            CountryRank = s.Player.CountryRank,
-                            Role = s.Player.Role,
-                            Socials = s.Player.Socials,
-                            PatreonFeatures = s.Player.PatreonFeatures,
-                            ProfileSettings = s.Player.ProfileSettings,
-                            Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
-                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                        },
-                        ScoreImprovement = s.ScoreImprovement,
-                        RankVoting = s.Score.RankVoting,
-                        Metadata = s.Score.Metadata,
-                        Country = s.Score.Country,
-                        Offsets = s.Score.ReplayOffsets,
-                        Leaderboard = new CompactLeaderboardResponse {
-                            Id = s.LeaderboardId,
-                            Song = new CompactSongResponse {
-                                Id = s.Leaderboard.Song.Id,
-                                Hash = s.Leaderboard.Song.Hash,
-                                Name = s.Leaderboard.Song.Name,
-            
-                                SubName = s.Leaderboard.Song.SubName,
-                                Author = s.Leaderboard.Song.Author,
-                                Mapper = s.Leaderboard.Song.Mapper,
-                                MapperId = s.Leaderboard.Song.MapperId,
-                                CollaboratorIds = s.Leaderboard.Song.CollaboratorIds,
-                                CoverImage = s.Leaderboard.Song.CoverImage,
-                                FullCoverImage = s.Leaderboard.Song.FullCoverImage,
-                                Bpm = s.Leaderboard.Song.Bpm,
-                                Duration = s.Leaderboard.Song.Duration,
-                            },
-                            Difficulty = new DifficultyResponse {
-                                Id = s.Leaderboard.Difficulty.Id,
-                                Value = s.Leaderboard.Difficulty.Value,
-                                Mode = s.Leaderboard.Difficulty.Mode,
-                                DifficultyName = s.Leaderboard.Difficulty.DifficultyName,
-                                ModeName = s.Leaderboard.Difficulty.ModeName,
-                                Status = s.Leaderboard.Difficulty.Status,
-                                ModifierValues = s.Leaderboard.Difficulty.ModifierValues,
-                                ModifiersRating = s.Leaderboard.Difficulty.ModifiersRating,
-                                NominatedTime  = s.Leaderboard.Difficulty.NominatedTime,
-                                QualifiedTime  = s.Leaderboard.Difficulty.QualifiedTime,
-                                RankedTime = s.Leaderboard.Difficulty.RankedTime,
-
-                                Stars  = s.Leaderboard.Difficulty.Stars,
-                                PredictedAcc  = s.Leaderboard.Difficulty.PredictedAcc,
-                                PassRating  = s.Leaderboard.Difficulty.PassRating,
-                                AccRating  = s.Leaderboard.Difficulty.AccRating,
-                                TechRating  = s.Leaderboard.Difficulty.TechRating,
-                                Type  = s.Leaderboard.Difficulty.Type,
-
-                                Njs  = s.Leaderboard.Difficulty.Njs,
-                                Nps  = s.Leaderboard.Difficulty.Nps,
-                                Notes  = s.Leaderboard.Difficulty.Notes,
-                                Bombs  = s.Leaderboard.Difficulty.Bombs,
-                                Walls  = s.Leaderboard.Difficulty.Walls,
-                                MaxScore = s.Leaderboard.Difficulty.MaxScore,
-                                Duration  = s.Leaderboard.Difficulty.Duration,
-
-                                Requirements = s.Leaderboard.Difficulty.Requirements,
-                            }
-                        },
-                        Weight = s.Weight,
-                        AccLeft = s.Score.AccLeft,
-                        AccRight = s.Score.AccRight,
-                        MaxStreak = s.Score.MaxStreak
-                    })
-                .TagWithCallSite()
-                .AsSplitQuery()
-                .ToListAsync();
-            foreach (var score in result.Data)
-            {
-                score.MyScore = myScores.FirstOrDefault(s => s.LeaderboardId == score.LeaderboardId);
-            }
-
-            return result;
-        }
-
         [HttpGet("~/user/friendScores")]
         [Authorize]
         public async Task<ActionResult<ResponseWithMetadata<ScoreResponseWithMyScore>>> FriendsScores(
-            string id,
             [FromQuery, SwaggerParameter("Sorting criteria for scores, default is by 'date'")] ScoresSortBy sortBy = ScoresSortBy.Date,
             [FromQuery, SwaggerParameter("Order of sorting, default is descending")] Order order = Order.Desc,
             [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
@@ -342,9 +53,6 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Show only scores from the event with ID, default is null")] int? eventId = null) {
 
             search = null;
-            if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
-                return await ContextsFriendsScores(sortBy, order, page, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
-            }
 
             string? userId = HttpContext.CurrentUserID(_context);
             var player = userId != null 
@@ -358,7 +66,9 @@ namespace BeatLeader_Server.Controllers {
             }
 
             bool showRatings = player.ProfileSettings?.ShowAllRatings ?? false;
-            IQueryable<Score> sequence = _context.Scores.AsNoTracking().Where(s => s.ValidContexts.HasFlag(leaderboardContext));
+            IQueryable<IScore> sequence = leaderboardContext == LeaderboardContexts.General 
+                ? _context.Scores.AsNoTracking().Where(s => s.ValidContexts.HasFlag(leaderboardContext))
+                : _context.ScoreContextExtensions.AsNoTracking().Include(ce => ce.Score).Where(s => s.Context == leaderboardContext);
 
             using (_serverTiming.TimeAction("sequence")) {
                 var friends = await _context
@@ -383,7 +93,7 @@ namespace BeatLeader_Server.Controllers {
                     .Skip((page - 1) * count)
                     .Take(count)
                     .Select(s => new ScoreResponseWithMyScore {
-                        Id = s.Id,
+                        Id = s.ScoreId,
                         BaseScore = s.BaseScore,
                         ModifiedScore = s.ModifiedScore,
                         PlayerId = s.PlayerId,
@@ -404,7 +114,7 @@ namespace BeatLeader_Server.Controllers {
                         Hmd = s.Hmd,
                         Controller = s.Controller,
                         MaxCombo = s.MaxCombo,
-                        Timeset = s.Timeset,
+                        Timeset = s.Time,
                         ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
                         Timepost = s.Timepost,
                         LeaderboardId = s.LeaderboardId,
@@ -495,12 +205,11 @@ namespace BeatLeader_Server.Controllers {
 
             var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
 
-            var myScores = await _context
-                .Scores
+            var myScores = await ((IQueryable<IScore>)(leaderboardContext == LeaderboardContexts.General ? _context.Scores.Where(s => s.ValidContexts.HasFlag(leaderboardContext)) : _context.ScoreContextExtensions.Where(ce => ce.Context == leaderboardContext)))
                 .Where(s => s.PlayerId == userId && leaderboards.Contains(s.LeaderboardId))
                 .Select(s => new ScoreResponseWithAcc
                     {
-                        Id = s.Id,
+                        Id = s.ScoreId,
                         BaseScore = s.BaseScore,
                         ModifiedScore = s.ModifiedScore,
                         PlayerId = s.PlayerId,
@@ -524,7 +233,7 @@ namespace BeatLeader_Server.Controllers {
                         Hmd = s.Hmd,
                         Controller = s.Controller,
                         MaxCombo = s.MaxCombo,
-                        Timeset = s.Timeset,
+                        Timeset = s.Time,
                         ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
                         Timepost = s.Timepost,
                         LeaderboardId = s.LeaderboardId,
@@ -549,7 +258,6 @@ namespace BeatLeader_Server.Controllers {
                         ScoreImprovement = s.ScoreImprovement,
                         RankVoting = s.RankVoting,
                         Metadata = s.Metadata,
-                        Country = s.Country,
                         Offsets = s.ReplayOffsets,
                         Weight = s.Weight,
                         AccLeft = s.AccLeft,

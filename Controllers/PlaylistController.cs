@@ -770,8 +770,8 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            IQueryable<Score> sequence = await _context
-                .Scores
+            IQueryable<IScore> sequence = await ((IQueryable<IScore>)_context
+                .Scores)
                 .Where(t => t.PlayerId == userId)
                 .Filter(_context, !player.Banned, false, sortBy, order, search, diff, mode, requirements, ScoreFilterStatus.None, type, modifiers, stars_from, stars_to, time_from, time_to, eventId); 
 

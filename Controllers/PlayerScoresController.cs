@@ -13,7 +13,6 @@ using static BeatLeader_Server.Utils.ResponseUtils;
 namespace BeatLeader_Server.Controllers {
     public class PlayerScoresController : Controller {
         private readonly AppContext _context;
-        private readonly PlayerContextScoresController _playerContextScoresController;
 
         private readonly IConfiguration _configuration;
         IWebHostEnvironment _environment;
@@ -24,18 +23,16 @@ namespace BeatLeader_Server.Controllers {
             AppContext context,
             IConfiguration configuration,
             IServerTiming serverTiming,
-            IWebHostEnvironment env,
-            PlayerContextScoresController playerContextScoresController) {
+            IWebHostEnvironment env) {
             _context = context;
 
             _configuration = configuration;
             _serverTiming = serverTiming;
             _environment = env;
-            _playerContextScoresController = playerContextScoresController;
         }
 
         [NonAction]
-        public async Task<(IQueryable<Score>?, string)> ScoresQuery(
+        public async Task<(IQueryable<IScore>?, string)> ScoresQuery(
             string id,
             string currentID,
             bool showRatings,
@@ -65,13 +62,18 @@ namespace BeatLeader_Server.Controllers {
                 return (null, "");
             }
 
-            return (await _context
-               .Scores
-               .AsNoTracking()
-               .Where(t => t.PlayerId == id && t.ValidContexts.HasFlag(leaderboardContext))
-               .TagWithCallSite()
-               .Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId),
-               id);
+            IQueryable<IScore> query = leaderboardContext == LeaderboardContexts.General 
+                ? _context.Scores
+                   .AsNoTracking()
+                   .Where(t => t.PlayerId == id && t.ValidContexts.HasFlag(leaderboardContext))
+                   .TagWithCallSite()
+                : _context.ScoreContextExtensions
+                   .AsNoTracking()
+                   .Include(ce => ce.Score)
+                   .Where(t => t.PlayerId == id && t.Context == leaderboardContext)
+                   .TagWithCallSite();
+
+            return (await query.Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId), id);
         }
 
         [HttpGet("~/player/{id}/scores")]
@@ -127,13 +129,8 @@ namespace BeatLeader_Server.Controllers {
                 sortBy = ScoresSortBy.Pp;
             }
 
-            if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
-                
-                return await _playerContextScoresController.GetScores(id, showRatings, publicHistory, currentID, sortBy, order, page, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
-            }
-
             (
-                IQueryable<Score>? sequence,
+                IQueryable<IScore>? sequence,
                 string userId
             ) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             if (sequence == null) {
@@ -168,7 +165,7 @@ namespace BeatLeader_Server.Controllers {
                     .Skip((page - 1) * count)
                     .Take(count)
                     .Select(s => new ScoreResponseWithMyScore {
-                        Id = s.Id,
+                        Id = s.ScoreId,
                         BaseScore = s.BaseScore,
                         ModifiedScore = s.ModifiedScore,
                         PlayerId = s.PlayerId,
@@ -194,13 +191,12 @@ namespace BeatLeader_Server.Controllers {
                         Hmd = s.Hmd,
                         Controller = s.Controller,
                         MaxCombo = s.MaxCombo,
-                        Timeset = s.Timeset,
+                        Timeset = s.Time,
                         ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
                         Timepost = s.Timepost,
                         LeaderboardId = s.LeaderboardId,
                         Platform = s.Platform,
                         ScoreImprovement = s.ScoreImprovement,
-                        Country = s.Country,
                         Offsets = s.ReplayOffsets,
                         Leaderboard = new CompactLeaderboardResponse {
                             Id = s.LeaderboardId,
@@ -396,10 +392,8 @@ namespace BeatLeader_Server.Controllers {
             if (sortBy == ScoresSortBy.PlayCount && !publicHistory) {
                 sortBy = ScoresSortBy.Pp;
             }
-            if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
-                return await _playerContextScoresController.GetCompactScores(id, showRatings, sortBy, order, page, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
-            }
-            (IQueryable<Score>? sequence, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+
+            (IQueryable<IScore>? sequence, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             if (sequence == null) {
                 return NotFound();
             }
@@ -420,7 +414,7 @@ namespace BeatLeader_Server.Controllers {
                     .Take(count)
                     .Select(s => new CompactScoreResponse {
                         Score = new CompactScore {
-                            Id = s.Id,
+                            Id = s.ScoreId,
                             BaseScore = s.BaseScore,
                             ModifiedScore = s.ModifiedScore,
                             EpochTime = s.Timepost,
@@ -522,17 +516,14 @@ namespace BeatLeader_Server.Controllers {
                 sortBy = ScoresSortBy.Pp;
             }
 
-            if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
-                return await _playerContextScoresController.GetPlayerHistogram(id, showRatings, sortBy, order, count, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId, batch); 
-            }
-            (IQueryable<Score>? sequence, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+            (IQueryable<IScore>? sequence, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             if (sequence == null) {
                 return NotFound();
             }
 
             switch (sortBy) {
                 case ScoresSortBy.Date:
-                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Timepost > 0 ? s.Timepost.ToString() : s.Timeset).Select(s => Int32.Parse(s)).ToListAsync(), (int)(batch > 60 * 60 ? batch : 60 * 60 * 24), count);
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Timepost > 0 ? s.Timepost.ToString() : s.Time).Select(s => Int32.Parse(s)).ToListAsync(), (int)(batch > 60 * 60 ? batch : 60 * 60 * 24), count);
                 case ScoresSortBy.Pp:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Pp).ToListAsync(), Math.Max(batch ?? 5, 1), count);
                 case ScoresSortBy.Acc:
