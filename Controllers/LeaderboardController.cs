@@ -11,6 +11,7 @@ using Type = BeatLeader_Server.Enums.Type;
 using Lib.ServerTiming;
 using System.Net;
 using BeatLeader_Server.ControllerHelpers;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace BeatLeader_Server.Controllers {
     public class LeaderboardController : Controller {
@@ -40,7 +41,7 @@ namespace BeatLeader_Server.Controllers {
             bool showVoters,
             int page,
             int count,
-            string sortBy,
+            LeaderboardSortBy sortBy,
             Order order,
             ScoreFilterStatus scoreStatus,
             string? countries,
@@ -52,8 +53,6 @@ namespace BeatLeader_Server.Controllers {
                 .Scores
                 .AsNoTracking()
                 .Where(s => s.LeaderboardId == leaderboard.Id && s.ValidContexts.HasFlag(LeaderboardContexts.General));
-
-            
 
             if (countries == null) {
                 if (friendsList != null) {
@@ -104,19 +103,19 @@ namespace BeatLeader_Server.Controllers {
             Order oppositeOrder = order.Reverse();
 
             switch (sortBy) {
-                case "date":
+                case LeaderboardSortBy.Date:
                     scoreQuery = scoreQuery.Order(order, s => s.Timepost).ThenOrder(oppositeOrder, s => s.Rank);
                     break;
-                case "pp":
+                case LeaderboardSortBy.Pp:
                     scoreQuery = scoreQuery.Order(order, s => s.Pp).ThenOrder(oppositeOrder, s => s.Rank);
                     break;
-                case "acc":
+                case LeaderboardSortBy.Acc:
                     scoreQuery = scoreQuery.Order(order, s => s.Accuracy);
                     break;
-                case "pauses":
+                case LeaderboardSortBy.Pauses:
                     scoreQuery = scoreQuery.Order(order, s => s.Pauses).ThenOrder(oppositeOrder, s => s.Rank);
                     break;
-                case "rank":
+                case LeaderboardSortBy.Rank:
                     scoreQuery = leaderboard.Difficulty.Status.WithPP() 
                                 ? scoreQuery
                                     .Order(order, el => Math.Round(el.Pp, 2))
@@ -127,18 +126,17 @@ namespace BeatLeader_Server.Controllers {
                                     .ThenOrder(order, el => el.ModifiedScore)
                                     .ThenOrder(order, el => Math.Round(el.Accuracy, 4))
                                     .ThenOrder(oppositeOrder, el => el.Timeset);
-                        break;
                     break;
-                case "maxStreak":
+                case LeaderboardSortBy.MaxStreak:
                     scoreQuery = scoreQuery.Order(order, s => s.MaxStreak).ThenOrder(oppositeOrder, s => s.Rank);
                     break;
-                case "mistakes":
+                case LeaderboardSortBy.Mistakes:
                     scoreQuery = scoreQuery.Order(order, s => s.BadCuts + s.MissedNotes + s.BombCuts + s.WallsHit);
                     break;
-                case "weight":
+                case LeaderboardSortBy.Weight:
                     scoreQuery = scoreQuery.Order(order, s => s.Weight);
                     break;
-                case "weightedPp":
+                case LeaderboardSortBy.WeightedPp:
                     scoreQuery = scoreQuery.Order(order, s => s.Weight * s.Pp);
                     break;
                 default:
@@ -232,7 +230,7 @@ namespace BeatLeader_Server.Controllers {
             bool showVoters,
             int page,
             int count,
-            string sortBy,
+            LeaderboardSortBy sortBy,
             Order order,
             ScoreFilterStatus scoreStatus,
             string? countries,
@@ -278,16 +276,16 @@ namespace BeatLeader_Server.Controllers {
             Order oppositeOrder = order.Reverse();
 
             switch (sortBy) {
-                case "date":
+                case LeaderboardSortBy.Date:
                     scoreQuery = scoreQuery.Order(order, s => s.Timepost).ThenOrder(oppositeOrder, s => s.Rank);
                     break;
-                case "pp":
+                case LeaderboardSortBy.Pp:
                     scoreQuery = scoreQuery.Order(order, s => s.Pp).ThenOrder(oppositeOrder, s => s.Rank);
                     break;
-                case "acc":
+                case LeaderboardSortBy.Acc:
                     scoreQuery = scoreQuery.Order(order, s => s.Accuracy);
                     break;
-                case "rank":
+                case LeaderboardSortBy.Rank:
                     scoreQuery = leaderboard.Difficulty.Status.WithPP() 
                                 ? scoreQuery
                                     .Order(order, el => Math.Round(el.Pp, 2))
@@ -298,15 +296,14 @@ namespace BeatLeader_Server.Controllers {
                                     .ThenOrder(order, el => el.ModifiedScore)
                                     .ThenOrder(order, el => Math.Round(el.Accuracy, 4))
                                     .ThenOrder(oppositeOrder, el => el.Timepost);
-                        break;
                     break;
-                case "mistakes":
+                case LeaderboardSortBy.Mistakes:
                     scoreQuery = scoreQuery.Order(order, s => s.BadCuts + s.MissedNotes + s.BombCuts + s.WallsHit);
                     break;
-                case "weight":
+                case LeaderboardSortBy.Weight:
                     scoreQuery = scoreQuery.Order(order, s => s.Weight);
                     break;
-                case "weightedPp":
+                case LeaderboardSortBy.WeightedPp:
                     scoreQuery = scoreQuery.Order(order, s => s.Weight * s.Pp);
                     break;
                 default:
@@ -383,7 +380,7 @@ namespace BeatLeader_Server.Controllers {
             bool showVoters,
             int page,
             int count,
-            string sortBy,
+            LeaderboardSortBy sortBy,
             Order order,
             ScoreFilterStatus scoreStatus,
             string? countries,
@@ -446,31 +443,31 @@ namespace BeatLeader_Server.Controllers {
             Order oppositeOrder = order.Reverse();
 
             switch (sortBy) {
-                case "date":
+                case LeaderboardSortBy.Date:
                     scoreQuery = scoreQuery.Order(order, s => s.Timeset).ThenOrder(oppositeOrder, s => s.Rank);
                     break;
-                case "pp":
+                case LeaderboardSortBy.Pp:
                     scoreQuery = scoreQuery.Order(order, s => s.Pp).ThenOrder(oppositeOrder, s => s.Rank);
                     break;
-                case "acc":
+                case LeaderboardSortBy.Acc:
                     scoreQuery = scoreQuery.Order(order, s => s.Accuracy);
                     break;
-                case "pauses":
+                case LeaderboardSortBy.Pauses:
                     scoreQuery = scoreQuery.Order(order, s => s.Score.Pauses).ThenOrder(oppositeOrder, s => s.Rank);
                     break;
-                case "rank":
+                case LeaderboardSortBy.Rank:
                     scoreQuery = scoreQuery.Order(oppositeOrder, s => s.Rank);
                     break;
-                case "maxStreak":
+                case LeaderboardSortBy.MaxStreak:
                     scoreQuery = scoreQuery.Order(order, s => s.Score.MaxStreak).ThenOrder(oppositeOrder, s => s.Rank);
                     break;
-                case "mistakes":
+                case LeaderboardSortBy.Mistakes:
                     scoreQuery = scoreQuery.Order(order, s => s.Score.BadCuts + s.Score.MissedNotes + s.Score.BombCuts + s.Score.WallsHit);
                     break;
-                case "weight":
+                case LeaderboardSortBy.Weight:
                     scoreQuery = scoreQuery.Order(order, s => s.Weight);
                     break;
-                case "weightedPp":
+                case LeaderboardSortBy.WeightedPp:
                     scoreQuery = scoreQuery.Order(order, s => s.Weight * s.Pp);
                     break;
                 default:
@@ -554,20 +551,23 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [HttpGet("~/leaderboard/{id}")]
+        [SwaggerOperation(Summary = "Retrieve leaderboard details", Description = "Fetches details of a leaderboard identified by its ID, with optional sorting and filtering for scores.")]
+        [SwaggerResponse(200, "Leaderboard details retrieved successfully", typeof(LeaderboardResponse))]
+        [SwaggerResponse(404, "Leaderboard not found")]
         public async Task<ActionResult<LeaderboardResponse>> Get(
-            string id,
-            [FromQuery] int page = 1,
-            [FromQuery] int count = 10,
-            [FromQuery] string sortBy = "rank",
-            [FromQuery] Order order = Order.Desc,
-            [FromQuery] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
-            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            [FromQuery] string? countries = null,
-            [FromQuery] string? search = null,
-            [FromQuery] string? modifiers = null,
-            [FromQuery] bool friends = false,
-            [FromQuery] bool voters = false,
-            [FromQuery] bool prediction = false) {
+            [SwaggerParameter("ID of the leaderboard to retrieve details for")] string id,
+            [FromQuery, SwaggerParameter("Scores page number for pagination, default is 1")] int page = 1,
+            [FromQuery, SwaggerParameter("Number of scores per page, default is 10")] int count = 10,
+            [FromQuery, SwaggerParameter("Field to sort scores by, default is Rank")] LeaderboardSortBy sortBy = LeaderboardSortBy.Rank,
+            [FromQuery, SwaggerParameter("Order of sorting, default is Desc")] Order order = Order.Desc,
+            [FromQuery, SwaggerParameter("Filter for score status, default is None")] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
+            [FromQuery, SwaggerParameter("Context of the leaderboard, default is General")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
+            [FromQuery, SwaggerParameter("Filter for specific countries (country code, comma separated)")] string? countries = null,
+            [FromQuery, SwaggerParameter("Search term to filter scores by player name or clan")] string? search = null,
+            [FromQuery, SwaggerParameter("Modifiers to filter scores by (comma separated)")] string? modifiers = null,
+            [FromQuery, SwaggerParameter("Whether to include only scores from friends, default is false")] bool friends = false,
+            [FromQuery, SwaggerParameter("Whether to include only scores from voters, default is false")] bool voters = false,
+            [FromQuery, SwaggerParameter("Whether to include predicted scores, default is false")] bool prediction = false) {
 
             string? currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = currentID != null ? await _context
@@ -807,7 +807,7 @@ namespace BeatLeader_Server.Controllers {
             string id,
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
-            [FromQuery] string sortBy = "rank",
+            [FromQuery] LeaderboardSortBy sortBy = LeaderboardSortBy.Rank,
             [FromQuery] Order order = Order.Desc,
             [FromQuery] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
             [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
@@ -1113,11 +1113,13 @@ namespace BeatLeader_Server.Controllers {
 
 
         [HttpGet("~/leaderboard/clanRankings/{id}")]
+        [SwaggerOperation(Summary = "Retrieve clan rankings for a leaderboard", Description = "Fetches clan rankings for a leaderboard identified by its ID.")]
+        [SwaggerResponse(200, "Clan rankings retrieved successfully", typeof(LeaderboardClanRankingResponse))]
+        [SwaggerResponse(404, "Leaderboard not found")]
         public async Task<ActionResult<LeaderboardClanRankingResponse>> GetClanRankings(
-            string id,
-            [FromQuery] int page = 1,
-            [FromQuery] int count = 10)
-        {
+            [SwaggerParameter("ID of the leaderboard to retrieve clan rankings for")] string id,
+            [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
+            [FromQuery, SwaggerParameter("Number of rankings per page, default is 10")] int count = 10) {
             string? currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = currentID != null ? await _context
                 .Players
@@ -1377,263 +1379,37 @@ namespace BeatLeader_Server.Controllers {
             };
         }
 
-
-        //[HttpDelete("~/leaderboard/{id}")]
-        //public async Task<ActionResult> Delete(
-        //    string id)
-        //{
-        //    string currentID = HttpContext.CurrentUserID(_context);
-        //    var currentPlayer = await _context.Players.FindAsync(currentID);
-
-        //    if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-        //    {
-        //        return Unauthorized();
-        //    }
-
-        //    var stats = _context.PlayerLeaderboardStats.FirstOrDefaultAsync(lb => lb.LeaderboardId == id);
-        //    if (stats != null) {
-        //        _context.PlayerLeaderboardStats.Remove(stats);
-        //        await _context.SaveChangesAsync();
-        //    }
-
-        //    var lb = _context.Leaderboards.FirstOrDefaultAsync(lb => lb.Id == id);
-
-        //    if (lb != null) {
-        //        _context.Leaderboards.Remove(lb);
-        //        await _context.SaveChangesAsync();
-        //    } else {
-        //        return NotFound();
-        //    }
-
-        //    return Ok();
-        //}
-
-        public class QualificationInfo {
-            public int Id { get; set; }
-            public int Timeset { get; set; }
-            public string RTMember { get; set; }
-            public int CriteriaMet { get; set; }
-            public int CriteriaTimeset { get; set; }
-            public string CriteriaChecker { get; set; }
-            public string CriteriaCommentary { get; set; }
-            public bool MapperAllowed { get; set; }
-            public string MapperId { get; set; }
-            public bool MapperQualification { get; set; }
-            public int ApprovalTimeset { get; set; }
-            public bool Approved { get; set; }
-            public string Approvers { get; set; }
-        }
-
-        public class MassLeaderboardsInfoResponse {
-            public string Id { get; set; }
-            public SongInfo Song { get; set; }
-            public MassLeaderboardsDiffInfo Difficulty { get; set; }
-            public QualificationInfo? Qualification { get; set; }
-
-            public void HideRatings() {
-                Difficulty.HideRatings();
-            }
-        }
-
-        public class SongInfo {
-            public string Id { get; set; }
-            public string Hash { get; set; }
-        }
-
-        public class MassLeaderboardsDiffInfo {
-            public int Id { get; set; }
-            public int Value { get; set; }
-            public int Mode { get; set; }
-            public DifficultyStatus Status { get; set; }
-            public string ModeName { get; set; }
-            public string DifficultyName { get; set; }
-            public int NominatedTime { get; set; }
-            public int QualifiedTime { get; set; }
-            public int RankedTime { get; set; }
-            public float? Stars { get; set; }
-            public float? AccRating { get; set; }
-            public float? PassRating { get; set; }
-            public float? TechRating { get; set; }
-            public int MaxScore { get; set; }
-            public int Type { get; set; }
-            public ModifiersMap ModifierValues { get; set; }
-            public ModifiersRating? ModifiersRating { get; set; }
-
-            public void HideRatings() {
-                this.AccRating = null;
-                this.TechRating = null;
-                this.PassRating = null;
-                this.Stars = null;
-
-                this.ModifiersRating = null;
-            }
-        }
-
-        [NonAction]
-        public async Task<ActionResult<ResponseWithMetadata<MassLeaderboardsInfoResponse>>> GetModList(
-            [FromQuery] int page = 1,
-            [FromQuery] int count = 10,
-            [FromQuery] SortBy sortBy = SortBy.None,
-            [FromQuery] Order order = Order.Desc,
-            [FromQuery] int? date_from = null,
-            [FromQuery] int? date_to = null
-            ) {
-            var sequence = _context.Leaderboards.AsQueryable();
-            string? currentID = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = currentID != null ? await _context
-                .Players
-                .Include(p => p.ProfileSettings)
-                .FirstOrDefaultAsync(p => p.Id == currentID) : null;
-
-            (sequence, int totalMatches) = await sequence.FilterRanking(_context, page, count, sortBy, order, date_from, date_to);
-
-            var result = new ResponseWithMetadata<MassLeaderboardsInfoResponse>() {
-                Metadata = new Metadata() {
-                    Page = page,
-                    ItemsPerPage = count,
-                    Total = totalMatches,
-                }
-            };
-
-            sequence = sequence
-                .Include(lb => lb.Difficulty)
-                .ThenInclude(d => d.ModifierValues)
-                .Include(lb => lb.Difficulty)
-                .ThenInclude(d => d.ModifiersRating);
-
-            var resultList = await sequence
-                .Select(lb => new MassLeaderboardsInfoResponse {
-                    Id = lb.Id,
-                    Song = new SongInfo {
-                        Id = lb.Song.Id,
-                        Hash = lb.Song.Hash
-                    },
-                    Difficulty = new MassLeaderboardsDiffInfo {
-                        Id = lb.Difficulty.Id,
-                        Value = lb.Difficulty.Value,
-                        Mode = lb.Difficulty.Mode,
-                        DifficultyName = lb.Difficulty.DifficultyName,
-                        ModeName = lb.Difficulty.ModeName,
-                        Status = lb.Difficulty.Status,
-                        ModifierValues = lb.Difficulty.ModifierValues,
-                        ModifiersRating = lb.Difficulty.ModifiersRating,
-                        NominatedTime  = lb.Difficulty.NominatedTime,
-                        QualifiedTime  = lb.Difficulty.QualifiedTime,
-                        RankedTime = lb.Difficulty.RankedTime,
-
-                        Stars  = lb.Difficulty.Stars,
-                        PassRating  = lb.Difficulty.PassRating,
-                        AccRating  = lb.Difficulty.AccRating,
-                        TechRating  = lb.Difficulty.TechRating,
-                        Type  = lb.Difficulty.Type,
-                        MaxScore = lb.Difficulty.MaxScore,
-                    },
-                    Qualification = lb.Qualification != null ? new QualificationInfo {
-                        Id = lb.Qualification.Id,
-                        Timeset = lb.Qualification.Timeset,
-                        RTMember = lb.Qualification.RTMember,
-                        CriteriaMet = lb.Qualification.CriteriaMet,
-                        CriteriaTimeset = lb.Qualification.CriteriaTimeset,
-                        CriteriaChecker = lb.Qualification.CriteriaChecker,
-                        CriteriaCommentary = lb.Qualification.CriteriaCommentary,
-                        MapperAllowed = lb.Qualification.MapperAllowed,
-                        MapperId = lb.Qualification.MapperId,
-                        MapperQualification = lb.Qualification.MapperQualification,
-                        ApprovalTimeset = lb.Qualification.ApprovalTimeset,
-                        Approved = lb.Qualification.Approved,
-                        Approvers = lb.Qualification.Approvers,
-                    } : null
-                })
-                .ToListAsync();
-
-            if (resultList.Count > 0) {
-                bool showRatings = currentPlayer?.ProfileSettings?.ShowAllRatings ?? false;
-                foreach (var leaderboard in resultList) {
-                    if (!showRatings && !leaderboard.Difficulty.Status.WithRating()) {
-                        leaderboard.HideRatings();
-                    }
-                }
-            }
-
-            result.Data = resultList;
-
-            return result;
-        }
-
-        [HttpPost("~/leaderboard/tags")]
-        public async Task<ActionResult> UpdateTags(
-            [FromQuery] string id,
-            [FromQuery] string tagType, 
-            [FromQuery] int tagValue) {
-
-            string? currentID = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = currentID != null ? await _context
-                .Players
-                .Include(p => p.ProfileSettings)
-                .FirstOrDefaultAsync(p => p.Id == currentID) : null;
-
-            bool isLoloppe = currentPlayer?.Id == "76561198073989976" || currentPlayer?.Role?.Contains("admin") == true;
-            if (!isLoloppe) {
-                return BadRequest("Not Loloppe");
-            }
-
-            var lb = _context.Leaderboards.Where(lb => lb.Id == id).Include(lb => lb.Difficulty).FirstOrDefault();
-            if (lb == null) {
-                return NotFound();
-            }
-
-            switch (tagType)
-            {
-                case "speed":
-                    lb.Difficulty.SpeedTags = tagValue;
-                    break;
-                case "style":
-                    lb.Difficulty.StyleTags = tagValue;
-                    break;
-                case "features":
-                    lb.Difficulty.FeatureTags = tagValue;
-                    break;
-                default:
-                    break;
-            }
-
-            _context.SaveChanges();
-
-            return Ok();
-        }
-
         [HttpGet("~/leaderboards/")]
+        [SwaggerOperation(Summary = "Retrieve a list of leaderboards (maps)", Description = "Fetches a paginated and optionally filtered list of leaderboards (Beat Saber maps).")]
+        [SwaggerResponse(200, "Leaderboards retrieved successfully", typeof(ResponseWithMetadata<LeaderboardInfoResponse>))]
+        [SwaggerResponse(404, "Leaderboards not found")]
         public async Task<ActionResult<ResponseWithMetadata<LeaderboardInfoResponse>>> GetAll(
-            [FromQuery] int page = 1,
-            [FromQuery] int count = 10,
-            [FromQuery] SortBy sortBy = SortBy.None,
-            [FromQuery] Order order = Order.Desc,
-            [FromQuery] string? search = null,
-            [FromQuery] Type type = Type.All,
-            [FromQuery] string? mode = null,
-            [FromQuery] string? difficulty = null,
-            [FromQuery] int? mapType = null,
-            [FromQuery] Operation allTypes = Operation.Any,
-            [FromQuery] Requirements mapRequirements = Requirements.Ignore,
-            [FromQuery] Operation allRequirements = Operation.Any,
-            [FromQuery] SongStatus songStatus = SongStatus.None,
-            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            [FromQuery] MyType mytype = MyType.None,
-            [FromQuery] float? stars_from = null,
-            [FromQuery] float? stars_to = null,
-            [FromQuery] float? accrating_from = null,
-            [FromQuery] float? accrating_to = null,
-            [FromQuery] float? passrating_from = null,
-            [FromQuery] float? passrating_to = null,
-            [FromQuery] float? techrating_from = null,
-            [FromQuery] float? techrating_to = null,
-            [FromQuery] int? date_from = null,
-            [FromQuery] int? date_to = null,
-            string? overrideCurrentId = null) {
-
-            if (type == Type.Ranking && count == 500) {
-                return Ok((await GetModList(page, count, sortBy, order, date_from, date_to)).Value);
-            }
+            [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
+            [FromQuery, SwaggerParameter("Number of leaderboards per page, default is 10")] int count = 10,
+            [FromQuery, SwaggerParameter("Field to sort leaderboards by, default is None")] MapSortBy sortBy = MapSortBy.None,
+            [FromQuery, SwaggerParameter("Order of sorting, default is Desc")] Order order = Order.Desc,
+            [FromQuery, SwaggerParameter("Search term to filter leaderboards by song, author or mapper name")] string? search = null,
+            [FromQuery, SwaggerParameter("Type of leaderboards to filter, default is All")] Type type = Type.All,
+            [FromQuery, SwaggerParameter("Mode to filter leaderboards by (Standard, OneSaber, etc...)")] string? mode = null,
+            [FromQuery, SwaggerParameter("Difficulty to filter leaderboards by (Easy, Normal, Hard, Expert, ExpertPlus)")] string? difficulty = null,
+            [FromQuery, SwaggerParameter("Map type to filter leaderboards by")] int? mapType = null,
+            [FromQuery, SwaggerParameter("Operation to filter all types, default is Any")] Operation allTypes = Operation.Any,
+            [FromQuery, SwaggerParameter("Requirements to filter leaderboards by, default is Ignore")] Requirements mapRequirements = Requirements.Ignore,
+            [FromQuery, SwaggerParameter("Operation to filter all requirements, default is Any")] Operation allRequirements = Operation.Any,
+            [FromQuery, SwaggerParameter("Song status to filter leaderboards by, default is None")] SongStatus songStatus = SongStatus.None,
+            [FromQuery, SwaggerParameter("Context of the leaderboard, default is General")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
+            [FromQuery, SwaggerParameter("My type to filter leaderboards by, default is None")] MyType mytype = MyType.None,
+            [FromQuery, SwaggerParameter("Minimum stars to filter leaderboards by")] float? stars_from = null,
+            [FromQuery, SwaggerParameter("Maximum stars to filter leaderboards by")] float? stars_to = null,
+            [FromQuery, SwaggerParameter("Minimum accuracy rating to filter leaderboards by")] float? accrating_from = null,
+            [FromQuery, SwaggerParameter("Maximum accuracy rating to filter leaderboards by")] float? accrating_to = null,
+            [FromQuery, SwaggerParameter("Minimum pass rating to filter leaderboards by")] float? passrating_from = null,
+            [FromQuery, SwaggerParameter("Maximum pass rating to filter leaderboards by")] float? passrating_to = null,
+            [FromQuery, SwaggerParameter("Minimum tech rating to filter leaderboards by")] float? techrating_from = null,
+            [FromQuery, SwaggerParameter("Maximum tech rating to filter leaderboards by")] float? techrating_to = null,
+            [FromQuery, SwaggerParameter("Start date to filter leaderboards by (timestamp)")] int? date_from = null,
+            [FromQuery, SwaggerParameter("End date to filter leaderboards by (timestamp)")] int? date_to = null,
+            [FromQuery, SwaggerParameter("Override current user ID")] string? overrideCurrentId = null) {
 
             var dbContext = _dbFactory.CreateDbContext();
 
@@ -1644,6 +1420,11 @@ namespace BeatLeader_Server.Controllers {
                 .Include(p => p.ProfileSettings)
                 .FirstOrDefaultAsync(p => p.Id == currentID) : null;
 
+            if (type == Type.Ranking && count == 500) {
+
+                return Ok(await LeaderboardControllerHelper.GetModList(dbContext, currentPlayer?.ProfileSettings?.ShowAllRatings ?? false, page, count, sortBy, order, date_from, date_to));
+            }
+
             var sequence = dbContext.Leaderboards.AsNoTracking().Filter(dbContext, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
 
             var result = new ResponseWithMetadata<LeaderboardInfoResponse>() {
@@ -1653,7 +1434,7 @@ namespace BeatLeader_Server.Controllers {
                 }
             };
 
-            bool showPlays = sortBy == SortBy.PlayCount;
+            bool showPlays = sortBy == MapSortBy.PlayCount;
 
             if (page <= 0) {
                 page = 1;
@@ -1803,7 +1584,7 @@ namespace BeatLeader_Server.Controllers {
         public async Task<ActionResult<ResponseWithMetadata<LeaderboardInfoResponse>>> GetAllGroupped(
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
-            [FromQuery] SortBy sortBy = SortBy.None,
+            [FromQuery] MapSortBy sortBy = MapSortBy.None,
             [FromQuery] Order order = Order.Desc,
             [FromQuery] string? search = null,
             [FromQuery] Type type = Type.All,
@@ -1996,171 +1777,50 @@ namespace BeatLeader_Server.Controllers {
             return result;
         }
 
-        [HttpPost("~/leaderboards/feature")]
-        public async Task<ActionResult> FeatureLeaderboards(
-               [FromQuery] string title,
-               [FromQuery] string? owner = null,
-               [FromQuery] string? ownerCover = null,
-               [FromQuery] string? ownerLink = null,
-               [FromQuery] int? id = null,
-               [FromQuery] string? playlistLink = null,
-               [FromQuery] string? linkToSave = null)
-        {
-            if (HttpContext != null)
-            {
-                string userId = HttpContext.CurrentUserID(_context);
-                var currentPlayer = await _context.Players.FindAsync(userId);
+        public class ScoreGraphEntry {
+            public string PlayerId { get; set; }
+            public float Weight { get; set; }
+            public int Rank { get; set; }
+            public int Timepost { get; set; }
+            public int Pauses { get; set; }
+            public int? MaxStreak { get; set; }
+            public int Mistakes { get; set; }
+            public string Modifiers { get; set; }
 
-                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-                {
-                    return Unauthorized();
-                }
-            }
-
-            dynamic? playlist = null;
-
-            if (id != null) {
-                using (var stream = await _s3Client.DownloadPlaylist(id + ".bplist"))
-                {
-                    if (stream != null)
-                    {
-                        playlist = stream.ObjectFromStream();
-                    }
-                }
-            } else {
-                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(playlistLink);
-                playlist = await request.DynamicResponse();
-            }
-
-            if (playlist == null)
-            {
-                return BadRequest("Can't find such plist");
-            }
-
-            string fileName = id + "-featured";
-            string? imageUrl = null;
-            try
-            {
-
-                var ms = new MemoryStream(5);
-                await Request.Body.CopyToAsync(ms);
-                ms.Position = 0;
-
-                (string extension, MemoryStream stream2) = ImageUtils.GetFormat(ms);
-                fileName += extension;
-
-                imageUrl = await _s3Client.UploadAsset(fileName, stream2);
-            } catch (Exception)
-            {
-                return BadRequest("Error saving avatar");
-            }
-
-            var featuredPlaylist = new FeaturedPlaylist
-            {
-                PlaylistLink = linkToSave ?? $"https://beatleader.xyz/playlist/{id}",
-                Cover = imageUrl,
-                Title = title,
-
-                Owner = owner,
-                OwnerCover = ownerCover,
-                OwnerLink = ownerLink
-            };
-
-            var leaderboards = new List<Leaderboard>();
-            foreach (var song in playlist.songs)
-            {
-                string hash = song.hash.ToLower();
-                if (ExpandantoObject.HasProperty(song, "difficulties")){
-                    foreach (var diff in song.difficulties)
-                    {
-                        string diffName = diff.name.ToLower();
-                        string characteristic = diff.characteristic.ToLower();
-
-                        var lb = await _context.Leaderboards.Where(lb =>
-                                lb.Song.Hash.ToLower() == hash &&
-                                lb.Difficulty.DifficultyName.ToLower() == diffName &&
-                                lb.Difficulty.ModeName.ToLower() == characteristic)
-                                .Include(lb => lb.FeaturedPlaylists)
-                                .FirstOrDefaultAsync();
-
-                        if (lb != null)
-                        {
-                            if (lb.FeaturedPlaylists == null)
-                            {
-                                lb.FeaturedPlaylists = new List<FeaturedPlaylist>();
-                            }
-
-                            lb.FeaturedPlaylists.Add(featuredPlaylist);
-                        }
-                    }
-                } else {
-                    var lbs = await _context.Leaderboards.Where(lb =>
-                                lb.Song.Hash.ToLower() == hash)
-                                .Include(lb => lb.FeaturedPlaylists)
-                                .ToListAsync();
-                    foreach (var lb in lbs)
-                    {
-                        if (lb != null)
-                        {
-                            if (lb.FeaturedPlaylists == null)
-                            {
-                                lb.FeaturedPlaylists = new List<FeaturedPlaylist>();
-                            }
-
-                            lb.FeaturedPlaylists.Add(featuredPlaylist);
-                        }
-                    }  
-                }
-            }
-
-            await _context.SaveChangesAsync();
-
-            return Ok();
-        }
-
-        [HttpDelete("~/leaderboards/feature/{id}")]
-        public async Task<ActionResult> DeleteFeatureLeaderboards(
-               int id)
-        {
-            if (HttpContext != null)
-            {
-                string userId = HttpContext.CurrentUserID(_context);
-                var currentPlayer = await _context.Players.FindAsync(userId);
-
-                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-                {
-                    return Unauthorized();
-                }
-            }
-
-            var featuredPlaylist = await _context.FeaturedPlaylist.FindAsync(id);
-            _context.FeaturedPlaylist.Remove(featuredPlaylist);
-            await _context.SaveChangesAsync();
-            return Ok();
+            public int PlayerRank { get; set; }
+            public string PlayerName { get; set; }
+            public string PlayerAvatar { get; set; }
+            public string PlayerAlias { get; set; }
+            public float Accuracy { get; set; }
+            public float Pp { get; set; }
         }
 
         [HttpGet("~/leaderboard/{id}/scoregraph")]
-        public async Task<ActionResult> GetScoregraph(string id) {
-            return Ok(await _context.Scores.Where(s => 
-                    s.LeaderboardId == id &&
-                    s.ValidContexts.HasFlag(LeaderboardContexts.General) &&
-                    !s.Banned)
-                    .Select(s => new {
-                        s.PlayerId,
-                        s.Weight,
-                        s.Rank,
-                        s.Timepost,
-                        s.Pauses,
-                        s.MaxStreak,
-                        Mistakes = s.BadCuts + s.MissedNotes + s.WallsHit + s.BombCuts,
-                        s.Modifiers,
-                        PlayerRank = s.Player.Rank,
-                        PlayerName = s.Player.Name,
-                        PlayerAlias = s.Player.Alias,
-                        Accuracy = s.Accuracy * 100f,
-                        s.Pp,
-                        PlayerAvatar = s.Player.Avatar
-                    }).ToListAsync());
+        [SwaggerOperation(Summary = "Retrieve scores graph for a leaderboard", Description = "Fetches the scores graph for a leaderboard identified by its ID. Compact endpoint to use in the leaderboard data visualizations.")]
+        [SwaggerResponse(200, "Score graph retrieved successfully", typeof(ICollection<ScoreGraphEntry>))]
+        [SwaggerResponse(404, "Leaderboard not found")]
+        public async Task<ActionResult<ICollection<ScoreGraphEntry>>> GetScoregraph(
+            [SwaggerParameter("ID of the leaderboard to retrieve score graph for")] string id) {
+            return await _context.Scores.Where(s => 
+                s.LeaderboardId == id &&
+                s.ValidContexts.HasFlag(LeaderboardContexts.General) &&
+                !s.Banned)
+                .Select(s => new ScoreGraphEntry {
+                    PlayerId = s.PlayerId,
+                    Weight = s.Weight,
+                    Rank = s.Rank,
+                    Timepost = s.Timepost,
+                    Pauses = s.Pauses,
+                    MaxStreak = s.MaxStreak,
+                    Mistakes = s.BadCuts + s.MissedNotes + s.WallsHit + s.BombCuts,
+                    Modifiers = s.Modifiers,
+                    PlayerRank = s.Player.Rank,
+                    PlayerName = s.Player.Name,
+                    PlayerAlias = s.Player.Alias,
+                    Accuracy = s.Accuracy * 100f,
+                    Pp = s.Pp,
+                    PlayerAvatar = s.Player.Avatar
+                }).ToListAsync();
         }
     }
 }

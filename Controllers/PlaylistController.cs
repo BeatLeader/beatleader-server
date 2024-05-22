@@ -602,7 +602,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/playlist/generate")]
         public async Task<ActionResult<string>> GetAll(
             [FromQuery] int count = 100,
-            [FromQuery] SortBy sortBy = SortBy.Stars,
+            [FromQuery] MapSortBy sortBy = MapSortBy.Stars,
             [FromQuery] Order order = Order.Desc,
             [FromQuery] string? search = null,
             [FromQuery] Type type = Type.All,

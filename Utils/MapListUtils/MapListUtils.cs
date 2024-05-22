@@ -11,7 +11,7 @@ public static partial class MapListUtils
                                                  AppContext _context,
                                                  int page,
                                                  int count,
-                                                 SortBy sortBy = SortBy.None,
+                                                 MapSortBy sortBy = MapSortBy.None,
                                                  Order order = Order.Desc,
                                                  int? dateFrom = null,
                                                  int? dateTo = null) =>
@@ -23,7 +23,7 @@ public static partial class MapListUtils
     public static IQueryable<Leaderboard> Filter(this IQueryable<Leaderboard> source,
                                                  AppContext _context,
                                                  out int? searchId,
-                                                 SortBy sortBy = SortBy.None,
+                                                 MapSortBy sortBy = MapSortBy.None,
                                                  Order order = Order.Desc,
                                                  string? search = null,
                                                  Type type = Type.All,

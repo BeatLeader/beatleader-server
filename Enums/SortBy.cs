@@ -1,6 +1,6 @@
 ﻿namespace BeatLeader_Server.Enums;
 
-public enum SortBy
+public enum MapSortBy
 {
     None,
     Timestamp,
@@ -72,4 +72,16 @@ public enum ClanMapsSortBy {
     Date,
     Tohold,
     Toconquer
+}
+
+public enum LeaderboardSortBy {
+    Date,
+    Pp,   
+    Acc,
+    Pauses,
+    Rank,
+    MaxStreak,
+    Mistakes,
+    Weight,
+    WeightedPp
 }

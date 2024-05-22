@@ -9,7 +9,7 @@ namespace BeatLeader_Server.Utils;
 public static partial class MapListUtils
 {
     private static IQueryable<Leaderboard> Sort(this IQueryable<Leaderboard> sequence,
-                                                SortBy sortBy,
+                                                MapSortBy sortBy,
                                                 Order order,
                                                 Type type,
                                                 MyType mytype,
@@ -20,18 +20,18 @@ public static partial class MapListUtils
                                                 LeaderboardContexts leaderboardContext = LeaderboardContexts.General) {
         var result = sortBy switch
         {
-            SortBy.Timestamp  => sequence.SortByTimestamp(order, type, dateFrom, dateTo, searchId),
-            SortBy.Name       => sequence.SortByName(order, dateFrom, dateTo, searchId),
-            SortBy.Stars      => sequence.SortByStars(order, dateFrom, dateTo, searchId, currentPlayer),
-            SortBy.PassRating => sequence.SortByPassRating(order, dateFrom, dateTo, searchId, currentPlayer),
-            SortBy.AccRating  => sequence.SortByAccRating(order, dateFrom, dateTo, searchId, currentPlayer),
-            SortBy.TechRating => sequence.SortByTechRating(order, dateFrom, dateTo, searchId, currentPlayer),
-            SortBy.ScoreTime  => sequence.SortByScoreTime(order, mytype, dateFrom, searchId, dateTo, currentPlayer?.Id),
-            SortBy.PlayCount  => sequence.SortByPlayCount(order, dateFrom, dateTo, searchId, leaderboardContext),
-            SortBy.Voting     => sequence.SortByVoting(order, dateFrom, dateTo, searchId),
-            SortBy.VoteCount  => sequence.SortByVoteCount(order, dateFrom, dateTo, searchId),
-            SortBy.VoteRatio  => sequence.SortByVoteRatio(order, dateFrom, dateTo, searchId),
-            SortBy.Duration   => sequence.SortByDuration(order, dateFrom, dateTo, searchId),
+            MapSortBy.Timestamp  => sequence.SortByTimestamp(order, type, dateFrom, dateTo, searchId),
+            MapSortBy.Name       => sequence.SortByName(order, dateFrom, dateTo, searchId),
+            MapSortBy.Stars      => sequence.SortByStars(order, dateFrom, dateTo, searchId, currentPlayer),
+            MapSortBy.PassRating => sequence.SortByPassRating(order, dateFrom, dateTo, searchId, currentPlayer),
+            MapSortBy.AccRating  => sequence.SortByAccRating(order, dateFrom, dateTo, searchId, currentPlayer),
+            MapSortBy.TechRating => sequence.SortByTechRating(order, dateFrom, dateTo, searchId, currentPlayer),
+            MapSortBy.ScoreTime  => sequence.SortByScoreTime(order, mytype, dateFrom, searchId, dateTo, currentPlayer?.Id),
+            MapSortBy.PlayCount  => sequence.SortByPlayCount(order, dateFrom, dateTo, searchId, leaderboardContext),
+            MapSortBy.Voting     => sequence.SortByVoting(order, dateFrom, dateTo, searchId),
+            MapSortBy.VoteCount  => sequence.SortByVoteCount(order, dateFrom, dateTo, searchId),
+            MapSortBy.VoteRatio  => sequence.SortByVoteRatio(order, dateFrom, dateTo, searchId),
+            MapSortBy.Duration   => sequence.SortByDuration(order, dateFrom, dateTo, searchId),
             _                 => sequence.SortByName(order, dateFrom, dateTo, searchId),
         };
 

@@ -44,7 +44,7 @@ namespace BeatLeader_Server.Services
 
                 int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
-                var lastHistory = await _context.PlayerScoreStatsHistory.FirstOrDefaultAsync();
+                var lastHistory = await _context.PlayerScoreStatsHistory.LastOrDefaultAsync();
                 if (lastHistory != null && lastHistory.Timestamp > timeset - 60 * 60 * 12) {
                     return;
                 }
@@ -160,7 +160,7 @@ namespace BeatLeader_Server.Services
 
                 foreach (var context in ContextExtensions.NonGeneral)
                 {
-                    var lastHistory = await _context.PlayerScoreStatsHistory.OrderByDescending(ps => ps.Timestamp).Where(ps => ps.Context == context).FirstOrDefaultAsync();
+                    var lastHistory = await _context.PlayerScoreStatsHistory.Where(ps => ps.Context == context).LastOrDefaultAsync();
                     if (lastHistory != null && lastHistory.Timestamp > timeset - 60 * 60 * 12) {
                         return;
                     }

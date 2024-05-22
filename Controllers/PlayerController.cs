@@ -1050,7 +1050,7 @@ namespace BeatLeader_Server.Controllers
 
         [HttpGet("~/player/{id}/rankedMaps")]
         [SwaggerOperation(Summary = "Get ranked maps this player mapped", Description = "Retrieves a list of maps this player created that later became ranked and give PP now.")]
-        [SwaggerResponse(200, "Returns brief stats about maps this player ranked, like count, total PP gained, etc...", typeof(ParticipatingEventResponse))]
+        [SwaggerResponse(200, "Returns brief stats about maps this player ranked, like count, total PP gained, etc...", typeof(RankedMapperResponse))]
         [SwaggerResponse(404, "Player not found")]
         public async Task<ActionResult<RankedMapperResponse>> GetRankedMaps(
             [FromRoute, SwaggerParameter("The ID of the player")] int id) {

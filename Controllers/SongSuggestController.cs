@@ -276,7 +276,7 @@ namespace BeatLeader_Server.Controllers
             if (HttpContext != null && !(await HttpContext.ItsAdmin(_context))) return Unauthorized();
 
             var currentId = HttpContext.CurrentUserID(_context);
-            var curated = _leaderboardController.GetAllGroupped(1, 3, SortBy.Timestamp, Order.Desc, type: Enums.Type.All, songStatus: SongStatus.Curated);
+            var curated = _leaderboardController.GetAllGroupped(1, 3, MapSortBy.Timestamp, Order.Desc, type: Enums.Type.All, songStatus: SongStatus.Curated);
 
             var response = curated.Result.Value;
             DefaultContractResolver contractResolver = new DefaultContractResolver
@@ -306,9 +306,9 @@ namespace BeatLeader_Server.Controllers
 
             int timeset = Time.UnixNow();
             var currentId = HttpContext.CurrentUserID(_context);
-            var topToday = _leaderboardController.GetAll(1, 1, SortBy.PlayCount, date_from: timeset - 60 * 60 * 24, overrideCurrentId: currentId);
-            var topWeek = _leaderboardController.GetAll(1, 1, SortBy.PlayCount, date_from: timeset - 60 * 60 * 24 * 7, overrideCurrentId: currentId);
-            var topVoted = _leaderboardController.GetAll(1, 1, SortBy.VoteCount, date_from: timeset - 60 * 60 * 24 * 30, overrideCurrentId: currentId);
+            var topToday = _leaderboardController.GetAll(1, 1, MapSortBy.PlayCount, date_from: timeset - 60 * 60 * 24, overrideCurrentId: currentId);
+            var topWeek = _leaderboardController.GetAll(1, 1, MapSortBy.PlayCount, date_from: timeset - 60 * 60 * 24 * 7, overrideCurrentId: currentId);
+            var topVoted = _leaderboardController.GetAll(1, 1, MapSortBy.VoteCount, date_from: timeset - 60 * 60 * 24 * 30, overrideCurrentId: currentId);
 
             Task.WaitAll([topToday, topWeek, topVoted]);
 
