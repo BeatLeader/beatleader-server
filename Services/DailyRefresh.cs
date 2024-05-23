@@ -57,6 +57,12 @@ namespace BeatLeader_Server.Services
                         Console.WriteLine($"EXCEPTION DailyRefresh {e}");
                     }
 
+                    try {
+                        await RefreshPlayerStats();
+                    } catch (Exception e) {
+                        Console.WriteLine($"EXCEPTION DailyRefresh {e}");
+                    }
+
                     hoursUntil21 = 24;
 
                     Console.WriteLine("SERVICE-DONE DailyRefresh");
@@ -244,6 +250,16 @@ namespace BeatLeader_Server.Services
             using (var scope = _serviceScopeFactory.CreateScope()) {
                 var songSuggestController = scope.ServiceProvider.GetRequiredService<SongSuggestController>();
                 await songSuggestController.RefreshSongSuggest();
+            }
+        }
+
+        public async Task RefreshPlayerStats() {
+            using (var scope = _serviceScopeFactory.CreateScope()) {
+                var _playerController = scope.ServiceProvider.GetRequiredService<PlayerRefreshController>();
+                await _playerController.RefreshPlayersStatsSlowly();
+
+                var _playerContextController = scope.ServiceProvider.GetRequiredService<PlayerContextRefreshController>();
+                await _playerContextController.RefreshPlayersStatsAllContextsSlowly();
             }
         }
     }

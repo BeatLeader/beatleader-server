@@ -78,6 +78,8 @@ namespace BeatLeader_Server.Controllers {
                     .Include(f => f.Friends)
                     .FirstOrDefaultAsync();
 
+                sequence = await sequence.Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+
                 if (friends != null) {
                     var friendsList = friends.Friends.Select(f => f.Id).ToList();
                     var json = JsonConvert.SerializeObject(friendsList);
@@ -85,8 +87,6 @@ namespace BeatLeader_Server.Controllers {
                 } else {
                     sequence = sequence.Where(s => s.PlayerId == player.Id);
                 }
-
-                sequence = await sequence.Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             }
 
             var scoreIds = leaderboardContext == LeaderboardContexts.General 

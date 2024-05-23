@@ -19,8 +19,7 @@ namespace BeatLeader_Server.Services
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             do {
-                if (DateTime.Now.Hour == 0)
-                {
+                if (DateTime.Now.Hour == 0) {
                     Console.WriteLine("SERVICE-STARTED HistoryService");
 
                     await SetHistories();
@@ -44,23 +43,16 @@ namespace BeatLeader_Server.Services
 
                 int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
-                var lastHistory = await _context.PlayerScoreStatsHistory.LastOrDefaultAsync();
-                if (lastHistory != null && lastHistory.Timestamp > timeset - 60 * 60 * 12) {
+                var lastHistory = await _context.PlayerScoreStatsHistory.Where(h => h.Context == LeaderboardContexts.General).OrderBy(ps => ps.Id).LastOrDefaultAsync();
+                if (lastHistory != null && lastHistory.Timestamp > timeset - 60 * 60 * 10) {
                     return;
                 }
-
-                var _playerController = scope.ServiceProvider.GetRequiredService<PlayerRefreshController>();
-                await _playerController.RefreshPlayersStatsSlowly();
-
-                var _playerContextController = scope.ServiceProvider.GetRequiredService<PlayerContextRefreshController>();
-                await _playerContextController.RefreshPlayersStatsAllContextsSlowly();
 
                 _context.ChangeTracker.AutoDetectChangesEnabled = false;
                 
                 shouldSave = true;
                 var playersCount = await _context.Players.Where(p => !p.Banned).CountAsync();
-                for (int i = 0; i < playersCount; i += 10000)
-                {
+                for (int i = 0; i < playersCount; i += 10000) {
                     var ranked = await _context
                         .Players
                         .OrderBy(p => p.Id)
@@ -70,8 +62,7 @@ namespace BeatLeader_Server.Services
                         .Take(10000)
                         .Select(p => new { p.Pp, p.AccPp, p.PassPp, p.TechPp, p.ScoreStats, p.Rank, p.CountryRank, p.Id })
                         .ToListAsync();
-                    foreach (var p in ranked)
-                    {
+                    foreach (var p in ranked) {
                         if (p.ScoreStats == null) continue;
                         _context.PlayerScoreStatsHistory.Add(new PlayerScoreStatsHistory {
                             PlayerId = p.Id,
@@ -141,9 +132,10 @@ namespace BeatLeader_Server.Services
                         });
                     }
                     await _context.BulkSaveChangesAsync();
-                    if (shouldSave) {
-                        await SetContextHistories();
-                    }
+
+                }
+                if (shouldSave) {
+                    await SetContextHistories();
                 }
                 
             }
@@ -160,8 +152,8 @@ namespace BeatLeader_Server.Services
 
                 foreach (var context in ContextExtensions.NonGeneral)
                 {
-                    var lastHistory = await _context.PlayerScoreStatsHistory.Where(ps => ps.Context == context).LastOrDefaultAsync();
-                    if (lastHistory != null && lastHistory.Timestamp > timeset - 60 * 60 * 12) {
+                    var lastHistory = await _context.PlayerScoreStatsHistory.Where(ps => ps.Context == context).OrderBy(ps => ps.Id).LastOrDefaultAsync();
+                    if (lastHistory != null && lastHistory.Timestamp > timeset - 60 * 60 * 10) {
                         return;
                     }
                     var playersCount = await _context.PlayerContextExtensions.Where(p => p.Context == context).CountAsync();
