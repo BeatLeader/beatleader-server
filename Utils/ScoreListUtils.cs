@@ -50,22 +50,42 @@ namespace BeatLeader_Server.Utils {
                     orderedSequence = sequence.Order(order, t => t.Accuracy);
                     break;
                 case ScoresSortBy.Pauses:
-                    orderedSequence = sequence.Order(order, t => t.ScoreInstance.Pauses);
+                    if (sequence is IQueryable<Score>) {
+                        orderedSequence = sequence.Order(order, t => t.Pauses);
+                    } else {
+                        orderedSequence = sequence.Order(order, t => t.ScoreInstance.Pauses);
+                    }
                     break;
                 case ScoresSortBy.PlayCount:
-                    orderedSequence = sequence.Order(order, t => t.ScoreInstance.PlayCount);
+                    if (sequence is IQueryable<Score>) {
+                        orderedSequence = sequence.Order(order, t => t.PlayCount);
+                    } else {
+                        orderedSequence = sequence.Order(order, t => t.ScoreInstance.PlayCount);
+                    }
                     break;
                 case ScoresSortBy.LastTryTime:
-                    orderedSequence = sequence.Order(order, t => t.ScoreInstance.LastTryTime);
+                    if (sequence is IQueryable<Score>) {
+                        orderedSequence = sequence.Order(order, t => t.LastTryTime);
+                    } else {
+                        orderedSequence = sequence.Order(order, t => t.ScoreInstance.LastTryTime);
+                    }
                     break;
                 case ScoresSortBy.Rank:
                     orderedSequence = sequence.Order(order, t => t.Rank);
                     break;
                 case ScoresSortBy.MaxStreak:
-                    orderedSequence = sequence.Where(s => !s.ScoreInstance.IgnoreForStats && s.ScoreInstance.MaxStreak != null).Order(order, t => t.ScoreInstance.MaxStreak);
+                    if (sequence is IQueryable<Score>) {
+                        orderedSequence = sequence.Where(s => !s.IgnoreForStats && s.MaxStreak != null).Order(order, t => t.MaxStreak);
+                    } else {
+                        orderedSequence = sequence.Where(s => !s.ScoreInstance.IgnoreForStats && s.ScoreInstance.MaxStreak != null).Order(order, t => t.ScoreInstance.MaxStreak);
+                    }
                     break;
                 case ScoresSortBy.Timing:
-                    orderedSequence = sequence.Order(order, t => (t.ScoreInstance.LeftTiming + t.ScoreInstance.RightTiming) / 2);
+                    if (sequence is IQueryable<Score>) {
+                        orderedSequence = sequence.Order(order, t => (t.LeftTiming + t.RightTiming) / 2);
+                    } else {
+                        orderedSequence = sequence.Order(order, t => (t.ScoreInstance.LeftTiming + t.ScoreInstance.RightTiming) / 2);
+                    }
                     break;
                 case ScoresSortBy.Stars:
                     orderedSequence = sequence.Order(order, s => 
@@ -80,10 +100,18 @@ namespace BeatLeader_Server.Utils {
                         : 0);
                     break;
                 case ScoresSortBy.Mistakes:
-                    orderedSequence = sequence.Order(order, t => t.ScoreInstance.BadCuts + t.ScoreInstance.BombCuts + t.ScoreInstance.MissedNotes + t.ScoreInstance.WallsHit);
+                    if (sequence is IQueryable<Score>) {
+                        orderedSequence = sequence.Order(order, t => t.BadCuts + t.BombCuts + t.MissedNotes + t.WallsHit);
+                    } else {
+                        orderedSequence = sequence.Order(order, t => t.ScoreInstance.BadCuts + t.ScoreInstance.BombCuts + t.ScoreInstance.MissedNotes + t.ScoreInstance.WallsHit);
+                    }
                     break;
                 case ScoresSortBy.ReplaysWatched:
-                    orderedSequence = sequence.Order(order, t => t.ScoreInstance.AnonimusReplayWatched + t.ScoreInstance.AuthorizedReplayWatched);
+                    if (sequence is IQueryable<Score>) {
+                        orderedSequence = sequence.Order(order, t => t.AnonimusReplayWatched + t.AuthorizedReplayWatched);
+                    } else {
+                        orderedSequence = sequence.Order(order, t => t.ScoreInstance.AnonimusReplayWatched + t.ScoreInstance.AuthorizedReplayWatched);
+                    }
                     break;
                 default:
                     break;

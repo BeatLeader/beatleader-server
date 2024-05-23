@@ -501,12 +501,6 @@ namespace BeatLeader_Server {
             
             app.UsePrometheusServer();
             app.UsePrometheusRequestDurations();
-            var sqlServerProcess = Process.GetProcessesByName("sqlservr").FirstOrDefault();
-            if (sqlServerProcess != null)
-            {
-                Console.WriteLine("SQLSERVER!");
-                Metrics.DefaultCollectorRegistry.Add(new ProcessCollector(sqlServerProcess, "sql_"));
-            }
 
             app.UseMiddleware<GrafanaTimingMiddleware>();
             app.UseStaticFiles();

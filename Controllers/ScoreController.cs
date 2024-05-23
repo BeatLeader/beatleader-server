@@ -174,25 +174,18 @@ namespace BeatLeader_Server.Controllers
             }
         }
         [HttpGet("~/score/random")]
-        public async Task<ActionResult<Score>> GetRandomScore()
+        public async Task<ActionResult<ScoreResponseWithDifficulty>> GetRandomScore()
         {
             var offset = Random.Shared.Next(1, await _context.Scores.CountAsync());
             var score = await _context
                 .Scores
                 .AsNoTracking()
-                .OrderBy(s => s.Id)
                 .Skip(offset)
                 .Take(1)
-                .FirstOrDefaultAsync();
+                .Select(s => s.Id)
+                .FirstAsync();
 
-            if (score != null)
-            {
-                return score;
-            }
-            else
-            {
-                return NotFound();
-            }
+            return await GetScore(score, false);
         }
 
         [HttpDelete("~/score/{id}")]
