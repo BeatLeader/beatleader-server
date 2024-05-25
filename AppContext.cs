@@ -95,6 +95,7 @@ namespace BeatLeader_Server
         public DbSet<MaxScoreGraph> MaxScoreGraph { get; set; }
 
         public DbSet<AliasRequest> AliasRequests { get; set; }
+        public DbSet<Speedrun> Speedruns { get; set; }
 
         public void RejectChanges()
         {

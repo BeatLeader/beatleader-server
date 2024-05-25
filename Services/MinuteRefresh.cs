@@ -32,7 +32,9 @@ namespace BeatLeader_Server.Services
             do {
                 try {
                     await RefreshPrometheus();
-                } catch {}
+                } catch (Exception e) {
+                    Console.WriteLine($"EXCEPTION MinuteRefresh {e}");
+                }
 
                 await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
             }

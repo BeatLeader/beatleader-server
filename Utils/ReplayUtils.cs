@@ -443,6 +443,22 @@ namespace BeatLeader_Server.Utils
             return result;
         }
 
+        public static ScoreContextExtension SpeedrunContextExtension(Score score) {
+            return new ScoreContextExtension {
+                Context = LeaderboardContexts.Speedrun,
+                BaseScore = score.BaseScore,
+                ModifiedScore = score.ModifiedScore,
+                Timeset = score.Timepost,
+                Modifiers = score.Modifiers,
+                Accuracy = score.Accuracy,
+                Pp = score.Pp,
+                AccPP = score.AccPP,
+                TechPP = score.TechPP,
+                PassPP = score.PassPP,
+                Qualification = score.Qualification
+            };
+        }
+
         public static HMD HMDFromName(string hmdName) {
             string lowerHmd = hmdName.ToLower();
 
