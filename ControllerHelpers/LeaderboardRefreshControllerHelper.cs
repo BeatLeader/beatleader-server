@@ -38,10 +38,10 @@ namespace BeatLeader_Server.ControllerHelpers {
                         leaderboardContext == LeaderboardContexts.General 
                         ? lb.Scores
                             .Where(s => !s.Banned && s.ValidContexts.HasFlag(leaderboardContext))
-                            .Select(s => new { s.Id, s.Pp, s.Accuracy, s.ModifiedScore, Timeset = s.Timepost, s.Priority })
+                            .Select(s => new { s.Id, s.Pp, s.Accuracy, s.ModifiedScore, s.Timepost, s.Priority })
                         : lb.ContextExtensions
                             .Where(s => !s.Banned && s.Context == leaderboardContext)
-                            .Select(s => new { s.Id, s.Pp, s.Accuracy, s.ModifiedScore, s.Timeset, s.Priority })
+                            .Select(s => new { s.Id, s.Pp, s.Accuracy, s.ModifiedScore, s.Timepost, s.Priority })
                 })
                 .ToArrayAsync();
 
@@ -54,14 +54,14 @@ namespace BeatLeader_Server.ControllerHelpers {
                             .Scores
                             .OrderByDescending(el => Math.Round(el.Pp, 2))
                             .ThenByDescending(el => Math.Round(el.Accuracy, 4))
-                            .ThenBy(el => el.Timeset)
+                            .ThenBy(el => el.Timepost)
                             .ToList()
                         : leaderboard
                             .Scores
                             .OrderBy(el => el.Priority)
                             .ThenByDescending(el => el.ModifiedScore)
                             .ThenByDescending(el => Math.Round(el.Accuracy, 4))
-                            .ThenBy(el => el.Timeset)
+                            .ThenBy(el => el.Timepost)
                             .ToList();
                     if (rankedScores.Count > 0)
                     {

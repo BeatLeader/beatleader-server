@@ -957,13 +957,13 @@ namespace BeatLeader_Server.Utils
 
             if (isRanked)
             {
-                playerScoreStats.LastRankedScoreTime = resultScore.Timeset;
+                playerScoreStats.LastRankedScoreTime = resultScore.Timepost;
             }
             else
             {
-                playerScoreStats.LastUnrankedScoreTime = resultScore.Timeset;
+                playerScoreStats.LastUnrankedScoreTime = resultScore.Timepost;
             }
-            playerScoreStats.LastScoreTime = resultScore.Timeset;
+            playerScoreStats.LastScoreTime = resultScore.Timepost;
         }
     }
 }

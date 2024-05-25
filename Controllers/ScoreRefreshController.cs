@@ -464,26 +464,26 @@ namespace BeatLeader_Server.Controllers
                             .OrderByDescending(el => Math.Round(el.Pp, 2))
                             .ThenBy(el => Math.Round(el.Accuracy, 4))
                             .ThenBy(el => el.ModifiedScore)
-                            .ThenBy(el => el.Timeset)
+                            .ThenBy(el => el.Timepost)
                             .ToList() 
                         : newScores
                             .OrderBy(el => el.Priority)
                             .ThenBy(el => Math.Round(el.Accuracy, 4))
                             .ThenBy(el => el.ModifiedScore)
-                            .ThenBy(el => el.Timeset)
+                            .ThenBy(el => el.Timepost)
                             .ToList();
                     } else {
                         rankedScores = hasPp 
                         ? newScores
                             .OrderByDescending(el => Math.Round(el.Pp, 2))
                             .ThenByDescending(el => Math.Round(el.Accuracy, 4))
-                            .ThenBy(el => el.Timeset)
+                            .ThenBy(el => el.Timepost)
                             .ToList() 
                         : newScores
                             .OrderBy(el => el.Priority)
                             .ThenByDescending(el => el.ModifiedScore)
                             .ThenByDescending(el => Math.Round(el.Accuracy, 4))
-                            .ThenBy(el => el.Timeset)
+                            .ThenBy(el => el.Timepost)
                             .ToList();
                     }
                     foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
@@ -519,7 +519,7 @@ namespace BeatLeader_Server.Controllers
             var allLeaderboards = await _context.Leaderboards
                 .Select(lb => new {
                     lb.Difficulty,
-                    Scores = lb.ContextExtensions.Where(s => s.Context == leaderboardContext).Select(s => new { s.Id, s.Pp, s.Accuracy, s.Timeset, s.ModifiedScore })
+                    Scores = lb.ContextExtensions.Where(s => s.Context == leaderboardContext).Select(s => new { s.Id, s.Pp, s.Accuracy, s.Timepost, s.ModifiedScore })
                 }).ToListAsync();
                 await allLeaderboards.ParallelForEachAsync(async leaderboard => {
                     var allScores = leaderboard.Scores.ToList();
@@ -530,7 +530,7 @@ namespace BeatLeader_Server.Controllers
 
                     foreach (var s in allScores)
                     {
-                        var score = new ScoreContextExtension() { Id = s.Id, Pp = s.Pp, Accuracy = s.Accuracy, Timeset = s.Timeset, ModifiedScore = s.ModifiedScore };
+                        var score = new ScoreContextExtension() { Id = s.Id, Pp = s.Pp, Accuracy = s.Accuracy, Timepost = s.Timepost, ModifiedScore = s.ModifiedScore };
                         try {
                             _context.ScoreContextExtensions.Attach(score);
                         } catch { }
@@ -546,21 +546,21 @@ namespace BeatLeader_Server.Controllers
                         ? newScores
                             .OrderByDescending(el => Math.Round(el.Pp, 2))
                             .ThenByDescending(el => Math.Round(el.Accuracy, 4))
-                            .ThenBy(el => el.Timeset).ToList() 
+                            .ThenBy(el => el.Timepost).ToList() 
                         : newScores
                             .OrderByDescending(el => el.ModifiedScore)
                             .ThenByDescending(el => Math.Round(el.Accuracy, 4))
-                            .ThenBy(el => el.Timeset).ToList();
+                            .ThenBy(el => el.Timepost).ToList();
                     } else {
                         rankedScores = hasPp 
                         ? newScores
                             .OrderByDescending(el => Math.Round(el.Pp, 2))
                             .ThenBy(el => Math.Round(el.Accuracy, 4))
-                            .ThenBy(el => el.Timeset).ToList() 
+                            .ThenBy(el => el.Timepost).ToList() 
                         : newScores
                             .OrderBy(el => el.ModifiedScore)
                             .ThenBy(el => Math.Round(el.Accuracy, 4))
-                            .ThenBy(el => el.Timeset).ToList();
+                            .ThenBy(el => el.Timepost).ToList();
                     }
                     foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
                     {

@@ -401,6 +401,7 @@ namespace BeatLeader_Server {
             services.AddHostedService<OauthService>();
 
             services.AddSingleton<RTNominationsForum>();
+            services.AddSingleton<SpeedrunService>();
 
             services.AddMvc ().AddControllersAsServices ().AddJsonOptions (options => {
                 options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
@@ -544,6 +545,8 @@ namespace BeatLeader_Server {
                 c.SwaggerEndpoint("/swagger/blapifull/swagger.json", "Full(Undocumented) BL API v1");
                 c.RoutePrefix = "swagger";
             });
+
+            app.ApplicationServices.GetService<SpeedrunService>()?.Start();
         }
     }
 }

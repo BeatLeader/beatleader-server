@@ -5,7 +5,7 @@ using BeatLeader_Server.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace BeatLeader_Server.Services {
-    public class SpeedrunService : BackgroundService {
+    public class SpeedrunService {
         private Dictionary<string, Timer> _timers = new Dictionary<string, Timer>();
         private readonly IServiceScopeFactory _serviceScopeFactory;
 
@@ -14,13 +14,13 @@ namespace BeatLeader_Server.Services {
             _serviceScopeFactory = scopeFactory;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
+        public void Start() {
             using (var scope = _serviceScopeFactory.CreateScope())
             {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
                 var timeset = Time.UnixNow();
 
-                var lastSpeedrun = _context.Speedruns.OrderByDescending(s => s.FinishTimeset).FirstOrDefault()?.FinishTimeset ?? 0;
+                var lastSpeedrun = _context.Speedruns.OrderByDescending(s => s.FinishTimeset).FirstOrDefault()?.FinishTimeset ?? Time.UnixNow();
 
                 var speedrunners = _context.Players.Where(p => p.SpeedrunStart > lastSpeedrun - 60 * 60).Select(p => new { p.SpeedrunStart, p.Id }).ToList();
                 foreach (var item in speedrunners) {

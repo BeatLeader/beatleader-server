@@ -102,6 +102,7 @@ namespace BeatLeader_Server.Controllers
 
                     ExternalProfileUrl = player.ExternalProfileUrl,
                     RichBioTimeset = player.RichBioTimeset,
+                    SpeedrunStart = player.SpeedrunStart,
 
                     Badges = player.Badges,
                     Changes = player.Changes,

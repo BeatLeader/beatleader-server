@@ -494,8 +494,28 @@ namespace BeatLeader_Server.Controllers
                 player.ScoreStats = new PlayerScoreStats();
             }
             resultScore.Player = player;
-
             resultScore.Banned = player.Bot;
+
+            if (leaderboard.Difficulty.Status == DifficultyStatus.ranked && 
+                player.SpeedrunStart > resultScore.Timepost - 60 * 60) {
+
+                var lastScore = await dbContext
+                    .Scores
+                    .Where(s => s.PlayerId == player.Id)
+                    .OrderByDescending(s => s.Timepost)
+                    .Select(s => new { s.Timepost })
+                    .FirstOrDefaultAsync();
+                var songDuration = await dbContext
+                    .Leaderboards
+                    .Where(l => l.Id == leaderboard.Id)
+                    .Select(l => new { l.Song.Duration })
+                    .FirstOrDefaultAsync();
+
+                if (lastScore == null || (songDuration != null && (resultScore.Timepost - lastScore.Timepost - songDuration.Duration / 2) > 0)) {
+                    resultScore.ContextExtensions.Add(ReplayUtils.SpeedrunContextExtension(resultScore));
+                }
+            }
+
             foreach (var ce in resultScore.ContextExtensions)
             {
                 ce.Banned = resultScore.Banned;
@@ -919,7 +939,7 @@ namespace BeatLeader_Server.Controllers
                     .OrderByDescending(el => Math.Round(el.Pp, 2))
                     .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                     .ThenByDescending(el => el.ModifiedScore)
-                    .ThenBy(el => el.Timeset)
+                    .ThenBy(el => el.Timepost)
                     .Select(s => new ScoreSelection() { Id = s.Id, Rank = s.Rank })
                     .ToListAsync();
                 } else {
@@ -929,7 +949,7 @@ namespace BeatLeader_Server.Controllers
                     .OrderByDescending(el => Math.Round(el.Pp, 2))
                     .ThenBy(el => Math.Round(el.Accuracy, 4))
                     .ThenBy(el => el.ModifiedScore)
-                    .ThenBy(el => el.Timeset)
+                    .ThenBy(el => el.Timepost)
                     .Select(s => new ScoreSelection() { Id = s.Id, Rank = s.Rank })
                     .ToListAsync();
                 }
@@ -941,7 +961,7 @@ namespace BeatLeader_Server.Controllers
                     .OrderBy(el => el.Priority)
                     .ThenByDescending(el => el.ModifiedScore)
                     .ThenByDescending(el => Math.Round(el.Accuracy, 4))
-                    .ThenBy(el => el.Timeset)
+                    .ThenBy(el => el.Timepost)
                     .Select(s => new ScoreSelection() { Id = s.Id, Rank = s.Rank })
                     .ToListAsync();
                 } else {
@@ -951,7 +971,7 @@ namespace BeatLeader_Server.Controllers
                     .OrderByDescending(el => el.Priority)
                     .ThenBy(el => el.ModifiedScore)
                     .ThenByDescending(el => Math.Round(el.Accuracy, 4))
-                    .ThenBy(el => el.Timeset)
+                    .ThenBy(el => el.Timepost)
                     .Select(s => new ScoreSelection() { Id = s.Id, Rank = s.Rank })
                     .ToListAsync();
                 }

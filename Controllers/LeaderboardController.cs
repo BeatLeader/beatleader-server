@@ -444,7 +444,7 @@ namespace BeatLeader_Server.Controllers {
 
             switch (sortBy) {
                 case LeaderboardSortBy.Date:
-                    scoreQuery = scoreQuery.Order(order, s => s.Timeset).ThenOrder(oppositeOrder, s => s.Rank);
+                    scoreQuery = scoreQuery.Order(order, s => s.Timepost).ThenOrder(oppositeOrder, s => s.Rank);
                     break;
                 case LeaderboardSortBy.Pp:
                     scoreQuery = scoreQuery.Order(order, s => s.Pp).ThenOrder(oppositeOrder, s => s.Rank);
