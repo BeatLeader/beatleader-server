@@ -7,44 +7,48 @@ public class PlayerMetadata
 {
     public string Id { get; set; }
 
-    public List<string> Names { get; set; } = new();
+    public string Name { get; set; }
 
     public float Score { get; set; }
 
-    public static explicit operator PlayerMetadata(Player player)
-    {
-        PlayerMetadata playerMetadata = new()
-        {
-            Id = player.Id.ToLower(),
-            Names = { player.Name.ToLower() },
+    public static List<PlayerMetadata> GetPlayerMetadata(Player player) {
+        var result = new List<PlayerMetadata> {
+            new PlayerMetadata
+            {
+                Id = player.Id.ToLower(),
+                Name = player.Name.Replace(" ", "").ToLower()
+            }
         };
-
         if (player.Changes != null)
         {
+            int changeIndex = 0;
             foreach (PlayerChange change in player.Changes)
             {
                 if (change.NewName != null)
                 {
-                    playerMetadata.Names.Add(change.NewName.ToLower());
+                    result.Add(new PlayerMetadata
+                    {
+                        Id = player.Id.ToLower() + "_change_" + changeIndex,
+                        Name = change.NewName.Replace(" ", "").ToLower()
+                    });
+                    changeIndex++;
                 }
             }
         }
-
-        return playerMetadata;
+        return result;
     }
 
-    // null char is the only one that i could think of that players wouldnt have in their name
     public static explicit operator PlayerMetadata(Document doc) =>
         new()
         {
-            Id = doc.Get(nameof(Id)),
-            Names = doc.Get(nameof(Names)).Split('\0').ToList(),
+            Id = doc.Get(nameof(Id)).Split("_").First(),
+            Name = doc.Get(nameof(Name)),
         };
 
     public static explicit operator Document(PlayerMetadata playerMetadata) =>
         new()
         {
             new StringField(nameof(Id), playerMetadata.Id, Field.Store.YES),
-            new TextField(nameof(Names), string.Join('\0', playerMetadata.Names), Field.Store.YES),
+            new TextField(nameof(Name), playerMetadata.Name, Field.Store.YES),
         };
 }

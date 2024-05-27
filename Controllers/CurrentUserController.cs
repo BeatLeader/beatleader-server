@@ -407,8 +407,6 @@ namespace BeatLeader_Server.Controllers {
 
                         player.Name = name;
                         newChange.NewName = name;
-
-                        PlayerSearchService.PlayerChangedName(player);
                     }
                 }
 
@@ -442,6 +440,7 @@ namespace BeatLeader_Server.Controllers {
 
                 if (player.Country != newChange.OldCountry || player.Name != newChange.OldName) {
                     player.Changes.Add(newChange);
+                    PlayerSearchService.PlayerChangedName(player);
                 }
             }
 

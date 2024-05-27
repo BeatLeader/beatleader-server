@@ -392,7 +392,6 @@ namespace BeatLeader_Server {
                     services.AddHostedService<RankingService>();
                 }
             }
-            services.AddHostedService<SpeedrunService>();
             services.AddHostedService<ConstantsService>();
             services.AddHostedService<RefreshTaskService>();
             services.AddHostedService<MinuteRefresh>();

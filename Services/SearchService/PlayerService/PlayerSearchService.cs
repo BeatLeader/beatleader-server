@@ -25,9 +25,11 @@ public static class PlayerSearchService
             IndexWriterConfig config = new(LuceneVersion, analyzer);
             using IndexWriter writer = new(Directory, config);
 
-            foreach (PlayerMetadata playerMetadata in players)
+            foreach (Player player in players)
             {
-                AddToLuceneIndex(playerMetadata, writer);
+                foreach (var playerMetadata in PlayerMetadata.GetPlayerMetadata(player)) {
+                    AddToLuceneIndex(playerMetadata, writer);
+                }
             }
 
             writer.Commit();
@@ -42,7 +44,9 @@ public static class PlayerSearchService
             IndexWriterConfig config = new(LuceneVersion, analyzer);
             using IndexWriter writer = new(Directory, config);
 
-            AddToLuceneIndex((PlayerMetadata)player, writer);
+            foreach (var playerMetadata in PlayerMetadata.GetPlayerMetadata(player)) {
+                AddToLuceneIndex(playerMetadata, writer);
+            }
 
             writer.Commit();
         }
@@ -50,26 +54,7 @@ public static class PlayerSearchService
 
     public static void PlayerChangedName(Player player)
     {
-        lock (Directory)
-        {
-            using CustomAnalyzer analyzer = new(LuceneVersion);
-            IndexWriterConfig config = new(LuceneVersion, analyzer);
-            using IndexWriter writer = new(Directory, config);
-
-            using DirectoryReader directoryReader = DirectoryReader.Open(Directory);
-            IndexSearcher searcher = new(directoryReader);
-
-            Term playerMetadataTerm = new(nameof(PlayerMetadata.Id), player.Id);
-            TermQuery searchQuery = new(playerMetadataTerm);
-
-            TopFieldDocs topFieldDocs = searcher.Search(searchQuery, null, HitsLimit, Sort.RELEVANCE);
-
-            PlayerMetadata playerMetadata = (PlayerMetadata)searcher.Doc(topFieldDocs.ScoreDocs[0].Doc);
-            playerMetadata.Names.Add(player.Name);
-
-            writer.UpdateDocument(playerMetadataTerm, (Document)playerMetadata);
-            writer.Commit();
-        }
+        AddNewPlayer(player);
     }
 
     public static List<PlayerMetadata> Search(string searchQuery)
@@ -82,10 +67,19 @@ public static class PlayerSearchService
         using DirectoryReader directoryReader = DirectoryReader.Open(Directory);
         IndexSearcher searcher = new(directoryReader);
 
-        Query query = GetQuery(searchQuery);
+        Query query = GetQuery(searchQuery.Replace(" ", ""));
 
         TopFieldDocs topFieldDocs = searcher.Search(query, null, HitsLimit, Sort.RELEVANCE, true, false);
         ScoreDoc[] hits = topFieldDocs.ScoreDocs;
+
+        var test = hits.Select(scoreDoc =>
+        {
+            PlayerMetadata result = (PlayerMetadata)searcher.Doc(scoreDoc.Doc);
+            result.Score = scoreDoc.Score;
+
+            return result;
+        })
+        .ToList();
 
         return hits.Select(scoreDoc =>
         {
@@ -93,20 +87,24 @@ public static class PlayerSearchService
             result.Score = scoreDoc.Score;
 
             return result;
-        }).ToList();
+        })
+        .ToList()
+        .GroupBy(h => h.Id)
+        .Select(g => g.OrderByDescending(h => h.Score).First())
+        .ToList();
     }
 
     private static Query GetQuery(string searchQuery)
     {
         searchQuery = searchQuery.ToLower();
 
-        Term namesTerm = new(nameof(PlayerMetadata.Names), searchQuery);
+        Term namesTerm = new(nameof(PlayerMetadata.Name), searchQuery);
 
         Query prefixQuery = new PrefixQuery(namesTerm);
         Query fuzzyPrefix = new FuzzyQuery(namesTerm, 2, searchQuery.Length);
         Query hardFuzzyQuery = new FuzzyQuery(namesTerm, 2, 3);
         Query softFuzzyQuery = new SlowFuzzyQuery(namesTerm, 0.7f);
-        Query wildcardQuery = new WildcardQuery(new Term(nameof(PlayerMetadata.Names), "*" + searchQuery + "*"));
+        Query wildcardQuery = new WildcardQuery(new Term(nameof(PlayerMetadata.Name), "*" + searchQuery + "*"));
 
         Query fuzzyPrefixBoost = new BoostingQuery(prefixQuery, fuzzyPrefix, 2);
         Query hardFuzzyPrefixBoost = new BoostingQuery(fuzzyPrefixBoost, hardFuzzyQuery, 2);
@@ -119,16 +117,6 @@ public static class PlayerSearchService
             { softFuzzyQuery, Occur.SHOULD },
             { wildcardQuery, Occur.SHOULD },
         };
-
-        if (searchQuery.Contains(' ') || searchQuery.Contains('_') || searchQuery.Contains('-'))
-        {
-            string[] words = searchQuery.Split(' ', '_', '-');
-
-            FuzzyLikeThisQuery fuzzyWordsQuery = new(words.Length, new CustomAnalyzer(LuceneVersion));
-            fuzzyWordsQuery.AddTerms(searchQuery, nameof(PlayerMetadata.Names), 0.6f, 1);
-
-            booleanQuery.Add(fuzzyWordsQuery, Occur.SHOULD);
-        }
 
         return booleanQuery;
     }
