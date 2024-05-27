@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Swashbuckle.AspNetCore.Annotations;
+using System.Linq.Expressions;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers {
@@ -80,13 +81,20 @@ namespace BeatLeader_Server.Controllers {
 
                 sequence = await sequence.Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
 
+                var friendsList = new List<string> { player.Id };
                 if (friends != null) {
-                    var friendsList = friends.Friends.Select(f => f.Id).ToList();
-                    var json = JsonConvert.SerializeObject(friendsList);
-                    sequence = sequence.Where(s => s.PlayerId == player.Id || friendsList.Contains(s.PlayerId));
-                } else {
-                    sequence = sequence.Where(s => s.PlayerId == player.Id);
+                    friendsList.AddRange(friends.Friends.Select(f => f.Id));
                 }
+
+                var score = Expression.Parameter(typeof(IScore), "s");
+
+                // 1 != 2 is here to trigger `OrElse` further the line.
+                var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
+                foreach (var term in friendsList)
+                {
+                    exp = Expression.OrElse(exp, Expression.Equal(Expression.Property(score, "PlayerId"), Expression.Constant(term)));
+                }
+                sequence = sequence.Where((Expression<Func<IScore, bool>>)Expression.Lambda(exp, score));
             }
 
             var scoreIds = leaderboardContext == LeaderboardContexts.General 

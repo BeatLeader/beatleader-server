@@ -20,13 +20,11 @@ namespace BeatLeader_Server.Services {
         public static async Task AddJob(PlayerStatsJob job, AppContext _context, IAmazonS3 _s3Client) {
             var score = job.score;
 
-            var leaderboard = await _context.Leaderboards.Where(l => l.Id == job.leaderboardId).Include(lb => lb.PlayerStats).FirstOrDefaultAsync();
+            var leaderboard = await _context.Leaderboards.Where(l => l.Id == job.leaderboardId).FirstOrDefaultAsync();
+            if (leaderboard == null) return;
+
             var playerRole = await _context.Players.Where(p => p.Id == job.playerId).Select(p => p.Role).FirstOrDefaultAsync();
             var anySupporter = Player.RoleIsAnySupporter(playerRole ?? "");
-
-            if (leaderboard.PlayerStats == null) {
-                leaderboard.PlayerStats = new List<PlayerLeaderboardStats>();
-            }
 
             leaderboard.PlayCount++;
 
@@ -50,8 +48,10 @@ namespace BeatLeader_Server.Services {
                 Score = score.BaseScore,
                 Type = job.type,
                 PlayerId = job.playerId,
-                Replay = replayLink
+                Replay = replayLink,
+                LeaderboardId = leaderboard.Id
             };
+
             if (job.leaderboardId != null) {
                 stats.LeaderboardId = job.leaderboardId;
             }
@@ -71,8 +71,7 @@ namespace BeatLeader_Server.Services {
             if (float.IsNaN(stats.Accuracy) || float.IsNegativeInfinity(stats.Accuracy) || float.IsPositiveInfinity(stats.Accuracy)) {
                 stats.Accuracy = 0;
             }
-
-            leaderboard.PlayerStats.Add(stats);
+            _context.PlayerLeaderboardStats.Add(stats);
 
             try {
                 await _context.SaveChangesAsync();
