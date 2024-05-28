@@ -1,5 +1,4 @@
-﻿using BeatLeader_Server.Controllers;
-using BeatLeader_Server.Utils;
+﻿using BeatLeader_Server.Utils;
 using Discord;
 using Discord.Rest;
 using Discord.WebSocket;
@@ -13,6 +12,7 @@ namespace BeatLeader_Server.Bot
 
         public const ulong BLServerID = 921820046345523311;
         public const ulong BLBoosterRoleID = 934229583325175809;
+        public const ulong BLWelcomeChannelID = 1042959852261089301;
         public static DiscordSocketClient Client { get; private set; } = new();
 
         public BotService(IServiceScopeFactory serviceScopeFactory, IConfiguration configuration)
@@ -27,19 +27,20 @@ namespace BeatLeader_Server.Bot
             await Client.StartAsync();
 
             Client.ReactionAdded += OnReactionAdded;
-
-            Client.UserUpdated += OnUserUpdated;
+            Client.MessageReceived += OnNewMessage;
 
             await Task.Delay(-1, stoppingToken);
 
             await Client.StopAsync();
         }
 
-        private async Task OnUserUpdated(SocketUser oldUser, SocketUser newUser) {
+        private async Task OnNewMessage(SocketMessage message) {
+            if (message.Type != MessageType.UserPremiumGuildSubscription) return;
+
             using (var scope = _serviceScopeFactory.CreateScope())
             {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
-                await PlayerUtils.UpdateBoosterRole(_context, newUser.Id);
+                await PlayerUtils.UpdateBoosterRole(_context, message.Author.Id);
             }
         }
 
@@ -48,21 +49,16 @@ namespace BeatLeader_Server.Bot
 
 
         private async Task OnReactionAdded(Cacheable<IUserMessage, ulong> message, Cacheable<IMessageChannel, ulong> channel, SocketReaction reaction)
-        {
-            using (var scope = _serviceScopeFactory.CreateScope())
-            {
-                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
-
-                SocketThreadChannel? thread;
-                if ((thread = await channel.GetOrDownloadAsync() as SocketThreadChannel) != null) {
-                    if (ReviewHubForumID == thread.ParentChannel.Id) {
-                        ulong? userId = reaction.User.GetValueOrDefault()?.Id;
-                        if (userId != null) {
-                            var user = await ((IGuild)BotService.Client.GetGuild(BotService.BLServerID)).GetUserAsync(userId ?? 0, CacheMode.AllowDownload);
-                            if (!user.RoleIds.Contains(NQTRoleId)) {
-                                var fullmessage = await thread.GetMessageAsync(message.Id);
-                                await fullmessage.RemoveReactionAsync(reaction.Emote, user);
-                            }
+        {   
+            SocketThreadChannel? thread;
+            if ((thread = await channel.GetOrDownloadAsync() as SocketThreadChannel) != null) {
+                if (ReviewHubForumID == thread.ParentChannel.Id) {
+                    ulong? userId = reaction.User.GetValueOrDefault()?.Id;
+                    if (userId != null) {
+                        var user = await ((IGuild)BotService.Client.GetGuild(BotService.BLServerID)).GetUserAsync(userId ?? 0, CacheMode.AllowDownload);
+                        if (!user.RoleIds.Contains(NQTRoleId)) {
+                            var fullmessage = await thread.GetMessageAsync(message.Id);
+                            await fullmessage.RemoveReactionAsync(reaction.Emote, user);
                         }
                     }
                 }
