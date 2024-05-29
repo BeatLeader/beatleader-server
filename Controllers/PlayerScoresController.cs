@@ -776,6 +776,85 @@ namespace BeatLeader_Server.Controllers {
             return result;
         }
 
+        [HttpGet("~/player/{id}/history/compact")]
+        [SwaggerOperation(Summary = "Retrieve player's statistic history in a compact form", Description = "Fetches a list of player's performance metrics subset. Use the main history endpoint for a full.")]
+        [SwaggerResponse(200, "History retrieved successfully")]
+        [SwaggerResponse(400, "Invalid request parameters")]
+        [SwaggerResponse(404, "No history saved for the given player ID")]
+        public async Task<ActionResult<ICollection<HistoryCompactResponse>>> GetCompactHistory(
+            [FromRoute, SwaggerParameter("Player's unique identifier")] string id, 
+            [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General, 
+            [FromQuery, SwaggerParameter("Amount of days to include")] int count = 50) {
+            id = await _context.PlayerIdToMain(id);
+            var result = await _context
+                    .PlayerScoreStatsHistory
+                    .AsNoTracking()
+                    .Where(p => p.PlayerId == id && p.Context == leaderboardContext)
+                    .TagWithCallSite()
+                    .OrderByDescending(s => s.Timestamp)
+                    .Take(count)
+                    .Select(h => new HistoryCompactResponse {
+                        Timestamp = h.Timestamp,
+
+                        Pp = h.Pp,
+                        Rank = h.Rank,
+                        CountryRank = h.CountryRank,
+
+                        AverageRankedAccuracy = h.AverageRankedAccuracy,
+                        AverageUnrankedAccuracy = h.AverageUnrankedAccuracy,
+                        AverageAccuracy = h.AverageAccuracy,
+
+                        MedianRankedAccuracy = h.MedianRankedAccuracy,
+                        MedianAccuracy = h.MedianAccuracy,
+
+                        RankedPlayCount = h.RankedPlayCount,
+                        UnrankedPlayCount = h.UnrankedPlayCount,
+                        TotalPlayCount = h.TotalPlayCount
+                    })
+                    .ToListAsync();
+            if (result.Count == 0) {
+                int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - 60 * 60 * 24;
+
+                HistoryCompactResponse? tempStatsHistory;
+
+                if (leaderboardContext == LeaderboardContexts.General || leaderboardContext == LeaderboardContexts.None) {
+                    tempStatsHistory = await _context
+                        .Players
+                        .AsNoTracking()
+                        .Where(p => p.Id == id)
+                        .Select(player => new HistoryCompactResponse {
+                            Rank = player.Rank, 
+                            Pp = player.Pp, 
+                            CountryRank = player.CountryRank
+                        })
+                        .FirstOrDefaultAsync();
+                } else {
+                    tempStatsHistory = await _context
+                        .PlayerContextExtensions
+                        .Where(p => p.PlayerId == id && p.Context == leaderboardContext)
+                        .Select(player => new HistoryCompactResponse {
+                            Rank = player.Rank, 
+                            Pp = player.Pp, 
+                            CountryRank = player.CountryRank
+                        })
+                        .FirstOrDefaultAsync();
+                }
+                
+                if (tempStatsHistory == null) {
+                    tempStatsHistory = new HistoryCompactResponse {
+                        Rank = 0, 
+                        Pp = 0, 
+                        CountryRank = 0
+                    };
+                }
+
+                tempStatsHistory.Timestamp = timeset;
+                result = new List<HistoryCompactResponse> { tempStatsHistory };
+            }
+
+            return result;
+        }
+
         [HttpGet("~/player/{id}/pinnedScores")]
         [SwaggerOperation(Summary = "Retrieve player's pinned scores", Description = "Fetches a paginated list of scores pinned by player for their ID.")]
         [SwaggerResponse(200, "Scores retrieved successfully")]
