@@ -719,7 +719,7 @@ namespace BeatLeader_Server.Controllers
                 currentScore.ValidContexts &= ~LeaderboardContexts.General;
                 resultScore.PlayCount = currentScore.PlayCount;
             } else {
-                resultScore.PlayCount = await dbContext.PlayerLeaderboardStats.Where(st => st.PlayerId == player.Id && st.LeaderboardId == leaderboard.Id).CountAsync();
+                resultScore.PlayCount = await dbContext.PlayerLeaderboardStats.Where(st => st.PlayerIdCopy == player.Id && st.LeaderboardId == leaderboard.Id).CountAsync();
             }
 
             resultScore.ValidContexts |= LeaderboardContexts.General;
@@ -1395,7 +1395,7 @@ namespace BeatLeader_Server.Controllers
         private async Task MigrateOldReplay(AppContext dbContext, Score score, string leaderboardId) {
             if (score.Replay == null) return;
             var stats = await dbContext.PlayerLeaderboardStats
-                .Where(s => s.LeaderboardId == leaderboardId && s.Score == score.BaseScore && s.PlayerId == score.PlayerId && (s.Replay == null || s.Replay == score.Replay))
+                .Where(s => s.LeaderboardId == leaderboardId && s.Score == score.BaseScore && s.PlayerIdCopy == score.PlayerId && (s.ReplayCopy == null || s.ReplayCopy == score.Replay))
                 .FirstOrDefaultAsync();
             
             string? name = score.Replay.Split("/").LastOrDefault();
@@ -1418,7 +1418,7 @@ namespace BeatLeader_Server.Controllers
 
             if (uploaded) {
                 if (stats != null) {
-                    stats.Replay = "https://api.beatleader.xyz/otherreplays/" + fileName;
+                    stats.ReplayCopy = "https://api.beatleader.xyz/otherreplays/" + fileName;
                 } else {
                      LeaderboardPlayerStatsService.AddJob(new PlayerStatsJob {
                         fileName = "https://api.beatleader.xyz/otherreplays/" + fileName,
@@ -1499,14 +1499,21 @@ namespace BeatLeader_Server.Controllers
                                 s.Rank <= 4 &&
                                 s.PlayerId != player.Id &&
                                 s.Context == ce.Context)
+                            .AsNoTracking()
                             .Select(s => new {
                                 s.Rank,
-                                s.Player.ContextExtensions.Where(ce => ce.Context == ce.Context).FirstOrDefault().ScoreStats
+                                s.PlayerId
                             })
                             .ToListAsync();
                         foreach (var score in scores) {
-                            if (score.ScoreStats == null) continue;
-                            var scoreStats = score.ScoreStats;
+                            var scoreStats = await dbContext
+                                .PlayerContextExtensions
+                                .Where(pe => pe.PlayerId == score.PlayerId && pe.Context == ce.Context)
+                                .Include(p => p.ScoreStats)
+                                .Select(p => p.ScoreStats)
+                                .FirstOrDefaultAsync();
+
+                            if (scoreStats == null) continue;
                             if (score.Rank == 2) {
                                 if (ranked) {
                                     scoreStats.RankedTop1Count--;

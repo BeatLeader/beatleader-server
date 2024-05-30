@@ -75,7 +75,7 @@ namespace BeatLeader_Server.Controllers
                 sequence = _context
                     .PlayerLeaderboardStats
                     .Include(pl => pl.Leaderboard)
-                    .Where(t => t.PlayerId == id);
+                    .Where(t => t.PlayerIdCopy == id);
                 switch (sortBy)
                 {
                     case "date":
@@ -205,7 +205,7 @@ namespace BeatLeader_Server.Controllers
             return Ok(
                 await _context
                 .PlayerLeaderboardStats
-                .Where(s => s.PlayerId == playerId && s.LeaderboardId == leaderboardId)
+                .Where(s => s.PlayerIdCopy == playerId && s.LeaderboardId == leaderboardId)
                 .ToListAsync());
         }
 
@@ -213,8 +213,8 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<string>> GetOtherReplay(string name) {
             var stat = await _context
                 .PlayerLeaderboardStats
-                .Where(s => s.Replay == $"https://api.beatleader.xyz/otherreplays/{name}")
-                .Select(s => s.PlayerId)
+                .Where(s => s.ReplayCopy == $"https://api.beatleader.xyz/otherreplays/{name}")
+                .Select(s => s.PlayerIdCopy)
                 .FirstOrDefaultAsync();
             if (stat == null) {
                 return NotFound();

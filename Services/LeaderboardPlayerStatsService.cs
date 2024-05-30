@@ -48,7 +48,8 @@ namespace BeatLeader_Server.Services {
                 Score = score.BaseScore,
                 Type = job.type,
                 PlayerId = job.playerId,
-                Replay = replayLink,
+                PlayerIdCopy = job.playerId,
+                ReplayCopy = replayLink,
                 LeaderboardId = leaderboard.Id
             };
 

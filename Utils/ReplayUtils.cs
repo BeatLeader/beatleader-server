@@ -794,6 +794,13 @@ namespace BeatLeader_Server.Utils
             return result; 
         }
 
+        public static string SafeSubstring(this string text, int start, int length)
+        {
+            return text.Length <= start ? ""
+                : text.Length - start <= length ? text.Substring(start)
+                : text.Substring(start, length);
+        }
+
         public static string ReplayFilename(Replay replay, Score? score, bool temp = false) {
             string result = "";
             if (score != null) {
@@ -807,7 +814,7 @@ namespace BeatLeader_Server.Utils
                 result += "-fail";
             }
 
-            result += "-" + replay.info.difficulty + "-" + replay.info.mode + "-" + replay.info.hash;
+            result += "-" + replay.info.difficulty.SafeSubstring(0, 20) + "-" + replay.info.mode.SafeSubstring(0, 20) + "-" + replay.info.hash.SafeSubstring(0, 40);
 
             return result + (temp ? ".bsortemp" : ".bsor");  
         }
