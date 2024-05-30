@@ -1,5 +1,6 @@
 ﻿using Amazon.S3;
 using BeatLeader_Server.ControllerHelpers;
+using BeatLeader_Server.Enums;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
@@ -9,6 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReplayDecoder;
 using System.Dynamic;
+using System.Linq.Expressions;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -173,19 +175,46 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
         }
+
         [HttpGet("~/score/random")]
-        public async Task<ActionResult<ScoreResponseWithDifficulty>> GetRandomScore()
+        public async Task<ActionResult<ScoreResponseWithDifficulty>> GetRandomScore(
+            [FromQuery] RandomScoreSource scoreSource = RandomScoreSource.General)
         {
-            var offset = Random.Shared.Next(1, await _context.Scores.CountAsync());
-            var score = await _context
-                .Scores
+            IQueryable<Score> query = _context.Scores;
+            if (scoreSource == RandomScoreSource.Friends) {
+                string? userId = HttpContext.CurrentUserID(_context);
+                var friends = await _context
+                    .Friends
+                    .AsNoTracking()
+                    .Where(f => f.Id == userId)
+                    .Include(f => f.Friends)
+                    .FirstOrDefaultAsync();
+
+                var friendsList = new List<string> { userId };
+                if (friends != null) {
+                    friendsList.AddRange(friends.Friends.Select(f => f.Id));
+                }
+
+                var score = Expression.Parameter(typeof(Score), "s");
+
+                // 1 != 2 is here to trigger `OrElse` further the line.
+                var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
+                foreach (var term in friendsList)
+                {
+                    exp = Expression.OrElse(exp, Expression.Equal(Expression.Property(score, "PlayerId"), Expression.Constant(term)));
+                }
+                query = query.Where((Expression<Func<Score, bool>>)Expression.Lambda(exp, score));
+            }
+
+            var offset = Random.Shared.Next(1, await query.CountAsync());
+            var result = await query
                 .AsNoTracking()
                 .Skip(offset)
                 .Take(1)
                 .Select(s => s.Id)
                 .FirstAsync();
 
-            return await GetScore(score, false);
+            return await GetScore(result, false);
         }
 
         [HttpDelete("~/score/{id}")]

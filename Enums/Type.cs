@@ -24,3 +24,8 @@ public enum FollowerType {
     Followers,
     Following
 }
+
+public enum RandomScoreSource {
+    General,
+    Friends
+}

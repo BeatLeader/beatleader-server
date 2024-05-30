@@ -439,7 +439,7 @@ namespace BeatLeader_Server.Controllers
                 resultScore.Replay = await _s3Client.UploadReplay(ReplayUtils.ReplayFilename(replay, resultScore, true), replayData);
 
                 FailedScore failedScore = new FailedScore {
-                    Error = e.Message,
+                    Error = e.Message + (e.InnerException != null ? (" --- Inner: " + e.InnerException.Message) : ""),
                     Leaderboard = leaderboard,
                     PlayerId = resultScore.PlayerId,
                     Modifiers = resultScore.Modifiers,
