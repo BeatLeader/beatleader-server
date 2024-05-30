@@ -102,7 +102,7 @@ namespace BeatLeader_Server.Controllers {
                 : (await sequence.Skip((page - 1) * count).Take(count).Select(s => s.ScoreId).ToListAsync()).Where(id => id != null).Select(id => (int)id).ToList();
             IQueryable<IScore> filteredSequence = leaderboardContext == LeaderboardContexts.General 
                         ? _context.Scores.AsNoTracking().Where(s => scoreIds.Contains(s.Id))
-                        : _context.ScoreContextExtensions.AsNoTracking().Include(ce => ce.ScoreInstance).Where(s => s.ScoreId != null && scoreIds.Contains((int)s.ScoreId));
+                        : _context.ScoreContextExtensions.AsNoTracking().Include(ce => ce.ScoreInstance).Where(s => s.Context == leaderboardContext && s.ScoreId != null && scoreIds.Contains((int)s.ScoreId));
             var resultList = await filteredSequence
                     .Select(s => new ScoreResponseWithMyScore {
                         Id = s.ScoreId,
