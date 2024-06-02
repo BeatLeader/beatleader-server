@@ -1619,6 +1619,8 @@ namespace BeatLeader_Server.Controllers
                 List<OldPlayerStats> oldPlayerStats,
                 Leaderboard leaderboard) {
 
+            if (player.ScoreStats == null) return;
+
             if (!resultScore.IgnoreForStats && 
                 resultScore.ValidContexts.HasFlag(LeaderboardContexts.General) && 
                 resultScore.MaxStreak > player.ScoreStats.MaxStreak) {

@@ -183,27 +183,29 @@ namespace BeatLeader_Server.Controllers
             IQueryable<Score> query = _context.Scores;
             if (scoreSource == RandomScoreSource.Friends) {
                 string? userId = HttpContext.CurrentUserID(_context);
-                var friends = await _context
-                    .Friends
-                    .AsNoTracking()
-                    .Where(f => f.Id == userId)
-                    .Include(f => f.Friends)
-                    .FirstOrDefaultAsync();
+                if (userId != null) {
+                    var friends = await _context
+                        .Friends
+                        .AsNoTracking()
+                        .Where(f => f.Id == userId)
+                        .Include(f => f.Friends)
+                        .FirstOrDefaultAsync();
 
-                var friendsList = new List<string> { userId };
-                if (friends != null) {
-                    friendsList.AddRange(friends.Friends.Select(f => f.Id));
+                    var friendsList = new List<string> { userId };
+                    if (friends != null) {
+                        friendsList.AddRange(friends.Friends.Select(f => f.Id));
+                    }
+
+                    var score = Expression.Parameter(typeof(Score), "s");
+
+                    // 1 != 2 is here to trigger `OrElse` further the line.
+                    var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
+                    foreach (var term in friendsList)
+                    {
+                        exp = Expression.OrElse(exp, Expression.Equal(Expression.Property(score, "PlayerId"), Expression.Constant(term)));
+                    }
+                    query = query.Where((Expression<Func<Score, bool>>)Expression.Lambda(exp, score));
                 }
-
-                var score = Expression.Parameter(typeof(Score), "s");
-
-                // 1 != 2 is here to trigger `OrElse` further the line.
-                var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
-                foreach (var term in friendsList)
-                {
-                    exp = Expression.OrElse(exp, Expression.Equal(Expression.Property(score, "PlayerId"), Expression.Constant(term)));
-                }
-                query = query.Where((Expression<Func<Score, bool>>)Expression.Lambda(exp, score));
             }
 
             var offset = Random.Shared.Next(1, await query.CountAsync());

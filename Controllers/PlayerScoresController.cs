@@ -809,7 +809,11 @@ namespace BeatLeader_Server.Controllers {
 
                         RankedPlayCount = h.RankedPlayCount,
                         UnrankedPlayCount = h.UnrankedPlayCount,
-                        TotalPlayCount = h.TotalPlayCount
+                        TotalPlayCount = h.TotalPlayCount,
+
+                        RankedImprovementsCount = h.RankedImprovementsCount,
+                        UnrankedImprovementsCount = h.UnrankedImprovementsCount,
+                        TotalImprovementsCount = h.TotalImprovementsCount
                     })
                     .ToListAsync();
             if (result.Count == 0) {

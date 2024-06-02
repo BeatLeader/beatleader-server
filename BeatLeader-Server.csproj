@@ -54,32 +54,32 @@
     <PackageReference Include="AspNet.Security.OpenId.Steam" Version="8.0.0" />
     <PackageReference Include="AspNetCoreRateLimit" Version="5.0.0" />
     <PackageReference Include="AsyncEnumerator" Version="4.0.2" />
-    <PackageReference Include="AWSSDK.S3" Version="3.7.307.10" />
+    <PackageReference Include="AWSSDK.S3" Version="3.7.308.7" />
     <PackageReference Include="CoreHtmlToImage" Version="1.0.6" />
-    <PackageReference Include="Discord.Net.Webhook" Version="3.14.1" />
-    <PackageReference Include="Discord.Net.WebSocket" Version="3.14.1" />
+    <PackageReference Include="Discord.Net.Webhook" Version="3.15.0" />
+    <PackageReference Include="Discord.Net.WebSocket" Version="3.15.0" />
     <PackageReference Include="geohash-dotnet" Version="2.1.0" />
-    <PackageReference Include="Google.Apis.YouTube.v3" Version="1.67.0.3358" />
+    <PackageReference Include="Google.Apis.YouTube.v3" Version="1.68.0.3421" />
     <PackageReference Include="HtmlAgilityPack" Version="1.11.61" />
-    <PackageReference Include="HtmlSanitizer" Version="8.0.843" />
+    <PackageReference Include="HtmlSanitizer" Version="8.0.865" />
     <PackageReference Include="IP2Location.IPGeolocation" Version="9.0.2" />
     <PackageReference Include="Lib.AspNetCore.ServerTiming" Version="6.0.0" />
     <PackageReference Include="Lucene.Net" Version="4.8.0-beta00016" />
     <PackageReference Include="Lucene.Net.Analysis.Common" Version="4.8.0-beta00016" />
     <PackageReference Include="Lucene.Net.QueryParser" Version="4.8.0-beta00016" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="8.0.3" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.3">
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="8.0.6" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.6">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.3" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.3">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.6" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.6">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="OpenIddict.AspNetCore" Version="5.0.1" />
-    <PackageReference Include="OpenIddict.EntityFrameworkCore" Version="5.0.1" />
+    <PackageReference Include="OpenIddict.AspNetCore" Version="5.6.0" />
+    <PackageReference Include="OpenIddict.EntityFrameworkCore" Version="5.6.0" />
     <PackageReference Include="Prometheus.Client" Version="5.2.0" />
     <PackageReference Include="Prometheus.Client.Abstractions" Version="5.2.0" />
     <PackageReference Include="Prometheus.Client.AspNetCore" Version="5.0.0" />
@@ -88,14 +88,14 @@
     <PackageReference Include="Prometheus.Client.HttpRequestDurations" Version="3.6.0" />
     <PackageReference Include="Prometheus.Client.MetricPusher" Version="3.1.0" />
     <PackageReference Include="protobuf-net" Version="3.2.30" />
-    <PackageReference Include="PuppeteerSharp" Version="16.0.0" />
+    <PackageReference Include="PuppeteerSharp" Version="18.0.0" />
     <PackageReference Include="SharpZipLib" Version="1.4.2" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.3" />
-    <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.2" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.5.0" />
-    <PackageReference Include="System.Drawing.Common" Version="8.0.3" />
-    <PackageReference Include="Z.EntityFramework.Extensions.EFCore" Version="8.102.2.4" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.4" />
+    <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.3" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.6.2" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.6" />
+    <PackageReference Include="Z.EntityFramework.Extensions.EFCore" Version="8.102.2.5" />
   </ItemGroup>
 
   <ItemGroup>
