@@ -1514,7 +1514,7 @@ namespace BeatLeader_Server.Controllers {
                         NegativeVotes = lb.NegativeVotes,
                         VoteStars = lb.VoteStars,
                         StarVotes = lb.StarVotes,
-                        MyScore = currentID == null ? null : lb.Scores.Where(s => s.PlayerId == currentID && !s.Banned).Select(s => new ScoreResponseWithAcc {
+                        MyScore = currentID == null ? null : lb.Scores.Where(s => s.PlayerId == currentID && s.ValidContexts.HasFlag(leaderboardContext) && !s.Banned).Select(s => new ScoreResponseWithAcc {
                             Id = s.Id,
                             BaseScore = s.BaseScore,
                             ModifiedScore = s.ModifiedScore,
