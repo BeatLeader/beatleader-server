@@ -57,13 +57,15 @@ namespace BeatLeader_Server.ControllerHelpers {
                                 item.Stars = 0;
                             }
                         }
-                    } catch {
+                    } catch (Exception e) {
+                        Console.WriteLine($"ADD SONG EXCEPTION: {e.Message}");
                         dbContext.RejectChanges();
                     }
                     
                     try {
                         await dbContext.SaveChangesAsync();
-                    } catch {
+                    } catch (Exception e) {
+                        Console.WriteLine($"ADD SONG EXCEPTION: {e.Message}");
                         dbContext.RejectChanges();
                     }
                 }
@@ -128,6 +130,12 @@ namespace BeatLeader_Server.ControllerHelpers {
                 leaderboard.Timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
 
                 dbContext.Leaderboards.Add(leaderboard);
+                try {
+                    await dbContext.SaveChangesAsync();
+                } catch (Exception e) {
+                    Console.WriteLine($"ADD LEADERBOARD EXCEPTION: {e.Message}");
+                    dbContext.RejectChanges();
+                }
             }
 
             if (baseSong != null) {
@@ -155,7 +163,12 @@ namespace BeatLeader_Server.ControllerHelpers {
                 }
             }
 
-            await dbContext.SaveChangesAsync();
+            try {
+                await dbContext.SaveChangesAsync();
+            } catch (Exception e) {
+                Console.WriteLine($"ADD LEADERBOARD EXCEPTION: {e.Message}");
+                dbContext.RejectChanges();
+            }
 
             return leaderboard;
         }
@@ -190,7 +203,7 @@ namespace BeatLeader_Server.ControllerHelpers {
         {
             return await dbContext
                 .Songs
-                .Where(el => el.Hash == hash)
+                .Where(el => el.Hash.ToLower() == hash.ToLower())
                 .Include(song => song.Difficulties)
                 .ThenInclude(d => d.ModifierValues)
                 .Include(song => song.Difficulties)
