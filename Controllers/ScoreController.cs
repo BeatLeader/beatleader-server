@@ -871,7 +871,7 @@ namespace BeatLeader_Server.Controllers
             if (context == LeaderboardContexts.Golf) {
                 if (resultList.FirstOrDefault()?.Pp > 0) {
                     resultList = resultList
-                        .OrderBy(el => Math.Round(el.Pp, 2))
+                        .OrderByDescending(el => Math.Round(el.Pp, 2))
                         .ThenBy(el => Math.Round(el.Accuracy, 4))
                         .ThenBy(el => el.Timeset).ToList();
                 } else {
@@ -885,7 +885,7 @@ namespace BeatLeader_Server.Controllers
                 if (resultList.FirstOrDefault()?.Pp > 0) {
                     resultList = resultList
                             .OrderByDescending(el => Math.Round(el.Pp, 2))
-                            .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                            .ThenBy(el => Math.Round(el.Accuracy, 4))
                             .ThenBy(el => el.Timeset)
                             .ToList();
                 } else {
