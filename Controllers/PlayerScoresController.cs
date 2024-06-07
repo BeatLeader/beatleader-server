@@ -870,6 +870,14 @@ namespace BeatLeader_Server.Controllers {
 
             id = await _context.PlayerIdToMain(id);
 
+            var profileSettings = await _context
+                .Players
+                .AsNoTracking()
+                .Where(p => p.Id == id && p.ProfileSettings != null)
+                .Select(p => p.ProfileSettings)
+                .FirstOrDefaultAsync();
+            bool publicHistory = profileSettings?.ShowStatsPublicPinned ?? false;
+
             var query = _context
                     .Scores
                     .AsNoTracking()
@@ -909,7 +917,7 @@ namespace BeatLeader_Server.Controllers {
                         WallsHit = s.WallsHit,
                         Pauses = s.Pauses,
                         FullCombo = s.FullCombo,
-                        PlayCount = s.PlayCount,
+                        PlayCount = publicHistory ? s.PlayCount : 0,
                         Hmd = s.Hmd,
                         Controller = s.Controller,
                         MaxCombo = s.MaxCombo,
