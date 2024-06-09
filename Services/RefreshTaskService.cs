@@ -6,6 +6,7 @@ namespace BeatLeader_Server.Services
     public class MigrationJob {
         public string PlayerId { get; set; }
         public List<string> Leaderboards { get; set; }
+        public int Throttle { get; set; } = 0;
     }
 
     public class RefreshTaskService : BackgroundService {
@@ -22,6 +23,17 @@ namespace BeatLeader_Server.Services
         public static void AddJob(MigrationJob newJob) {
             lock (jobs) {
                 jobs.Add(newJob);
+            }
+        }
+
+        public static void ExtendJob(MigrationJob newJob) {
+            lock (jobs) {
+                var sheduled = jobs.FirstOrDefault(j => j.PlayerId == newJob.PlayerId);
+                if (sheduled != null) {
+                    sheduled.Leaderboards.AddRange(newJob.Leaderboards);
+                } else {
+                    jobs.Add(newJob);
+                }
             }
         }
 
@@ -47,10 +59,16 @@ namespace BeatLeader_Server.Services
             var jobsToProcess = new List<MigrationJob>();
 
             lock (jobs) {
+                var leftovers = new List<MigrationJob>();
                 foreach (var job in jobs) {
-                    jobsToProcess.Add(job);
+                    if (job.Throttle == 0) {
+                        jobsToProcess.Add(job);
+                    } else {
+                        job.Throttle--;
+                        leftovers.Add(job);
+                    }
                 }
-                jobs = new List<MigrationJob>();
+                jobs = leftovers;
             }
 
             using (var scope = _serviceScopeFactory.CreateScope()) {

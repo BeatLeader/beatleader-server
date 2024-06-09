@@ -3,6 +3,7 @@ using BeatLeader_Server.ControllerHelpers;
 using BeatLeader_Server.Enums;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Lib.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
@@ -233,12 +234,6 @@ namespace BeatLeader_Server.Controllers
                 .Scores
                 .Where(s => s.Id == id)
                 .Include(s => s.ContextExtensions)
-                .Include(s => s.Leaderboard)
-                .ThenInclude(l => l.Difficulty)
-                .Include(s => s.Leaderboard)
-                .ThenInclude(l => l.Scores)
-                .Include(s => s.Player)
-                .ThenInclude(p => p.ScoreStats)
                 .FirstOrDefaultAsync();
             if (score == null)
             {
@@ -251,83 +246,20 @@ namespace BeatLeader_Server.Controllers
                 Timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds
             };
             _context.ScoreRemovalLogs.Add(log);
-
-            var leaderboard = score.Leaderboard;
-
-            Player player = score.Player;
-
-            player.ScoreStats.TotalScore -= score.ModifiedScore;
-            if (player.ScoreStats.TotalPlayCount == 1)
-            {
-                player.ScoreStats.AverageAccuracy = 0.0f;
-            }
-            else
-            {
-                player.ScoreStats.AverageAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageAccuracy, player.ScoreStats.TotalPlayCount, score.Accuracy);
-            }
-
-            if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
-            {
-                if (player.ScoreStats.RankedPlayCount == 1)
-                {
-                    player.ScoreStats.AverageRankedAccuracy = 0.0f;
-                }
-                else
-                {
-                    player.ScoreStats.AverageRankedAccuracy = MathUtils.RemoveFromAverage(player.ScoreStats.AverageRankedAccuracy, player.ScoreStats.RankedPlayCount, score.Accuracy);
-                }
-            }
+            
             foreach (var extension in score.ContextExtensions) {
                 _context.ScoreContextExtensions.Remove(extension);
             }
-            try
-            {
-                leaderboard.Scores.Remove(score);
-            }
-            catch (Exception)
-            {
-                leaderboard.Scores = new List<Score>(leaderboard.Scores);
-                leaderboard.Scores.Remove(score);
-            }
+            _context.Scores.Remove(score);
 
             await SocketController.ScoreWasRejected(score, _context);
+            await _context.BulkSaveChangesAsync();
 
-            if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
-            {
-                player.ScoreStats.RankedPlayCount--;
-            }
-            player.ScoreStats.TotalPlayCount--;
-
-            var rankedScores = leaderboard.Scores.OrderByDescending(el => el.ModifiedScore).ToList();
-            foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
-            {
-                if (s.Rank != i + 1)
-                {
-                    s.Rank = i + 1;
-                }
-            }
-
-            _context.Leaderboards.Update(leaderboard);
-            _context.Players.Update(player);
-
-            leaderboard.Plays = rankedScores.Count;
-
-            await _context.SaveChangesAsync();
-            await _context.RecalculatePP(player);
-
-            var ranked = await _context.Players.OrderByDescending(t => t.Pp).ToListAsync();
-            var country = player.Country; var countryRank = 1;
-            foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
-            {
-                p.Rank = i + 1;
-                if (p.Country == country)
-                {
-                    p.CountryRank = countryRank;
-                    countryRank++;
-                }
-            }
-
-            await _context.SaveChangesAsync();
+            RefreshTaskService.ExtendJob(new MigrationJob {
+                PlayerId = score.PlayerId,
+                Leaderboards = new List<string> { score.LeaderboardId },
+                Throttle = 5
+            });
 
             return Ok();
         }
