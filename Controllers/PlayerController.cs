@@ -923,15 +923,9 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             id = await _context.PlayerIdToMain(id);
 
-            Player? currentPlayer = await _context.Players.FindAsync(currentID);
-            if (currentPlayer == null || (id != currentID && !currentPlayer.Role.Contains("admin")))
-            {
-                return Unauthorized();
-            }
-
             var allFollowersIds = await _context
                 .Friends
-                .Where(f => f.Friends.FirstOrDefault(p => p.Id == id) != null)
+                .Where(f => !f.HideFriends && f.Friends.FirstOrDefault(p => p.Id == id) != null)
                 .Select(f => f.Id)
                 .ToListAsync();
 
@@ -939,7 +933,7 @@ namespace BeatLeader_Server.Controllers
             foreach (var followerId in allFollowersIds) {
                 var followingOfFollowers = await _context
                     .Friends
-                    .Where(f => f.Id == followerId)
+                    .Where(f => !f.HideFriends && f.Id == followerId)
                     .Select(f => f.Friends.Select(ff => ff.Id))
                     .FirstOrDefaultAsync();
                 if (followingOfFollowers == null) continue;
@@ -957,7 +951,7 @@ namespace BeatLeader_Server.Controllers
 
             List<string> allFollowingIds = await _context
                 .Friends
-                .Where(f => f.Id == id)
+                .Where(f => (!f.HideFriends || currentID == id) && f.Id == id)
                 .Select(f => f.Friends.Select(f => f.Id).ToList())
                 .FirstOrDefaultAsync() ?? new List<string>();
 
@@ -999,22 +993,18 @@ namespace BeatLeader_Server.Controllers
             [FromQuery, SwaggerParameter("Relationship type: followers or following")] FollowerType type = FollowerType.Followers) {
 
             string? currentID = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = await _context.Players.FindAsync(currentID);
-            if (currentPlayer == null || (id != currentID && !currentPlayer.Role.Contains("admin")))
-            {
-                return Unauthorized();
-            }
+            id = await _context.PlayerIdToMain(id);
 
             switch (type) {
                 case FollowerType.Followers:
-                    var ids = await _context.Friends.Where(f => f.Friends.FirstOrDefault(p => p.Id == id) != null).Select(f => f.Id).ToListAsync();
+                    var ids = await _context.Friends.Where(f => !f.HideFriends && f.Friends.FirstOrDefault(p => p.Id == id) != null).Select(f => f.Id).ToListAsync();
                     return await _context.Players.Where(p => ids.Contains(p.Id)).Select(p => new PlayerFollower {
                         Id = p.Id,
                         Name = p.Name,
                         Avatar = p.Avatar
                     }).ToListAsync();
                 case FollowerType.Following:
-                    return await _context.Friends.Where(f => f.Id == id).Select(f => f.Friends.Select(p => new PlayerFollower {
+                    return await _context.Friends.Where(f => (!f.HideFriends || currentID == id) && f.Id == id).Select(f => f.Friends.Select(p => new PlayerFollower {
                         Id = p.Id,
                         Name = p.Name,
                         Avatar = p.Avatar
