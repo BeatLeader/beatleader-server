@@ -16,23 +16,23 @@ namespace BeatLeader_Server.Controllers {
         private readonly AppContext _context;
 
         IAmazonS3 _s3Client;
-        ScreenshotController _screenshotController;
+        IHttpClientFactory _httpClientFactory;
         IWebHostEnvironment _environment;
 
         public ClanAdminController(
             AppContext context,
             IWebHostEnvironment env,
-            ScreenshotController screenshotController,
+            IHttpClientFactory httpClientFactory,
             IConfiguration configuration)
         {
             _context = context;
-            _screenshotController = screenshotController;
+            _httpClientFactory = httpClientFactory;
             _environment = env;
             _s3Client = configuration.GetS3Client();
         }
 
         [HttpGet("~/clans/refreshglobalmap")]
-        public async Task<ActionResult<byte[]>> RefreshGlobalMap() {
+        public async Task<ActionResult<byte[]?>> RefreshGlobalMap() {
             if (HttpContext != null) {
                 string currentID = HttpContext.CurrentUserID(_context);
                 var currentPlayer = await _context.Players.FindAsync(currentID);
@@ -100,10 +100,20 @@ namespace BeatLeader_Server.Controllers {
                 ContractResolver = contractResolver
             })).ToStream());
 
-            var file = await _screenshotController.DownloadFileContent("general", "clansmap/save", new Dictionary<string, string> { });
-            await _s3Client.UploadAsset("clansmap-globalcache.json", file);
+            var client = _httpClientFactory.CreateClient();
+            string url = "https://render.beatleader.xyz/download/general/clansmap/save";
 
-            return file;
+            HttpResponseMessage response = await client.GetAsync(url);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            } else {
+                var file = await response.Content.ReadAsByteArrayAsync();
+                await _s3Client.UploadAsset("clansmap-globalcache.json", file);
+
+                return file;
+            }
         }
 
         public class SimulationCache {

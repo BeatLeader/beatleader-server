@@ -1,25 +1,57 @@
 ﻿
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using PuppeteerSharp;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Gif;
 using SixLabors.ImageSharp.PixelFormats;
 using System.Web;
 
-namespace BeatLeader_Server.Controllers
+namespace Renderer.Controllers
 {
     public class ScreenshotController : Controller
     {
         private static BrowserPool? browserPool;
         private readonly IConfiguration configuration;
         private readonly IWebHostEnvironment _webHostEnvironment;
+        private readonly IMemoryCache _memoryCache;
 
-        public ScreenshotController(IConfiguration configuration, IWebHostEnvironment webHostEnvironment)
+        public ScreenshotController(IConfiguration configuration, IWebHostEnvironment webHostEnvironment, IMemoryCache memoryCache)
         {
             this.configuration = configuration;
             _webHostEnvironment = webHostEnvironment;
+            _memoryCache = memoryCache;
             if (browserPool == null) {
                 browserPool = new BrowserPool(5);
+            }
+        }
+
+        [HttpGet("/prerender")]
+        public async Task<IActionResult> Prerender([FromQuery] string url)
+        {
+            if (string.IsNullOrEmpty(url))
+            {
+                return BadRequest("URL is required");
+            }
+
+            string cacheKey = $"prerender-{url}";
+            if (_memoryCache.TryGetValue(cacheKey, out string? cachedHtml))
+            {
+                return Content(cachedHtml ?? "", "text/html");
+            }
+
+            var browser = await browserPool?.GetBrowserAsync();
+
+            using (var page = await browser.NewPageAsync())
+            {
+                await page.GoToAsync(url, WaitUntilNavigation.Load);
+                await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None);
+                var html = await page.GetContentAsync();
+                _memoryCache.Set(cacheKey, html, TimeSpan.FromDays(1));
+
+                browserPool?.ReturnBrowser(browser);
+
+                return Content(html, "text/html");
             }
         }
 

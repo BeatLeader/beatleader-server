@@ -269,7 +269,6 @@ namespace BeatLeader_Server.Services
             using (var scope = _serviceScopeFactory.CreateScope()) {
                 try {
                     var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
-                    var _screenController = scope.ServiceProvider.GetRequiredService<ScreenshotController>();
                     var _clanController = scope.ServiceProvider.GetRequiredService<ClanAdminController>();
                     var s3 = _configuration.GetS3Client();
                     var blhook = _configuration.GetValue<string?>("ClanWarsHook");
@@ -336,11 +335,8 @@ namespace BeatLeader_Server.Services
                                 await AddCustomHooks(_context, hooks, job.Changes);
                                 foreach (var hook in hooks.Distinct())
                                 {
-                                    var gif = await _screenController.DownloadAnimatedScreenshot(620, 280, "general", $"clansmap/leaderboard/{job.Score.LeaderboardId}", new Dictionary<string, string> { });
-                                    string path = $"/root/assets/clansmap-change-{(int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds}-{job.Score.LeaderboardId}.gif";
-                                    File.WriteAllBytes(path, gif);
-                                    await ClanUtils.PostChangesWithScore(_context, stoppingToken, job.Changes, job.Score, path, hook);
-                                    File.Delete(path);
+                                    string url = $"https://render.beatleader.xyz/animatedscreenshot/620x280/clansmap-change-{(int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds}-{job.Score.LeaderboardId}/general/clansmap/leaderboard/{job.Score.LeaderboardId}";
+                                    await ClanUtils.PostChangesWithScore(_context, stoppingToken, job.Changes, job.Score, url, hook);
                                 }
                             }
 
