@@ -1677,6 +1677,9 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int?>("DeveloperProfileId")
                         .HasColumnType("int");
 
+                    b.Property<int>("Experience")
+                        .HasColumnType("int");
+
                     b.Property<string>("ExternalProfileUrl")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1691,6 +1694,9 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("real");
 
                     b.Property<int>("LastWeekRank")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Level")
                         .HasColumnType("int");
 
                     b.Property<int>("MapperId")
@@ -1715,6 +1721,9 @@ namespace BeatLeader_Server.Migrations
 
                     b.Property<float>("Pp")
                         .HasColumnType("real");
+
+                    b.Property<int>("Prestige")
+                        .HasColumnType("int");
 
                     b.Property<int?>("ProfileSettingsId")
                         .HasColumnType("int");
@@ -1821,6 +1830,9 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int>("CountryRank")
                         .HasColumnType("int");
 
+                    b.Property<int>("Experience")
+                        .HasColumnType("int");
+
                     b.Property<int>("LastWeekCountryRank")
                         .HasColumnType("int");
 
@@ -1828,6 +1840,9 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("real");
 
                     b.Property<int>("LastWeekRank")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Level")
                         .HasColumnType("int");
 
                     b.Property<float>("PassPp")
@@ -1839,6 +1854,9 @@ namespace BeatLeader_Server.Migrations
 
                     b.Property<float>("Pp")
                         .HasColumnType("real");
+
+                    b.Property<int>("Prestige")
+                        .HasColumnType("int");
 
                     b.Property<int>("Rank")
                         .HasColumnType("int");
@@ -2615,9 +2633,6 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("bit");
 
                     b.Property<bool>("ShowStatsPublic")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("ShowStatsPublicPinned")
                         .HasColumnType("bit");
 
                     b.Property<string>("StarredFriends")

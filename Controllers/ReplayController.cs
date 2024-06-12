@@ -282,6 +282,86 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
+            if(type != EndType.Practice)
+            {
+                var currentPlayer = await dbContext
+                .Players
+                .Where(s => s.Id == authenticatedPlayerID)
+                .FirstOrDefaultAsync();
+                if (currentPlayer != null)
+                {
+                    var gainedExp = 0;
+                    foreach (var note in replay.notes)
+                    {
+                        NoteParams param = new NoteParams(note.noteID);
+                        int scoreValue = ReplayStatistic.ScoreForNote(note, param.scoringType);
+                        var accuracy = 0;
+                        if (scoreValue > 0)
+                        {
+                            (int before, int after, accuracy) = ReplayStatistic.CutScoresForNote(note, param.scoringType);
+                        }
+                        switch (accuracy)
+                        {
+                            case 15:
+                                gainedExp += 30;
+                                break;
+                            case 14:
+                                gainedExp += 15;
+                                break;
+                            case 13:
+                                gainedExp += 10;
+                                break;
+                            case 12:
+                                gainedExp += 8;
+                                break;
+                            case 11:
+                                gainedExp += 6;
+                                break;
+                            case 10:
+                                gainedExp += 5;
+                                break;
+                            case 9:
+                                gainedExp += 4;
+                                break;
+                            case 8:
+                                gainedExp += 3;
+                                break;
+                            case 7:
+                                gainedExp += 3;
+                                break;
+                            case 6:
+                                gainedExp += 2;
+                                break;
+                            case 5:
+                                gainedExp += 2;
+                                break;
+                            case 4:
+                                gainedExp += 1;
+                                break;
+                            case 3:
+                                gainedExp += 1;
+                                break;
+                        }
+                    }
+                    if (type != EndType.Clear) gainedExp /= 2;
+                    currentPlayer.Experience += (gainedExp * (int)Math.Pow(2, currentPlayer.Prestige));
+                    currentPlayer.Level++;
+                    while (currentPlayer.Experience > 0)
+                    {
+                        var reqExp = 1000 * (currentPlayer.Level + 1);
+                        if (currentPlayer.Experience >= reqExp)
+                        {
+                            currentPlayer.Level++;
+                            currentPlayer.Experience -= reqExp;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+
             if (type != EndType.Unknown && type != EndType.Clear) {
                 int? forcetimeset = null;
                 if (timesetForce == 0) {
