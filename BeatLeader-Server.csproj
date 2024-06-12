@@ -16,6 +16,7 @@
     <Compile Remove="bs-simulator\ReplayDecoder\**" />
     <Compile Remove="bs-simulator\ReplayRecalculatorRunner\**" />
     <Compile Remove="bs-simulator\ReplayRecalculator\obj\**" />
+    <Compile Remove="Renderer\**" />
     <Compile Remove="ReplayDecoder\**" />
     <Content Remove="beatleader-parser\**" />
     <Content Remove="beatleader-server-models\**" />
@@ -23,6 +24,7 @@
     <Content Remove="bs-simulator\ReplayDecoder\**" />
     <Content Remove="bs-simulator\ReplayRecalculatorRunner\**" />
     <Content Remove="bs-simulator\ReplayRecalculator\obj\**" />
+    <Content Remove="Renderer\**" />
     <Content Remove="ReplayDecoder\**" />
     <EmbeddedResource Remove="beatleader-parser\**" />
     <EmbeddedResource Remove="beatleader-server-models\**" />
@@ -30,6 +32,7 @@
     <EmbeddedResource Remove="bs-simulator\ReplayDecoder\**" />
     <EmbeddedResource Remove="bs-simulator\ReplayRecalculatorRunner\**" />
     <EmbeddedResource Remove="bs-simulator\ReplayRecalculator\obj\**" />
+    <EmbeddedResource Remove="Renderer\**" />
     <EmbeddedResource Remove="ReplayDecoder\**" />
     <None Remove="beatleader-parser\**" />
     <None Remove="beatleader-server-models\**" />
@@ -41,6 +44,7 @@
     <Content Remove="BeatLeader-Server-Sockets\**" />
     <EmbeddedResource Remove="BeatLeader-Server-Sockets\**" />
     <None Remove="BeatLeader-Server-Sockets\**" />
+    <None Remove="Renderer\**" />
     <None Remove="ReplayDecoder\**" />
   </ItemGroup>
 

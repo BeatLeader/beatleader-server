@@ -46,6 +46,7 @@ public static partial class MapListUtils
                                                  float? techRatingTo = null,
                                                  int? dateFrom = null,
                                                  int? dateTo = null,
+                                                 int? mapper = null,
                                                  Player? currentPlayer = null) =>
         source.FilterBySearch(search,
                               _context,
@@ -73,6 +74,7 @@ public static partial class MapListUtils
               .WhereMode(mode)
               .WhereMapRequirements(mapRequirements, allRequirements)
               .WhereSongStatus(songStatus)
+              .WhereMapper(mapper)
               .WhereMyType(mytype, currentPlayer, leaderboardContext)
               .WhereRatingFrom(RatingType.Stars, starsFrom)
               .WhereRatingFrom(RatingType.Acc, accRatingFrom)

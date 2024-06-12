@@ -1409,6 +1409,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Maximum tech rating to filter leaderboards by")] float? techrating_to = null,
             [FromQuery, SwaggerParameter("Start date to filter leaderboards by (timestamp)")] int? date_from = null,
             [FromQuery, SwaggerParameter("End date to filter leaderboards by (timestamp)")] int? date_to = null,
+            [FromQuery, SwaggerParameter("Filter maps from a specific mapper. BeatSaver profile ID, default is null")] int? mapper = null,
             [FromQuery, SwaggerParameter("Override current user ID")] string? overrideCurrentId = null) {
 
             var dbContext = _dbFactory.CreateDbContext();
@@ -1425,7 +1426,7 @@ namespace BeatLeader_Server.Controllers {
                 return Ok(await LeaderboardControllerHelper.GetModList(dbContext, currentPlayer?.ProfileSettings?.ShowAllRatings ?? false, page, count, sortBy, order, date_from, date_to));
             }
 
-            var sequence = dbContext.Leaderboards.AsNoTracking().Filter(dbContext, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
+            var sequence = dbContext.Leaderboards.AsNoTracking().Filter(dbContext, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, mapper, currentPlayer);
 
             var result = new ResponseWithMetadata<LeaderboardInfoResponse>() {
                 Metadata = new Metadata() {
@@ -1606,7 +1607,8 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] float? techrating_from = null,
             [FromQuery] float? techrating_to = null,
             [FromQuery] int? date_from = null,
-            [FromQuery] int? date_to = null) {
+            [FromQuery] int? date_to = null,
+            [FromQuery] int? mapper = null) {
 
             var sequence = _context.Leaderboards.AsQueryable();
             string? currentID = HttpContext.CurrentUserID(_context);
@@ -1615,7 +1617,7 @@ namespace BeatLeader_Server.Controllers {
                 .Include(p => p.ProfileSettings)
                 .FirstOrDefaultAsync(p => p.Id == currentID) : null;
             sequence = sequence
-                .Filter(_context, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer);
+                .Filter(_context, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, mapper, currentPlayer);
 
             var nonuniqueids = await sequence.Select(lb => lb.SongId).ToListAsync();
             var ids = new List<string>();
@@ -1646,7 +1648,7 @@ namespace BeatLeader_Server.Controllers {
             }
 
             sequence = _context.Leaderboards
-                .Where(lb => ids.Contains(lb.SongId)).Filter(_context, out searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, currentPlayer)
+                .Where(lb => ids.Contains(lb.SongId)).Filter(_context, out searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, mapper, currentPlayer)
                 .Include(lb => lb.Difficulty)
                 .Include(lb => lb.Song);
 

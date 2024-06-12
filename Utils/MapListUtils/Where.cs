@@ -49,6 +49,16 @@ public static partial class MapListUtils
         return sequence.Where(leaderboard => leaderboard.Difficulty.Status != DifficultyStatus.outdated && leaderboard.Song.ExternalStatuses.FirstOrDefault(s => status.HasFlag(s.Status)) != null);
     }
 
+    private static IQueryable<Leaderboard> WhereMapper(this IQueryable<Leaderboard> sequence, int? mapper)
+    {
+        if (mapper == null)
+        {
+            return sequence;
+        }
+
+        return sequence.Where(leaderboard => leaderboard.Song.MapperId == mapper);
+    }
+
     private static IQueryable<Leaderboard> WhereMyType(this IQueryable<Leaderboard> sequence, MyType mytype, Player? currentPlayer, LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
     {
         int mapperId = 0;
