@@ -270,6 +270,7 @@ namespace BeatLeader_Server.Services
                 try {
                     var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
                     var _clanController = scope.ServiceProvider.GetRequiredService<ClanAdminController>();
+                    var _httpClientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
                     var s3 = _configuration.GetS3Client();
                     var blhook = _configuration.GetValue<string?>("ClanWarsHook");
 
@@ -325,6 +326,8 @@ namespace BeatLeader_Server.Services
 
                     var file = (await _clanController.RefreshGlobalMap()).Value;
                     var newGlobalMap = file?.ObjectFromArray();
+                    var client = _httpClientFactory.CreateClient();
+                    client.Timeout = TimeSpan.FromMinutes(5);
 
                     foreach (var job in jobsToProcess) {
                         if (job.Changes != null && job.Changes.Count > 0) {
@@ -335,8 +338,20 @@ namespace BeatLeader_Server.Services
                                 await AddCustomHooks(_context, hooks, job.Changes);
                                 foreach (var hook in hooks.Distinct())
                                 {
-                                    string url = $"https://render.beatleader.xyz/animatedscreenshot/620x280/clansmap-change-{(int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds}-{job.Score.LeaderboardId}/general/clansmap/leaderboard/{job.Score.LeaderboardId}";
-                                    await ClanUtils.PostChangesWithScore(_context, stoppingToken, job.Changes, job.Score, url, hook);
+                                    string url = $"https://render.beatleader.xyz/animatedscreenshot/620x280/clansmapchange/general/clansmap/leaderboard/{job.Score.LeaderboardId}";
+
+                                    try {
+                                        HttpResponseMessage response = await client.GetAsync(url);
+
+                                        if (response.IsSuccessStatusCode) {
+                                            var gif = await response.Content.ReadAsByteArrayAsync();
+                                            string path = $"/root/assets/clansmap-change-{(int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds}-{job.Score.LeaderboardId}.gif";
+                                            File.WriteAllBytes(path, gif);
+                                            await ClanUtils.PostChangesWithScore(_context, stoppingToken, job.Changes, job.Score, path, hook);
+                                            File.Delete(path);
+                                        }
+                                    } catch (Exception e) {
+                                    }
                                 }
                             }
 

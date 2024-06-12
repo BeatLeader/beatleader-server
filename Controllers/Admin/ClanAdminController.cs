@@ -100,19 +100,24 @@ namespace BeatLeader_Server.Controllers {
                 ContractResolver = contractResolver
             })).ToStream());
 
-            var client = _httpClientFactory.CreateClient();
-            string url = "https://render.beatleader.xyz/download/general/clansmap/save";
+            try {
+                var client = _httpClientFactory.CreateClient();
+                client.Timeout = TimeSpan.FromMinutes(5);
+                string url = "https://render.beatleader.xyz/download/general/clansmap/save";
 
-            HttpResponseMessage response = await client.GetAsync(url);
+                HttpResponseMessage response = await client.GetAsync(url);
 
-            if (!response.IsSuccessStatusCode)
-            {
-                return null;
-            } else {
-                var file = await response.Content.ReadAsByteArrayAsync();
-                await _s3Client.UploadAsset("clansmap-globalcache.json", file);
+                if (!response.IsSuccessStatusCode)
+                {
+                    return NotFound();
+                } else {
+                    var file = await response.Content.ReadAsByteArrayAsync();
+                    await _s3Client.UploadAsset("clansmap-globalcache.json", file);
 
-                return file;
+                    return file;
+                }
+            } catch (Exception e) {
+                return NotFound();
             }
         }
 

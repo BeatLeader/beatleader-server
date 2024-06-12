@@ -210,14 +210,17 @@ namespace BeatLeader_Server.Controllers
             }
 
             var offset = Random.Shared.Next(1, await query.CountAsync());
-            var result = await query
+            int? result = await query
                 .AsNoTracking()
                 .Skip(offset)
                 .Take(1)
                 .Select(s => s.Id)
-                .FirstAsync();
+                .FirstOrDefaultAsync();
+            if (result == null) {
+                return NotFound();
+            }
 
-            return await GetScore(result, false);
+            return await GetScore((int)result, false);
         }
 
         [HttpDelete("~/score/{id}")]
@@ -409,7 +412,7 @@ namespace BeatLeader_Server.Controllers
                 .ToListAsync();
 
             result.Container.LeaderboardId = leaderboard.Id;
-            result.Container.Ranked = leaderboard.Difficulty.Status == DifficultyStatus.ranked;
+            result.Container.Ranked = leaderboard.Difficulty?.Status == DifficultyStatus.ranked;
 
             return result;
         }
