@@ -345,7 +345,6 @@ namespace BeatLeader_Server.Controllers
                     }
                     if (type != EndType.Clear) gainedExp /= 2;
                     currentPlayer.Experience += (gainedExp * (int)Math.Pow(2, currentPlayer.Prestige));
-                    currentPlayer.Level++;
                     while (currentPlayer.Experience > 0)
                     {
                         var reqExp = 1000 * (currentPlayer.Level + 1);
