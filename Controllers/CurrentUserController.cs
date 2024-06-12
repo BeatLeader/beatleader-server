@@ -735,6 +735,11 @@ namespace BeatLeader_Server.Controllers {
                     var sanitizer = new HtmlSanitizer();
                     sanitizer.AllowedSchemes.Add("data");
                     sanitizer.AllowedTags.Add("iframe");
+
+                    foreach (var item in new List<string> { "class", "data-proportion", "data-align", "data-file-name", "data-file-size", "origin-size", "data-origin", "data-size" }) {
+                        sanitizer.AllowedAttributes.Add(item);
+                    }
+                    
                     var newBio = sanitizer.Sanitize(sr.ReadToEnd());
 
                     if (player.RichBioTimeset > 0) {
