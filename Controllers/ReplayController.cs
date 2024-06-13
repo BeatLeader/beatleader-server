@@ -282,18 +282,18 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            if(type != EndType.Practice)
+            if(type != EndType.Practice && leaderboard.Difficulty.Status == DifficultyStatus.ranked)
             {
                 var currentPlayer = await dbContext
                 .Players
                 .Where(s => s.Id == authenticatedPlayerID)
                 .FirstOrDefaultAsync();
-                if (currentPlayer != null)
+                if (currentPlayer != null && currentPlayer.Level < 100)
                 {
                     var gainedExp = 0;
                     foreach (var note in replay.notes)
                     {
-                        NoteParams param = new NoteParams(note.noteID);
+                        NoteParams param = new(note.noteID);
                         int scoreValue = ReplayStatistic.ScoreForNote(note, param.scoringType);
                         var accuracy = 0;
                         if (scoreValue > 0)
@@ -303,48 +303,48 @@ namespace BeatLeader_Server.Controllers
                         switch (accuracy)
                         {
                             case 15:
-                                gainedExp += 30;
+                                gainedExp += 150;
                                 break;
                             case 14:
-                                gainedExp += 15;
+                                gainedExp += 60;
                                 break;
                             case 13:
-                                gainedExp += 10;
+                                gainedExp += 50;
                                 break;
                             case 12:
-                                gainedExp += 8;
+                                gainedExp += 40;
                                 break;
                             case 11:
-                                gainedExp += 6;
+                                gainedExp += 30;
                                 break;
                             case 10:
-                                gainedExp += 5;
+                                gainedExp += 25;
                                 break;
                             case 9:
-                                gainedExp += 4;
+                                gainedExp += 20;
                                 break;
                             case 8:
-                                gainedExp += 3;
+                                gainedExp += 15;
                                 break;
                             case 7:
-                                gainedExp += 3;
+                                gainedExp += 15;
                                 break;
                             case 6:
-                                gainedExp += 2;
+                                gainedExp += 10;
                                 break;
                             case 5:
-                                gainedExp += 2;
+                                gainedExp += 10;
                                 break;
                             case 4:
-                                gainedExp += 1;
+                                gainedExp += 5;
                                 break;
                             case 3:
-                                gainedExp += 1;
+                                gainedExp += 5;
                                 break;
+
                         }
                     }
-                    if (type != EndType.Clear) gainedExp /= 2;
-                    currentPlayer.Experience += (gainedExp * (int)Math.Pow(2, currentPlayer.Prestige));
+                    currentPlayer.Experience += gainedExp;
                     while (currentPlayer.Experience > 0)
                     {
                         var reqExp = 1000 * (currentPlayer.Level + 1);
@@ -352,6 +352,10 @@ namespace BeatLeader_Server.Controllers
                         {
                             currentPlayer.Level++;
                             currentPlayer.Experience -= reqExp;
+                            if(currentPlayer.Level == 100)
+                            {
+                                break;
+                            }
                         }
                         else
                         {

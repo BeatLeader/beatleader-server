@@ -1098,7 +1098,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/player/{id}/prestige")]
-        [SwaggerOperation(Summary = "Reset the player level and prestige", Description = "Reset the player level and prestige, gaining a multiplier to experience gain.")]
+        [SwaggerOperation(Summary = "Reset the player level and prestige", Description = "Reset the player level and prestige")]
         [SwaggerResponse(200, "Successful prestige")]
         [SwaggerResponse(404, "Player not found")]
         public async Task<ActionResult> PrestigePlayer()
@@ -1111,11 +1111,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            // The player experience gain double for each prestige.
-            // The prestige rate become 20% slower for each prestige done.
-            var reqLevel = 1000d * Math.Pow(2d, currentPlayer.Prestige * 1.2d);
-
-            if (currentPlayer.Level >= reqLevel)
+            if (currentPlayer.Level >= 100)
             {
                 currentPlayer.Level = 0;
                 currentPlayer.Experience = 0;
