@@ -1,4 +1,5 @@
 using Amazon.S3;
+using AngleSharp.Css.Dom;
 using BeatLeader_Server.ControllerHelpers;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
@@ -735,12 +736,18 @@ namespace BeatLeader_Server.Controllers {
                     var sanitizer = new HtmlSanitizer();
                     sanitizer.AllowedSchemes.Add("data");
                     sanitizer.AllowedTags.Add("iframe");
+                    sanitizer.AllowedTags.Add("style");
+                    sanitizer.AllowedTags.Add("body");
 
-                    foreach (var item in new List<string> { "class", "data-proportion", "data-align", "data-file-name", "data-file-size", "origin-size", "data-origin", "data-size" }) {
+                    sanitizer.AllowedAtRules.Add(CssRuleType.Keyframe);
+                    sanitizer.AllowedAtRules.Add(CssRuleType.Media);
+
+                    foreach (var item in new List<string> { "class", "id", "data-proportion", "data-align", "data-file-name", "data-file-size", "origin-size", "data-origin", "data-size" }) {
                         sanitizer.AllowedAttributes.Add(item);
                     }
                     
                     var newBio = sanitizer.Sanitize(sr.ReadToEnd());
+                    newBio = newBio.Replace("<iframe", "<iframe allow=\"fullscreen;\"");
 
                     if (player.RichBioTimeset > 0) {
                         await _s3Client.DeleteAsset($"player-{player.Id}-richbio-{player.RichBioTimeset}.html");
