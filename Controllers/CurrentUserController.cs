@@ -337,6 +337,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] bool? showAllRatings = null,
             [FromQuery] bool? showStatsPublic = null,
             [FromQuery] bool? showStatsPublicPinned = null,
+            [FromQuery] bool? horizontalRichBio = null,
             [FromQuery] string? id = null) {
             string userId = GetId();
             var player = await _context
@@ -603,6 +604,10 @@ namespace BeatLeader_Server.Controllers {
                 settings.ShowStatsPublicPinned = showStatsPublicPinned ?? false;
             }
 
+            if (Request.Query.ContainsKey("horizontalRichBio")) {
+                settings.HorizontalRichBio = horizontalRichBio ?? false;
+            }
+
             await _context.SaveChangesAsync();
 
             return Ok();
@@ -736,11 +741,15 @@ namespace BeatLeader_Server.Controllers {
                     var sanitizer = new HtmlSanitizer();
                     sanitizer.AllowedSchemes.Add("data");
                     sanitizer.AllowedTags.Add("iframe");
+                    sanitizer.AllowedTags.Add("script");
+                    sanitizer.AllowedTags.Add("link");
                     sanitizer.AllowedTags.Add("style");
                     sanitizer.AllowedTags.Add("body");
 
                     sanitizer.AllowedAtRules.Add(CssRuleType.Keyframe);
+                    sanitizer.AllowedAtRules.Add(CssRuleType.Keyframes);
                     sanitizer.AllowedAtRules.Add(CssRuleType.Media);
+                    sanitizer.AllowedAtRules.Add(CssRuleType.Import);
 
                     foreach (var item in new List<string> { "class", "id", "data-proportion", "data-align", "data-file-name", "data-file-size", "origin-size", "data-origin", "data-size" }) {
                         sanitizer.AllowedAttributes.Add(item);
