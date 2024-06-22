@@ -1,5 +1,9 @@
 using Amazon.S3;
+using AngleSharp;
 using AngleSharp.Css.Dom;
+using AngleSharp.Css.Parser;
+using AngleSharp.Html.Dom;
+using AngleSharp.Html.Parser;
 using BeatLeader_Server.ControllerHelpers;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
@@ -22,7 +26,7 @@ namespace BeatLeader_Server.Controllers {
         PlayerContextRefreshController _playerContextRefreshController;
         ReplayController _replayController;
         IWebHostEnvironment _environment;
-        IConfiguration _configuration;
+        Microsoft.Extensions.Configuration.IConfiguration _configuration;
         ScoreRefreshController _scoreRefreshController;
         IAmazonS3 _s3Client;
 
@@ -33,7 +37,7 @@ namespace BeatLeader_Server.Controllers {
             PlayerContextRefreshController playerContextRefreshController,
             ReplayController replayController,
             ScoreRefreshController scoreRefreshController,
-            IConfiguration configuration) {
+            Microsoft.Extensions.Configuration.IConfiguration configuration) {
             _context = context;
 
             _playerRefreshController = playerRefreshController;
@@ -737,25 +741,66 @@ namespace BeatLeader_Server.Controllers {
                 if (ms.Length > 0) {
                     ms.Position = 0;
                     using var sr = new StreamReader(ms);
+                    var content = sr.ReadToEnd();
+
+                    //var parser = new HtmlParser(new HtmlParserOptions { IsScripting = true }, BrowsingContext.New(Configuration.Default.WithCss(new CssParserOptions
+                    //{
+                    //    IsIncludingUnknownDeclarations = true,
+                    //    IsIncludingUnknownRules = true,
+                    //    IsToleratingInvalidSelectors = true,
+                    //})));
+                    //var dom = parser.ParseDocument("<!doctype html><html><body>" + content);
 
                     var sanitizer = new HtmlSanitizer();
-                    sanitizer.AllowedSchemes.Add("data");
-                    sanitizer.AllowedTags.Add("iframe");
-                    sanitizer.AllowedTags.Add("script");
-                    sanitizer.AllowedTags.Add("link");
-                    sanitizer.AllowedTags.Add("style");
-                    sanitizer.AllowedTags.Add("body");
+                    var exceptions = _context.SanitizerConfigs.AsNoTracking().ToList();
+
+                    foreach (var item in exceptions) {
+                        switch (item.Type) {
+                            case SanitizerElement.Attribute:
+                                sanitizer.AllowedAttributes.Add(item.Value);
+                                break;
+                            case SanitizerElement.Tag:
+                                sanitizer.AllowedTags.Add(item.Value);
+                                break;
+                            case SanitizerElement.Scheme:
+                                sanitizer.AllowedSchemes.Add(item.Value);
+                                break;
+                            case SanitizerElement.CssProperty:
+                                sanitizer.AllowedCssProperties.Add(item.Value);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+
+                    sanitizer.PostProcessNode += (sender, e) => {
+                        if (e.Node is IHtmlInlineFrameElement iframe)
+                        {
+                            string? src = iframe.Source;
+                            if (src == null || exceptions.FirstOrDefault(e => e.Type == SanitizerElement.IframeUrl && src.StartsWith("htps://" + e.Value)) == null)
+                            {
+                                iframe.Source = "https://www.youtube.com/embed/dQw4w9WgXcQ";
+                            }
+                        }
+                    };
 
                     sanitizer.AllowedAtRules.Add(CssRuleType.Keyframe);
                     sanitizer.AllowedAtRules.Add(CssRuleType.Keyframes);
                     sanitizer.AllowedAtRules.Add(CssRuleType.Media);
                     sanitizer.AllowedAtRules.Add(CssRuleType.Import);
 
-                    foreach (var item in new List<string> { "class", "id", "data-proportion", "data-align", "data-file-name", "data-file-size", "origin-size", "data-origin", "data-size" }) {
-                        sanitizer.AllowedAttributes.Add(item);
+                    sanitizer.RemovingStyle += OnRemovingStyle;
+                    sanitizer.RemovingTag += OnRemovingTag;
+                    sanitizer.RemovingAttribute += OnRemovingAttribute;
+
+                    Regex cssVarRegex = new Regex(@"--\w[\w-]*\s*:", RegexOptions.Compiled);
+
+                    foreach (Match match in cssVarRegex.Matches(content)) {
+                        string cssVarName = match.Value.Trim().TrimEnd(':').Trim();
+                        sanitizer.AllowedCssProperties.Add(cssVarName);
                     }
                     
-                    var newBio = sanitizer.Sanitize(sr.ReadToEnd());
+                    var newBio = sanitizer.Sanitize(content);
                     newBio = newBio.Replace("<iframe", "<iframe allow=\"fullscreen;\"");
 
                     if (player.RichBioTimeset > 0) {
@@ -776,6 +821,18 @@ namespace BeatLeader_Server.Controllers {
             await _context.SaveChangesAsync();
 
             return Ok(timeset);
+        }
+
+        private void OnRemovingAttribute(object? sender, RemovingAttributeEventArgs e) {
+            Console.WriteLine($"SANIT OnRemovingAttribute: {e.Attribute.Name}");
+        }
+
+        private void OnRemovingTag(object? sender, RemovingTagEventArgs e) {
+            Console.WriteLine($"SANIT OnRemovingTag: {e.Tag.TagName}");
+        }
+
+        private void OnRemovingStyle(object? sender, RemovingStyleEventArgs e) {
+            Console.WriteLine($"SANIT OnRemovingStyle: {e.Style.Name}");
         }
 
         [HttpDelete("~/user/richbio")]

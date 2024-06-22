@@ -96,6 +96,7 @@ namespace BeatLeader_Server
 
         public DbSet<AliasRequest> AliasRequests { get; set; }
         public DbSet<Speedrun> Speedruns { get; set; }
+        public DbSet<SanitizerConfig> SanitizerConfigs { get; set; }
 
         public void RejectChanges()
         {
