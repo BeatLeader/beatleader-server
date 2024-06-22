@@ -2,6 +2,7 @@
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 using Type = BeatLeader_Server.Enums.Type;
 
 namespace BeatLeader_Server.Utils;
@@ -49,14 +50,24 @@ public static partial class MapListUtils
         return sequence.Where(leaderboard => leaderboard.Difficulty.Status != DifficultyStatus.outdated && leaderboard.Song.ExternalStatuses.FirstOrDefault(s => status.HasFlag(s.Status)) != null);
     }
 
-    private static IQueryable<Leaderboard> WhereMapper(this IQueryable<Leaderboard> sequence, int? mapper)
+    private static IQueryable<Leaderboard> WhereMapper(this IQueryable<Leaderboard> sequence, string? mapper)
     {
         if (mapper == null)
         {
             return sequence;
         }
 
-        return sequence.Where(leaderboard => leaderboard.Song.MapperId == mapper);
+        var leaderboard = Expression.Parameter(typeof(Leaderboard), "lb");
+
+        // 1 != 2 is here to trigger `OrElse` further the line.
+        var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
+        foreach (var item in mapper.Split(","))
+        {
+            if (int.TryParse(item, out int id)) {
+                exp = Expression.OrElse(exp, Expression.Equal(Expression.Property(Expression.Property(leaderboard, "Song"), "MapperId"), Expression.Constant(id)));
+            }
+        }
+        return sequence.Where((Expression<Func<Leaderboard, bool>>)Expression.Lambda(exp, leaderboard));
     }
 
     private static IQueryable<Leaderboard> WhereMyType(this IQueryable<Leaderboard> sequence, MyType mytype, Player? currentPlayer, LeaderboardContexts leaderboardContext = LeaderboardContexts.General)

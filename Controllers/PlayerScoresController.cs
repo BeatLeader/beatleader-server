@@ -198,6 +198,7 @@ namespace BeatLeader_Server.Controllers {
                         Platform = s.Platform,
                         ScoreImprovement = s.ScoreImprovement,
                         Offsets = s.ReplayOffsets,
+                        Country = s.Country,
                         Leaderboard = new CompactLeaderboardResponse {
                             Id = s.LeaderboardId,
                             Song = new CompactSongResponse {

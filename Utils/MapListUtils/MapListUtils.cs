@@ -46,7 +46,7 @@ public static partial class MapListUtils
                                                  float? techRatingTo = null,
                                                  int? dateFrom = null,
                                                  int? dateTo = null,
-                                                 int? mapper = null,
+                                                 string? mapper = null,
                                                  Player? currentPlayer = null) =>
         source.FilterBySearch(search,
                               _context,
