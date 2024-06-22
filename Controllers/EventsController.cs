@@ -175,8 +175,8 @@ namespace BeatLeader_Server.Controllers
                     Role = p.Role,
                     PatreonFeatures = p.PatreonFeatures,
                     ProfileSettings = p.ProfileSettings,
-                    Clans = p.Clans.OrderBy(c => p.ClanOrder.IndexOf(c.Tag))
-                            .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                    ClanOrder = p.ClanOrder,
+                    Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                 }).ToListAsync();
 
             foreach (var resultPlayer in players)
