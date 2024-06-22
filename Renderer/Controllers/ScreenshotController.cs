@@ -49,7 +49,7 @@ namespace Renderer.Controllers
                 var html = await page.GetContentAsync();
                 _memoryCache.Set(cacheKey, html, TimeSpan.FromDays(1));
 
-                browserPool?.ReturnBrowser(browser);
+                await browserPool?.ReturnBrowser(browser);
 
                 return Content(html, "text/html");
             }
@@ -117,7 +117,7 @@ namespace Renderer.Controllers
                     Response.Headers["Cache-Control"] = "public, max-age=604800";
                 }
 
-                browserPool?.ReturnBrowser(browser);
+                await browserPool?.ReturnBrowser(browser);
 
                 return File(screenshot, "image/png", imagename + ".png");
             }
@@ -285,7 +285,7 @@ namespace Renderer.Controllers
                     { };
                     await encoder.EncodeAsync(containerImage, ms, CancellationToken.None);
 
-                    browserPool?.ReturnBrowser(browser);
+                    await browserPool?.ReturnBrowser(browser);
 
                     return ms.ToArray();
                 }
@@ -384,8 +384,9 @@ namespace Renderer.Controllers
             });
         }
 
-        public void ReturnBrowser(IBrowser browser)
+        public async Task ReturnBrowser(IBrowser browser)
         {
+            bool shouldClose = false;
             lock (_lock)
             {
                 if (_browsers.Count < _poolSize)
@@ -394,8 +395,13 @@ namespace Renderer.Controllers
                 }
                 else
                 {
-                    browser.Dispose();
+                    shouldClose = true;
                 }
+            }
+
+            if (shouldClose) {
+                await browser.CloseAsync();
+                browser.Dispose();
             }
         }
     }
