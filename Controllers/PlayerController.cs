@@ -923,62 +923,20 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             id = await _context.PlayerIdToMain(id);
 
-            var allFollowersIds = await _context
-                .Friends
-                .Where(f => !f.HideFriends && f.Friends.FirstOrDefault(p => p.Id == id) != null)
-                .Select(f => f.Id)
-                .ToListAsync();
+            (var allFollowersIds, var followers) = await PlayerControllerHelper.GetPlayerFollowers(_context, id, 1, 3);
+            var followersIds = followers.Select(f => f.Id).ToList(); 
 
-            var followersCounts = new Dictionary<string, int>();
-            foreach (var followerId in allFollowersIds) {
-                var followingOfFollowers = await _context
-                    .Friends
-                    .Where(f => !f.HideFriends && f.Id == followerId)
-                    .Select(f => f.Friends.Select(ff => ff.Id))
-                    .FirstOrDefaultAsync();
-                if (followingOfFollowers == null) continue;
-
-                followersCounts[followerId] = allFollowersIds.Intersect(followingOfFollowers).Count();
-            }
-
-            var followersIds = allFollowersIds.OrderByDescending(id => {
-                if (followersCounts.ContainsKey(id)) {
-                    return followersCounts[id];
-                } else {
-                    return 0;
-                }
-            }).Take(3).ToList();
-
-            List<string> allFollowingIds = await _context
-                .Friends
-                .Where(f => (!f.HideFriends || currentID == id) && f.Id == id)
-                .Select(f => f.Friends.Select(f => f.Id).ToList())
-                .FirstOrDefaultAsync() ?? new List<string>();
-
-            var followingIds = await _context
-                .Friends
-                .Where(f => allFollowingIds.Contains(f.Id))
-                .OrderByDescending(f => f.Friends.Count)
-                .Take(3)
-                .Select(f => f.Id)
-                .ToListAsync();
+            (var allFollowingIds, var following) = await PlayerControllerHelper.GetPlayerFollowing(_context, id, currentID, 1, 3);
+            var followingIds = following.Select(f => f.Id).ToList(); 
 
             return new PlayerFollowersInfoResponse {
                 FollowingCount = allFollowingIds.Count,
                 MeFollowing = allFollowingIds.FirstOrDefault(f => f == currentID) != null,
-                Following = await _context.Players.Where(p => followingIds.Contains(p.Id)).Select(p => new PlayerFollower {
-                    Id = p.Id,
-                    Name = p.Name,
-                    Avatar = p.Avatar
-                }).ToListAsync(),
+                Following = await _context.Players.Where(p => followingIds.Contains(p.Id)).Select(p => p.Avatar).ToListAsync(),
 
                 FollowersCount = allFollowersIds.Count,
                 IFollow = allFollowersIds.FirstOrDefault(f => f == currentID) != null,
-                Followers = await _context.Players.Where(p => followersIds.Contains(p.Id)).Select(p => new PlayerFollower {
-                    Id = p.Id,
-                    Name = p.Name,
-                    Avatar = p.Avatar
-                }).ToListAsync()
+                Followers = await _context.Players.Where(p => followersIds.Contains(p.Id)).Select(p => p.Avatar).ToListAsync()
             };
         }
 
@@ -995,23 +953,23 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             id = await _context.PlayerIdToMain(id);
 
-            switch (type) {
-                case FollowerType.Followers:
-                    var ids = await _context.Friends.Where(f => !f.HideFriends && f.Friends.FirstOrDefault(p => p.Id == id) != null).Select(f => f.Id).ToListAsync();
-                    return await _context.Players.Where(p => ids.Contains(p.Id)).Select(p => new PlayerFollower {
-                        Id = p.Id,
-                        Name = p.Name,
-                        Avatar = p.Avatar
-                    }).ToListAsync();
-                case FollowerType.Following:
-                    return await _context.Friends.Where(f => (!f.HideFriends || currentID == id) && f.Id == id).Select(f => f.Friends.Select(p => new PlayerFollower {
-                        Id = p.Id,
-                        Name = p.Name,
-                        Avatar = p.Avatar
-                    }).ToList()).FirstOrDefaultAsync();
+            (var allFollowersIds, var followers) = 
+                        type == FollowerType.Followers 
+                        ? await PlayerControllerHelper.GetPlayerFollowers(_context, id, page, count)
+                        : await PlayerControllerHelper.GetPlayerFollowing(_context, id, currentID, page, count);
+            var followersIds = followers.Select(f => f.Id).ToList(); 
+
+            var result = await _context.Players.Where(p => followersIds.Contains(p.Id)).Select(p => new PlayerFollower {
+                Id = p.Id,
+                Alias = p.Alias,
+                Name = p.Name,
+                Avatar = p.Avatar
+            }).ToListAsync();
+            foreach (var item in result) {
+                item.Count = followers.FirstOrDefault(f => f.Id == item.Id)?.Count;
             }
 
-            return BadRequest("Invalid relationship type");
+            return result.OrderByDescending(f => f.Count ?? 0).ToList();
         }
 
         [HttpGet("~/player/{id}/foundedClan")]
@@ -1044,7 +1002,8 @@ namespace BeatLeader_Server.Controllers
         [SwaggerResponse(200, "Returns brief stats about maps this player ranked, like count, total PP gained, etc...", typeof(RankedMapperResponse))]
         [SwaggerResponse(404, "Player not found")]
         public async Task<ActionResult<RankedMapperResponse>> GetRankedMaps(
-            [FromRoute, SwaggerParameter("The ID of the player")] int id) {
+            [FromRoute, SwaggerParameter("The ID of the player")] int id,
+            [FromQuery] string? sortBy = null) {
 
             var lbs = await _context
                 .Leaderboards
@@ -1052,7 +1011,10 @@ namespace BeatLeader_Server.Controllers
                     lb.Difficulty.Status == DifficultyStatus.ranked &&
                     lb.Song.MapperId == id)
                 .Select(lb => new { 
-                    lb.Plays, 
+                    lb.Plays,
+                    lb.Song.UploadTime,
+                    lb.Difficulty.Stars,
+                    lb.SongId,
                     Pp = lb.Scores.Sum(s => s.Pp) })
                 .ToListAsync();
 
@@ -1065,23 +1027,38 @@ namespace BeatLeader_Server.Controllers
             result.TotalPp = lbs.Sum(lb => lb.Pp);
             result.PlayersCount = lbs.Sum(lb => lb.Plays);
 
-            result.Maps = _context
+            switch (sortBy) {
+                case "top-stars":
+                    lbs = lbs.OrderByDescending(s => s.Stars ?? 0).ToList();
+                    break;
+                case "top-played":
+                    lbs = lbs.OrderByDescending(s => s.Plays).ToList();
+                    break;
+                case "top-grinded":
+                    lbs = lbs.OrderByDescending(s => s.Pp).ToList();
+                    break;
+                default:
+                    lbs = lbs.OrderByDescending(s => s.UploadTime).ToList();
+                    break;
+            }
+
+            var songIds = lbs.GroupBy(lb => lb.SongId).Take(4).Select(g => g.First().SongId).ToList();
+
+            result.Maps = 
+                (await _context
                 .Songs
-                .Where(s => 
-                    s.MapperId == id && 
-                    s.Difficulties.FirstOrDefault(d => d.Status == DifficultyStatus.ranked) != null)
-                .OrderByDescending(s => s.UploadTime)
-                .Take(4)
+                .Where(s => songIds.Contains(s.Id))
                 .Select(s => new RankedMap {
                     Name = s.Name,
                     SongId = s.Id,
                     Stars = s.Difficulties.OrderByDescending(d => d.Stars).Select(d => d.Stars).First(),
                     Cover = s.CoverImage
                 })
+                .ToListAsync())
+                .OrderBy(s => songIds.IndexOf(s.SongId))
                 .ToList();
 
             return result;
-
         }
     }
 }

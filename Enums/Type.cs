@@ -21,8 +21,8 @@ public enum MapsType {
 }
 
 public enum FollowerType {
-    Followers,
-    Following
+    Following,
+    Followers
 }
 
 public enum RandomScoreSource {

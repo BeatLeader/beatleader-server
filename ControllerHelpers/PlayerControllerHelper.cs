@@ -155,5 +155,57 @@ namespace BeatLeader_Server.ControllerHelpers {
 
             return result;
         }
+
+        public class FollowerCounter {
+            public string Id { get; set; }
+            public int Count { get; set; }
+        }
+
+        public static async Task<(List<string>, List<FollowerCounter>)> GetPlayerFollowers(AppContext dbContext, string id, int page, int count) {
+            var allFollowersIds = await dbContext
+                .Friends
+                .Where(f => !f.HideFriends && f.Friends.FirstOrDefault(p => p.Id == id) != null)
+                .Select(f => f.Id)
+                .ToListAsync();
+
+            var followersCounts = new List<FollowerCounter>();
+            foreach (var followerId in allFollowersIds) {
+                var followingOfFollowers = await dbContext
+                    .Friends
+                    .Where(f => !f.HideFriends && f.Id == followerId)
+                    .Select(f => f.Friends.Select(ff => ff.Id))
+                    .FirstOrDefaultAsync();
+                if (followingOfFollowers == null) continue;
+
+                followersCounts.Add(new FollowerCounter {
+                    Id = followerId,
+                    Count = allFollowersIds.Intersect(followingOfFollowers).Count()
+                });
+            }
+
+            return (allFollowersIds, followersCounts.OrderByDescending(f => f.Count).Skip((page - 1) * count).Take(count).ToList());
+        }
+
+        public static async Task<(List<string>, List<FollowerCounter>)> GetPlayerFollowing(AppContext dbContext, string id, string currentID, int page, int count) {
+            List<string> allFollowingIds = await dbContext
+                .Friends
+                .Where(f => (!f.HideFriends || currentID == id) && f.Id == id)
+                .Select(f => f.Friends.Select(f => f.Id).ToList())
+                .FirstOrDefaultAsync() ?? new List<string>();
+
+            var following = await dbContext
+                .Friends
+                .Where(f => allFollowingIds.Contains(f.Id))
+                .OrderByDescending(f => f.Friends.Count)
+                .Skip((page - 1) * count)
+                .Take(count)
+                .Select(f => new FollowerCounter {
+                    Id = f.Id,
+                    Count = f.Friends.Count
+                })
+                .ToListAsync();
+
+            return (allFollowingIds, following);
+        }
     }
 }
