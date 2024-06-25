@@ -67,8 +67,9 @@ namespace BeatLeader_Server.Controllers {
             Clan? clan = await _context.Clans.AsNoTracking().Include(c => c.Players).FirstOrDefaultAsync(f => f.LeaderID == id);
 
             long intId = Int64.Parse(id);
+            AccountLink? link = null;
             if (intId > 1000000000000000) {
-                var link = await _context.AccountLinks.AsNoTracking().FirstOrDefaultAsync(el => el.SteamID == id || el.PCOculusID == id);
+                link = await _context.AccountLinks.AsNoTracking().FirstOrDefaultAsync(el => el.SteamID == id || el.PCOculusID == id);
                 if (link != null) {
                     intId = link.OculusID;
                 }
@@ -118,6 +119,7 @@ namespace BeatLeader_Server.Controllers {
                     .Where(ar => ar.PlayerId == id && (ar.Status == AliasRequestStatus.open || (timeset - ar.Timeset) < 60 * 60 * 24 * 7))
                     .FirstOrDefaultAsync(),
                 Login = (await _context.Auths.AsNoTracking().FirstOrDefaultAsync(a => a.Id == intId))?.Login,
+                Ids = link == null ? null : new List<string?> { link.OculusID.ToString(), link.PCOculusID, link.SteamID },
 
                 Migrated = (await _context.AccountLinks.AsNoTracking().FirstOrDefaultAsync(a => a.SteamID == id)) != null,
                 Patreoned = await _context.PatreonLinks.FindAsync(id) != null,
@@ -342,6 +344,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] bool? showStatsPublic = null,
             [FromQuery] bool? showStatsPublicPinned = null,
             [FromQuery] bool? horizontalRichBio = null,
+            [FromQuery] string? rankedMapperSort = null,
             [FromQuery] string? id = null) {
             string userId = GetId();
             var player = await _context
@@ -612,6 +615,10 @@ namespace BeatLeader_Server.Controllers {
                 settings.HorizontalRichBio = horizontalRichBio ?? false;
             }
 
+            if (Request.Query.ContainsKey("rankedMapperSort")) {
+                settings.RankedMapperSort = rankedMapperSort ?? null;
+            }
+
             await _context.SaveChangesAsync();
 
             return Ok();
@@ -777,7 +784,7 @@ namespace BeatLeader_Server.Controllers {
                         if (e.Node is IHtmlInlineFrameElement iframe)
                         {
                             string? src = iframe.Source;
-                            if (src == null || exceptions.FirstOrDefault(e => e.Type == SanitizerElement.IframeUrl && src.StartsWith("htps://" + e.Value)) == null)
+                            if (src == null || exceptions.FirstOrDefault(e => e.Type == SanitizerElement.IframeUrl && src.StartsWith("https://" + e.Value)) == null)
                             {
                                 iframe.Source = "https://www.youtube.com/embed/dQw4w9WgXcQ";
                             }
