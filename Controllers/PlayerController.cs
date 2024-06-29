@@ -932,11 +932,18 @@ namespace BeatLeader_Server.Controllers
             return new PlayerFollowersInfoResponse {
                 FollowingCount = allFollowingIds.Count,
                 MeFollowing = allFollowingIds.FirstOrDefault(f => f == currentID) != null,
-                Following = await _context.Players.Where(p => followingIds.Contains(p.Id)).Select(p => p.Avatar).ToListAsync(),
+                Following = (await _context
+                    .Players
+                    .Where(p => followingIds.Contains(p.Id))
+                    .Select(p => new { p.Id, p.Avatar })
+                    .ToListAsync())
+                    .OrderBy(f => followingIds.IndexOf(f.Id))
+                    .Select(f => f.Id)
+                    .ToList(),
 
                 FollowersCount = allFollowersIds.Count,
                 IFollow = allFollowersIds.FirstOrDefault(f => f == currentID) != null,
-                Followers = await _context.Players.Where(p => followersIds.Contains(p.Id)).Select(p => p.Avatar).ToListAsync()
+                Followers = await _context.Players.Where(p => followersIds.Contains(p.Id)).Select(p => new { p.Id, p.Avatar }).ToListAsync()
             };
         }
 

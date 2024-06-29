@@ -193,19 +193,20 @@ namespace BeatLeader_Server.ControllerHelpers {
                 .Select(f => f.Friends.Select(f => f.Id).ToList())
                 .FirstOrDefaultAsync() ?? new List<string>();
 
-            var following = await dbContext
-                .Friends
-                .Where(f => allFollowingIds.Contains(f.Id))
-                .OrderByDescending(f => f.Friends.Count)
-                .Skip((page - 1) * count)
-                .Take(count)
-                .Select(f => new FollowerCounter {
-                    Id = f.Id,
-                    Count = f.Friends.Count
-                })
-                .ToListAsync();
+            var followingsCounts = new List<FollowerCounter>();
+            foreach (var followingId in allFollowingIds) {
+                var followersCount = await dbContext
+                    .Friends
+                    .Where(f => !f.HideFriends && f.Friends.FirstOrDefault(p => p.Id == followingId) != null)
+                    .CountAsync();
 
-            return (allFollowingIds, following);
+                followingsCounts.Add(new FollowerCounter {
+                    Id = followingId,
+                    Count = followersCount
+                });
+            }
+
+            return (allFollowingIds, followingsCounts.OrderByDescending(f => f.Count).Skip((page - 1) * count).Take(count).ToList());
         }
     }
 }
