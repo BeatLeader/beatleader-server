@@ -75,9 +75,16 @@ namespace BeatLeader_Server.Controllers
             }
 
             var player = await _context.Players.Where(p => p.Id == currentID).Include(p => p.Clans).Include(p => p.ScoreStats).FirstOrDefaultAsync();
-            if (player.Clans.Count == 3)
-            {
-                return BadRequest("You can join only up to 3 clans.");
+            if (player.AnySupporter()) {
+                if (player.Clans.Count == 5)
+                {
+                    return BadRequest("5 clans is really a physical limit.");
+                }
+            } else {
+                if (player.Clans.Count == 3)
+                {
+                    return BadRequest("You can join only up to 3 clans. Support us on Patreon for more!");
+                }
             }
 
             if (player.Banned)
@@ -879,9 +886,15 @@ namespace BeatLeader_Server.Controllers
                 return NotFound("User did not received request to this clan");
             }
 
-            if (user.Player.Clans.Count == 3)
-            {
-                return BadRequest("You already joined maximum amount of clans, please leave some or reject.");
+            if (user.Player.AnySupporter()) {
+                if (user.Player.Clans.Count == 5) {
+                    return BadRequest("You already joined maximum amount of clans, please leave some or reject invitation.");
+                }
+            } else {
+                if (user.Player.Clans.Count == 3)
+                {
+                    return BadRequest("You already joined maximum amount of clans, please leave some or support us on Patreon for increase.");
+                }
             }
 
             user.ClanRequest.Remove(clan);
