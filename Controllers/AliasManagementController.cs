@@ -39,10 +39,6 @@ namespace BeatLeader_Server.Controllers {
             if (currentID == null) return Unauthorized();
             alias = alias.ToLower();
 
-            if (!Player.RoleIsAnySupporter(await _context.Players.Where(p => p.Id == currentID).Select(p => p.Role).FirstOrDefaultAsync())) {
-                return BadRequest("Please support on Patreon and link your profile");
-            }
-
             if (alias.Length < 2 || alias.Length > 20) {
                 return BadRequest("Please provide alias between 2 and 20 symbols long");
             }
