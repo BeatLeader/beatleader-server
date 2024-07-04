@@ -525,14 +525,14 @@ namespace BeatLeader_Server.Controllers
                 request = request.Where(p => ids.Contains(p.PlayerId));
             }
 
-            if (clans != null)
-            {
-                request = request.Where(p => p.Player.Clans.FirstOrDefault(c => clans.Contains(c.Tag)) != null);
-            }
-            if (platform != null) {
-                var platforms = platform.ToLower().Split(",");
-                request = request.Where(p => platforms.Contains(p.ScoreStats.TopPlatform.ToLower()));
-            }
+            //if (clans != null)
+            //{
+            //    request = request.Where(p => p.Player.Clans.FirstOrDefault(c => clans.Contains(c.Tag)) != null);
+            //}
+            //if (platform != null) {
+            //    var platforms = platform.ToLower().Split(",");
+            //    request = request.Where(p => platforms.Contains(p.ScoreStats.TopPlatform.ToLower()));
+            //}
             if (role != null)
             {
                 var player = Expression.Parameter(typeof(PlayerContextExtension), "p");
@@ -547,15 +547,15 @@ namespace BeatLeader_Server.Controllers
                 }
                 request = request.Where((Expression<Func<PlayerContextExtension, bool>>)Expression.Lambda(exp, player));
             }
-            if (hmd != null)
-            {
-                try
-                {
-                    var hmds = hmd.ToLower().Split(",").Select(s => (HMD)Int32.Parse(s));
-                    request = request.Where(p => hmds.Contains(p.ScoreStats.TopHMD));
-                }
-                catch { }
-            }
+            //if (hmd != null)
+            //{
+            //    try
+            //    {
+            //        var hmds = hmd.ToLower().Split(",").Select(s => (HMD)Int32.Parse(s));
+            //        request = request.Where(p => hmds.Contains(p.ScoreStats.TopHMD));
+            //    }
+            //    catch { }
+            //}
             if (pp_range != null && pp_range.Length > 1)
             {
                 try {
@@ -566,30 +566,30 @@ namespace BeatLeader_Server.Controllers
                     }
                 } catch { }
             }
-            if (score_range != null && score_range.Length > 1)
-            {
-                try
-                {
-                    var array = score_range.Split(",").Select(s => int.Parse(s)).ToArray();
-                    int from = array[0]; int to = array[1];
-                    if (!float.IsNaN(from) && !float.IsNaN(to)) {
-                        switch (mapsType)
-                        {
-                            case MapsType.Ranked:
-                                request = request.Where(p => p.ScoreStats.RankedPlayCount >= from && p.ScoreStats.RankedPlayCount <= to);
-                                break;
-                            case MapsType.Unranked:
-                                request = request.Where(p => p.ScoreStats.UnrankedPlayCount >= from && p.ScoreStats.UnrankedPlayCount <= to);
-                                break;
-                            case MapsType.All:
-                                request = request.Where(p => p.ScoreStats.TotalPlayCount >= from && p.ScoreStats.TotalPlayCount <= to);
-                                break;
-                        }
-                    }
+            //if (score_range != null && score_range.Length > 1)
+            //{
+            //    try
+            //    {
+            //        var array = score_range.Split(",").Select(s => int.Parse(s)).ToArray();
+            //        int from = array[0]; int to = array[1];
+            //        if (!float.IsNaN(from) && !float.IsNaN(to)) {
+            //            switch (mapsType)
+            //            {
+            //                case MapsType.Ranked:
+            //                    request = request.Where(p => p.ScoreStats.RankedPlayCount >= from && p.ScoreStats.RankedPlayCount <= to);
+            //                    break;
+            //                case MapsType.Unranked:
+            //                    request = request.Where(p => p.ScoreStats.UnrankedPlayCount >= from && p.ScoreStats.UnrankedPlayCount <= to);
+            //                    break;
+            //                case MapsType.All:
+            //                    request = request.Where(p => p.ScoreStats.TotalPlayCount >= from && p.ScoreStats.TotalPlayCount <= to);
+            //                    break;
+            //            }
+            //        }
                     
-                }
-                catch { }
-            }
+            //    }
+            //    catch { }
+            //}
             if (friends) {
                 string userId = HttpContext.CurrentUserID(_context);
                 var player = await _context.Players.FindAsync(userId);
@@ -608,22 +608,22 @@ namespace BeatLeader_Server.Controllers
                     request = request.Where(p => p.PlayerId == player.Id);
                 }
             }
-            if (activityPeriod != null) {
-                int timetreshold = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - (int)activityPeriod;
+            //if (activityPeriod != null) {
+            //    int timetreshold = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - (int)activityPeriod;
 
-                switch (mapsType)
-                {
-                    case MapsType.Ranked:
-                        request = request.Where(p => p.ScoreStats.LastRankedScoreTime >= timetreshold);
-                        break;
-                    case MapsType.Unranked:
-                        request = request.Where(p => p.ScoreStats.LastUnrankedScoreTime >= timetreshold);
-                        break;
-                    case MapsType.All:
-                        request = request.Where(p => p.ScoreStats.LastScoreTime >= timetreshold);
-                        break;
-                }
-            }
+            //    switch (mapsType)
+            //    {
+            //        case MapsType.Ranked:
+            //            request = request.Where(p => p.ScoreStats.LastRankedScoreTime >= timetreshold);
+            //            break;
+            //        case MapsType.Unranked:
+            //            request = request.Where(p => p.ScoreStats.LastUnrankedScoreTime >= timetreshold);
+            //            break;
+            //        case MapsType.All:
+            //            request = request.Where(p => p.ScoreStats.LastScoreTime >= timetreshold);
+            //            break;
+            //    }
+            //}
             
             var result = new ResponseWithMetadata<PlayerResponseWithStats>()
             {
@@ -938,12 +938,19 @@ namespace BeatLeader_Server.Controllers
                     .Select(p => new { p.Id, p.Avatar })
                     .ToListAsync())
                     .OrderBy(f => followingIds.IndexOf(f.Id))
-                    .Select(f => f.Id)
+                    .Select(f => f.Avatar)
                     .ToList(),
 
                 FollowersCount = allFollowersIds.Count,
                 IFollow = allFollowersIds.FirstOrDefault(f => f == currentID) != null,
-                Followers = await _context.Players.Where(p => followersIds.Contains(p.Id)).Select(p => new { p.Id, p.Avatar }).ToListAsync()
+                Followers = (await _context
+                    .Players
+                    .Where(p => followersIds.Contains(p.Id))
+                    .Select(p => new { p.Id, p.Avatar })
+                    .ToListAsync())
+                    .OrderBy(f => followingIds.IndexOf(f.Id))
+                    .Select(f => f.Avatar)
+                    .ToList()
             };
         }
 
