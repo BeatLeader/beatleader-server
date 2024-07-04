@@ -275,6 +275,10 @@ namespace BeatLeader_Server.Controllers {
                 _context.Friends.Add(playerFriends);
             }
 
+            if (playerFriends.Friends.Count >= 250) {
+                return BadRequest("You hit the limit of friends, please remove someone first.");
+            }
+
             Player? friend = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId);
             if (friend == null) {
                 return NotFound();
