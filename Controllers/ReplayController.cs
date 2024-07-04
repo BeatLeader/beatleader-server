@@ -884,19 +884,29 @@ namespace BeatLeader_Server.Controllers
         private async Task RefreshGeneneralContextRank(AppContext dbContext, Leaderboard leaderboard, Score resultScore, bool isRanked) {
             if (!resultScore.ValidContexts.HasFlag(LeaderboardContexts.General)) return;
 
-            var rankedScores = (await dbContext
+            var rankedScores = await dbContext
                     .Scores
                     .Where(s => s.LeaderboardId == leaderboard.Id && 
                                 !s.Banned && 
                                 s.ValidContexts.HasFlag(LeaderboardContexts.General))
-                    
-                    .Select(s => new { s.Id, s.Rank, s.Priority, s.ModifiedScore, s.Accuracy, s.Pp, s.Timeset })
-                    .ToListAsync())
-                    .OrderBy(el => !isRanked ? el.Priority : 1)
-                    .OrderByDescending(el => !isRanked ? el.ModifiedScore : Math.Round(el.Pp, 2))
+                    .Select(s => new { s.Id, s.Rank, s.Priority, s.ModifiedScore, s.Accuracy, s.Pp, s.Timepost })
+                    .ToListAsync();
+
+            if (isRanked) {
+                rankedScores = rankedScores
+                    .OrderByDescending(el => Math.Round(el.Pp, 2))
                     .ThenByDescending(el => Math.Round(el.Accuracy, 4))
-                    .ThenBy(el => el.Timeset)
+                    .ThenByDescending(el => el.ModifiedScore)
+                    .ThenBy(el => el.Timepost)
                     .ToList();
+            } else {
+                rankedScores = rankedScores
+                    .OrderBy(el => el.Priority)
+                    .ThenByDescending(el => el.ModifiedScore)
+                    .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                    .ThenBy(el => el.Timepost)
+                    .ToList();
+            }
 
             foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
             {
