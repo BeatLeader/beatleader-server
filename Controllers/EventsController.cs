@@ -223,11 +223,6 @@ namespace BeatLeader_Server.Controllers
                 .ThenInclude(s => s.Player)
                 .ThenInclude(pl => pl.EventsParticipating).FirstOrDefaultAsync();
 
-            foreach (var lb in eventRanking.Leaderboards)
-            {
-                await _scoreRefreshController.RefreshScores(lb.Id);
-            }
-
             List<Player> players = new List<Player>();
 
             foreach (var lb in eventRanking.Leaderboards)
@@ -323,10 +318,12 @@ namespace BeatLeader_Server.Controllers
                     if (lb != null && lb.Difficulty.Status != DifficultyStatus.outdated) {
                         if (lb.Difficulty.Stars != null) {
 
-                            lb.Difficulty.Status = DifficultyStatus.inevent;
-                            await _context.SaveChangesAsync();
+                            if (lb.Difficulty.Status == DifficultyStatus.unranked) {
+                                lb.Difficulty.Status = DifficultyStatus.inevent;
+                                await _context.SaveChangesAsync();
 
-                            await _scoreRefreshController.RefreshScores(lb.Id);
+                                await _scoreRefreshController.RefreshScores(lb.Id);
+                            }
                             leaderboards.Add(lb);
                         } else { continue; }
 
@@ -334,6 +331,7 @@ namespace BeatLeader_Server.Controllers
                         
                         foreach (var score in lb.Scores)
                         {
+                            if (score.Player.Banned) continue;
                             if (players.FirstOrDefault(p => p.PlayerId == score.PlayerId) == null) {
                                 players.Add(new EventPlayer {
                                     PlayerId = score.PlayerId,
