@@ -833,5 +833,55 @@ namespace BeatLeader_Server.Controllers
 
             return JsonConvert.SerializeObject(playlist);
         }
+
+        [HttpPost("~/user/playlist/{id}/toInstall")]
+        public async Task<ActionResult<string>> AddToInstall(string id)
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+
+            var user = await _context.Users.Where(u => u.Id == currentID).FirstOrDefaultAsync();
+            if (user == null) return Unauthorized();
+
+            if (user.PlaylistsToInstall == null) {
+                user.PlaylistsToInstall = "";
+            }
+
+            user.PlaylistsToInstall = string.Join(",", user.PlaylistsToInstall.Split(",").Append(id).Distinct().ToList());
+            await _context.SaveChangesAsync();
+
+            return user.PlaylistsToInstall;
+        }
+
+        [HttpDelete("~/user/playlist/{id}/toInstall")]
+        public async Task<ActionResult<string>> RemoveToInstall(string id)
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+
+            var user = await _context.Users.Where(u => u.Id == currentID).FirstOrDefaultAsync();
+            if (user == null) return Unauthorized();
+
+            if (user.PlaylistsToInstall == null) {
+                user.PlaylistsToInstall = "";
+            }
+
+            user.PlaylistsToInstall = string.Join(",", user.PlaylistsToInstall.Split(",").Where(p => p != id).Distinct().ToList());
+            await _context.SaveChangesAsync();
+
+            return user.PlaylistsToInstall;
+        }
+
+        [HttpDelete("~/user/playlist/toInstall")]
+        public async Task<ActionResult> RemoveAllToInstall()
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+
+            var user = await _context.Users.Where(u => u.Id == currentID).FirstOrDefaultAsync();
+            if (user == null) return Unauthorized();
+
+            user.PlaylistsToInstall = null;
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
     }
 }

@@ -175,6 +175,7 @@ namespace BeatLeader_Server.Controllers {
             var friends = await _context.Friends.Where(f => f.Id == id).Select(f => new { Friends = f.Friends.Select(f => f.Id) }).FirstOrDefaultAsync();
             result.Friends = friends?.Friends.ToList() ?? new List<string>();
             result.QuestId = (await _context.AccountLinks.AsNoTracking().Where(al => al.SteamID == id).FirstOrDefaultAsync())?.OculusID.ToString();
+            result.PlaylistsToInstall = await _context.Users.AsNoTracking().Where(al => al.Id == id).Select(u => u.PlaylistsToInstall).FirstOrDefaultAsync();
             return result;
         }
 
