@@ -119,6 +119,7 @@ namespace BeatLeader_Server.Controllers {
                     .Where(ar => ar.PlayerId == id && (ar.Status == AliasRequestStatus.open || (timeset - ar.Timeset) < 60 * 60 * 24 * 7))
                     .FirstOrDefaultAsync(),
                 Login = (await _context.Auths.AsNoTracking().FirstOrDefaultAsync(a => a.Id == intId))?.Login,
+                PlaylistsToInstall = user.PlaylistsToInstall,
                 Ids = link == null ? null : new List<string?> { link.OculusID.ToString(), link.PCOculusID, link.SteamID },
 
                 Migrated = (await _context.AccountLinks.AsNoTracking().FirstOrDefaultAsync(a => a.SteamID == id)) != null,

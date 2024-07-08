@@ -104,6 +104,8 @@ namespace BeatLeader_Server.ControllerHelpers {
                         Value = difficulty.Value,
                         Mode = customMode.Id + 10,
                         DifficultyName = difficulty.DifficultyName,
+                        MaxScore = difficulty.MaxScore,
+                        MaxScoreGraph = difficulty.MaxScoreGraph,
                         ModeName = mode,
 
                         Njs = difficulty.Njs,
