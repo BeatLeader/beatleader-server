@@ -646,6 +646,26 @@ namespace BeatLeader_Server.Utils
             return (String.Join(",", modifierArray), multiplier);
         }
 
+        public static string? RemoveDuplicatesWithNotes(Replay replay, List<NoteEvent> notes, Leaderboard leaderboard) {
+            string? error = null;
+            ScoreStatistic? statistic = null;
+            replay.notes = notes;
+            try
+            {
+                (statistic, error) = ReplayStatisticUtils.ProcessReplay(replay, leaderboard);
+            } catch (Exception e) {
+                return e.ToString();
+            }
+
+            if (statistic != null) {
+                replay.info.score = statistic.winTracker.totalScore;
+            } else {
+                return error;
+            }
+
+            return null;
+        }
+
         public static string? RemoveDuplicates(Replay replay, Leaderboard leaderboard) {
             var groups = replay.notes.GroupBy(n => n.noteID + "_" + n.spawnTime).Where(g => g.Count() > 1).ToList();
 

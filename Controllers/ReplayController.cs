@@ -300,8 +300,33 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Replay missing frame data past note data.");
             }
 
-            if (leaderboard.Difficulty.Notes > 0 && replay.notes.Where(n => n.noteID < 40000).Count() >= leaderboard.Difficulty.Notes * 2) {
-                return BadRequest("Excessive note duplication detected, please contact on Discord");
+            if (leaderboard.Difficulty.Notes > 0 && replay.notes.Count() >= leaderboard.Difficulty.Notes * 2) {
+                var cleanedNotes = new List<NoteEvent>();
+                for (int i = 0; i < replay.notes.Count() - 1; i += 2) {
+                    var firstNote = replay.notes[i];
+                    var secondNote = replay.notes[i + 1];
+
+                    if (firstNote.spawnTime != secondNote.spawnTime || firstNote.noteID != secondNote.noteID) {
+                        break;
+                    }
+                    if (firstNote.noteCutInfo.cutPoint.x == 0 && firstNote.noteCutInfo.cutPoint.y == 0 && firstNote.noteCutInfo.cutPoint.z == 0) {
+                        cleanedNotes.Add(secondNote);
+                    } else {
+                        cleanedNotes.Add(firstNote);
+                    }
+                }
+                if (cleanedNotes.Count() >= leaderboard.Difficulty.Notes) {
+                    await _s3Client.UploadReplay("backup-" + ReplayUtils.ReplayFilename(replay, null, true), replayData);
+                    string? error = ReplayUtils.RemoveDuplicatesWithNotes(replay, cleanedNotes, leaderboard);
+                    using (var recalculatedStream = new MemoryStream()) {
+                        ReplayEncoder.Encode(replay, new BinaryWriter(recalculatedStream, Encoding.UTF8));
+
+                        replayData = recalculatedStream.ToArray();
+                    }
+                    if (error != null) {
+                        return BadRequest("Failed to delete duplicate note: " + error);
+                    }
+                }
             }
 
             if (replay.info.score <= 0) {

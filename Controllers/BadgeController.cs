@@ -125,6 +125,30 @@ namespace BeatLeader_Server.Controllers
             return badge;
         }
 
+        [HttpDelete("~/badge/{id}")]
+        [Authorize]
+        public async Task<ActionResult> DeleteBadge(int id)
+        {
+            string? currentId = HttpContext.CurrentUserID(_context);
+            Player? currentPlayer = currentId != null ? await _context.Players.FindAsync(currentId) : null;
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var badge = await _context.Badges.FindAsync(id);
+
+            if (badge == null) {
+                return NotFound();
+            }
+
+            _context.Badges.Remove(badge);
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
         [HttpPut("~/player/badge/{playerId}/{badgeId}")]
         [Authorize]
         public async Task<ActionResult<Player>> AddBadge(string playerId, int badgeId)
