@@ -35,16 +35,16 @@ namespace BeatLeader_Server.Utils {
                     orderedSequence = sequence.Order(order, t => t.Timepost);
                     break;
                 case ScoresSortBy.Pp:
-                    orderedSequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.Pp);
+                    orderedSequence = sequence.Order(order, t => t.Pp);
                     break;
                 case ScoresSortBy.AccPP:
-                    orderedSequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.AccPP);
+                    orderedSequence = sequence.Order(order, t => t.AccPP);
                     break;
                 case ScoresSortBy.PassPP:
-                    orderedSequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.PassPP);
+                    orderedSequence = sequence.Order(order, t => t.PassPP);
                     break;
                 case ScoresSortBy.TechPP:
-                    orderedSequence = sequence.Where(t => t.Pp > 0).Order(order, t => t.TechPP);
+                    orderedSequence = sequence.Order(order, t => t.TechPP);
                     break;
                 case ScoresSortBy.Acc:
                     orderedSequence = sequence.Order(order, t => t.Accuracy);

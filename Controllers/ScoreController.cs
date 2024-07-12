@@ -599,7 +599,17 @@ namespace BeatLeader_Server.Controllers
                 .TagWithCallSite()
                 .ToListAsync();
 
-            return ((resultList.FirstOrDefault()?.Pp > 0 
+            bool anyPP = resultList.FirstOrDefault()?.Pp > 0;
+            if (anyPP) {
+                foreach (var score in resultList) {
+                    if (score.Pp == 0) {
+                        // TODO: Fix in the PC mod
+                        score.Pp = 0.0001f;
+                    }
+                }
+            }
+
+            return (( anyPP
                         ? resultList
                             .OrderByDescending(el => Math.Round(el.Pp, 2))
                             .ThenByDescending(el => Math.Round(el.Accuracy, 4))
@@ -796,15 +806,19 @@ namespace BeatLeader_Server.Controllers
                 .TagWithCallSite()
                 .ToListAsync();
 
+            bool anyPp = resultList.FirstOrDefault()?.Pp > 0;
             foreach (var score in resultList) {
                 var contextPlayer = await _context.PlayerContextExtensions.FirstOrDefaultAsync(ce => ce.PlayerId == score.PlayerId && ce.Context == context);
                 
                 if (contextPlayer != null) {
                     score?.Player?.ToContext(contextPlayer);
                 }
+                if (anyPp && score.Pp == 0) {
+                    score.Pp = 0.0001f;
+                }
             }
             if (context == LeaderboardContexts.Golf) {
-                if (resultList.FirstOrDefault()?.Pp > 0) {
+                if (anyPp) {
                     resultList = resultList
                         .OrderByDescending(el => Math.Round(el.Pp, 2))
                         .ThenBy(el => Math.Round(el.Accuracy, 4))
@@ -817,7 +831,7 @@ namespace BeatLeader_Server.Controllers
                         .ThenBy(el => el.Timeset).ToList();
                 }
             } else {
-                if (resultList.FirstOrDefault()?.Pp > 0) {
+                if (anyPp) {
                     resultList = resultList
                             .OrderByDescending(el => Math.Round(el.Pp, 2))
                             .ThenBy(el => Math.Round(el.Accuracy, 4))
