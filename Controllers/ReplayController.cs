@@ -278,7 +278,7 @@ namespace BeatLeader_Server.Controllers
                 leaderboard = await LeaderboardControllerHelper.GetByHash(dbContext, info.hash, info.difficulty, info.mode);
                 if (leaderboard == null)
                 {
-                    return NotFound("Such leaderboard not exists");
+                    return NotFound("No such leaderboard exists.");
                 }
             }
 
