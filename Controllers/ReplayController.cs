@@ -549,7 +549,7 @@ namespace BeatLeader_Server.Controllers
 
             await GeneralContextScore(dbContext, leaderboard, player, resultScore, currentScores, replay);
 
-            (ScoreStatistic? statistic, string? statisticError) = ScoreControllerHelper.CalculateStatisticFromReplay(replay, resultScore.Leaderboard);
+            (ScoreStatistic? statistic, string? statisticError) = ScoreControllerHelper.CalculateStatisticFromReplay(replay, leaderboard);
             if (statistic != null) {
                 resultScore.AccLeft = statistic.accuracyTracker.accLeft;
                 resultScore.AccRight = statistic.accuracyTracker.accRight;
@@ -1095,7 +1095,7 @@ namespace BeatLeader_Server.Controllers
             if (statistic != null) {
                 await _s3Client.UploadScoreStats(resultScore.Id + ".json", statistic);
             } else {
-                await SaveFailedScore(dbContext, resultScore, leaderboard, statisticError);
+                await SaveFailedScore(dbContext, resultScore, leaderboard, statisticError ?? "Can't calculate stats");
                 return;
             }
 
