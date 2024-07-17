@@ -204,7 +204,62 @@ namespace BeatLeader_Server.Controllers
             }
 
             return Ok(result.OrderByDescending(r => r.MaxDiff).ToList());
+        }
 
+        [HttpGet("~/admin/bigexport")]
+        [Authorize]
+        public async Task<ActionResult> BigExport()
+        {
+            string currentId = HttpContext.CurrentUserID(_context);
+            Player? currentPlayer = await _context.Players.FindAsync(currentId);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            return Ok(new {
+                Players = _context
+                    .Players
+                    .AsNoTracking()
+                    .Where(p => p.Pp > 0 && !p.Banned)
+                    .Select(p => new {
+                        p.Name,
+                        p.Country,
+                        p.Id,
+                        p.Avatar
+                    }).ToList(),
+
+                Scores = _context
+                    .Scores
+                    .AsNoTracking()
+                    .Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && !s.Player.Banned && s.Player.Pp > 0 && s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked && s.Pp > 0)
+                    .Select(s => new {
+                        s.Id,
+                        s.LeaderboardId,
+                        s.Accuracy,
+                        s.Modifiers,
+                        s.PlayerId
+                    }).ToList(),
+
+                Maps = _context
+                    .Leaderboards
+                    .AsNoTracking()
+                    .Where(l => l.Difficulty.Status == DifficultyStatus.ranked)
+                    .Select(l => new {
+                        l.Song.Hash,
+                        l.Song.Name,
+                        l.Id,
+                        l.SongId,
+                        l.Difficulty.ModeName,
+                        l.Difficulty.DifficultyName,
+
+                        l.Difficulty.AccRating,
+                        l.Difficulty.PassRating,
+                        l.Difficulty.TechRating,
+                        l.Difficulty.PredictedAcc,
+                        l.Difficulty.ModifiersRating
+                    }).ToList()
+            });
         }
     }
 }
