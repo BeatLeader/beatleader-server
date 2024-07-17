@@ -549,6 +549,29 @@ namespace BeatLeader_Server.Controllers
 
             await GeneralContextScore(dbContext, leaderboard, player, resultScore, currentScores, replay);
 
+            (ScoreStatistic? statistic, string? statisticError) = ScoreControllerHelper.CalculateStatisticFromReplay(replay, resultScore.Leaderboard);
+            if (statistic != null) {
+                resultScore.AccLeft = statistic.accuracyTracker.accLeft;
+                resultScore.AccRight = statistic.accuracyTracker.accRight;
+                resultScore.MaxCombo = statistic.hitTracker.maxCombo;
+                resultScore.FcAccuracy = statistic.accuracyTracker.fcAcc;
+                resultScore.MaxStreak = statistic.hitTracker.maxStreak;
+                resultScore.LeftTiming = statistic.hitTracker.leftTiming;
+                resultScore.RightTiming = statistic.hitTracker.rightTiming;
+                if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
+                    resultScore.FcPp = ReplayUtils.PpFromScore(
+                        resultScore.FcAccuracy, 
+                        resultScore.ValidContexts,
+                        resultScore.Modifiers ?? "", 
+                        leaderboard.Difficulty.ModifierValues ?? new ModifiersMap(), 
+                        leaderboard.Difficulty.ModifiersRating, 
+                        leaderboard.Difficulty.AccRating ?? 0, 
+                        leaderboard.Difficulty.PassRating ?? 0, 
+                        leaderboard.Difficulty.TechRating ?? 0, 
+                        leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
+                }
+            }
+
             foreach (var leaderboardContext in ContextExtensions.NonGeneral) {
                 await ContextScore(dbContext, leaderboardContext, leaderboard, player, resultScore, currentScores, replay);
             }
@@ -621,6 +644,8 @@ namespace BeatLeader_Server.Controllers
                         wrappedCurrentScores,
                         context, 
                         offsets,
+                        statistic,
+                        statisticError,
                         allow);
                     await dbContext.DisposeAsync();
                 });
@@ -1042,6 +1067,8 @@ namespace BeatLeader_Server.Controllers
             List<CurrentScoreWrapper> currentScores,
             HttpContext? context,
             ReplayOffsets offsets,
+            ScoreStatistic? statistic,
+            string? statisticError,
             bool allow = false) {
 
             var oldPlayerStats = CollectPlayerStats(player);
@@ -1065,14 +1092,10 @@ namespace BeatLeader_Server.Controllers
 
             dbContext.ChangeTracker.AutoDetectChangesEnabled = true;
 
-            ScoreStatistic? statistic;
-            string? statisticError;
-            try {
-                (statistic, statisticError) = await ScoreControllerHelper.CalculateAndSaveStatistic(_s3Client, replay, resultScore);
-                
-            } catch (Exception e)
-            {
-                await SaveFailedScore(dbContext, resultScore, leaderboard, e.ToString());
+            if (statistic != null) {
+                await _s3Client.UploadScoreStats(resultScore.Id + ".json", statistic);
+            } else {
+                await SaveFailedScore(dbContext, resultScore, leaderboard, statisticError);
                 return;
             }
 
@@ -1177,26 +1200,6 @@ namespace BeatLeader_Server.Controllers
 
                         return;
                     }
-                }
-
-                resultScore.AccLeft = statistic.accuracyTracker.accLeft;
-                resultScore.AccRight = statistic.accuracyTracker.accRight;
-                resultScore.MaxCombo = statistic.hitTracker.maxCombo;
-                resultScore.FcAccuracy = statistic.accuracyTracker.fcAcc;
-                resultScore.MaxStreak = statistic.hitTracker.maxStreak;
-                resultScore.LeftTiming = statistic.hitTracker.leftTiming;
-                resultScore.RightTiming = statistic.hitTracker.rightTiming;
-                if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
-                    resultScore.FcPp = ReplayUtils.PpFromScore(
-                        resultScore.FcAccuracy, 
-                        resultScore.ValidContexts,
-                        resultScore.Modifiers, 
-                        leaderboard.Difficulty.ModifierValues, 
-                        leaderboard.Difficulty.ModifiersRating, 
-                        leaderboard.Difficulty.AccRating ?? 0, 
-                        leaderboard.Difficulty.PassRating ?? 0, 
-                        leaderboard.Difficulty.TechRating ?? 0, 
-                        leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
                 }
 
                 resultScore.Country = (context?.Request.Headers["cf-ipcountry"] ?? "") == StringValues.Empty ? "not set" : context?.Request.Headers["cf-ipcountry"].ToString();

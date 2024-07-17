@@ -599,7 +599,7 @@ namespace BeatLeader_Server.Controllers
                 .TagWithCallSite()
                 .ToListAsync();
 
-            bool anyPP = resultList.Any(s => s.Pp > 0);
+            bool anyPP = resultList.FirstOrDefault()?.Pp > 0;
             if (anyPP) {
                 foreach (var score in resultList) {
                     if (score.Pp == 0) {
@@ -609,7 +609,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            return ((anyPP
+            return (( anyPP
                         ? resultList
                             .OrderByDescending(el => Math.Round(el.Pp, 2))
                             .ThenByDescending(el => Math.Round(el.Accuracy, 4))
@@ -806,7 +806,7 @@ namespace BeatLeader_Server.Controllers
                 .TagWithCallSite()
                 .ToListAsync();
 
-            bool anyPp = resultList.Any(s => s.Pp > 0);
+            bool anyPp = resultList.FirstOrDefault()?.Pp > 0;
             foreach (var score in resultList) {
                 var contextPlayer = await _context.PlayerContextExtensions.FirstOrDefaultAsync(ce => ce.PlayerId == score.PlayerId && ce.Context == context);
                 
