@@ -240,5 +240,59 @@ namespace BeatLeader_Server.Controllers {
 
             return Ok(achievement);
         }
+
+        [HttpGet("~/survey/week100")]
+        public async Task<ActionResult> Week100Achievement() {
+            string? currentId = HttpContext.CurrentUserID(_context);
+            if (currentId == null) return Unauthorized();
+
+            Player? currentPlayer = await _context.Players
+                .Include(p => p.Achievements)
+                .ThenInclude(a => a.Level)
+                .Include(p => p.Achievements)
+                .ThenInclude(a => a.AchievementDescription)
+                .FirstOrDefaultAsync(p => p.Id == currentId);
+            if (currentPlayer == null) {
+                return Unauthorized();
+            }
+
+            var poll = await _context.Week100Polls.FirstOrDefaultAsync(p => p.PlayerId == currentId);
+            if (poll == null) {
+                poll = new Week100Poll {
+                    PlayerId = currentId,
+                    Key = Guid.NewGuid().ToString()
+                };
+                _context.Week100Polls.Add(poll);
+                await _context.SaveChangesAsync();
+            }
+
+            var achievement = currentPlayer
+                .Achievements
+                .FirstOrDefault(a => a.AchievementDescriptionId == 2);
+            if (poll.Filled && achievement == null) {
+                achievement = new Achievement {
+                    AchievementDescriptionId = 2,
+                    Level = await _context.AchievementLevels.FirstOrDefaultAsync(l => l.AchievementDescriptionId == 2 && l.Level == 1),
+                    Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds
+                };
+                currentPlayer.Achievements.Add(achievement);
+                await _context.SaveChangesAsync();
+
+                currentPlayer = await _context.Players
+                .Include(p => p.Achievements)
+                .ThenInclude(a => a.Level)
+                .Include(p => p.Achievements)
+                .ThenInclude(a => a.AchievementDescription)
+                .FirstOrDefaultAsync(p => p.Id == currentId);
+                achievement = currentPlayer
+                .Achievements
+                .FirstOrDefault(a => a.AchievementDescriptionId == 2);
+            }
+
+            return Ok(new {
+                PollId = poll.Key,
+                Achievement = achievement
+            });
+        }
     }
 }

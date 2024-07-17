@@ -99,6 +99,8 @@ namespace BeatLeader_Server
         public DbSet<SanitizerConfig> SanitizerConfigs { get; set; }
         public DbSet<ModVersion> ModVersions { get; set; }
 
+        public DbSet<Week100Poll> Week100Polls { get; set; }
+
         public void RejectChanges()
         {
             foreach (var entry in ChangeTracker.Entries())

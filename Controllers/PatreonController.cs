@@ -148,6 +148,22 @@ namespace BeatLeader_Server.Controllers
         }
 
         [ApiExplorerSettings(IgnoreApi = true)]
+        [HttpDelete("~/patreon/link")]
+        public async Task<ActionResult> DeletePatreonLink([FromQuery] string id) {
+            if (!(await HttpContext.ItsAdmin(_context))) {
+                return Unauthorized();
+            }
+
+            var link = await _context.PatreonLinks.Where(pl => pl.Id == id).FirstOrDefaultAsync();
+            if (link != null) {
+                _context.PatreonLinks.Remove(link);
+                _context.SaveChanges();
+            }
+
+            return Ok();
+        }
+
+        [ApiExplorerSettings(IgnoreApi = true)]
         [HttpGet("~/refreshpatreon")]
         public async Task<ActionResult> RefreshPatreon([FromQuery] string? id = null) {
             if (!(await HttpContext.ItsAdmin(_context))) {
