@@ -52,6 +52,7 @@
     <PackageReference Include="Anemonis.AspNetCore.RequestDecompression" Version="1.14.0" />
     <PackageReference Include="AngleSharp" Version="1.1.2" />
     <PackageReference Include="AspNet.Security.OAuth.Discord" Version="8.1.0" />
+    <PackageReference Include="AspNet.Security.OAuth.GitHub" Version="8.1.0" />
     <PackageReference Include="AspNet.Security.OAuth.Patreon" Version="8.1.0" />
     <PackageReference Include="AspNet.Security.OAuth.Twitch" Version="8.1.0" />
     <PackageReference Include="AspNet.Security.OAuth.Twitter" Version="8.1.0" />

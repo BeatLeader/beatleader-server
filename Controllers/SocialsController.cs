@@ -251,6 +251,50 @@ namespace BeatLeader_Server.Controllers
             return Redirect(returnUrl);
         }
 
+        [HttpGet("~/user/linkGitHub")]
+        public async Task<ActionResult> LinkGitHub([FromQuery] string returnUrl)
+        {
+            string playerId = HttpContext.CurrentUserID(_context);
+            if (playerId == null)
+            {
+                return Redirect(returnUrl);
+            }
+            var auth = await HttpContext.AuthenticateAsync("GitHub");
+
+            var player = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == playerId);
+            if (player != null && (player.Socials == null || player.Socials.FirstOrDefault(s => s.Service == "GitHub") == null)) {
+                player.Socials ??= new List<PlayerSocial>();
+
+                var claims = auth.Principal.Claims;
+
+                var name = claims.FirstOrDefault(c => c.Type == "urn:github:name")?.Value;
+                var id = claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+                var username = claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
+
+                string? token = auth?.Properties?.Items[".Token.access_token"];
+
+                if (name != null && id != null && username != null && token != null) {
+                    player.Socials.Add(new PlayerSocial {
+                        Service = "GitHub",
+                        User = name,
+                        UserId = id,
+                        Link = $"https://github.com/{name}"
+                    });
+                    _context.GitHubLinks.Add(new GitHubLink {
+                        Token = token,
+                        GitHubId = id,
+                        Id = playerId
+                    });
+
+                    await _context.SaveChangesAsync();
+                }
+            } else {
+                return Unauthorized("This GitHub profile is already linked");
+            }
+
+            return Redirect(returnUrl);
+        }
+
         // Demo endpoint sample for the BL oauth2 flow
         [HttpGet("~/user/linkBeatLeader")]
         public async Task<ActionResult> LinkBeatLeader([FromQuery] string returnUrl)
@@ -346,6 +390,13 @@ namespace BeatLeader_Server.Controllers
                     {
                         _context.DiscordLinks.Remove(link4);
                         PlayerUtils.UpdateBoosterRole(player, null);
+                    }
+                    break;
+                case "GitHub":
+                    var link5 = await _context.GitHubLinks.FirstOrDefaultAsync(l => l.Id == player.Id);
+                    if (link5 != null)
+                    {
+                        _context.GitHubLinks.Remove(link5);
                     }
                     break;
                 default:

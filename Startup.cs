@@ -186,6 +186,7 @@ namespace BeatLeader_Server {
             .AddCookie("BLGoogle")
             .AddCookie("BLDiscord")
             .AddCookie("BLBeatSaver")
+            .AddCookie("BLGitHub")
             .AddSteamTicket(options =>
             {
                 options.Key = steamKey;
@@ -297,6 +298,16 @@ namespace BeatLeader_Server {
                     options.ClientSecret = googleSecret;
                     options.SignInScheme = "BLGoogle";
                     options.Scope.Add("https://www.googleapis.com/auth/youtube.readonly");
+                });
+
+                string githubId = Configuration.GetValue<string>("GitHubId");
+                string githubSecret = Configuration.GetValue<string>("GitHubSecret");
+                authBuilder.AddGitHub(options => 
+                {
+                    options.SaveTokens = true;
+                    options.ClientId = githubId;
+                    options.ClientSecret = githubSecret;
+                    options.SignInScheme = "BLGitHub";
                 });
             } else {
                 authBuilder.AddCookie("BLBeatLeader")

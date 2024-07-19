@@ -351,6 +351,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] bool? showStatsPublicPinned = null,
             [FromQuery] bool? horizontalRichBio = null,
             [FromQuery] string? rankedMapperSort = null,
+            [FromQuery] string? hiddenSocials = null,
             [FromQuery] string? id = null) {
             string userId = GetId();
             var player = await _context
@@ -623,6 +624,14 @@ namespace BeatLeader_Server.Controllers {
 
             if (Request.Query.ContainsKey("rankedMapperSort")) {
                 settings.RankedMapperSort = rankedMapperSort ?? null;
+            }
+
+            if (Request.Query.ContainsKey("hiddenSocials")) {
+                var socialsToHide = (hiddenSocials ?? "").ToLower().Split(",");
+                var socials = _context.PlayerSocial.Where(s => s.PlayerId == player.Id).ToList();
+                foreach (var social in socials) {
+                    social.Hidden = socialsToHide.Contains(social.Service.ToLower());
+                }
             }
 
             await _context.SaveChangesAsync();

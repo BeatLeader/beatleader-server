@@ -39,6 +39,7 @@ namespace BeatLeader_Server
         public DbSet<DiscordLink> DiscordLinks { get; set; }
         public DbSet<YouTubeLink> YouTubeLinks { get; set; }
         public DbSet<BeatSaverLink> BeatSaverLinks { get; set; }
+        public DbSet<GitHubLink> GitHubLinks { get; set; }
         public DbSet<PlayerLeaderboardStats> PlayerLeaderboardStats { get; set; }
 
         public DbSet<ReservedClanTag> ReservedTags { get; set; }
