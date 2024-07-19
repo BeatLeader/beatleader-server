@@ -144,6 +144,22 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
+                if (Int64.TryParse(player.Id, out long intId) && intId > 1000000000000000) {
+                    var link = await _context
+                            .AccountLinks
+                            .AsNoTracking()
+                            .Where(el => el.SteamID == id || el.PCOculusID == id)
+                            .Select(el => new LinkResponse {
+                                SteamId = el.SteamID,
+                                OculusPCId = el.PCOculusID,
+                                QuestId = el.OculusID
+                            })
+                            .FirstOrDefaultAsync();
+                    if (link != null) {
+                        result.LinkedIds = link;
+                    }
+                }
+
                 return PostProcessSettings(result, true);
             } else {
                 return NotFound();
