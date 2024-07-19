@@ -698,8 +698,9 @@ namespace BeatLeader_Server.Utils
 
         public static void UpdateScoreStats(
             this PlayerScoreStats playerScoreStats, 
-            Score? currentScore, 
-            Score resultScore,
+            IScore? currentScore, 
+            IScore resultScore,
+            IPlayer player,
             bool isRanked) {
             if (currentScore != null)
             {
@@ -774,6 +775,14 @@ namespace BeatLeader_Server.Utils
             if (!resultScore.IgnoreForStats) {
                 playerScoreStats.TotalScore += resultScore.ModifiedScore;
                 playerScoreStats.AverageAccuracy = MathUtils.AddToAverage(playerScoreStats.AverageAccuracy, playerScoreStats.TotalPlayCount, resultScore.Accuracy);
+                if (resultScore.MaxStreak > playerScoreStats.MaxStreak) {
+                    playerScoreStats.MaxStreak = resultScore.MaxStreak ?? 0;
+                }
+
+                if (player.Rank < playerScoreStats.PeakRank || playerScoreStats.PeakRank == 0)
+                {
+                    playerScoreStats.PeakRank = player.Rank;
+                }
                 if (isRanked)
                 {
                     playerScoreStats.AverageRankedAccuracy = MathUtils.AddToAverage(playerScoreStats.AverageRankedAccuracy, playerScoreStats.RankedPlayCount, resultScore.Accuracy);
@@ -846,83 +855,6 @@ namespace BeatLeader_Server.Utils
                     }
                 }
             }
-        }
-
-        public static void UpdateScoreExtensionStats(
-            this PlayerScoreStats playerScoreStats, 
-            ScoreContextExtension? currentScore, 
-            ScoreContextExtension resultScore,
-            bool ignoreForStats,
-            bool isRanked) {
-            if (currentScore != null)
-            {
-                if (!ignoreForStats) {
-                    playerScoreStats.TotalScore -= currentScore.ModifiedScore;
-
-                    if (playerScoreStats.TotalPlayCount == 1)
-                    {
-                        playerScoreStats.AverageAccuracy = 0.0f;
-                    }
-                    else
-                    {
-                        playerScoreStats.AverageAccuracy = MathUtils.RemoveFromAverage(playerScoreStats.AverageAccuracy, playerScoreStats.TotalPlayCount, currentScore.Accuracy);
-                    }
-
-                        
-                    if (isRanked)
-                    {
-                        float oldAverageAcc = playerScoreStats.AverageRankedAccuracy;
-                        if (playerScoreStats.RankedPlayCount == 1)
-                        {
-                            playerScoreStats.AverageRankedAccuracy = 0.0f;
-                        }
-                        else
-                        {
-                            playerScoreStats.AverageRankedAccuracy = MathUtils.RemoveFromAverage(playerScoreStats.AverageRankedAccuracy, playerScoreStats.RankedPlayCount, currentScore.Accuracy);
-                        }
-
-                        switch (currentScore.Accuracy)
-                        {
-                            case > 0.95f:
-                                playerScoreStats.SSPPlays--;
-                                break;
-                            case > 0.9f:
-                                playerScoreStats.SSPlays--;
-                                break;
-                            case > 0.85f:
-                                playerScoreStats.SPPlays--;
-                                break;
-                            case > 0.8f:
-                                playerScoreStats.SPlays--;
-                                break;
-                            default:
-                                playerScoreStats.APlays--;
-                                break;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                if (isRanked)
-                {
-                    playerScoreStats.RankedPlayCount++;
-                }
-                else {
-                    playerScoreStats.UnrankedPlayCount++;
-                }
-                playerScoreStats.TotalPlayCount++;
-            }
-
-            if (isRanked)
-            {
-                playerScoreStats.LastRankedScoreTime = resultScore.Timepost;
-            }
-            else
-            {
-                playerScoreStats.LastUnrankedScoreTime = resultScore.Timepost;
-            }
-            playerScoreStats.LastScoreTime = resultScore.Timepost;
         }
     }
 }

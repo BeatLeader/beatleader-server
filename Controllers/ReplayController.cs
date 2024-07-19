@@ -773,7 +773,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             resultScore.ValidContexts |= LeaderboardContexts.General;
-            player.ScoreStats.UpdateScoreStats(currentScore, resultScore, leaderboard.Difficulty.Status == DifficultyStatus.ranked);
+            player.ScoreStats.UpdateScoreStats(currentScore, resultScore, player, leaderboard.Difficulty.Status == DifficultyStatus.ranked);
 
             ScoreImprovement improvement = new ScoreImprovement();
             resultScore.ScoreImprovement = improvement;
@@ -900,7 +900,7 @@ namespace BeatLeader_Server.Controllers
                 };
                 player.ContextExtensions.Add(playerContext);
             }
-            playerContext.ScoreStats?.UpdateScoreExtensionStats(currentExtension, resultExtension, resultScore.IgnoreForStats, leaderboard.Difficulty.Status == DifficultyStatus.ranked);
+            playerContext.ScoreStats?.UpdateScoreStats(currentExtension, resultExtension, playerContext, leaderboard.Difficulty.Status == DifficultyStatus.ranked);
         }
 
         private async Task RecalculateRanks(
@@ -1206,7 +1206,6 @@ namespace BeatLeader_Server.Controllers
 
                 await UpdateTop4(dbContext, resultScore, currentScores, player, oldPlayerStats, leaderboard);
                 UpdateImprovements(resultScore, currentScores, player, oldPlayerStats, leaderboard);
-                UpdatePlayerStats(resultScore, currentScores, player, oldPlayerStats, leaderboard);
 
                 if (resultScore.Hmd == HMD.unknown && (await dbContext.Headsets.FirstOrDefaultAsync(h => h.Name == replay.info.hmd)) == null) {
                     dbContext.Headsets.Add(new Headset {
@@ -1646,45 +1645,6 @@ namespace BeatLeader_Server.Controllers
                             improvement.Rank = ce.Rank - currentScoreExtenstion.ScoreInstance?.Rank ?? 0;
                         }
                     }
-                }
-            }
-        }
-
-        private void UpdatePlayerStats(
-                Score resultScore,
-                List<CurrentScoreWrapper> currentScores, 
-                Player player,
-                List<OldPlayerStats> oldPlayerStats,
-                Leaderboard leaderboard) {
-
-            if (player.ScoreStats == null) return;
-
-            if (!resultScore.IgnoreForStats && 
-                resultScore.ValidContexts.HasFlag(LeaderboardContexts.General) && 
-                resultScore.MaxStreak > player.ScoreStats.MaxStreak) {
-                    player.ScoreStats.MaxStreak = resultScore.MaxStreak ?? 0;
-            }
-
-            if (player.Rank < player.ScoreStats.PeakRank || player.ScoreStats.PeakRank == 0)
-            {
-                player.ScoreStats.PeakRank = player.Rank;
-            }
-
-            foreach (var context in ContextExtensions.NonGeneral)
-            {
-                var contextPlayer = player.ContextExtensions?.FirstOrDefault(ce => ce.Context == context);
-                var contextStats = contextPlayer?.ScoreStats;
-                if (contextStats == null || contextPlayer == null) continue;
-
-                if (!resultScore.IgnoreForStats && 
-                    resultScore.ValidContexts.HasFlag(context) && 
-                    resultScore.MaxStreak > contextStats.MaxStreak) {
-                        contextStats.MaxStreak = resultScore.MaxStreak ?? 0;
-                }
-
-                if (contextPlayer.Rank < contextStats.PeakRank || contextStats.PeakRank == 0)
-                {
-                    contextStats.PeakRank = contextPlayer.Rank;
                 }
             }
         }
