@@ -216,7 +216,7 @@ namespace BeatLeader_Server.Controllers {
 
             var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
 
-            var myScores = await ((IQueryable<IScore>)(leaderboardContext == LeaderboardContexts.General ? _context.Scores.Where(s => s.ValidContexts.HasFlag(leaderboardContext)) : _context.ScoreContextExtensions.Where(ce => ce.Context == leaderboardContext)))
+            var myScores = await ((IQueryable<IScore>)(leaderboardContext == LeaderboardContexts.General ? _context.Scores.Where(s => s.ValidContexts.HasFlag(leaderboardContext)) : _context.ScoreContextExtensions.Include(ce => ce.ScoreInstance).Where(ce => ce.Context == leaderboardContext)))
                 .Where(s => s.PlayerId == userId && leaderboards.Contains(s.LeaderboardId))
                 .Select(s => new ScoreResponseWithAcc
                     {
