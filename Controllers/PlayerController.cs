@@ -148,7 +148,7 @@ namespace BeatLeader_Server.Controllers
                     var link = await _context
                             .AccountLinks
                             .AsNoTracking()
-                            .Where(el => el.SteamID == id || el.PCOculusID == id)
+                            .Where(el => el.SteamID == player.Id || el.PCOculusID == player.Id)
                             .Select(el => new LinkResponse {
                                 SteamId = el.SteamID,
                                 OculusPCId = el.PCOculusID,

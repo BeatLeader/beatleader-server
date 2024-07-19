@@ -1044,7 +1044,7 @@ namespace BeatLeader_Server.Controllers
 
             var scores = await _context
                 .Scores
-                .Where(s => s.PlayerId == currentPlayer.Id && (s.Id == id || s.Metadata != null))
+                .Where(s => s.PlayerId == currentPlayer.Id && s.ValidContexts.HasFlag(leaderboardContext) && (s.Id == id || s.Metadata != null))
                 .Include(s => s.Metadata)
                 .ToListAsync();
             if (scores.Count() == 0 || scores.FirstOrDefault(s => s.Id == id) == null)
