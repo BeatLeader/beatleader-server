@@ -477,9 +477,11 @@ namespace BeatLeader_Server.Utils
                 var ranked = await context.Leaderboards.Where(lb => lb.Events.FirstOrDefault(e => e.Id == eventRanking.Id) != null)
                     .Select(lb => new { Pp = lb.Scores.Where(s =>
                         s.PlayerId == player.Id &&
+                        s.ValidContexts.HasFlag(LeaderboardContexts.General) &&
                         s.Pp != 0 &&
                         !s.Banned).Count() > 0 ? lb.Scores.Where(s =>
                         s.PlayerId == player.Id &&
+                        s.ValidContexts.HasFlag(LeaderboardContexts.General) &&
                         s.Pp != 0 &&
                         !s.Banned).First().Pp : 0 } )
                     .OrderByDescending(s => s.Pp).ToListAsync();
