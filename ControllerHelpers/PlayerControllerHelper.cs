@@ -4,6 +4,7 @@ using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 
 namespace BeatLeader_Server.ControllerHelpers {
     public class PlayerControllerHelper {
@@ -159,6 +160,7 @@ namespace BeatLeader_Server.ControllerHelpers {
         public class FollowerCounter {
             public string Id { get; set; }
             public int Count { get; set; }
+            public bool Mutual { get; set; }
         }
 
         public static async Task<(List<string>, List<FollowerCounter>)> GetPlayerFollowers(AppContext dbContext, string id, int page, int count) {
@@ -168,6 +170,12 @@ namespace BeatLeader_Server.ControllerHelpers {
                 .Where(f => !f.HideFriends && f.Friends.Any(p => p.Id == id))
                 .Select(f => f.Id)
                 .ToListAsync();
+
+            var following = await dbContext
+                .Friends
+                .Where(f => !f.HideFriends && f.Id == id)
+                .Select(f => f.Friends.Select(ff => ff.Id).ToList())
+                .FirstOrDefaultAsync() ?? new List<string> { };
 
             if (!allFollowersIds.Any()) {
                 return (new List<string>(), new List<FollowerCounter>());
@@ -186,7 +194,8 @@ namespace BeatLeader_Server.ControllerHelpers {
             // Step 3: Calculate the count of common followings
             var followersCounts = followersWithFollowings.Select(f => new FollowerCounter {
                 Id = f.FollowerId,
-                Count = f.FollowingIds.Intersect(allFollowersIds).Count()
+                Count = f.FollowingIds.Intersect(allFollowersIds).Count(),
+                Mutual = following.Contains(f.FollowerId)
             }).ToList();
 
             // Step 4: Order and paginate the results
@@ -220,7 +229,8 @@ namespace BeatLeader_Server.ControllerHelpers {
                 .GroupBy(f => f.Id)
                 .Select(g => new FollowerCounter {
                     Id = g.Key,
-                    Count = g.Count()
+                    Count = g.Count(),
+                    Mutual = dbContext.Friends.FirstOrDefault(f => !f.HideFriends && f.Id == g.Key && f.Friends.FirstOrDefault(ff => ff.Id == id) != null) != null
                 })
                 .ToListAsync();
 

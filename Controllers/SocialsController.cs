@@ -278,7 +278,7 @@ namespace BeatLeader_Server.Controllers
                         Service = "GitHub",
                         User = name,
                         UserId = id,
-                        Link = $"https://github.com/{name}"
+                        Link = $"https://github.com/{username}"
                     });
                     _context.GitHubLinks.Add(new GitHubLink {
                         Token = token,

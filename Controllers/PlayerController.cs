@@ -996,7 +996,9 @@ namespace BeatLeader_Server.Controllers
                 Avatar = p.Avatar
             }).ToListAsync();
             foreach (var item in result) {
-                item.Count = followers.FirstOrDefault(f => f.Id == item.Id)?.Count;
+                var follower = followers.FirstOrDefault(f => f.Id == item.Id);
+                item.Count = follower?.Count;
+                item.Mutual = follower?.Mutual ?? false;
             }
 
             return result.OrderByDescending(f => f.Count ?? 0).ToList();
