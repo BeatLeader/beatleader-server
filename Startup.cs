@@ -401,8 +401,10 @@ namespace BeatLeader_Server {
                     services.AddHostedService<HistoryService>();
                     services.AddHostedService<BotService>();
                     services.AddHostedService<RankingService>();
+                    services.AddHostedService<SongService>();
                 }
             }
+            
             services.AddHostedService<ConstantsService>();
             services.AddHostedService<RefreshTaskService>();
             services.AddHostedService<MinuteRefresh>();

@@ -7,6 +7,56 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BeatLeader_Server.ControllerHelpers {
     public class SongControllerHelper {
+        public static async Task AddNewSong(Song song, string hash, AppContext dbContext) {
+            string songId = song.Id;
+            Song? existingSong = await dbContext
+                .Songs
+                .Include(s => s.Difficulties)
+                .ThenInclude(d => d.ModifierValues)
+                .FirstOrDefaultAsync(i => i.Id == songId);
+            Song? baseSong = existingSong;
+
+            List<Song> songsToMigrate = new List<Song>();
+            while (existingSong != null)
+            {
+                if (song.Hash.ToLower() == hash.ToLower())
+                {
+                    songsToMigrate.Add(existingSong);
+                }
+                songId += "x";
+                existingSong = await dbContext.Songs.Include(s => s.Difficulties).FirstOrDefaultAsync(i => i.Id == songId);
+            }
+
+            song.Id = songId;
+            song.Hash = hash;
+
+            try {
+                dbContext.Songs.Add(song);
+                await dbContext.SaveChangesAsync();
+                SongSearchService.AddNewSong(song);
+
+                foreach (var oldSong in songsToMigrate)
+                {
+                    foreach (var item in oldSong.Difficulties)
+                    {
+                        await MigrateLeaderboards(dbContext, song, oldSong, baseSong, item);
+                        item.Status = DifficultyStatus.outdated;
+                        item.Stars = 0;
+                    }
+                }
+            } catch (Exception e) {
+                Console.WriteLine($"ADD SONG EXCEPTION: {e.Message}");
+                dbContext.RejectChanges();
+            }
+                    
+            try {
+                await dbContext.SaveChangesAsync();
+            } catch (Exception e) {
+                Console.WriteLine($"ADD SONG EXCEPTION: {e.Message}");
+                dbContext.RejectChanges();
+            }
+        }
+
         public static async Task<Song?> GetOrAddSong(AppContext dbContext, string hash)
         {
             Song? song = await GetSongWithDiffsFromHash(dbContext, hash);
@@ -21,53 +71,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                 }
                 else
                 {
-                    string songId = song.Id;
-                    Song? existingSong = await dbContext
-                        .Songs
-                        .Include(s => s.Difficulties)
-                        .ThenInclude(d => d.ModifierValues)
-                        .FirstOrDefaultAsync(i => i.Id == songId);
-                    Song? baseSong = existingSong;
-
-                    List<Song> songsToMigrate = new List<Song>();
-                    while (existingSong != null)
-                    {
-                        if (song.Hash.ToLower() == hash.ToLower())
-                        {
-                            songsToMigrate.Add(existingSong);
-                        }
-                        songId += "x";
-                        existingSong = await dbContext.Songs.Include(s => s.Difficulties).FirstOrDefaultAsync(i => i.Id == songId);
-                    }
-
-                    song.Id = songId;
-                    song.Hash = hash;
-
-                    try {
-                        dbContext.Songs.Add(song);
-                        await dbContext.SaveChangesAsync();
-                        SongSearchService.AddNewSong(song);
-
-                        foreach (var oldSong in songsToMigrate)
-                        {
-                            foreach (var item in oldSong.Difficulties)
-                            {
-                                await MigrateLeaderboards(dbContext, song, oldSong, baseSong, item);
-                                item.Status = DifficultyStatus.outdated;
-                                item.Stars = 0;
-                            }
-                        }
-                    } catch (Exception e) {
-                        Console.WriteLine($"ADD SONG EXCEPTION: {e.Message}");
-                        dbContext.RejectChanges();
-                    }
-                    
-                    try {
-                        await dbContext.SaveChangesAsync();
-                    } catch (Exception e) {
-                        Console.WriteLine($"ADD SONG EXCEPTION: {e.Message}");
-                        dbContext.RejectChanges();
-                    }
+                    await AddNewSong(song, hash, dbContext);
                 }
             }
 

@@ -18,9 +18,9 @@ namespace BeatLeader_Server.Utils
             return _webSocket.State == WebSocketState.Open;
         }
 
-        public async Task ConnectAsync()
+        public async Task ConnectAsync(CancellationToken? token = null)
         {
-            await _webSocket.ConnectAsync(_serverUri, CancellationToken.None);
+            await _webSocket.ConnectAsync(_serverUri, token ?? CancellationToken.None);
         }
 
         public async Task Ping()
@@ -45,33 +45,34 @@ namespace BeatLeader_Server.Utils
             await _webSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
         }
 
-        private async Task ReconnectAsync()
+        private async Task ReconnectAsync(CancellationToken? token = null)
         {
             if (_webSocket.State != WebSocketState.Open)
             {
                 _webSocket.Dispose();
                 _webSocket = new ClientWebSocket();
-                await ConnectAsync();
+                await ConnectAsync(token);
             }
         }
 
-        public async Task ReceiveMessagesAsync()
+        public async Task<string?> ReceiveMessagesAsync(CancellationToken? token = null)
         {
             try {
-                var buffer = new byte[1024 * 4];
+                var buffer = new byte[1024 * 64];
 
-                var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), token ?? CancellationToken.None);
 
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
-                    await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
+                    await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, token ?? CancellationToken.None);
                 } else if (result.MessageType == WebSocketMessageType.Text)
                 {
-                    var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    return Encoding.UTF8.GetString(buffer, 0, result.Count);
                 }
             } catch {
-                await ReconnectAsync();
+                await ReconnectAsync(token);
             }
+            return null;
         }
 
         public async Task CloseAsync()
