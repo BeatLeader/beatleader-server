@@ -101,6 +101,7 @@ namespace BeatLeader_Server
         public DbSet<ModVersion> ModVersions { get; set; }
 
         public DbSet<Week100Poll> Week100Polls { get; set; }
+        public DbSet<IngameAvatar> IngameAvatars { get; set; }
 
         public void RejectChanges()
         {

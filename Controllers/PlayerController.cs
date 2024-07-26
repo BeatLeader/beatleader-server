@@ -11,6 +11,7 @@ using BeatLeader_Server.Enums;
 using Swashbuckle.AspNetCore.Annotations;
 using static BeatLeader_Server.Utils.ResponseUtils;
 using BeatLeader_Server.ControllerHelpers;
+using Newtonsoft.Json;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -1091,6 +1092,50 @@ namespace BeatLeader_Server.Controllers
                 .ToList();
 
             return result;
+        }
+
+        [HttpGet("~/player/{id}/ingameavatar")]
+        public async Task<ActionResult<AvatarData>> GetIngameAvatar([FromRoute] string id) {
+            AvatarData? result = null;
+            var ingameAvatar = await _context.IngameAvatars.FirstOrDefaultAsync(a => a.PlayerID == id);
+            if (ingameAvatar == null) {
+                if ((await _context.Players.FirstOrDefaultAsync(p => p.Id == id)) == null) {
+                    return NotFound();
+                }
+                result = AvatarData.Random(); 
+                _context.IngameAvatars.Add(new IngameAvatar {
+                    PlayerID = id,
+                    Value = JsonConvert.SerializeObject(result)
+                });
+                await _context.SaveChangesAsync();
+            } else {
+                result = JsonConvert.DeserializeObject<AvatarData>(ingameAvatar.Value); 
+            }
+
+            return result;
+        }
+
+        [HttpPost("~/player/{id}/ingameavatar")]
+        public async Task<ActionResult> UpdateIngameAvatar([FromRoute] string id, [FromBody] AvatarData avatarData) {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var player = await _context.Players.FindAsync(currentID);
+            if (player == null || !(player.Role.Contains("admin") || currentID == id))
+            {
+                return NotFound();
+            }
+
+            var ingameAvatar = await _context.IngameAvatars.FirstOrDefaultAsync(a => a.PlayerID == id);
+            if (ingameAvatar == null) {
+                ingameAvatar = new IngameAvatar {
+                    PlayerID = id
+                };
+                _context.IngameAvatars.Add(ingameAvatar);
+            }
+
+            ingameAvatar.Value = JsonConvert.SerializeObject(avatarData);
+            await _context.SaveChangesAsync();
+
+            return Ok();
         }
     }
 }
