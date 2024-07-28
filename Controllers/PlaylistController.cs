@@ -734,6 +734,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] DifficultyStatus? type = null,
             [FromQuery] string? mode = null,
             [FromQuery] Requirements requirements = Requirements.None,
+            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery] string? modifiers = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
@@ -771,9 +772,18 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            IQueryable<IScore> sequence = await ((IQueryable<IScore>)_context
-                .Scores)
-                .Where(t => t.PlayerId == userId)
+            IQueryable<IScore> query = leaderboardContext == LeaderboardContexts.General 
+                ? _context.Scores
+                   .AsNoTracking()
+                   .Where(t => t.PlayerId == userId && t.ValidContexts.HasFlag(leaderboardContext))
+                   .TagWithCallSite()
+                : _context.ScoreContextExtensions
+                   .AsNoTracking()
+                   .Include(ce => ce.ScoreInstance)
+                   .Where(t => t.PlayerId == userId && t.Context == leaderboardContext)
+                   .TagWithCallSite();
+
+            IQueryable<IScore> sequence = await query
                 .Filter(_context, !player.Banned, false, sortBy, order, search, diff, mode, requirements, ScoreFilterStatus.None, type, modifiers, stars_from, stars_to, time_from, time_to, eventId); 
 
             if (await sequence.CountAsync() == 0) { return NotFound(); }
