@@ -66,7 +66,7 @@
     <PackageReference Include="geohash-dotnet" Version="2.1.0" />
     <PackageReference Include="Google.Apis.YouTube.v3" Version="1.68.0.3421" />
     <PackageReference Include="HtmlAgilityPack" Version="1.11.61" />
-    <PackageReference Include="HtmlSanitizer" Version="8.0.865" />
+    <PackageReference Include="HtmlSanitizer" Version="8.1.870" />
     <PackageReference Include="IP2Location.IPGeolocation" Version="9.0.2" />
     <PackageReference Include="Lib.AspNetCore.ServerTiming" Version="6.0.0" />
     <PackageReference Include="Lucene.Net" Version="4.8.0-beta00016" />
@@ -93,14 +93,14 @@
     <PackageReference Include="Prometheus.Client.HttpRequestDurations" Version="3.6.0" />
     <PackageReference Include="Prometheus.Client.MetricPusher" Version="3.1.0" />
     <PackageReference Include="protobuf-net" Version="3.2.30" />
-    <PackageReference Include="PuppeteerSharp" Version="18.0.1" />
+    <PackageReference Include="PuppeteerSharp" Version="18.0.5" />
     <PackageReference Include="SharpZipLib" Version="1.4.2" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.4" />
     <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.3" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
     <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.6.2" />
     <PackageReference Include="System.Drawing.Common" Version="8.0.6" />
-    <PackageReference Include="Z.EntityFramework.Extensions.EFCore" Version="8.103.0" />
+    <PackageReference Include="Z.EntityFramework.Extensions.EFCore" Version="8.103.1" />
   </ItemGroup>
 
   <ItemGroup>
