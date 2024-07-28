@@ -273,10 +273,10 @@ namespace BeatLeader_Server.Controllers
 
                 string? token = auth?.Properties?.Items[".Token.access_token"];
 
-                if (name != null && id != null && username != null && token != null) {
+                if (id != null && username != null && token != null) {
                     player.Socials.Add(new PlayerSocial {
                         Service = "GitHub",
-                        User = name,
+                        User = name ?? username,
                         UserId = id,
                         Link = $"https://github.com/{username}"
                     });
