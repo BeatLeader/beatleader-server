@@ -411,7 +411,10 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
+            string[] njsExceptions = ["8bc991"];
+
             if (!leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles) && 
+                !njsExceptions.Contains(leaderboard.Id) && 
                 !ReplayUtils.IsPlayerCuttingNotesOnPlatform(replay)) {
                 Thread.Sleep(8000); // Error may not show if returned too quick
                 return BadRequest("Please stay on the platform.");
