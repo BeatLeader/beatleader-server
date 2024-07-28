@@ -768,8 +768,8 @@ namespace BeatLeader_Server.Utils
         public static bool IsNewScoreExtensionBetter(ScoreContextExtension? oldScore, ScoreContextExtension newScore) {
             if (oldScore == null) return true;
             if (oldScore.Modifiers.Contains("OP")) return true;
-            if (newScore.Pp != 0) {
-                if (newScore.Pp > oldScore.Pp) return true;
+            if (newScore.Pp != 0 || oldScore?.Pp != 0) {
+                if (newScore.Pp > (oldScore?.Pp ?? 0)) return true;
             } else {
                 if (newScore.Context == LeaderboardContexts.Golf) {
                     if (newScore.ModifiedScore < oldScore.ModifiedScore) return true;
