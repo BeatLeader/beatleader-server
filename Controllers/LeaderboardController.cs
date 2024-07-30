@@ -624,6 +624,8 @@ namespace BeatLeader_Server.Controllers {
                     .ThenInclude(s => s.Difficulties)
                     .Include(lb => lb.Song)
                     .ThenInclude(s => s.ExternalStatuses)
+                    .Include(lb => lb.Song)
+                    .ThenInclude(s => s.Mappers)
                     .Include(lb => lb.LeaderboardGroup)
                     .ThenInclude(g => g.Leaderboards)
                     .ThenInclude(glb => glb.Difficulty);
@@ -633,10 +635,35 @@ namespace BeatLeader_Server.Controllers {
             LeaderboardResponse? leaderboard;
             using (_serverTiming.TimeAction("leaderboard")) {
                 leaderboard = await query
+                .AsNoTracking()
                 .AsSplitQuery()
                 .Select(l => new LeaderboardResponse {
                 Id = l.Id,
-                Song = l.Song,
+                Song = new SongResponse {
+                    Id = l.Song.Id,
+                    Hash = l.Song.Hash,
+                    Name = l.Song.Name,
+                    SubName = l.Song.SubName,
+                    Author = l.Song.Author,
+                    Mapper = l.Song.Mapper,
+                    MapperId  = l.Song.MapperId,
+                    CoverImage   = l.Song.CoverImage,
+                    FullCoverImage = l.Song.FullCoverImage,
+                    DownloadUrl = l.Song.DownloadUrl,
+                    Bpm = l.Song.Bpm,
+                    Duration = l.Song.Duration,
+                    UploadTime = l.Song.UploadTime,
+                    Mappers = l.Song != null ? l.Song.Mappers.Select(m => new MapperResponse {
+                        Id = m.Id,
+                        PlayerId = m.Player != null ? m.Player.Id : null,
+                        Name = m.Player != null ? m.Player.Name : m.Name,
+                        Avatar = m.Player != null ? m.Player.Avatar : m.Avatar,
+                        Curator = m.Curator,
+                        VerifiedMapper = m.VerifiedMapper,
+                    }).ToList() : null,
+                    Difficulties = l.Song.Difficulties,
+                    ExternalStatuses = l.Song.ExternalStatuses,
+                },
                 Difficulty = new DifficultyResponse {
                     Id = l.Difficulty.Id,
                     Value = l.Difficulty.Value,
@@ -847,7 +874,31 @@ namespace BeatLeader_Server.Controllers {
                 .AsSplitQuery()
                 .Select(l => new LeaderboardResponse {
                 Id = l.Id,
-                Song = l.Song,
+                Song = new SongResponse {
+                    Id = l.Song.Id,
+                    Hash = l.Song.Hash,
+                    Name = l.Song.Name,
+                    SubName = l.Song.SubName,
+                    Author = l.Song.Author,
+                    Mapper = l.Song.Mapper,
+                    MapperId  = l.Song.MapperId,
+                    CoverImage   = l.Song.CoverImage,
+                    FullCoverImage = l.Song.FullCoverImage,
+                    DownloadUrl = l.Song.DownloadUrl,
+                    Bpm = l.Song.Bpm,
+                    Duration = l.Song.Duration,
+                    UploadTime = l.Song.UploadTime,
+                    Mappers = l.Song.Mappers != null ? l.Song.Mappers.Select(m => new MapperResponse {
+                        Id = m.Id,
+                        PlayerId = m.Player != null ? m.Player.Id : null,
+                        Name = m.Player != null ? m.Player.Name : m.Name,
+                        Avatar = m.Player != null ? m.Player.Avatar : m.Avatar,
+                        Curator = m.Curator,
+                        VerifiedMapper = m.VerifiedMapper,
+                    }).ToList() : null,
+                    Difficulties = l.Song.Difficulties,
+                    ExternalStatuses = l.Song.ExternalStatuses,
+                },
                 Difficulty = new DifficultyResponse {
                     Id = l.Difficulty.Id,
                     Value = l.Difficulty.Value,
@@ -1187,7 +1238,31 @@ namespace BeatLeader_Server.Controllers {
                 .Select(l => new LeaderboardClanRankingResponse
                 {
                     Id = l.Id,
-                    Song = l.Song,
+                    Song = new SongResponse {
+                        Id = l.Song.Id,
+                        Hash = l.Song.Hash,
+                        Name = l.Song.Name,
+                        SubName = l.Song.SubName,
+                        Author = l.Song.Author,
+                        Mapper = l.Song.Mapper,
+                        MapperId  = l.Song.MapperId,
+                        CoverImage   = l.Song.CoverImage,
+                        FullCoverImage = l.Song.FullCoverImage,
+                        DownloadUrl = l.Song.DownloadUrl,
+                        Bpm = l.Song.Bpm,
+                        Duration = l.Song.Duration,
+                        UploadTime = l.Song.UploadTime,
+                        Mappers = l.Song.Mappers != null ? l.Song.Mappers.Select(m => new MapperResponse {
+                            Id = m.Id,
+                            PlayerId = m.Player != null ? m.Player.Id : null,
+                            Name = m.Player != null ? m.Player.Name : m.Name,
+                            Avatar = m.Player != null ? m.Player.Avatar : m.Avatar,
+                            Curator = m.Curator,
+                            VerifiedMapper = m.VerifiedMapper,
+                        }).ToList() : null,
+                        Difficulties = l.Song.Difficulties,
+                        ExternalStatuses = l.Song.ExternalStatuses,
+                    },
                     Difficulty = new DifficultyResponse {
                         Id = l.Difficulty.Id,
                         Value = l.Difficulty.Value,

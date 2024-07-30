@@ -1042,7 +1042,7 @@ namespace BeatLeader_Server.Controllers
                 .Leaderboards
                 .Where(lb =>
                     lb.Difficulty.Status == DifficultyStatus.ranked &&
-                    lb.Song.MapperId == id)
+                    lb.Song.Mappers.FirstOrDefault(m => m.Id == id) != null)
                 .Select(lb => new { 
                     lb.Plays,
                     lb.Song.UploadTime,
