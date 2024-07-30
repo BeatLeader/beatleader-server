@@ -411,7 +411,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            string[] njsExceptions = ["8bc991"];
+            string[] njsExceptions = ["8bc991", "30a2e91"];
 
             if (!leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles) && 
                 !njsExceptions.Contains(leaderboard.Id) && 

@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
+using System.Net;
 using System.Security.Claims;
 using static System.Net.WebRequestMethods;
 
@@ -163,7 +165,7 @@ namespace BeatLeader_Server.Controllers
 
             Player? player = null;
 
-            (Player? bsplayer, bool _) = await PlayerUtils.GetPlayerFromBeatSaver(beatSaverId);
+            (Player? bsplayer, UserDetail? bsmapper) = await PlayerUtils.GetPlayerFromBeatSaver(beatSaverId);
 
             if (playerId == null) {
                 if (bslink == null) {
@@ -212,11 +214,21 @@ namespace BeatLeader_Server.Controllers
                     });
                 }
 
-                await AddMapperRole(playerId);
-
                 player ??= await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == playerId);
                 if (player != null) {
-                    player.MapperId = Int32.Parse(beatSaverId);
+                    var intId = Int32.Parse(beatSaverId);
+                    var mapper = _context.Mappers.FirstOrDefault(m => m.Id == intId);
+                    if (mapper == null) {
+                        _context.Mappers.Add(new Mapper {
+                            Id = intId,
+                            Name = bsmapper.Name,
+                            Avatar = bsmapper.Avatar,
+                            Curator = bsmapper.Curator,
+                            VerifiedMapper = bsmapper.VerifiedMapper
+                        });
+                    }
+
+                    player.MapperId = intId;
                     player.Socials ??= new List<PlayerSocial>();
                     player.Socials.Add(new PlayerSocial {
                         Service = "BeatSaver",
@@ -270,7 +282,7 @@ namespace BeatLeader_Server.Controllers
                     mapper.Socials = new List<PlayerSocial>();
                 }
 
-                (Player? bsplayer, bool _) = await PlayerUtils.GetPlayerFromBeatSaver("" + mapper.MapperId);
+                (Player? bsplayer, UserDetail? _) = await PlayerUtils.GetPlayerFromBeatSaver("" + mapper.MapperId);
 
                 mapper.Socials.Add(new PlayerSocial {
                     Service = "BeatSaver",
@@ -282,6 +294,77 @@ namespace BeatLeader_Server.Controllers
             await _context.SaveChangesAsync();
             return Ok();
         }
+
+        class SaverUser {
+            public int Id { get; set; }
+        }
+
+        [ApiExplorerSettings(IgnoreApi = true)]
+        [HttpGet("~/beatsaver/fetchmappers")]
+        public async Task<ActionResult> GetMappers()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            string bslink = "https://beatsaver.com/";
+
+            var players = _context.Players.Where(p => p.MapperId != 0).ToList();
+            foreach (var player in players) {
+                var dbmapper = _context.Mappers.Find(player.MapperId);
+                if (dbmapper != null) continue;
+
+                HttpWebRequest request2 = (HttpWebRequest)WebRequest.Create(bslink + "api/users/id/" + player.MapperId);
+                request2.Method = "GET";
+                request2.Proxy = null;
+
+                var mapper = await (await Task<(WebResponse?, string?)>.Factory.FromAsync(request2.BeginGetResponse, result =>
+                {
+                    try
+                    {
+                        return (request2.EndGetResponse(result), null);
+                    }
+                    catch (Exception e)
+                    {
+                        return (null, e.Message);
+                    }
+                }, request2).ContinueWith(async t => {
+                    (WebResponse?, string?) response = await t;
+                    if (response.Item1 != null)
+                    {
+                        using (Stream responseStream = response.Item1.GetResponseStream())
+                        using (StreamReader reader = new StreamReader(responseStream))
+                        {
+                            string results = reader.ReadToEnd();
+                            if (string.IsNullOrEmpty(results))
+                            {
+                                return null;
+                            }
+
+                            return JsonConvert.DeserializeObject<UserDetail>(results);
+                        }
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }));
+
+                if (mapper != null) {
+                    _context.Mappers.Add(Mapper.MapperFromBeatSaverUser(mapper));
+                } else {
+                    player.MapperId = 0;
+                }
+            }
+
+            _context.BulkSaveChanges();
+            return Ok();
+        }
+        
     }
 }
 

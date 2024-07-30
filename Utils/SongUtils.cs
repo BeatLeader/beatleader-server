@@ -11,16 +11,10 @@ namespace BeatLeader_Server.Utils
 {
     public class SongUtils
     {
-        public static async Task<Song?> GetSongFromBeatSaver(string hash)
+        public static async Task<MapDetail?> GetSongFromBeatSaver(string hash)
         {
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://api.beatsaver.com/maps/hash/" + hash);
-            var info = await request.DynamicResponse<MapDetail>();
-            if (info == null) return null;
-
-            Song result = new Song();
-            result.FromMapDetails(info);
-
-            return result;
+            return await request.DynamicResponse<MapDetail>();
         }
 
         public static async Task<Song?> GetSongFromBeatSaverId(string id)
@@ -114,7 +108,6 @@ namespace BeatLeader_Server.Utils
 
         public static async Task<ExmachinaResponse?> ExmachinaStars(string hash, int diff, string mode)
         {
-
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"https://stage.api.beatleader.net/ppai2/{hash}/{mode}/{diff}");
             request.Method = "GET";
             request.Proxy = null;

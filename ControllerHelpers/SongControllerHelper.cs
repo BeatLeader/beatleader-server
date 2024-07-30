@@ -63,15 +63,18 @@ namespace BeatLeader_Server.ControllerHelpers {
 
             if (song == null)
             {
-                song = await SongUtils.GetSongFromBeatSaver(hash);
+                var map = await SongUtils.GetSongFromBeatSaver(hash);
 
-                if (song == null)
+                if (map == null)
                 {
                     return null;
                 }
                 else
                 {
+                    song = new Song();
+                    song.FromMapDetails(map);
                     await AddNewSong(song, hash, dbContext);
+                    await UpdateFromMap(dbContext, song, map);
                 }
             }
 
@@ -202,6 +205,48 @@ namespace BeatLeader_Server.ControllerHelpers {
                     await RTNominationsForum.NominationReuploaded(dbContext, oldLeaderboard.Qualification, oldLeaderboardId);
                 }
                 oldLeaderboard.Qualification = null;
+            }
+        }
+
+        public static async Task UpdateFromMap(AppContext dbContext, Song song, MapDetail? map) {
+
+            if (map == null || map.Versions[0].State != "Published") {
+                if (song.Difficulties.FirstOrDefault(d => d.Status == DifficultyStatus.unranked) != null) {
+                    foreach (var diff in song.Difficulties) {
+                        if (diff.Status == DifficultyStatus.unranked) {
+                            diff.Status = DifficultyStatus.outdated;
+                        }
+                    }
+                    dbContext.SaveChanges();
+                }
+            } else {
+                if (song.Difficulties.FirstOrDefault(d => d.Status == DifficultyStatus.outdated) != null) {
+                    foreach (var diff in song.Difficulties) {
+                        if (diff.Status == DifficultyStatus.outdated) {
+                            diff.Status = DifficultyStatus.unranked;
+                        }
+                    }
+                    dbContext.SaveChanges();
+                }
+            }
+
+            if (map != null) {
+                var mappers = (map.Collaborators ?? new List<UserDetail>()).Append(map.Uploader);
+
+                if (string.Join(",", song.Mappers?.Select(m => m.Id) ?? []) != string.Join(",", mappers.Select(m => m.Id) ?? [])) {
+                    song.Mappers = new List<Mapper>();
+                    foreach (var mapper in mappers) {
+                        var dbMapper = await dbContext.Mappers.Where(m => m.Id == mapper.Id).FirstOrDefaultAsync();
+                        if (dbMapper == null) {
+                            dbMapper = Mapper.MapperFromBeatSaverUser(mapper);
+                            dbContext.Mappers.Add(dbMapper);
+                        }
+
+                        song.Mappers.Add(dbMapper);
+                        dbMapper.UpdateFromBeatSaverUser(mapper);
+                    }
+                    await dbContext.SaveChangesAsync();
+                }
             }
         }
 

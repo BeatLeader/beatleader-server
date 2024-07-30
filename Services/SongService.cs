@@ -66,31 +66,14 @@ namespace BeatLeader_Server.Services {
 
                 var map = mapMessage.Msg;
 
-                var existingSong = await _context.Songs.Where(el => el.Hash.ToLower() == map.Versions[0].Hash.ToLower()).Include(s => s.Difficulties).FirstOrDefaultAsync();
+                var existingSong = await _context.Songs.Include(s => s.Mappers).Where(el => el.Hash.ToLower() == map.Versions[0].Hash.ToLower()).Include(s => s.Difficulties).FirstOrDefaultAsync();
                 if (existingSong != null) {
-                    if (map.Versions[0].State != "Published") {
-                        if (existingSong.Difficulties.FirstOrDefault(d => d.Status == DifficultyStatus.unranked) != null) {
-                            foreach (var diff in existingSong.Difficulties) {
-                                if (diff.Status == DifficultyStatus.unranked) {
-                                    diff.Status = DifficultyStatus.outdated;
-                                }
-                            }
-                            _context.SaveChanges();
-                        }
-                    } else {
-                        if (existingSong.Difficulties.FirstOrDefault(d => d.Status == DifficultyStatus.outdated) != null) {
-                            foreach (var diff in existingSong.Difficulties) {
-                                if (diff.Status == DifficultyStatus.outdated) {
-                                    diff.Status = DifficultyStatus.unranked;
-                                }
-                            }
-                            _context.SaveChanges();
-                        }
-                    }
+                    await SongControllerHelper.UpdateFromMap(_context, existingSong, map);
                 } else {
                     if (map.Versions[0].State == "Published") {
                         Song song = new Song();
                         song.FromMapDetails(map);
+                        await SongControllerHelper.UpdateFromMap(_context, song, map);
 
                         await SongControllerHelper.AddNewSong(song, song.Hash, _context);
                         foreach (var item in song.Difficulties) {

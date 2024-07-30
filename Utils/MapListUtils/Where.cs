@@ -81,9 +81,9 @@ public static partial class MapListUtils
 
         if (mytype != MyType.None)
         {
-            if (currentPlayer != null)
+            if (currentPlayer != null && currentPlayer.MapperId != null)
             {
-                mapperId = currentPlayer.MapperId;
+                mapperId = currentPlayer.MapperId ?? 0;
             }
         }
 

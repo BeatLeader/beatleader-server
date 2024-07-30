@@ -95,7 +95,7 @@ namespace BeatLeader_Server.Controllers
                     ScoreStats = player.ScoreStats,
                     Alias = player.Alias,
 
-                    MapperId = player.MapperId,
+                    MapperId = player.MapperId != null ? (int)player.MapperId : 0,
 
                     Banned = player.Banned,
                     Inactive = player.Inactive,

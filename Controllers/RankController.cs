@@ -314,7 +314,7 @@ namespace BeatLeader_Server.Controllers
                 string? alreadyApproved = qualifiedLeaderboards.Count() == 0 ? null : qualifiedLeaderboards.FirstOrDefault(lb => lb.Qualification.MapperAllowed)?.Qualification.MapperId;
 
                 if (!isRT) {
-                    (Player? _, verified) = await PlayerUtils.GetPlayerFromBeatSaver(currentPlayer.MapperId.ToString());
+                    (Player? _, UserDetail? bsmapper) = await PlayerUtils.GetPlayerFromBeatSaver(currentPlayer.MapperId.ToString());
                 }
 
                 if (!isRT && alreadyApproved == null) {

@@ -597,25 +597,30 @@ namespace BeatLeader_Server.Utils
             return result;
         }
 
-        public static async Task<(Player?, bool)> GetPlayerFromBeatSaver(string playerID)
+        public static async Task<UserDetail?> GetMapperFromBeatSaver(string playerID)
         {
-            string bslink = "https://beatsaver.com/";
-            dynamic? info = await GetPlayer(bslink + "api/users/id/" + playerID);
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://api.beatsaver.com/users/id/" + playerID);
+            return await request.DynamicResponse<UserDetail>();
+        }
 
-            if (info == null) return (null, false);
+        public static async Task<(Player?, UserDetail?)> GetPlayerFromBeatSaver(string playerID)
+        {
+            var user = await GetMapperFromBeatSaver(playerID);
+
+            if (user == null) return (null, null);
 
             Player result = new Player();
-            result.Name = info.name;
-            result.Id = (30000000 + info.id) + "";
-            result.MapperId = (int)info.id;
+            result.Name = user.Name;
+            result.Id = (30000000 + user.Id) + "";
+            result.MapperId = user.Id;
             result.CreatedAt = Time.UnixNow();
             result.Platform = "beatsaver";
             result.Country = "not set";
-            result.Avatar = info.avatar;
-            result.ExternalProfileUrl = bslink + "profile/" + playerID;
+            result.Avatar = user.Avatar;
+            result.ExternalProfileUrl = "https://beatsaver.com/profile/" + playerID;
             result.SanitizeName();
 
-            return (result, ExpandantoObject.HasProperty(info, "verifiedMapper") && info.verifiedMapper);
+            return (result, user);
         }
 
         public static Task<dynamic?> GetPlayer(string url, string? token = null)
@@ -649,24 +654,24 @@ namespace BeatLeader_Server.Utils
 
         private static dynamic? ReadPlayerFromResponse((WebResponse?, dynamic?) response)
         {
-            if (response.Item1 != null)
-            {
-                using (Stream responseStream = response.Item1.GetResponseStream())
-                using (StreamReader reader = new StreamReader(responseStream))
+                if (response.Item1 != null)
                 {
-                    string results = reader.ReadToEnd();
-                    if (string.IsNullOrEmpty(results))
+                    using (Stream responseStream = response.Item1.GetResponseStream())
+                    using (StreamReader reader = new StreamReader(responseStream))
                     {
-                        return null;
-                    }
+                        string results = reader.ReadToEnd();
+                        if (string.IsNullOrEmpty(results))
+                        {
+                            return null;
+                        }
 
-                    return JsonConvert.DeserializeObject<ExpandoObject>(results, new ExpandoObjectConverter());
+                        return JsonConvert.DeserializeObject<ExpandoObject>(results, new ExpandoObjectConverter());
+                    }
                 }
-            }
-            else
-            {
-                return response.Item2;
-            }
+                else
+                {
+                    return response.Item2;
+                }
         }
 
         public static void UpdateBoosterRole(Player player, string? role)

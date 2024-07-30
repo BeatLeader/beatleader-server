@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20240728052923_Mappers")]
+    partial class Mappers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1799,7 +1802,7 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int>("LastWeekRank")
                         .HasColumnType("int");
 
-                    b.Property<int?>("MapperId")
+                    b.Property<int>("MapperId")
                         .HasColumnType("int");
 
                     b.Property<string>("Name")
