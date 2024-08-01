@@ -223,6 +223,78 @@ namespace BeatLeader_Server.Controllers
             return await GetScore((int)result, false);
         }
 
+        [HttpGet("~/score/random/ree")]
+        public async Task<ActionResult<ScoreResponseWithDifficulty>> GetRandomReeScore(
+            [FromQuery] int timeback = 60 * 60 * 24 * 7)
+        {
+            IQueryable<Score> query = _context.Scores;
+
+            // Filter out scores that are less than a week old
+            var treshold = Time.UnixNow() - timeback;
+            query = query.Where(s => 
+                s.Timepost < treshold &&
+                s.Leaderboard.Difficulty.Mode == 1 &&
+                !s.Leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles) &&
+                !s.Leaderboard.Difficulty.Requirements.HasFlag(Requirements.MappingExtensions));
+
+            string? userId = HttpContext.CurrentUserID(_context);
+            List<string>? friendsList = null;
+
+            if (userId != null)
+            {
+                var friends = await _context
+                    .Friends
+                    .AsNoTracking()
+                    .Where(f => f.Id == userId)
+                    .Include(f => f.Friends)
+                    .FirstOrDefaultAsync();
+
+                friendsList = new List<string> { userId };
+                if (friends != null)
+                {
+                    friendsList.AddRange(friends.Friends.Select(f => f.Id));
+                }
+
+                // Select scores based on the defined probabilities
+                var randomValue = Random.Shared.NextDouble();
+                if (randomValue < 0.10) // 10% chance for a random player's score
+                {
+                    if (friendsList != null)
+                    {
+                        // Exclude the user and their friends
+                        query = query.Where(s => !friendsList.Contains(s.PlayerId));
+                    }
+                }
+                else if (randomValue < 0.30) // 20% chance for the user's own scores
+                {
+                    query = query.Where(s => s.PlayerId == userId);
+                }
+                else // 70% chance for a friend's score
+                {
+                    if (friendsList != null && friendsList.Count > 1) // Check to ensure friends exist
+                    {
+                        query = query.Where(s => friendsList.Contains(s.PlayerId));
+                    }
+                }
+            }
+
+            int totalScores = await query.CountAsync();
+            if (totalScores == 0)
+            {
+                return await GetRandomScore(RandomScoreSource.General);
+            }
+
+            var offset = Random.Shared.Next(totalScores);
+            var scoreId = await query
+                .AsNoTracking()
+                .Skip(offset)
+                .Take(1)
+                .Select(s => s.Id)
+                .FirstOrDefaultAsync();
+
+            return await GetScore(scoreId, false);
+        }
+
         [HttpDelete("~/score/{id}")]
         [Authorize]
         public async Task<ActionResult> DeleteScore(int id)

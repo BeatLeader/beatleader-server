@@ -490,7 +490,7 @@ namespace BeatLeader_Server.Controllers
                 await dbContext.DisposeAsync();
             }
 
-            if (info.platform == "oculuspc" && int.Parse(version[2]) < 10) {
+            if (info.platform == "oculuspc" && int.Parse(gameversion[1]) < 30 && int.Parse(version[2]) < 10) {
                 Thread.Sleep(2000); // Error may not show if returned too quick
                 return StatusCode(418, "This version of the mod will be disabled on 8th of August, please update.");
             }
