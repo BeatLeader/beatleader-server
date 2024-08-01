@@ -21,6 +21,9 @@ using System.Diagnostics;
 using BeatLeader_Server.Utils;
 using Swashbuckle.AspNetCore.Annotations;
 using Prometheus.Client.Collectors.ProcessStats;
+using System.Security.Claims;
+using BeatLeader_Server.Enums;
+using BeatLeader_Server.Extensions;
 
 namespace BeatLeader_Server {
 
@@ -173,6 +176,17 @@ namespace BeatLeader_Server {
                 options.Events.OnRedirectToLogin = c => {
                     c.Response.StatusCode = StatusCodes.Status401Unauthorized;
                     return Task.FromResult<object> (null);
+                };
+                options.Events.OnSigningIn = async context =>
+                {
+                    var claims = new List<Claim>
+                    {
+                        new Claim(CustomAuthClaims.Issued, Time.UnixNow().ToString())
+                    };
+                    var appIdentity = new ClaimsIdentity(claims);
+                    context.Principal?.AddIdentity(appIdentity);
+
+                    await Task.CompletedTask;
                 };
                 options.Cookie.SameSite = SameSiteMode.None;
                 options.Cookie.HttpOnly = false;

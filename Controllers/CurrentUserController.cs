@@ -59,7 +59,7 @@ namespace BeatLeader_Server.Controllers {
         public async Task<ActionResult<UserReturn>> GetCurrentUser() {
             User? user = await GetUserLazy(GetId(), true);
             if (user == null) {
-                return NotFound();
+                return Unauthorized();
             }
             string id = user.Id;
 

@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authentication;
 using OpenIddict.Abstractions;
 using OpenIddict.Validation.AspNetCore;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using BeatLeader_Server.Enums;
 
 namespace BeatLeader_Server.Extensions
 {
@@ -67,8 +69,11 @@ namespace BeatLeader_Server.Extensions
         {
             try
             {
-                string? currentID = context?.User.Claims.FirstOrDefault()?.Value.Split("/").LastOrDefault();
+                string? currentID = context?.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value.Split("/").LastOrDefault();
                 if (currentID == null) return null;
+
+                string? issuedTime = context?.User.Claims.FirstOrDefault(c => c.Type == CustomAuthClaims.Issued)?.Value.Split("/").LastOrDefault();
+                if (issuedTime == null) return null;
 
                 long intId = Int64.Parse(currentID);
                 if (intId < 70000000000000000) {

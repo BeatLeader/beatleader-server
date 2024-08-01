@@ -103,6 +103,9 @@ namespace BeatLeader_Server.Controllers
             if (result.Value == null) {
                 await dbContext.DisposeAsync();
             }
+            if (Response.Headers.ContainsKey("Set-Cookie")) {
+                Response.Headers.Remove("Set-Cookie");
+            }
             return result;
         }
 
@@ -485,6 +488,11 @@ namespace BeatLeader_Server.Controllers
 
             if (!keepContext) {
                 await dbContext.DisposeAsync();
+            }
+
+            if (info.platform == "oculuspc" && int.Parse(version[2]) < 10) {
+                Thread.Sleep(2000); // Error may not show if returned too quick
+                return StatusCode(418, "This version of the mod will be disabled on 8th of August, please update.");
             }
 
             return result;

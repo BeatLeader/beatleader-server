@@ -105,8 +105,8 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
                 await dbContext.SaveChangesAsync();
 
                 Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await Context.Response.WriteAsync("Login or password is not valid. " + (10 - loginAttempt.Count) + " tries left");
-                return AuthenticateResult.Fail("Login or password is not valid. " + (10 - loginAttempt.Count) + " tries left");
+                await Context.Response.WriteAsync("Login/password not valid. Ask for reset in Discord if needed. " + (10 - loginAttempt.Count) + " tries left");
+                return AuthenticateResult.Fail("Login/password not valid. Ask for reset in Discord if needed. " + (10 - loginAttempt.Count) + " tries left");
             }
             id = authInfo.Id.ToString();
 
@@ -142,22 +142,22 @@ public partial class OculusAuthenticationHandler<TOptions> : AuthenticationHandl
             if (login.Replace(" ", "").Length < 2)
             {
                 Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await Context.Response.WriteAsync("Use two or more symbols for the login");
-                return AuthenticateResult.Fail("Use two or more symbols for the login");
+                await Context.Response.WriteAsync("Use two or more characters for the login");
+                return AuthenticateResult.Fail("Use two or more characters for the login");
             }
             if (password.Replace(" ", "").Length < 8)
             {
                 Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await Context.Response.WriteAsync("Come on, type at least 8 symbols password");
-                return AuthenticateResult.Fail("Come on, type at least 8 symbols password");
+                await Context.Response.WriteAsync("Come on, type at least 8 character password");
+                return AuthenticateResult.Fail("Come on, type at least 8 character password");
             }
             string ip = iPAddress.ToString();
             int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             if ((await dbContext.AuthIPs.FirstOrDefaultAsync(el => el.IP == ip && (timestamp - el.Timestamp) < 60 * 60 * 24)) != null)
             {
                 Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await Context.Response.WriteAsync("You can create only one account a day, sorry");
-                return AuthenticateResult.Fail("You can create only one account a day, sorry");
+                await Context.Response.WriteAsync("You can create only one account, sorry");
+                return AuthenticateResult.Fail("You can create only one account, sorry");
             }
             
             var salt = AuthUtils.GenerateSalt();
