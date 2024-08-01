@@ -57,17 +57,11 @@ public static partial class MapListUtils
             return sequence;
         }
 
-        var leaderboard = Expression.Parameter(typeof(Leaderboard), "lb");
-
-        // 1 != 2 is here to trigger `OrElse` further the line.
-        var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
-        foreach (var item in mapper.Split(","))
-        {
-            if (int.TryParse(item, out int id)) {
-                exp = Expression.OrElse(exp, Expression.Equal(Expression.Property(Expression.Property(leaderboard, "Song"), "MapperId"), Expression.Constant(id)));
-            }
+        var ids = mapper.Split(",").Select(s => int.TryParse(s, out int id) ? id : 0).Where(id => id != 0).ToArray();
+        if (ids.Length == 0) {
+            return sequence;
         }
-        return sequence.Where((Expression<Func<Leaderboard, bool>>)Expression.Lambda(exp, leaderboard));
+        return sequence.Where(lb => ids.Contains(lb.Song.MapperId) || lb.Song.Mappers.Any(m => ids.Contains(m.Id)));
     }
 
     private static IQueryable<Leaderboard> WhereMyType(this IQueryable<Leaderboard> sequence, MyType mytype, Player? currentPlayer, LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
