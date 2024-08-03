@@ -11,10 +11,10 @@ namespace BeatLeader_Server.Utils
 {
     public class SongUtils
     {
-        public static async Task<MapDetail?> GetSongFromBeatSaver(string hash)
+        public static async Task<(MapDetail?, WebException?)> GetSongFromBeatSaver(string hash)
         {
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://api.beatsaver.com/maps/hash/" + hash);
-            return await request.DynamicResponse<MapDetail>();
+            return await request.DynamicResponseWithError<MapDetail>();
         }
 
         public static async Task<Song?> GetSongFromBeatSaverId(string id)

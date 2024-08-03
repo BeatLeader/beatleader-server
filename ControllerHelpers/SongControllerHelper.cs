@@ -63,7 +63,7 @@ namespace BeatLeader_Server.ControllerHelpers {
 
             if (song == null)
             {
-                var map = await SongUtils.GetSongFromBeatSaver(hash);
+                (var map, _) = await SongUtils.GetSongFromBeatSaver(hash);
 
                 if (map == null)
                 {
@@ -208,7 +208,7 @@ namespace BeatLeader_Server.ControllerHelpers {
             }
         }
 
-        public static async Task UpdateFromMap(AppContext dbContext, Song song, MapDetail? map) {
+        public static async Task UpdateFromMap(AppContext dbContext, Song song, MapDetail? map, bool save = true) {
 
             if (map == null || map.Versions[0].State != "Published") {
                 if (song.Difficulties.FirstOrDefault(d => d.Status == DifficultyStatus.unranked) != null) {
@@ -217,16 +217,20 @@ namespace BeatLeader_Server.ControllerHelpers {
                             diff.Status = DifficultyStatus.outdated;
                         }
                     }
-                    dbContext.SaveChanges();
+                    if (save) {
+                        dbContext.SaveChanges();
+                    }
                 }
             } else {
-                if (song.Difficulties.FirstOrDefault(d => d.Status == DifficultyStatus.outdated) != null) {
+                if (map.Versions[0].Hash.ToLower() == song.Hash.ToLower() && song.Difficulties.FirstOrDefault(d => d.Status == DifficultyStatus.outdated) != null) {
                     foreach (var diff in song.Difficulties) {
                         if (diff.Status == DifficultyStatus.outdated) {
                             diff.Status = DifficultyStatus.unranked;
                         }
                     }
-                    dbContext.SaveChanges();
+                    if (save) {
+                        dbContext.SaveChanges();
+                    }
                 }
             }
 
@@ -236,7 +240,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                 if (string.Join(",", song.Mappers?.Select(m => m.Id) ?? []) != string.Join(",", mappers.Select(m => m.Id) ?? [])) {
                     song.Mappers = new List<Mapper>();
                     foreach (var mapper in mappers) {
-                        var dbMapper = await dbContext.Mappers.Where(m => m.Id == mapper.Id).FirstOrDefaultAsync();
+                        var dbMapper = await dbContext.Mappers.FindAsync(mapper.Id);
                         if (dbMapper == null) {
                             dbMapper = Mapper.MapperFromBeatSaverUser(mapper);
                             dbContext.Mappers.Add(dbMapper);
@@ -245,7 +249,9 @@ namespace BeatLeader_Server.ControllerHelpers {
                         song.Mappers.Add(dbMapper);
                         dbMapper.UpdateFromBeatSaverUser(mapper);
                     }
-                    await dbContext.SaveChangesAsync();
+                    if (save) {
+                        await dbContext.SaveChangesAsync();
+                    }
                 }
             }
         }

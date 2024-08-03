@@ -146,7 +146,7 @@ namespace BeatLeader_Server.Services
                     difficulty.Status = DifficultyStatus.ranked;
                     await _context.SaveChangesAsync();
 
-                    await _scoreController.RefreshScores(leaderboard.Id);
+                    await _scoreController.BulkRefreshScores(leaderboard.Id);
                     await _scoreController.BulkRefreshScoresAllContexts(leaderboard.Id);
                     (float totalpp, int totalRanks) = await RefreshLeaderboardPlayers(leaderboard.Id, _context);
                     await _context.SaveChangesAsync();

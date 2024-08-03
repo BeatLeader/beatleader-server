@@ -362,7 +362,7 @@ namespace BeatLeader_Server.Controllers
                 
                 difficulty.ModifierValues = modifierValues;
                 await _context.SaveChangesAsync();
-                await _scoreRefreshController.RefreshScores(leaderboard.Id);
+                await _scoreRefreshController.BulkRefreshScores(leaderboard.Id);
                 await _playlistController.RefreshNominatedPlaylist();
 
                 var dsClient = nominationDSClient();
@@ -645,7 +645,7 @@ namespace BeatLeader_Server.Controllers
 
                 await _context.SaveChangesAsync();
                 await _scoreRefreshController.BulkRefreshScoresAllContexts(leaderboard.Id);
-                await _scoreRefreshController.RefreshScores(leaderboard.Id);
+                await _scoreRefreshController.BulkRefreshScores(leaderboard.Id);
                 await _playlistController.RefreshNominatedPlaylist();
                 await _playlistController.RefreshQualifiedPlaylist();
             }
@@ -751,7 +751,7 @@ namespace BeatLeader_Server.Controllers
                     await _playlistController.RefreshRankedPlaylist();
                 }
 
-                await _scoreRefreshController.RefreshScores(leaderboard.Id);
+                await _scoreRefreshController.BulkRefreshScores(leaderboard.Id);
 
                 // Calculate clanRanking for this map because it has just been ranked
                 _ = _context.CalculateClanRankingSlow(leaderboard);
@@ -1216,7 +1216,7 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 await _context.SaveChangesAsync();
-                await _scoreRefreshController.RefreshScores(leaderboard.Id);
+                await _scoreRefreshController.BulkRefreshScores(leaderboard.Id);
                 await _playlistController.RefreshNominatedPlaylist();
                 await _playlistController.RefreshQualifiedPlaylist();
             }

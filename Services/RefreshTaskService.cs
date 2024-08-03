@@ -83,7 +83,7 @@ namespace BeatLeader_Server.Services
                     await playerContextController.RefreshPlayerAllContexts(job.PlayerId);
 
                     foreach (var id in job.Leaderboards) {
-                        await scoreController.RefreshScores(id);
+                        await scoreController.BulkRefreshScores(id);
                         await scoreController.BulkRefreshScoresAllContexts(id);
                     }
 

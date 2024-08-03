@@ -1696,7 +1696,7 @@ namespace BeatLeader_Server.Controllers {
 
             HttpContext.Response.OnCompleted(async () => {
                 foreach (var item in leaderboardsToUpdate) {
-                    await _scoreRefreshController.RefreshScores(item);
+                    await _scoreRefreshController.BulkRefreshScores(item);
                     await _scoreRefreshController.BulkRefreshScoresAllContexts(item);
                 }
 
@@ -1764,7 +1764,7 @@ namespace BeatLeader_Server.Controllers {
 
             var refreshBlock = async () => {
                 foreach (var item in leaderboardsToUpdate) {
-                    await _scoreRefreshController.RefreshScores(item);
+                    await _scoreRefreshController.BulkRefreshScores(item);
                     await _scoreRefreshController.BulkRefreshScoresAllContexts(item);
                 }
                 await _playerRefreshController.RefreshPlayer(player);
@@ -1814,7 +1814,7 @@ namespace BeatLeader_Server.Controllers {
 
             HttpContext.Response.OnCompleted(async () => {
                 foreach (var item in leaderboardsToUpdate) {
-                    await _scoreRefreshController.RefreshScores(item);
+                    await _scoreRefreshController.BulkRefreshScores(item);
                 }
                 await _playerRefreshController.RefreshPlayer(player);
 
