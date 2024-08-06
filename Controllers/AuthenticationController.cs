@@ -279,7 +279,7 @@ namespace BeatLeader_Server.Controllers {
                 return Redirect(_websiteUrl + Request.QueryString);
             }
 
-            string? userId = HttpContext.CurrentUserID(_context);
+            string? userId = HttpContext.CurrentUserID(_context, true);
             if (userId == null) {
                 return Unauthorized();
             }

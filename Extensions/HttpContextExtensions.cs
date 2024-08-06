@@ -65,15 +65,17 @@ namespace BeatLeader_Server.Extensions
             
         }
 
-        public static string? CurrentUserID(this HttpContext? context, AppContext dbcontext)
+        public static string? CurrentUserID(this HttpContext? context, AppContext dbcontext, bool ignoreIssued = false)
         {
             try
             {
                 string? currentID = context?.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value.Split("/").LastOrDefault();
                 if (currentID == null) return null;
 
-                string? issuedTime = context?.User.Claims.FirstOrDefault(c => c.Type == CustomAuthClaims.Issued)?.Value.Split("/").LastOrDefault();
-                if (issuedTime == null) return null;
+                if (!ignoreIssued) {
+                    string? issuedTime = context?.User.Claims.FirstOrDefault(c => c.Type == CustomAuthClaims.Issued)?.Value.Split("/").LastOrDefault();
+                    if (issuedTime == null) return null;
+                }
 
                 long intId = Int64.Parse(currentID);
                 if (intId < 70000000000000000) {
