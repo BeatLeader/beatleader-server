@@ -560,7 +560,7 @@ namespace BeatLeader_Server.Controllers
 
             await GeneralContextScore(dbContext, leaderboard, player, resultScore, currentScores, replay);
 
-            (ScoreStatistic? statistic, string? statisticError) = ScoreControllerHelper.CalculateStatisticFromReplay(replay, leaderboard);
+            (ScoreStatistic? statistic, string? statisticError) = ScoreControllerHelper.CalculateStatisticFromReplay(replay, leaderboard, allow);
             if (statistic != null) {
                 resultScore.AccLeft = statistic.accuracyTracker.accLeft;
                 resultScore.AccRight = statistic.accuracyTracker.accRight;

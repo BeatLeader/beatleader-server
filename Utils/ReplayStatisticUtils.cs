@@ -6,11 +6,11 @@ namespace BeatLeader_Server.Utils
 {
     class ReplayStatisticUtils
     {
-        public static (ScoreStatistic?, string?) ProcessReplay(Replay replay, Leaderboard leaderboard)
+        public static (ScoreStatistic?, string?) ProcessReplay(Replay replay, Leaderboard leaderboard, bool allow = false)
         {
             try {
                 string? error = CheckReplay(replay, leaderboard);
-                if (error != null) {
+                if (!allow && error != null) {
                     return (null, error);
                 }
 

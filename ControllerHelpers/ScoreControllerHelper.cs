@@ -53,7 +53,7 @@ namespace BeatLeader_Server.ControllerHelpers {
             return (statistic, null);
         }
 
-        public static (ScoreStatistic?, string?) CalculateStatisticFromReplay(Replay? replay, Leaderboard leaderboard)
+        public static (ScoreStatistic?, string?) CalculateStatisticFromReplay(Replay? replay, Leaderboard leaderboard, bool allow = false)
         {
             ScoreStatistic? statistic;
 
@@ -64,7 +64,7 @@ namespace BeatLeader_Server.ControllerHelpers {
 
             try
             {
-                (statistic, string? error) = ReplayStatisticUtils.ProcessReplay(replay, leaderboard);
+                (statistic, string? error) = ReplayStatisticUtils.ProcessReplay(replay, leaderboard, allow);
                 if (statistic == null && error != null) {
                     return (null, error);
                 }
