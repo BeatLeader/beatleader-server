@@ -186,9 +186,14 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [HttpGet("~/oculususer")]
-        public async Task<ActionResult<OculusUser>> GetOculusUser([FromQuery] string token)
+        public async Task<ActionResult<OculusUser>> GetOculusUser([FromQuery] string? token = null)
         {
-            (string? id, string? error) = await SteamHelper.GetPlayerIDFromTicket(token, _configuration);
+            string? id = token == null ? GetId() : null;
+
+            if (id == null && token != null) {
+                (id, string? error) = await SteamHelper.GetPlayerIDFromTicket(token, _configuration);
+            }
+            
             if (id == null)
             {
                 return NotFound();
@@ -210,14 +215,24 @@ namespace BeatLeader_Server.Controllers {
                     Avatar = player.Avatar,
                 };
             }
-            var oculusPlayer = await PlayerUtils.GetPlayerFromOculus(id, token);
 
-            return new OculusUser
-            {
-                Id = id,
-                Name = oculusPlayer.Name,
-                Avatar = oculusPlayer.Avatar,
-            };
+            if (token != null) {
+                var oculusPlayer = await PlayerUtils.GetPlayerFromOculus(id, token);
+
+                return new OculusUser
+                {
+                    Id = id,
+                    Name = oculusPlayer.Name,
+                    Avatar = oculusPlayer.Avatar,
+                };
+            } else {
+                return new OculusUser
+                {
+                    Id = id,
+                    Name = "",
+                    Avatar = "",
+                };
+            }
         }
 
         [NonAction]
