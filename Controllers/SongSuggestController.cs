@@ -308,7 +308,7 @@ namespace BeatLeader_Server.Controllers
             var currentId = HttpContext.CurrentUserID(_context);
             var topToday = _leaderboardController.GetAll(1, 1, MapSortBy.PlayCount, date_from: timeset - 60 * 60 * 24, overrideCurrentId: currentId);
             var topWeek = _leaderboardController.GetAll(1, 1, MapSortBy.PlayCount, date_from: timeset - 60 * 60 * 24 * 7, overrideCurrentId: currentId);
-            var topVoted = _leaderboardController.GetAll(1, 1, MapSortBy.VoteCount, date_from: timeset - 60 * 60 * 24 * 30, overrideCurrentId: currentId);
+            var topVoted = _leaderboardController.GetAll(1, 1, MapSortBy.Voting, date_from: timeset - 60 * 60 * 24 * 30, overrideCurrentId: currentId);
 
             Task.WaitAll([topToday, topWeek, topVoted]);
 
