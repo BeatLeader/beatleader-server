@@ -1313,6 +1313,7 @@ namespace BeatLeader_Server.Controllers {
                     RefreshToken = saverLink.RefreshToken,
                     Timestamp = saverLink.Timestamp,
                 };
+                currentPlayer.MapperId = null;
                 migrateToPlayer.MapperId = int.Parse(saverLink.BeatSaverId);
                 _context.BeatSaverLinks.Remove(saverLink);
                 _context.BeatSaverLinks.Add(newLink);
