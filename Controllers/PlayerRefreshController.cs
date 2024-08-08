@@ -40,12 +40,17 @@ namespace BeatLeader_Server.Controllers
 
         [NonAction]
         public async Task RefreshPlayer(Player player, bool refreshRank = true, bool refreshStats = true) {
-            await _context.RecalculatePP(player);
-            await _context.SaveChangesAsync();
+            _context.ChangeTracker.AutoDetectChangesEnabled = false;
+
+            await _context.RecalculatePPAndRankFast(player, LeaderboardContexts.General);
+            await _context.BulkSaveChangesAsync();
+
+            _context.ChangeTracker.AutoDetectChangesEnabled = true;
 
             if (refreshRank)
             {
                 _context.ChangeTracker.AutoDetectChangesEnabled = false;
+
                 Dictionary<string, int> countries = new Dictionary<string, int>();
                 var ranked = await _context.Players
                     .Where(p => p.Pp > 0 && !p.Banned)

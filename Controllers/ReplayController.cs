@@ -100,7 +100,7 @@ namespace BeatLeader_Server.Controllers
             }
             
             var result = await PostReplayFromBody(dbContext, userId, time, type);
-            if (result.Value == null) {
+            if (result.Value == null && result.Result?.GetType() != typeof(ObjectResult)) {
                 await dbContext.DisposeAsync();
             }
             if (Response.Headers.ContainsKey("Set-Cookie")) {

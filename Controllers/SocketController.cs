@@ -207,6 +207,61 @@ namespace BeatLeader_Server.Controllers
         public static async Task ScoreWas(string action, Score score, AppContext context) {
             try {
                 var scoreToPublish = ScoreWithMyScore(score, 0);
+                if (scoreToPublish.Leaderboard == null) {
+                    scoreToPublish.Leaderboard = await context
+                        .Leaderboards
+                        .Where(l => l.Id == score.LeaderboardId)
+                        .Include(l => l.Song)
+                        .Select(lb => new CompactLeaderboardResponse {
+                            Id = lb.Id,
+                            Song = new CompactSongResponse {
+                                Id = lb.Song.Id,
+                                Hash = lb.Song.Hash,
+                                Name = lb.Song.Name,
+            
+                                SubName = lb.Song.SubName,
+                                Author = lb.Song.Author,
+                                Mapper = lb.Song.Mapper,
+                                MapperId = lb.Song.MapperId,
+                                CollaboratorIds = lb.Song.CollaboratorIds,
+                                CoverImage = lb.Song.CoverImage,
+                                FullCoverImage = lb.Song.FullCoverImage,
+                                Bpm = lb.Song.Bpm,
+                                Duration = lb.Song.Duration,
+                            },
+                            Difficulty = new DifficultyResponse {
+                                Id = lb.Difficulty.Id,
+                                Value = lb.Difficulty.Value,
+                                Mode = lb.Difficulty.Mode,
+                                DifficultyName = lb.Difficulty.DifficultyName,
+                                ModeName = lb.Difficulty.ModeName,
+                                Status = lb.Difficulty.Status,
+                                ModifierValues = lb.Difficulty.ModifierValues,
+                                ModifiersRating = lb.Difficulty.ModifiersRating,
+                                NominatedTime  = lb.Difficulty.NominatedTime,
+                                QualifiedTime  = lb.Difficulty.QualifiedTime,
+                                RankedTime = lb.Difficulty.RankedTime,
+
+                                Stars  = lb.Difficulty.Stars,
+                                PredictedAcc  = lb.Difficulty.PredictedAcc,
+                                PassRating  = lb.Difficulty.PassRating,
+                                AccRating  = lb.Difficulty.AccRating,
+                                TechRating  = lb.Difficulty.TechRating,
+                                Type  = lb.Difficulty.Type,
+
+                                Njs  = lb.Difficulty.Njs,
+                                Nps  = lb.Difficulty.Nps,
+                                Notes  = lb.Difficulty.Notes,
+                                Bombs  = lb.Difficulty.Bombs,
+                                Walls  = lb.Difficulty.Walls,
+                                MaxScore = lb.Difficulty.MaxScore,
+                                Duration  = lb.Difficulty.Duration,
+
+                                Requirements = lb.Difficulty.Requirements,
+                            }
+                        })
+                        .FirstOrDefaultAsync();
+                }
                 if (score.Leaderboard?.SongId != null && scoreToPublish.Leaderboard.Song == null) {
                     scoreToPublish.Leaderboard.Song = await context
                         .Songs

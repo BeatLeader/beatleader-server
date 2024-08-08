@@ -104,6 +104,7 @@ namespace BeatLeader_Server
         public DbSet<IngameAvatar> IngameAvatars { get; set; }
         public DbSet<Mapper> Mappers { get; set; }
         public DbSet<ModNews> ModNews { get; set; }
+        public DbSet<BeastiesNomination> BeastiesNominations { get; set; }
 
         public void RejectChanges()
         {

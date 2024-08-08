@@ -13,33 +13,6 @@ namespace BeatLeader_Server.Utils
 {
     public static class PlayerUtils
     {
-        public static async Task RecalculatePP(this AppContext context, Player player, List<Score>? scores = null)
-        {
-            var ranked = scores ?? await context
-                .Scores
-                .Where(s => 
-                    s.ValidContexts.HasFlag(LeaderboardContexts.General) &&
-                    s.PlayerId == player.Id && 
-                    s.Pp != 0 && 
-                    !s.Banned && 
-                    !s.Qualification)
-                .OrderByDescending(s => s.Pp)
-                .ToListAsync();
-            float resultPP = 0f;
-
-            foreach ((int i, Score s) in ranked.Select((value, i) => (i, value)))
-            {
-                float weight = MathF.Pow(0.965f, i);
-                if (s.Weight != weight)
-                {
-                    s.Weight = weight;
-                }
-
-                resultPP += s.Pp * weight;
-            }
-            player.Pp = resultPP;
-        }
-
         public static async Task RecalculatePPAndRankFast(
             this AppContext dbcontext, 
             Player player,

@@ -40,7 +40,9 @@ namespace BeatLeader_Server.ControllerHelpers {
             if (scores == null) {
                 if (leaderboardContext == LeaderboardContexts.General || leaderboardContext == LeaderboardContexts.None) {
                     allScores = await dbContext
-                        .Scores.Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && (!s.Banned || s.Bot) && s.PlayerId == playerId && !s.IgnoreForStats)
+                        .Scores
+                        .AsNoTracking()
+                        .Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && (!s.Banned || s.Bot) && s.PlayerId == playerId && !s.IgnoreForStats)
                         .Select(s => new SubScore
                         {
                             PlayerId = s.PlayerId,
@@ -64,6 +66,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                 } else {
                     allScores = await dbContext
                         .ScoreContextExtensions
+                        .AsNoTracking()
                         .Where(s => s.PlayerId == playerId && s.Context == leaderboardContext && !s.ScoreInstance.IgnoreForStats)
                         .Select(s => new SubScore
                         {
