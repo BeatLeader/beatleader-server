@@ -490,6 +490,7 @@ namespace BeatLeader_Server.Utils
             if (lowerHmd.Contains("acer")) return HMD.acerWmr;
             if (lowerHmd.Contains("arpara")) return HMD.arpara;
             if (lowerHmd.Contains("dell visor")) return HMD.dellVisor;
+            if (lowerHmd.Contains("meganex") && lowerHmd.Contains("1")) return HMD.megane1;
 
             if (lowerHmd.Contains("e3")) return HMD.e3;
             if (lowerHmd.Contains("e4")) return HMD.e4;
@@ -519,6 +520,8 @@ namespace BeatLeader_Server.Utils
             if (lowerHmd.Contains("vive_pro")) return HMD.vivePro;
             if (lowerHmd.Contains("vive")) return HMD.vive;
             if (lowerHmd.Contains("rift")) return HMD.rift;
+            
+            if (lowerHmd.Contains("playstation_vr2") || lowerHmd.Contains("ps vr2")) return HMD.psvr2;
 
             return HMD.unknown;
         }
