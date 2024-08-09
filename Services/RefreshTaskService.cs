@@ -1,4 +1,5 @@
 ﻿using BeatLeader_Server.Controllers;
+using Microsoft.EntityFrameworkCore;
 
 namespace BeatLeader_Server.Services
 {
@@ -9,8 +10,15 @@ namespace BeatLeader_Server.Services
         public int Throttle { get; set; } = 0;
     }
 
+    public class HistoryMigrationJob {
+        public string FromPlayerId { get; set; }
+        public string ToPlayerId { get; set; }
+        public int Throttle { get; set; } = 0;
+    }
+
     public class RefreshTaskService : BackgroundService {
         private static List<MigrationJob> jobs = new List<MigrationJob>();
+        private static List<HistoryMigrationJob> historyJobs = new List<HistoryMigrationJob>();
 
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly IConfiguration _configuration;
@@ -23,6 +31,12 @@ namespace BeatLeader_Server.Services
         public static void AddJob(MigrationJob newJob) {
             lock (jobs) {
                 jobs.Add(newJob);
+            }
+        }
+
+        public static void AddHistoryJob(HistoryMigrationJob newJob) {
+            lock (jobs) {
+                historyJobs.Add(newJob);
             }
         }
 
@@ -42,6 +56,7 @@ namespace BeatLeader_Server.Services
                 Console.WriteLine("SERVICE-STARTED RefreshTaskService");
                 try {
                     await ProcessJobs();
+                    await ProcessHistoryJobs();
                 } catch (Exception e)
                 {
                     Console.WriteLine($"EXCEPTION: {e}");
@@ -50,7 +65,13 @@ namespace BeatLeader_Server.Services
                 Console.WriteLine("SERVICE-DONE RefreshTaskService");
 
                 await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken);
-                await ProcessJobs();
+                try {
+                    await ProcessJobs();
+                    await ProcessHistoryJobs();
+                } catch (Exception e)
+                {
+                    Console.WriteLine($"EXCEPTION: {e}");
+                }
             }
             while (!stoppingToken.IsCancellationRequested);
         }
@@ -79,21 +100,71 @@ namespace BeatLeader_Server.Services
                 var scoreController = scope.ServiceProvider.GetRequiredService<ScoreRefreshController>();
 
                 foreach (var job in jobsToProcess) {
-                    await playerController.RefreshPlayerAction(job.PlayerId);
-                    await playerContextController.RefreshPlayerAllContexts(job.PlayerId);
+                    await playerController.RefreshPlayerAction(job.PlayerId, false);
+                    await playerContextController.RefreshPlayerAllContexts(job.PlayerId, false);
+
+                    try {
+                        await _context.BulkSaveChangesAsync();
+                    } catch { }
 
                     foreach (var id in job.Leaderboards) {
                         await scoreController.BulkRefreshScores(id);
                         await scoreController.BulkRefreshScoresAllContexts(id);
                     }
-
-                    await playerController.RefreshPlayerAction(job.PlayerId);
-                    await playerContextController.RefreshPlayerAllContexts(job.PlayerId);
                 }
 
                 try {
-                    await _context.SaveChangesAsync();
+                    await _context.BulkSaveChangesAsync();
                 } catch { }
+            }
+        }
+
+        private async Task ProcessHistoryJobs() {
+            var jobsToProcess = new List<HistoryMigrationJob>();
+
+            lock (jobs) {
+                var leftovers = new List<HistoryMigrationJob>();
+                foreach (var job in historyJobs) {
+                    if (job.Throttle == 0) {
+                        jobsToProcess.Add(job);
+                    } else {
+                        job.Throttle--;
+                        leftovers.Add(job);
+                    }
+                }
+                historyJobs = leftovers;
+            }
+
+            using (var scope = _serviceScopeFactory.CreateScope()) {
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+
+                foreach (var job in jobsToProcess) {
+
+                    var toHistory = await _context.PlayerScoreStatsHistory.Where(sh => sh.PlayerId == job.ToPlayerId).ToListAsync();
+                    var fromHistory = await _context.PlayerScoreStatsHistory.Where(sh => sh.PlayerId == job.FromPlayerId).ToListAsync();
+
+                    if (fromHistory.Count > toHistory.Count && fromHistory.First().Pp > 0) {
+                        foreach (var item in fromHistory) {
+                            item.PlayerId = job.ToPlayerId;
+                        }
+                        foreach (var item in toHistory) {
+                            _context.PlayerScoreStatsHistory.Remove(item);
+                        }
+                    } else {
+                        foreach (var item in fromHistory) {
+                            _context.PlayerScoreStatsHistory.Remove(item);
+                        }
+                    }
+
+                    var currentPlayer = await _context.Players.Where(p => p.Id == job.FromPlayerId).FirstOrDefaultAsync();
+                    if (currentPlayer != null) {
+                        _context.Players.Remove(currentPlayer);
+                    }
+
+                    try {
+                        await _context.BulkSaveChangesAsync();
+                    } catch { }
+                }
             }
         }
     }
