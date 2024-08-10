@@ -84,7 +84,7 @@ namespace BeatLeader_Server.Utils
 
             var rankedPlayers = (await context
                 .Players
-                .Where(t => t.Pp > 0 && t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned)
+                .Where(t => t.Pp > 0 && t.Pp >= oldPp && t.Pp != 0 && t.Pp <= resultPP && t.Id != player.Id && !t.Banned)
                 .Select(p => new {
                     Id = p.Id,
                     Rank = p.Rank,

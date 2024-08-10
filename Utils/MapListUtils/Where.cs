@@ -61,7 +61,7 @@ public static partial class MapListUtils
         if (ids.Length == 0) {
             return sequence;
         }
-        return sequence.Where(lb => ids.Contains(lb.Song.MapperId) || lb.Song.Mappers.Any(m => ids.Contains(m.Id)));
+        return sequence.Where(lb => lb.Song.Mappers.Any(m => ids.Contains(m.Id)));
     }
 
     private static IQueryable<Leaderboard> WhereMyType(this IQueryable<Leaderboard> sequence, MyType mytype, Player? currentPlayer, LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
