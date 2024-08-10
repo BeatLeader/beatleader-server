@@ -423,6 +423,8 @@ namespace BeatLeader_Server {
             services.AddHostedService<RefreshTaskService>();
             services.AddHostedService<MinuteRefresh>();
             services.AddHostedService<ClanTaskService>();
+            services.AddHostedService<ClanMessageService>();
+            services.AddHostedService<ClanCallbackService>();
             services.AddHostedService<SearchService>();
             services.AddHostedService<OauthService>();
 
