@@ -48,6 +48,7 @@ namespace BeatLeader_Server.Controllers {
             string? search,
             string? modifiers,
             List<string>? friendsList,
+            string? clanTag,
             bool offsets = false) {
             IQueryable<Score> scoreQuery = _context
                 .Scores
@@ -158,8 +159,12 @@ namespace BeatLeader_Server.Controllers {
                                 s.Player.Clans.FirstOrDefault(c => c.Name.ToLower().Contains(lowSearch)) != null ||
                                 s.Player.Clans.FirstOrDefault(c => c.Tag.ToLower().Contains(lowSearch)) != null);
             }
+            if (clanTag != null) {
+                scoreQuery = scoreQuery
+                    .Where(s => s.Player.Clans.FirstOrDefault(c => c.Tag == clanTag.ToUpper()) != null);
+            }
             using (_serverTiming.TimeAction("scorecount")) {
-            leaderboard.Plays = await scoreQuery.CountAsync();
+                leaderboard.Plays = await scoreQuery.CountAsync();
             }
             using (_serverTiming.TimeAction("scorelist")) {
             leaderboard.Scores = await scoreQuery
@@ -387,6 +392,7 @@ namespace BeatLeader_Server.Controllers {
             string? search,
             string? modifiers,
             List<string>? friendsList,
+            string? clanTag,
             bool offsets = false) {
             IQueryable<ScoreContextExtension> scoreQuery = _context
                 .ScoreContextExtensions
@@ -489,6 +495,10 @@ namespace BeatLeader_Server.Controllers {
                                 s.Player.Clans.FirstOrDefault(c => c.Name.ToLower().Contains(lowSearch)) != null ||
                                 s.Player.Clans.FirstOrDefault(c => c.Tag.ToLower().Contains(lowSearch)) != null);
             }
+            if (clanTag != null) {
+                scoreQuery = scoreQuery
+                    .Where(s => s.Player.Clans.FirstOrDefault(c => c.Tag == clanTag.ToUpper()) != null);
+            }
 
             leaderboard.Plays = await scoreQuery.CountAsync();
             leaderboard.Scores = await scoreQuery
@@ -567,6 +577,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Modifiers to filter scores by (comma separated)")] string? modifiers = null,
             [FromQuery, SwaggerParameter("Whether to include only scores from friends, default is false")] bool friends = false,
             [FromQuery, SwaggerParameter("Whether to include only scores from voters, default is false")] bool voters = false,
+            [FromQuery, SwaggerParameter("Whether to include only scores from clan, default is false")] string? clanTag = null,
             [FromQuery, SwaggerParameter("Whether to include predicted scores, default is false")] bool prediction = false) {
 
             string? currentID = HttpContext.CurrentUserID(_context);
@@ -758,9 +769,9 @@ namespace BeatLeader_Server.Controllers {
                     await PredictedScores(leaderboard, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList);
                 } else {
                     if (leaderboardContext == LeaderboardContexts.General || leaderboardContext == LeaderboardContexts.None) {
-                        await GeneralScores(leaderboard, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList);
+                        await GeneralScores(leaderboard, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, clanTag);
                     } else {
-                        await ContextScores(leaderboard, leaderboardContext, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList);
+                        await ContextScores(leaderboard, leaderboardContext, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, clanTag);
                     }
                 }
 
@@ -964,9 +975,9 @@ namespace BeatLeader_Server.Controllers {
                 }
 
                 if (leaderboardContext == LeaderboardContexts.General || leaderboardContext == LeaderboardContexts.None) {
-                    await GeneralScores(leaderboard, showBots, voters, false, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, true);
+                    await GeneralScores(leaderboard, showBots, voters, false, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, null, true);
                 } else {
-                    await ContextScores(leaderboard, leaderboardContext, showBots, voters, false, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, true);
+                    await ContextScores(leaderboard, leaderboardContext, showBots, voters, false, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, null, true);
                 }
 
                 foreach (var score in leaderboard.Scores) {
