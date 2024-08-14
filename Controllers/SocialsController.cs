@@ -356,7 +356,7 @@ namespace BeatLeader_Server.Controllers
             switch (provider)
             {
                 case "BeatSaver":
-                    player.MapperId = 0;
+                    player.MapperId = null;
                     player.Role = string.Join(",", player.Role.Split(",").Where(r => r != "mapper"));
                     var link = await _context.BeatSaverLinks.FirstOrDefaultAsync(l => l.Id == player.Id);
                     if (link != null) {

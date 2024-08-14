@@ -357,7 +357,7 @@ namespace BeatLeader_Server.Controllers
                 if (mapper != null) {
                     _context.Mappers.Add(Mapper.MapperFromBeatSaverUser(mapper));
                 } else {
-                    player.MapperId = 0;
+                    player.MapperId = null;
                 }
             }
 

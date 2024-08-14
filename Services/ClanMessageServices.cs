@@ -112,8 +112,8 @@ namespace BeatLeader_Server.Services
                     foreach (var job in jobsToProcess) {
                         foreach (var hook in job.Hooks) {
                             await ClanUtils.PostChangesWithScore(_context, stoppingToken, job.Changes, job.Score, job.GifPath, hook);
-                            File.Delete(job.GifPath);
                         }
+                        File.Delete(job.GifPath);
                     }
                 } catch (Exception e)
                 {
