@@ -221,8 +221,8 @@ namespace BeatLeader_Server.Services {
                                     using (var ms = new MemoryStream(5)) {
                                         await coverStream.CopyToAsync(ms);
                                         ms.Position = 0;
-                                        (string extension, MemoryStream imageStream) = ImageUtils.GetFormat(ms);
-                                        var fileName = $"songcover-{song.Id}-full{extension}";
+                                        MemoryStream imageStream = ImageUtils.ResizeToWebp(ms, 512);
+                                        var fileName = $"songcover-{song.Id}-full.webp";
 
                                         song.FullCoverImage = await _s3Client.UploadAsset(fileName, imageStream);
                                     }

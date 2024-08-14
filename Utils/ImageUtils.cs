@@ -39,12 +39,12 @@ namespace BeatLeader_Server.Utils
             return (extension, ms);
         }
 
-        public static MemoryStream ResizeToWebp(MemoryStream memoryStream)
+        public static MemoryStream ResizeToWebp(MemoryStream memoryStream, int desiredWidth = 300)
         {
             Image image = Image.Load(memoryStream);
             Size size = image.Size;
 
-            int width = Math.Min(300, size.Width);
+            int width = Math.Min(desiredWidth, size.Width);
             int height = (int)(((float)size.Height / (float)size.Width) * (float)width);
 
             if (width < height) {
