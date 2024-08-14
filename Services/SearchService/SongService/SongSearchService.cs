@@ -5,6 +5,7 @@ using Lucene.Net.Sandbox.Queries;
 using Lucene.Net.Search;
 using Lucene.Net.Store;
 using Lucene.Net.Util;
+using System.Text.RegularExpressions;
 
 namespace BeatLeader_Server.Services;
 
@@ -47,6 +48,11 @@ public static class SongSearchService
         }
     }
 
+    public static string CleanWord(string input)
+    {
+        return Regex.Replace(input, @"[^a-zA-Z0-9]", "");
+    }
+
     public static List<SongMetadata> Search(string searchQuery)
     {
         if (string.IsNullOrEmpty(searchQuery.Replace("*", "").Replace("?", "")))
@@ -62,6 +68,7 @@ public static class SongSearchService
         TopFieldDocs topFieldDocs = searcher.Search(query, null, HitsLimit, Sort.RELEVANCE, true, false);
         ScoreDoc[] hits = topFieldDocs.ScoreDocs;
         string lowerQuery = searchQuery.ToLower();
+        var words = lowerQuery.Split(" ").Select(CleanWord).ToArray();
 
         return hits.Select(scoreDoc =>
         {
@@ -74,8 +81,28 @@ public static class SongSearchService
             } else {
                 result.Score = (int)(scoreDoc.Score * 100.0f);
             }
+            if (result.Name.StartsWith(lowerQuery)) {
+                result.Score += 250;
+            } else if (result.Name.Contains(lowerQuery)) {
+                result.Score += 150;
+            }
+            if (result.Mapper.StartsWith(lowerQuery)) {
+                result.Score += 250;
+            } else if (result.Mapper.Contains(lowerQuery)) {
+                result.Score += 150;
+            }
+            if (result.Author.StartsWith(lowerQuery)) {
+                result.Score += 250;
+            } else if (result.Author.Contains(lowerQuery)) {
+                result.Score += 150;
+            }
+            
+            if (words.Length > 1) {
+                result.Score += words.Intersect(result.Name.Split(" ").Select(CleanWord).ToArray()).Count() * 60;
+            }
+
             if (result.Mapper == "beat sage") {
-                result.Score -= 500;
+                result.Score -= 1000;
             }
 
             return result;
