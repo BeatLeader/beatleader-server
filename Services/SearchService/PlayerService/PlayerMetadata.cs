@@ -9,7 +9,7 @@ public class PlayerMetadata
 
     public string Name { get; set; }
 
-    public float Score { get; set; }
+    public int Score { get; set; }
 
     public static List<PlayerMetadata> GetPlayerMetadata(Player player) {
         var result = new List<PlayerMetadata> {

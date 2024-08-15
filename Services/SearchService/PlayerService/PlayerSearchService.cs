@@ -67,24 +67,20 @@ public static class PlayerSearchService
         using DirectoryReader directoryReader = DirectoryReader.Open(Directory);
         IndexSearcher searcher = new(directoryReader);
 
-        Query query = GetQuery(searchQuery.Replace(" ", ""));
+        var lowerQuery = searchQuery.Replace(" ", "");
+        Query query = GetQuery(lowerQuery);
 
         TopFieldDocs topFieldDocs = searcher.Search(query, null, HitsLimit, Sort.RELEVANCE, true, false);
         ScoreDoc[] hits = topFieldDocs.ScoreDocs;
 
-        var test = hits.Select(scoreDoc =>
-        {
-            PlayerMetadata result = (PlayerMetadata)searcher.Doc(scoreDoc.Doc);
-            result.Score = scoreDoc.Score;
-
-            return result;
-        })
-        .ToList();
-
         return hits.Select(scoreDoc =>
         {
             PlayerMetadata result = (PlayerMetadata)searcher.Doc(scoreDoc.Doc);
-            result.Score = scoreDoc.Score;
+            if (result.Name == lowerQuery || (lowerQuery.Length > 3 && result.Name.StartsWith(lowerQuery))) {
+                result.Score = 500;
+            } else {
+                result.Score = (int)(scoreDoc.Score * 100.0f);
+            }
 
             return result;
         })

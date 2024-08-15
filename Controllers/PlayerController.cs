@@ -270,6 +270,7 @@ namespace BeatLeader_Server.Controllers
             } else {
                 request = request.Where(p => !p.Banned || ((showBots || search.Length > 0) && p.Bot));
             }
+
             if (countries.Length != 0)
             {
                 var player = Expression.Parameter(typeof(Player), "p");
@@ -282,11 +283,25 @@ namespace BeatLeader_Server.Controllers
                 }
                 request = request.Where((Expression<Func<Player, bool>>)Expression.Lambda(exp, player));
             }
-            List<string>? ids = null;
-            List<PlayerMetadata>? searchMatch = null;
+
+            
+            int? searchIdentifier = null;
             if (search?.Length > 0) {
-                searchMatch = PlayerSearchService.Search(search);
-                ids = searchMatch.Select(m => m.Id).ToList();
+                var searchMatch = PlayerSearchService.Search(search);
+
+                Random rnd = new Random();
+                searchIdentifier = rnd.Next(1, 10000);
+
+                foreach (var item in searchMatch) {
+                    _context.PlayerSearches.Add(new PlayerSearch {
+                        PlayerId = item.Id,
+                        Score = item.Score,
+                        SearchId = (int)searchIdentifier
+                    });
+                }
+                _context.BulkSaveChanges();
+
+                List<string>? ids = searchMatch.Select(m => m.Id).ToList();
 
                 request = request.Where(p => ids.Contains(p.Id));
             }
@@ -400,27 +415,18 @@ namespace BeatLeader_Server.Controllers
                 }
             };
 
-            List<string> playerIds;
-            if (searchMatch?.Count > 0) {
-                var matchedAndFiltered = await request.Select(p => p.Id).ToListAsync();
-                playerIds = matchedAndFiltered
-                             .OrderByDescending(p => searchMatch.First(m => m.Id == p).Score)
-                             .Skip((page - 1) * count)
-                             .Take(count)
-                             .ToList();
-            } else {
-                playerIds = await 
-                        Sorted(request, sortBy, ppType, order, mapsType)
-                        .Skip((page - 1) * count)
-                        .Take(count)
-                        .Select(p => p.Id)
-                        .ToListAsync();
-            }
+            List<string> playerIds = await 
+                Sorted(request, sortBy, ppType, order, mapsType, searchIdentifier)
+                .Skip((page - 1) * count)
+                .Take(count)
+                .Select(p => p.Id)
+                .ToListAsync();
 
             using (var anotherContext = _dbFactory.CreateDbContext()) {
                 (result.Metadata.Total, result.Data) = await request.CountAsync().CoundAndResults(
                     anotherContext
                     .Players
+                    .AsNoTracking()
                     .Where(p => playerIds.Contains(p.Id))
                     .Include(p => p.ScoreStats)
                     .Include(p => p.Clans)
@@ -459,11 +465,18 @@ namespace BeatLeader_Server.Controllers
                 PostProcessSettings(item, false);
             }
 
-            if (ids?.Count > 0)
-            {
-                result.Data = result.Data.OrderBy(e => ids.IndexOf(e.Id));
-            } else if (playerIds.Count > 0) {
+            if (playerIds.Count > 0) {
                 result.Data = result.Data.OrderBy(e => playerIds.IndexOf(e.Id));
+            }
+
+            if (searchIdentifier != null) {
+                HttpContext.Response.OnCompleted(async () => {
+                    var searchRecords = await _context.PlayerSearches.Where(s => s.SearchId == searchIdentifier).ToListAsync();
+                    foreach (var item in searchRecords) {
+                        _context.PlayerSearches.Remove(item);
+                    }
+                    await _context.BulkSaveChangesAsync();
+                });
             }
 
             return result;
@@ -709,41 +722,47 @@ namespace BeatLeader_Server.Controllers
             PlayerSortBy sortBy, 
             PpType ppType,
             Order order, 
-            MapsType mapsType) where T : IPlayer {
+            MapsType mapsType,
+            int? searchId = null) where T : IPlayer {
+
+            var preSorted = 
+                request
+                .OrderByDescending(p => searchId != null ? p.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0);
+
             if (sortBy == PlayerSortBy.DailyImprovements) {
-                return request.Order(order, p => p.ScoreStats.DailyImprovements);
+                return preSorted.ThenOrder(order, p => p.ScoreStats.DailyImprovements);
             }
 
             if (sortBy == PlayerSortBy.Pp) {
                 switch (ppType)
                 {
                     case PpType.Acc:
-                        request = request.Order(order, p => p.AccPp);
+                        request = preSorted.ThenOrder(order, p => p.AccPp);
                         break;
                     case PpType.Tech:
-                        request = request.Order(order, p => p.TechPp);
+                        request = preSorted.ThenOrder(order, p => p.TechPp);
                         break;
                     case PpType.Pass:
-                        request = request.Order(order, p => p.PassPp);
+                        request = preSorted.ThenOrder(order, p => p.PassPp);
                         break;
                     default:
-                        request = request.Order(order, p => p.Pp);
+                        request = preSorted.ThenOrder(order, p => p.Pp);
                         break;
                 }
             } else if (sortBy == PlayerSortBy.TopPp) {
                 switch (ppType)
                 {
                     case PpType.Acc:
-                        request = request.Order(order, p => p.ScoreStats.TopAccPP);
+                        request = preSorted.ThenOrder(order, p => p.ScoreStats.TopAccPP);
                         break;
                     case PpType.Tech:
-                        request = request.Order(order, p => p.ScoreStats.TopTechPP);
+                        request = preSorted.ThenOrder(order, p => p.ScoreStats.TopTechPP);
                         break;
                     case PpType.Pass:
-                        request = request.Order(order, p => p.ScoreStats.TopPassPP);
+                        request = preSorted.ThenOrder(order, p => p.ScoreStats.TopPassPP);
                         break;
                     default:
-                        request = request.Order(order, p => p.ScoreStats.TopPp);
+                        request = preSorted.ThenOrder(order, p => p.ScoreStats.TopPp);
                         break;
                 }
             }
@@ -754,51 +773,53 @@ namespace BeatLeader_Server.Controllers
                     switch (sortBy)
                     {
                         case PlayerSortBy.Name:
-                            request = request.Order(order, p => p.Name);
+                            request = preSorted.ThenOrder(order, p => p.Name);
                             break;
                         case PlayerSortBy.Rank:
                             request = request
                                 .Where(p => p.ScoreStats.AverageRankedRank != 0)
-                                .Order(order.Reverse(), p => Math.Round(p.ScoreStats.AverageRankedRank))
+                                .OrderByDescending(p => searchId != null ? p.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
+                                .ThenOrder(order.Reverse(), p => Math.Round(p.ScoreStats.AverageRankedRank))
                                 .ThenOrder(order, p => p.ScoreStats.RankedPlayCount); 
                             break;
                         case PlayerSortBy.Acc:
-                            request = request.Order(order, p => p.ScoreStats.AverageRankedAccuracy);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AverageRankedAccuracy);
                             break;
                         case PlayerSortBy.WeightedAcc:
-                            request = request.Order(order, p => p.ScoreStats.AverageWeightedRankedAccuracy);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AverageWeightedRankedAccuracy);
                             break;
                         case PlayerSortBy.Top1Count:
-                            request = request.Order(order, p => p.ScoreStats.RankedTop1Count);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.RankedTop1Count);
                             break;
                         case PlayerSortBy.Top1Score:
-                            request = request.Order(order, p => p.ScoreStats.RankedTop1Score);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.RankedTop1Score);
                             break;
                         case PlayerSortBy.WeightedRank:
                             request = request
                                 .Where(p => p.ScoreStats != null && p.ScoreStats.AverageWeightedRankedRank != 0)
-                                .Order(order.Reverse(), p => p.ScoreStats.AverageWeightedRankedRank);
+                                .OrderByDescending(p => searchId != null ? p.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
+                                .ThenOrder(order.Reverse(), p => p.ScoreStats.AverageWeightedRankedRank);
                             break;
                         case PlayerSortBy.TopAcc:
-                            request = request.Order(order, p => p.ScoreStats.TopRankedAccuracy);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TopRankedAccuracy);
                             break;
                         case PlayerSortBy.Hmd:
-                            request = request.Order(order, p => p.ScoreStats.TopHMD);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TopHMD);
                             break;
                         case PlayerSortBy.PlayCount:
-                            request = request.Order(order, p => p.ScoreStats.RankedPlayCount);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.RankedPlayCount);
                             break;
                         case PlayerSortBy.Score:
-                            request = request.Order(order, p => p.ScoreStats.TotalRankedScore);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TotalRankedScore);
                             break;
                         case PlayerSortBy.Lastplay:
-                            request = request.Order(order, p => p.ScoreStats.LastRankedScoreTime);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.LastRankedScoreTime);
                             break;
                         case PlayerSortBy.MaxStreak:
-                            request = request.Order(order, p => p.ScoreStats.RankedMaxStreak);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.RankedMaxStreak);
                             break;
                         case PlayerSortBy.ReplaysWatched:
-                            request = request.Order(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
                             break;
                         default:
                             break;
@@ -808,47 +829,48 @@ namespace BeatLeader_Server.Controllers
                     switch (sortBy)
                     {
                         case PlayerSortBy.Name:
-                            request = request.Order(order, p => p.Name);
+                            request = preSorted.ThenOrder(order, p => p.Name);
                             break;
                         case PlayerSortBy.Rank:
                             request = request
                                 .Where(p => p.ScoreStats.AverageUnrankedRank != 0)
-                                .Order(order.Reverse(), p => Math.Round(p.ScoreStats.AverageUnrankedRank))
+                                .OrderByDescending(p => searchId != null ? p.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
+                                .ThenOrder(order.Reverse(), p => Math.Round(p.ScoreStats.AverageUnrankedRank))
                                 .ThenOrder(order, p => p.ScoreStats.UnrankedPlayCount);
                             break;
                         case PlayerSortBy.Acc:
-                            request = request.Order(order, p => p.ScoreStats.AverageUnrankedAccuracy);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AverageUnrankedAccuracy);
                             break;
                         case PlayerSortBy.WeightedAcc:
-                            request = request.Order(order, p => p.ScoreStats.AverageUnrankedAccuracy);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AverageUnrankedAccuracy);
                             break;
                         case PlayerSortBy.Top1Count:
-                            request = request.Order(order, p => p.ScoreStats.UnrankedTop1Count);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.UnrankedTop1Count);
                             break;
                         case PlayerSortBy.Top1Score:
-                            request = request.Order(order, p => p.ScoreStats.UnrankedTop1Score);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.UnrankedTop1Score);
                             break;
                         
                         case PlayerSortBy.TopAcc:
-                            request = request.Order(order, p => p.ScoreStats.TopUnrankedAccuracy);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TopUnrankedAccuracy);
                             break;
                         case PlayerSortBy.Hmd:
-                            request = request.Order(order, p => p.ScoreStats.TopHMD);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TopHMD);
                             break;
                         case PlayerSortBy.PlayCount:
-                            request = request.Order(order, p => p.ScoreStats.UnrankedPlayCount);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.UnrankedPlayCount);
                             break;
                         case PlayerSortBy.Score:
-                            request = request.Order(order, p => p.ScoreStats.TotalUnrankedScore);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TotalUnrankedScore);
                             break;
                         case PlayerSortBy.Lastplay:
-                            request = request.Order(order, p => p.ScoreStats.LastUnrankedScoreTime);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.LastUnrankedScoreTime);
                             break;
                         case PlayerSortBy.MaxStreak:
-                            request = request.Order(order, p => p.ScoreStats.UnrankedMaxStreak);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.UnrankedMaxStreak);
                             break;
                         case PlayerSortBy.ReplaysWatched:
-                            request = request.Order(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
                             break;
                         default:
                             break;
@@ -858,49 +880,50 @@ namespace BeatLeader_Server.Controllers
                     switch (sortBy)
                     {
                         case PlayerSortBy.Name:
-                            request = request.Order(order, p => p.Name);
+                            request = preSorted.ThenOrder(order, p => p.Name);
                             break;
                         case PlayerSortBy.Rank:
                             request = request
                                 .Where(p => p.ScoreStats.AverageRank != 0)
-                                .Order(order.Reverse(), p => Math.Round(p.ScoreStats.AverageRank))
+                                .OrderByDescending(p => searchId != null ? p.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
+                                .ThenOrder(order.Reverse(), p => Math.Round(p.ScoreStats.AverageRank))
                                 .ThenOrder(order, p => p.ScoreStats.TotalPlayCount);
                             break;
                         case PlayerSortBy.Top1Count:
-                            request = request.Order(order, p => p.ScoreStats.Top1Count);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.Top1Count);
                             break;
                         case PlayerSortBy.Top1Score:
-                            request = request.Order(order, p => p.ScoreStats.Top1Score);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.Top1Score);
                             break;
                         case PlayerSortBy.Acc:
-                            request = request.Order(order, p => p.ScoreStats.AverageAccuracy);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AverageAccuracy);
                             break;
                         case PlayerSortBy.WeightedAcc:
-                            request = request.Order(order, p => p.ScoreStats.AverageWeightedRankedAccuracy);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AverageWeightedRankedAccuracy);
                             break;
                         case PlayerSortBy.TopAcc:
-                            request = request.Order(order, p => p.ScoreStats.TopAccuracy);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TopAccuracy);
                             break;
                         case PlayerSortBy.Hmd:
-                            request = request.Order(order, p => p.ScoreStats.TopHMD);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TopHMD);
                             break;
                         case PlayerSortBy.PlayCount:
-                            request = request.Order(order, p => p.ScoreStats.TotalPlayCount);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TotalPlayCount);
                             break;
                         case PlayerSortBy.Score:
-                            request = request.Order(order, p => p.ScoreStats.TotalScore);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TotalScore);
                             break;
                         case PlayerSortBy.Lastplay:
-                            request = request.Order(order, p => p.ScoreStats.LastScoreTime);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.LastScoreTime);
                             break;
                         case PlayerSortBy.MaxStreak:
-                            request = request.Order(order, p => p.ScoreStats.MaxStreak);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.MaxStreak);
                             break;
                         case PlayerSortBy.Timing:
-                            request = request.Order(order, p => (p.ScoreStats.AverageLeftTiming + p.ScoreStats.AverageRightTiming) / 2);
+                            request = preSorted.ThenOrder(order, p => (p.ScoreStats.AverageLeftTiming + p.ScoreStats.AverageRightTiming) / 2);
                             break;
                         case PlayerSortBy.ReplaysWatched:
-                            request = request.Order(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
                             break;
                         default:
                             break;
