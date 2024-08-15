@@ -312,13 +312,23 @@ namespace BeatLeader_Server.Controllers
 
             Task.WaitAll([topToday, topWeek, topVoted]);
 
+            var topTodayResult = topToday.Result;
+            if (topTodayResult.Value?.Data.FirstOrDefault()?.Id == topWeek.Result.Value?.Data.FirstOrDefault()?.Id) {
+                topTodayResult = await _leaderboardController.GetAll(2, 1, MapSortBy.PlayCount, date_from: timeset - 60 * 60 * 24, overrideCurrentId: currentId);
+            }
+
+            var topVotedResult = topVoted.Result;
+            if (topVotedResult.Value?.Data.FirstOrDefault()?.Id == topWeek.Result.Value?.Data.FirstOrDefault()?.Id) {
+                topVotedResult = await _leaderboardController.GetAll(2, 1, MapSortBy.Voting, date_from: timeset - 60 * 60 * 24 * 30, overrideCurrentId: currentId);
+            }
+
             var response = new ResponseWithMetadata<LeaderboardInfoResponse> {
                 Metadata = new Metadata {
                     Page = 1,
                     ItemsPerPage = 3,
-                    Total = topToday.Result.Value.Metadata.Total + topWeek.Result.Value.Metadata.Total + topVoted.Result.Value.Metadata.Total
+                    Total = topTodayResult.Value.Metadata.Total + topWeek.Result.Value.Metadata.Total + topVotedResult.Value.Metadata.Total
                 },
-                Data = topToday.Result.Value.Data.Concat(topWeek.Result.Value.Data).Concat(topVoted.Result.Value.Data)
+                Data = topTodayResult.Value.Data.Concat(topWeek.Result.Value.Data).Concat(topVotedResult.Value.Data)
             };
             DefaultContractResolver contractResolver = new DefaultContractResolver
             {
