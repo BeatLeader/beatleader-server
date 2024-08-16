@@ -322,7 +322,7 @@ namespace BeatLeader_Server.Controllers
                                 lb.Difficulty.Status = DifficultyStatus.inevent;
                                 await _context.SaveChangesAsync();
 
-                                await _scoreRefreshController.BulkRefreshScores(lb.Id);
+                                await _scoreRefreshController.RefreshScores(lb.Id);
                             }
                             leaderboards.Add(lb);
                         } else { continue; }

@@ -18,6 +18,152 @@ namespace BeatLeader_Server.Controllers
             _context = context;
         }
 
+        [HttpGet("~/scores/refresh")]
+        [Authorize]
+        public async Task<ActionResult> RefreshScores([FromQuery] string? leaderboardId = null)
+        {
+            if (HttpContext != null)
+            {
+                string currentId = HttpContext.CurrentUserID(_context);
+                Player? currentPlayer = await _context.Players.FindAsync(currentId);
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+
+            //var count = await _context.Leaderboards.CountAsync();
+
+            //for (int iii = 0; iii < count; iii += 1000) 
+            //{
+                var query = _context
+                    .Leaderboards
+                    .Include(s => s.Scores)
+                    .Include(l => l.Difficulty)
+                    .ThenInclude(d => d.ModifierValues)
+                    .Include(l => l.Difficulty)
+                    .ThenInclude(d => d.ModifiersRating);
+                var allLeaderboards = await (leaderboardId != null ? query.Where(s => s.Id == leaderboardId) : query)
+                    .Select(l => new { l.Scores, l.Difficulty })
+                    .ToListAsync(); // .Skip(iii).Take(1000).ToListAsync();
+
+                int counter = 0;
+                var transaction = await _context.Database.BeginTransactionAsync();
+
+                foreach (var leaderboard in allLeaderboards)
+                {
+                    var allScores = leaderboard.Scores.Where(s => !s.Banned && s.ValidContexts.HasFlag(LeaderboardContexts.General)).ToList();
+                    var status = leaderboard.Difficulty.Status;
+                    var modifiers = leaderboard.Difficulty.ModifierValues ?? new ModifiersMap();
+                    bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
+                    bool hasPp = status == DifficultyStatus.ranked || qualification;
+
+                    foreach (Score s in allScores)
+                    {
+                        int maxScore = leaderboard.Difficulty.MaxScore > 0 ? leaderboard.Difficulty.MaxScore : ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
+                        if (hasPp)
+                        {
+                            s.ModifiedScore = (int)(s.BaseScore * modifiers.GetNegativeMultiplier(s.Modifiers ?? ""));
+                        }
+                        else
+                        {
+                            s.ModifiedScore = (int)((s.BaseScore + (int)((float)(maxScore - s.BaseScore) * (modifiers.GetPositiveMultiplier(s.Modifiers) - 1))) * modifiers.GetNegativeMultiplier(s.Modifiers));
+                        }
+
+                        if (s.Modifiers != null) {
+                            if (s.Modifiers.Contains("NF")) {
+                                s.Priority = 3;
+                            } else if (s.Modifiers.Contains("NB") || s.Modifiers.Contains("NA")) {
+                                s.Priority = 2;
+                            } else if (s.Modifiers.Contains("NO")) {
+                                s.Priority = 1;
+                            }
+                        }
+
+                        s.Accuracy = (float)s.BaseScore / (float)maxScore;
+
+                        if (s.Accuracy > 1.29f)
+                        {
+                            s.Accuracy = 1.29f;
+                        }
+                        if (hasPp)
+                        {
+                            (s.Pp, s.BonusPp, s.PassPP, s.AccPP, s.TechPP) = ReplayUtils.PpFromScore(s, leaderboard.Difficulty);
+                        }
+                        else
+                        {
+                            s.Pp = 0;
+                            s.BonusPp = 0;
+                        }
+
+                        s.Qualification = qualification;
+
+                        if (float.IsNaN(s.Pp))
+                        {
+                            s.Pp = 0.0f;
+                        }
+                        if (float.IsNaN(s.BonusPp))
+                        {
+                            s.BonusPp = 0.0f;
+                        }
+                        if (float.IsNaN(s.Accuracy))
+                        {
+                            s.Accuracy = 0.0f;
+                        }
+                        counter++;
+                    }
+
+                    var rankedScores = hasPp 
+                        ? allScores
+                            .OrderByDescending(el => Math.Round(el.Pp, 2))
+                            .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                            .ThenBy(el => el.Timeset)
+                            .ToList() 
+                        : allScores
+                            .OrderBy(el => el.Priority)
+                            .ThenByDescending(el => el.ModifiedScore)
+                            .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                            .ThenBy(el => el.Timeset)
+                            .ToList();
+                    foreach ((int i, Score s) in rankedScores.Select((value, i) => (i, value)))
+                    {
+                        s.Rank = i + 1;
+                    }
+
+                    if (counter >= 5000)
+                    {
+                        counter = 0;
+                        try
+                        {
+                            await _context.SaveChangesAsync();
+                        }
+                        catch (Exception e)
+                        {
+
+                            _context.RejectChanges();
+                            await transaction.RollbackAsync();
+                            transaction = await _context.Database.BeginTransactionAsync();
+                            continue;
+                        }
+                        await transaction.CommitAsync();
+                        transaction = await _context.Database.BeginTransactionAsync();
+                    }
+                }
+
+                try
+                {
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception e)
+                {
+                    _context.RejectChanges();
+                }
+                await transaction.CommitAsync();
+            //}
+
+            return Ok();
+        }
+
         [HttpGet("~/scores/bulkrefresh")]
         [Authorize]
         public async Task<ActionResult> BulkRefreshScores([FromQuery] string? leaderboardId = null)

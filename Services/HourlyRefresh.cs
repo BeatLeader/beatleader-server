@@ -248,7 +248,7 @@ namespace BeatLeader_Server.Services {
                     } catch { }
 
                     foreach (var diff in song.Difficulties) {
-                        if (!diff.Requirements.HasFlag(Requirements.Noodles) && diff.Requirements.HasFlag(Requirements.MappingExtensions)) {
+                        if (!diff.Requirements.HasFlag(Requirements.Noodles) && !diff.Requirements.HasFlag(Requirements.MappingExtensions)) {
                             await RatingUtils.UpdateFromExMachina(diff, song, null);
                         }
                     }
