@@ -583,6 +583,8 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
+            var oldPlayerStats = CollectPlayerStats(player);
+
             foreach (var leaderboardContext in ContextExtensions.NonGeneral) {
                 await ContextScore(dbContext, leaderboardContext, leaderboard, player, resultScore, currentScores, replay);
             }
@@ -651,6 +653,7 @@ namespace BeatLeader_Server.Controllers
                         replayData,
                         leaderboard, 
                         player,
+                        oldPlayerStats,
                         resultScore,
                         wrappedCurrentScores,
                         context, 
@@ -1074,6 +1077,7 @@ namespace BeatLeader_Server.Controllers
             byte[] replayData,
             Leaderboard leaderboard, 
             Player player,
+            List<OldPlayerStats> oldPlayerStats,
             Score resultScore,
             List<CurrentScoreWrapper> currentScores,
             HttpContext? context,
@@ -1081,8 +1085,6 @@ namespace BeatLeader_Server.Controllers
             ScoreStatistic? statistic,
             string? statisticError,
             bool allow = false) {
-
-            var oldPlayerStats = CollectPlayerStats(player);
 
             resultScore.Replay = await _s3Client.UploadReplay(ReplayUtils.ReplayFilename(replay, resultScore), replayData);
             dbContext.Entry(resultScore).Property(x => x.Replay).IsModified = true;
@@ -1248,9 +1250,10 @@ namespace BeatLeader_Server.Controllers
 
                     if (dsClient != null)
                     {
+                        float? weight = await dbContext.Scores.Where(s => s.Id == resultScore.Id).Select(s => s.Weight).FirstOrDefaultAsync();
                         var song = await dbContext.Leaderboards.Where(lb => lb.Id == leaderboard.Id).Include(lb => lb.Song).Select(lb => lb.Song).FirstOrDefaultAsync();
                         string message = "**" + player.Name + "** has become No 1 on **" + (song != null ? song?.Name : leaderboard.Id) + "** :tada: \n";
-                        message += Math.Round(resultScore.Accuracy * 100, 2) + "% " + Math.Round(resultScore.Pp, 2) + "pp (" + Math.Round(resultScore.Weight * resultScore.Pp, 2) + "pp)\n";
+                        message += Math.Round(resultScore.Accuracy * 100, 2) + "% " + Math.Round(resultScore.Pp, 2) + "pp (" + Math.Round((weight ?? 0) * resultScore.Pp, 2) + "pp)\n";
                         var secondScore = await dbContext
                             .Scores
                             .Where(s => s.LeaderboardId == leaderboard.Id && !s.Banned && s.LeaderboardId != null && s.ValidContexts.HasFlag(LeaderboardContexts.General))

@@ -146,7 +146,7 @@ namespace BeatLeader_Server.Services
                     difficulty.Status = DifficultyStatus.ranked;
                     await _context.SaveChangesAsync();
 
-                    await _scoreController.BulkRefreshScores(leaderboard.Id);
+                    await _scoreController.RefreshScores(leaderboard.Id);
                     await _scoreController.BulkRefreshScoresAllContexts(leaderboard.Id);
                     (float totalpp, int totalRanks) = await RefreshLeaderboardPlayers(leaderboard.Id, _context);
                     await _context.SaveChangesAsync();
@@ -158,7 +158,7 @@ namespace BeatLeader_Server.Services
                         message += "Mapped by: **" + leaderboard.Song.Mapper
                               + "** Nominated: **" + ((await _context.Players.FindAsync(leaderboard.Qualification.RTMember))?.Name ?? "None")
                               + "** Criteria: **" + ((await _context.Players.FindAsync(leaderboard.Qualification.CriteriaChecker))?.Name ?? "None") + "**\n";
-                        message += $"{totalpp:0.00} total pp and {totalRanks * -1} total ranks were acquired \n";
+                        message += $"{totalpp:0.00} total pp and {totalRanks} total ranks were acquired \n";
 
                         await dsClient.SendMessageAsync(message, embeds: new List<Embed> {
                             new EmbedBuilder()
@@ -218,11 +218,10 @@ namespace BeatLeader_Server.Services
                 var _playerController = scope.ServiceProvider.GetRequiredService<PlayerRefreshController>();
                 await _playerController.RefreshRanks();
                 await _playerController.RefreshPlayers();
-                await _playerController.RefreshPlayersStatsSlowly();
-
                 var _playerContextController = scope.ServiceProvider.GetRequiredService<PlayerContextRefreshController>();
                 await _playerContextController.RefreshPlayersAllContext();
-                await _playerContextController.RefreshPlayersStatsAllContextsSlowly();
+
+                await _playerController.RefreshPlayersStatsSlowly();
                 
                 await _context.BulkSaveChangesAsync();
             }
