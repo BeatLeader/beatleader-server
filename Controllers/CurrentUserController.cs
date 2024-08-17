@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
+using Z.BulkOperations;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers {
@@ -457,16 +458,52 @@ namespace BeatLeader_Server.Controllers {
                     }
                     newChange.NewCountry = country;
 
-                    var oldCountryList = await _context.Players.Where(p => p.Country == player.Country && p.Id != player.Id).OrderByDescending(p => p.Pp).ToListAsync();
-                    foreach ((int i, Player p) in oldCountryList.Select((value, i) => (i, value))) {
-                        p.CountryRank = i + 1;
+                    var countryList = await _context.Players
+                        .Where(p => p.Country == player.Country && p.Id != player.Id)
+                        .OrderByDescending(p => p.Pp)
+                        .Select(p => new { p.Id })
+                        .AsNoTracking()
+                        .ToListAsync();
+                    var updates = countryList.Select((p, i) => new Player { Id = p.Id, CountryRank = i + 1 }).ToList();
+                    await _context.BulkUpdateAsync(updates, options => options.ColumnInputExpression = c => new { c.CountryRank });
+
+                    foreach (var leaderboardContext in ContextExtensions.NonGeneral) {
+                        var contextCountryList = await _context.PlayerContextExtensions
+                        .Where(p => p.Country == player.Country && p.PlayerId != player.Id && p.Context == leaderboardContext)
+                        .OrderByDescending(p => p.Pp)
+                        .Select(p => new { p.Id })
+                        .AsNoTracking()
+                        .ToListAsync();
+
+                        var contextUpdates = contextCountryList.Select((p, i) => new PlayerContextExtension { Id = p.Id, CountryRank = i + 1 }).ToList();
+                        await _context.BulkUpdateAsync(contextUpdates, options => options.ColumnInputExpression = c => new { c.CountryRank });
                     }
 
                     player.Country = country;
 
-                    var newCountryList = await _context.Players.Where(p => p.Country == country || p.Id == player.Id).OrderByDescending(p => p.Pp).ToListAsync();
-                    foreach ((int i, Player p) in newCountryList.Select((value, i) => (i, value))) {
-                        p.CountryRank = i + 1;
+                    var ces = await _context.PlayerContextExtensions.Where(ce => ce.PlayerId == player.Id).Select(ce => ce.Id).ToListAsync();
+                    var cesUpdates = ces.Select(ce => new PlayerContextExtension { Id = ce, Country = country });
+                    await _context.BulkUpdateAsync(cesUpdates, options => options.ColumnInputExpression = c => new { c.Country });
+
+                    countryList = await _context.Players
+                        .Where(p => p.Country == country || p.Id == player.Id)
+                        .OrderByDescending(p => p.Pp)
+                        .Select(p => new { p.Id })
+                        .AsNoTracking()
+                        .ToListAsync();
+                    updates = countryList.Select((p, i) => new Player { Id = p.Id, CountryRank = i + 1 }).ToList();
+                    await _context.BulkUpdateAsync(updates, options => options.ColumnInputExpression = c => new { c.CountryRank });
+
+                    foreach (var leaderboardContext in ContextExtensions.NonGeneral) {
+                        var contextCountryList = await _context.PlayerContextExtensions
+                        .Where(p => (p.Country == country || p.PlayerId == player.Id) && p.Context == leaderboardContext)
+                        .OrderByDescending(p => p.Pp)
+                        .Select(p => new { p.Id })
+                        .AsNoTracking()
+                        .ToListAsync();
+
+                        var contextUpdates = contextCountryList.Select((p, i) => new PlayerContextExtension { Id = p.Id, CountryRank = i + 1 }).ToList();
+                        await _context.BulkUpdateAsync(contextUpdates, options => options.ColumnInputExpression = c => new { c.CountryRank });
                     }
                 }
 

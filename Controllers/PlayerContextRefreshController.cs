@@ -163,51 +163,39 @@ namespace BeatLeader_Server.Controllers {
             Dictionary<int, float> weights)
         {
             using (var anotherContext = _dbFactory.CreateDbContext()) {
-                anotherContext.ChangeTracker.AutoDetectChangesEnabled = false;
+                var playerUpdates = new List<PlayerContextExtension>();
+                var scoreUpates = new List<ScoreContextExtension>();
+
                 foreach (var group in groups)
                 {
-                    try {
+                    var player = new PlayerContextExtension { Id = playerMap[group.Key] };
 
-                        var player = new PlayerContextExtension { Id = playerMap[group.Key] };
-                        try {
-                            anotherContext.PlayerContextExtensions.Attach(player);
-                        } catch { }
+                    float resultPP = 0f;
+                    float accPP = 0f;
+                    float techPP = 0f;
+                    float passPP = 0f;
 
-                        float resultPP = 0f;
-                        float accPP = 0f;
-                        float techPP = 0f;
-                        float passPP = 0f;
-
-                        foreach ((int i, var s) in group.OrderByDescending(s => s.Pp).Select((value, i) => (i, value)))
+                    foreach ((int i, var s) in group.OrderByDescending(s => s.Pp).Select((value, i) => (i, value)))
+                    {
+                        float weight = weights[i];
+                        if (s.Weight != weight)
                         {
-                            float weight = weights[i];
-                            if (s.Weight != weight)
-                            {
-                                var score = new ScoreContextExtension() { Id = s.Id, Weight = weight };
-                                try {
-                                    anotherContext.ScoreContextExtensions.Attach(score);
-                                } catch { }
-                                anotherContext.Entry(score).Property(x => x.Weight).IsModified = true;
-                            }
-                            resultPP += s.Pp * weight;
-                            accPP += s.AccPP * weight;
-                            techPP += s.TechPP * weight;
-                            passPP += s.PassPP * weight;
+                            scoreUpates.Add(new ScoreContextExtension() { Id = s.Id, Weight = weight });
                         }
-                        player.Pp = resultPP;
-                        player.AccPp = accPP;
-                        player.TechPp = techPP;
-                        player.PassPp = passPP;
-
-                        anotherContext.Entry(player).Property(x => x.Pp).IsModified = true;
-                        anotherContext.Entry(player).Property(x => x.AccPp).IsModified = true;
-                        anotherContext.Entry(player).Property(x => x.TechPp).IsModified = true;
-                        anotherContext.Entry(player).Property(x => x.PassPp).IsModified = true;
-                    } catch (Exception e) {
+                        resultPP += s.Pp * weight;
+                        accPP += s.AccPP * weight;
+                        techPP += s.TechPP * weight;
+                        passPP += s.PassPP * weight;
                     }
+                    player.Pp = resultPP;
+                    player.AccPp = accPP;
+                    player.TechPp = techPP;
+                    player.PassPp = passPP;
+                    playerUpdates.Add(player);
                 }
                 
-                await anotherContext.BulkSaveChangesAsync();
+                await anotherContext.BulkUpdateAsync(playerUpdates, options => options.ColumnInputExpression = c => new { c.Pp, c.AccPp, c.TechPp, c.PassPp });
+                await anotherContext.BulkUpdateAsync(scoreUpates, options => options.ColumnInputExpression = c => new { c.Weight });
             }
         }
         private class ScoreSelection {
@@ -235,7 +223,6 @@ namespace BeatLeader_Server.Controllers {
                 }
             }
 
-            _context.ChangeTracker.AutoDetectChangesEnabled = false;
             var weights = new Dictionary<int, float>();
             for (int i = 0; i < 10000; i++)
             {
@@ -256,38 +243,47 @@ namespace BeatLeader_Server.Controllers {
                     Weight = s.Weight, 
                     PlayerId = s.PlayerId
                 })
+                .AsNoTracking()
                 .ToListAsync();
-            var playerMap = _context.PlayerContextExtensions.Where(ce => ce.Context == context).ToDictionary(ce => ce.PlayerId, ce => ce.Id);
+
+            var playerMap = _context
+                .PlayerContextExtensions
+                .Where(ce => ce.Context == context)
+                .AsNoTracking()
+                .ToDictionary(ce => ce.PlayerId, ce => ce.Id);
 
             var scoreGroups = scores.GroupBy(s => s.PlayerId).ToList();
-            var tasks = new List<Task>();
             for (int i = 0; i < scoreGroups.Count; i += 5000)
             {
-                tasks.Add(CalculateBatch(scoreGroups.Skip(i).Take(5000).ToList(), playerMap, weights));
+                await CalculateBatch(scoreGroups.Skip(i).Take(5000).ToList(), playerMap, weights);
             }
-            Task.WaitAll(tasks.ToArray());
 
             Dictionary<string, int> countries = new Dictionary<string, int>();
             var ranked = await _context.PlayerContextExtensions
                 .Where(ce => ce.Context == context && !ce.Banned && ce.Pp > 0)
+                .AsNoTracking()
                 .OrderByDescending(t => t.Pp)
+                .Select(ce => new { ce.Id, ce.Country })
                 .ToListAsync();
-            foreach ((int i, PlayerContextExtension p) in ranked.Select((value, i) => (i, value)))
+
+            var updates = new List<PlayerContextExtension>();
+            foreach ((int i, var p) in ranked.Select((value, i) => (i, value)))
             {
-                p.Rank = i + 1;
-                _context.Entry(p).Property(x => x.Rank).IsModified = true;
+                var ce = new PlayerContextExtension { Id = p.Id };
+                ce.Rank = i + 1;
                 if (!countries.ContainsKey(p.Country))
                 {
                     countries[p.Country] = 1;
                 }
 
-                p.CountryRank = countries[p.Country];
-                _context.Entry(p).Property(x => x.CountryRank).IsModified = true;
+                ce.CountryRank = countries[p.Country];
                 countries[p.Country]++;
-            }
-            await _context.BulkSaveChangesAsync();
 
-            _context.ChangeTracker.AutoDetectChangesEnabled = true;
+                updates.Add(ce);
+            }
+
+            await _context.BulkUpdateAsync(updates, options => options.ColumnInputExpression = c => new { c.Rank, c.CountryRank });
+            await _context.BulkSaveChangesAsync();
 
             return Ok();
         }
