@@ -279,7 +279,12 @@ namespace BeatLeader_Server.Utils
                 maxScore = MaxScoreForNote(difficulty.Notes);
             }
             
-            score.Accuracy = (float)score.BaseScore / (float)maxScore;
+            if (replay.info.mode == "ReBeat_Standard") {
+                score.BaseScore = ReBeatUtils.GetScore(replay);
+                score.Accuracy = (float)score.BaseScore / (float)ReBeatUtils.MaxScoreForNote(difficulty.Notes);
+            } else {
+                score.Accuracy = (float)score.BaseScore / (float)maxScore;
+            }
             score.Modifiers = info.modifiers.Replace("PM,SC", "SC,PM");
 
             if (hasPp) {

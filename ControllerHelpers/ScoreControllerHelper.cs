@@ -63,8 +63,12 @@ namespace BeatLeader_Server.ControllerHelpers {
             }
 
             try
-            {
-                (statistic, string? error) = ReplayStatisticUtils.ProcessReplay(replay, leaderboard, allow);
+            {   string? error = null;
+                if (replay.info.mode == "ReBeat_Standard") {
+                    (statistic, error) = ReBeatUtils.ProcessReplay(replay);
+                } else {
+                    (statistic, error) = ReplayStatisticUtils.ProcessReplay(replay, leaderboard, allow);
+                }
                 if (statistic == null && error != null) {
                     return (null, error);
                 }
