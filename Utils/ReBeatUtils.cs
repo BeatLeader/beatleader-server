@@ -2,6 +2,7 @@
 
 namespace BeatLeader_Server.Utils {
     public class ReBeatUtils {
+        public static string MODE_IDENTIFIER = "ReBeat_Standard";
         public static int GetScore(Replay replay) {
             return replay.notes.Select(n => ScoreForNote(n, replay.info.modifiers)).Sum();
         }
@@ -28,12 +29,6 @@ namespace BeatLeader_Server.Utils {
             }
         }
 
-        public static float Clamp(float value)
-        {
-            if (value < 0.0) return 0.0f;
-            return value > 1.0f ? 1.0f : value;
-        }
-
         public static int ScoreForNote(NoteEvent note, string modifiers)
         {
             if (note.eventType == NoteEventType.good)
@@ -49,13 +44,13 @@ namespace BeatLeader_Server.Utils {
         {
             var cut = note.noteCutInfo;
             double beforeCutRawScore = Math.Clamp(Math.Round(30 * cut.beforeCutRating), 0, 30);
-            double afterCutRawScore = Math.Clamp(Math.Round(30 * cut.afterCutRating), 0, 20);
+            double afterCutRawScore = Math.Clamp(Math.Round(20 * cut.afterCutRating), 0, 20);
 
             float sectorSize = 0.6f / 29f;
             float cutDistanceToCenter = cut.cutDistanceToCenter;
 
             float[] sectors = modifiers.Contains("PM") ? [4.5f, 8.5f, 11.5f, 13.5f, 14.5f] : 
-                modifiers.Contains("EM") ? [ 7.5f, 10.5f, 12.5f, 13.5f, 14.5f ] : 
+                modifiers.Contains("EZ") ? [ 7.5f, 10.5f, 12.5f, 13.5f, 14.5f ] : 
                 [ 6.5f, 9.5f, 11.5f, 13.5f, 14.5f ];
 
             double cutDistanceRawScore = cutDistanceToCenter < sectorSize * sectors[0] ? 50 :

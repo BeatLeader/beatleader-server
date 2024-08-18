@@ -106,12 +106,20 @@ namespace BeatLeader_Server.ControllerHelpers {
                         await dbContext.SaveChangesAsync();
                     }
 
+                    ModifiersMap? modifiersMap = null;
+                    int maxScore = difficulty.MaxScore;
+                    if (mode == ReBeatUtils.MODE_IDENTIFIER) {
+                        maxScore = ReBeatUtils.MaxScoreForNote(difficulty.Notes);
+                        modifiersMap = ModifiersMap.ReBeatMap();
+                    }
+
                     difficulty = new DifficultyDescription
                     {
                         Value = difficulty.Value,
                         Mode = customMode.Id + 10,
                         DifficultyName = difficulty.DifficultyName,
-                        MaxScore = mode == "ReBeat_Standard" ? ReBeatUtils.MaxScoreForNote(difficulty.Notes) : difficulty.MaxScore,
+                        MaxScore = maxScore,
+                        ModifierValues = modifiersMap,
                         MaxScoreGraph = difficulty.MaxScoreGraph,
                         ModeName = mode,
 

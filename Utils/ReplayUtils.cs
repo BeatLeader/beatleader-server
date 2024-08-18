@@ -279,7 +279,7 @@ namespace BeatLeader_Server.Utils
                 maxScore = MaxScoreForNote(difficulty.Notes);
             }
             
-            if (replay.info.mode == "ReBeat_Standard") {
+            if (replay.info.mode == ReBeatUtils.MODE_IDENTIFIER) {
                 score.BaseScore = ReBeatUtils.GetScore(replay);
                 score.Accuracy = (float)score.BaseScore / (float)ReBeatUtils.MaxScoreForNote(difficulty.Notes);
             } else {

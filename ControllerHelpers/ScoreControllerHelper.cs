@@ -64,7 +64,7 @@ namespace BeatLeader_Server.ControllerHelpers {
 
             try
             {   string? error = null;
-                if (replay.info.mode == "ReBeat_Standard") {
+                if (replay.info.mode == ReBeatUtils.MODE_IDENTIFIER) {
                     (statistic, error) = ReBeatUtils.ProcessReplay(replay);
                 } else {
                     (statistic, error) = ReplayStatisticUtils.ProcessReplay(replay, leaderboard, allow);
