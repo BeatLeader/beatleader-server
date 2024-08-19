@@ -75,7 +75,7 @@ namespace BeatLeader_Server.Services {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
 
                 var currentDate = DateTime.UtcNow;
-                var lastUpdateDate = (await _context.SongsLastUpdateTimes.Where(s => s.Status == SongStatus.Curated).FirstOrDefaultAsync())?.Date ?? new DateTime(1970, 1, 1);
+                var lastUpdateDate = (await _context.SongsLastUpdateTimes.Where(s => s.Status == SongStatus.Curated).OrderByDescending(t => t.Date).FirstOrDefaultAsync())?.Date ?? new DateTime(1970, 1, 1);
                 if (currentDate.Subtract(lastUpdateDate).TotalHours > 1) {
                     var curated = await SongUtils.GetCuratedSongsFromBeatSaver(lastUpdateDate);
                     var hashes = curated.Select(m => m.Hash.ToLower()).ToList();
@@ -120,7 +120,7 @@ namespace BeatLeader_Server.Services {
                     var searchListRequest = youtubeService.Search.List("snippet");
                     searchListRequest.ChannelId = "UCdG9zS8jVcQIKl7plwWXUkg";
                     searchListRequest.MaxResults = 4;
-                    searchListRequest.Order = Google.Apis.YouTube.v3.SearchResource.ListRequest.OrderEnum.Date;
+                    searchListRequest.Order = SearchResource.ListRequest.OrderEnum.Date;
 
                     List<string> videoIds = new List<string>();
                     var searchListResponse = await searchListRequest.ExecuteAsync();

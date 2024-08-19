@@ -271,6 +271,8 @@ namespace BeatLeader_Server.Utils
             if (hasPp)
             {
                 score.ModifiedScore = (int)(score.BaseScore * modifers.GetNegativeMultiplier(info.modifiers, true));
+            } else if (replay.info.mode == ReBeatUtils.MODE_IDENTIFIER) {
+                score.ModifiedScore = (int)(score.BaseScore * modifers.GetTotalMultiplier(info.modifiers, true));
             } else
             {
                 score.ModifiedScore = (int)((score.BaseScore + (int)((float)(maxScore - score.BaseScore) * (modifers.GetPositiveMultiplier(info.modifiers) - 1))) * modifers.GetNegativeMultiplier(info.modifiers));
