@@ -67,29 +67,28 @@ namespace BeatLeader_Server.Controllers
                         .Friends
                         .Where(f => f.Id == currentID)
                         .Include(f => f.Friends)
-                        .Select(f => new { friends = f.Friends.Select(p => new MiniRankingPlayer { Id = p.Id, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Pp = p.Pp }) })
+                        .Select(f => new { friends = f.Friends.Select(p => p.Id) })
                         .FirstOrDefaultAsync())
                         ?.friends.ToList();
-                    var currentPlayer = await players.Where(p => p.Id == currentID).FirstOrDefaultAsync();
-                    if (currentPlayer == null) {
-                        currentPlayer = await _context
+                    if (friendsList != null) {
+                        friendsList.Add(currentID);
+                    } else {
+                        friendsList = new List<string> { currentID };
+                    }
+
+                    var friendsPlayers = await _context
                         .PlayerContextExtensions
                         .Include(ce => ce.PlayerInstance)
-                        .Where(p => p.PlayerId == currentID && p.Context == leaderboardContext)
+                        .Where(p => 
+                            !p.Banned && 
+                            p.Context == leaderboardContext &&
+                            friendsList.Contains(p.PlayerId))
                         .Select(p => new MiniRankingPlayer { Id = p.PlayerId, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Alias = p.PlayerInstance.Alias, Pp = p.Pp })
-                        .FirstOrDefaultAsync();
-                    }
+                        .ToListAsync();
 
-                    if (currentPlayer != null) {
-                        if (friendsList != null) {
-                            friendsList.Add(currentPlayer);
-                        } else {
-                            friendsList = new List<MiniRankingPlayer> { currentPlayer };
-                        }
-
-                        int topCount = friendsList.Count(p => p.Rank < currentPlayer.Rank);
-                        result.Friends = friendsList.OrderBy(p => p.Rank).Skip(topCount > 3 ? topCount - 3 : 0).Take(5).ToList();
-                    }
+                    var currentPlayer = friendsPlayers.FirstOrDefault(p => p.Id == currentID);
+                    int topCount = friendsPlayers.Count(p => p.Rank < (currentPlayer?.Rank ?? 0));
+                    result.Friends = friendsPlayers.OrderBy(p => p.Rank).Skip(topCount > 3 ? topCount - 3 : 0).Take(5).ToList();
                 }
             }
 
