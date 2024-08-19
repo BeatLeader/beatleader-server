@@ -1,4 +1,5 @@
 ﻿using Amazon.S3;
+using BeatLeader_Server.Enums;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
@@ -139,6 +140,239 @@ namespace BeatLeader_Server.ControllerHelpers {
                 dbContext.Players.Remove(player);
                 await dbContext.SaveChangesAsync();
             }
+        }
+
+        public static IQueryable<T> Sorted<T>(
+            LeaderboardContexts contexts,
+            IQueryable<T> request, 
+            PlayerSortBy sortBy, 
+            PpType ppType,
+            Order order, 
+            MapsType mapsType,
+            int? searchId = null) where T : IPlayer {
+
+            var ganeralContext = contexts == LeaderboardContexts.General || contexts == LeaderboardContexts.None;
+            var preSorted = ganeralContext
+                ? request.OrderByDescending(p => searchId != null ? p.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
+                : request.OrderByDescending(p => searchId != null ? p.PlayerInstance.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0);
+
+            if (sortBy == PlayerSortBy.DailyImprovements) {
+                return preSorted.ThenOrder(order, p => p.ScoreStats.DailyImprovements);
+            }
+
+            if (sortBy == PlayerSortBy.Pp) {
+                switch (ppType)
+                {
+                    case PpType.Acc:
+                        request = preSorted.ThenOrder(order, p => p.AccPp);
+                        break;
+                    case PpType.Tech:
+                        request = preSorted.ThenOrder(order, p => p.TechPp);
+                        break;
+                    case PpType.Pass:
+                        request = preSorted.ThenOrder(order, p => p.PassPp);
+                        break;
+                    default:
+                        request = preSorted.ThenOrder(order, p => p.Pp);
+                        break;
+                }
+            } else if (sortBy == PlayerSortBy.TopPp) {
+                switch (ppType)
+                {
+                    case PpType.Acc:
+                        request = preSorted.ThenOrder(order, p => p.ScoreStats.TopAccPP);
+                        break;
+                    case PpType.Tech:
+                        request = preSorted.ThenOrder(order, p => p.ScoreStats.TopTechPP);
+                        break;
+                    case PpType.Pass:
+                        request = preSorted.ThenOrder(order, p => p.ScoreStats.TopPassPP);
+                        break;
+                    default:
+                        request = preSorted.ThenOrder(order, p => p.ScoreStats.TopPp);
+                        break;
+                }
+            }
+
+            switch (mapsType)
+            {
+                case MapsType.Ranked:
+                    switch (sortBy)
+                    {
+                        case PlayerSortBy.Name:
+                            if (ganeralContext) {
+                                request = preSorted.ThenOrder(order, p => p.Name);
+                            } else {
+                                request = preSorted.ThenOrder(order, p => p.PlayerInstance.Name);
+                            }
+                            break;
+                        case PlayerSortBy.Rank:
+                            request = request
+                                .Where(p => p.ScoreStats.AverageRankedRank != 0)
+                                .OrderByDescending(p => searchId != null ? p.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
+                                .ThenOrder(order.Reverse(), p => Math.Round(p.ScoreStats.AverageRankedRank))
+                                .ThenOrder(order, p => p.ScoreStats.RankedPlayCount); 
+                            break;
+                        case PlayerSortBy.Acc:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AverageRankedAccuracy);
+                            break;
+                        case PlayerSortBy.WeightedAcc:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AverageWeightedRankedAccuracy);
+                            break;
+                        case PlayerSortBy.Top1Count:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.RankedTop1Count);
+                            break;
+                        case PlayerSortBy.Top1Score:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.RankedTop1Score);
+                            break;
+                        case PlayerSortBy.WeightedRank:
+                            request = request
+                                .Where(p => p.ScoreStats != null && p.ScoreStats.AverageWeightedRankedRank != 0)
+                                .OrderByDescending(p => searchId != null ? p.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
+                                .ThenOrder(order.Reverse(), p => p.ScoreStats.AverageWeightedRankedRank);
+                            break;
+                        case PlayerSortBy.TopAcc:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TopRankedAccuracy);
+                            break;
+                        case PlayerSortBy.Hmd:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TopHMD);
+                            break;
+                        case PlayerSortBy.PlayCount:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.RankedPlayCount);
+                            break;
+                        case PlayerSortBy.Score:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TotalRankedScore);
+                            break;
+                        case PlayerSortBy.Lastplay:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.LastRankedScoreTime);
+                            break;
+                        case PlayerSortBy.MaxStreak:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.RankedMaxStreak);
+                            break;
+                        case PlayerSortBy.ReplaysWatched:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                case MapsType.Unranked:
+                    switch (sortBy)
+                    {
+                        case PlayerSortBy.Name:
+                            if (ganeralContext) {
+                                request = preSorted.ThenOrder(order, p => p.Name);
+                            } else {
+                                request = preSorted.ThenOrder(order, p => p.PlayerInstance.Name);
+                            }
+                            break;
+                        case PlayerSortBy.Rank:
+                            request = request
+                                .Where(p => p.ScoreStats.AverageUnrankedRank != 0)
+                                .OrderByDescending(p => searchId != null ? p.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
+                                .ThenOrder(order.Reverse(), p => Math.Round(p.ScoreStats.AverageUnrankedRank))
+                                .ThenOrder(order, p => p.ScoreStats.UnrankedPlayCount);
+                            break;
+                        case PlayerSortBy.Acc:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AverageUnrankedAccuracy);
+                            break;
+                        case PlayerSortBy.WeightedAcc:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AverageUnrankedAccuracy);
+                            break;
+                        case PlayerSortBy.Top1Count:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.UnrankedTop1Count);
+                            break;
+                        case PlayerSortBy.Top1Score:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.UnrankedTop1Score);
+                            break;
+                        
+                        case PlayerSortBy.TopAcc:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TopUnrankedAccuracy);
+                            break;
+                        case PlayerSortBy.Hmd:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TopHMD);
+                            break;
+                        case PlayerSortBy.PlayCount:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.UnrankedPlayCount);
+                            break;
+                        case PlayerSortBy.Score:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TotalUnrankedScore);
+                            break;
+                        case PlayerSortBy.Lastplay:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.LastUnrankedScoreTime);
+                            break;
+                        case PlayerSortBy.MaxStreak:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.UnrankedMaxStreak);
+                            break;
+                        case PlayerSortBy.ReplaysWatched:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                case MapsType.All:
+                    switch (sortBy)
+                    {
+                        case PlayerSortBy.Name:
+                            if (ganeralContext) {
+                                request = preSorted.ThenOrder(order, p => p.Name);
+                            } else {
+                                request = preSorted.ThenOrder(order, p => p.PlayerInstance.Name);
+                            }
+                            break;
+                        case PlayerSortBy.Rank:
+                            request = request
+                                .Where(p => p.ScoreStats.AverageRank != 0)
+                                .OrderByDescending(p => searchId != null ? p.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
+                                .ThenOrder(order.Reverse(), p => Math.Round(p.ScoreStats.AverageRank))
+                                .ThenOrder(order, p => p.ScoreStats.TotalPlayCount);
+                            break;
+                        case PlayerSortBy.Top1Count:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.Top1Count);
+                            break;
+                        case PlayerSortBy.Top1Score:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.Top1Score);
+                            break;
+                        case PlayerSortBy.Acc:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AverageAccuracy);
+                            break;
+                        case PlayerSortBy.WeightedAcc:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AverageWeightedRankedAccuracy);
+                            break;
+                        case PlayerSortBy.TopAcc:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TopAccuracy);
+                            break;
+                        case PlayerSortBy.Hmd:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TopHMD);
+                            break;
+                        case PlayerSortBy.PlayCount:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TotalPlayCount);
+                            break;
+                        case PlayerSortBy.Score:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TotalScore);
+                            break;
+                        case PlayerSortBy.Lastplay:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.LastScoreTime);
+                            break;
+                        case PlayerSortBy.MaxStreak:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.MaxStreak);
+                            break;
+                        case PlayerSortBy.Timing:
+                            request = preSorted.ThenOrder(order, p => (p.ScoreStats.AverageLeftTiming + p.ScoreStats.AverageRightTiming) / 2);
+                            break;
+                        case PlayerSortBy.ReplaysWatched:
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                default:
+                    break;
+            }
+
+            return request;
         }
 
         public static async Task<Player?> GetPlayerFromBL(AppContext dbContext, string playerID)

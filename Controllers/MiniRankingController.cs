@@ -44,7 +44,7 @@ namespace BeatLeader_Server.Controllers
 
             var players = _context
                 .PlayerContextExtensions
-                .Include(ce => ce.Player)
+                .Include(ce => ce.PlayerInstance)
                 .Where(p => 
                     !p.Banned && 
                     p.Context == leaderboardContext &&
@@ -52,7 +52,7 @@ namespace BeatLeader_Server.Controllers
                         (p.Country == country && p.CountryRank <= countryRank + 1 && p.CountryRank >= countryRank - 3) || 
                         (p.Rank <= rank + 1 && p.Rank >= rank - 3)
                     ))
-                .Select(p => new MiniRankingPlayer { Id = p.PlayerId, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Alias = p.Player.Alias, Pp = p.Pp });
+                .Select(p => new MiniRankingPlayer { Id = p.PlayerId, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Alias = p.PlayerInstance.Alias, Pp = p.Pp });
 
             var result = new MiniRankingResponse()
             {
@@ -74,9 +74,9 @@ namespace BeatLeader_Server.Controllers
                     if (currentPlayer == null) {
                         currentPlayer = await _context
                         .PlayerContextExtensions
-                        .Include(ce => ce.Player)
+                        .Include(ce => ce.PlayerInstance)
                         .Where(p => p.PlayerId == currentID && p.Context == leaderboardContext)
-                        .Select(p => new MiniRankingPlayer { Id = p.PlayerId, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Alias = p.Player.Alias, Pp = p.Pp })
+                        .Select(p => new MiniRankingPlayer { Id = p.PlayerId, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Alias = p.PlayerInstance.Alias, Pp = p.Pp })
                         .FirstOrDefaultAsync();
                     }
 

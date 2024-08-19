@@ -420,7 +420,7 @@ namespace BeatLeader_Server.Controllers {
                         .Take(10000)
                         .Where(p => p.Context == context && p.ScoreStats != null)
                         .OrderBy(p => p.Rank)
-                        .Select(p => new { p.PlayerId, p.ScoreStats, p.Player.Rank })
+                        .Select(p => new { p.PlayerId, p.ScoreStats, p.PlayerInstance.Rank })
                         .ToListAsync();
 
                 foreach (var player in players)

@@ -233,7 +233,6 @@ namespace BeatLeader_Server.Controllers
             [FromQuery, SwaggerParameter("Comma-separated range to filter by platform value, default is null")] string? platform = null,
             [FromQuery, SwaggerParameter("Comma-separated range to filter by role, default is null")] string? role = null,
             [FromQuery, SwaggerParameter("Comma-separated range to filter by hmd (headset), default is null")] string? hmd = null,
-            [FromQuery, SwaggerParameter("Comma-separated range to filter by clan tags, default is null")] string? clans = null,
             [FromQuery, SwaggerParameter("Value in seconds to filter by the last score time, default is null")] int? activityPeriod = null,
             [FromQuery, SwaggerParameter("Flag to filter only banned players, default is null")] bool? banned = null)
         {
@@ -242,7 +241,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
-                return await GetContextPlayers(sortBy, page, count, search, order, countries, mapsType, ppType, leaderboardContext, friends, pp_range, score_range, platform, role, hmd, clans, activityPeriod, banned);
+                return await GetContextPlayers(sortBy, page, count, search, order, countries, mapsType, ppType, leaderboardContext, friends, pp_range, score_range, platform, role, hmd, activityPeriod, banned);
             }
 
             IQueryable<Player> request = 
@@ -306,13 +305,16 @@ namespace BeatLeader_Server.Controllers
                 request = request.Where(p => ids.Contains(p.Id));
             }
 
-            if (clans != null)
-            {
-                request = request.Where(p => p.Clans.FirstOrDefault(c => clans.Contains(c.Tag)) != null);
-            }
             if (platform != null) {
-                var platforms = platform.ToLower().Split(",");
-                request = request.Where(p => platforms.Contains(p.ScoreStats.TopPlatform.ToLower()));
+                var player = Expression.Parameter(typeof(Player), "p");
+
+                // 1 != 2 is here to trigger `OrElse` further the line.
+                var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
+                foreach (var term in platform.ToLower().Split(","))
+                {
+                    exp = Expression.OrElse(exp, Expression.Equal(Expression.Property(Expression.Property(player, "ScoreStats"), "TopPlatform"), Expression.Constant(term)));
+                }
+                request = request.Where((Expression<Func<Player, bool>>)Expression.Lambda(exp, player));
             }
             if (role != null)
             {
@@ -416,7 +418,7 @@ namespace BeatLeader_Server.Controllers
             };
 
             List<string> playerIds = await 
-                Sorted(request, sortBy, ppType, order, mapsType, searchIdentifier)
+                PlayerControllerHelper.Sorted(leaderboardContext, request, sortBy, ppType, order, mapsType, searchIdentifier)
                 .Skip((page - 1) * count)
                 .Take(count)
                 .Select(p => p.Id)
@@ -482,6 +484,7 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
+        // Unfortunately I wasn't able to unify it nicely with General context. So copy-paste we go
         [NonAction]
         public async Task<ActionResult<ResponseWithMetadata<PlayerResponseWithStats>>> GetContextPlayers(
             [FromQuery] PlayerSortBy sortBy = PlayerSortBy.Pp, 
@@ -499,7 +502,6 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? platform = null,
             [FromQuery] string? role = null,
             [FromQuery] string? hmd = null,
-            [FromQuery] string? clans = null,
             [FromQuery] int? activityPeriod = null,
             [FromQuery] bool? banned = null)
         {
@@ -509,9 +511,9 @@ namespace BeatLeader_Server.Controllers
                 .AsNoTracking()
                 .Where(p => p.Context == leaderboardContext)
                 .Include(p => p.ScoreStats)
-                .Include(p => p.Player)
+                .Include(p => p.PlayerInstance)
                 .ThenInclude(p => p.Clans)
-                .Include(p => p.Player)
+                .Include(p => p.PlayerInstance)
                 .ThenInclude(p => p.ProfileSettings);
 
             string? currentID = HttpContext.CurrentUserID(_context);
@@ -530,9 +532,9 @@ namespace BeatLeader_Server.Controllers
 
                 bool bannedUnwrapped = (bool)banned;
 
-                request = request.Where(p => p.Player.Banned == bannedUnwrapped);
+                request = request.Where(p => p.PlayerInstance.Banned == bannedUnwrapped);
             } else {
-                request = request.Where(p => !p.Player.Banned || ((showBots || search.Length > 0) && p.Player.Bot));
+                request = request.Where(p => !p.PlayerInstance.Banned || ((showBots || search.Length > 0) && p.PlayerInstance.Bot));
             }
             if (countries.Length != 0)
             {
@@ -546,23 +548,39 @@ namespace BeatLeader_Server.Controllers
                 }
                 request = request.Where((Expression<Func<PlayerContextExtension, bool>>)Expression.Lambda(exp, player));
             }
-            List<string>? ids = null;
-            List<PlayerMetadata>? searchMatch = null;
+
+            int? searchIdentifier = null;
             if (search?.Length > 0) {
-                searchMatch = PlayerSearchService.Search(search);
-                ids = searchMatch.Select(m => m.Id).ToList();
+                var searchMatch = PlayerSearchService.Search(search);
+
+                Random rnd = new Random();
+                searchIdentifier = rnd.Next(1, 10000);
+
+                foreach (var item in searchMatch) {
+                    _context.PlayerSearches.Add(new PlayerSearch {
+                        PlayerId = item.Id,
+                        Score = item.Score,
+                        SearchId = (int)searchIdentifier
+                    });
+                }
+                _context.BulkSaveChanges();
+
+                List<string>? ids = searchMatch.Select(m => m.Id).ToList();
 
                 request = request.Where(p => ids.Contains(p.PlayerId));
             }
 
-            //if (clans != null)
-            //{
-            //    request = request.Where(p => p.Player.Clans.FirstOrDefault(c => clans.Contains(c.Tag)) != null);
-            //}
-            //if (platform != null) {
-            //    var platforms = platform.ToLower().Split(",");
-            //    request = request.Where(p => platforms.Contains(p.ScoreStats.TopPlatform.ToLower()));
-            //}
+            if (platform?.Length > 0) {
+                var player = Expression.Parameter(typeof(PlayerContextExtension), "p");
+
+                // 1 != 2 is here to trigger `OrElse` further the line.
+                var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
+                foreach (var term in platform.ToLower().Split(","))
+                {
+                    exp = Expression.OrElse(exp, Expression.Equal(Expression.Property(Expression.Property(player, "ScoreStats"), "TopPlatform"), Expression.Constant(term)));
+                }
+                request = request.Where((Expression<Func<PlayerContextExtension, bool>>)Expression.Lambda(exp, player));
+            }
             if (role != null)
             {
                 var player = Expression.Parameter(typeof(PlayerContextExtension), "p");
@@ -573,19 +591,16 @@ namespace BeatLeader_Server.Controllers
                 var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
                 foreach (var term in role.ToLower().Split(","))
                 {
-                    exp = Expression.OrElse(exp, Expression.Call(Expression.Property(Expression.Property(player, "Player"), "Role"), contains, Expression.Constant(term)));
+                    exp = Expression.OrElse(exp, Expression.Call(Expression.Property(Expression.Property(player, "PlayerInstance"), "Role"), contains, Expression.Constant(term)));
                 }
                 request = request.Where((Expression<Func<PlayerContextExtension, bool>>)Expression.Lambda(exp, player));
             }
-            //if (hmd != null)
-            //{
-            //    try
-            //    {
-            //        var hmds = hmd.ToLower().Split(",").Select(s => (HMD)Int32.Parse(s));
-            //        request = request.Where(p => hmds.Contains(p.ScoreStats.TopHMD));
-            //    }
-            //    catch { }
-            //}
+            if (hmd != null) {
+                try {
+                    var hmds = hmd.ToLower().Split(",").Select(s => (HMD)Int32.Parse(s));
+                    request = request.Where(p => hmds.Contains(p.ScoreStats.TopHMD));
+                } catch { }
+            }
             if (pp_range != null && pp_range.Length > 1)
             {
                 try {
@@ -596,30 +611,26 @@ namespace BeatLeader_Server.Controllers
                     }
                 } catch { }
             }
-            //if (score_range != null && score_range.Length > 1)
-            //{
-            //    try
-            //    {
-            //        var array = score_range.Split(",").Select(s => int.Parse(s)).ToArray();
-            //        int from = array[0]; int to = array[1];
-            //        if (!float.IsNaN(from) && !float.IsNaN(to)) {
-            //            switch (mapsType)
-            //            {
-            //                case MapsType.Ranked:
-            //                    request = request.Where(p => p.ScoreStats.RankedPlayCount >= from && p.ScoreStats.RankedPlayCount <= to);
-            //                    break;
-            //                case MapsType.Unranked:
-            //                    request = request.Where(p => p.ScoreStats.UnrankedPlayCount >= from && p.ScoreStats.UnrankedPlayCount <= to);
-            //                    break;
-            //                case MapsType.All:
-            //                    request = request.Where(p => p.ScoreStats.TotalPlayCount >= from && p.ScoreStats.TotalPlayCount <= to);
-            //                    break;
-            //            }
-            //        }
-                    
-            //    }
-            //    catch { }
-            //}
+            if (score_range != null && score_range.Length > 1) {
+                try {
+                    var array = score_range.Split(",").Select(s => int.Parse(s)).ToArray();
+                    int from = array[0]; int to = array[1];
+                    if (!float.IsNaN(from) && !float.IsNaN(to)) {
+                        switch (mapsType) {
+                            case MapsType.Ranked:
+                                request = request.Where(p => p.ScoreStats.RankedPlayCount >= from && p.ScoreStats.RankedPlayCount <= to);
+                                break;
+                            case MapsType.Unranked:
+                                request = request.Where(p => p.ScoreStats.UnrankedPlayCount >= from && p.ScoreStats.UnrankedPlayCount <= to);
+                                break;
+                            case MapsType.All:
+                                request = request.Where(p => p.ScoreStats.TotalPlayCount >= from && p.ScoreStats.TotalPlayCount <= to);
+                                break;
+                        }
+                    }
+
+                } catch { }
+            }
             if (friends) {
                 string userId = HttpContext.CurrentUserID(_context);
                 var player = await _context.Players.FindAsync(userId);
@@ -638,23 +649,22 @@ namespace BeatLeader_Server.Controllers
                     request = request.Where(p => p.PlayerId == player.Id);
                 }
             }
-            //if (activityPeriod != null) {
-            //    int timetreshold = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - (int)activityPeriod;
+            if (activityPeriod != null) {
+                int timetreshold = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - (int)activityPeriod;
 
-            //    switch (mapsType)
-            //    {
-            //        case MapsType.Ranked:
-            //            request = request.Where(p => p.ScoreStats.LastRankedScoreTime >= timetreshold);
-            //            break;
-            //        case MapsType.Unranked:
-            //            request = request.Where(p => p.ScoreStats.LastUnrankedScoreTime >= timetreshold);
-            //            break;
-            //        case MapsType.All:
-            //            request = request.Where(p => p.ScoreStats.LastScoreTime >= timetreshold);
-            //            break;
-            //    }
-            //}
-            
+                switch (mapsType) {
+                    case MapsType.Ranked:
+                        request = request.Where(p => p.ScoreStats.LastRankedScoreTime >= timetreshold);
+                        break;
+                    case MapsType.Unranked:
+                        request = request.Where(p => p.ScoreStats.LastUnrankedScoreTime >= timetreshold);
+                        break;
+                    case MapsType.All:
+                        request = request.Where(p => p.ScoreStats.LastScoreTime >= timetreshold);
+                        break;
+                }
+            }
+
             var result = new ResponseWithMetadata<PlayerResponseWithStats>()
             {
                 Metadata = new Metadata()
@@ -665,275 +675,70 @@ namespace BeatLeader_Server.Controllers
                 }
             };
 
-            if (searchMatch?.Count > 0) {
-                var matchedAndFiltered = await request.Select(p => p.PlayerId).ToListAsync();
-                var sorted = matchedAndFiltered
-                             .OrderByDescending(p => searchMatch.First(m => m.Id == p).Score)
-                             .Skip((page - 1) * count)
-                             .Take(count)
-                             .ToList();
+            List<int> playerIds = await 
+                PlayerControllerHelper.Sorted(leaderboardContext, request, sortBy, ppType, order, mapsType, searchIdentifier)
+                .Skip((page - 1) * count)
+                .Take(count)
+                .Select(p => p.Id)
+                .ToListAsync();
 
-                request = request.Where(p => sorted.Contains(p.PlayerId));
-            } else {
-                request = Sorted(request, sortBy, ppType, order, mapsType).Skip((page - 1) * count).Take(count);
+            using (var anotherContext = _dbFactory.CreateDbContext()) {
+                (result.Metadata.Total, result.Data) = await request.CountAsync().CoundAndResults(
+                    anotherContext
+                    .PlayerContextExtensions
+                    .AsNoTracking()
+                    .Where(p => playerIds.Contains(p.Id))
+                    .AsSplitQuery()
+                    .TagWithCallSite()
+                    .Select(p => new PlayerResponseWithStats
+                    {
+                        Id = p.PlayerId,
+                        ExtensionId = p.Id,
+                        Name = p.PlayerInstance.Name,
+                        Platform = p.PlayerInstance.Platform,
+                        Avatar = p.PlayerInstance.Avatar,
+                        Country = p.Country,
+                        ScoreStats = p.ScoreStats,
+                        Alias = p.PlayerInstance.Alias,
+
+                        Pp = p.Pp,
+                        TechPp= p.TechPp,
+                        AccPp = p.AccPp,
+                        PassPp = p.PassPp,
+                        Rank = p.Rank,
+                        CountryRank = p.CountryRank,
+                        LastWeekPp = p.LastWeekPp,
+                        LastWeekRank = p.LastWeekRank,
+                        LastWeekCountryRank = p.LastWeekCountryRank,
+                        Role = p.PlayerInstance.Role,
+                        PatreonFeatures = p.PlayerInstance.PatreonFeatures,
+                        ProfileSettings = p.PlayerInstance.ProfileSettings,
+                        ClanOrder = p.PlayerInstance.ClanOrder,
+                        Clans = p.PlayerInstance.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                    })
+                    .ToListAsync());
             }
 
-            result.Data = (await request
-                .AsSplitQuery()
-                .TagWithCallSite()
-                .Select(p => new PlayerResponseWithStats
-                {
-                    Id = p.PlayerId,
-                    Name = p.Player.Name,
-                    Platform = p.Player.Platform,
-                    Avatar = p.Player.Avatar,
-                    Country = p.Country,
-                    ScoreStats = p.ScoreStats,
-                    Alias = p.Player.Alias,
-
-                    Pp = p.Pp,
-                    TechPp= p.TechPp,
-                    AccPp = p.AccPp,
-                    PassPp = p.PassPp,
-                    Rank = p.Rank,
-                    CountryRank = p.CountryRank,
-                    LastWeekPp = p.LastWeekPp,
-                    LastWeekRank = p.LastWeekRank,
-                    LastWeekCountryRank = p.LastWeekCountryRank,
-                    Role = p.Player.Role,
-                    PatreonFeatures = p.Player.PatreonFeatures,
-                    ProfileSettings = p.Player.ProfileSettings,
-                    ClanOrder = p.Player.ClanOrder,
-                    Clans = p.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                })
-                .ToListAsync())
-                .Select(p => PostProcessSettings(p, false));
-
-            if (ids?.Count > 0)
+            foreach (var item in result.Data)
             {
-                result.Data = result.Data.OrderBy(e => ids.IndexOf(e.Id));
+                PostProcessSettings(item, false);
+            }
+
+            if (playerIds.Count > 0) {
+                result.Data = result.Data.OrderBy(e => playerIds.IndexOf(e.ExtensionId));
+            }
+
+            if (searchIdentifier != null) {
+                HttpContext.Response.OnCompleted(async () => {
+                    var searchRecords = await _context.PlayerSearches.Where(s => s.SearchId == searchIdentifier).ToListAsync();
+                    foreach (var item in searchRecords) {
+                        _context.PlayerSearches.Remove(item);
+                    }
+                    await _context.BulkSaveChangesAsync();
+                });
             }
 
             return result;
-        }
-
-        private IQueryable<T> Sorted<T>(
-            IQueryable<T> request, 
-            PlayerSortBy sortBy, 
-            PpType ppType,
-            Order order, 
-            MapsType mapsType,
-            int? searchId = null) where T : IPlayer {
-
-            var preSorted = 
-                request
-                .OrderByDescending(p => searchId != null ? p.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0);
-
-            if (sortBy == PlayerSortBy.DailyImprovements) {
-                return preSorted.ThenOrder(order, p => p.ScoreStats.DailyImprovements);
-            }
-
-            if (sortBy == PlayerSortBy.Pp) {
-                switch (ppType)
-                {
-                    case PpType.Acc:
-                        request = preSorted.ThenOrder(order, p => p.AccPp);
-                        break;
-                    case PpType.Tech:
-                        request = preSorted.ThenOrder(order, p => p.TechPp);
-                        break;
-                    case PpType.Pass:
-                        request = preSorted.ThenOrder(order, p => p.PassPp);
-                        break;
-                    default:
-                        request = preSorted.ThenOrder(order, p => p.Pp);
-                        break;
-                }
-            } else if (sortBy == PlayerSortBy.TopPp) {
-                switch (ppType)
-                {
-                    case PpType.Acc:
-                        request = preSorted.ThenOrder(order, p => p.ScoreStats.TopAccPP);
-                        break;
-                    case PpType.Tech:
-                        request = preSorted.ThenOrder(order, p => p.ScoreStats.TopTechPP);
-                        break;
-                    case PpType.Pass:
-                        request = preSorted.ThenOrder(order, p => p.ScoreStats.TopPassPP);
-                        break;
-                    default:
-                        request = preSorted.ThenOrder(order, p => p.ScoreStats.TopPp);
-                        break;
-                }
-            }
-
-            switch (mapsType)
-            {
-                case MapsType.Ranked:
-                    switch (sortBy)
-                    {
-                        case PlayerSortBy.Name:
-                            request = preSorted.ThenOrder(order, p => p.Name);
-                            break;
-                        case PlayerSortBy.Rank:
-                            request = request
-                                .Where(p => p.ScoreStats.AverageRankedRank != 0)
-                                .OrderByDescending(p => searchId != null ? p.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                                .ThenOrder(order.Reverse(), p => Math.Round(p.ScoreStats.AverageRankedRank))
-                                .ThenOrder(order, p => p.ScoreStats.RankedPlayCount); 
-                            break;
-                        case PlayerSortBy.Acc:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AverageRankedAccuracy);
-                            break;
-                        case PlayerSortBy.WeightedAcc:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AverageWeightedRankedAccuracy);
-                            break;
-                        case PlayerSortBy.Top1Count:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.RankedTop1Count);
-                            break;
-                        case PlayerSortBy.Top1Score:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.RankedTop1Score);
-                            break;
-                        case PlayerSortBy.WeightedRank:
-                            request = request
-                                .Where(p => p.ScoreStats != null && p.ScoreStats.AverageWeightedRankedRank != 0)
-                                .OrderByDescending(p => searchId != null ? p.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                                .ThenOrder(order.Reverse(), p => p.ScoreStats.AverageWeightedRankedRank);
-                            break;
-                        case PlayerSortBy.TopAcc:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TopRankedAccuracy);
-                            break;
-                        case PlayerSortBy.Hmd:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TopHMD);
-                            break;
-                        case PlayerSortBy.PlayCount:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.RankedPlayCount);
-                            break;
-                        case PlayerSortBy.Score:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TotalRankedScore);
-                            break;
-                        case PlayerSortBy.Lastplay:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.LastRankedScoreTime);
-                            break;
-                        case PlayerSortBy.MaxStreak:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.RankedMaxStreak);
-                            break;
-                        case PlayerSortBy.ReplaysWatched:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
-                            break;
-                        default:
-                            break;
-                    }
-                    break;
-                case MapsType.Unranked:
-                    switch (sortBy)
-                    {
-                        case PlayerSortBy.Name:
-                            request = preSorted.ThenOrder(order, p => p.Name);
-                            break;
-                        case PlayerSortBy.Rank:
-                            request = request
-                                .Where(p => p.ScoreStats.AverageUnrankedRank != 0)
-                                .OrderByDescending(p => searchId != null ? p.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                                .ThenOrder(order.Reverse(), p => Math.Round(p.ScoreStats.AverageUnrankedRank))
-                                .ThenOrder(order, p => p.ScoreStats.UnrankedPlayCount);
-                            break;
-                        case PlayerSortBy.Acc:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AverageUnrankedAccuracy);
-                            break;
-                        case PlayerSortBy.WeightedAcc:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AverageUnrankedAccuracy);
-                            break;
-                        case PlayerSortBy.Top1Count:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.UnrankedTop1Count);
-                            break;
-                        case PlayerSortBy.Top1Score:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.UnrankedTop1Score);
-                            break;
-                        
-                        case PlayerSortBy.TopAcc:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TopUnrankedAccuracy);
-                            break;
-                        case PlayerSortBy.Hmd:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TopHMD);
-                            break;
-                        case PlayerSortBy.PlayCount:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.UnrankedPlayCount);
-                            break;
-                        case PlayerSortBy.Score:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TotalUnrankedScore);
-                            break;
-                        case PlayerSortBy.Lastplay:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.LastUnrankedScoreTime);
-                            break;
-                        case PlayerSortBy.MaxStreak:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.UnrankedMaxStreak);
-                            break;
-                        case PlayerSortBy.ReplaysWatched:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
-                            break;
-                        default:
-                            break;
-                    }
-                    break;
-                case MapsType.All:
-                    switch (sortBy)
-                    {
-                        case PlayerSortBy.Name:
-                            request = preSorted.ThenOrder(order, p => p.Name);
-                            break;
-                        case PlayerSortBy.Rank:
-                            request = request
-                                .Where(p => p.ScoreStats.AverageRank != 0)
-                                .OrderByDescending(p => searchId != null ? p.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                                .ThenOrder(order.Reverse(), p => Math.Round(p.ScoreStats.AverageRank))
-                                .ThenOrder(order, p => p.ScoreStats.TotalPlayCount);
-                            break;
-                        case PlayerSortBy.Top1Count:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.Top1Count);
-                            break;
-                        case PlayerSortBy.Top1Score:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.Top1Score);
-                            break;
-                        case PlayerSortBy.Acc:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AverageAccuracy);
-                            break;
-                        case PlayerSortBy.WeightedAcc:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AverageWeightedRankedAccuracy);
-                            break;
-                        case PlayerSortBy.TopAcc:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TopAccuracy);
-                            break;
-                        case PlayerSortBy.Hmd:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TopHMD);
-                            break;
-                        case PlayerSortBy.PlayCount:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TotalPlayCount);
-                            break;
-                        case PlayerSortBy.Score:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.TotalScore);
-                            break;
-                        case PlayerSortBy.Lastplay:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.LastScoreTime);
-                            break;
-                        case PlayerSortBy.MaxStreak:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.MaxStreak);
-                            break;
-                        case PlayerSortBy.Timing:
-                            request = preSorted.ThenOrder(order, p => (p.ScoreStats.AverageLeftTiming + p.ScoreStats.AverageRightTiming) / 2);
-                            break;
-                        case PlayerSortBy.ReplaysWatched:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
-                            break;
-                        default:
-                            break;
-                    }
-                    break;
-                default:
-                    break;
-            }
-
-            return request;
         }
 
         [HttpGet("~/player/{id}/eventsparticipating")]

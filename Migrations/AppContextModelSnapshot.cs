@@ -4930,7 +4930,7 @@ namespace BeatLeader_Server.Migrations
 
             modelBuilder.Entity("BeatLeader_Server.Models.PlayerContextExtension", b =>
                 {
-                    b.HasOne("BeatLeader_Server.Models.Player", "Player")
+                    b.HasOne("BeatLeader_Server.Models.Player", "PlayerInstance")
                         .WithMany("ContextExtensions")
                         .HasForeignKey("PlayerId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -4940,7 +4940,7 @@ namespace BeatLeader_Server.Migrations
                         .WithMany()
                         .HasForeignKey("ScoreStatsId");
 
-                    b.Navigation("Player");
+                    b.Navigation("PlayerInstance");
 
                     b.Navigation("ScoreStats");
                 });

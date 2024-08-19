@@ -84,7 +84,7 @@ namespace BeatLeader_Server.Utils {
 
             dbContext.Speedruns.Add(new Speedrun {
                 PlayerId = playerId,
-                FinishTimeset = speedrunner.Player.SpeedrunStart + 60 * 60,
+                FinishTimeset = speedrunner.PlayerInstance.SpeedrunStart + 60 * 60,
                 Pp = speedrunner.Pp,
                 Record = record
             });
