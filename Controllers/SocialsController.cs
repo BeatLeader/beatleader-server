@@ -4,9 +4,7 @@ using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json.Linq;
 using System.Net;
-using System.Numerics;
 using System.Security.Claims;
 
 namespace BeatLeader_Server.Controllers
@@ -51,6 +49,15 @@ namespace BeatLeader_Server.Controllers
                 string? refreshToken = auth?.Properties?.Items[".Token.refresh_token"];
 
                 if (name != null && id != null && username != null && token != null && refreshToken != null) {
+                    var existingLink = await _context.TwitchLinks.FirstOrDefaultAsync(tl => tl.TwitchId == id);
+                    if (existingLink != null) {
+                        if (await _context.Players.AnyAsync(p => p.Id == existingLink.Id)) {
+                            return Unauthorized("This Twitch profile is already linked");
+                        } else {
+                            _context.TwitchLinks.Remove(existingLink);
+                        }
+                    }
+
                     player.Socials.Add(new PlayerSocial {
                         Service = "Twitch",
                         User = name,
@@ -62,12 +69,12 @@ namespace BeatLeader_Server.Controllers
                         RefreshToken = refreshToken,
                         TwitchId = id,
                         Id = playerId
-                    });;
+                    });
 
                     await _context.SaveChangesAsync();
                 }
             } else {
-                return Unauthorized("This Twitch profile is already linked");
+                return Unauthorized("You already have linked Twitch profile");
             }
 
             return Redirect(returnUrl);
@@ -98,6 +105,15 @@ namespace BeatLeader_Server.Controllers
 
                 if (name != null && id != null && username != null && token != null)
                 {
+                    var existingLink = await _context.TwitterLinks.FirstOrDefaultAsync(tl => tl.TwitterId == id);
+                    if (existingLink != null) {
+                        if (await _context.Players.AnyAsync(p => p.Id == existingLink.Id)) {
+                            return Unauthorized("This Twitter profile is already linked");
+                        } else {
+                            _context.TwitterLinks.Remove(existingLink);
+                        }
+                    }
+
                     player.Socials.Add(new PlayerSocial
                     {
                         Service = "Twitter",
@@ -118,7 +134,7 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
-                return Unauthorized("This Twitch profile is already linked");
+                return Unauthorized("You already have linked Twitter profile");
             }
 
             return Redirect(returnUrl);
@@ -156,6 +172,15 @@ namespace BeatLeader_Server.Controllers
 
                 if (discriminator != null && id != null && username != null && token != null)
                 {
+                    var existingLink = await _context.DiscordLinks.FirstOrDefaultAsync(tl => tl.DiscordId == id);
+                    if (existingLink != null) {
+                        if (await _context.Players.AnyAsync(p => p.Id == existingLink.Id)) {
+                            return Unauthorized("This Discord profile is already linked");
+                        } else {
+                            _context.DiscordLinks.Remove(existingLink);
+                        }
+                    }
+
                     var usertag = discriminator == "0" ? "@" + username : username + "#" + discriminator;
                     player.Socials.Add(new PlayerSocial
                     {
@@ -179,7 +204,7 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
-                return Unauthorized("This Discord profile is already linked");
+                return Unauthorized("You already have linked Discord profile");
             }
 
             return Redirect(returnUrl);
@@ -210,6 +235,15 @@ namespace BeatLeader_Server.Controllers
 
                 if (id != null && username != null && token != null)
                 {
+                    var existingLink = await _context.YouTubeLinks.FirstOrDefaultAsync(tl => tl.GoogleId == id);
+                    if (existingLink != null) {
+                        if (await _context.Players.AnyAsync(p => p.Id == existingLink.Id)) {
+                            return Unauthorized("This YouTube profile is already linked");
+                        } else {
+                            _context.YouTubeLinks.Remove(existingLink);
+                        }
+                    }
+
                     var channels = await ListChanneld(token);
                     string? channelLink = null;
                     if (channels != null && ExpandantoObject.HasProperty(channels, "items") && channels.items.Count > 0) {
@@ -245,7 +279,7 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
-                return Unauthorized("This YouTube profile is already linked");
+                return Unauthorized("You already have linked YouTube profile");
             }
 
             return Redirect(returnUrl);
@@ -274,6 +308,15 @@ namespace BeatLeader_Server.Controllers
                 string? token = auth?.Properties?.Items[".Token.access_token"];
 
                 if (id != null && username != null && token != null) {
+                    var existingLink = await _context.GitHubLinks.FirstOrDefaultAsync(tl => tl.GitHubId == id);
+                    if (existingLink != null) {
+                        if (await _context.Players.AnyAsync(p => p.Id == existingLink.Id)) {
+                            return Unauthorized("This GitHub profile is already linked");
+                        } else {
+                            _context.GitHubLinks.Remove(existingLink);
+                        }
+                    }
+
                     player.Socials.Add(new PlayerSocial {
                         Service = "GitHub",
                         User = name ?? username,
@@ -289,7 +332,7 @@ namespace BeatLeader_Server.Controllers
                     await _context.SaveChangesAsync();
                 }
             } else {
-                return Unauthorized("This GitHub profile is already linked");
+                return Unauthorized("You already have linked GitHub profile");
             }
 
             return Redirect(returnUrl);
