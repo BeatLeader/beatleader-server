@@ -38,9 +38,20 @@ namespace BeatLeader_Server.Utils
             var rankedScores = await context
                 .Scores
                 .Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && s.PlayerId == player.Id && s.Pp != 0 && !s.Banned && !s.Qualification)
+                .AsNoTracking()
                 .OrderByDescending(s => s.Pp)
-                .Select(s => new { s.Id, s.Accuracy, s.Rank, s.Pp, s.AccPP, s.PassPP, s.TechPP, s.Weight })
+                .Select(s => new Score { 
+                    Id = s.Id, 
+                    Accuracy = s.Accuracy, 
+                    Rank = s.Rank, 
+                    Pp = s.Pp, 
+                    AccPP = s.AccPP, 
+                    PassPP = s.PassPP, 
+                    TechPP = s.TechPP, 
+                    Weight = s.Weight 
+                })
                 .ToListAsync();
+
             float resultPP = 0f;
             float accPP = 0f;
             float techPP = 0f;
@@ -48,30 +59,19 @@ namespace BeatLeader_Server.Utils
             foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
             {
                 float weight = MathF.Pow(0.965f, i);
-                if (s.Weight != weight)
-                {
-                    var score = new Score() { Id = s.Id };
-                    try {
-                        context.Scores.Attach(score);
-                    } catch { } 
-                    score.Weight = weight;
-
-                    context.Entry(score).Property(x => x.Weight).IsModified = true;
-                }
+                s.Weight = weight;
                 resultPP += s.Pp * weight;
                 accPP += s.AccPP * weight;
                 techPP += s.TechPP * weight;
                 passPP += s.PassPP * weight;
             }
+
+            await context.BulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = c => new { c.Weight });
+
             player.Pp = resultPP;
             player.AccPp = accPP;
             player.TechPp = techPP;
             player.PassPp = passPP;
-
-            context.Entry(player).Property(x => x.Pp).IsModified = true;
-            context.Entry(player).Property(x => x.AccPp).IsModified = true;
-            context.Entry(player).Property(x => x.TechPp).IsModified = true;
-            context.Entry(player).Property(x => x.PassPp).IsModified = true;
 
             int rankOffset = 0;
 
@@ -85,7 +85,8 @@ namespace BeatLeader_Server.Utils
             var rankedPlayers = (await context
                 .Players
                 .Where(t => t.Pp > 0 && t.Pp >= oldPp && t.Pp != 0 && t.Pp <= resultPP && t.Id != player.Id && !t.Banned)
-                .Select(p => new {
+                .AsNoTracking()
+                .Select(p => new Player {
                     Id = p.Id,
                     Rank = p.Rank,
                     Country = p.Country,
@@ -93,7 +94,7 @@ namespace BeatLeader_Server.Utils
                     Pp = p.Pp,
                 })
                 .ToListAsync())
-                .Append(new {
+                .Append(new Player {
                     Id = player.Id,
                     Rank = player.Rank,
                     Country = player.Country,
@@ -111,22 +112,17 @@ namespace BeatLeader_Server.Utils
 
                 foreach ((int i, var p) in rankedPlayers.Select((value, i) => (i, value)))
                 {
-                    var newPlayer = new Player() { Id = p.Id };
-
-                    try {
-                        context.Players.Attach(newPlayer);
-                    } catch { }
-                    newPlayer.Rank = i + topRank;
-                    context.Entry(newPlayer).Property(x => x.Rank).IsModified = true;
+                    p.Rank = i + topRank;
 
                     if (p.Country == country && topCountryRank != null)
                     {
-                        newPlayer.CountryRank = (int)topCountryRank;
-                        context.Entry(newPlayer).Property(x => x.CountryRank).IsModified = true;
+                        p.CountryRank = (int)topCountryRank;
                         topCountryRank++;
                     }
                 }
             }
+
+            await context.BulkUpdateAsync(rankedPlayers, options => options.ColumnInputExpression = c => new { c.Rank, c.CountryRank });
 
             var scoresForWeightedAcc = rankedScores.OrderByDescending(s => s.Accuracy).Take(100).ToList();
             var sum = 0.0f;
@@ -142,9 +138,9 @@ namespace BeatLeader_Server.Utils
 
                 weights += weight;
             }
+
             if (player.ScoreStats != null) {
                 player.ScoreStats.AverageWeightedRankedAccuracy = sum / weights;
-                context.Entry(player.ScoreStats).Property(x => x.AverageWeightedRankedAccuracy).IsModified = true;
             }
 
             var scoresForWeightedRank = rankedScores.OrderBy(s => s.Rank).Take(100).ToList();
@@ -164,9 +160,9 @@ namespace BeatLeader_Server.Utils
 
                 weights += weight;
             }
+
             if (player.ScoreStats != null) {
                 player.ScoreStats.AverageWeightedRankedRank = sum / weights;
-                context.Entry(player.ScoreStats).Property(x => x.AverageWeightedRankedRank).IsModified = true;
             }
         }
 
@@ -183,9 +179,21 @@ namespace BeatLeader_Server.Utils
             var rankedScores = await dbContext
                 .ScoreContextExtensions
                 .Where(s => s.PlayerId == player.PlayerId && s.Pp != 0 && s.Context == context && !s.Banned && !s.Qualification)
+                .AsNoTracking()
                 .OrderByDescending(s => s.Pp)
-                .Select(s => new { s.Id, s.Accuracy, s.Rank, s.Pp, s.AccPP, s.PassPP, s.TechPP, s.Weight })
+                .Select(s => new ScoreContextExtension { 
+                    Id = s.Id, 
+                    Accuracy = s.Accuracy, 
+                    Rank = s.Rank, 
+                    Pp = s.Pp, 
+                    AccPP = s.AccPP, 
+                    PassPP = s.PassPP, 
+                    TechPP = s.TechPP, 
+                    Weight = s.Weight 
+                })
                 .ToListAsync();
+            await dbContext.BulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = c => new { c.Weight });
+
             float resultPP = 0f;
             float accPP = 0f;
             float techPP = 0f;
@@ -193,16 +201,7 @@ namespace BeatLeader_Server.Utils
             foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
             {
                 float weight = MathF.Pow(0.965f, i);
-                if (s.Weight != weight)
-                {
-                    var score = new ScoreContextExtension() { Id = s.Id };
-                    try {
-                        dbContext.ScoreContextExtensions.Attach(score);
-                    } catch { }
-                    score.Weight = weight;
-
-                    dbContext.Entry(score).Property(x => x.Weight).IsModified = true;
-                }
+                s.Weight = weight;
                 resultPP += s.Pp * weight;
                 accPP += s.AccPP * weight;
                 techPP += s.TechPP * weight;
@@ -212,11 +211,6 @@ namespace BeatLeader_Server.Utils
             player.AccPp = accPP;
             player.TechPp = techPP;
             player.PassPp = passPP;
-
-            dbContext.Entry(player).Property(x => x.Pp).IsModified = true;
-            dbContext.Entry(player).Property(x => x.AccPp).IsModified = true;
-            dbContext.Entry(player).Property(x => x.TechPp).IsModified = true;
-            dbContext.Entry(player).Property(x => x.PassPp).IsModified = true;
 
             int rankOffset = 0;
 
@@ -230,9 +224,22 @@ namespace BeatLeader_Server.Utils
             var rankedPlayers = (await dbContext
                 .PlayerContextExtensions
                 .Where(t => t.Context == context && t.Pp > 0 && t.Pp >= oldPp && t.Pp <= resultPP && t.Id != player.Id && !t.Banned)
-                .Select(p => new { p.Id, p.Rank, p.Country, p.CountryRank, p.Pp })
+                .AsNoTracking()
+                .Select(p => new PlayerContextExtension { 
+                    Id = p.Id, 
+                    Rank = p.Rank, 
+                    Country = p.Country, 
+                    CountryRank = p.CountryRank, 
+                    Pp = p.Pp 
+                })
                 .ToListAsync())
-                .Append(new { player.Id, player.Rank, player.Country, player.CountryRank, player.Pp })
+                .Append(new PlayerContextExtension { 
+                    Id = player.Id, 
+                    Rank = player.Rank, 
+                    Country = player.Country, 
+                    CountryRank = player.CountryRank, 
+                    Pp = player.Pp 
+                })
                 .OrderByDescending(t => t.Pp)
                 .ToList();
 
@@ -244,21 +251,16 @@ namespace BeatLeader_Server.Utils
 
                 foreach ((int i, var p) in rankedPlayers.Select((value, i) => (i, value)))
                 {
-                    var newPlayer = new PlayerContextExtension() { Id = p.Id };
-                    try {
-                        dbContext.PlayerContextExtensions.Attach(newPlayer);
-                    } catch { }
-                    newPlayer.Rank = i + topRank;
-                    dbContext.Entry(newPlayer).Property(x => x.Rank).IsModified = true;
+                    p.Rank = i + topRank;
 
                     if (p.Country == country && topCountryRank != null)
                     {
-                        newPlayer.CountryRank = (int)topCountryRank;
-                        dbContext.Entry(newPlayer).Property(x => x.CountryRank).IsModified = true;
+                        p.CountryRank = (int)topCountryRank;
                         topCountryRank++;
                     }
                 }
             }
+            await dbContext.BulkUpdateAsync(rankedPlayers, options => options.ColumnInputExpression = c => new { c.Rank, c.CountryRank });
 
             var scoresForWeightedAcc = rankedScores.OrderByDescending(s => s.Accuracy).Take(100).ToList();
             var sum = 0.0f;
@@ -276,7 +278,6 @@ namespace BeatLeader_Server.Utils
             }
             if (player.ScoreStats != null) {
                 player.ScoreStats.AverageWeightedRankedAccuracy = sum / weights;
-                dbContext.Entry(player.ScoreStats).Property(x => x.AverageWeightedRankedAccuracy).IsModified = true;
             }
 
             var scoresForWeightedRank = rankedScores.OrderBy(s => s.Rank).Take(100).ToList();
@@ -298,7 +299,6 @@ namespace BeatLeader_Server.Utils
             }
             if (player.ScoreStats != null) {
                 player.ScoreStats.AverageWeightedRankedRank = sum / weights;
-                dbContext.Entry(player.ScoreStats).Property(x => x.AverageWeightedRankedRank).IsModified = true;
             }
         }
 

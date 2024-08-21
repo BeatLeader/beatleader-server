@@ -414,7 +414,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            string[] njsExceptions = ["8bc991", "30a2e91"];
+            string[] njsExceptions = ["8bc991", "30a2e91", "620591"];
 
             if (!leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles) && 
                 !njsExceptions.Contains(leaderboard.Id) && 
@@ -643,7 +643,6 @@ namespace BeatLeader_Server.Controllers
                 resultScore.Replay = "https://cdn.replays.beatleader.xyz/" + ReplayUtils.ReplayFilename(replay, resultScore);
                 await dbContext.SaveChangesAsync();
 
-                dbContext.ChangeTracker.AutoDetectChangesEnabled = false;
                 await RecalculateRanks(dbContext, resultScore, currentScores, leaderboard, player);
             
                 context.Response.OnCompleted(async () => {
@@ -931,18 +930,6 @@ namespace BeatLeader_Server.Controllers
                     await RefreshContextRank(dbContext, leaderboardContext, resultScore, leaderboard, isRanked);
                 }
             }
-
-            using (_serverTiming.TimeAction("db")) {
-                try
-                {
-                    await dbContext.BulkSaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException ex)
-                {
-                    await ex.Entries.Single().ReloadAsync();
-                    await dbContext.BulkSaveChangesAsync();
-                }
-            }
         }
 
         private async Task RefreshGeneneralContextRank(AppContext dbContext, Leaderboard leaderboard, Score resultScore, bool isRanked) {
@@ -953,7 +940,15 @@ namespace BeatLeader_Server.Controllers
                     .Where(s => s.LeaderboardId == leaderboard.Id && 
                                 !s.Banned && 
                                 s.ValidContexts.HasFlag(LeaderboardContexts.General))
-                    .Select(s => new { s.Id, s.Rank, s.Priority, s.ModifiedScore, s.Accuracy, s.Pp, s.Timepost })
+                    .AsNoTracking()
+                    .Select(s => new Score { 
+                        Id = s.Id, 
+                        Rank = s.Rank, 
+                        Priority = s.Priority, 
+                        ModifiedScore = s.ModifiedScore,
+                        Accuracy = s.Accuracy, 
+                        Pp = s.Pp, 
+                        Timepost = s.Timepost })
                     .ToListAsync();
 
             if (isRanked) {
@@ -977,16 +972,10 @@ namespace BeatLeader_Server.Controllers
                 if (s.Id == resultScore.Id) {
                     resultScore.Rank = i + 1;
                 }
-                if (s.Rank == i + 1) continue;
-
-                var score = new Score() { Id = s.Id };
-                try {
-                    dbContext.Scores.Attach(score);
-                } catch { }
-                score.Rank = i + 1;
-                    
-                dbContext.Entry(score).Property(x => x.Rank).IsModified = true;
+                s.Rank = i + 1;
             }
+
+            await dbContext.BulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = s => new { s.Rank });
         }
 
         class ScoreSelection {
@@ -1004,70 +993,66 @@ namespace BeatLeader_Server.Controllers
             var resultContextExtension = resultScore.ContextExtensions.FirstOrDefault(ce => ce.Context == context);
             if (!resultScore.ValidContexts.HasFlag(context) || resultContextExtension == null) return;
 
-            List<ScoreSelection> rankedScores;
+            List<ScoreContextExtension> rankedScores;
             if (isRanked) {
                 if (context != LeaderboardContexts.Golf) {
                     rankedScores = await dbContext
                     .ScoreContextExtensions
+                    .AsNoTracking()
                     .Where(s => s.LeaderboardId == leaderboard.Id && s.Context == context && !s.Banned)
                     .OrderByDescending(el => Math.Round(el.Pp, 2))
                     .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                     .ThenByDescending(el => el.ModifiedScore)
                     .ThenBy(el => el.Timepost)
-                    .Select(s => new ScoreSelection() { Id = s.Id, Rank = s.Rank })
+                    .Select(s => new ScoreContextExtension() { Id = s.Id, Rank = s.Rank })
                     .ToListAsync();
                 } else {
                     rankedScores = await dbContext
                     .ScoreContextExtensions
+                    .AsNoTracking()
                     .Where(s => s.LeaderboardId == leaderboard.Id && s.Context == context && !s.Banned)
                     .OrderByDescending(el => Math.Round(el.Pp, 2))
                     .ThenBy(el => Math.Round(el.Accuracy, 4))
                     .ThenBy(el => el.ModifiedScore)
                     .ThenBy(el => el.Timepost)
-                    .Select(s => new ScoreSelection() { Id = s.Id, Rank = s.Rank })
+                    .Select(s => new ScoreContextExtension() { Id = s.Id, Rank = s.Rank })
                     .ToListAsync();
                 }
             } else {
                 if (context != LeaderboardContexts.Golf) {
                     rankedScores = await dbContext
                     .ScoreContextExtensions
+                    .AsNoTracking()
                     .Where(s => s.LeaderboardId == leaderboard.Id && s.Context == context && !s.Banned)
                     .OrderBy(el => el.Priority)
                     .ThenByDescending(el => el.ModifiedScore)
                     .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                     .ThenBy(el => el.Timepost)
-                    .Select(s => new ScoreSelection() { Id = s.Id, Rank = s.Rank })
+                    .Select(s => new ScoreContextExtension() { Id = s.Id, Rank = s.Rank })
                     .ToListAsync();
                 } else {
                     rankedScores = await dbContext
                     .ScoreContextExtensions
+                    .AsNoTracking()
                     .Where(s => s.LeaderboardId == leaderboard.Id && s.Context == context && !s.Banned)
                     .OrderByDescending(el => el.Priority)
                     .ThenBy(el => el.ModifiedScore)
                     .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                     .ThenBy(el => el.Timepost)
-                    .Select(s => new ScoreSelection() { Id = s.Id, Rank = s.Rank })
+                    .Select(s => new ScoreContextExtension() { Id = s.Id, Rank = s.Rank })
                     .ToListAsync();
                 }
             }
-
-            
 
             foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
             {
                 if (s.Id == resultContextExtension.Id) {
                     resultContextExtension.Rank = i + 1;
                 }
-                if (s.Rank == i + 1) continue;
-
-                var score = new ScoreContextExtension() { Id = s.Id };
-                try {
-                    dbContext.ScoreContextExtensions.Attach(score);
-                } catch { }
-                score.Rank = i + 1;
-                    
-                dbContext.Entry(score).Property(x => x.Rank).IsModified = true;
+                s.Rank = i + 1;
             }
+
+            await dbContext.BulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = s => new { s.Rank });
         }
 
         [NonAction]
@@ -1087,23 +1072,10 @@ namespace BeatLeader_Server.Controllers
             bool allow = false) {
 
             resultScore.Replay = await _s3Client.UploadReplay(ReplayUtils.ReplayFilename(replay, resultScore), replayData);
-            dbContext.Entry(resultScore).Property(x => x.Replay).IsModified = true;
 
             if (!player.Bot && leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
                 await dbContext.RecalculatePPAndRankFast(player, resultScore.ValidContexts);
             }
-
-            try
-            {
-                await dbContext.BulkSaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException ex)
-            {
-                await ex.Entries.Single().ReloadAsync();
-                await dbContext.BulkSaveChangesAsync();
-            }
-
-            dbContext.ChangeTracker.AutoDetectChangesEnabled = true;
 
             if (statistic != null) {
                 await _s3Client.UploadScoreStats(resultScore.Id + ".json", statistic);
@@ -1179,7 +1151,6 @@ namespace BeatLeader_Server.Controllers
                             using (var recalculatedStream = new MemoryStream()) {
                                 ReplayEncoder.Encode(replay, new BinaryWriter(recalculatedStream, Encoding.UTF8));
                                 resultScore.Replay = await _s3Client.UploadReplay("recalculated-" + ReplayUtils.ReplayFilename(replay, resultScore), recalculatedStream.ToArray());
-                                dbContext.Entry(resultScore).Property(x => x.Replay).IsModified = true;
                             }
 
                             try {
@@ -1354,14 +1325,10 @@ namespace BeatLeader_Server.Controllers
             dbContext.FailedScores.Add(failedScore);
             await dbContext.SaveChangesAsync();
 
-            dbContext.ChangeTracker.AutoDetectChangesEnabled = false;
-
             if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
                 await dbContext.RecalculatePPAndRankFast(player, score.ValidContexts);
             }
             await LeaderboardRefreshControllerHelper.RefreshLeaderboardsRankAllContexts(dbContext, leaderboard.Id);
-
-            dbContext.ChangeTracker.AutoDetectChangesEnabled = true;
 
             await PlayerRefreshControllerHelper.RefreshStats(
                 dbContext,

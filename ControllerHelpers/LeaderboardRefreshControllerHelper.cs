@@ -27,6 +27,7 @@ namespace BeatLeader_Server.ControllerHelpers {
             {
                 var leaderboards =
                 await query
+                .AsNoTracking()
                 .OrderBy(lb => lb.Id)
                 .Skip(i)
                 .Take(1000)
@@ -35,15 +36,17 @@ namespace BeatLeader_Server.ControllerHelpers {
                     lb.Id,
                     lb.Difficulty.Status,
                     Scores = 
-                        leaderboardContext == LeaderboardContexts.General 
+                        (IEnumerable<IScore>)(leaderboardContext == LeaderboardContexts.General 
                         ? lb.Scores
                             .Where(s => !s.Banned && s.ValidContexts.HasFlag(leaderboardContext))
-                            .Select(s => new { s.Id, s.Pp, s.Accuracy, s.ModifiedScore, s.Timepost, s.Priority })
+                            .Select(s => new Score { Id = s.Id, Pp = s.Pp, Accuracy = s.Accuracy, ModifiedScore = s.ModifiedScore, Timepost = s.Timepost, Priority = s.Priority })
                         : lb.ContextExtensions
                             .Where(s => !s.Banned && s.Context == leaderboardContext)
-                            .Select(s => new { s.Id, s.Pp, s.Accuracy, s.ModifiedScore, s.Timepost, s.Priority })
+                            .Select(s => new ScoreContextExtension { Id = s.Id, Pp = s.Pp, Accuracy = s.Accuracy, ModifiedScore = s.ModifiedScore, Timepost = s.Timepost, Priority = s.Priority }))
                 })
                 .ToArrayAsync();
+
+                var leaderboardsToUpdate = new List<Leaderboard>();
 
                 foreach (var leaderboard in leaderboards)
                 {
@@ -67,46 +70,17 @@ namespace BeatLeader_Server.ControllerHelpers {
                     {
                         foreach ((int ii, var s) in rankedScores.Select((value, ii) => (ii, value)))
                         {
-                            if (leaderboardContext == LeaderboardContexts.General) {
-                                var score = new Score() { Id = s.Id };
-                                try
-                                {
-                                    dbContext.Scores.Attach(score);
-                                } catch { }
-                                score.Rank = ii + 1;
-
-                                dbContext.Entry(score).Property(x => x.Rank).IsModified = true;
-                            } else {
-                                var scoreExtenstion = new ScoreContextExtension() { Id = s.Id };
-                                try
-                                {
-                                    dbContext.ScoreContextExtensions.Attach(scoreExtenstion);
-                                } catch { }
-                                scoreExtenstion.Rank = ii + 1;
-
-                                dbContext.Entry(scoreExtenstion).Property(x => x.Rank).IsModified = true;
-                            }
+                            s.Rank = ii + 1;
                         }
                     }
 
                     if (leaderboardContext == LeaderboardContexts.General) {
-                        Leaderboard lb = new Leaderboard() { Id = leaderboard.Id };
-                        try {
-                        dbContext.Leaderboards.Attach(lb);
-                        } catch { }
-                        lb.Plays = rankedScores.Count;
-
-                        dbContext.Entry(lb).Property(x => x.Plays).IsModified = true;
+                        leaderboardsToUpdate.Add(new Leaderboard() { Id = leaderboard.Id, Plays = rankedScores.Count });
                     }
                 }
 
-                try
-                {
-                    await dbContext.BulkSaveChangesAsync();
-                } catch (Exception e)
-                {
-                    dbContext.RejectChanges();
-                }
+                await dbContext.BulkUpdateAsync(leaderboardsToUpdate, options => options.ColumnInputExpression = c => new { c.Plays });
+                await dbContext.BulkUpdateAsync(leaderboards.SelectMany(l => l.Scores), options => options.ColumnInputExpression = c => new { c.Rank });
             }
         }
     }

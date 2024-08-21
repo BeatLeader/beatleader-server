@@ -40,45 +40,31 @@ namespace BeatLeader_Server.Controllers
 
         [NonAction]
         public async Task RefreshPlayer(Player player, bool refreshRank = true, bool refreshStats = true) {
-            _context.ChangeTracker.AutoDetectChangesEnabled = false;
-
             await _context.RecalculatePPAndRankFast(player, LeaderboardContexts.General);
             await _context.BulkSaveChangesAsync();
 
-            _context.ChangeTracker.AutoDetectChangesEnabled = true;
-
             if (refreshRank)
             {
-                _context.ChangeTracker.AutoDetectChangesEnabled = false;
-
                 Dictionary<string, int> countries = new Dictionary<string, int>();
                 var ranked = await _context.Players
                     .Where(p => p.Pp > 0 && !p.Banned)
+                    .AsNoTracking()
                     .OrderByDescending(t => t.Pp)
-                    .Select(p => new { p.Id, p.Country, p.Rank })
+                    .Select(p => new Player { Id = p.Id, Country = p.Country, Rank = p.Rank })
                     .ToListAsync();
-                foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
+                foreach ((int i, var p) in ranked.Select((value, i) => (i, value)))
                 {
-                    Player? p = new Player { Id = pp.Id, Country = pp.Country, Rank = pp.Rank };
-                    try {
-                        _context.Players.Attach(p);
-                    } catch { }
-
                     p.Rank = i + 1;
-                    _context.Entry(p).Property(x => x.Rank).IsModified = true;
                     if (!countries.ContainsKey(p.Country))
                     {
                         countries[p.Country] = 1;
                     }
 
                     p.CountryRank = countries[p.Country];
-                    _context.Entry(p).Property(x => x.CountryRank).IsModified = true;
 
                     countries[p.Country]++;
                 }
-                await _context.BulkSaveChangesAsync();
-
-                _context.ChangeTracker.AutoDetectChangesEnabled = true;
+                await _context.BulkUpdateAsync(ranked, options => options.ColumnInputExpression = c => new { c.Rank, c.CountryRank });
             }
             if (refreshStats) {
                 await PlayerRefreshControllerHelper.RefreshStats(_context, player.ScoreStats, player.Id, player.Rank, null, null, LeaderboardContexts.General);
@@ -403,35 +389,27 @@ namespace BeatLeader_Server.Controllers
                     return Unauthorized();
                 }
             }
-            _context.ChangeTracker.AutoDetectChangesEnabled = false;
+
             Dictionary<string, int> countries = new Dictionary<string, int>();
             var ranked = await _context.Players
                 .Where(p => p.Pp > 0 && !p.Banned)
+                .AsNoTracking()
                 .OrderByDescending(t => t.Pp)
-                .Select(p => new { Id = p.Id, Country = p.Country })
+                .Select(p => new Player { Id = p.Id, Country = p.Country })
                 .ToListAsync();
-            foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
-            {
-                Player? p = new Player { Id = pp.Id, Country = pp.Country };
-                try {
-                    _context.Players.Attach(p);
-                } catch {}
 
+            foreach ((int i, var p) in ranked.Select((value, i) => (i, value)))
+            {
                 p.Rank = i + 1;
-                _context.Entry(p).Property(x => x.Rank).IsModified = true;
                 if (!countries.ContainsKey(p.Country))
                 {
                     countries[p.Country] = 1;
                 }
 
                 p.CountryRank = countries[p.Country];
-                _context.Entry(p).Property(x => x.CountryRank).IsModified = true;
-
                 countries[p.Country]++;
             }
-            await _context.BulkSaveChangesAsync();
-
-            _context.ChangeTracker.AutoDetectChangesEnabled = true;
+            await _context.BulkUpdateAsync(ranked, options => options.ColumnInputExpression = c => new { c.Rank, c.CountryRank });
 
             return Ok();
         }

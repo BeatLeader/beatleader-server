@@ -44,37 +44,26 @@ namespace BeatLeader_Server.Controllers {
 
             if (refreshRank)
             {
-                _context.ChangeTracker.AutoDetectChangesEnabled = false;
                 Dictionary<string, int> countries = new Dictionary<string, int>();
                 var ranked = await _context.PlayerContextExtensions
                     .Where(p => p.Pp > 0 && p.Context == context)
+                    .AsNoTracking()
                     .OrderByDescending(t => t.Pp)
-                    .Select(p => new { Id = p.Id, Country = p.Country })
+                    .Select(p => new PlayerContextExtension { Id = p.Id, Country = p.Country })
                     .ToListAsync();
-                foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
+                foreach ((int i, var p) in ranked.Select((value, i) => (i, value)))
                 {
-                    PlayerContextExtension? p = new PlayerContextExtension { Id = pp.Id, Country = pp.Country };
-                    try {
-                        _context.PlayerContextExtensions.Attach(p);
-                    } catch (Exception e) {
-                        continue;
-                    }
-
                     p.Rank = i + 1;
-                    _context.Entry(p).Property(x => x.Rank).IsModified = true;
                     if (!countries.ContainsKey(p.Country))
                     {
                         countries[p.Country] = 1;
                     }
 
                     p.CountryRank = countries[p.Country];
-                    _context.Entry(p).Property(x => x.CountryRank).IsModified = true;
 
                     countries[p.Country]++;
                 }
-                await _context.BulkSaveChangesAsync();
-
-                _context.ChangeTracker.AutoDetectChangesEnabled = true;
+                await _context.BulkUpdateAsync(ranked, options => options.ColumnInputExpression = c => new { c.Rank, c.CountryRank });
             }
             if (refreshStats) {
                 var ext = player.ContextExtensions.FirstOrDefault(ce => ce.Context == context);
@@ -446,35 +435,27 @@ namespace BeatLeader_Server.Controllers {
                     return Unauthorized();
                 }
             }
-            _context.ChangeTracker.AutoDetectChangesEnabled = false;
+
             Dictionary<string, int> countries = new Dictionary<string, int>();
             var ranked = await _context.PlayerContextExtensions
                 .Where(p => !p.Banned && p.Context == context)
+                .AsNoTracking()
                 .OrderByDescending(t => t.Pp)
-                .Select(p => new { Id = p.Id, Country = p.Country })
+                .Select(p => new PlayerContextExtension { Id = p.Id, Country = p.Country })
                 .ToListAsync();
-            foreach ((int i, var pp) in ranked.Select((value, i) => (i, value)))
+            foreach ((int i, var p) in ranked.Select((value, i) => (i, value)))
             {
-                var p = new PlayerContextExtension { Id = pp.Id, Country = pp.Country };
-                try {
-                    _context.PlayerContextExtensions.Attach(p);
-                } catch {}
-
                 p.Rank = i + 1;
-                _context.Entry(p).Property(x => x.Rank).IsModified = true;
                 if (!countries.ContainsKey(p.Country))
                 {
                     countries[p.Country] = 1;
                 }
 
                 p.CountryRank = countries[p.Country];
-                _context.Entry(p).Property(x => x.CountryRank).IsModified = true;
 
                 countries[p.Country]++;
             }
-            await _context.BulkSaveChangesAsync();
-
-            _context.ChangeTracker.AutoDetectChangesEnabled = true;
+            await _context.BulkUpdateAsync(ranked, options => options.ColumnInputExpression = c => new { c.Rank, c.CountryRank });
 
             return Ok();
         }

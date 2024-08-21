@@ -318,7 +318,8 @@ namespace BeatLeader_Server.Controllers
             }
 
             var topVotedResult = topVoted.Result;
-            if (topVotedResult.Value?.Data.FirstOrDefault()?.Id == topWeek.Result.Value?.Data.FirstOrDefault()?.Id) {
+            if (topVotedResult.Value?.Data.FirstOrDefault()?.Id == topWeek.Result.Value?.Data.FirstOrDefault()?.Id || 
+                topVotedResult.Value?.Data.FirstOrDefault()?.Id == topTodayResult.Value?.Data.FirstOrDefault()?.Id) {
                 topVotedResult = await _leaderboardController.GetAll(2, 1, MapSortBy.Voting, date_from: timeset - 60 * 60 * 24 * 30, overrideCurrentId: currentId);
             }
 
