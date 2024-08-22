@@ -208,8 +208,7 @@ namespace BeatLeader_Server.Controllers {
             var result = new ResponseWithMetadata<ScoreResponseWithMyScore>() {
                 Metadata = new Metadata() {
                     Page = page,
-                    ItemsPerPage = count,
-                    Total = await sequence.CountAsync()
+                    ItemsPerPage = count
                 },
                 Data = resultList.OrderBy(s => scoreIds.IndexOf((int)s.Id))
             };

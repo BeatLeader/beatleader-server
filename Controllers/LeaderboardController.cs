@@ -710,7 +710,17 @@ namespace BeatLeader_Server.Controllers {
                 Reweight = l.Reweight,
                 Changes = l.Changes,
                 ClanRankingContested = l.ClanRankingContested,
-                Clan = l.Clan,
+                Clan = new ClanResponseFull {
+                    Id = l.Clan.Id,
+                    Name = l.Clan.Name,
+                    Color = l.Clan.Color,
+                    Icon = l.Clan.Icon,
+                    Tag = l.Clan.Tag,
+                    LeaderID = l.Clan.LeaderID,
+                    Description = l.Clan.Description,
+                    Pp = l.Clan.Pp,
+                    Rank = l.Clan.Rank
+                },
                 FeaturedPlaylists = l.FeaturedPlaylists,
                 LeaderboardGroup = l.LeaderboardGroup.Leaderboards.Select(it =>
                     new LeaderboardGroupEntry {
@@ -1015,14 +1025,55 @@ namespace BeatLeader_Server.Controllers {
                 .Select(cr => new ClanRankingResponse
                 {
                     Id = cr.Id,
-                    Clan = cr.Clan,
+                    Clan = new ClanResponseFull {
+                        Id = cr.Clan.Id,
+                        Name = cr.Clan.Name,
+                        Color = cr.Clan.Color,
+                        Icon = cr.Clan.Icon,
+                        Tag = cr.Clan.Tag,
+                        LeaderID = cr.Clan.LeaderID,
+                        Description = cr.Clan.Description,
+                        Pp = cr.Clan.Pp,
+                        Rank = cr.Clan.Rank
+                    },
                     LastUpdateTime = cr.LastUpdateTime,
                     AverageRank = cr.AverageRank,
                     Pp = cr.Pp,
                     AverageAccuracy = cr.AverageAccuracy,
                     TotalScore = cr.TotalScore,
                     LeaderboardId = cr.LeaderboardId,
-                    Leaderboard = cr.Leaderboard,
+                    Leaderboard = new LeaderboardResponse {
+                        Id = cr.Leaderboard.Id,
+                        Song = new SongResponse {
+                            Id = cr.Leaderboard.Song.Id,
+                            Hash = cr.Leaderboard.Song.Hash,
+                            Name = cr.Leaderboard.Song.Name,
+                            SubName = cr.Leaderboard.Song.SubName,
+                            Author = cr.Leaderboard.Song.Author,
+                            Mapper = cr.Leaderboard.Song.Mapper,
+                            CoverImage  = cr.Leaderboard.Song.CoverImage,
+                            FullCoverImage = cr.Leaderboard.Song.FullCoverImage,
+                        },
+                        Difficulty = new DifficultyResponse {
+                            Id = cr.Leaderboard.Difficulty.Id,
+                            Value = cr.Leaderboard.Difficulty.Value,
+                            Mode = cr.Leaderboard.Difficulty.Mode,
+                            DifficultyName = cr.Leaderboard.Difficulty.DifficultyName,
+                            ModeName = cr.Leaderboard.Difficulty.ModeName,
+                            Status = cr.Leaderboard.Difficulty.Status,
+                            ModifierValues = cr.Leaderboard.Difficulty.ModifierValues,
+                            ModifiersRating = cr.Leaderboard.Difficulty.ModifiersRating,
+
+                            Stars  = cr.Leaderboard.Difficulty.Stars,
+                            PredictedAcc  = cr.Leaderboard.Difficulty.PredictedAcc,
+                            PassRating  = cr.Leaderboard.Difficulty.PassRating,
+                            AccRating  = cr.Leaderboard.Difficulty.AccRating,
+                            TechRating  = cr.Leaderboard.Difficulty.TechRating,
+                            Type  = cr.Leaderboard.Difficulty.Type,
+                            MaxScore = cr.Leaderboard.Difficulty.MaxScore,
+                        },
+                        Plays = cr.Leaderboard.Plays,
+                    },
                     AssociatedScores = _context
                         .Scores
                         .Where(s => 
@@ -1103,14 +1154,55 @@ namespace BeatLeader_Server.Controllers {
                 .Select(cr => new ClanRankingResponse
                 {
                     Id = cr.Id,
-                    Clan = cr.Clan,
+                    Clan = new ClanResponseFull {
+                        Id = cr.Clan.Id,
+                        Name = cr.Clan.Name,
+                        Color = cr.Clan.Color,
+                        Icon = cr.Clan.Icon,
+                        Tag = cr.Clan.Tag,
+                        LeaderID = cr.Clan.LeaderID,
+                        Description = cr.Clan.Description,
+                        Pp = cr.Clan.Pp,
+                        Rank = cr.Clan.Rank
+                    },
                     LastUpdateTime = cr.LastUpdateTime,
                     AverageRank = cr.AverageRank,
                     Pp = cr.Pp,
                     AverageAccuracy = cr.AverageAccuracy,
                     TotalScore = cr.TotalScore,
                     LeaderboardId = cr.LeaderboardId,
-                    Leaderboard = cr.Leaderboard,
+                    Leaderboard = new LeaderboardResponse {
+                        Id = cr.Leaderboard.Id,
+                        Song = new SongResponse {
+                            Id = cr.Leaderboard.Song.Id,
+                            Hash = cr.Leaderboard.Song.Hash,
+                            Name = cr.Leaderboard.Song.Name,
+                            SubName = cr.Leaderboard.Song.SubName,
+                            Author = cr.Leaderboard.Song.Author,
+                            Mapper = cr.Leaderboard.Song.Mapper,
+                            CoverImage  = cr.Leaderboard.Song.CoverImage,
+                            FullCoverImage = cr.Leaderboard.Song.FullCoverImage,
+                        },
+                        Difficulty = new DifficultyResponse {
+                            Id = cr.Leaderboard.Difficulty.Id,
+                            Value = cr.Leaderboard.Difficulty.Value,
+                            Mode = cr.Leaderboard.Difficulty.Mode,
+                            DifficultyName = cr.Leaderboard.Difficulty.DifficultyName,
+                            ModeName = cr.Leaderboard.Difficulty.ModeName,
+                            Status = cr.Leaderboard.Difficulty.Status,
+                            ModifierValues = cr.Leaderboard.Difficulty.ModifierValues,
+                            ModifiersRating = cr.Leaderboard.Difficulty.ModifiersRating,
+
+                            Stars  = cr.Leaderboard.Difficulty.Stars,
+                            PredictedAcc  = cr.Leaderboard.Difficulty.PredictedAcc,
+                            PassRating  = cr.Leaderboard.Difficulty.PassRating,
+                            AccRating  = cr.Leaderboard.Difficulty.AccRating,
+                            TechRating  = cr.Leaderboard.Difficulty.TechRating,
+                            Type  = cr.Leaderboard.Difficulty.Type,
+                            MaxScore = cr.Leaderboard.Difficulty.MaxScore,
+                        },
+                        Plays = cr.Leaderboard.Plays,
+                    },
                     AssociatedScores = _context
                         .Scores
                         .Where(s => 
@@ -1318,7 +1410,17 @@ namespace BeatLeader_Server.Controllers {
                     Reweight = l.Reweight,
                     Changes = l.Changes,
                     ClanRankingContested = l.ClanRankingContested,
-                    Clan = l.Clan,
+                    Clan = new ClanResponseFull {
+                        Id = l.Clan.Id,
+                        Name = l.Clan.Name,
+                        Color = l.Clan.Color,
+                        Icon = l.Clan.Icon,
+                        Tag = l.Clan.Tag,
+                        LeaderID = l.Clan.LeaderID,
+                        Description = l.Clan.Description,
+                        Pp = l.Clan.Pp,
+                        Rank = l.Clan.Rank
+                    },
                     LeaderboardGroup = l.LeaderboardGroup.Leaderboards.Select(it =>
                         new LeaderboardGroupEntry
                         {
@@ -1361,7 +1463,17 @@ namespace BeatLeader_Server.Controllers {
                     .Select(cr => new ClanRankingResponse
                     {
                         Id = cr.Id,
-                        Clan = cr.Clan,
+                        Clan = new ClanResponseFull {
+                            Id = cr.Clan.Id,
+                            Name = cr.Clan.Name,
+                            Color = cr.Clan.Color,
+                            Icon = cr.Clan.Icon,
+                            Tag = cr.Clan.Tag,
+                            LeaderID = cr.Clan.LeaderID,
+                            Description = cr.Clan.Description,
+                            Pp = cr.Clan.Pp,
+                            Rank = cr.Clan.Rank
+                        },
                         LastUpdateTime = cr.LastUpdateTime,
                         AverageRank = cr.AverageRank,
                         Rank = cr.Rank,
@@ -1369,7 +1481,38 @@ namespace BeatLeader_Server.Controllers {
                         AverageAccuracy = cr.AverageAccuracy,
                         TotalScore = cr.TotalScore,
                         LeaderboardId = cr.LeaderboardId,
-                        Leaderboard = cr.Leaderboard,
+                        Leaderboard = new LeaderboardResponse {
+                            Id = cr.Leaderboard.Id,
+                            Song = new SongResponse {
+                                Id = cr.Leaderboard.Song.Id,
+                                Hash = cr.Leaderboard.Song.Hash,
+                                Name = cr.Leaderboard.Song.Name,
+                                SubName = cr.Leaderboard.Song.SubName,
+                                Author = cr.Leaderboard.Song.Author,
+                                Mapper = cr.Leaderboard.Song.Mapper,
+                                CoverImage  = cr.Leaderboard.Song.CoverImage,
+                                FullCoverImage = cr.Leaderboard.Song.FullCoverImage,
+                            },
+                            Difficulty = new DifficultyResponse {
+                                Id = cr.Leaderboard.Difficulty.Id,
+                                Value = cr.Leaderboard.Difficulty.Value,
+                                Mode = cr.Leaderboard.Difficulty.Mode,
+                                DifficultyName = cr.Leaderboard.Difficulty.DifficultyName,
+                                ModeName = cr.Leaderboard.Difficulty.ModeName,
+                                Status = cr.Leaderboard.Difficulty.Status,
+                                ModifierValues = cr.Leaderboard.Difficulty.ModifierValues,
+                                ModifiersRating = cr.Leaderboard.Difficulty.ModifiersRating,
+
+                                Stars  = cr.Leaderboard.Difficulty.Stars,
+                                PredictedAcc  = cr.Leaderboard.Difficulty.PredictedAcc,
+                                PassRating  = cr.Leaderboard.Difficulty.PassRating,
+                                AccRating  = cr.Leaderboard.Difficulty.AccRating,
+                                TechRating  = cr.Leaderboard.Difficulty.TechRating,
+                                Type  = cr.Leaderboard.Difficulty.Type,
+                                MaxScore = cr.Leaderboard.Difficulty.MaxScore,
+                            },
+                            Plays = cr.Leaderboard.Plays,
+                        },
                         AssociatedScores = null,
                         AssociatedScoresCount = 0
                     })
@@ -1449,7 +1592,17 @@ namespace BeatLeader_Server.Controllers {
 
                     Requirements = lb.Difficulty.Requirements,
                 },
-                Clan = lb.Clan,
+                Clan = new ClanResponseFull {
+                    Id = lb.Clan.Id,
+                    Name = lb.Clan.Name,
+                    Color = lb.Clan.Color,
+                    Icon = lb.Clan.Icon,
+                    Tag = lb.Clan.Tag,
+                    LeaderID = lb.Clan.LeaderID,
+                    Description = lb.Clan.Description,
+                    Pp = lb.Clan.Pp,
+                    Rank = lb.Clan.Rank
+                },
                 ClanRankingContested = lb.ClanRankingContested,
                 MyScore = my_scores && currentID != null 
                     ? lb.Scores.AsQueryable().Where(s => s.PlayerId == currentID && s.ValidContexts.HasFlag(LeaderboardContexts.General)).Select(ScoreResponseQuery.SelectWithAcc()).FirstOrDefault()
@@ -1605,7 +1758,17 @@ namespace BeatLeader_Server.Controllers {
                         Qualification = lb.Qualification,
                         Reweight = lb.Reweight,
                         ClanRankingContested = lb.ClanRankingContested,
-                        Clan = lb.Clan,
+                        Clan = new ClanResponseFull {
+                            Id = lb.Clan.Id,
+                            Name = lb.Clan.Name,
+                            Color = lb.Clan.Color,
+                            Icon = lb.Clan.Icon,
+                            Tag = lb.Clan.Tag,
+                            LeaderID = lb.Clan.LeaderID,
+                            Description = lb.Clan.Description,
+                            Pp = lb.Clan.Pp,
+                            Rank = lb.Clan.Rank
+                        },
                         PositiveVotes = lb.PositiveVotes,
                         NegativeVotes = lb.NegativeVotes,
                         VoteStars = lb.VoteStars,
