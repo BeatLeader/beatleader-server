@@ -312,7 +312,7 @@ namespace BeatLeader_Server.Controllers
                     if (firstNote.spawnTime != secondNote.spawnTime || firstNote.noteID != secondNote.noteID) {
                         break;
                     }
-                    if (firstNote.noteCutInfo.cutPoint.x == 0 && firstNote.noteCutInfo.cutPoint.y == 0 && firstNote.noteCutInfo.cutPoint.z == 0) {
+                    if (firstNote.noteCutInfo == null || (firstNote.noteCutInfo.cutPoint.x == 0 && firstNote.noteCutInfo.cutPoint.y == 0 && firstNote.noteCutInfo.cutPoint.z == 0)) {
                         cleanedNotes.Add(secondNote);
                     } else {
                         cleanedNotes.Add(firstNote);
@@ -1259,15 +1259,16 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 // Calculate clan ranking for this leaderboard
+                await dbContext.BulkSaveChangesAsync();
                 (var changes, var playerClans) = await dbContext.UpdateClanRanking(leaderboard, resultScore);
+                await dbContext.BulkSaveChangesAsync();
+
                 if (changes?.Count > 0) {
                     ClanTaskService.AddJob(new ClanRankingChangesDescription {
                         Score = resultScore,
                         Changes = changes
                     });
                 }
-
-                await dbContext.BulkSaveChangesAsync();
             }
             catch (Exception e)
             {

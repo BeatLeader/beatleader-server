@@ -561,7 +561,6 @@ namespace BeatLeader_Server.Controllers {
 
                     newClanOrder = string.Join(",", player.Clans
                         .OrderBy(c => newClanOrder.IndexOf(c.Tag))
-                        .ThenBy(c => c.Id)
                         .Select(c => c.Tag));
 
                     _context.ClanOrderChanges.Add(new ClanOrderChange {
@@ -571,19 +570,12 @@ namespace BeatLeader_Server.Controllers {
                         NewOrder = newClanOrder
                     });
 
-                    HttpContext.Response.OnCompleted(async () => {
-                        try {
-                            ClanTaskService.AddJob(new ClanRankingChangesDescription {
-                                GlobalMapEvent = GlobalMapEvent.priorityChange,
-                                PlayerId = player.Id,
-                                Changes = await ClanUtils.RecalculateClanRankingForPlayer(_context, player.Id),
-                            });
-                        } catch (Exception e) {
-                            Console.WriteLine($"EXCEPTION: {e}");
-                        }
-                    });
-
                     player.ClanOrder = newClanOrder;
+
+                    ClanTaskService.AddJob(new ClanRankingChangesDescription {
+                        GlobalMapEvent = GlobalMapEvent.priorityChange,
+                        PlayerId = player.Id
+                    });
                 }
             }
 

@@ -133,7 +133,7 @@ namespace BeatLeader_Server.ControllerHelpers {
             .Take(count)
             .Select(cr => new ClanRankingResponse {
                 Id = cr.Id,
-                Clan = new ClanResponseFull {
+                Clan = cr.Clan == null ? null : new ClanResponseFull {
                     Id = cr.Clan.Id,
                     Name = cr.Clan.Name,
                     Color = cr.Clan.Color,

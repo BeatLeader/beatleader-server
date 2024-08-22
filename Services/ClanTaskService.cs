@@ -127,11 +127,11 @@ namespace BeatLeader_Server.Services
                 Console.WriteLine("DONE ClanTaskService");
 
                 await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
-                try {
-                    await ProcessJobs(stoppingToken);
-                } catch { }
             }
             while (!stoppingToken.IsCancellationRequested);
+            try {
+                await ProcessJobs(stoppingToken);
+            } catch { }
         }
 
         private async Task AddCustomHooks(AppContext _context, List<string> hooks, List<ClanRankingChanges> changes) {
@@ -162,6 +162,10 @@ namespace BeatLeader_Server.Services
         }
 
         private async Task PopulateRecords(AppContext _context, dynamic? globalMap, ClanRankingChangesDescription job) {
+            if (job.Changes == null && job.PlayerId != null) {
+                job.Changes = await ClanUtils.RecalculateClanRankingForPlayer(_context, job.PlayerId);
+            }
+
             if (job.Changes == null || job.Changes.Count == 0) return;
 
             foreach (var change in job.Changes)
@@ -335,24 +339,23 @@ namespace BeatLeader_Server.Services
                                 await AddCustomHooks(_context, hooks, job.Changes);
 
                                 string url = $"https://render.beatleader.xyz/animatedscreenshot/620x280/clansmapchange/general/clansmap/leaderboard/{job.Score.LeaderboardId}";
-
+                                string? path = null;
                                 try {
                                     HttpResponseMessage response = await client.GetAsync(url);
 
                                     if (response.IsSuccessStatusCode) {
                                         var gif = await response.Content.ReadAsByteArrayAsync();
-                                        string path = $"/root/assets/clansmap-change-{(int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds}-{job.Score.LeaderboardId}.gif";
+                                        path = $"/root/assets/clansmap-change-{(int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds}-{job.Score.LeaderboardId}.gif";
                                         File.WriteAllBytes(path, gif);
-
-                                        ClanMessageService.AddScoreJob(new ChangesWithScore {
-                                            GifPath = path,
-                                            Score = job.Score,
-                                            Changes = job.Changes,
-                                            Hooks = hooks.Distinct().ToList()
-                                        });
                                     }
                                 } catch (Exception e) {
                                 }
+                                ClanMessageService.AddScoreJob(new ChangesWithScore {
+                                    GifPath = path,
+                                    Score = job.Score,
+                                    Changes = job.Changes,
+                                    Hooks = hooks.Distinct().ToList()
+                                });
                             }
 
                             Console.WriteLine("9 ClanTaskService");

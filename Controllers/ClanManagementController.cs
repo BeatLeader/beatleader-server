@@ -33,29 +33,6 @@ namespace BeatLeader_Server.Controllers
             _configuration = configuration;
         }
 
-        [NonAction]
-        public async Task<List<ClanRankingChanges>?> RecalculateClanRanking(string playerId) {
-            var leaderboardsRecalc = await _context
-                .Scores
-                .Where(s => s.Pp > 0 && !s.Qualification && s.PlayerId == playerId)
-                .Include(s => s.Leaderboard)
-                .ThenInclude(lb => lb.Difficulty)
-                .Include(s => s.Leaderboard)
-                .ThenInclude(lb => lb.ClanRanking)
-                .Select(s => s.Leaderboard)
-                .ToListAsync();
-            var result = new List<ClanRankingChanges>(); 
-            foreach (var leaderboard in leaderboardsRecalc)
-            {
-                var changes = await _context.CalculateClanRankingSlow(leaderboard);
-                if (changes != null) {
-                    result.AddRange(changes);
-                }
-            }
-            await _context.BulkSaveChangesAsync();
-            return result;
-        }
-
         [HttpPost("~/clan/create")]
         public async Task<ActionResult<Clan>> CreateClan(
             [FromQuery] string name,
@@ -188,15 +165,11 @@ namespace BeatLeader_Server.Controllers
             player.RefreshClanOrder();
             await _context.SaveChangesAsync();
 
-            HttpContext.Response.OnCompleted(async () => {
-
-                ClanTaskService.AddJob(new ClanRankingChangesDescription {
-                    GlobalMapEvent = GlobalMapEvent.create,
-                    PlayerId = player.Id,
-                    ClanId = newClan.Id,
-                    Clan = newClan,
-                    Changes = await RecalculateClanRanking(currentID)
-                });
+            ClanTaskService.AddJob(new ClanRankingChangesDescription {
+                GlobalMapEvent = GlobalMapEvent.create,
+                PlayerId = player.Id,
+                ClanId = newClan.Id,
+                Clan = newClan
             });
 
             return newClan;
@@ -850,14 +823,11 @@ namespace BeatLeader_Server.Controllers
             clan.Pp = await _context.RecalculateClanPP(clan.Id);
             await _context.SaveChangesAsync();
 
-            HttpContext.Response.OnCompleted(async () => {
-                ClanTaskService.AddJob(new ClanRankingChangesDescription {
-                    GlobalMapEvent = GlobalMapEvent.kick,
-                    PlayerId = user.Player.Id,
-                    Clan = clan,
-                    ClanId = clan.Id,
-                    Changes = await RecalculateClanRanking(player),
-                });
+            ClanTaskService.AddJob(new ClanRankingChangesDescription {
+                GlobalMapEvent = GlobalMapEvent.kick,
+                PlayerId = user.Player.Id,
+                Clan = clan,
+                ClanId = clan.Id
             });
 
             return Ok();
@@ -916,14 +886,11 @@ namespace BeatLeader_Server.Controllers
             clan.Pp = await _context.RecalculateClanPP(clan.Id);
             await _context.SaveChangesAsync();
 
-            HttpContext.Response.OnCompleted(async () => {
-                ClanTaskService.AddJob(new ClanRankingChangesDescription {
-                    GlobalMapEvent = GlobalMapEvent.join, 
-                    Clan = clan,
-                    PlayerId = user.Player.Id,
-                    ClanId = clan.Id,
-                    Changes = await RecalculateClanRanking(currentID)
-                });
+            ClanTaskService.AddJob(new ClanRankingChangesDescription {
+                GlobalMapEvent = GlobalMapEvent.join, 
+                Clan = clan,
+                PlayerId = user.Player.Id,
+                ClanId = clan.Id,
             });
 
             return Ok();
@@ -1029,14 +996,11 @@ namespace BeatLeader_Server.Controllers
             clan.Pp = await _context.RecalculateClanPP(clan.Id);
             await _context.SaveChangesAsync();
 
-            HttpContext.Response.OnCompleted(async () => {
-                ClanTaskService.AddJob(new ClanRankingChangesDescription {
-                    GlobalMapEvent = GlobalMapEvent.leave,
-                    Clan = clan,
-                    ClanId = clan.Id,
-                    PlayerId = user.Player.Id,
-                    Changes = await RecalculateClanRanking(currentID)
-                });
+            ClanTaskService.AddJob(new ClanRankingChangesDescription {
+                GlobalMapEvent = GlobalMapEvent.leave,
+                Clan = clan,
+                ClanId = clan.Id,
+                PlayerId = user.Player.Id
             });
 
             return Ok();

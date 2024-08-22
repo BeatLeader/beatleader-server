@@ -450,7 +450,7 @@ namespace BeatLeader_Server.Utils
             leaderboard.ClanId = null;
         }
 
-        public static async Task PostChangesWithScore(AppContext context, CancellationToken stoppingToken, List<ClanRankingChanges>? changes, Score score, string imagePath, string? hook) {
+        public static async Task PostChangesWithScore(AppContext context, CancellationToken stoppingToken, List<ClanRankingChanges>? changes, Score score, string? imagePath, string? hook) {
             if (changes == null || hook == null) return;
 
             try {
@@ -482,9 +482,11 @@ namespace BeatLeader_Server.Utils
                     message += $" which brings **[{currentCaptor.Tag}]** to {Math.Round(currentCaptor.RankedPoolPercentCaptured * 100, 2)}% of global dominance!";
                 }
                 
-                var messageId = await dsClient.SendFileAsync(imagePath, message, flags: MessageFlags.SuppressEmbeds);
-                await Bot.BotService.PublishAnnouncement(1195125703830683678, messageId);
-                await Task.Delay(TimeSpan.FromSeconds(20), stoppingToken);
+                var messageId = imagePath != null 
+                        ? await dsClient.SendFileAsync(imagePath, message, flags: MessageFlags.SuppressEmbeds)
+                        : await dsClient.SendMessageAsync(message, flags: MessageFlags.SuppressEmbeds);
+                //await Bot.BotService.PublishAnnouncement(1195125703830683678, messageId);
+                await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
             }
             } catch (Exception e)
             {

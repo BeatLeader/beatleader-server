@@ -11,7 +11,7 @@ namespace BeatLeader_Server.Services
 
     public class ChangesWithScore {
         public List<string> Hooks { get; set; }
-        public string GifPath { get; set; }
+        public string? GifPath { get; set; }
         public Score Score { get; set; }
         public List<ClanRankingChanges>? Changes { get; set; }
     }
@@ -113,7 +113,9 @@ namespace BeatLeader_Server.Services
                         foreach (var hook in job.Hooks) {
                             await ClanUtils.PostChangesWithScore(_context, stoppingToken, job.Changes, job.Score, job.GifPath, hook);
                         }
-                        File.Delete(job.GifPath);
+                        if (job.GifPath != null) {
+                            File.Delete(job.GifPath);
+                        }
                     }
                 } catch (Exception e)
                 {

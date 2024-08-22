@@ -710,7 +710,7 @@ namespace BeatLeader_Server.Controllers {
                 Reweight = l.Reweight,
                 Changes = l.Changes,
                 ClanRankingContested = l.ClanRankingContested,
-                Clan = new ClanResponseFull {
+                Clan = l.Clan == null ? null : new ClanResponseFull {
                     Id = l.Clan.Id,
                     Name = l.Clan.Name,
                     Color = l.Clan.Color,
@@ -1025,7 +1025,7 @@ namespace BeatLeader_Server.Controllers {
                 .Select(cr => new ClanRankingResponse
                 {
                     Id = cr.Id,
-                    Clan = new ClanResponseFull {
+                    Clan = cr.Clan == null ? null : new ClanResponseFull {
                         Id = cr.Clan.Id,
                         Name = cr.Clan.Name,
                         Color = cr.Clan.Color,
@@ -1154,7 +1154,7 @@ namespace BeatLeader_Server.Controllers {
                 .Select(cr => new ClanRankingResponse
                 {
                     Id = cr.Id,
-                    Clan = new ClanResponseFull {
+                    Clan = cr.Clan == null ? null : new ClanResponseFull {
                         Id = cr.Clan.Id,
                         Name = cr.Clan.Name,
                         Color = cr.Clan.Color,
@@ -1410,7 +1410,7 @@ namespace BeatLeader_Server.Controllers {
                     Reweight = l.Reweight,
                     Changes = l.Changes,
                     ClanRankingContested = l.ClanRankingContested,
-                    Clan = new ClanResponseFull {
+                    Clan = l.Clan == null ? null : new ClanResponseFull {
                         Id = l.Clan.Id,
                         Name = l.Clan.Name,
                         Color = l.Clan.Color,
@@ -1463,7 +1463,7 @@ namespace BeatLeader_Server.Controllers {
                     .Select(cr => new ClanRankingResponse
                     {
                         Id = cr.Id,
-                        Clan = new ClanResponseFull {
+                        Clan = cr.Clan == null ? null : new ClanResponseFull {
                             Id = cr.Clan.Id,
                             Name = cr.Clan.Name,
                             Color = cr.Clan.Color,
@@ -1592,7 +1592,7 @@ namespace BeatLeader_Server.Controllers {
 
                     Requirements = lb.Difficulty.Requirements,
                 },
-                Clan = new ClanResponseFull {
+                Clan = lb.Clan == null ? null : new ClanResponseFull {
                     Id = lb.Clan.Id,
                     Name = lb.Clan.Name,
                     Color = lb.Clan.Color,
@@ -1758,7 +1758,7 @@ namespace BeatLeader_Server.Controllers {
                         Qualification = lb.Qualification,
                         Reweight = lb.Reweight,
                         ClanRankingContested = lb.ClanRankingContested,
-                        Clan = new ClanResponseFull {
+                        Clan = lb.Clan == null ? null : new ClanResponseFull {
                             Id = lb.Clan.Id,
                             Name = lb.Clan.Name,
                             Color = lb.Clan.Color,
