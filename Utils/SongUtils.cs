@@ -102,6 +102,8 @@ namespace BeatLeader_Server.Utils
         {
             public RatingResult FS { get; set; }
             public RatingResult SFS { get; set; }
+            public RatingResult BFS { get; set; }
+            public RatingResult BSF { get; set; }
             public RatingResult SS { get; set; }
             public RatingResult none { get; set; }
         }

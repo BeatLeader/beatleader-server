@@ -57,10 +57,22 @@ namespace BeatLeader_Server.Utils
                     SFTechRating = response.SFS.LackMapCalculation.TechRating,
                     SFPredictedAcc = response.SFS.PredictedAcc,
                     SFAccRating = response.SFS.AccRating,
+
+                    BFSPassRating = response.BFS.LackMapCalculation.PassRating,
+                    BFSTechRating = response.BFS.LackMapCalculation.TechRating,
+                    BFSPredictedAcc = response.BFS.PredictedAcc,
+                    BFSAccRating = response.BFS.AccRating,
+
+                    BSFPassRating = response.BSF.LackMapCalculation.PassRating,
+                    BSFTechRating = response.BSF.LackMapCalculation.TechRating,
+                    BSFPredictedAcc = response.BSF.PredictedAcc,
+                    BSFAccRating = response.BSF.AccRating,
                 };
 
                 modrating.SFStars = ReplayUtils.ToStars(modrating.SFAccRating, modrating.SFPassRating, modrating.SFTechRating);
                 modrating.FSStars = ReplayUtils.ToStars(modrating.FSAccRating, modrating.FSPassRating, modrating.FSTechRating);
+                modrating.BSFStars = ReplayUtils.ToStars(modrating.BSFAccRating, modrating.BSFPassRating, modrating.BSFTechRating);
+                modrating.BFSStars = ReplayUtils.ToStars(modrating.BFSAccRating, modrating.BFSPassRating, modrating.BFSTechRating);
                 modrating.SSStars = ReplayUtils.ToStars(modrating.SSAccRating, modrating.SSPassRating, modrating.SSTechRating);
             } else
             {
@@ -87,6 +99,33 @@ namespace BeatLeader_Server.Utils
             {
                 var response = await ExmachinaStarsLink(link, diff.Value, diff.ModeName);
                 UpdateFromResponse(diff, response, rankChange);
+
+            } catch {}
+        }
+
+        public static async Task UpdateTags(Leaderboard leaderboard, LeaderboardChange rankChange)
+        {
+            try
+            {
+                var diff = leaderboard.Difficulty;
+                var response = await ApiTags(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0);
+                switch (response) {
+                    case "acc":
+                        diff.Type = 1;
+                        break;
+                    case "tech":
+                        diff.Type = 2;
+                        break;
+                    case "midspeed":
+                        diff.Type = 4;
+                        break;
+                    case "speed":
+                        diff.Type = 8;
+                        break;
+                    default:
+                        break;
+                }
+                rankChange.NewType = diff.Type;
 
             } catch {}
         }
