@@ -560,7 +560,7 @@ namespace BeatLeader_Server.Controllers {
                     }
 
                     newClanOrder = string.Join(",", player.Clans
-                        .OrderBy(c => newClanOrder.IndexOf(c.Tag))
+                        .OrderBy(c => newClanOrder.IndexOf(c.Tag) >= 0 ? newClanOrder.IndexOf(c.Tag) : 1000)
                         .Select(c => c.Tag));
 
                     _context.ClanOrderChanges.Add(new ClanOrderChange {

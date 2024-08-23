@@ -2,7 +2,6 @@
 using BeatLeader_Server.Services;
 using Discord;
 using Discord.Webhook;
-using Discord.WebSocket;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -66,7 +65,7 @@ namespace BeatLeader_Server.Utils
             var playerClans = newScore
                 .Player?
                 .Clans?
-                .OrderBy(c => clanOrder.IndexOf(c.Tag))
+                .OrderBy(c => clanOrder.IndexOf(c.Tag) >= 0 ? clanOrder.IndexOf(c.Tag) : 1000)
                 .ThenBy(c => c.Id)
                 .Take(1)
                 .ToList();
@@ -96,8 +95,9 @@ namespace BeatLeader_Server.Utils
                     .Where(s => 
                         s.ValidContexts.HasFlag(LeaderboardContexts.General) && 
                         s.LeaderboardId == newScore.LeaderboardId && 
+                        !s.Banned &&
                         s.Player.Clans
-                        .OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                        .OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag) >= 0 ? s.Player.ClanOrder.IndexOf(c.Tag) : 1000)
                         .ThenBy(c => c.Id)
                         .Take(1)
                         .Contains(clan))
@@ -228,7 +228,7 @@ namespace BeatLeader_Server.Utils
                 foreach (Clan clan in 
                     score
                         .Clans
-                        .OrderBy(c => score.ClanOrder.IndexOf(c.Tag))
+                        .OrderBy(c => score.ClanOrder.IndexOf(c.Tag) >= 0 ? score.ClanOrder.IndexOf(c.Tag) : 1000)
                         .ThenBy(c => c.Id)
                         .Take(1))
                 {

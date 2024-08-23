@@ -1079,6 +1079,7 @@ namespace BeatLeader_Server.Controllers {
                         .Where(s => 
                             s.LeaderboardId == leaderboardId && 
                             s.ValidContexts.HasFlag(LeaderboardContexts.General) && 
+                            !s.Banned &&
                             s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
                             .ThenBy(c => c.Id).Take(1).Contains(cr.Clan))
                         .Include(sc => sc.Player)
@@ -1130,7 +1131,8 @@ namespace BeatLeader_Server.Controllers {
                         .Scores
                         .Where(sc => 
                             sc.LeaderboardId == leaderboardId && 
-                            sc.ValidContexts.HasFlag(LeaderboardContexts.General) && 
+                            sc.ValidContexts.HasFlag(LeaderboardContexts.General) &&
+                            !sc.Banned &&
                             sc.Player.Clans.OrderBy(c => sc.Player.ClanOrder.IndexOf(c.Tag))
                             .ThenBy(c => c.Id).Take(1).Contains(cr.Clan))
                         .Count()
@@ -1208,6 +1210,7 @@ namespace BeatLeader_Server.Controllers {
                         .Where(s => 
                             s.LeaderboardId == leaderboardId && 
                             s.ValidContexts.HasFlag(LeaderboardContexts.General) && 
+                            !s.Banned &&
                             s
                              .Player
                              .Clans
@@ -1265,6 +1268,7 @@ namespace BeatLeader_Server.Controllers {
                         .Where(sc => 
                             sc.LeaderboardId == leaderboardId && 
                             sc.ValidContexts.HasFlag(LeaderboardContexts.General) && 
+                            !sc.Banned &&
                             sc.Player.Clans.OrderBy(c => sc.Player.ClanOrder.IndexOf(c.Tag))
                             .ThenBy(c => c.Id).Take(1).Contains(cr.Clan))
                         .Count()

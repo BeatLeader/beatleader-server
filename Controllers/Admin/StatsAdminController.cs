@@ -238,7 +238,8 @@ namespace BeatLeader_Server.Controllers
                         s.LeaderboardId,
                         s.Accuracy,
                         s.Modifiers,
-                        s.PlayerId
+                        s.PlayerId,
+                        s.Timepost
                     }).ToList(),
 
                 Maps = _context
