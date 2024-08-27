@@ -470,7 +470,7 @@ namespace BeatLeader_Server.Controllers
                 resultScore.Replay = await _s3Client.UploadReplay(ReplayUtils.ReplayFilename(replay, resultScore, true), replayData);
 
                 FailedScore failedScore = new FailedScore {
-                    Error = e.Message + (e.InnerException != null ? (" --- Inner: " + e.InnerException.Message) : ""),
+                    Error = e.StackTrace + "\n" + e.Message + (e.InnerException != null ? (" --- Inner: " + e.InnerException.Message) : ""),
                     Leaderboard = leaderboard,
                     PlayerId = resultScore.PlayerId,
                     Modifiers = resultScore.Modifiers,
@@ -644,6 +644,9 @@ namespace BeatLeader_Server.Controllers
                 await dbContext.SaveChangesAsync();
 
                 await RecalculateRanks(dbContext, resultScore, currentScores, leaderboard, player);
+                if (!player.Bot && leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
+                    await dbContext.RecalculatePPAndRankFast(player, resultScore.ValidContexts);
+                }
             
                 context.Response.OnCompleted(async () => {
                     await PostUploadAction(
@@ -664,9 +667,6 @@ namespace BeatLeader_Server.Controllers
                 });
 
                 var result = RemoveLeaderboard(resultScore, resultScore.Rank);
-                if (!player.Bot && leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
-                    await dbContext.RecalculatePPAndRankFasterAllContexts(result);
-                }
                 result.Player = PostProcessSettings(result.Player, false);
 
                 return (result, false, true);
@@ -975,7 +975,11 @@ namespace BeatLeader_Server.Controllers
                 s.Rank = i + 1;
             }
 
-            await dbContext.BulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = s => new { s.Rank });
+            try {
+                await dbContext.BulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = s => new { s.Rank });
+            } catch (Exception e) {
+                await dbContext.BulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = s => new { s.Rank });
+            }
         }
 
         class ScoreSelection {
@@ -1052,7 +1056,11 @@ namespace BeatLeader_Server.Controllers
                 s.Rank = i + 1;
             }
 
-            await dbContext.BulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = s => new { s.Rank });
+            try {
+                await dbContext.BulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = s => new { s.Rank });
+            } catch (Exception e) {
+                await dbContext.BulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = s => new { s.Rank });
+            }
         }
 
         [NonAction]
@@ -1072,10 +1080,6 @@ namespace BeatLeader_Server.Controllers
             bool allow = false) {
 
             resultScore.Replay = await _s3Client.UploadReplay(ReplayUtils.ReplayFilename(replay, resultScore), replayData);
-
-            if (!player.Bot && leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
-                await dbContext.RecalculatePPAndRankFast(player, resultScore.ValidContexts);
-            }
 
             if (statistic != null) {
                 await _s3Client.UploadScoreStats(resultScore.Id + ".json", statistic);
@@ -1165,7 +1169,7 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
-                if (leaderboard.Difficulty.Notes > 30 && !allow)
+                if (leaderboard.Difficulty.Notes > 30 && !allow && statistic != null)
                 {
                     var sameAccScore = await dbContext
                         .Scores
@@ -1188,8 +1192,10 @@ namespace BeatLeader_Server.Controllers
 
                 resultScore.Country = (context?.Request.Headers["cf-ipcountry"] ?? "") == StringValues.Empty ? "not set" : context?.Request.Headers["cf-ipcountry"].ToString();
 
-                await UpdateTop4(dbContext, resultScore, currentScores, player, oldPlayerStats, leaderboard);
-                UpdateImprovements(resultScore, currentScores, player, oldPlayerStats, leaderboard);
+                if (oldPlayerStats.Count > 0) {
+                    await UpdateTop4(dbContext, resultScore, currentScores, player, oldPlayerStats, leaderboard);
+                    UpdateImprovements(resultScore, currentScores, player, oldPlayerStats, leaderboard);
+                }
 
                 if (resultScore.Hmd == HMD.unknown && (await dbContext.Headsets.FirstOrDefaultAsync(h => h.Name == replay.info.hmd)) == null) {
                     dbContext.Headsets.Add(new Headset {
@@ -1272,7 +1278,7 @@ namespace BeatLeader_Server.Controllers
             }
             catch (Exception e)
             {
-                await SaveFailedScore(dbContext, resultScore, leaderboard, e.ToString());
+                await SaveFailedScore(dbContext, resultScore, leaderboard, (e.StackTrace ?? "") + e.ToString());
             }
         }
 

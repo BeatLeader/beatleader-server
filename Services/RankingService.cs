@@ -53,9 +53,7 @@ namespace BeatLeader_Server.Services
             var oldPp = player.Pp;
             var oldRank = player.Rank;
 
-            (var newPp, var newRank, var newCountryRank) = await _context.RecalculatePPAndRankFaster(player);
-            player.Rank = newRank;
-            player.Pp = newPp;
+            await _context.RecalculatePPAndRankFast(player, LeaderboardContexts.General);
 
             if (score != null && score.ScoreImprovement != null)
             {
@@ -63,9 +61,7 @@ namespace BeatLeader_Server.Services
                 score.ScoreImprovement.TotalPp = player.Pp - oldPp;
             }
 
-            await _context.SaveChangesAsync();
-
-            return (newPp - oldPp, newRank - oldRank);
+            return (player.Pp - oldPp, player.Rank - oldRank);
         }
 
         private async Task<(float, int)> RefreshLeaderboardPlayers(string id, AppContext _context)
@@ -183,13 +179,18 @@ namespace BeatLeader_Server.Services
 
                 await _context.BulkSaveChangesAsync();
 
+                var changes = new List<ClanRankingChanges>();
                 foreach (var leaderboard in leaderboards)
                 {
-                    ClanTaskService.AddJob(new ClanRankingChangesDescription {
-                        Changes = await _context.CalculateClanRankingSlow(leaderboard),
-                        GlobalMapEvent = GlobalMapEvent.ranked
-                    });
+                    var lbChanges = await _context.CalculateClanRankingSlow(leaderboard);
+                    if (lbChanges != null) {
+                        changes.AddRange(lbChanges);
+                    }
                 }
+                ClanTaskService.AddJob(new ClanRankingChangesDescription {
+                    Changes = changes,
+                    GlobalMapEvent = GlobalMapEvent.ranked
+                });
 
                 await _context.BulkSaveChangesAsync();
 

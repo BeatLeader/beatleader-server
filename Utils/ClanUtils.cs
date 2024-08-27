@@ -536,7 +536,7 @@ namespace BeatLeader_Server.Utils
                             .WithUrl("https://beatleader.net/clansmap")
                             .Build()
                         });
-                    await Bot.BotService.PublishAnnouncement(1195125703830683678, messageId);
+                    //await Bot.BotService.PublishAnnouncement(1195125703830683678, messageId);
                     await Task.Delay(TimeSpan.FromSeconds(20), stoppingToken);
                 } catch (Exception e)
                 {

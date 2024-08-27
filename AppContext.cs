@@ -107,6 +107,8 @@ namespace BeatLeader_Server
         public DbSet<ModNews> ModNews { get; set; }
         public DbSet<BeastiesNomination> BeastiesNominations { get; set; }
 
+        public DbSet<PlayerChange> PlayerChange { get; set; }
+
         public void RejectChanges()
         {
             foreach (var entry in ChangeTracker.Entries())

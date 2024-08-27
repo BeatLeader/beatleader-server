@@ -135,54 +135,45 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        private async Task CalculateBatch(List<IGrouping<string, ScoreSelection>> groups, Dictionary<int, float> weights)
+        private async Task CalculateBatch(List<IGrouping<string, Score>> groups, Dictionary<int, float> weights)
         {
-            using (var anotherContext = _dbFactory.CreateDbContext()) {
-                anotherContext.ChangeTracker.AutoDetectChangesEnabled = false;
-                foreach (var group in groups)
+            var playerUpdates = new List<Player>();
+            var scoreUpdates = new List<Score>();
+
+            foreach (var group in groups)
+            {
+                Player player = new Player { Id = group.Key };
+
+                float resultPP = 0f;
+                float accPP = 0f;
+                float techPP = 0f;
+                float passPP = 0f;
+
+                foreach ((int i, var s) in group.OrderByDescending(s => s.Pp).Select((value, i) => (i, value)))
                 {
-                    try {
-                        Player player = new Player { Id = group.Key };
-                        try {
-                            anotherContext.Players.Attach(player);
-                        } catch { }
-
-                        float resultPP = 0f;
-                        float accPP = 0f;
-                        float techPP = 0f;
-                        float passPP = 0f;
-
-                        foreach ((int i, var s) in group.OrderByDescending(s => s.Pp).Select((value, i) => (i, value)))
-                        {
-                            float weight = weights[i];
-                            if (s.Weight != weight)
-                            {
-                                var score = new Score() { Id = s.Id, Weight = weight };
-                                try {
-                                    anotherContext.Scores.Attach(score);
-                                } catch { }
-                                anotherContext.Entry(score).Property(x => x.Weight).IsModified = true;
-                            }
-                            resultPP += s.Pp * weight;
-                            accPP += s.AccPP * weight;
-                            techPP += s.TechPP * weight;
-                            passPP += s.PassPP * weight;
-                        }
-                        player.Pp = resultPP;
-                        player.AccPp = accPP;
-                        player.TechPp = techPP;
-                        player.PassPp = passPP;
-
-                        anotherContext.Entry(player).Property(x => x.Pp).IsModified = true;
-                        anotherContext.Entry(player).Property(x => x.AccPp).IsModified = true;
-                        anotherContext.Entry(player).Property(x => x.TechPp).IsModified = true;
-                        anotherContext.Entry(player).Property(x => x.PassPp).IsModified = true;
-                    } catch (Exception e) {
+                    float weight = weights[i];
+                    if (s.Weight != weight)
+                    {
+                        s.Weight = weight;
                     }
+                    resultPP += s.Pp * weight;
+                    accPP += s.AccPP * weight;
+                    techPP += s.TechPP * weight;
+                    passPP += s.PassPP * weight;
+
+                    scoreUpdates.Add(s);
                 }
-                
-                await anotherContext.BulkSaveChangesAsync();
+
+                player.Pp = resultPP;
+                player.AccPp = accPP;
+                player.TechPp = techPP;
+                player.PassPp = passPP;
+
+                playerUpdates.Add(player);
             }
+
+            await _context.BulkUpdateAsync(playerUpdates, options => options.ColumnInputExpression = c => new { c.Pp, c.AccPp, c.TechPp, c.PassPp });
+            await _context.BulkUpdateAsync(scoreUpdates, options => options.ColumnInputExpression = c => new { c.Weight });
         }
 
         [HttpGet("~/players/refresh")]
@@ -198,8 +189,6 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            _context.ChangeTracker.AutoDetectChangesEnabled = false;
-
             var weights = new Dictionary<int, float>();
             for (int i = 0; i < 10000; i++)
             {
@@ -209,7 +198,7 @@ namespace BeatLeader_Server.Controllers
             var scores = await _context
                 .Scores
                 .Where(s => s.Pp != 0 && !s.Banned && !s.Qualification && s.ValidContexts.HasFlag(LeaderboardContexts.General))
-                .Select(s => new ScoreSelection { 
+                .Select(s => new Score { 
                     Id = s.Id, 
                     Accuracy = s.Accuracy, 
                     Rank = s.Rank, 
@@ -224,36 +213,30 @@ namespace BeatLeader_Server.Controllers
                 .ToListAsync();
 
             var scoreGroups = scores.GroupBy(s => s.PlayerId).ToList();
-            var tasks = new List<Task>();
-            for (int i = 0; i < scoreGroups.Count; i += 5000)
-            {
-                tasks.Add(CalculateBatch(scoreGroups.Skip(i).Take(5000).ToList(), weights));
+            for (int i = 0; i < scoreGroups.Count; i += 5000) {
+                await CalculateBatch(scoreGroups.Skip(i).Take(5000).ToList(), weights);
             }
-            Task.WaitAll(tasks.ToArray());
-            
 
             Dictionary<string, int> countries = new Dictionary<string, int>();
-            var ranked = await _context
-                .Players
+            var ranked = await _context.Players
                 .Where(p => p.Pp > 0 && !p.Banned)
+                .AsNoTracking()
                 .OrderByDescending(t => t.Pp)
+                .Select(p => new Player { Id = p.Id, Country = p.Country })
                 .ToListAsync();
-            foreach ((int i, Player p) in ranked.Select((value, i) => (i, value)))
+
+            foreach ((int i, var p) in ranked.Select((value, i) => (i, value)))
             {
                 p.Rank = i + 1;
-                _context.Entry(p).Property(x => x.Rank).IsModified = true;
                 if (!countries.ContainsKey(p.Country))
                 {
                     countries[p.Country] = 1;
                 }
 
                 p.CountryRank = countries[p.Country];
-                _context.Entry(p).Property(x => x.CountryRank).IsModified = true;
                 countries[p.Country]++;
             }
-            await _context.BulkSaveChangesAsync();
-
-            _context.ChangeTracker.AutoDetectChangesEnabled = true;
+            await _context.BulkUpdateAsync(ranked, options => options.ColumnInputExpression = c => new { c.Rank, c.CountryRank });
 
             return Ok();
         }
