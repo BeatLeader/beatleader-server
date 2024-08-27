@@ -22,10 +22,16 @@ namespace BeatLeader_Server.Services
         public string PlayerId { get; set; }
     }
 
+    public class DailyChanges {
+        public List<string> Hooks { get; set; }
+        public string GifPath { get; set; }
+    }
+
     public class ClanMessageService : BackgroundService {
 
         private static List<ChangesWithMessage> messageJobs = new List<ChangesWithMessage>();
         private static List<ChangesWithScore> scoreJobs = new List<ChangesWithScore>();
+        private static List<DailyChanges> dailyJobs = new List<DailyChanges>();
 
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly IConfiguration _configuration;
@@ -47,12 +53,19 @@ namespace BeatLeader_Server.Services
             }
         }
 
+        public static void AddDailyJob(DailyChanges newJob) {
+            lock (dailyJobs) {
+                dailyJobs.Add(newJob);
+            }
+        }
+
         protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
             do {
                 Console.WriteLine("STARTED ClanMessageServices");
                 try {
                     await ProcessMessageJobs(stoppingToken);
                     await ProcessScoreJobs(stoppingToken);
+                    await ProcessDailyJobs(stoppingToken);
                 } catch { }
                 Console.WriteLine("DONE ClanMessageServices");
 
@@ -60,6 +73,7 @@ namespace BeatLeader_Server.Services
                 try {
                     await ProcessMessageJobs(stoppingToken);
                     await ProcessScoreJobs(stoppingToken);
+                    await ProcessDailyJobs(stoppingToken);
                 } catch { }
             }
             while (!stoppingToken.IsCancellationRequested);
@@ -114,6 +128,36 @@ namespace BeatLeader_Server.Services
                             await ClanUtils.PostChangesWithScore(_context, stoppingToken, job.Changes, job.Score, job.GifPath, hook);
                         }
                         if (job.GifPath != null) {
+                            File.Delete(job.GifPath);
+                        }
+                    }
+                } catch (Exception e)
+                {
+                    Console.WriteLine($"EXCEPTION: {e}");
+                }
+            }
+        }
+
+        private async Task ProcessDailyJobs(CancellationToken stoppingToken) {
+            var jobsToProcess = new List<DailyChanges>();
+
+            lock (dailyJobs) {
+                foreach (var job in dailyJobs) {
+                    jobsToProcess.Add(job);
+                }
+                dailyJobs = new List<DailyChanges>();
+            }
+
+            if (jobsToProcess.Count == 0) return;
+
+            using (var scope = _serviceScopeFactory.CreateScope()) {
+                try {
+                    foreach (var job in jobsToProcess) {
+                        if (job.GifPath != null) {
+                            foreach (var hook in job.Hooks) {
+                                await ClanUtils.PostDailyChanges(stoppingToken, job.GifPath, hook);
+                            }
+                        
                             File.Delete(job.GifPath);
                         }
                     }

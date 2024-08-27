@@ -22,7 +22,7 @@ namespace Renderer.Controllers
             _webHostEnvironment = webHostEnvironment;
             _memoryCache = memoryCache;
             if (browserPool == null) {
-                browserPool = new BrowserPool(5);
+                browserPool = new BrowserPool(20);
             }
         }
 
@@ -44,6 +44,7 @@ namespace Renderer.Controllers
 
             using (var page = await browser.NewPageAsync())
             {
+                await page.SetUserAgentAsync("Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Googlebot/2.1; +http://www.google.com/bot.html) Chrome/127.0.0.0 Safari/537.36");
                 await page.GoToAsync(url, WaitUntilNavigation.Load);
                 await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None);
                 var html = await page.GetContentAsync();
@@ -324,11 +325,10 @@ namespace Renderer.Controllers
             }
 
             if (exePath == null) {
-                const string ChromiumRevision = "120.0.6099.71";
                 var options = new BrowserFetcherOptions();
                 var bf = new BrowserFetcher(options);
-                await bf.DownloadAsync(ChromiumRevision);   
-                exePath = bf.GetExecutablePath(ChromiumRevision);
+                var installed = await bf.DownloadAsync();   
+                exePath = bf.GetExecutablePath(installed.BuildId);
             }
 
             return await Puppeteer.LaunchAsync(new LaunchOptions

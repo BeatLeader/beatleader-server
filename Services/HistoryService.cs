@@ -309,17 +309,53 @@ namespace BeatLeader_Server.Services
                     }
                 }
 
+                var previousTimeset = _context.GlobalMapHistory.Where(c => c.ClanId == 461).OrderByDescending(c => c.Timestamp).FirstOrDefault()?.Timestamp ?? 1724717131;
+
                 var clans = await _context.Clans.ToListAsync();
                 foreach (var clan in clans)
                 {
                     _context.GlobalMapHistory.Add(new GlobalMapHistory {
                         ClanId = clan.Id,
                         GlobalMapCaptured = clan.RankedPoolPercentCaptured,
+                        PlayersCount = clan.PlayersCount,
+                        Pp = clan.Pp,
+                        Rank = clan.Rank,
+                        AverageRank = clan.AverageRank,
+                        AverageAccuracy = clan.AverageAccuracy,
+                        CaptureLeaderboardsCount = clan.CaptureLeaderboardsCount,
                         Timestamp = timeset
                     });
                 }
 
                 await _context.BulkSaveChangesAsync();
+
+                var _httpClientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
+                var client = _httpClientFactory.CreateClient();
+
+                string url = $"https://render.beatleader.xyz/animatedscreenshot/600x600/clansmapchange/general/clansmap/history/{previousTimeset}/{timeset}";
+                string? path = null;
+                try {
+                    HttpResponseMessage response = await client.GetAsync(url);
+
+                    if (response.IsSuccessStatusCode) {
+                        var gif = await response.Content.ReadAsByteArrayAsync();
+                        path = $"/root/assets/clansmap-change-daily-{previousTimeset}-{timeset}.gif";
+                        File.WriteAllBytes(path, gif);
+
+                        var blhook = _configuration.GetValue<string?>("ClanWarsHook") ?? "";
+                        var hooks = clans
+                            .Where(c => c.ClanRankingDiscordHook?.Length > 0)
+                            .SelectMany(c => c.ClanRankingDiscordHook.Split(","))
+                            .Append(blhook);
+
+                        ClanMessageService.AddDailyJob(new DailyChanges {
+                            GifPath = path,
+                            Hooks = hooks.Distinct().ToList()
+                        });
+                    }
+                    
+                } catch (Exception e) {
+                }
             }
         }
     }

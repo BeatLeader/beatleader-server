@@ -1253,7 +1253,7 @@ namespace BeatLeader_Server.Controllers
                             message += Math.Round(improvement.TotalPp, 2) + " to the personal pp and " + improvement.TotalRank + " to rank \n";
                         }
 
-                        await dsClient.SendMessageAsync(message,
+                        var messageId = await dsClient.SendMessageAsync(message,
                             embeds: new List<Embed> { new EmbedBuilder()
                                     .WithTitle("Open leaderboard ↗")
                                     .WithUrl("https://beatleader.xyz/leaderboard/global/" + leaderboard.Id)
@@ -1261,6 +1261,7 @@ namespace BeatLeader_Server.Controllers
                                     .WithImageUrl("https://api.beatleader.xyz/preview/replay?scoreId=" + resultScore.Id)
                                     .Build()
                             });
+                        await Bot.BotService.PublishAnnouncement(1016157747668074627, messageId);
                     }
                 }
 
