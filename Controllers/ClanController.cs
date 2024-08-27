@@ -205,6 +205,52 @@ namespace BeatLeader_Server.Controllers
             return await ClanControllerHelper.PopulateClanWithMaps(_context, clan, currentID, page, count, sortBy, leaderboardContext, order);
         }
 
+        [HttpGet("~/clan/{id}/history")]
+        [SwaggerOperation(Summary = "Retrieve clan's statistic history", Description = "Fetches a list of player's performance metrics and various stats saved daily")]
+        [SwaggerResponse(200, "History retrieved successfully")]
+        [SwaggerResponse(400, "Invalid request parameters")]
+        [SwaggerResponse(404, "No history saved for the given clan ID")]
+        public async Task<ActionResult<ICollection<GlobalMapHistory>>> GetHistory(
+            [FromRoute, SwaggerParameter("Clan's unique identifier")] int id, 
+            [FromQuery, SwaggerParameter("Amount of days to include")] int count = 50) {
+            var result = await _context
+                    .GlobalMapHistory
+                    .AsNoTracking()
+                    .Where(p => p.ClanId == id)
+                    .TagWithCallSite()
+                    .OrderByDescending(s => s.Timestamp)
+                    .Take(count)
+                    .ToListAsync();
+            if (result.Count == 0) {
+                int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - 60 * 60 * 24;
+
+                GlobalMapHistory? tempStatsHistory;
+
+                tempStatsHistory = await _context
+                    .Clans
+                    .AsNoTracking()
+                    .Where(c => c.Id == id)
+                    .Select(c => new GlobalMapHistory {
+                        ClanId = c.Id,
+                        Timestamp = timeset,
+                        GlobalMapCaptured = c.RankedPoolPercentCaptured
+                    })
+                    .FirstOrDefaultAsync();
+                
+                if (tempStatsHistory == null) {
+                    tempStatsHistory = new GlobalMapHistory {
+                        ClanId = id, 
+                        GlobalMapCaptured = 0
+                    };
+                }
+
+                tempStatsHistory.Timestamp = timeset;
+                result = new List<GlobalMapHistory> { tempStatsHistory };
+            }
+
+            return result;
+        }
+
         public class ClanPoint {
             public int Id { get; set; }
             public string Tag { get; set; }
