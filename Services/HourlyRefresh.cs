@@ -32,11 +32,16 @@ namespace BeatLeader_Server.Services {
                 {
                     Console.WriteLine("SERVICE-STARTED HourlyRefresh");
 
-                    await RefreshClans();
-                    await FetchCurated();
-                    await RefreshMapsPageEndpoints();
-                    await CheckMaps();
-                    await CheckNoodleMonday();
+                    try {
+                        await SortChannels();
+                        await RefreshClans();
+                        await FetchCurated();
+                        await RefreshMapsPageEndpoints();
+                        await CheckMaps();
+                        await CheckNoodleMonday();
+                    } catch (Exception e) {
+                        Console.WriteLine($"EXCEPTION HourlyRefresh {e}");
+                    }
 
                     Console.WriteLine("SERVICE-DONE HourlyRefresh");
 
@@ -265,6 +270,13 @@ namespace BeatLeader_Server.Services {
                 await songSuggestController.RefreshTrending();
                 await songSuggestController.RefreshCurated();
             }
+        }
+
+        public async Task SortChannels() {
+            int criteriaPosition = await Bot.BotService.GetChannelPosition(1019637152927191150) ?? 50;
+
+            await Bot.BotService.UpdateChannelOrder(1137885973921935372, criteriaPosition + 1);
+            await Bot.BotService.UpdateChannelOrder(1137886176947220633, criteriaPosition + 2);
         }
 
         public async Task RefreshMaps() {

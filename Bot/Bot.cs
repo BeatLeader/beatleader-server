@@ -75,5 +75,23 @@ namespace BeatLeader_Server.Bot
                 }
             } catch { }
         }
+
+        public static async Task<int?> GetChannelPosition(ulong where) {
+            return Client.GetGuild(BotService.BLServerID)?.GetChannel(where)?.Position;
+        }
+
+        public static async Task UpdateChannelOrder(ulong where, int order) {
+            if (Client.GetGuild(BotService.BLServerID) == null) return;
+
+            var channel = Client.GetGuild(BotService.BLServerID).GetChannel(where);
+
+            try {
+                await channel.ModifyAsync(props => {
+                    props.Position = order;
+                });
+            } catch (Exception e) { 
+                Console.WriteLine($"UpdateChannelOrder EXCEPTION {e.Message} {e.StackTrace}");
+            }
+        }
     }
 }
