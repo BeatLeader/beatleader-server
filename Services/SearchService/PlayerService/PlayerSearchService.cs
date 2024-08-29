@@ -52,6 +52,23 @@ public static class PlayerSearchService
         }
     }
 
+    public static void RemovePlayer(Player player)
+    {
+        lock (Directory)
+        {
+            using CustomAnalyzer analyzer = new(LuceneVersion);
+            IndexWriterConfig config = new(LuceneVersion, analyzer);
+            using IndexWriter writer = new(Directory, config);
+
+            foreach (var playerMetadata in PlayerMetadata.GetPlayerMetadata(player))
+            {
+                writer.DeleteDocuments(new Term(nameof(PlayerMetadata.Id), playerMetadata.Id.ToString()));
+            }
+
+            writer.Commit();
+        }
+    }
+
     public static void PlayerChangedName(Player player)
     {
         AddNewPlayer(player);

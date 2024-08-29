@@ -494,6 +494,22 @@ namespace BeatLeader_Server.Utils
             }
         }
 
+        public static async Task PostDailyChanges(CancellationToken stoppingToken, string imagePath, string? hook) {
+            if (hook == null) return;
+
+            try {
+                var dsClient = new DiscordWebhookClient(hook);
+
+                string message = $"**Global map changes today:** ";
+                
+                await dsClient.SendFileAsync(imagePath, message, flags: MessageFlags.SuppressEmbeds);
+                await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+            } catch (Exception e)
+            {
+                Console.WriteLine($"EXCEPTION: {e}");
+            }
+        }
+
         public static async Task PostChangesWithMessage(AppContext context, CancellationToken stoppingToken, List<ClanRankingChanges>? changes, string postMessage, string? hook) {
             if (changes == null || changes.Count == 0 || hook == null) return;
 

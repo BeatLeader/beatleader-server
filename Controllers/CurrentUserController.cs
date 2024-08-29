@@ -1714,6 +1714,11 @@ namespace BeatLeader_Server.Controllers {
 
             await _context.SaveChangesAsync();
 
+            ClanTaskService.AddJob(new ClanRankingChangesDescription {
+                GlobalMapEvent = player.Id == userId ? GlobalMapEvent.suspend : GlobalMapEvent.ban,
+                PlayerId = player.Id
+            });
+
             HttpContext.Response.OnCompleted(async () => {
                 foreach (var item in leaderboardsToUpdate) {
                     await _scoreRefreshController.BulkRefreshScores(item);
@@ -1781,6 +1786,11 @@ namespace BeatLeader_Server.Controllers {
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
+
+            ClanTaskService.AddJob(new ClanRankingChangesDescription {
+                GlobalMapEvent = player.Id == userId ? GlobalMapEvent.unsuspend : GlobalMapEvent.unban,
+                PlayerId = player.Id
+            });
 
             var refreshBlock = async () => {
                 foreach (var item in leaderboardsToUpdate) {

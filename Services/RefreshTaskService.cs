@@ -158,6 +158,7 @@ namespace BeatLeader_Server.Services
 
                     var currentPlayer = await _context.Players.Where(p => p.Id == job.FromPlayerId).FirstOrDefaultAsync();
                     if (currentPlayer != null) {
+                        PlayerSearchService.RemovePlayer(currentPlayer);
                         _context.Players.Remove(currentPlayer);
                     }
 

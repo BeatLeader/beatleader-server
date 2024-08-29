@@ -88,7 +88,20 @@ namespace BeatLeader_Server.Services
             if (description.PlayerId == null) return null;
 
             var player = await _context.Players.FindAsync(description.PlayerId);
-            if (description.GlobalMapEvent == GlobalMapEvent.priorityChange) return $"{player.Name} switched clan order which";
+
+            switch (description.GlobalMapEvent)
+            {
+                case GlobalMapEvent.priorityChange:
+                    return $"{player.Name} switched clan order which";
+                case GlobalMapEvent.ban:
+                    return $"{player.Name} was banned which";
+                case GlobalMapEvent.unban:
+                    return $"{player.Name} was unbanned which";
+                case GlobalMapEvent.suspend:
+                    return $"{player.Name} suspended their profile which";
+                case GlobalMapEvent.unsuspend:
+                    return $"{player.Name} reactivated their profile which";
+            }
 
             if (description.ClanId == null) return null;
             var clan = description.Clan ?? await _context.Clans.FindAsync(description);

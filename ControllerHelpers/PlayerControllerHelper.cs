@@ -138,6 +138,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                 player.ProfileSettings = null;
                 player.History = null;
                 dbContext.Players.Remove(player);
+                PlayerSearchService.RemovePlayer(player);
                 await dbContext.SaveChangesAsync();
             }
         }

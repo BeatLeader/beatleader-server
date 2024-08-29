@@ -154,6 +154,7 @@ namespace BeatLeader_Server.Controllers
                         oldplayer.History = null;
                         oldplayer.Changes = null;
                         oldplayer.Achievements = null;
+                        PlayerSearchService.RemovePlayer(oldplayer);
                         _context.Players.Remove(oldplayer);
                     }
                     _context.BeatSaverLinks.Remove(bslink);
