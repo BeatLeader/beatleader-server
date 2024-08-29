@@ -62,7 +62,7 @@ public static class PlayerSearchService
 
             foreach (var playerMetadata in PlayerMetadata.GetPlayerMetadata(player))
             {
-                writer.DeleteDocuments(new Term(nameof(PlayerMetadata.Id), playerMetadata.Id.ToString()));
+                writer.DeleteDocuments(new Term(nameof(PlayerMetadata.Id), playerMetadata.Id));
             }
 
             writer.Commit();

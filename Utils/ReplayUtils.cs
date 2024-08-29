@@ -297,7 +297,11 @@ namespace BeatLeader_Server.Utils
             score.Platform = info.platform + "," + info.gameVersion + "," + info.version;
             score.Timepost = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
             score.Timeset = info.timestamp;
-            score.IgnoreForStats = difficulty.ModeName.ToLower() == "rhythmgamestandard" || difficulty.ModeName.ToLower().Contains("controllable") || info.modifiers.Contains("NF");
+            score.IgnoreForStats = 
+                difficulty.ModeName.ToLower() == "rhythmgamestandard" || 
+                difficulty.ModeName.ToLower().Contains("controllable") || 
+                difficulty.ModeName == ReBeatUtils.MODE_IDENTIFIER || 
+                info.modifiers.Contains("NF");
             score.Migrated = true;
 
             if (info.modifiers.Contains("NF")) {
