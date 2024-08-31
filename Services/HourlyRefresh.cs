@@ -210,6 +210,8 @@ namespace BeatLeader_Server.Services {
                                     if (songDiff != null) {
                                         if (diff.burstSliders?.Length > 0 || diff.sliders?.Length > 0) {
                                             songDiff.Requirements |= Models.Requirements.V3;
+                                            songDiff.Chains = diff.burstSliders?.Sum(c => c.SliceCount > 1 ? c.SliceCount - 1 : 0) ?? 0;
+                                            songDiff.Sliders = diff.sliders?.Length ?? 0;
                                         }
                                         if (diff.colorNotes?.FirstOrDefault(n => n.Optional()) != null) {
                                             songDiff.Requirements |= Models.Requirements.OptionalProperties;

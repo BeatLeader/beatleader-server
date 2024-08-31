@@ -283,7 +283,7 @@ namespace BeatLeader_Server.Utils
             
             if (replay.info.mode == ReBeatUtils.MODE_IDENTIFIER) {
                 score.BaseScore = ReBeatUtils.GetScore(replay);
-                score.Accuracy = (float)score.BaseScore / (float)ReBeatUtils.MaxScoreForNote(difficulty.Notes);
+                score.Accuracy = (float)score.BaseScore / (float)ReBeatUtils.MaxScoreForNote(difficulty.Notes + difficulty.Chains);
             } else {
                 score.Accuracy = (float)score.BaseScore / (float)maxScore;
             }

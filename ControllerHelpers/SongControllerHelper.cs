@@ -109,7 +109,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                     ModifiersMap? modifiersMap = null;
                     int maxScore = difficulty.MaxScore;
                     if (mode == ReBeatUtils.MODE_IDENTIFIER) {
-                        maxScore = ReBeatUtils.MaxScoreForNote(difficulty.Notes);
+                        maxScore = ReBeatUtils.MaxScoreForNote(difficulty.Notes + difficulty.Chains);
                         modifiersMap = ModifiersMap.ReBeatMap();
                     }
 
@@ -126,8 +126,11 @@ namespace BeatLeader_Server.ControllerHelpers {
                         Njs = difficulty.Njs,
                         Nps = difficulty.Nps,
                         Notes = difficulty.Notes,
+                        Chains = difficulty.Chains,
+                        Sliders = difficulty.Sliders,
                         Bombs = difficulty.Bombs,
                         Walls = difficulty.Walls,
+                        Requirements = difficulty.Requirements,
                     };
                     song.Difficulties.Add(difficulty);
                     await dbContext.SaveChangesAsync();
