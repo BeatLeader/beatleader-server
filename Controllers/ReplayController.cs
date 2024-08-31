@@ -645,7 +645,11 @@ namespace BeatLeader_Server.Controllers
 
                 await RecalculateRanks(dbContext, resultScore, currentScores, leaderboard, player);
                 if (!player.Bot && leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
-                    await dbContext.RecalculatePPAndRankFast(player, resultScore.ValidContexts);
+                    try {
+                        await dbContext.RecalculatePPAndRankFast(player, resultScore.ValidContexts);
+                    } catch {
+                        await dbContext.RecalculatePPAndRankFast(player, resultScore.ValidContexts);
+                    }
                 }
             
                 context.Response.OnCompleted(async () => {

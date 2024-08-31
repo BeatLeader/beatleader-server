@@ -6,8 +6,6 @@ using Lib.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using static BeatLeader_Server.Controllers.RankController;
-using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
 {

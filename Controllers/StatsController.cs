@@ -7,9 +7,6 @@ using Lib.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using ReplayDecoder;
-using static BeatLeader_Server.Controllers.RankController;
-using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -245,7 +242,7 @@ namespace BeatLeader_Server.Controllers
 
         [ApiExplorerSettings(IgnoreApi = true)]
         [HttpGet("~/watched/{scoreId}/")]
-        public async Task<ActionResult<VoteStatus>> Played(
+        public async Task<ActionResult> Played(
             int scoreId)
         {
             var ip = HttpContext.GetIpAddress();

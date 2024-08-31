@@ -1,7 +1,6 @@
 ﻿using Amazon.S3;
 using beatleader_parser;
 using Parser.Utils;
-using BeatLeader_Server.Bot;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
@@ -21,14 +20,12 @@ namespace BeatLeader_Server.Controllers
     public class SongController : Controller
     {
         private readonly AppContext _context;
-        private readonly RTNominationsForum _rtNominationsForum;
         private readonly IAmazonS3 _s3Client;
         private readonly IMemoryCache _cache;
-        public SongController(AppContext context, RTNominationsForum rtNominationsForum, IConfiguration configuration, IMemoryCache cache)
+        public SongController(AppContext context, IConfiguration configuration, IMemoryCache cache)
         {
             _s3Client = configuration.GetS3Client();
             _context = context;      
-            _rtNominationsForum = rtNominationsForum;
             _cache = cache;
         }
 
