@@ -5,15 +5,15 @@ namespace BeatLeader_Server.Services;
 
 public class SongMetadata
 {
-    public string Id   { get; private set; }
+    public string Id   { get; set; }
 
-    public string Hash { get; private set; }
+    public string Hash { get; set; }
 
-    public string Name { get; private set; }
+    public string Name { get; set; }
 
-    public string Author { get; private set; }
+    public string Author { get; set; }
 
-    public string Mapper { get; private set; }
+    public string Mapper { get; set; }
 
     public int Score { get; set; }
 

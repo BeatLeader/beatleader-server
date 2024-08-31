@@ -15,23 +15,20 @@ public static class SongSearchService
     private static readonly string LuceneDir = Path.Combine(System.AppContext.BaseDirectory, "lucene_index_songs");
     private static readonly LuceneVersion LuceneVersion = LuceneVersion.LUCENE_48;
 
-    private static FSDirectory Directory { get; } = FSDirectory.Open(new DirectoryInfo(LuceneDir));
+    private static FSDirectory Directory => FSDirectory.Open(new DirectoryInfo(LuceneDir));
 
-    public static void AddNewSongs(IEnumerable<Song> songs)
+    public static void AddNewSongs(SongMetadata[] songs)
     {
-        lock (Directory)
+        using CustomAnalyzer analyzer = new(LuceneVersion);
+        IndexWriterConfig config = new(LuceneVersion, analyzer);
+        using IndexWriter writer = new(Directory, config);
+
+        foreach (SongMetadata songMetadata in songs)
         {
-            using CustomAnalyzer analyzer = new(LuceneVersion);
-            IndexWriterConfig config = new(LuceneVersion, analyzer);
-            using IndexWriter writer = new(Directory, config);
-
-            foreach (SongMetadata songMetadata in songs)
-            {
-                AddToLuceneIndex(songMetadata, writer);
-            }
-
-            writer.Commit();
+            AddToLuceneIndex(songMetadata, writer);
         }
+
+        writer.Commit();
     }
 
     public static void AddNewSong(Song song)

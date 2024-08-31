@@ -17,7 +17,7 @@ public static class PlayerSearchService
 
     private static FSDirectory Directory { get; } = FSDirectory.Open(new DirectoryInfo(LuceneDir));
 
-    public static void AddNewPlayers(IEnumerable<Player> players)
+    public static void AddNewPlayers(PlayerSearchSelect[] players)
     {
         lock (Directory)
         {
@@ -25,7 +25,7 @@ public static class PlayerSearchService
             IndexWriterConfig config = new(LuceneVersion, analyzer);
             using IndexWriter writer = new(Directory, config);
 
-            foreach (Player player in players)
+            foreach (PlayerSearchSelect player in players)
             {
                 foreach (var playerMetadata in PlayerMetadata.GetPlayerMetadata(player)) {
                     AddToLuceneIndex(playerMetadata, writer);

@@ -16,17 +16,37 @@ public class SearchService : BackgroundService
     {
         await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
 
-        this.FetchSearchItems();
+        await FetchSearchItems();
     }
 
-    private void FetchSearchItems()
+    private async Task FetchSearchItems()
     {
-        using IServiceScope scope = this.serviceScopeFactory.CreateScope();
+        using IServiceScope scope = serviceScopeFactory.CreateScope();
 
         AppContext context = scope.ServiceProvider.GetRequiredService<AppContext>();
 
-        SongSearchService.AddNewSongs(context.Songs);
+        SongSearchService.AddNewSongs(
+            await context
+            .Songs
+            .AsNoTracking()
+            .Select(s => new SongMetadata {
+                Id = s.Id.ToLower(),
+                Hash = s.Hash.ToLower(),
+                Name = s.Name.ToLower(),
+                Author = s.Author.ToLower(),
+                Mapper = s.Mapper.ToLower(),
+            })
+            .ToArrayAsync());
 
-        PlayerSearchService.AddNewPlayers(context.Players.Include(p => p.Changes));
+        PlayerSearchService.AddNewPlayers(
+            await context
+            .Players
+            .AsNoTracking()
+            .Select(p => new PlayerSearchSelect {
+                Id = p.Id,
+                Name = p.Name,
+                Changes = p.Changes != null ? p.Changes.Where(c => c.OldName != null).Select(c => c.OldName).ToArray() : null
+            })
+            .ToArrayAsync());
     }
 }

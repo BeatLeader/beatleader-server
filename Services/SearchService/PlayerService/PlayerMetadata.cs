@@ -3,6 +3,13 @@ using Lucene.Net.Documents;
 
 namespace BeatLeader_Server.Services;
 
+public class PlayerSearchSelect {
+    public string Id { get; set; }
+
+    public string Name { get; set; }
+    public string[]? Changes { get; set; }
+}
+
 public class PlayerMetadata
 {
     public string Id { get; set; }
@@ -11,7 +18,7 @@ public class PlayerMetadata
 
     public int Score { get; set; }
 
-    public static List<PlayerMetadata> GetPlayerMetadata(Player player) {
+    public static List<PlayerMetadata> GetPlayerMetadata(PlayerSearchSelect player) {
         var result = new List<PlayerMetadata> {
             new PlayerMetadata
             {
@@ -22,20 +29,25 @@ public class PlayerMetadata
         if (player.Changes != null)
         {
             int changeIndex = 0;
-            foreach (PlayerChange change in player.Changes)
+            foreach (string change in player.Changes)
             {
-                if (change.NewName != null)
+                result.Add(new PlayerMetadata
                 {
-                    result.Add(new PlayerMetadata
-                    {
-                        Id = player.Id.ToLower() + "_change_" + changeIndex,
-                        Name = change.NewName.Replace(" ", "").ToLower()
-                    });
-                    changeIndex++;
-                }
+                    Id = player.Id.ToLower() + "_change_" + changeIndex,
+                    Name = change.Replace(" ", "").ToLower()
+                });
+                changeIndex++;
             }
         }
         return result;
+    }
+
+    public static List<PlayerMetadata> GetPlayerMetadata(Player player) {
+        return GetPlayerMetadata(new PlayerSearchSelect {
+            Id = player.Id,
+            Name = player.Name,
+            Changes = player.Changes != null ? player.Changes.Where(c => c.OldName != null).Select(c => c.OldName).ToArray() : null
+        });
     }
 
     public static explicit operator PlayerMetadata(Document doc) =>
