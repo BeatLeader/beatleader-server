@@ -108,6 +108,7 @@ namespace BeatLeader_Server
         public DbSet<BeastiesNomination> BeastiesNominations { get; set; }
 
         public DbSet<PlayerChange> PlayerChange { get; set; }
+        public DbSet<PromotionHit> PromotionHits { get; set; }
 
         public void RejectChanges()
         {
