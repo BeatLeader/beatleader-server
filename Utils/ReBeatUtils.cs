@@ -2,7 +2,7 @@
 
 namespace BeatLeader_Server.Utils {
     public class ReBeatUtils {
-        public static string MODE_IDENTIFIER = "ReBeat_Standard";
+        public static string MODE_IDENTIFIER = "ReBeat_";
         public static int GetScore(Replay replay) {
             return replay.notes.Select(n => ScoreForNote(n, replay.info.modifiers)).Sum();
         }

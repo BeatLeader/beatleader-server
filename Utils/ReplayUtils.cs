@@ -271,7 +271,7 @@ namespace BeatLeader_Server.Utils
             if (hasPp)
             {
                 score.ModifiedScore = (int)(score.BaseScore * modifers.GetNegativeMultiplier(info.modifiers, true));
-            } else if (replay.info.mode == ReBeatUtils.MODE_IDENTIFIER) {
+            } else if (replay.info.mode.StartsWith(ReBeatUtils.MODE_IDENTIFIER)) {
                 score.ModifiedScore = (int)(score.BaseScore * modifers.GetTotalMultiplier(info.modifiers, true));
             } else
             {
@@ -281,7 +281,7 @@ namespace BeatLeader_Server.Utils
                 maxScore = MaxScoreForNote(difficulty.Notes);
             }
             
-            if (replay.info.mode == ReBeatUtils.MODE_IDENTIFIER) {
+            if (replay.info.mode.StartsWith(ReBeatUtils.MODE_IDENTIFIER)) {
                 score.BaseScore = ReBeatUtils.GetScore(replay);
                 score.Accuracy = (float)score.BaseScore / (float)ReBeatUtils.MaxScoreForNote(difficulty.Notes + difficulty.Chains);
             } else {
@@ -300,7 +300,7 @@ namespace BeatLeader_Server.Utils
             score.IgnoreForStats = 
                 difficulty.ModeName.ToLower() == "rhythmgamestandard" || 
                 difficulty.ModeName.ToLower().Contains("controllable") || 
-                difficulty.ModeName == ReBeatUtils.MODE_IDENTIFIER || 
+                difficulty.ModeName.StartsWith(ReBeatUtils.MODE_IDENTIFIER) || 
                 info.modifiers.Contains("NF");
             score.Migrated = true;
 

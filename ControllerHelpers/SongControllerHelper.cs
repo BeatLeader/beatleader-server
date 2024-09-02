@@ -88,7 +88,12 @@ namespace BeatLeader_Server.ControllerHelpers {
    
             if (difficulty == null)
             {
-                difficulty = difficulties.FirstOrDefault(x => x.ModeName == "Standard");
+                string defaultMode = "Standard";
+                if (mode.StartsWith(ReBeatUtils.MODE_IDENTIFIER)) {
+                    defaultMode = mode.Replace(ReBeatUtils.MODE_IDENTIFIER, "");
+                }
+
+                difficulty = difficulties.FirstOrDefault(x => x.ModeName == defaultMode);
                 if (difficulty == null)
                 {
                     return null;
@@ -108,7 +113,7 @@ namespace BeatLeader_Server.ControllerHelpers {
 
                     ModifiersMap? modifiersMap = null;
                     int maxScore = difficulty.MaxScore;
-                    if (mode == ReBeatUtils.MODE_IDENTIFIER) {
+                    if (mode.StartsWith(ReBeatUtils.MODE_IDENTIFIER)) {
                         maxScore = ReBeatUtils.MaxScoreForNote(difficulty.Notes + difficulty.Chains);
                         modifiersMap = ModifiersMap.ReBeatMap();
                     }
