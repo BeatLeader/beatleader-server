@@ -7,9 +7,9 @@ using Type = BeatLeader_Server.Enums.Type;
 
 namespace BeatLeader_Server.Utils;
 
-public static partial class MapListUtils
+public static partial class LeaderboardListUtils
 {
-    private static IQueryable<Song> FilterBySearch(this IQueryable<Song> sequence,
+    private static IQueryable<Leaderboard> FilterBySearch(this IQueryable<Leaderboard> sequence,
                                                           string? search,
                                                           AppContext _context,
                                                           out int? searchId,
@@ -55,7 +55,7 @@ public static partial class MapListUtils
 
         IEnumerable<string> ids = matches.Select(songMetadata => songMetadata.Id);
 
-        return sequence.Where(s => ids.Contains(s.Id));
+        return sequence.Where(leaderboard => ids.Contains(leaderboard.SongId));
     }
 
     public static string GetSearchFilters(this string search,

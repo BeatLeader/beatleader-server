@@ -5,9 +5,9 @@ using Type = BeatLeader_Server.Enums.Type;
 
 namespace BeatLeader_Server.Utils;
 
-public static partial class MapListUtils
+public static partial class LeaderboardListUtils
 {
-    public static async Task<(IQueryable<Song>, int)> FilterRanking(this IQueryable<Song> source,
+    public static async Task<(IQueryable<Leaderboard>, int)> FilterRanking(this IQueryable<Leaderboard> source,
                                                  AppContext _context,
                                                  int page,
                                                  int count,
@@ -20,7 +20,7 @@ public static partial class MapListUtils
               .Sort(sortBy, order, Type.Ranking, MyType.None, dateFrom, dateTo, null, null)
               .WherePage(page, count);
 
-    public static IQueryable<Song> Filter(this IQueryable<Song> source,
+    public static IQueryable<Leaderboard> Filter(this IQueryable<Leaderboard> source,
                                                  AppContext _context,
                                                  out int? searchId,
                                                  MapSortBy sortBy = MapSortBy.None,
