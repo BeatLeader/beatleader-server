@@ -525,6 +525,12 @@ namespace BeatLeader_Server.Controllers
                     return (null, page);
                 }
                 query = query.Where(s => s.Player.Country == currentPlayer.Country);
+            } else if (scope.ToLower().StartsWith("clan_")) {
+                var clanTag = scope.ToLower().Replace("clan_", "").ToUpper();
+                var clanId = await _context.Clans.Where(c => c.Tag == clanTag).Select(c => c.Id).FirstOrDefaultAsync();
+                if (clanId != 0) {
+                    query = query.Where(s => s.Player.Clans.Any(c => c.Id == clanId));
+                }
             }
 
             if (method.ToLower() == "around")
@@ -719,6 +725,12 @@ namespace BeatLeader_Server.Controllers
                     return (null, page);
                 }
                 query = query.Where(s => s.Player.Country == currentPlayer.Country);
+            } else if (scope.ToLower().StartsWith("clan_")) {
+                var clanTag = scope.ToLower().Replace("clan_", "").ToUpper();
+                var clanId = await _context.Clans.Where(c => c.Tag == clanTag).Select(c => c.Id).FirstOrDefaultAsync();
+                if (clanId != 0) {
+                    query = query.Where(s => s.Player.Clans.Any(c => c.Id == clanId));
+                }
             }
 
             if (method.ToLower() == "around")
