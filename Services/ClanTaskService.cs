@@ -291,7 +291,8 @@ namespace BeatLeader_Server.Services
                     var _clanController = scope.ServiceProvider.GetRequiredService<ClanAdminController>();
                     var _httpClientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
                     var s3 = _configuration.GetS3Client();
-                    var blhook = _configuration.GetValue<string?>("ClanWarsHook");
+                    var blhook = _configuration.GetValue<string?>("ClanWarsHook") ?? "";
+                    var chhook = _configuration.GetValue<string?>("ClansHubHook") ?? "";
 
                     Console.WriteLine("3 ClanTaskService");
 
@@ -313,7 +314,7 @@ namespace BeatLeader_Server.Services
 
                         var message = await ActionMessage(_context, job);
                         if (job.Changes != null && job.Changes.Count > 0 && message != null) {
-                            var hooks = new List<string> { blhook };
+                            var hooks = new List<string> { blhook, chhook };
                             await AddCustomHooks(_context, hooks, job.Changes);
                             ClanMessageService.AddMessageJob(new ChangesWithMessage {
                                 Message = message,
@@ -348,7 +349,7 @@ namespace BeatLeader_Server.Services
                             await PopulateNewLocation(newGlobalMap, job);
 
                             if (job.Score != null) {
-                                var hooks = new List<string> { blhook };
+                                var hooks = new List<string> { blhook, chhook };
                                 await AddCustomHooks(_context, hooks, job.Changes);
 
                                 string url = $"https://render.beatleader.xyz/animatedscreenshot/620x280/clansmapchange/general/clansmap/leaderboard/{job.Score.LeaderboardId}";

@@ -343,10 +343,12 @@ namespace BeatLeader_Server.Services
                         File.WriteAllBytes(path, gif);
 
                         var blhook = _configuration.GetValue<string?>("ClanWarsHook") ?? "";
+                        var chhook = _configuration.GetValue<string?>("ClansHubHook") ?? "";
                         var hooks = clans
                             .Where(c => c.ClanRankingDiscordHook?.Length > 0)
                             .SelectMany(c => c.ClanRankingDiscordHook.Split(","))
-                            .Append(blhook);
+                            .Append(blhook)
+                            .Append(chhook);
 
                         ClanMessageService.AddDailyJob(new DailyChanges {
                             GifPath = path,

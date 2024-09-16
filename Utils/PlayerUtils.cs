@@ -192,7 +192,6 @@ namespace BeatLeader_Server.Utils
                     Weight = s.Weight 
                 })
                 .ToListAsync();
-            await dbContext.BulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = c => new { c.Weight });
 
             float resultPP = 0f;
             float accPP = 0f;
@@ -207,6 +206,7 @@ namespace BeatLeader_Server.Utils
                 techPP += s.TechPP * weight;
                 passPP += s.PassPP * weight;
             }
+            await dbContext.BulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = c => new { c.Weight });
             player.Pp = resultPP;
             player.AccPp = accPP;
             player.TechPp = techPP;

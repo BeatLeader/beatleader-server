@@ -223,7 +223,9 @@ namespace BeatLeader_Server.Controllers {
                                 DifficultyName = s.Leaderboard.Difficulty.DifficultyName,
                                 ModeName = s.Leaderboard.Difficulty.ModeName,
                                 Status = s.Leaderboard.Difficulty.Status,
-                                ModifierValues = s.Leaderboard.Difficulty.ModifierValues,
+                                ModifierValues = s.Leaderboard.Difficulty.ModifierValues != null 
+                                    ? s.Leaderboard.Difficulty.ModifierValues
+                                    : new ModifiersMap(),
                                 ModifiersRating = s.Leaderboard.Difficulty.ModifiersRating,
                                 NominatedTime  = s.Leaderboard.Difficulty.NominatedTime,
                                 QualifiedTime  = s.Leaderboard.Difficulty.QualifiedTime,
