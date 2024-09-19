@@ -118,18 +118,30 @@ namespace BeatLeader_Server.Services
             }
 
             if (jobsToProcess.Count == 0) return;
+            var jobGroups = jobsToProcess.GroupBy(j => (j.Changes?.FirstOrDefault()?.Leaderboard?.Id ?? "") + (j.Changes?.FirstOrDefault()?.CurrentCaptorId ?? 0));
 
             using (var scope = _serviceScopeFactory.CreateScope()) {
                 try {
                     var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
 
-                    foreach (var job in jobsToProcess) {
-                        foreach (var hook in job.Hooks) {
-                            await ClanUtils.PostChangesWithScore(_context, stoppingToken, job.Changes, job.Score, job.GifPath, hook);
+                    foreach (var jobGroup in jobGroups) {
+                        var group = jobGroup.ToList();
+                        for (int i = 0; i < group.Count; i++) {
+                            var job = group[i];
+                            if (i == 0) {
+                                if (group.Count > 1) {
+                                    await ClanUtils.PostChangesWithScores(_context, stoppingToken, group);
+                                } else {
+                                    foreach (var hook in job.Hooks) {
+                                        await ClanUtils.PostChangesWithScore(_context, stoppingToken, job.Changes, job.Score, job.GifPath, hook);
+                                    }
+                                }
+                            }
+                            if (job.GifPath != null) {
+                                File.Delete(job.GifPath);
+                            }
                         }
-                        if (job.GifPath != null) {
-                            File.Delete(job.GifPath);
-                        }
+                        
                     }
                 } catch (Exception e)
                 {

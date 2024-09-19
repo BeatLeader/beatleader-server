@@ -800,25 +800,13 @@ namespace BeatLeader_Server.Controllers {
             }
 
             if (leaderboard == null) {
-                Song? song = await _context.Songs.Include(s => s.Difficulties).FirstOrDefaultAsync(s => s.Difficulties.FirstOrDefault(d => s.Id + d.Value + d.Mode == id) != null);
+                Song? song = await _context.Songs.Include(s => s.Difficulties).FirstOrDefaultAsync(s => s.Id == id);
                 if (song == null) {
-                    song = await _context.Songs.Include(s => s.Difficulties).FirstOrDefaultAsync(s => s.Id == id);
-                    if (song == null) {
-                        return NotFound();
-                    } else {
-                        DifficultyDescription? difficulty = song.Difficulties.OrderByDescending(d => d.Value).FirstOrDefault();
-
-                        return difficulty == null ? NotFound() : await Get(song.Id + difficulty.Value + difficulty.Mode, page, count, sortBy, order, scoreStatus, leaderboardContext, countries, search, modifiers, friends, voters);
-                    }
+                    return NotFound();
                 } else {
-                    DifficultyDescription difficulty = song.Difficulties.First(d => song.Id + d.Value + d.Mode == id);
+                    DifficultyDescription? difficulty = song.Difficulties.OrderByDescending(d => d.Value).FirstOrDefault();
 
-                    var newLeaderboard = await LeaderboardControllerHelper.GetByHash(_context, song.Hash, difficulty.DifficultyName, difficulty.ModeName);
-                    if (newLeaderboard != null && newLeaderboard.Difficulty != null) {
-                        return ResponseFromLeaderboard(newLeaderboard);
-                    } else {
-                        return NotFound();
-                    }
+                    return difficulty == null ? NotFound() : await Get(song.Id + difficulty.Value + difficulty.Mode, page, count, sortBy, order, scoreStatus, leaderboardContext, countries, search, modifiers, friends, voters);
                 }
             } else if (leaderboard.Difficulty.Status == DifficultyStatus.nominated && isRt) {
                 var qualification = leaderboard.Qualification;

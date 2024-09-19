@@ -470,7 +470,9 @@ namespace BeatLeader_Server.Utils
                 }
 
                 if (songName != null && change.Leaderboard.Difficulty != null) {
-                    message += $"[{songName} - {change.Leaderboard.Difficulty.DifficultyName}](https://beatleader.net/leaderboard/clanranking/{change.Leaderboard.Id}) ";
+                    message += $"[{songName} - {change.Leaderboard.Difficulty.DifficultyName}{
+                        (change.Leaderboard.Difficulty.ModeName != "Standard" ? " / " + change.Leaderboard.Difficulty.ModeName : "")
+                    }](https://beatleader.net/leaderboard/clanranking/{change.Leaderboard.Id}) ";
                 }
 
                 message += $"by getting {Math.Round(score.Pp, 2)}pp with {Math.Round(score.Accuracy * 100, 2)}% acc{(score.Modifiers.Length > 0 ? (" and " + score.Modifiers) : "")}.\n";
@@ -488,6 +490,53 @@ namespace BeatLeader_Server.Utils
                 //await Bot.BotService.PublishAnnouncement(1195125703830683678, messageId);
                 await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
             }
+            } catch (Exception e)
+            {
+                Console.WriteLine($"EXCEPTION: {e}");
+            }
+        }
+
+        public static async Task PostChangesWithScores(AppContext context, CancellationToken stoppingToken, List<ChangesWithScore> scores) {
+            
+            try {
+                var change = scores.FirstOrDefault()?.Changes?.FirstOrDefault();
+                if (change == null) return;
+
+                var currentCaptor = change.CurrentCaptorId != null ? await context.Clans.FindAsync(change.CurrentCaptorId) : null;
+                var previousCaptor = change.PreviousCaptorId != null ? await context.Clans.FindAsync(change.PreviousCaptorId) : null;
+                var songName = await context.Songs.Where(s => s.Id == change.Leaderboard.SongId).Select(s => s.Name).FirstOrDefaultAsync();
+
+                string message = $"**{string.Join(", ", scores.Select(s => s.Score.Player.Name))}** ";
+                if (currentCaptor == null) {
+                    message += "introduced a tie on ";
+                } else {
+                    message += $"**[{currentCaptor.Tag}]** captured ";
+                }
+
+                if (songName != null && change.Leaderboard.Difficulty != null) {
+                    message += $"[{songName} - {change.Leaderboard.Difficulty.DifficultyName}{
+                        (change.Leaderboard.Difficulty.ModeName != "Standard" ? " / " + change.Leaderboard.Difficulty.ModeName : "")
+                    }](https://beatleader.net/leaderboard/clanranking/{change.Leaderboard.Id}) ";
+                }
+
+                message += $"by getting {string.Join(", ", scores.Select(s => Math.Round(s.Score.Pp, 2) + "pp")) }.\n";
+
+                if (currentCaptor != null) {
+                    if (previousCaptor != null) {
+                        message += $"Taking over the map from **[{previousCaptor.Tag}]**";
+                    }
+                    message += $" which brings **[{currentCaptor.Tag}]** to {Math.Round(currentCaptor.RankedPoolPercentCaptured * 100, 2)}% of global dominance!";
+                }
+
+                var imagePath = scores.FirstOrDefault()?.GifPath;
+                foreach (var hook in scores.SelectMany(s => s.Hooks).Distinct()) {
+                    var dsClient = new DiscordWebhookClient(hook);
+                    var messageId = imagePath != null 
+                            ? await dsClient.SendFileAsync(imagePath, message, flags: MessageFlags.SuppressEmbeds)
+                            : await dsClient.SendMessageAsync(message, flags: MessageFlags.SuppressEmbeds);
+                    //await Bot.BotService.PublishAnnouncement(1195125703830683678, messageId);
+                    await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+                }
             } catch (Exception e)
             {
                 Console.WriteLine($"EXCEPTION: {e}");
@@ -535,7 +584,9 @@ namespace BeatLeader_Server.Utils
                         }
 
                         if (songName != null && change.Leaderboard.Difficulty != null) {
-                            message += $"[{songName} - {change.Leaderboard.Difficulty.DifficultyName}](https://beatleader.net/leaderboard/clanranking/{change.Leaderboard.Id})";
+                            message += $"[{songName} - {change.Leaderboard.Difficulty.DifficultyName}{                        
+                                (change.Leaderboard.Difficulty.ModeName != "Standard" ? " / " + change.Leaderboard.Difficulty.ModeName : "")
+                            }](https://beatleader.net/leaderboard/clanranking/{change.Leaderboard.Id})";
                         }
 
                         if (currentCaptor != null) {
