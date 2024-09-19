@@ -802,7 +802,7 @@ namespace BeatLeader_Server.Controllers {
             if (leaderboard == null) {
                 Song? song = await _context.Songs.Include(s => s.Difficulties).FirstOrDefaultAsync(s => s.Difficulties.FirstOrDefault(d => s.Id + d.Value + d.Mode == id) != null);
                 if (song == null) {
-                    song = await _context.Songs.Include(s => s.Difficulties).FirstOrDefaultAsync(s => s.Difficulties.FirstOrDefault(d => s.Id == id) != null);
+                    song = await _context.Songs.Include(s => s.Difficulties).FirstOrDefaultAsync(s => s.Id == id);
                     if (song == null) {
                         return NotFound();
                     } else {

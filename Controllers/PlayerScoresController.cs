@@ -45,6 +45,7 @@ namespace BeatLeader_Server.Controllers {
             ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
             LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             DifficultyStatus? type = null,
+            HMD? hmd = null,
             string? modifiers = null,
             float? stars_from = null,
             float? stars_to = null,
@@ -73,7 +74,7 @@ namespace BeatLeader_Server.Controllers {
                    .Where(t => t.PlayerId == id && t.Context == leaderboardContext)
                    .TagWithCallSite();
 
-            return (await query.Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId), id);
+            return (await query.Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId), id);
         }
 
         [HttpGet("~/player/{id}/scores")]
@@ -94,6 +95,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Filter scores by score status, default is 'None'")] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
             [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery, SwaggerParameter("Filter scores by map status, default is null")] DifficultyStatus? type = null,
+            [FromQuery, SwaggerParameter("Filter scores by headset, default is null")] HMD? hmd = null,
             [FromQuery, SwaggerParameter("Filter scores by modifiers(GN, SF, etc), default is null")] string? modifiers = null,
             [FromQuery, SwaggerParameter("Filter scores on ranked maps with stars greater than, default is null")] float? stars_from = null,
             [FromQuery, SwaggerParameter("Filter scores on ranked maps with stars lower than, default is null")] float? stars_to = null,
@@ -132,7 +134,7 @@ namespace BeatLeader_Server.Controllers {
             (
                 IQueryable<IScore>? sequence,
                 string userId
-            ) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+            ) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             if (sequence == null) {
                 return NotFound();
             }
@@ -370,6 +372,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Filter scores by score status, default is 'None'")] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
             [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery, SwaggerParameter("Filter scores by map status, default is null")] DifficultyStatus? type = null,
+            [FromQuery, SwaggerParameter("Filter scores by headset, default is null")] HMD? hmd = null,
             [FromQuery, SwaggerParameter("Filter scores by modifiers(GN, SF, etc), default is null")] string? modifiers = null,
             [FromQuery, SwaggerParameter("Filter scores on ranked maps with stars greater than, default is null")] float? stars_from = null,
             [FromQuery, SwaggerParameter("Filter scores on ranked maps with stars lower than, default is null")] float? stars_to = null,
@@ -396,7 +399,7 @@ namespace BeatLeader_Server.Controllers {
                 sortBy = ScoresSortBy.Pp;
             }
 
-            (IQueryable<IScore>? sequence, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+            (IQueryable<IScore>? sequence, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             if (sequence == null) {
                 return NotFound();
             }
@@ -484,6 +487,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
             [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery] DifficultyStatus? type = null,
+            [FromQuery] HMD? hmd = null,
             [FromQuery] string? modifiers = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
@@ -519,7 +523,7 @@ namespace BeatLeader_Server.Controllers {
                 sortBy = ScoresSortBy.Pp;
             }
 
-            (IQueryable<IScore>? sequence, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+            (IQueryable<IScore>? sequence, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             if (sequence == null) {
                 return NotFound();
             }

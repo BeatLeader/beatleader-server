@@ -23,6 +23,7 @@ namespace BeatLeader_Server.Utils {
             Requirements requirements = Requirements.None,
             ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
             DifficultyStatus? type = null,
+            HMD? hmd = null,
             string? modifiers = null,
             float? stars_from = null,
             float? stars_to = null,
@@ -145,6 +146,9 @@ namespace BeatLeader_Server.Utils {
             }
             if (type != null) {
                 sequence = sequence.Where(s => s.Leaderboard.Difficulty.Status == type);
+            }
+            if (hmd != null) {
+                sequence = sequence.Where(s => s.Hmd == hmd);
             }
             if (stars_from != null) {
                 sequence = sequence.Where(s => (

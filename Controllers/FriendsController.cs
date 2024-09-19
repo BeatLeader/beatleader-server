@@ -46,6 +46,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Filter scores by score status, default is 'None'")] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
             [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery, SwaggerParameter("Filter scores by map status, default is null")] DifficultyStatus? type = null,
+            [FromQuery, SwaggerParameter("Filter scores by headset, default is null")] HMD? hmd = null,
             [FromQuery, SwaggerParameter("Filter scores by modifiers(GN, SF, etc), default is null")] string? modifiers = null,
             [FromQuery, SwaggerParameter("Filter scores on ranked maps with stars greater than, default is null")] float? stars_from = null,
             [FromQuery, SwaggerParameter("Filter scores on ranked maps with stars lower than, default is null")] float? stars_to = null,
@@ -79,7 +80,7 @@ namespace BeatLeader_Server.Controllers {
                     .Include(f => f.Friends)
                     .FirstOrDefaultAsync();
 
-                sequence = await sequence.Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+                sequence = await sequence.Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId);
 
                 var friendsList = new List<string> { player.Id };
                 if (friends != null) {
