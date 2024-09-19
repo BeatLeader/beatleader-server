@@ -68,11 +68,12 @@ namespace BeatLeader_Server.ControllerHelpers {
             AppContext _context,
             ClanResponseFull clan,
             string? currentID,
-            [FromQuery] int page = 1,
-            [FromQuery] int count = 10,
-            [FromQuery] ClanMapsSortBy sortBy = ClanMapsSortBy.Pp,
-            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            [FromQuery] Order order = Order.Desc)
+            int page = 1,
+            int count = 10,
+            ClanMapsSortBy sortBy = ClanMapsSortBy.Pp,
+            LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
+            Order order = Order.Desc,
+            PlayedStatus playedStatus = PlayedStatus.Any)
         {
             var rankings = _context
                 .ClanRanking
@@ -84,6 +85,14 @@ namespace BeatLeader_Server.ControllerHelpers {
                 .ThenInclude(s => s.Difficulties)
                 .ThenInclude(d => d.ModifiersRating)
                 .Where(p => p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked && p.ClanId == clan.Id);
+
+            if (currentID != null && playedStatus != PlayedStatus.Any) {
+                if (playedStatus == PlayedStatus.Played) {
+                    rankings = rankings.Where(p => p.Leaderboard.Scores.Any(s => s.PlayerId == currentID));
+                } else {
+                    rankings = rankings.Where(p => !p.Leaderboard.Scores.Any(s => s.PlayerId == currentID));
+                }
+            }
 
             switch (sortBy)
             {

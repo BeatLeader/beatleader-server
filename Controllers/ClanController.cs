@@ -171,7 +171,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery, SwaggerParameter("Number of maps per page, default is 10")] int count = 10,
             [FromQuery, SwaggerParameter("Field to sort maps by, default is Pp")] ClanMapsSortBy sortBy = ClanMapsSortBy.Pp,
             [FromQuery, SwaggerParameter("Context of the leaderboard, default is General")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            [FromQuery, SwaggerParameter("Order of sorting, default is Desc")] Order order = Order.Desc)
+            [FromQuery, SwaggerParameter("Order of sorting, default is Desc")] Order order = Order.Desc,
+            [FromQuery, SwaggerParameter("Filter by played status of current player")] PlayedStatus playedStatus = PlayedStatus.Any)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
             var clan = await ClanControllerHelper.CurrentClan(_context, null, tag, currentID);
@@ -180,7 +181,7 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            return await ClanControllerHelper.PopulateClanWithMaps(_context, clan, currentID, page, count, sortBy, leaderboardContext, order);
+            return await ClanControllerHelper.PopulateClanWithMaps(_context, clan, currentID, page, count, sortBy, leaderboardContext, order, playedStatus);
         }
 
         [HttpGet("~/clan/id/{id}/maps")]
@@ -193,7 +194,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery, SwaggerParameter("Number of maps per page, default is 10")] int count = 10,
             [FromQuery, SwaggerParameter("Field to sort maps by, default is Pp")] ClanMapsSortBy sortBy = ClanMapsSortBy.Pp,
             [FromQuery, SwaggerParameter("Context of the leaderboard, default is General")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            [FromQuery, SwaggerParameter("Order of sorting, default is Desc")] Order order = Order.Desc)
+            [FromQuery, SwaggerParameter("Order of sorting, default is Desc")] Order order = Order.Desc,
+            [FromQuery, SwaggerParameter("Filter by played status of current player")] PlayedStatus playedStatus = PlayedStatus.Any)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
             var clan = await ClanControllerHelper.CurrentClan(_context, id, null, currentID);
@@ -202,7 +204,7 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
 
-            return await ClanControllerHelper.PopulateClanWithMaps(_context, clan, currentID, page, count, sortBy, leaderboardContext, order);
+            return await ClanControllerHelper.PopulateClanWithMaps(_context, clan, currentID, page, count, sortBy, leaderboardContext, order, playedStatus);
         }
 
         [HttpGet("~/clan/{id}/history")]

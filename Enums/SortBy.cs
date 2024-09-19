@@ -65,6 +65,12 @@ public enum ClanSortBy {
     Captures
 }
 
+public enum PlayedStatus {
+    Any,
+    Played,
+    Unplayed
+}
+
 public enum ClanMapsSortBy {
     Pp,
     Acc,
