@@ -50,7 +50,6 @@ namespace BeatLeader_Server
         public DbSet<ReplayWatchingSession> WatchingSessions { get; set; }
         public DbSet<Headset> Headsets { get; set; }
         public DbSet<VRController> VRControllers { get; set; }
-        public DbSet<PlayerScoreStatsHistory> PlayerScoreStatsHistory { get; set; }
 
         public DbSet<EventRanking> EventRankings { get; set; }
         public DbSet<EventPlayer> EventPlayer { get; set; }
@@ -109,7 +108,6 @@ namespace BeatLeader_Server
 
         public DbSet<PlayerChange> PlayerChange { get; set; }
         public DbSet<PromotionHit> PromotionHits { get; set; }
-
         public void RejectChanges()
         {
             foreach (var entry in ChangeTracker.Entries())
@@ -127,5 +125,14 @@ namespace BeatLeader_Server
                 }
             }
         }
+    }
+
+    public class StorageContext : DbContext
+    {
+        public StorageContext(DbContextOptions<StorageContext> options)
+            : base(options)
+        { }
+
+        public DbSet<PlayerScoreStatsHistory> PlayerScoreStatsHistory { get; set; }
     }
 }

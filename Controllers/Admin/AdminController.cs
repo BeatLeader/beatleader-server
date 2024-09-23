@@ -12,6 +12,8 @@ using CsvHelper;
 using CsvHelper.Configuration;
 using System.Threading.Tasks;
 using System.Globalization;
+using System.Net;
+using BeatLeader_Server.ControllerHelpers;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -20,6 +22,7 @@ namespace BeatLeader_Server.Controllers
     public class AdminController : Controller
     {
         private readonly AppContext _context;
+        private readonly StorageContext _storageContext;
         CurrentUserController _currentUserController;
         ScoreRefreshController _scoreRefreshController;
         ReplayController _replayController;
@@ -28,6 +31,7 @@ namespace BeatLeader_Server.Controllers
 
         public AdminController(
             AppContext context,
+            StorageContext storageContext,
             IWebHostEnvironment env,
             CurrentUserController currentUserController,
             ScoreRefreshController scoreRefreshController,
@@ -35,6 +39,8 @@ namespace BeatLeader_Server.Controllers
             IConfiguration configuration)
         {
             _context = context;
+            _storageContext = storageContext;
+
             _currentUserController = currentUserController;
             _scoreRefreshController = scoreRefreshController;
             _replayController = replayController;
@@ -94,7 +100,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            var attempts = _context.LoginAttempts.ToList();
+            var attempts = await _context.LoginAttempts.ToListAsync();
             foreach (var item in attempts)
             {
                 _context.LoginAttempts.Remove(item);
@@ -116,7 +122,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             Player? player = await _context.Players.FindAsync(newLeader);
-            var clan = _context.Clans.FirstOrDefault(c => c.Id == id);
+            var clan = await _context.Clans.FirstOrDefaultAsync(c => c.Id == id);
             if (player != null)
             {
                 clan.LeaderID = newLeader;
@@ -143,7 +149,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             Player? player = await _context.Players.FindAsync(newLeader);
-            var clan = _context.Clans.FirstOrDefault(c => c.Id == id);
+            var clan = await _context.Clans.FirstOrDefaultAsync(c => c.Id == id);
             if (player != null)
             {
                 player.Clans.Add(clan);
@@ -152,7 +158,7 @@ namespace BeatLeader_Server.Controllers
                 clan.AverageRank = MathUtils.AddToAverage(clan.AverageRank, clan.PlayersCount, player.Rank);
                 await _context.SaveChangesAsync();
 
-                clan.Pp = _context.RecalculateClanPP(clan.Id);
+                clan.Pp = await _context.RecalculateClanPP(clan.Id);
 
                 await _context.SaveChangesAsync();
             }
@@ -181,7 +187,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            return _context.Scores.Where(s => s.Timepost >= from && s.Timepost <= to).ToList();
+            return await _context.Scores.Where(s => s.Timepost >= from && s.Timepost <= to).ToListAsync();
         }
 
         #region RecalculateLeaderboardTimestamps
@@ -202,7 +208,7 @@ namespace BeatLeader_Server.Controllers
 
             _context.ChangeTracker.AutoDetectChangesEnabled = false;
 
-            var allLeaderboards = _context.Leaderboards.Select(l => new { Id = l.Id, ScoreTimesets = l.Scores.Select(s => s.Timeset).ToList() }).ToList();
+            var allLeaderboards = await _context.Leaderboards.Select(l => new { Id = l.Id, ScoreTimesets = l.Scores.Select(s => s.Timeset).ToList() }).ToListAsync();
 
 
             var result = new LeaderboardTimestampsRecalculationResult();
@@ -249,8 +255,8 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            var allLeaderboards = _context.Leaderboards
-                .ToList();
+            var allLeaderboards = await _context.Leaderboards
+                .ToListAsync();
 
             var map = new Dictionary<string, List<Leaderboard>>();
             
@@ -290,14 +296,14 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> GetAllScores()
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
             }
 
-            var lbs = _context.Leaderboards.Include(l => l.Song).Include(l => l.Difficulty).ToList();
+            var lbs = await _context.Leaderboards.Include(l => l.Song).Include(l => l.Difficulty).ToListAsync();
             foreach (var lb in lbs)
             {
                 lb.Difficulty.Duration = lb.Song.Duration;
@@ -311,7 +317,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> mappersList()
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
@@ -422,12 +428,12 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            var history = _context.PlayerScoreStatsHistory.FirstOrDefault(h => h.Id == id);
+            var history = await _storageContext.PlayerScoreStatsHistory.FirstOrDefaultAsync(h => h.Id == id);
             if (history == null) {
                 return NotFound();
             }
-            _context.PlayerScoreStatsHistory.Remove(history);
-            await _context.SaveChangesAsync();
+            _storageContext.PlayerScoreStatsHistory.Remove(history);
+            await _storageContext.SaveChangesAsync();
 
             return Ok();
         }
@@ -443,7 +449,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            var link = _context.BeatSaverLinks.FirstOrDefault(link => link.BeatSaverId == beatSaverId);
+            var link = await _context.BeatSaverLinks.FirstOrDefaultAsync(link => link.BeatSaverId == beatSaverId);
             if (link == null) {
                 return NotFound();
             }
@@ -458,20 +464,20 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> DeleteHistoryTime(int time)
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {
                 return Unauthorized();
             }
 
-            var history = _context.PlayerScoreStatsHistory.Where(h => h.Timestamp == time).ToList();
+            var history = await _storageContext.PlayerScoreStatsHistory.Where(h => h.Timestamp == time).ToListAsync();
             foreach (var item in history)
             {
-                _context.PlayerScoreStatsHistory.Remove(item);
+                _storageContext.PlayerScoreStatsHistory.Remove(item);
             }
             
-            await _context.BulkSaveChangesAsync();
+            await _storageContext.BulkSaveChangesAsync();
 
             return Ok();
         }
@@ -480,7 +486,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> RefreshHash()
         {
             string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = _context.Players.Find(currentID);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
 
             if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
             {

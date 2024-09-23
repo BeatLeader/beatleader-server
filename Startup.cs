@@ -347,6 +347,11 @@ namespace BeatLeader_Server {
 
                 options.UseOpenIddict();
             });
+            services.AddDbContextFactory<StorageContext>(options => { 
+                options.UseSqlServer(Configuration.GetValue<string>("StorageConnection"));
+
+                options.UseOpenIddict();
+            });
 
             services.AddOpenIddict()
             // Register the OpenIddict core components.

@@ -129,14 +129,12 @@ namespace BeatLeader_Server.ControllerHelpers {
             Player? player = await dbContext.Players.Where(p => p.Id == playerID)
                 .Include(p => p.Socials)
                 .Include(p => p.ProfileSettings)
-                .Include(p => p.History)
                 .Include(p => p.Changes).FirstOrDefaultAsync();
 
             if (player != null)
             {
                 player.Socials = null;
                 player.ProfileSettings = null;
-                player.History = null;
                 dbContext.Players.Remove(player);
                 PlayerSearchService.RemovePlayer(player);
                 await dbContext.SaveChangesAsync();

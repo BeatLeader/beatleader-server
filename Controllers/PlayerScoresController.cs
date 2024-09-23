@@ -13,6 +13,7 @@ using static BeatLeader_Server.Utils.ResponseUtils;
 namespace BeatLeader_Server.Controllers {
     public class PlayerScoresController : Controller {
         private readonly AppContext _context;
+        private readonly StorageContext _storageContext;
 
         private readonly IConfiguration _configuration;
         IWebHostEnvironment _environment;
@@ -21,10 +22,12 @@ namespace BeatLeader_Server.Controllers {
 
         public PlayerScoresController(
             AppContext context,
+            StorageContext storageContext,
             IConfiguration configuration,
             IServerTiming serverTiming,
             IWebHostEnvironment env) {
             _context = context;
+            _storageContext = storageContext;
 
             _configuration = configuration;
             _serverTiming = serverTiming;
@@ -732,7 +735,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General, 
             [FromQuery, SwaggerParameter("Amount of days to include")] int count = 50) {
             id = await _context.PlayerIdToMain(id);
-            var result = await _context
+            var result = await _storageContext
                     .PlayerScoreStatsHistory
                     .AsNoTracking()
                     .Where(p => p.PlayerId == id && p.Context == leaderboardContext)
@@ -793,7 +796,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General, 
             [FromQuery, SwaggerParameter("Amount of days to include")] int count = 50) {
             id = await _context.PlayerIdToMain(id);
-            var result = await _context
+            var result = await _storageContext
                     .PlayerScoreStatsHistory
                     .AsNoTracking()
                     .Where(p => p.PlayerId == id && p.Context == leaderboardContext)

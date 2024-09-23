@@ -139,7 +139,6 @@ namespace BeatLeader_Server.Controllers
                         .Where(p => p.Id == bslink.Id)
                         .Include(p => p.Socials)
                         .Include(p => p.ProfileSettings)
-                        .Include(p => p.History)
                         .Include(p => p.Changes)
                         .Include(p => p.Achievements)
                         .FirstOrDefaultAsync();
@@ -151,7 +150,6 @@ namespace BeatLeader_Server.Controllers
                         }
                         oldplayer.Socials = null;
                         oldplayer.ProfileSettings = null;
-                        oldplayer.History = null;
                         oldplayer.Changes = null;
                         oldplayer.Achievements = null;
                         PlayerSearchService.RemovePlayer(oldplayer);
