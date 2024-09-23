@@ -253,6 +253,34 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
+        [HttpGet("~/clan/id/{id}/triangle")]
+        [SwaggerOperation(Summary = "Retrieve clan details for the skill triangle", Description = "Fetches ranked maps(maps that can be captured on the global map) for where players of clan made scores identified by its tag, with optional sorting and filtering.")]
+        [SwaggerResponse(200, "Clan triangle retrieved successfully", typeof(ClanTriangleResponse))]
+        [SwaggerResponse(404, "Clan not found")]
+        public async Task<ActionResult<ClanTriangleResponse>> GetClanTriangleData(
+            [SwaggerParameter("Id of the clan to retrieve maps for")] int id)
+        {
+            var clan = _context.Clans.Where(c => c.Id == id).Select(c => c.Players.Select(p => new ClanTrianglePlayer {
+                Id = p.Id,
+                Avatar = p.Avatar,
+
+                AccPp = p.AccPp,
+                TechPp = p.TechPp,
+                PassPp = p.PassPp
+            })).FirstOrDefault()?.ToList();
+
+            if (clan == null) {
+                return NotFound();
+            }
+
+            return new ClanTriangleResponse {
+                Players = clan,
+                AccPp = clan.Average(p => p.AccPp),
+                TechPp = clan.Average(p => p.TechPp),
+                PassPp = clan.Average(p => p.PassPp)
+            };
+        }
+
         public class ClanPoint {
             public int Id { get; set; }
             public string Tag { get; set; }
