@@ -42,6 +42,26 @@ namespace BeatLeader_Server.Controllers
             _assetsS3Client = configuration.GetS3Client();
         }
 
+        [HttpGet("~/player/{id}/exists")]
+        [SwaggerOperation(Summary = "Check if player with such ID or alias exists", Description = "Retrieves a status of potential Beat Saber profile for a specific player ID.")]
+        [SwaggerResponse(200, "Player exists")]
+        [SwaggerResponse(404, "Player not found")]
+        public async Task<ActionResult> Exists(
+            [FromRoute, SwaggerParameter("The ID of the player")] string id)
+        {
+            string userId = await _context.PlayerIdToMain(id);
+            
+            bool exists = await _context
+                        .Players
+                        .AsNoTracking()
+                        .AnyAsync(p => p.Id == userId);
+            if (exists) {
+                return Ok();
+            } else {
+                return NotFound();
+            }
+        }
+
         [HttpGet("~/player/{id}")]
         [SwaggerOperation(Summary = "Get player profile", Description = "Retrieves a Beat Saber profile data for a specific player ID.")]
         [SwaggerResponse(200, "Returns the player's full profile", typeof(PlayerResponseFull))]
