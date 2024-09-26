@@ -80,12 +80,6 @@ namespace BeatLeader_Server.Controllers {
                 return Unauthorized();
             }
 
-            var stats = await _context.PlayerLeaderboardStats.FirstOrDefaultAsync(lb => lb.LeaderboardId == id);
-            if (stats != null) {
-                _context.PlayerLeaderboardStats.Remove(stats);
-                await _context.SaveChangesAsync();
-            }
-
             var lb = await _context.Leaderboards.FirstOrDefaultAsync(lb => lb.Id == id);
 
             if (lb != null) {

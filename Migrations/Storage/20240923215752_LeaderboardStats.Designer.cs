@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations.Storage
 {
     [DbContext(typeof(StorageContext))]
-    partial class StorageContextModelSnapshot : ModelSnapshot
+    [Migration("20240923215752_LeaderboardStats")]
+    partial class LeaderboardStats
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -22,7 +25,7 @@ namespace BeatLeader_Server.Migrations.Storage
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("BeatLeader_Server.Models.PlayerLeaderboardStats2", b =>
+            modelBuilder.Entity("BeatLeader_Server.Models.PlayerLeaderboardStats", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -176,8 +179,6 @@ namespace BeatLeader_Server.Migrations.Storage
                     b.HasIndex("ReplayOffsetsId");
 
                     b.HasIndex("ScoreImprovementId");
-
-                    b.HasIndex("PlayerId", "LeaderboardId", "Timeset");
 
                     b.ToTable("PlayerLeaderboardStats");
                 });
@@ -652,7 +653,7 @@ namespace BeatLeader_Server.Migrations.Storage
                     b.ToTable("ReplayOffsets");
                 });
 
-            modelBuilder.Entity("BeatLeader_Server.Models.PlayerLeaderboardStats2", b =>
+            modelBuilder.Entity("BeatLeader_Server.Models.PlayerLeaderboardStats", b =>
                 {
                     b.HasOne("ReplayDecoder.ReplayOffsets", "ReplayOffsets")
                         .WithMany()

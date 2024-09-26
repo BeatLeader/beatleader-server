@@ -13,6 +13,7 @@ namespace BeatLeader_Server.Controllers
     public class StatsController : Controller
     {
         private readonly AppContext _context;
+        private readonly StorageContext _storageContext;
 
         private readonly IServerTiming _serverTiming;
         private readonly IConfiguration _configuration;
@@ -20,11 +21,13 @@ namespace BeatLeader_Server.Controllers
 
         public StatsController(
             AppContext context,
+            StorageContext storageContext,
             IWebHostEnvironment env,
             IServerTiming serverTiming,
             IConfiguration configuration)
         {
             _context = context;
+            _storageContext = storageContext;
 
             _serverTiming = serverTiming;
             _configuration = configuration;
@@ -69,10 +72,10 @@ namespace BeatLeader_Server.Controllers
 
             using (_serverTiming.TimeAction("sequence"))
             {
-                sequence = _context
+                sequence = _storageContext
                     .PlayerLeaderboardStats
-                    .Include(pl => pl.Leaderboard)
-                    .Where(t => t.PlayerIdCopy == id);
+                    //.Include(pl => pl.Leaderboard)
+                    .Where(t => t.PlayerId == id);
                 switch (sortBy)
                 {
                     case "date":
@@ -150,12 +153,12 @@ namespace BeatLeader_Server.Controllers
                     Data = await sequence
                             .Skip((page - 1) * count)
                             .Take(count)
-                            .Include(lb => lb.Leaderboard)
-                                .ThenInclude(lb => lb.Song)
-                                .ThenInclude(lb => lb.Difficulties)
-                            .Include(lb => lb.Leaderboard)
-                                .ThenInclude(lb => lb.Difficulty)
-                                .ThenInclude(d => d.ModifierValues)
+                            //.Include(lb => lb.Leaderboard)
+                            //    .ThenInclude(lb => lb.Song)
+                            //    .ThenInclude(lb => lb.Difficulties)
+                            //.Include(lb => lb.Leaderboard)
+                            //    .ThenInclude(lb => lb.Difficulty)
+                            //    .ThenInclude(d => d.ModifierValues)
                             //.Include(sc => sc.ScoreImprovement)
                             //.Select(ScoreWithMyScore)
                             .ToListAsync()
@@ -200,18 +203,18 @@ namespace BeatLeader_Server.Controllers
             }
 
             return Ok(
-                await _context
+                await _storageContext
                 .PlayerLeaderboardStats
-                .Where(s => s.PlayerIdCopy == playerId && s.LeaderboardId == leaderboardId)
+                .Where(s => s.PlayerId == playerId && s.LeaderboardId == leaderboardId)
                 .ToListAsync());
         }
 
         [HttpGet("~/otherreplays/{name}")]
         public async Task<ActionResult<string>> GetOtherReplay(string name) {
-            var stat = await _context
+            var stat = await _storageContext
                 .PlayerLeaderboardStats
-                .Where(s => s.ReplayCopy == $"https://api.beatleader.xyz/otherreplays/{name}")
-                .Select(s => s.PlayerIdCopy)
+                .Where(s => s.Replay == $"https://api.beatleader.xyz/otherreplays/{name}")
+                .Select(s => s.PlayerId)
                 .FirstOrDefaultAsync();
             if (stat == null) {
                 return NotFound();

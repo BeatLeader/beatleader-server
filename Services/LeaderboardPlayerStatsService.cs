@@ -17,7 +17,7 @@ namespace BeatLeader_Server.Services {
     }
 
     public class LeaderboardPlayerStatsService {
-        public static async Task AddJob(PlayerStatsJob job, AppContext _context, IAmazonS3 _s3Client) {
+        public static async Task AddJob(PlayerStatsJob job, AppContext _context, StorageContext _storageContext, IAmazonS3 _s3Client) {
             var score = job.score;
 
             var leaderboard = await _context.Leaderboards.Where(l => l.Id == job.leaderboardId).FirstOrDefaultAsync();
@@ -48,8 +48,7 @@ namespace BeatLeader_Server.Services {
                 Score = score.BaseScore,
                 Type = job.type,
                 PlayerId = job.playerId,
-                PlayerIdCopy = job.playerId,
-                ReplayCopy = replayLink,
+                Replay = replayLink,
                 LeaderboardId = leaderboard.Id
             };
 
@@ -72,13 +71,12 @@ namespace BeatLeader_Server.Services {
             if (float.IsNaN(stats.Accuracy) || float.IsNegativeInfinity(stats.Accuracy) || float.IsPositiveInfinity(stats.Accuracy)) {
                 stats.Accuracy = 0;
             }
-            _context.PlayerLeaderboardStats.Add(stats);
+            _storageContext.PlayerLeaderboardStats.Add(stats);
 
             try {
-                await _context.SaveChangesAsync();
+                await _storageContext.SaveChangesAsync();
             } catch (Exception e) {
                 Console.WriteLine($"LeaderboardPlayerStatsService EXCEPTION: {e}");
-                _context.RejectChanges();
             }
         }
     }

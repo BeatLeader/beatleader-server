@@ -27,6 +27,7 @@ namespace BeatLeader_Server.Controllers
     {
         private readonly IAmazonS3 _s3Client;
         private readonly IDbContextFactory<AppContext> _dbFactory;
+        private readonly StorageContext _storageContext;
 
         private readonly IWebHostEnvironment _environment;
         private readonly IConfiguration _configuration;
@@ -39,6 +40,7 @@ namespace BeatLeader_Server.Controllers
 
         public ReplayController(
             IDbContextFactory<AppContext> dbFactory,
+            StorageContext storageContext,
             IWebHostEnvironment env,
             IConfiguration configuration,
             IServerTiming serverTiming,
@@ -50,6 +52,7 @@ namespace BeatLeader_Server.Controllers
             _configuration = configuration;
             _serverTiming = serverTiming;
             _s3Client = configuration.GetS3Client();
+            _storageContext = storageContext;
 
             _replayLocation = metricFactory.CreateGauge("replay_position", "Posted replay location", new string[] { "geohash" });
             _geoHasher = new Geohash.Geohasher();
@@ -786,7 +789,7 @@ namespace BeatLeader_Server.Controllers
                 currentScore.ValidContexts &= ~LeaderboardContexts.General;
                 resultScore.PlayCount = currentScore.PlayCount;
             } else {
-                resultScore.PlayCount = await dbContext.PlayerLeaderboardStats.Where(st => st.PlayerIdCopy == player.Id && st.LeaderboardId == leaderboard.Id).CountAsync();
+                resultScore.PlayCount = await _storageContext.PlayerLeaderboardStats.Where(st => st.PlayerId == player.Id && st.LeaderboardId == leaderboard.Id).CountAsync();
             }
 
             resultScore.ValidContexts |= LeaderboardContexts.General;
@@ -1419,13 +1422,13 @@ namespace BeatLeader_Server.Controllers
                 type = type,
                 score = resultScore,
                 saveReplay = replay.frames.Count > 0 && replay.info.score > 0 
-            }, dbContext, _s3Client);
+            }, dbContext, _storageContext, _s3Client);
         }
 
         private async Task MigrateOldReplay(AppContext dbContext, Score score, string leaderboardId) {
             if (score.Replay == null) return;
-            var stats = await dbContext.PlayerLeaderboardStats
-                .Where(s => s.LeaderboardId == leaderboardId && s.Score == score.BaseScore && s.PlayerIdCopy == score.PlayerId && (s.ReplayCopy == null || s.ReplayCopy == score.Replay))
+            var stats = await _storageContext.PlayerLeaderboardStats
+                .Where(s => s.LeaderboardId == leaderboardId && s.Score == score.BaseScore && s.PlayerId == score.PlayerId && (s.Replay == null || s.Replay == score.Replay))
                 .FirstOrDefaultAsync();
             
             string? name = score.Replay.Split("/").LastOrDefault();
@@ -1448,7 +1451,7 @@ namespace BeatLeader_Server.Controllers
 
             if (uploaded) {
                 if (stats != null) {
-                    stats.ReplayCopy = "https://api.beatleader.xyz/otherreplays/" + fileName;
+                    stats.Replay = "https://api.beatleader.xyz/otherreplays/" + fileName;
                 } else {
                      LeaderboardPlayerStatsService.AddJob(new PlayerStatsJob {
                         fileName = "https://api.beatleader.xyz/otherreplays/" + fileName,
@@ -1458,7 +1461,7 @@ namespace BeatLeader_Server.Controllers
                         type = EndType.Clear,
                         time = 0,
                         score = score
-                    }, dbContext, _s3Client);
+                    }, dbContext, _storageContext, _s3Client);
                 }
             }
         }
