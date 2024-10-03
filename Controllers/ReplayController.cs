@@ -294,7 +294,7 @@ namespace BeatLeader_Server.Controllers
                     time = replay.info.failTime;
                     forcetimeset = int.Parse(replay.info.timestamp);
                 }
-                await CollectStats(dbContext, replay, replayData, null, authenticatedPlayerID, leaderboard, time, type, null, forcetimeset);
+                await CollectStats(dbContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, time, type, null, forcetimeset);
                 return Ok();
             }
 
@@ -375,6 +375,7 @@ namespace BeatLeader_Server.Controllers
                     .Include(s => s.RankVoting)
                     .ThenInclude(v => v.Feedbacks)
                     .Include(s => s.ContextExtensions)
+                    .Include(s => s.ReplayOffsets)
                     .AsSplitQuery()
                     .TagWithCallSite()
                     .ToListAsync();
@@ -464,7 +465,7 @@ namespace BeatLeader_Server.Controllers
                     maxScore,
                     allow);
                 if (stats) {
-                    await CollectStats(dbContext, replay, replayData, null, authenticatedPlayerID, leaderboard, replay.frames.Last().time, EndType.Clear, null);
+                    await CollectStats(dbContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, replay.frames.Last().time, EndType.Clear, null);
                 }
             } catch (Exception e) {
 
@@ -1218,7 +1219,7 @@ namespace BeatLeader_Server.Controllers
                     });
                 }
 
-                await CollectStats(dbContext, replay, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, resultScore);
+                await CollectStats(dbContext, replay, offsets, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, resultScore);
                 
                 await dbContext.BulkSaveChangesAsync();
 
@@ -1368,6 +1369,7 @@ namespace BeatLeader_Server.Controllers
         private async Task CollectStats(
             AppContext dbContext,
             Replay replay,
+            ReplayOffsets offsets,
             byte[] replayData,
             string? fileName,
             string playerId,
@@ -1413,6 +1415,7 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
             }
+            resultScore.ReplayOffsets = offsets;
             await LeaderboardPlayerStatsService.AddJob(new PlayerStatsJob {
                 replayData = fileName != null ? null : replayData,
                 fileName = fileName ?? $"{replay.info.playerID}-{timeset}{(replay.info.speed != 0 ? "-practice" : "")}{(replay.info.failTime != 0 ? "-fail" : "")}-{replay.info.difficulty}-{replay.info.mode}-{replay.info.hash}.bsor",

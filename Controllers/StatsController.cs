@@ -4,10 +4,11 @@ using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Lib.ServerTiming;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ReplayDecoder;
 using Swashbuckle.AspNetCore.Annotations;
+using System.Buffers;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -119,6 +120,7 @@ namespace BeatLeader_Server.Controllers
                             Id = s.ScoreId,
                             EndType = s.Type,
                             AttemptsCount = s.AttemptsCount,
+                            Time = s.Time,
                             BaseScore = s.BaseScore,
                             ModifiedScore = s.ModifiedScore,
                             PlayerId = s.PlayerId,
@@ -330,6 +332,159 @@ namespace BeatLeader_Server.Controllers
                 .PlayerLeaderboardStats
                 .Where(s => s.PlayerId == playerId && s.LeaderboardId == leaderboardId)
                 .ToListAsync());
+        }
+
+        [NonAction]
+        public async Task<(StatsGraph?, ReplayOffsets?)> CollectGraph(int id, string replayLink, int? start, int? length) {
+
+            List<NoteEvent>? notes = null;
+            List<WallEvent>? walls = null;
+            ReplayOffsets? offsets = null;
+
+            string filename = replayLink.Split("/").Last();
+            
+            try {
+                if (start != null && length != null) {
+                    using (var stream = await _s3Client.DownloadStreamOffset(filename, replayLink.Contains("otherreplays") ? S3Container.otherreplays : S3Container.replays, (int)start, (int)length)) {
+                        if (stream == null) return (null, null);
+
+                        byte[] replayData;
+
+                        List<byte> replayDataList = new List<byte>(); 
+                        byte[] buffer = ArrayPool<byte>.Shared.Rent(4096);
+
+                        while (true)
+                        {
+                            var bytesRemaining = await stream.ReadAsync(buffer, offset: 0, buffer.Length);
+                            if (bytesRemaining == 0)
+                            {
+                                break;
+                            }
+                            replayDataList.AddRange(new Span<byte>(buffer, 0, bytesRemaining).ToArray());
+                        }
+
+                        ArrayPool<byte>.Shared.Return(buffer);
+
+                        replayData = replayDataList.ToArray();
+                        
+                        int pointer = 0;
+                        notes = ReplayDecoder.ReplayDecoder.DecodeNotes(replayData, ref pointer);
+                        pointer++;
+                        walls = ReplayDecoder.ReplayDecoder.DecodeWalls(replayData, ref pointer);
+                    }
+                } else {
+                    using (var stream = await _s3Client.DownloadStream(filename, replayLink.Contains("otherreplays") ? S3Container.otherreplays : S3Container.replays)) {
+                        if (stream == null) return (null, null);
+
+                        Replay? replay;
+                        byte[] replayData;
+
+                        List<byte> replayDataList = new List<byte>(); 
+                        byte[] buffer = ArrayPool<byte>.Shared.Rent(4096);
+
+                        while (true)
+                        {
+                            var bytesRemaining = await stream.ReadAsync(buffer, offset: 0, buffer.Length);
+                            if (bytesRemaining == 0)
+                            {
+                                break;
+                            }
+                            replayDataList.AddRange(new Span<byte>(buffer, 0, bytesRemaining).ToArray());
+                        }
+
+                        ArrayPool<byte>.Shared.Return(buffer);
+
+                        replayData = replayDataList.ToArray();
+                        (replay, offsets) = ReplayDecoder.ReplayDecoder.Decode(replayData);
+                        notes = replay?.notes;
+                        walls = replay?.walls;
+                    }
+                }
+            } catch {
+            }
+
+            if (notes == null || walls == null) return (null, null);
+
+            (_, var notesStructs, _, _) = ReplayStatistic.Accuracy(notes, walls);
+
+            return (new StatsGraph { 
+                AttemptId = id,
+                Notes = notesStructs.Select(n => new StatsNote {
+                    SpawnTime = n.spawnTime,
+                    Score = n.score,
+                    Accuracy = n.accuracy
+                }).ToList()
+            }, offsets);
+        }
+
+        [HttpGet("~/map/scorestats/graph")]
+        public async Task<ActionResult<StatsRecord>> GetScorestatsGraphOnMap([FromQuery] string playerId, [FromQuery] string leaderboardId) {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            bool admin = currentID != null ? ((await _context
+                .Players
+                .Where(p => p.Id == currentID)
+                .Select(p => p.Role)
+                .FirstOrDefaultAsync())
+                ?.Contains("admin") ?? false) : false;
+
+            playerId = await _context.PlayerIdToMain(playerId);
+
+            var features = await _context
+                .Players
+                .Where(p => p.Id == playerId)
+                .Select(p => p.ProfileSettings)
+                .FirstOrDefaultAsync();
+
+            if (!(currentID == playerId || admin || (features != null && features.ShowStatsPublic))) {
+                return Unauthorized();
+            }
+
+            StatsRecord? result = null;
+            string filename = playerId + "_" + leaderboardId + ".json";
+
+            using (var stream = await _s3Client.DownloadStream(filename, S3Container.attempts)) {
+                if (stream != null) {
+                    result = stream.ObjectFromStream<StatsRecord>();
+                }
+            }
+
+            if (result == null) {
+                result = new StatsRecord { Scores = new List<StatsGraph>() };
+            }
+
+            var existingStats = result.Scores.Select(s => s.AttemptId).ToList();
+            var replays = await _storageContext
+                .PlayerLeaderboardStats
+                .Where(s => !existingStats.Contains(s.Id) && s.PlayerId == playerId && s.LeaderboardId == leaderboardId && s.Replay != null)
+                .Select(s => new { s.Id, s.Replay, s.ReplayOffsets, s.AttemptsCount })
+                .ToListAsync();
+            if (replays.Count > 0) {
+                var tasks = replays.Select(r => CollectGraph(r.Id, r.Replay, r.ReplayOffsets?.Notes, (r.ReplayOffsets?.Heights ?? 0) - (r.ReplayOffsets?.Notes ?? 0)));
+                var scores = (await Task.WhenAll(tasks)).Where(t => t.Item1 != null).ToList();
+
+                var offsetsIdsToUpdate = scores.Where(t => t.Item2 != null).Select(t => t.Item1.AttemptId).ToList();
+                if (offsetsIdsToUpdate.Count > 0) {
+                    var stats = await _storageContext
+                    .PlayerLeaderboardStats
+                    .Where(s => offsetsIdsToUpdate.Contains(s.Id))
+                    .ToListAsync();
+
+                    foreach (var stat in stats) {
+                        stat.ReplayOffsets = scores.FirstOrDefault(s => s.Item1.AttemptId == stat.Id).Item2;
+                    }
+                    _storageContext.SaveChanges();
+                }
+
+                if (scores.Count > 0) {
+                    foreach (var score in scores) {
+                        result.Scores.Add(score.Item1);
+                    }
+
+                    await _s3Client.UploadStatsRecord(filename, result);
+                }
+            }
+
+            return result;
         }
 
         [HttpGet("~/otherreplays/{name}")]

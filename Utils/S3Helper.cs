@@ -5,6 +5,7 @@ using Amazon.S3.Model;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using ReplayDecoder;
 
 namespace BeatLeader_Server.Utils
@@ -21,7 +22,8 @@ namespace BeatLeader_Server.Utils
         configs,
         replayedvalues,
         reepresets,
-        songs
+        songs,
+        attempts
     }
 
     public static class S3Helper
@@ -122,6 +124,21 @@ namespace BeatLeader_Server.Utils
 		public static async Task<string> UploadScoreStats(this IAmazonS3 client, string filename, ScoreStatistic scoreStats)
         {
             return await client.UploadStream(filename, S3Container.scorestats, new BinaryData(JsonConvert.SerializeObject(scoreStats)).ToStream());
+        }
+
+        public static async Task<string> UploadStatsRecord(this IAmazonS3 client, string filename, StatsRecord statsRecord)
+        {
+            var contractResolver = new DefaultContractResolver {
+                NamingStrategy = new CamelCaseNamingStrategy()
+            };
+
+            var serialized = JsonConvert.SerializeObject(statsRecord, new JsonSerializerSettings
+            {
+                ContractResolver = contractResolver,
+                Formatting = Formatting.Indented
+            });
+
+            return await client.UploadStream(filename, S3Container.attempts, new BinaryData(serialized).ToStream());
         }
 
         public static async Task<string> UploadPlaylist(IAmazonS3 client, string filename, dynamic playlist)
