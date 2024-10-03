@@ -1,4 +1,5 @@
-﻿using BeatLeader_Server.Controllers;
+﻿using Amazon.S3;
+using BeatLeader_Server.Controllers;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.EntityFrameworkCore;
@@ -333,6 +334,7 @@ namespace BeatLeader_Server.Services
                 await _context.BulkSaveChangesAsync();
 
                 var _httpClientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
+                var _s3Client = _configuration.GetS3Client();
                 var client = _httpClientFactory.CreateClient();
 
                 string url = $"https://render.beatleader.xyz/animatedscreenshot/600x600/clansmapchange/general/clansmap/history/{previousTimeset}/{timeset}";
@@ -344,6 +346,8 @@ namespace BeatLeader_Server.Services
                         var gif = await response.Content.ReadAsByteArrayAsync();
                         path = $"/root/assets/clansmap-change-daily-{previousTimeset}-{timeset}.gif";
                         File.WriteAllBytes(path, gif);
+
+                        await _s3Client.UploadAsset("clansmap-change-daily-latest.gif", gif);
 
                         var blhook = _configuration.GetValue<string?>("ClanWarsHook") ?? "";
                         var chhook = _configuration.GetValue<string?>("ClansHubHook") ?? "";
@@ -360,6 +364,7 @@ namespace BeatLeader_Server.Services
                     }
                     
                 } catch (Exception e) {
+                    Console.WriteLine($"SetClanRankingHistories {e}");
                 }
             }
         }

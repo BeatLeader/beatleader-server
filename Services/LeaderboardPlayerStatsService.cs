@@ -71,6 +71,8 @@ namespace BeatLeader_Server.Services {
             if (float.IsNaN(stats.Accuracy) || float.IsNegativeInfinity(stats.Accuracy) || float.IsPositiveInfinity(stats.Accuracy)) {
                 stats.Accuracy = 0;
             }
+            stats.AttemptsCount = await _storageContext.PlayerLeaderboardStats.Where(s => s.LeaderboardId == stats.LeaderboardId && s.PlayerId == stats.PlayerId).CountAsync();
+            stats.AttemptsCount++;
             _storageContext.PlayerLeaderboardStats.Add(stats);
 
             try {
