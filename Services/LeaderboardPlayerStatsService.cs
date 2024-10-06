@@ -12,6 +12,7 @@ namespace BeatLeader_Server.Services {
         public string leaderboardId { get; set; }
         public Score score { get; set; }
         public float time { get; set; }
+        public float startTime { get; set; }
         public int? timeset { get; set; }
         public EndType type { get; set; }
     }
@@ -45,6 +46,7 @@ namespace BeatLeader_Server.Services {
             var stats = new PlayerLeaderboardStats {
                 Timeset = timeset,
                 Time = job.time,
+                StartTime = job.startTime,
                 Score = score.BaseScore,
                 Type = job.type,
                 PlayerId = job.playerId,

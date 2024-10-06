@@ -154,7 +154,7 @@ namespace BeatLeader_Server.Services
                         message += "Mapped by: **" + leaderboard.Song.Mapper
                               + "** Nominated: **" + ((await _context.Players.FindAsync(leaderboard.Qualification.RTMember))?.Name ?? "None")
                               + "** Criteria: **" + ((await _context.Players.FindAsync(leaderboard.Qualification.CriteriaChecker))?.Name ?? "None") + "**\n";
-                        message += $"{totalpp:0.00} total pp and {totalRanks} total ranks were acquired \n";
+                        message += $"{totalpp:0.00} total pp and {(totalRanks > 0 ? totalRanks : totalRanks * -1)} total ranks were acquired \n";
 
                         await dsClient.SendMessageAsync(message, embeds: new List<Embed> {
                             new EmbedBuilder()

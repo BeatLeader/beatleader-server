@@ -1382,7 +1382,7 @@ namespace BeatLeader_Server.Controllers
             int timeset = forceTimeset ?? (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
             if (resultScore == null) {
-                (resultScore, int maxScore) = ReplayUtils.ProcessReplay(replay, leaderboard.Difficulty);
+                (resultScore, int maxScore) = ReplayUtils.ProcessReplay(replay, leaderboard.Difficulty, time);
 
                 if (type == EndType.Clear) {
                     ScoreStatistic? statistic = null;
@@ -1422,6 +1422,7 @@ namespace BeatLeader_Server.Controllers
                 playerId = playerId,
                 leaderboardId = leaderboard.Id,
                 time = time,
+                startTime = replay.info.startTime,
                 type = type,
                 score = resultScore,
                 saveReplay = replay.frames.Count > 0 && replay.info.score > 0 

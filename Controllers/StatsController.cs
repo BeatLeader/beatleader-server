@@ -121,6 +121,7 @@ namespace BeatLeader_Server.Controllers
                             EndType = s.Type,
                             AttemptsCount = s.AttemptsCount,
                             Time = s.Time,
+                            StartTime = s.StartTime,
                             BaseScore = s.BaseScore,
                             ModifiedScore = s.ModifiedScore,
                             PlayerId = s.PlayerId,
@@ -300,6 +301,9 @@ namespace BeatLeader_Server.Controllers
                 .ToListAsync();
             foreach (var score in result.Data) {
                 score.Leaderboard = leaderboards.FirstOrDefault(s => s.Id == score.LeaderboardId);
+                if (!showRatings && !score.Leaderboard.Difficulty.Status.WithRating()) {
+                    score.Leaderboard.HideRatings();
+                }
             }
 
             return result;

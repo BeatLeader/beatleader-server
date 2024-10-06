@@ -124,6 +124,11 @@ namespace BeatLeader_Server.Utils
 
             await context.BulkUpdateAsync(rankedPlayers, options => options.ColumnInputExpression = c => new { c.Rank, c.CountryRank });
 
+            var updatedPlayer = rankedPlayers.FirstOrDefault(p => p.Id == player.Id);
+            if (updatedPlayer != null) {
+                player.Rank = updatedPlayer.Rank;
+            }
+
             var scoresForWeightedAcc = rankedScores.OrderByDescending(s => s.Accuracy).Take(100).ToList();
             var sum = 0.0f;
             var weights = 0.0f;

@@ -239,7 +239,7 @@ namespace BeatLeader_Server.Utils
             return PpFromScore(s.Accuracy, LeaderboardContexts.General, s.Modifiers, diff.ModifierValues, diff.ModifiersRating, diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0, false);
         }
 
-        public static (Score, int) ProcessReplay(Replay replay, DifficultyDescription difficulty) {
+        public static (Score, int) ProcessReplay(Replay replay, DifficultyDescription difficulty, float? endTime = null) {
             ReplayInfo info = replay.info;
             Score score = new Score();
             
@@ -254,11 +254,17 @@ namespace BeatLeader_Server.Utils
             bool hasPp = status == DifficultyStatus.ranked || qualification;
 
             int maxScore = difficulty.MaxScore > 0 ? difficulty.MaxScore : MaxScoreForNote(difficulty.Notes);
-            if (replay.info.failTime > 0 && difficulty.MaxScoreGraph != null) {
-                var scoreList = difficulty.MaxScoreGraph.LoadList();
-                var maxScoreNote = scoreList?.FirstOrDefault(s => s.Item1 >= replay.info.failTime);
-                if (maxScoreNote != null) {
-                    maxScore = maxScoreNote?.Item2 ?? maxScore;
+            if ((endTime ?? replay.info.failTime) > 0 && difficulty.MaxScoreGraph != null) {
+                var scoreList = difficulty.MaxScoreGraph.LoadList().ToArray();
+                for (int i = 1; i < scoreList.Length; i++) {
+                    if (scoreList[i].Item1 > (endTime ?? replay.info.failTime)) {
+                        maxScore = scoreList[i - 1].Item2;
+                        break;
+                    }
+
+                    if (i == scoreList.Length - 1) {
+                        maxScore = scoreList[i].Item2;
+                    }
                 }
 
                 if (replay.info.startTime > 0) {
