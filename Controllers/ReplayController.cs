@@ -392,6 +392,17 @@ namespace BeatLeader_Server.Controllers
                     player.Name = info.playerName;
                     player.Platform = info.platform;
                     player.ScoreStats = new PlayerScoreStats();
+                    player.ContextExtensions = new List<PlayerContextExtension>();
+                    foreach (var contxt in ContextExtensions.NonGeneral) {
+                        if (player.ContextExtensions.FirstOrDefault(ce => ce.Context == contxt) == null) {
+                            player.ContextExtensions.Add(new PlayerContextExtension {
+                                Context = contxt,
+                                ScoreStats = new PlayerScoreStats(),
+                                PlayerId = player.Id,
+                                Country = player.Country
+                            });
+                        }
+                    }
                     player.SetDefaultAvatar();
                     player.SanitizeName();
 
@@ -1269,6 +1280,7 @@ namespace BeatLeader_Server.Controllers
                                     .WithImageUrl("https://api.beatleader.xyz/preview/replay?scoreId=" + resultScore.Id)
                                     .Build()
                             });
+                        await Task.Delay(TimeSpan.FromSeconds(30));
                         await Bot.BotService.PublishAnnouncement(1016157747668074627, messageId);
                     }
                 }

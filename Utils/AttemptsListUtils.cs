@@ -26,7 +26,6 @@ namespace BeatLeader_Server.Utils {
             int? time_to = null,
             int? eventId = null) {
             
-            
             if (hmd != null) {
                 sequence = sequence.Where(s => s.Hmd == hmd);
             }
@@ -153,6 +152,9 @@ namespace BeatLeader_Server.Utils {
                     break;
                 case ScoresSortBy.Timing:
                     orderedSequence = sequence.Order(order, t => (t.LeftTiming + t.RightTiming) / 2);
+                    break;
+                case ScoresSortBy.PlayCount:
+                    orderedSequence = sequence.Order(order, t => t.AttemptsCount);
                     break;
                 //case ScoresSortBy.Stars:
                 //    orderedSequence = sequence.Order(order, s => 

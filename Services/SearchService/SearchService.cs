@@ -14,9 +14,13 @@ public class SearchService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
+        do {
+            await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
 
-        await FetchSearchItems();
+            await FetchSearchItems();
+            await Task.Delay(TimeSpan.FromHours(6), stoppingToken);
+        }
+        while (!stoppingToken.IsCancellationRequested);
     }
 
     private async Task FetchSearchItems()

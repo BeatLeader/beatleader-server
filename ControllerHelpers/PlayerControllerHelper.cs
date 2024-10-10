@@ -63,6 +63,18 @@ namespace BeatLeader_Server.ControllerHelpers {
 
                 player.Id = id;
                 player.ScoreStats = new PlayerScoreStats();
+                player.ContextExtensions = new List<PlayerContextExtension>();
+                foreach (var context in ContextExtensions.NonGeneral) {
+                    if (player.ContextExtensions.FirstOrDefault(ce => ce.Context == context) == null) {
+                        player.ContextExtensions.Add(new PlayerContextExtension {
+                            Context = context,
+                            ScoreStats = new PlayerScoreStats(),
+                            PlayerId = player.Id,
+                            Country = player.Country
+                        });
+                    }
+                }
+
                 if (addToBase) {
                     dbContext.Players.Add(player);
                     
