@@ -333,6 +333,127 @@ namespace BeatLeader_Server.Controllers
             return await GetFromScore(score, twitter);
         }
 
+        [HttpGet("~/preview/prerender/replay")]
+        public async Task<ContentResult> GetPrerender(
+            [FromQuery] string? playerID = null, 
+            [FromQuery] string? id = null, 
+            [FromQuery] string? difficulty = null, 
+            [FromQuery] string? mode = null,
+            [FromQuery] string? link = null,
+            [FromQuery] int? scoreId = null,
+            [FromQuery] bool twitter = false) {
+
+            ScoreSelect? score = null;
+
+            using (_serverTiming.TimeAction("db"))
+            {
+                var query = scoreId != null 
+                    ? _context.Scores
+                        .Where(s => s.Id == scoreId)
+                    : _context.Scores
+                        .Where(s => s.PlayerId == playerID && s.Leaderboard.Difficulty.DifficultyName == difficulty && s.Leaderboard.Difficulty.ModeName == mode);
+                
+                score = await query
+                    .Include(s => s.Player)
+                        .ThenInclude(p => p.ProfileSettings)
+                    .Include(s => s.Leaderboard)
+                        .ThenInclude(l => l.Song)
+                    .Include(s => s.Leaderboard)
+                        .ThenInclude(l => l.Difficulty)
+                    .Include(s => s.ContextExtensions)
+                    .Select(s => new ScoreSelect {
+                        ScoreId = s.Id,
+                        SongId = s.Leaderboard.Song.Id,
+                        CoverImage = s.Leaderboard.Song.CoverImage,
+                        SongName = s.Leaderboard.Song.Name,
+                        Stars = 
+                            (s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
+                            s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
+                            s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) ? s.Leaderboard.Difficulty.Stars : null,
+
+                        Accuracy = s.Accuracy,
+                        PlayerId = s.PlayerId,
+                        Pp = s.Pp,
+                        Rank = s.Rank,
+                        Modifiers = s.Modifiers,
+                        FullCombo = s.FullCombo,
+                        Difficulty = s.Leaderboard.Difficulty.DifficultyName,
+
+                        PlayerAvatar = s.Player.Avatar,
+                        PlayerName = s.Player.Name,
+                        PlayerRole = s.Player.Role,
+                        PatreonFeatures = s.Player.PatreonFeatures,
+                        ProfileSettings = s.Player.ProfileSettings,
+                        ContextExtensions = s.ContextExtensions
+                    })
+                    .FirstOrDefaultAsync();
+                if (score == null) {
+                    var redirect = await _context.ScoreRedirects.FirstOrDefaultAsync(sr => sr.OldScoreId == scoreId);
+                    if (redirect != null && redirect.NewScoreId != scoreId)
+                    {
+                        return await GetPrerender(scoreId: redirect.NewScoreId);
+                    }
+                } else if (scoreId != null){
+                    score.ScoreId = scoreId;
+                }
+            }
+
+            await GetFromScore(score, twitter);
+
+            return new ContentResult 
+            {
+                ContentType = "text/html",
+                Content = $"""
+                    <!DOCTYPE html>
+                    <html class="a-fullscreen shoqbzame idc0_350"><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+                        <title>Replay | {score.PlayerName} | {score.SongName}</title>
+                        <link rel="apple-touch-icon-precomposed" sizes="57x57" href="https://replay.beatleader.xyz/assets/img/apple-touch-icon-57x57.png">
+                        <link rel="apple-touch-icon-precomposed" sizes="114x114" href="https://replay.beatleader.xyz/assets/img/apple-touch-icon-114x114.png">
+                        <link rel="apple-touch-icon-precomposed" sizes="72x72" href="https://replay.beatleader.xyz/assets/img/apple-touch-icon-72x72.png">
+                        <link rel="apple-touch-icon-precomposed" sizes="144x144" href="https://replay.beatleader.xyz/assets/img/apple-touch-icon-144x144.png">
+                        <link rel="apple-touch-icon-precomposed" sizes="60x60" href="https://replay.beatleader.xyz/assets/img/apple-touch-icon-60x60.png">
+                        <link rel="apple-touch-icon-precomposed" sizes="120x120" href="https://replay.beatleader.xyz/assets/img/apple-touch-icon-120x120.png">
+                        <link rel="apple-touch-icon-precomposed" sizes="76x76" href="https://replay.beatleader.xyz/assets/img/apple-touch-icon-76x76.png">
+                        <link rel="apple-touch-icon-precomposed" sizes="152x152" href="https://replay.beatleader.xyz/assets/img/apple-touch-icon-152x152.png">
+                        <link rel="icon" type="image/png" href="https://replay.beatleader.xyz/assets/img/favicon-96x96.png" sizes="96x96">
+                        <link rel="icon" type="image/png" href="https://replay.beatleader.xyz/assets/img/favicon-32x32.png" sizes="32x32">
+                        <link rel="icon" type="image/png" href="https://replay.beatleader.xyz/assets/img/favicon-16x16.png" sizes="16x16">
+                        <link rel="icon" type="image/png" href="https://replay.beatleader.xyz/assets/img/favicon-128.png" sizes="128x128">
+                        <meta name="application-name" content="Beat Saber web replays">
+                        <meta name="msapplication-TileColor" content="#FFFFFF">
+                        <meta name="msapplication-TileImage" content="assets/img/mstile-144x144.png">
+                        <meta name="msapplication-square70x70logo" content="assets/img/mstile-70x70.png">
+                        <meta name="msapplication-square150x150logo" content="assets/img/mstile-150x150.png">
+                        <meta name="msapplication-wide310x150logo" content="assets/img/mstile-310x150.png">
+                        <meta name="msapplication-square310x310logo" content="assets/img/mstile-310x310.png">
+
+                        <meta property="og:title" content="Replay | {score.PlayerName} | {score.SongName}">
+                        <meta name="twitter:title" content="Beat Saber replay">
+                        <meta name="twitter:site" content="replay.beatleader.xyz">
+                        <meta name="twitter:image:alt" content="Beat Saber replay">
+
+                        <meta name="twitter:player:width" content="700">
+                        <meta name="twitter:player:height" content="400">
+                        <meta name="twitter:card" content="summary_large_image">
+
+                        <meta property="og:type" content="object">
+                        <meta property="og:image:width" content="700">
+                        <meta property="og:image:height" content="400">
+
+                        <meta property="og:url" content="https://replay.beatleader.xyz/?scoreId={score.ScoreId}">
+                        <meta property="og:video:url" content="https://replay.beatleader.xyz/?scoreId={score.ScoreId}">
+                        <meta property="og:video:secure_url" content="https://replay.beatleader.xyz/?scoreId={score.ScoreId}">
+                        <meta property="twitter:player" content="https://replay.beatleader.xyz/?scoreId={score.ScoreId}">
+                        <meta property="twitter:image" content="https://replay.beatleader.xyz/preview.png?scoreId={score.ScoreId}&twitter=true">
+                        <meta property="og:image" content="https://replay.beatleader.xyz/preview.png?scoreId={score.ScoreId}">
+                      </head>
+                      <body>
+                      </body>
+                    </html>
+                    """
+            };
+        }
+
         [NonAction]
         public async Task<ActionResult> GetLink(string link, bool twitter) {
             ReplayInfo? info = null;

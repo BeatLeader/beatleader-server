@@ -492,15 +492,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/otherreplays/{name}")]
-        public async Task<ActionResult<string>> GetOtherReplay(string name) {
-            var stat = await _storageContext
-                .PlayerLeaderboardStats
-                .Where(s => s.Replay == $"https://api.beatleader.xyz/otherreplays/{name}")
-                .Select(s => s.PlayerId)
-                .FirstOrDefaultAsync();
-            if (stat == null) {
-                return NotFound();
-            }
+        public async Task<ActionResult> GetOtherReplay(string name) {
 
             string? currentID = HttpContext.CurrentUserID(_context);
             bool admin = currentID != null ? ((await _context
@@ -510,7 +502,7 @@ namespace BeatLeader_Server.Controllers
                 .FirstOrDefaultAsync())
                 ?.Contains("admin") ?? false) : false;
 
-            var playerId = await _context.PlayerIdToMain(stat);
+            var playerId = await _context.PlayerIdToMain(name.Split("-").First());
 
             var features = await _context
                 .Players
@@ -522,7 +514,12 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            return await _s3Client.GetPresignedUrlUnsafe(name, S3Container.otherreplays);
+            var stream = await _s3Client.DownloadOtherReplay(name);
+            if (stream == null) {
+                return NotFound();
+            }
+
+            return Ok(stream);
         }
 
         [ApiExplorerSettings(IgnoreApi = true)]
