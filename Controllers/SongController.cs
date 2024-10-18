@@ -41,9 +41,9 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/maps/")]
-        [SwaggerOperation(Summary = "Retrieve a list of leaderboards (maps)", Description = "Fetches a paginated and optionally filtered list of leaderboards (Beat Saber maps).")]
-        [SwaggerResponse(200, "Leaderboards retrieved successfully", typeof(ResponseWithMetadata<MapInfoResponse>))]
-        [SwaggerResponse(404, "Leaderboards not found")]
+        [SwaggerOperation(Summary = "Retrieve a list of maps", Description = "Fetches a paginated and optionally filtered list of Beat Saber maps.")]
+        [SwaggerResponse(200, "Maps retrieved successfully", typeof(ResponseWithMetadata<MapInfoResponse>))]
+        [SwaggerResponse(404, "Maps not found")]
         public async Task<ActionResult<ResponseWithMetadata<MapInfoResponse>>> GetAll(
             [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
             [FromQuery, SwaggerParameter("Number of leaderboards per page, default is 10")] int count = 10,
@@ -101,6 +101,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             var idsList = await sequence
+                .TagWithCaller()
                 .Skip((page - 1) * count)
                 .Take(count)
                 .Select(s => s.Id)
@@ -113,8 +114,7 @@ namespace BeatLeader_Server.Controllers
                     .Where(s => idsList.Contains(s.Id));
 
                 (result.Metadata.Total, result.Data) = await sequence.CountAsync().CoundAndResults(songSequence
-                    .TagWithCallSite()
-                    .AsSplitQuery()
+                    .TagWithCaller()
                     .Select(s => new MapInfoResponse {
                         Id = s.Id,
                         Hash = s.Hash,

@@ -398,7 +398,9 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            await GetFromScore(score, twitter);
+            if (score != null) {
+                await GetFromScore(score, twitter);
+            }
 
             return new ContentResult 
             {
@@ -406,7 +408,7 @@ namespace BeatLeader_Server.Controllers
                 Content = $"""
                     <!DOCTYPE html>
                     <html class="a-fullscreen shoqbzame idc0_350"><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
-                        <title>Replay | {score.PlayerName} | {score.SongName}</title>
+                        {(score != null ? $"<title>Replay | {score.PlayerName} | {score.SongName}</title>" : "<title>Beat Saber Web Replays viewer</title>")}
                         <link rel="apple-touch-icon-precomposed" sizes="57x57" href="https://replay.beatleader.xyz/assets/img/apple-touch-icon-57x57.png">
                         <link rel="apple-touch-icon-precomposed" sizes="114x114" href="https://replay.beatleader.xyz/assets/img/apple-touch-icon-114x114.png">
                         <link rel="apple-touch-icon-precomposed" sizes="72x72" href="https://replay.beatleader.xyz/assets/img/apple-touch-icon-72x72.png">
@@ -427,7 +429,7 @@ namespace BeatLeader_Server.Controllers
                         <meta name="msapplication-wide310x150logo" content="assets/img/mstile-310x150.png">
                         <meta name="msapplication-square310x310logo" content="assets/img/mstile-310x310.png">
 
-                        <meta property="og:title" content="Replay | {score.PlayerName} | {score.SongName}">
+                        {(score != null ? $"<meta property=\"og:title\" content=\"Replay | {score.PlayerName} | {score.SongName}\">" : "<meta property=\"og:title\" content=\"Beat Saber Web Replays viewer\">")}
                         <meta name="twitter:title" content="Beat Saber replay">
                         <meta name="twitter:site" content="replay.beatleader.xyz">
                         <meta name="twitter:image:alt" content="Beat Saber replay">
@@ -440,12 +442,21 @@ namespace BeatLeader_Server.Controllers
                         <meta property="og:image:width" content="700">
                         <meta property="og:image:height" content="400">
 
+                        {(score != null ? $"""
                         <meta property="og:url" content="https://replay.beatleader.xyz/?scoreId={score.ScoreId}">
                         <meta property="og:video:url" content="https://replay.beatleader.xyz/?scoreId={score.ScoreId}">
                         <meta property="og:video:secure_url" content="https://replay.beatleader.xyz/?scoreId={score.ScoreId}">
                         <meta property="twitter:player" content="https://replay.beatleader.xyz/?scoreId={score.ScoreId}">
                         <meta property="twitter:image" content="https://replay.beatleader.xyz/preview.png?scoreId={score.ScoreId}&twitter=true">
                         <meta property="og:image" content="https://replay.beatleader.xyz/preview.png?scoreId={score.ScoreId}">
+                        """ : """
+                        <meta property="og:url" content="https://replay.beatleader.xyz">
+                        <meta property="og:video:url" content="https://replay.beatleader.xyz">
+                        <meta property="og:video:secure_url" content="https://replay.beatleader.xyz">
+                        <meta property="twitter:player" content="https://replay.beatleader.xyz">
+                        <meta property="twitter:image" content="https://replay.beatleader.xyz/preview.png">
+                        <meta property="og:image" content="https://replay.beatleader.xyz/preview.png">
+                        """)}
                       </head>
                       <body>
                       </body>

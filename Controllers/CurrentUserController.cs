@@ -1234,7 +1234,10 @@ namespace BeatLeader_Server.Controllers {
                 migrateToPlayer.Country = currentPlayer.Country;
             }
 
-
+            if (migrateToPlayer.Alias == null && currentPlayer.Alias != null) {
+                migrateToPlayer.Alias = currentPlayer.Alias;
+                migrateToPlayer.OldAlias = currentPlayer.OldAlias;
+            }
 
             if (currentPlayer.Changes?.Count >= 0) {
                 foreach (var item in currentPlayer.Changes) {

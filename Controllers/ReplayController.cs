@@ -376,6 +376,7 @@ namespace BeatLeader_Server.Controllers
                     .ThenInclude(v => v.Feedbacks)
                     .Include(s => s.ContextExtensions)
                     .Include(s => s.ReplayOffsets)
+                    .Include(s => s.ScoreImprovement)
                     .AsSplitQuery()
                     .TagWithCallSite()
                     .ToListAsync();

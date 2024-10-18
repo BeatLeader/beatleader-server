@@ -570,6 +570,7 @@ namespace BeatLeader_Server.Controllers {
                 Stars = s.Leaderboard.Difficulty.Stars,
                 Acc = s.Accuracy,
                 Timeset = s.Timepost,
+                Pp = s.Pp,
                 Modifiers = s.Modifiers,
 
                 ModifiersRating = s.Leaderboard.Difficulty.ModifiersRating,
@@ -593,6 +594,7 @@ namespace BeatLeader_Server.Controllers {
                 Weight = s.Weight,
                 ScoreCount = s.Leaderboard.PlayCount,
                 Timeset = s.Timepost,
+                Pp = s.Pp,
                 Modifiers = s.Modifiers,
 
                 ModifiersRating = s.Leaderboard.Difficulty.ModifiersRating,

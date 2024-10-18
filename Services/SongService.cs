@@ -68,6 +68,7 @@ namespace BeatLeader_Server.Services {
 
                 var existingSong = await _context.Songs.Include(s => s.Mappers).Where(el => el.Hash.ToLower() == map.Versions[0].Hash.ToLower()).Include(s => s.Difficulties).FirstOrDefaultAsync();
                 if (existingSong != null) {
+                    (map, _) = await SongUtils.GetSongFromBeatSaver(map.Versions[0].Hash);
                     await SongControllerHelper.UpdateFromMap(_context, existingSong, map);
                 } else {
                     if (map.Versions[0].State == "Published") {
