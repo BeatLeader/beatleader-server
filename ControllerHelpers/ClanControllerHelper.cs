@@ -142,16 +142,16 @@ namespace BeatLeader_Server.ControllerHelpers {
             .Take(count)
             .Select(cr => new ClanRankingResponse {
                 Id = cr.Id,
-                Clan = cr.Clan == null ? null : new ClanResponseFull {
-                    Id = cr.Clan.Id,
-                    Name = cr.Clan.Name,
-                    Color = cr.Clan.Color,
-                    Icon = cr.Clan.Icon,
-                    Tag = cr.Clan.Tag,
-                    LeaderID = cr.Clan.LeaderID,
-                    Description = cr.Clan.Description,
-                    Pp = cr.Clan.Pp,
-                    Rank = cr.Clan.Rank
+                Clan = cr.Leaderboard.Clan == null ? null : new ClanResponseFull {
+                    Id = cr.Leaderboard.Clan.Id,
+                    Name = cr.Leaderboard.Clan.Name,
+                    Color = cr.Leaderboard.Clan.Color,
+                    Icon = cr.Leaderboard.Clan.Icon,
+                    Tag = cr.Leaderboard.Clan.Tag,
+                    LeaderID = cr.Leaderboard.Clan.LeaderID,
+                    Description = cr.Leaderboard.Clan.Description,
+                    Pp = cr.Leaderboard.Clan.Pp,
+                    Rank = cr.Leaderboard.Clan.Rank
                 },
                 LastUpdateTime = cr.LastUpdateTime,
                 AverageRank = cr.AverageRank,

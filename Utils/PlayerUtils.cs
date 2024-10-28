@@ -618,12 +618,21 @@ namespace BeatLeader_Server.Utils
             if (isRanked)
             {
                 playerScoreStats.LastRankedScoreTime = resultScore.Timepost;
+                if (playerScoreStats.FirstRankedScoreTime == 0) {
+                    playerScoreStats.FirstRankedScoreTime = resultScore.Timepost;
+                }
             }
             else
             {
                 playerScoreStats.LastUnrankedScoreTime = resultScore.Timepost;
+                if (playerScoreStats.FirstUnrankedScoreTime == 0) {
+                    playerScoreStats.FirstUnrankedScoreTime = resultScore.Timepost;
+                }
             }
             playerScoreStats.LastScoreTime = resultScore.Timepost;
+            if (playerScoreStats.FirstScoreTime == 0) {
+                playerScoreStats.FirstScoreTime = resultScore.Timepost;
+            }
 
             if (!resultScore.IgnoreForStats) {
                 playerScoreStats.TotalScore += resultScore.ModifiedScore;

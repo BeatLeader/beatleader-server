@@ -254,6 +254,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery, SwaggerParameter("Comma-separated range to filter by role, default is null")] string? role = null,
             [FromQuery, SwaggerParameter("Comma-separated range to filter by hmd (headset), default is null")] string? hmd = null,
             [FromQuery, SwaggerParameter("Value in seconds to filter by the last score time, default is null")] int? activityPeriod = null,
+            [FromQuery, SwaggerParameter("Unix timestamp to filter by the first score time, default is null")] int? firstScoreTime = null,
+            [FromQuery, SwaggerParameter("Unix timestamp to filter by the first score time, default is null")] int? recentScoreTime = null,
             [FromQuery, SwaggerParameter("Flag to filter only banned players, default is null")] bool? banned = null)
         {
             if (count < 0 || count > 100) {
@@ -311,14 +313,11 @@ namespace BeatLeader_Server.Controllers
                 Random rnd = new Random();
                 searchIdentifier = rnd.Next(1, 10000);
 
-                foreach (var item in searchMatch) {
-                    _context.PlayerSearches.Add(new PlayerSearch {
-                        PlayerId = item.Id,
-                        Score = item.Score,
-                        SearchId = (int)searchIdentifier
-                    });
-                }
-                _context.BulkSaveChanges();
+                _context.BulkInsert(searchMatch.Select(item => new PlayerSearch {
+                    PlayerId = item.Id,
+                    Score = item.Score,
+                    SearchId = (int)searchIdentifier
+                }));
 
                 List<string>? ids = searchMatch.Select(m => m.Id).ToList();
 
@@ -411,19 +410,27 @@ namespace BeatLeader_Server.Controllers
                     request = request.Where(p => p.Id == player.Id);
                 }
             }
-            if (activityPeriod != null) {
-                int timetreshold = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - (int)activityPeriod;
+            if (firstScoreTime != null || activityPeriod != null || recentScoreTime != null) {
+                if (recentScoreTime == null && activityPeriod != null) {
+                    recentScoreTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - (int)activityPeriod;
+                }
 
                 switch (mapsType)
                 {
                     case MapsType.Ranked:
-                        request = request.Where(p => p.ScoreStats.LastRankedScoreTime >= timetreshold);
+                        request = request.Where(p => 
+                            (recentScoreTime == null || p.ScoreStats.LastRankedScoreTime >= recentScoreTime) &&
+                            (firstScoreTime == null || p.ScoreStats.FirstRankedScoreTime >= firstScoreTime));
                         break;
                     case MapsType.Unranked:
-                        request = request.Where(p => p.ScoreStats.LastUnrankedScoreTime >= timetreshold);
+                        request = request.Where(p => 
+                            (recentScoreTime == null || p.ScoreStats.LastUnrankedScoreTime >= recentScoreTime) &&
+                            (firstScoreTime == null || p.ScoreStats.FirstUnrankedScoreTime >= firstScoreTime));
                         break;
                     case MapsType.All:
-                        request = request.Where(p => p.ScoreStats.LastScoreTime >= timetreshold);
+                        request = request.Where(p => 
+                            (recentScoreTime == null || p.ScoreStats.LastScoreTime >= recentScoreTime) &&
+                            (firstScoreTime == null || p.ScoreStats.FirstScoreTime >= firstScoreTime));
                         break;
                 }
             }
