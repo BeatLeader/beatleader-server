@@ -438,15 +438,20 @@ namespace BeatLeader_Server.Controllers {
             return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
         }
 
+        public class IdentityResponse {
+            public string? Id { get; set; }
+            public string? Name { get; set; }
+        }
+
         [Authorize(AuthenticationSchemes = OpenIddictServerAspNetCoreDefaults.AuthenticationScheme)]
         [HttpGet("~/oauth2/identity")]
-        public async Task<IActionResult> Userinfo() {
+        public async Task<ActionResult<IdentityResponse>> Userinfo() {
             var claimsPrincipal = (await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme)).Principal;
 
-            return Ok(new {
-                Id = claimsPrincipal.GetClaim(OpenIddictConstants.Claims.Subject),
-                Name = claimsPrincipal.GetClaim(OpenIddictConstants.Claims.Name),
-            });
+            return new IdentityResponse {
+                Id = claimsPrincipal?.GetClaim(OpenIddictConstants.Claims.Subject),
+                Name = claimsPrincipal?.GetClaim(OpenIddictConstants.Claims.Name),
+            };
         }
 
         [HttpGet("~/signout"), HttpPost("~/signout")]

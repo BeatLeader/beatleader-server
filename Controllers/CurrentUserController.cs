@@ -985,7 +985,7 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [HttpPatch("~/user/resetPassword")]
-        public async Task<ActionResult> ChangePassword([FromForm] string login, [FromForm] string newPassword) {
+        public async Task<ActionResult> ResetPassword([FromForm] string login, [FromForm] string newPassword) {
             string userId = GetId();
             AccountLink? link = await _context.AccountLinks.FirstOrDefaultAsync(a => a.SteamID == userId);
             if (link == null) {

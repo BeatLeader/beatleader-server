@@ -254,6 +254,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/preview/replay")]
+        [HttpGet("~/preview/replay.png")]
         public async Task<ActionResult> Get(
             [FromQuery] string? playerID = null, 
             [FromQuery] string? id = null, 
@@ -402,13 +403,16 @@ namespace BeatLeader_Server.Controllers
                 await GetFromScore(score, twitter);
             }
 
+            var title = score != null ? $"Replay | {score.PlayerName} | {score.SongName}" : "Beat Saber Web Replays viewer";
+
             return new ContentResult 
             {
                 ContentType = "text/html",
                 Content = $"""
                     <!DOCTYPE html>
                     <html class="a-fullscreen shoqbzame idc0_350"><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
-                        {(score != null ? $"<title>Replay | {score.PlayerName} | {score.SongName}</title>" : "<title>Beat Saber Web Replays viewer</title>")}
+                        <title>{title}</title>
+                        
                         <link rel="apple-touch-icon-precomposed" sizes="57x57" href="https://replay.beatleader.xyz/assets/img/apple-touch-icon-57x57.png">
                         <link rel="apple-touch-icon-precomposed" sizes="114x114" href="https://replay.beatleader.xyz/assets/img/apple-touch-icon-114x114.png">
                         <link rel="apple-touch-icon-precomposed" sizes="72x72" href="https://replay.beatleader.xyz/assets/img/apple-touch-icon-72x72.png">
@@ -429,30 +433,28 @@ namespace BeatLeader_Server.Controllers
                         <meta name="msapplication-wide310x150logo" content="assets/img/mstile-310x150.png">
                         <meta name="msapplication-square310x310logo" content="assets/img/mstile-310x310.png">
 
-                        {(score != null ? $"<meta property=\"og:title\" content=\"Replay | {score.PlayerName} | {score.SongName}\">" : "<meta property=\"og:title\" content=\"Beat Saber Web Replays viewer\">")}
-                        <meta name="twitter:title" content="Beat Saber replay">
+                        <meta property="og:title" content="{title}">
+                        <meta property="og:description" content="Beat Saber web replays">
+                        <meta property="twitter:description" content="Beat Saber web replays">
+                        <meta name="twitter:title" content="{title}">
                         <meta name="twitter:site" content="replay.beatleader.xyz">
                         <meta name="twitter:image:alt" content="Beat Saber replay">
 
                         <meta name="twitter:player:width" content="700">
                         <meta name="twitter:player:height" content="400">
-                        <meta name="twitter:card" content="summary_large_image">
+                        <meta name="twitter:card" content="{(string.Join("", Request.Headers.UserAgent).ToLower().Contains("bsky") ? "player" : "summary_large_image")}">
 
-                        <meta property="og:type" content="object">
+                        <meta property="og:type" content="website">
                         <meta property="og:image:width" content="700">
                         <meta property="og:image:height" content="400">
 
                         {(score != null ? $"""
                         <meta property="og:url" content="https://replay.beatleader.xyz/?scoreId={score.ScoreId}">
-                        <meta property="og:video:url" content="https://replay.beatleader.xyz/?scoreId={score.ScoreId}">
-                        <meta property="og:video:secure_url" content="https://replay.beatleader.xyz/?scoreId={score.ScoreId}">
                         <meta property="twitter:player" content="https://replay.beatleader.xyz/?scoreId={score.ScoreId}">
-                        <meta property="twitter:image" content="https://replay.beatleader.xyz/preview.png?scoreId={score.ScoreId}&twitter=true">
-                        <meta property="og:image" content="https://replay.beatleader.xyz/preview.png?scoreId={score.ScoreId}">
+                        <meta property="twitter:image" content="https://api.beatleader.xyz/preview/replay.png?scoreId={score.ScoreId}&twitter=true">
+                        <meta property="og:image" content="https://api.beatleader.xyz/preview/replay.png?scoreId={score.ScoreId}{(string.Join("", Request.Headers.UserAgent).ToLower().Contains("bsky") ? "&twitter=true" : "")}">
                         """ : """
                         <meta property="og:url" content="https://replay.beatleader.xyz">
-                        <meta property="og:video:url" content="https://replay.beatleader.xyz">
-                        <meta property="og:video:secure_url" content="https://replay.beatleader.xyz">
                         <meta property="twitter:player" content="https://replay.beatleader.xyz">
                         <meta property="twitter:image" content="https://replay.beatleader.xyz/preview.png">
                         <meta property="og:image" content="https://replay.beatleader.xyz/preview.png">

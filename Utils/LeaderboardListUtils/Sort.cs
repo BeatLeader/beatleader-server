@@ -35,7 +35,7 @@ public static partial class LeaderboardListUtils
             _                 => sequence.SortByName(order, dateFrom, dateTo, searchId),
         };
 
-        return result.ThenByDescending(l => l.Difficulty.Status <= DifficultyStatus.ranked ? (int)l.Difficulty.Status : -1).ThenByDescending(l => l.Id);
+        return result.ThenByDescending(l => l.Difficulty.Status <= DifficultyStatus.ranked ? (int)l.Difficulty.Status : -1).ThenBy(l => l.Timestamp);
     }
 
     private static IOrderedQueryable<Leaderboard> SortByTimestamp(this IQueryable<Leaderboard> sequence, Order order, Type type, int? dateFrom, int? dateTo, int? searchId) =>

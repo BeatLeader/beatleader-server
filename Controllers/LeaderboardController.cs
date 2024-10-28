@@ -1542,7 +1542,7 @@ namespace BeatLeader_Server.Controllers {
             var query = _context
             .Leaderboards
             .AsNoTracking()
-            .Where(lb => lb.SongId == song.Id && lb.Difficulty.Mode <= 7);
+            .Where(lb => lb.SongId == song.Id);
 
             if (my_scores && currentID != null) {
                 query = query.Include(lb => lb.Scores.Where(s => s.PlayerId == currentID));
@@ -1666,7 +1666,11 @@ namespace BeatLeader_Server.Controllers {
                 return Ok(await LeaderboardControllerHelper.GetModList(dbContext, currentPlayer?.ProfileSettings?.ShowAllRatings ?? false, page, count, sortBy, order, date_from, date_to));
             }
 
-            var sequence = dbContext.Leaderboards.AsNoTracking().Filter(dbContext, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, mappers, currentPlayer);
+            var sequence = dbContext
+                .Leaderboards
+                .AsNoTracking()
+                .Where(lb => lb.Song.Mapper != "Beat Sage")
+                .Filter(dbContext, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, mappers, currentPlayer);
 
             var result = new ResponseWithMetadata<LeaderboardInfoResponse>() {
                 Metadata = new Metadata() {

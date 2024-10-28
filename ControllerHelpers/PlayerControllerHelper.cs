@@ -101,6 +101,11 @@ namespace BeatLeader_Server.ControllerHelpers {
                 dbContext.PatreonLinks.Remove(plink);
             }
 
+            var searches = await dbContext.PlayerSearches.Where(l => l.PlayerId == playerID).ToListAsync();
+            foreach (var item in searches) {
+                dbContext.PlayerSearches.Remove(item);
+            }
+
             var intId = long.Parse(playerID);
             var auth = await dbContext.Auths.FirstOrDefaultAsync(l => l.Id == intId);
             if (auth != null) {
