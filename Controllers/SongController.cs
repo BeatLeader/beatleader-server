@@ -34,12 +34,6 @@ namespace BeatLeader_Server.Controllers
             _cache = cache;
         }
 
-        [HttpGet("~/refreshstatus")]
-        public async Task<string> refreshstatus()
-        {
-            return (await _context.Songs.Where(s => s.Refreshed).CountAsync()) + " of " +  (await _context.Songs.CountAsync());
-        }
-
         [HttpGet("~/maps/")]
         [SwaggerOperation(Summary = "Retrieve a list of maps", Description = "Fetches a paginated and optionally filtered list of Beat Saber maps.")]
         [SwaggerResponse(200, "Maps retrieved successfully", typeof(ResponseWithMetadata<MapInfoResponse>))]

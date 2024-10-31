@@ -522,6 +522,9 @@ namespace BeatLeader_Server.Utils
             if (lowerHmd.Contains("vridge")) return HMD.vridge;
             if (lowerHmd.Contains("medion mixed reality")) return HMD.medion;
 
+            if (lowerHmd.Contains("quest") && lowerHmd.Contains("3s")) return HMD.quest3s;
+            if (lowerHmd.Contains("ventura")) return HMD.quest3s;
+            if (lowerHmd.Contains("unknown_panther")) return HMD.quest3s;
             if (lowerHmd.Contains("quest") && lowerHmd.Contains("3")) return HMD.quest3;
             if (lowerHmd.Contains("quest") && lowerHmd.Contains("2")) return HMD.quest2;
             if (lowerHmd.Contains("quest") && lowerHmd.Contains("pro")) return HMD.questPro;
@@ -567,6 +570,8 @@ namespace BeatLeader_Server.Utils
             
             if (lowerController.Contains("quest pro")) return ControllerEnum.questPro;
             if (lowerController.Contains("quest 3")) return ControllerEnum.quest3;
+            if (lowerController.Contains("ventura")) return ControllerEnum.quest3;
+            if (lowerController.Contains("unknown_panther")) return ControllerEnum.quest3;
             if (lowerController.Contains("quest2")) return ControllerEnum.quest2;
             if (lowerController.Contains("oculus touch") || lowerController.Contains("rift cv1")) return ControllerEnum.oculustouch;
             if (lowerController.Contains("rift s") || lowerController.Contains("quest")) return ControllerEnum.oculustouch2;
