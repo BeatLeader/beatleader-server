@@ -313,13 +313,15 @@ namespace BeatLeader_Server.Controllers
                 Random rnd = new Random();
                 searchIdentifier = rnd.Next(1, 10000);
 
-                _context.BulkInsert(searchMatch.Select(item => new PlayerSearch {
+                List<string>? startIds = searchMatch.Select(m => m.Id).ToList();
+
+                var ids = _context.Players.Where(p => startIds.Contains(p.Id)).Select(p => p.Id).ToList();
+
+                _context.BulkInsert(searchMatch.Where(m => ids.Contains(m.Id)).Select(item => new PlayerSearch {
                     PlayerId = item.Id,
                     Score = item.Score,
                     SearchId = (int)searchIdentifier
                 }));
-
-                List<string>? ids = searchMatch.Select(m => m.Id).ToList();
 
                 request = request.Where(p => ids.Contains(p.Id));
             }

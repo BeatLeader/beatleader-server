@@ -821,6 +821,7 @@ namespace BeatLeader_Server.Controllers
                 improvement.BombCuts = resultScore.BombCuts - currentScore.BombCuts;
                 improvement.MissedNotes = resultScore.MissedNotes - currentScore.MissedNotes;
                 improvement.WallsHit = resultScore.WallsHit - currentScore.WallsHit;
+                improvement.Modifiers = resultScore.Modifiers;
                 var status1 = leaderboard.Difficulty.Status;
 
                 if (!resultScore.IgnoreForStats) { 

@@ -1468,7 +1468,9 @@ namespace BeatLeader_Server.Controllers {
                     if (currentPlayerClan == clan) {
                         clan.LeaderID = migrateToPlayer.Id;
                     }
-                    migrateToPlayer.Clans.Add(clan);
+                    if (migrateToPlayer.Clans.Count < 5) {
+                        migrateToPlayer.Clans.Add(clan);
+                    }
                 }
             }
 
