@@ -13,6 +13,7 @@ namespace BeatLeader_Server.Controllers
     public class PlayerAdminController : Controller
     {
         private readonly AppContext _context;
+        private readonly StorageContext _storageContext;
         CurrentUserController _currentUserController;
         ScoreRefreshController _scoreRefreshController;
         ReplayController _replayController;
@@ -21,6 +22,7 @@ namespace BeatLeader_Server.Controllers
 
         public PlayerAdminController(
             AppContext context,
+            StorageContext storageContext,
             IWebHostEnvironment env,
             CurrentUserController currentUserController,
             ScoreRefreshController scoreRefreshController,
@@ -28,6 +30,7 @@ namespace BeatLeader_Server.Controllers
             IConfiguration configuration)
         {
             _context = context;
+            _storageContext = storageContext;
             _currentUserController = currentUserController;
             _scoreRefreshController = scoreRefreshController;
             _replayController = replayController;
@@ -343,6 +346,25 @@ namespace BeatLeader_Server.Controllers
 
             _context.ReservedTags.Remove(rt);
             await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        //[HttpDelete("~/player/{id}")]
+        //[Authorize]
+        [NonAction]
+        public async Task<ActionResult> DeletePlayer(string id)
+        {
+            if (HttpContext != null) {
+                string currentId = HttpContext.CurrentUserID(_context);
+                Player? currentPlayer = await _context.Players.FindAsync(currentId);
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+
+            await PlayerControllerHelper.DeletePlayer(_context, _storageContext, _s3Client, id);
 
             return Ok();
         }

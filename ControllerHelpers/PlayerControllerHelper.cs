@@ -89,6 +89,7 @@ namespace BeatLeader_Server.ControllerHelpers {
 
         public static async Task DeletePlayer(
             AppContext dbContext, 
+            StorageContext storageContext,
             IAmazonS3 _s3Client,
             string playerID) {
             var bslink = await dbContext.BeatSaverLinks.FirstOrDefaultAsync(link => link.Id == playerID);
@@ -142,6 +143,26 @@ namespace BeatLeader_Server.ControllerHelpers {
 
                 dbContext.Scores.Remove(score);
             }
+
+            var attempts = await storageContext
+                .PlayerLeaderboardStats
+                .Where(s => s.PlayerId == playerID)
+                .ToListAsync();
+
+            foreach (var attempt in attempts) {
+                string? name = attempt.Replay?.Split("/").LastOrDefault();
+                if (name != null) {
+                    if (attempt.Replay.Contains("otherreplay")) {
+                        await _s3Client.DeleteOtherReplay(name);
+                    } else {
+                        await _s3Client.DeleteReplay(name);
+                    }
+                }
+
+                storageContext.PlayerLeaderboardStats.Remove(attempt);
+            }
+
+            await storageContext.BulkSaveChangesAsync();
 
             Player? player = await dbContext.Players.Where(p => p.Id == playerID)
                 .Include(p => p.Socials)

@@ -165,6 +165,7 @@ namespace BeatLeader_Server.Services
             using (var scope = _serviceScopeFactory.CreateScope())
             {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+                var _storageContext = scope.ServiceProvider.GetRequiredService<StorageContext>();
 
                 var bannedPlayers = await _context.Players.Where(p => p.Banned && !p.Bot).ToListAsync();
                 var deletionList = new List<string>();
@@ -186,7 +187,7 @@ namespace BeatLeader_Server.Services
                 }
 
                 foreach (var playerToDelete in deletionList) {
-                    await PlayerControllerHelper.DeletePlayer(_context, _configuration.GetS3Client(), playerToDelete);
+                    await PlayerControllerHelper.DeletePlayer(_context, _storageContext, _configuration.GetS3Client(), playerToDelete);
                 }
 
                 var userController = scope.ServiceProvider.GetRequiredService<CurrentUserController>();
