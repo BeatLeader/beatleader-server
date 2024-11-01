@@ -70,12 +70,12 @@ namespace BeatLeader_Server.Controllers {
                 ? _context.Scores
                    .AsNoTracking()
                    .Where(t => t.PlayerId == id && t.ValidContexts.HasFlag(leaderboardContext))
-                   .TagWithCallSite()
+                   .TagWithCaller()
                 : _context.ScoreContextExtensions
                    .AsNoTracking()
                    .Include(ce => ce.ScoreInstance)
                    .Where(t => t.PlayerId == id && t.Context == leaderboardContext)
-                   .TagWithCallSite();
+                   .TagWithCaller();
 
             return (await query.Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId), id);
         }
@@ -166,7 +166,7 @@ namespace BeatLeader_Server.Controllers {
                     .ThenInclude(l => l.Difficulty)
                     .ThenInclude(d => d.ModifierValues)
                     .AsSplitQuery()
-                    .TagWithCallSite()
+                    .TagWithCaller()
                     .Skip((page - 1) * count)
                     .Take(count)
                     .Select(s => new ScoreResponseWithMyScore {
@@ -420,7 +420,7 @@ namespace BeatLeader_Server.Controllers {
                     },
                     Data = await sequence
                     .Include(s => s.Leaderboard)
-                    .TagWithCallSite()
+                    .TagWithCaller()
                     .AsSplitQuery()
                     .Skip((page - 1) * count)
                     .Take(count)
@@ -468,7 +468,7 @@ namespace BeatLeader_Server.Controllers {
             int? score = await _context
                 .Scores
                 .AsNoTracking()
-                .TagWithCallSite()
+                .TagWithCaller()
                 .Where(s => s.PlayerId == id && s.Leaderboard.Song.Hash == hash && s.Leaderboard.Difficulty.DifficultyName == difficulty && s.Leaderboard.Difficulty.ModeName == mode)
                 .Select(s => s.ModifiedScore)
                 .FirstOrDefaultAsync();
@@ -648,7 +648,7 @@ namespace BeatLeader_Server.Controllers {
                 .Include(p => p.ProfileSettings)
                 .Where(p => p.Id == currentID)
                 .Select(p => p.ProfileSettings)
-                .TagWithCallSite()
+                .TagWithCaller()
                 .FirstOrDefaultAsync())?.ShowAllRatings ?? false : false;
 
             object? result = null;
@@ -664,7 +664,7 @@ namespace BeatLeader_Server.Controllers {
                     s.ScoreInstance != null &&
                     !s.ScoreInstance.IgnoreForStats && 
                     ((showRatings && s.Leaderboard.Difficulty.Stars != null) || s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked))
-                .TagWithCallSite();
+                .TagWithCaller();
             } else {
               baseQuery = _context
                 .Scores
@@ -674,7 +674,7 @@ namespace BeatLeader_Server.Controllers {
                     s.ValidContexts.HasFlag(leaderboardContext) && 
                     !s.IgnoreForStats && 
                     ((showRatings && s.Leaderboard.Difficulty.Stars != null) || s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked))
-                .TagWithCallSite();
+                .TagWithCaller();
             }
             
             switch (type)
@@ -744,7 +744,7 @@ namespace BeatLeader_Server.Controllers {
                     .PlayerScoreStatsHistory
                     .AsNoTracking()
                     .Where(p => p.PlayerId == id && p.Context == leaderboardContext)
-                    .TagWithCallSite()
+                    .TagWithCaller()
                     .OrderByDescending(s => s.Timestamp)
                     .Take(count)
                     .ToListAsync();
@@ -805,7 +805,7 @@ namespace BeatLeader_Server.Controllers {
                     .PlayerScoreStatsHistory
                     .AsNoTracking()
                     .Where(p => p.PlayerId == id && p.Context == leaderboardContext)
-                    .TagWithCallSite()
+                    .TagWithCaller()
                     .OrderByDescending(s => s.Timestamp)
                     .Take(count)
                     .Select(h => new HistoryCompactResponse {
@@ -902,13 +902,13 @@ namespace BeatLeader_Server.Controllers {
                         s.Metadata != null && 
                         s.Metadata.PinnedContexts.HasFlag(leaderboardContext))
                     .OrderBy(s => s.Metadata.Priority)
-                    .TagWithCallSite();
+                    .TagWithCaller();
 
             var resultList = await query
                     .Include(s => s.Leaderboard)
                     .ThenInclude(l => l.Difficulty)
                     .ThenInclude(d => d.ModifiersRating)
-                    .TagWithCallSite()
+                    .TagWithCaller()
                     .AsSplitQuery()
                     .Select(s => new ScoreResponseWithMyScore {
                         Id = s.Id,

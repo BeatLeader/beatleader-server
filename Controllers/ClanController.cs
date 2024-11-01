@@ -93,7 +93,7 @@ namespace BeatLeader_Server.Controllers
                 },
                 Data = await sequence
                     .AsSplitQuery()
-                    .TagWithCallSite()
+                    .TagWithCaller()
                     .Skip((page - 1) * count)
                     .Take(count)
                     .Select(clan => new ClanResponseFull {
@@ -219,7 +219,7 @@ namespace BeatLeader_Server.Controllers
                     .GlobalMapHistory
                     .AsNoTracking()
                     .Where(p => p.ClanId == id)
-                    .TagWithCallSite()
+                    .TagWithCaller()
                     .OrderByDescending(s => s.Timestamp)
                     .Take(count)
                     .ToListAsync();

@@ -378,7 +378,7 @@ namespace BeatLeader_Server.Controllers
                     .Include(s => s.ReplayOffsets)
                     .Include(s => s.ScoreImprovement)
                     .AsSplitQuery()
-                    .TagWithCallSite()
+                    .TagWithCaller()
                     .ToListAsync();
             }
             var ip = context.Request.HttpContext.GetIpAddress();

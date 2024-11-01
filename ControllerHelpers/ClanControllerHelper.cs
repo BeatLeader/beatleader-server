@@ -224,7 +224,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                     MaxStreak = s.MaxStreak,
                 }).FirstOrDefault(),
             })
-            .TagWithCallSite()
+            .TagWithCaller()
             .AsSplitQuery()
             .ToListAsync();
 
@@ -239,7 +239,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                         .Select(cr => cr.Pp)
                         .FirstOrDefault()
                     })
-                    .TagWithCallSite()
+                    .TagWithCaller()
                     .AsSplitQuery()
                     .ToListAsync();
 
@@ -304,7 +304,7 @@ namespace BeatLeader_Server.ControllerHelpers {
             {
                 Container = clan,
                 Data = (await players
-                    .TagWithCallSite()
+                    .TagWithCaller()
                     .AsNoTracking()
                     .Skip((page - 1) * count)
                     .Take(count)

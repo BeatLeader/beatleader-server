@@ -97,7 +97,7 @@ namespace BeatLeader_Server.Controllers
             IQueryable<PlayerLeaderboardStats> query = _storageContext.PlayerLeaderboardStats
                    .AsNoTracking()
                    .Where(t => t.PlayerId == id)
-                   .TagWithCallSite();
+                   .TagWithCaller();
 
             IQueryable<PlayerLeaderboardStats>? sequence = await query.Filter(_context, showRatings, sortBy, order, search, diff, mode, requirements, endType, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId);
 

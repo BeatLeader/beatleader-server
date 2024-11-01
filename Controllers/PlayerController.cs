@@ -463,7 +463,7 @@ namespace BeatLeader_Server.Controllers
                     .Include(p => p.Clans)
                     .Include(p => p.ProfileSettings)
                     .AsSplitQuery()
-                    .TagWithCallSite()
+                    .TagWithCaller()
                     .Select(p => new PlayerResponseWithStats
                     {
                         Id = p.Id,
@@ -718,7 +718,7 @@ namespace BeatLeader_Server.Controllers
                     .AsNoTracking()
                     .Where(p => playerIds.Contains(p.Id))
                     .AsSplitQuery()
-                    .TagWithCallSite()
+                    .TagWithCaller()
                     .Select(p => new PlayerResponseWithStats
                     {
                         Id = p.PlayerId,

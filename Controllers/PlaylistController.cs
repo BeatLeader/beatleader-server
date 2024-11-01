@@ -777,12 +777,12 @@ namespace BeatLeader_Server.Controllers
                 ? _context.Scores
                    .AsNoTracking()
                    .Where(t => t.PlayerId == userId && t.ValidContexts.HasFlag(leaderboardContext))
-                   .TagWithCallSite()
+                   .TagWithCaller()
                 : _context.ScoreContextExtensions
                    .AsNoTracking()
                    .Include(ce => ce.ScoreInstance)
                    .Where(t => t.PlayerId == userId && t.Context == leaderboardContext)
-                   .TagWithCallSite();
+                   .TagWithCaller();
 
             IQueryable<IScore> sequence = await query
                 .Filter(_context, !player.Banned, false, sortBy, order, search, diff, mode, requirements, ScoreFilterStatus.None, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId); 

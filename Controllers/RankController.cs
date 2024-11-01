@@ -75,7 +75,7 @@ namespace BeatLeader_Server.Controllers
                 .Scores
                 .Where(l => l.Leaderboard.Song.Hash == hash && l.Leaderboard.Difficulty.DifficultyName == diff && l.Leaderboard.Difficulty.ModeName == mode && l.PlayerId == userId)
                 .Select(s => new { s.Modifiers, s.Id })
-                .TagWithCallSite()
+                .TagWithCaller()
                 .FirstOrDefaultAsync();
 
             if (score == null) {
@@ -194,7 +194,7 @@ namespace BeatLeader_Server.Controllers
                 .Scores
                 .Include(s => s.RankVoting)
                 .Include(s => s.Leaderboard)
-                .TagWithCallSite()
+                .TagWithCaller()
                 .FirstOrDefaultAsync(l => l.Leaderboard.Song.Hash == hash && l.Leaderboard.Difficulty.DifficultyName == diff && l.Leaderboard.Difficulty.ModeName == mode && l.PlayerId == userId);
 
             if (score == null)

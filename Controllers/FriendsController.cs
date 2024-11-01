@@ -197,7 +197,7 @@ namespace BeatLeader_Server.Controllers {
                         MaxStreak = s.MaxStreak
                     })
                     .AsSplitQuery()
-                    .TagWithCallSite()
+                    .TagWithCaller()
                     .ToListAsync();
 
             foreach (var resultScore in resultList) {
@@ -275,7 +275,7 @@ namespace BeatLeader_Server.Controllers {
                         AccRight = s.AccRight,
                         MaxStreak = s.MaxStreak
                     })
-                .TagWithCallSite()
+                .TagWithCaller()
                 .ToListAsync();
             foreach (var score in result.Data)
             {

@@ -51,7 +51,7 @@ namespace BeatLeader_Server.Controllers
                 .ThenInclude(l => l.Difficulty)
                 .ThenInclude(d => d.ModifierValues)
                 .AsSplitQuery()
-                .TagWithCallSite()
+                .TagWithCaller()
                 .Select(s => new ScoreResponseWithDifficulty {
                     Id = s.Id,
                     PlayerId = s.PlayerId,
@@ -415,7 +415,7 @@ namespace BeatLeader_Server.Controllers
                     LeaderboardId = s.LeaderboardId,
                     Player = s.Player.Name
                 })
-                .TagWithCallSite()
+                .TagWithCaller()
                 .ToListAsync();
 
             return result;
@@ -480,7 +480,7 @@ namespace BeatLeader_Server.Controllers
                     LeaderboardId = s.LeaderboardId,
                     Player = s.Player.Name
                 })
-                .TagWithCallSite()
+                .TagWithCaller()
                 .ToListAsync();
 
             result.Container.LeaderboardId = leaderboard.Id;
@@ -595,7 +595,7 @@ namespace BeatLeader_Server.Controllers
                     },
                     ScoreImprovement = s.ScoreImprovement
                 })
-                    .TagWithCallSite()
+                    .TagWithCaller()
                     .FirstOrDefaultAsync();
 
                 if (highlightedScore != null)
@@ -674,7 +674,7 @@ namespace BeatLeader_Server.Controllers
                     },
                     ScoreImprovement = s.ScoreImprovement
                 })
-                .TagWithCallSite()
+                .TagWithCaller()
                 .ToListAsync();
 
             return ((resultList.FirstOrDefault()?.Pp > 0 
@@ -797,7 +797,7 @@ namespace BeatLeader_Server.Controllers
                     },
                     ScoreImprovement = s.ScoreImprovement
                 })
-                    .TagWithCallSite()
+                    .TagWithCaller()
                     .FirstOrDefaultAsync();
 
                 if (highlightedScore != null)
@@ -877,7 +877,7 @@ namespace BeatLeader_Server.Controllers
                     },
                     ScoreImprovement = s.ScoreImprovement
                 })
-                .TagWithCallSite()
+                .TagWithCaller()
                 .ToListAsync();
 
             foreach (var score in resultList) {
@@ -967,13 +967,13 @@ namespace BeatLeader_Server.Controllers
                     ProfileSettings = p.ProfileSettings,
                     Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                 })
-                .TagWithCallSite()
+                .TagWithCaller()
                 .FirstOrDefaultAsync(p => p.Id == player);
             var song = await _context
                 .Songs
                 .AsNoTracking()
                 .Select(s => new { Id = s.Id, Hash = s.Hash })
-                .TagWithCallSite()
+                .TagWithCaller()
                 .FirstOrDefaultAsync(s => s.Hash == hash);
             if (song == null) {
                 return result;
@@ -1060,7 +1060,7 @@ namespace BeatLeader_Server.Controllers
                     .Include(el => el.Player)
                     .ThenInclude(el => el.ProfileSettings)
                     .Include(el => el.ContextExtensions.Where(ce => ce.Context == leaderboardContext))
-                    .TagWithCallSite()
+                    .TagWithCaller()
                     .FirstOrDefaultAsync();
 
             if (score != null)
@@ -1307,7 +1307,7 @@ namespace BeatLeader_Server.Controllers
                 .Songs
                 .AsNoTracking()
                 .Select(s => new { s.Id, s.Hash })
-                .TagWithCallSite()
+                .TagWithCaller()
                 .FirstOrDefaultAsync(s => s.Hash == hash);
             if (song == null) {
                 return result;
@@ -1362,7 +1362,7 @@ namespace BeatLeader_Server.Controllers
                         Rank = s.Clan.Rank,
                     },
                 })
-                .TagWithCallSite()
+                .TagWithCaller()
                 .ToListAsync())
                 .OrderByDescending(el => Math.Round(el.Pp, 2))
                 .ThenByDescending(el => Math.Round(el.Accuracy, 4))

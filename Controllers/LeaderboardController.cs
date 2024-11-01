@@ -169,7 +169,7 @@ namespace BeatLeader_Server.Controllers {
             using (_serverTiming.TimeAction("scorelist")) {
             leaderboard.Scores = await scoreQuery
                 .AsSplitQuery()
-                .TagWithCallSite()
+                .TagWithCaller()
                 .Skip((page - 1) * count)
                 .Take(count)
                 .Select(s => new ScoreResponse {
@@ -327,7 +327,7 @@ namespace BeatLeader_Server.Controllers {
             using (_serverTiming.TimeAction("scorelist")) {
             leaderboard.Scores = await scoreQuery
                 .AsSplitQuery()
-                .TagWithCallSite()
+                .TagWithCaller()
                 .Skip((page - 1) * count)
                 .Take(count)
                 .Select(s => new ScoreResponse {
@@ -503,7 +503,7 @@ namespace BeatLeader_Server.Controllers {
             leaderboard.Plays = await scoreQuery.CountAsync();
             leaderboard.Scores = await scoreQuery
                 .AsSplitQuery()
-                .TagWithCallSite()
+                .TagWithCaller()
                 .Skip((page - 1) * count)
                 .Take(count)
                 .Select(s => new ScoreResponse {
@@ -1712,7 +1712,7 @@ namespace BeatLeader_Server.Controllers {
                 }
 
                 (result.Metadata.Total, result.Data) = await sequence.CountAsync().CoundAndResults(lbsequence
-                    .TagWithCallSite()
+                    .TagWithCaller()
                     .AsSplitQuery()
                     .Select(lb => new LeaderboardInfoResponse {
                         Id = lb.Id,
