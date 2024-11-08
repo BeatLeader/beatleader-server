@@ -23,12 +23,22 @@ namespace BeatLeader_Server.Utils {
                     .ToList<IOpenApiAny>();
 
                 schema.OneOf = new List<OpenApiSchema>
+                    {
+                        new OpenApiSchema { Type = "integer", Enum = enumIntValues },
+                        new OpenApiSchema { Type = "string", Enum = enumValues }
+                    };
+                    schema.Type = "string"; 
+                    schema.Enum = enumValues;
+
+                if (context.Type.GetCustomAttributes(typeof(FlagsAttribute), false).Any())
                 {
-                    new OpenApiSchema { Type = "integer", Enum = enumIntValues },
-                    new OpenApiSchema { Type = "string", Enum = enumValues }
-                };
-                schema.Type = "string";
-                schema.Enum = enumValues;
+                    schema.Description += "Bitmask enum. Values can be combined using bitwise OR operator.";
+                    schema.Example = new OpenApiInteger(enumIntValues
+                        .Cast<OpenApiInteger>()
+                        .Select(i => i.Value)
+                        .Aggregate((a, b) => a | b));
+                    
+                }
             }
         }
     }
