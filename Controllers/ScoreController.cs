@@ -995,7 +995,7 @@ namespace BeatLeader_Server.Controllers
 
             var leaderboardId = song.Id + Song.DiffForDiffName(diff).ToString() + modeValue.ToString();
 
-            bool showBots = currentPlayer?.ProfileSettings?.ShowBots ?? false;
+            bool showBots = page == 1 && (currentPlayer?.ProfileSettings?.ShowBots ?? false);
             LeaderboardContexts contexts = LeaderboardContexts.General;
             switch (context) {
                 case "standard":
@@ -1020,11 +1020,16 @@ namespace BeatLeader_Server.Controllers
                 : await ContextScoreList(result, contexts, showBots, leaderboardId, scope, player, method, page, count, currentPlayer);
 
             if (resultList != null) {
+                int shift = 0;
                 for (int i = 0; i < resultList.Count; i++)
                 {
                     var score = resultList[i];
                     score.Player = PostProcessSettings(score.Player, false);
-                    score.Rank = i + (page - 1) * count + 1;
+                    if (score.Player.Bot) {
+                        shift++;
+                    } else {
+                        score.Rank = i + (page - 1) * count + 1 - shift;
+                    }
 
                     if (score.Player.Bot) {
                         score.Player.Name += " [BOT]";

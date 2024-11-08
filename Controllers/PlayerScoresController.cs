@@ -874,6 +874,85 @@ namespace BeatLeader_Server.Controllers {
             return result;
         }
 
+        [HttpGet("~/player/{id}/history/triangle")]
+        [SwaggerOperation(Summary = "Retrieve player's triangle history in a compact form", Description = "Fetches a list of player's performance metrics subset. Use the main history endpoint for a full.")]
+        [SwaggerResponse(200, "History retrieved successfully")]
+        [SwaggerResponse(400, "Invalid request parameters")]
+        [SwaggerResponse(404, "No history saved for the given player ID")]
+        public async Task<ActionResult<ICollection<HistoryTriangleResponse>>> GetTriangleHistory(
+            [FromRoute, SwaggerParameter("Player's unique identifier")] string id, 
+            [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General) {
+            id = await _context.PlayerIdToMain(id);
+            var allHistory = await _storageContext
+                    .PlayerScoreStatsHistory
+                    .AsNoTracking()
+                    .Where(p => p.PlayerId == id && p.Context == leaderboardContext)
+                    .TagWithCaller()
+                    .OrderByDescending(s => s.Timestamp)
+                    .Select(h => new HistoryTriangleResponse {
+                        Timestamp = h.Timestamp,
+
+                        Pp = h.Pp,
+                        AccPp = h.AccPp,
+                        PassPp = h.PassPp,
+                        TechPp = h.TechPp,
+
+                        Improvements = h.RankedImprovementsCount,
+                        NewScores = h.RankedPlayCount
+                    })
+                    .ToListAsync();
+
+            var first = _context.Players.Where(p => p.Id == id).Select(p => new HistoryTriangleResponse {
+                Timestamp = Time.UnixNow(),
+
+                Pp = p.Pp,
+                AccPp = p.AccPp,
+                PassPp = p.PassPp,
+                TechPp = p.TechPp,
+
+                Improvements = p.ScoreStats.RankedImprovementsCount,
+                NewScores = p.ScoreStats.RankedPlayCount
+            })
+            .FirstOrDefault();
+            if (first == null) return NotFound();
+
+            var result = new List<HistoryTriangleResponse> { first };
+
+            if (!allHistory.Any()) {
+                return result;
+            }
+            
+            var sundayHistory = allHistory
+                .Where(h => {
+                    if (h == first && DateTimeOffset.FromUnixTimeSeconds(h.Timestamp).Day == 1) {
+                        return false; // Skip first if it's a Sunday to avoid duplication
+                    }
+                    return DateTimeOffset.FromUnixTimeSeconds(h.Timestamp).Day == 1;
+                })
+                .Take(11)
+                .ToList();
+            result.AddRange(sundayHistory);
+
+            // Find previous Sunday for each entry to calculate differences
+            for (int i = 0; i < result.Count; i++) {
+                var currentEntry = result[i];
+                var prevSunday = allHistory
+                    .Where(h => h.Timestamp < currentEntry.Timestamp && 
+                               DateTimeOffset.FromUnixTimeSeconds(h.Timestamp).Day == 1)
+                    .FirstOrDefault();
+
+                if (prevSunday != null) {
+                    currentEntry.Improvements = currentEntry.Improvements - prevSunday.Improvements;
+                    currentEntry.NewScores = currentEntry.NewScores - prevSunday.NewScores;
+                } else {
+                    currentEntry.Improvements = 0;
+                    currentEntry.NewScores = 0;
+                }
+            }
+            
+            return result;
+        }
+
         [HttpGet("~/player/{id}/pinnedScores")]
         [SwaggerOperation(Summary = "Retrieve player's pinned scores", Description = "Fetches a paginated list of scores pinned by player for their ID.")]
         [SwaggerResponse(200, "Scores retrieved successfully")]

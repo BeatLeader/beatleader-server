@@ -217,7 +217,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            return Ok(new {
+            var result = new {
                 Players = _context
                     .Players
                     .AsNoTracking()
@@ -239,7 +239,9 @@ namespace BeatLeader_Server.Controllers
                         s.Accuracy,
                         s.Modifiers,
                         s.PlayerId,
-                        s.Timepost
+                        s.Timepost,
+                        FC = s.FullCombo,
+                        FCAcc = s.FcAccuracy
                     }).ToList(),
 
                 Maps = _context
@@ -249,6 +251,7 @@ namespace BeatLeader_Server.Controllers
                     .Select(l => new {
                         l.Song.Hash,
                         l.Song.Name,
+                        l.Song.CoverImage,
                         l.Id,
                         l.SongId,
                         l.Difficulty.ModeName,
@@ -260,7 +263,13 @@ namespace BeatLeader_Server.Controllers
                         l.Difficulty.PredictedAcc,
                         l.Difficulty.ModifiersRating
                     }).ToList()
-            });
+            };
+
+            return File(
+                System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(result),
+                "application/json",
+                "export.json"
+            );
         }
     }
 }

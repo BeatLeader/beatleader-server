@@ -27,6 +27,7 @@ public static partial class LeaderboardListUtils
                                                  Order order = Order.Desc,
                                                  string? search = null,
                                                  Type type = Type.All,
+                                                 string? types = null,
                                                  string? mode = null,
                                                  string? difficulty = null,
                                                  int? mapType = null,
@@ -68,7 +69,7 @@ public static partial class LeaderboardListUtils
                               ref techRatingTo,
                               ref dateFrom,
                               ref dateTo)
-              .WhereType(type)
+              .WhereTypes(type, types)
               .WhereDifficulty(difficulty)
               .WhereMapType(mapType, allTypes)
               .WhereMode(mode)

@@ -130,15 +130,22 @@ namespace BeatLeader_Server.ControllerHelpers {
 
                 scoreStats.TopPlatform = platforms.MaxBy(s => s.Value).Key;
                 scoreStats.TopHMD = hmds.MaxBy(s => s.Value).Key;
-                scoreStats.AllHMDs = string.Join(",", 
-                    allScores
+
+                var hmdKeys = allScores
                     .GroupBy(s => s.Hmd)
                     .Select(g => new { 
                         Key = (int)g.Key,
                         Count = g.Count()
                     })
                     .OrderByDescending(g => g.Count)
-                    .Select(g => g.Key));
+                    .Select(g => g.Key)
+                    .ToList();
+                
+                scoreStats.AllHMDs = string.Join(",", hmdKeys);
+                while (scoreStats.AllHMDs.Length > 50) {
+                    hmdKeys = hmdKeys.Take(hmdKeys.Count - 1).ToList();
+                    scoreStats.AllHMDs = string.Join(",", hmdKeys);
+                }
 
                 if (rank < scoreStats.PeakRank || scoreStats.PeakRank == 0) {
                     scoreStats.PeakRank = rank;

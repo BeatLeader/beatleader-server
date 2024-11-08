@@ -27,7 +27,7 @@ namespace BeatLeader_Server.Controllers
     {
         private readonly IAmazonS3 _s3Client;
         private readonly IDbContextFactory<AppContext> _dbFactory;
-        private readonly StorageContext _storageContext;
+        private readonly IDbContextFactory<StorageContext> _storageFactory;
 
         private readonly IWebHostEnvironment _environment;
         private readonly IConfiguration _configuration;
@@ -40,7 +40,7 @@ namespace BeatLeader_Server.Controllers
 
         public ReplayController(
             IDbContextFactory<AppContext> dbFactory,
-            StorageContext storageContext,
+            IDbContextFactory<StorageContext> storageFactory,
             IWebHostEnvironment env,
             IConfiguration configuration,
             IServerTiming serverTiming,
@@ -52,7 +52,7 @@ namespace BeatLeader_Server.Controllers
             _configuration = configuration;
             _serverTiming = serverTiming;
             _s3Client = configuration.GetS3Client();
-            _storageContext = storageContext;
+            _storageFactory = storageFactory;
 
             _replayLocation = metricFactory.CreateGauge("replay_position", "Posted replay location", new string[] { "geohash" });
             _geoHasher = new Geohash.Geohasher();
@@ -71,9 +71,11 @@ namespace BeatLeader_Server.Controllers
         {
             // DB Context disposed manually
             var dbContext = _dbFactory.CreateDbContext();
+            var storageContext = _storageFactory.CreateDbContext();
             (string? id, string? error) = await SteamHelper.GetPlayerIDFromTicket(ticket, _configuration);
             if (id == null && error != null) {
                 dbContext.Dispose();
+                storageContext.Dispose();
                 return Unauthorized(error);
             }
             long intId = long.Parse(id);
@@ -84,7 +86,7 @@ namespace BeatLeader_Server.Controllers
                     id = accountLink.SteamID;
                 }
             }
-            return await PostReplayFromBody(dbContext, id);
+            return await PostReplayFromBody(dbContext, storageContext, id);
         }
 
         [HttpPut("~/replayoculus"), DisableRequestSizeLimit]
@@ -95,16 +97,19 @@ namespace BeatLeader_Server.Controllers
         {
             // DB Context disposed manually
             var dbContext = _dbFactory.CreateDbContext();
+            var storageContext = _storageFactory.CreateDbContext();
             string? userId = HttpContext.CurrentUserID(dbContext);
             if (userId == null)
             {
                 dbContext.Dispose();
+                storageContext.Dispose();
                 return Unauthorized("User is not authorized");
             }
             
-            var result = await PostReplayFromBody(dbContext, userId, time, type);
+            var result = await PostReplayFromBody(dbContext, storageContext, userId, time, type);
             if (result.Value == null && result.Result?.GetType() != typeof(ObjectResult)) {
                 await dbContext.DisposeAsync();
+                await storageContext.DisposeAsync();
             }
             if (Response.Headers.ContainsKey("Set-Cookie")) {
                 Response.Headers.Remove("Set-Cookie");
@@ -122,11 +127,13 @@ namespace BeatLeader_Server.Controllers
         {
             // DB Context disposed manually
             var dbContext = _dbFactory.CreateDbContext();
+            var storageContext = _storageFactory.CreateDbContext();
             string? userId = HttpContext.CurrentUserID(dbContext);
 
             if (userId == null)
             {
                 dbContext.Dispose();
+                storageContext.Dispose();
                 return Unauthorized("User is not authorized");
             }
 
@@ -137,9 +144,10 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
             
-            var result = await PostReplay(dbContext, playerId, Request.Body, HttpContext, time, type, false, 0);
+            var result = await PostReplay(dbContext, storageContext, playerId, Request.Body, HttpContext, time, type, false, 0);
             if (result.Value == null) {
                 await dbContext.DisposeAsync();
+                await storageContext.DisposeAsync();
             }
             return result;
         }
@@ -155,11 +163,13 @@ namespace BeatLeader_Server.Controllers
         {
             // DB Context disposed manually
             var dbContext = _dbFactory.CreateDbContext();
+            var storageContext = _storageFactory.CreateDbContext();
             string? userId = HttpContext.CurrentUserID(dbContext);
 
             if (userId == null)
             {
                 dbContext.Dispose();
+                storageContext.Dispose();
                 return Unauthorized("User is not authorized");
             }
 
@@ -172,7 +182,7 @@ namespace BeatLeader_Server.Controllers
 
             foreach (var file in System.IO.Directory.EnumerateFiles(directory)) {
                 if (file.Contains("exit")) {
-                    await PostReplay(dbContext, playerId, System.IO.File.OpenRead(file), HttpContext, time, type, false, 0);
+                    await PostReplay(dbContext, storageContext, playerId, System.IO.File.OpenRead(file), HttpContext, time, type, false, 0);
                 }
             } 
 
@@ -180,9 +190,9 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task<ActionResult<ScoreResponse>> PostReplayFromBody(AppContext dbContext, string authenticatedPlayerID, float time = 0, EndType type = 0)
+        public async Task<ActionResult<ScoreResponse>> PostReplayFromBody(AppContext dbContext, StorageContext storage, string authenticatedPlayerID, float time = 0, EndType type = 0)
         {
-            return await PostReplay(dbContext, authenticatedPlayerID, Request.Body, HttpContext, time, type);
+            return await PostReplay(dbContext, storage, authenticatedPlayerID, Request.Body, HttpContext, time, type);
         }
 
         [NonAction]
@@ -190,6 +200,7 @@ namespace BeatLeader_Server.Controllers
         {
             // DB Context disposed manually
             var dbContext = _dbFactory.CreateDbContext();
+            var storageContext = _storageFactory.CreateDbContext();
             ActionResult<ScoreResponse> result;
             if (backup) {
                 string directoryPath = Path.Combine("/root/replays");
@@ -201,13 +212,13 @@ namespace BeatLeader_Server.Controllers
 
                 // Use FileMode.Create to overwrite the file if it already exists.
                 using (FileStream stream = new FileStream(filePath, FileMode.Open)) {
-                    result = await PostReplay(dbContext, authenticatedPlayerID, stream, context, allow: allow, timesetForce: int.Parse(timeset));
+                    result = await PostReplay(dbContext, storageContext, authenticatedPlayerID, stream, context, allow: allow, timesetForce: int.Parse(timeset));
                 }
             } else {
                 using (var stream = await _s3Client.DownloadReplay(name)) {
                     
                     if (stream != null) {
-                        result = await PostReplay(dbContext, authenticatedPlayerID, stream, context, allow: allow, timesetForce: int.Parse(timeset));
+                        result = await PostReplay(dbContext, storageContext, authenticatedPlayerID, stream, context, allow: allow, timesetForce: int.Parse(timeset));
                     } else {
                         result = NotFound();
                     }
@@ -216,6 +227,7 @@ namespace BeatLeader_Server.Controllers
 
             if (result.Value == null) {
                 dbContext.Dispose();
+                storageContext.Dispose();
             }
             return result;
         }
@@ -223,6 +235,7 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         public async Task<ActionResult<ScoreResponse>> PostReplay(
             AppContext dbContext,
+            StorageContext storageContext,
             string authenticatedPlayerID, 
             Stream replayStream,
             HttpContext context,
@@ -294,7 +307,7 @@ namespace BeatLeader_Server.Controllers
                     time = replay.info.failTime;
                     forcetimeset = int.Parse(replay.info.timestamp);
                 }
-                await CollectStats(dbContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, time, type, null, forcetimeset);
+                await CollectStats(dbContext, storageContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, time, type, null, forcetimeset);
                 return Ok();
             }
 
@@ -466,6 +479,7 @@ namespace BeatLeader_Server.Controllers
             try {
                 (result, stats, keepContext) = await UploadScores(
                     dbContext,
+                    storageContext,
                     leaderboard, 
                     player,
                     resultScore, 
@@ -477,7 +491,7 @@ namespace BeatLeader_Server.Controllers
                     maxScore,
                     allow);
                 if (stats) {
-                    await CollectStats(dbContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, replay.frames.Last().time, EndType.Clear, null);
+                    await CollectStats(dbContext, storageContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, replay.frames.Last().time, EndType.Clear, null);
                 }
             } catch (Exception e) {
 
@@ -523,6 +537,7 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         private async Task<(ActionResult<ScoreResponse>, bool, bool)> UploadScores(
             AppContext dbContext,
+            StorageContext storageContext,
             Leaderboard leaderboard,
             Player player,
             Score resultScore,
@@ -574,7 +589,7 @@ namespace BeatLeader_Server.Controllers
             }
             resultScore.Bot = player.Bot;
 
-            await GeneralContextScore(dbContext, leaderboard, player, resultScore, currentScores, replay);
+            await GeneralContextScore(dbContext, storageContext, leaderboard, player, resultScore, currentScores, replay);
 
             (ScoreStatistic? statistic, string? statisticError) = ScoreControllerHelper.CalculateStatisticFromReplay(replay, leaderboard, allow);
             if (statistic != null) {
@@ -671,6 +686,7 @@ namespace BeatLeader_Server.Controllers
                 context.Response.OnCompleted(async () => {
                     await PostUploadAction(
                         dbContext,
+                        storageContext,
                         replay,
                         replayData,
                         leaderboard, 
@@ -785,6 +801,7 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         private async Task GeneralContextScore(
             AppContext dbContext,
+            StorageContext storageContext,
             Leaderboard leaderboard,
             Player player,
             Score resultScore,
@@ -802,7 +819,7 @@ namespace BeatLeader_Server.Controllers
                 currentScore.ValidContexts &= ~LeaderboardContexts.General;
                 resultScore.PlayCount = currentScore.PlayCount;
             } else {
-                resultScore.PlayCount = await _storageContext.PlayerLeaderboardStats.Where(st => st.PlayerId == player.Id && st.LeaderboardId == leaderboard.Id).CountAsync();
+                resultScore.PlayCount = await storageContext.PlayerLeaderboardStats.Where(st => st.PlayerId == player.Id && st.LeaderboardId == leaderboard.Id).CountAsync();
             }
 
             resultScore.ValidContexts |= LeaderboardContexts.General;
@@ -821,7 +838,7 @@ namespace BeatLeader_Server.Controllers
                 improvement.BombCuts = resultScore.BombCuts - currentScore.BombCuts;
                 improvement.MissedNotes = resultScore.MissedNotes - currentScore.MissedNotes;
                 improvement.WallsHit = resultScore.WallsHit - currentScore.WallsHit;
-                improvement.Modifiers = resultScore.Modifiers;
+                improvement.Modifiers = currentScore.Modifiers;
                 var status1 = leaderboard.Difficulty.Status;
 
                 if (!resultScore.IgnoreForStats) { 
@@ -1088,6 +1105,7 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         private async Task PostUploadAction(
             AppContext dbContext,
+            StorageContext storageContext,
             Replay replay,
             byte[] replayData,
             Leaderboard leaderboard, 
@@ -1111,7 +1129,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             foreach (var scoreToDelete in currentScores) {
-                if (scoreToDelete.ValidContexts == LeaderboardContexts.None) {
+                if (scoreToDelete.Score.ValidContexts == LeaderboardContexts.None) {
                     dbContext.ScoreRedirects.Add(new ScoreRedirect
                     {
                         OldScoreId = scoreToDelete.Score.Id,
@@ -1136,8 +1154,8 @@ namespace BeatLeader_Server.Controllers
             try
             {
                 foreach (var scoreToDelete in currentScores) {
-                    if (scoreToDelete.ValidContexts == LeaderboardContexts.None) {
-                        await MigrateOldReplay(dbContext, scoreToDelete.Score, leaderboard.Id);
+                    if (scoreToDelete.Score.ValidContexts == LeaderboardContexts.None) {
+                        await MigrateOldReplay(dbContext, storageContext, scoreToDelete.Score, leaderboard.Id);
                     }
                 }
 
@@ -1233,7 +1251,7 @@ namespace BeatLeader_Server.Controllers
                     });
                 }
 
-                await CollectStats(dbContext, replay, offsets, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, resultScore);
+                await CollectStats(dbContext, storageContext, replay, offsets, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, resultScore);
                 
                 await dbContext.BulkSaveChangesAsync();
 
@@ -1383,6 +1401,7 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         private async Task CollectStats(
             AppContext dbContext,
+            StorageContext storageContext,
             Replay replay,
             ReplayOffsets offsets,
             byte[] replayData,
@@ -1441,12 +1460,12 @@ namespace BeatLeader_Server.Controllers
                 type = type,
                 score = resultScore,
                 saveReplay = replay.frames.Count > 0 && replay.info.score > 0 
-            }, dbContext, _storageContext, _s3Client);
+            }, dbContext, storageContext, _s3Client);
         }
 
-        private async Task MigrateOldReplay(AppContext dbContext, Score score, string leaderboardId) {
+        private async Task MigrateOldReplay(AppContext dbContext, StorageContext storageContext, Score score, string leaderboardId) {
             if (score.Replay == null) return;
-            var stats = await _storageContext.PlayerLeaderboardStats
+            var stats = await storageContext.PlayerLeaderboardStats
                 .Where(s => s.LeaderboardId == leaderboardId && s.Score == score.BaseScore && s.PlayerId == score.PlayerId && (s.Replay == null || s.Replay == score.Replay))
                 .FirstOrDefaultAsync();
             
@@ -1465,14 +1484,16 @@ namespace BeatLeader_Server.Controllers
 
                         uploaded = true;
                     }
+                    await _s3Client.DeleteReplay(name);
                 }
             } catch {}
 
             if (uploaded) {
                 if (stats != null) {
                     stats.Replay = "https://api.beatleader.xyz/otherreplays/" + fileName;
+                    storageContext.SaveChanges();
                 } else {
-                     LeaderboardPlayerStatsService.AddJob(new PlayerStatsJob {
+                     await LeaderboardPlayerStatsService.AddJob(new PlayerStatsJob {
                         fileName = "https://api.beatleader.xyz/otherreplays/" + fileName,
                         playerId = score.PlayerId,
                         leaderboardId = leaderboardId,
@@ -1480,7 +1501,7 @@ namespace BeatLeader_Server.Controllers
                         type = EndType.Clear,
                         time = 0,
                         score = score
-                    }, dbContext, _storageContext, _s3Client);
+                    }, dbContext, storageContext, _s3Client);
                 }
             }
         }

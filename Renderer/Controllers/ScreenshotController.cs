@@ -205,7 +205,15 @@ namespace Renderer.Controllers
         }
 
         [NonAction]
-        public async Task<byte[]> DownloadAnimatedScreenshot(int width, int height, string context, string path, [FromQuery] Dictionary<string, string> queryStringParameters)
+        public async Task<byte[]> DownloadAnimatedScreenshot(
+            int width, 
+            int height, 
+            string context, 
+            string path, 
+            Dictionary<string, string> queryStringParameters,
+            int speed = 1,
+            bool loop = false,
+            float duration = 2.0f)
         {
             var browser = await browserPool?.GetBrowserAsync();
 
@@ -253,8 +261,6 @@ namespace Renderer.Controllers
                 }
 
                 await page.GoToAsync(url, WaitUntilNavigation.DOMContentLoaded);
-
-                float duration = 2.0f;
                 int frameRate = 60;
                 int totalFrames = (int)(duration * frameRate);
                 var delayBetweenFrames = 1000 / frameRate; 
@@ -269,7 +275,7 @@ namespace Renderer.Controllers
                     if (screenshot.Skip(100).Any(b => b != 0)) {
                         frames.Add(screenshot);
                     }
-                    await Task.Delay(delayBetweenFrames);
+                    await Task.Delay(delayBetweenFrames / speed);
                 }
 
                 var containerImage = Image.Load<Rgba32>(frames[0]);
@@ -277,13 +283,13 @@ namespace Renderer.Controllers
                 foreach (var item in frames)
                 {
                     var frame = containerImage.Frames.AddFrame(Image.Load<Rgba32>(item).Frames.RootFrame);
-                    frame.Metadata.GetFormatMetadata(GifFormat.Instance).FrameDelay = delayBetweenFrames / 3;
+                    frame.Metadata.GetFormatMetadata(GifFormat.Instance).FrameDelay = speed * delayBetweenFrames / 3;
                 }
             
                 using (MemoryStream ms = new MemoryStream())
                 {
-                    GifEncoder encoder = new()
-                    { };
+                    GifEncoder encoder = new();
+                    containerImage.Metadata.GetFormatMetadata(GifFormat.Instance).RepeatCount = (ushort)(loop ? 0 : 1);
                     await encoder.EncodeAsync(containerImage, ms, CancellationToken.None);
 
                     await browserPool?.ReturnBrowser(browser);
@@ -298,6 +304,13 @@ namespace Renderer.Controllers
         {
             Response.Headers["Cache-Control"] = "public, max-age=" + 60 * 60 * 24 * 7;
             return File(await DownloadAnimatedScreenshot(width, height, context, path, queryStringParameters), "image/gif", imagename + ".gif");
+        }
+
+        [HttpGet("/animatedloop/{width}x{height}/{speed}/{duration}/{imagename}/{context}/{*path}")]
+        public async Task<IActionResult> GetAnimatedLoop(int width, int height, int speed, float duration, string context, string imagename, string path, [FromQuery] Dictionary<string, string> queryStringParameters)
+        {
+            Response.Headers["Cache-Control"] = "public, max-age=" + 60 * 60 * 24 * 7;
+            return File(await DownloadAnimatedScreenshot(width, height, context, path, queryStringParameters, speed, true, duration), "image/gif", imagename + ".gif");
         }
     }
 

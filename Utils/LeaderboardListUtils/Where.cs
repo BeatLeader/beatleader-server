@@ -24,6 +24,19 @@ public static partial class LeaderboardListUtils
             _                => sequence.Where(leaderboard => leaderboard.Difficulty.Status != DifficultyStatus.outdated),
         };
 
+    private static IQueryable<Leaderboard> WhereTypes(this IQueryable<Leaderboard> sequence, Type type, string? types) {
+        if (types != null) {
+            if (types == "all") {
+                return sequence.Where(leaderboard => leaderboard.Difficulty.Status != DifficultyStatus.outdated);
+            } else {
+                var statuses = types.Split(",").Select(type => (DifficultyStatus)Enum.Parse(typeof(DifficultyStatus), type)).ToList();
+                return sequence.Where(leaderboard => statuses.Contains(leaderboard.Difficulty.Status) && leaderboard.Difficulty.Status != DifficultyStatus.outdated);
+            }
+        } else {
+            return sequence.WhereType(type);
+        }
+    }
+
     private static IQueryable<Leaderboard> WhereMapType(this IQueryable<Leaderboard> sequence, int? mapType, Operation allTypes)
     {
         if (mapType == null)

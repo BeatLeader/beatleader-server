@@ -1,4 +1,5 @@
 ﻿using BeatLeader_Server.Controllers;
+using BeatLeader_Server.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace BeatLeader_Server.Services
@@ -140,6 +141,19 @@ namespace BeatLeader_Server.Services
                 var _storageContext = scope.ServiceProvider.GetRequiredService<StorageContext>();
 
                 foreach (var job in jobsToProcess) {
+                    try {
+                        var stats = (await _storageContext
+                            .PlayerLeaderboardStats
+                            .Where(s => s.PlayerId == job.FromPlayerId)
+                            .Select(s => s.Id)
+                            .ToListAsync())
+                            .Select(s => new PlayerLeaderboardStats {
+                                Id = s,
+                                PlayerId = job.ToPlayerId
+                            })
+                            .ToList();
+                        await _storageContext.BulkUpdateAsync(stats, options => options.ColumnInputExpression = c => new { c.PlayerId });
+                    } catch { }
 
                     var toHistory = await _storageContext.PlayerScoreStatsHistory.Where(sh => sh.PlayerId == job.ToPlayerId).ToListAsync();
                     var fromHistory = await _storageContext.PlayerScoreStatsHistory.Where(sh => sh.PlayerId == job.FromPlayerId).ToListAsync();

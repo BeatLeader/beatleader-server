@@ -118,7 +118,7 @@ namespace BeatLeader_Server.Utils {
                     break;
             }
             if (orderedSequence != null) {
-                sequence = orderedSequence.ThenBy(s => s.Timepost);
+                sequence = orderedSequence.ThenByDescending(s => s.Timepost);
             }
             if (search != null) {
                 string lowSearch = search.ToLower();
