@@ -450,6 +450,53 @@ namespace BeatLeader_Server.Utils
             leaderboard.ClanId = null;
         }
 
+        public static async Task RecalculateMainCount(
+                AppContext context, 
+                IEnumerable<int>? clanIds) {
+
+            if (clanIds != null && clanIds.Count() == 0) return;
+
+            var clans = await context
+                .Clans
+                .AsNoTracking()
+                .Where(c => clanIds == null ? true : clanIds.Contains(c.Id))
+                .Select(c => new {
+                    c.Id,
+                    c.Tag,
+                    Players = c.Players.Select(p => new {
+                        p.ClanOrder,
+                        Clans = p.Clans.Select(cc => new { cc.Tag, cc.Id })
+                    })
+                })
+                .ToListAsync();
+
+            var updates = new List<Clan>();
+            foreach (var clan in clans) {
+                updates.Add(new Clan {
+                    Id = clan.Id,
+                    MainPlayersCount = clan.Players.Count(p => p.Clans.OrderBy(c => p.ClanOrder.IndexOf(c.Tag) >= 0 ? p.ClanOrder.IndexOf(c.Tag) : 1000)
+                        .ThenBy(c => c.Id)
+                        .Take(1).FirstOrDefault()?.Tag == clan.Tag)
+                });
+            }
+
+            await context.BulkUpdateAsync(updates, options => options.ColumnInputExpression = c => new { c.MainPlayersCount });
+        }
+
+        public static async Task RecalculateMainCountForPlayer(
+                AppContext context, 
+                string playerId) {
+            var clanIds = await context
+                .Players
+                .AsNoTracking()
+                .Where(s => s.Id == playerId)
+                .Select(p => p.Clans.Select(c => c.Id))
+                .FirstOrDefaultAsync();
+            if (clanIds == null) return;
+
+            await RecalculateMainCount(context, clanIds);
+        }
+
         public static async Task PostChangesWithScore(AppContext context, CancellationToken stoppingToken, List<ClanRankingChanges>? changes, Score score, string? imagePath, string? hook) {
             if (changes == null || hook == null) return;
 

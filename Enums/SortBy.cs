@@ -53,7 +53,8 @@ public enum PlayerSortBy {
     MaxStreak,
     ReplaysWatched,
     DailyImprovements,
-    Timing
+    Timing,
+    AllContextsPp
 }
 
 public enum ClanSortBy {

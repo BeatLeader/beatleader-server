@@ -478,6 +478,7 @@ namespace BeatLeader_Server.Controllers
                         TechPp= p.TechPp,
                         AccPp = p.AccPp,
                         PassPp = p.PassPp,
+                        AllContextsPp = p.AllContextsPp,
                         Rank = p.Rank,
                         CountryRank = p.CountryRank,
                         LastWeekPp = p.LastWeekPp,

@@ -197,6 +197,10 @@ namespace BeatLeader_Server.ControllerHelpers {
                 return preSorted.ThenOrder(order, p => p.ScoreStats.DailyImprovements);
             }
 
+            if (sortBy == PlayerSortBy.AllContextsPp) {
+                return preSorted.ThenOrder(order, p => p.AllContextsPp);
+            }
+
             if (sortBy == PlayerSortBy.Pp) {
                 switch (ppType)
                 {

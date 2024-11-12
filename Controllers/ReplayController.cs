@@ -319,14 +319,16 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Replay missing frame data past note data.");
             }
 
-            if (leaderboard.Difficulty.Notes > 0 && replay.notes.Count() >= leaderboard.Difficulty.Notes * 2) {
+            if (leaderboard.Difficulty.Notes > 0 && replay.notes.Count() >= leaderboard.Difficulty.Notes * 1.8) {
                 var cleanedNotes = new List<NoteEvent>();
                 for (int i = 0; i < replay.notes.Count() - 1; i += 2) {
                     var firstNote = replay.notes[i];
                     var secondNote = replay.notes[i + 1];
 
                     if (firstNote.spawnTime != secondNote.spawnTime || firstNote.noteID != secondNote.noteID) {
-                        break;
+                        cleanedNotes.Add(firstNote);
+                        i--;
+                        continue;
                     }
                     if (firstNote.noteCutInfo == null || (firstNote.noteCutInfo.cutPoint.x == 0 && firstNote.noteCutInfo.cutPoint.y == 0 && firstNote.noteCutInfo.cutPoint.z == 0)) {
                         cleanedNotes.Add(secondNote);

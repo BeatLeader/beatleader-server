@@ -463,6 +463,7 @@ namespace BeatLeader_Server {
                 });
                 c.EnableAnnotations();
                 c.SupportNonNullableReferenceTypes();
+                c.UseAllOfToExtendReferenceSchemas();
                 var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
                 var xmlPath = Path.Combine(System.AppContext.BaseDirectory, xmlFile);
                 c.IncludeXmlComments(xmlPath);

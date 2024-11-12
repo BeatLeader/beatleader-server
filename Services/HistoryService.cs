@@ -322,6 +322,7 @@ namespace BeatLeader_Server.Services
                         ClanId = clan.Id,
                         GlobalMapCaptured = clan.RankedPoolPercentCaptured,
                         PlayersCount = clan.PlayersCount,
+                        MainPlayersCount = clan.MainPlayersCount,
                         Pp = clan.Pp,
                         Rank = clan.Rank,
                         AverageRank = clan.AverageRank,

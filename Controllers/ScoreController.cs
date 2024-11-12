@@ -677,7 +677,7 @@ namespace BeatLeader_Server.Controllers
                 .TagWithCaller()
                 .ToListAsync();
 
-            return ((resultList.FirstOrDefault()?.Pp > 0 
+            return ((resultList.Any(s => s.Pp > 0)
                         ? resultList
                             .OrderByDescending(el => Math.Round(el.Pp, 2))
                             .ThenByDescending(el => Math.Round(el.Accuracy, 4))

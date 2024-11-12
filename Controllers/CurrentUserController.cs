@@ -680,6 +680,10 @@ namespace BeatLeader_Server.Controllers {
 
             await _context.SaveChangesAsync();
 
+            if (Request.Query.ContainsKey("clanOrder")) {
+                await ClanUtils.RecalculateMainCountForPlayer(_context, player.Id);
+            }
+
             return Ok();
         }
 

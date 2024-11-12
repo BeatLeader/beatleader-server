@@ -274,10 +274,18 @@ namespace BeatLeader_Server.Controllers {
                 if (currentID != null && currentID != userId) {
                     var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
 
-                    var myScores = await _context
-                        .Scores
-                        .AsNoTracking()
-                        .Where(s => s.PlayerId == currentID && s.ValidContexts.HasFlag(LeaderboardContexts.General) && leaderboards.Contains(s.LeaderboardId))
+                    IQueryable<IScore> myScoresQuery = leaderboardContext == LeaderboardContexts.General 
+                        ? _context.Scores
+                           .AsNoTracking()
+                           .Where(s => s.PlayerId == currentID && s.ValidContexts.HasFlag(leaderboardContext) && leaderboards.Contains(s.LeaderboardId))
+                           .TagWithCaller()
+                        : _context.ScoreContextExtensions
+                           .AsNoTracking()
+                           .Include(ce => ce.ScoreInstance)
+                           .Where(s => s.PlayerId == currentID && s.Context == leaderboardContext && leaderboards.Contains(s.LeaderboardId))
+                           .TagWithCaller();
+
+                    var myScores = await myScoresQuery
                         .Select(s => new ScoreResponseWithMyScore {
                             Id = s.Id,
                             BaseScore = s.BaseScore,
@@ -305,7 +313,7 @@ namespace BeatLeader_Server.Controllers {
                             Hmd = s.Hmd,
                             Controller = s.Controller,
                             MaxCombo = s.MaxCombo,
-                            Timeset = s.Timeset,
+                            Timeset = s.Time,
                             ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
                             Timepost = s.Timepost,
                             LeaderboardId = s.LeaderboardId,

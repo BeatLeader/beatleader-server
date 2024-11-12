@@ -164,6 +164,7 @@ namespace BeatLeader_Server.Controllers
             player.Clans.Add(newClan);
             player.RefreshClanOrder();
             await _context.SaveChangesAsync();
+            await ClanUtils.RecalculateMainCountForPlayer(_context, player.Id);
 
             ClanTaskService.AddJob(new ClanRankingChangesDescription {
                 GlobalMapEvent = GlobalMapEvent.create,
@@ -206,6 +207,8 @@ namespace BeatLeader_Server.Controllers
             {
                 return NotFound();
             }
+
+            var clanIds = clan.Players.SelectMany(p => p.Clans.Select(c => c.Id)).Distinct().ToList();
 
             // Recalculate clanRanking on leaderboards that have this clan in their clanRanking
             var leaderboardsRecalc = await _context
@@ -260,6 +263,7 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
                 await _context.BulkSaveChangesAsync();
+                await ClanUtils.RecalculateMainCount(_context, clanIds);
 
                 ClanTaskService.AddJob(new ClanRankingChangesDescription {
                     GlobalMapEvent = GlobalMapEvent.dismantle,
@@ -804,6 +808,8 @@ namespace BeatLeader_Server.Controllers
                 return NotFound("Player did not belong to this clan");
             }
 
+            var clanIds = user.Player.Clans.Select(c => c.Id).ToList();
+
             user.Player.Clans.Remove(clan);
             user.Player.RefreshClanOrder();
 
@@ -822,6 +828,7 @@ namespace BeatLeader_Server.Controllers
 
             clan.Pp = await _context.RecalculateClanPP(clan.Id);
             await _context.SaveChangesAsync();
+            await ClanUtils.RecalculateMainCount(_context, clanIds);
 
             ClanTaskService.AddJob(new ClanRankingChangesDescription {
                 GlobalMapEvent = GlobalMapEvent.kick,
@@ -885,6 +892,7 @@ namespace BeatLeader_Server.Controllers
 
             clan.Pp = await _context.RecalculateClanPP(clan.Id);
             await _context.SaveChangesAsync();
+            await ClanUtils.RecalculateMainCountForPlayer(_context, user.Player.Id);
 
             ClanTaskService.AddJob(new ClanRankingChangesDescription {
                 GlobalMapEvent = GlobalMapEvent.join, 
@@ -986,6 +994,8 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("You cannot leave your own clan");
             }
 
+            var clanIds = user.Player.Clans.Select(c => c.Id).ToList();
+
             user.Player.Clans.Remove(clan);
             user.Player.RefreshClanOrder();
             clan.AverageAccuracy = MathUtils.RemoveFromAverage(clan.AverageAccuracy, clan.PlayersCount, user.Player.ScoreStats.AverageRankedAccuracy);
@@ -995,6 +1005,7 @@ namespace BeatLeader_Server.Controllers
 
             clan.Pp = await _context.RecalculateClanPP(clan.Id);
             await _context.SaveChangesAsync();
+            await ClanUtils.RecalculateMainCount(_context, clanIds);
 
             ClanTaskService.AddJob(new ClanRankingChangesDescription {
                 GlobalMapEvent = GlobalMapEvent.leave,
