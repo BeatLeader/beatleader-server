@@ -60,6 +60,56 @@ namespace BeatLeader_Server.Controllers
             return latestVersion != null && latestVersion.Version == version;
         }
 
+        public class ScoresContext {
+            public LeaderboardContexts Id { get; set; }
+            public string Icon { get; set; }
+            public string Name { get; set; }
+            public string Description { get; set; }
+            public string Key { get; set; }
+        }
+
+        [HttpGet("~/mod/leaderboardContexts")]
+        public ActionResult<List<ScoresContext>> GetContexts()
+        {
+            return new List<ScoresContext> {
+                new ScoresContext {
+                    Id = LeaderboardContexts.General,
+                    Icon = "https://cdn.assets.beatleader.xyz/Ingame_BL_ContextGeneral.png",
+                    Name = "General",
+                    Description = "Everything allowed",
+                    Key = "modifiers"
+                },
+                new ScoresContext {
+                    Id = LeaderboardContexts.NoMods,
+                    Icon = "https://cdn.assets.beatleader.xyz/Ingame_BL_ContextNoModifiers.png",
+                    Name = "No Mods",
+                    Description = "Modifiers are not allowed",
+                    Key = "standard"
+                },
+                new ScoresContext {
+                    Id = LeaderboardContexts.NoPause,
+                    Icon = "https://cdn.assets.beatleader.xyz/Ingame_BL_ContextNoPause.png",
+                    Name = "No Pause",
+                    Description = "Pauses are not allowed",
+                    Key = "nopause"
+                },
+                new ScoresContext {
+                    Id = LeaderboardContexts.Golf,
+                    Icon = "https://cdn.assets.beatleader.xyz/Ingame_BL_ContextGolf.png",
+                    Name = "Golf",
+                    Description = "The worse you play the better",
+                    Key = "golf"
+                },
+                new ScoresContext {
+                    Id = LeaderboardContexts.SCPM,
+                    Icon = "https://cdn.assets.beatleader.xyz/Ingame_BL_ContextSCPM.png",
+                    Name = "SCPM",
+                    Description = "Smaller Notes+Pro Mod pnly",
+                    Key = "scpm"
+                }
+            };
+        }
+
         [HttpGet("~/mod/news")]
         public async Task<ActionResult<ResponseWithMetadata<ModNews>>> GetModNews([FromQuery] int page = 1, int count = 10)
         {

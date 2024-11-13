@@ -490,8 +490,8 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task<(List<ScoreResponse>?, int)> GeneralScoreList(
-            ResponseWithMetadataAndSelection<ScoreResponse> result,
+        public async Task<(List<ScoreResponseWithHeadsets>?, int)> GeneralScoreList(
+            ResponseWithMetadataAndSelection<ScoreResponseWithHeadsets> result,
             bool showBots, 
             string leaderboardId, 
             string scope,
@@ -549,7 +549,7 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
-                ScoreResponse? highlightedScore = await query.Where(el => el.PlayerId == player).Select(s => new ScoreResponse
+                ScoreResponseWithHeadsets? highlightedScore = await query.Where(el => el.PlayerId == player).Select(s => new ScoreResponseWithHeadsets
                 {
                     Id = s.Id,
                     PlayerId = s.PlayerId,
@@ -602,7 +602,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     result.Selection = highlightedScore;
                     result.Selection.Player = PostProcessSettings(result.Selection.Player, false);
-                    if (scope.ToLower() == "friends" || scope.ToLower() == "country") {
+                    if (scope.ToLower() == "friends" || scope.ToLower() == "country" || scope.ToLower().StartsWith("clan_")) {
                         result.Selection.Rank = await query.CountAsync(s => s.Rank < result.Selection.Rank) + 1;
                     } else {
                         result.Selection.Rank += await query.CountAsync(s => s.Bot && (
@@ -624,9 +624,9 @@ namespace BeatLeader_Server.Controllers
                 .Select(s => s.Id)
                 .ToListAsync();
 
-            List<ScoreResponse> resultList = await query
+            List<ScoreResponseWithHeadsets> resultList = await query
                 .Where(s => ids.Contains(s.Id))
-                .Select(s => new ScoreResponse
+                .Select(s => new ScoreResponseWithHeadsets
                 {
                     Id = s.Id,
                     PlayerId = s.PlayerId,
@@ -690,8 +690,8 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task<(List<ScoreResponse>?, int)> ContextScoreList(
-            ResponseWithMetadataAndSelection<ScoreResponse> result,
+        public async Task<(List<ScoreResponseWithHeadsets>?, int)> ContextScoreList(
+            ResponseWithMetadataAndSelection<ScoreResponseWithHeadsets> result,
             LeaderboardContexts context,
             bool showBots, 
             string leaderboardId, 
@@ -749,9 +749,9 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
-                ScoreResponse? highlightedScore = await query
+                ScoreResponseWithHeadsets? highlightedScore = await query
                     .Where(s => s.Context == context && (!s.ScoreInstance.Banned || (s.ScoreInstance.Bot && showBots)) && s.LeaderboardId == leaderboardId && s.PlayerId == player)
-                    .Select(s => new ScoreResponse
+                    .Select(s => new ScoreResponseWithHeadsets
                 {
                     Id = s.ScoreId != null ? (int)s.ScoreId : 0,
                     PlayerId = s.PlayerId,
@@ -827,9 +827,9 @@ namespace BeatLeader_Server.Controllers
                 .Select(s => s.Id)
                 .ToListAsync();
 
-            List<ScoreResponse> resultList = await query
+            List<ScoreResponseWithHeadsets> resultList = await query
                 .Where(s => ids.Contains(s.Id))
-                .Select(s => new ScoreResponse
+                .Select(s => new ScoreResponseWithHeadsets
                 {
                     Id = s.ScoreId != null ? (int)s.ScoreId : 0,
                     PlayerId = s.PlayerId,
@@ -920,7 +920,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/v3/scores/{hash}/{diff}/{mode}/{context}/{scope}/{method}")]
-        public async Task<ActionResult<ResponseWithMetadataAndSelection<ScoreResponse>>> GetByHash3(
+        public async Task<ActionResult<ResponseWithMetadataAndSelection<ScoreResponseWithHeadsets>>> GetByHash3(
             string hash,
             string diff,
             string mode,
@@ -931,10 +931,9 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int count = 10)
         {
-            
-            ResponseWithMetadataAndSelection<ScoreResponse> result = new ResponseWithMetadataAndSelection<ScoreResponse>
+            var result = new ResponseWithMetadataAndSelection<ScoreResponseWithHeadsets>
             {
-                Data = new List<ScoreResponse>(),
+                Data = new List<ScoreResponseWithHeadsets>(),
                 Metadata =
                     {
                         ItemsPerPage = count,
@@ -995,7 +994,7 @@ namespace BeatLeader_Server.Controllers
 
             var leaderboardId = song.Id + Song.DiffForDiffName(diff).ToString() + modeValue.ToString();
 
-            bool showBots = page == 1 && (currentPlayer?.ProfileSettings?.ShowBots ?? false);
+            bool showBots = currentPlayer?.ProfileSettings?.ShowBots ?? false;
             LeaderboardContexts contexts = LeaderboardContexts.General;
             switch (context) {
                 case "standard":
@@ -1025,10 +1024,14 @@ namespace BeatLeader_Server.Controllers
                 {
                     var score = resultList[i];
                     score.Player = PostProcessSettings(score.Player, false);
-                    if (score.Player.Bot) {
-                        shift++;
-                    } else {
-                        score.Rank = i + (page - 1) * count + 1 - shift;
+                    score.FillNames();
+
+                    if (scope.ToLower() == "friends" || scope.ToLower() == "country" || scope.ToLower().StartsWith("clan_")) {
+                        if (score.Player.Bot) {
+                            shift++;
+                        } else {
+                            score.Rank = i + (page - 1) * count + 1 - shift;
+                        }
                     }
 
                     if (score.Player.Bot) {
