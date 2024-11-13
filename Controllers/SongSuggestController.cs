@@ -291,6 +291,14 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpGet("~/mod/maps/trending/")]
+        public async Task<ActionResult<ResponseWithMetadata<LeaderboardInfoResponse>>> ModTrendingMaps()
+        {
+            var stream = await _s3Client.DownloadAsset("trendingmaps-list.json");
+
+            return File(stream, "application/json");
+        }
+
         [HttpGet("~/maps/trending/")]
         public async Task<ActionResult<ResponseWithMetadata<LeaderboardInfoResponse>>> TrendingMaps()
         {

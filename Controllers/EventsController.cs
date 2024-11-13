@@ -43,6 +43,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/events")]
+        [HttpGet("~/mod/events")]
         public async Task<ActionResult<ResponseWithMetadata<EventResponse>>> GetEvents(
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
@@ -88,6 +89,7 @@ namespace BeatLeader_Server.Controllers
                 PlaylistId = e.PlaylistId,
                 Image = e.Image,
                 Downloadable = !undownloadable.Contains(e.Id), 
+                Description = e.Description,
 
                 PlayerCount = e.Players.Count(),
                 Leader = new PlayerResponse {
@@ -249,6 +251,7 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> StartEvent(
                int id, 
                [FromQuery] string name,
+               [FromQuery] string? description,
                [FromQuery] int endDate)
         {
             if (HttpContext != null)
@@ -385,6 +388,7 @@ namespace BeatLeader_Server.Controllers
                 Players = players,
                 EndDate = endDate,
                 PlaylistId = id,
+                Description = description,
                 Image = imageUrl ?? ""
             };
 
@@ -435,6 +439,26 @@ namespace BeatLeader_Server.Controllers
             _context.EventRankings.Remove(eventRanking);
             await _context.SaveChangesAsync();
 
+            return Ok();
+        }
+
+        [ApiExplorerSettings(IgnoreApi = true)]
+        [HttpPost("~/event/{id}/description")]
+        public async Task<ActionResult<EventRanking?>> UpdateDescription(int id, [FromQuery] string value) {
+            if (HttpContext != null)
+            {
+                string userId = HttpContext.CurrentUserID(_context);
+                var currentPlayer = await _context.Players.FindAsync(userId);
+
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+
+            var eventRanking = await _context.EventRankings.FirstOrDefaultAsync(e => e.Id == id);
+            eventRanking.Description = value;
+            _context.SaveChanges();
             return Ok();
         }
     }
