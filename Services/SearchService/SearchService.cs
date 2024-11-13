@@ -49,6 +49,8 @@ public class SearchService : BackgroundService
             .Select(p => new PlayerSearchSelect {
                 Id = p.Id,
                 Name = p.Name,
+                Alias = p.Alias,
+                OldAlias = p.OldAlias,
                 Changes = p.Changes != null ? p.Changes.Where(c => c.OldName != null).Select(c => c.OldName).ToArray() : null
             })
             .ToArrayAsync());

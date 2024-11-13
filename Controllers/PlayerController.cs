@@ -313,7 +313,7 @@ namespace BeatLeader_Server.Controllers
                 Random rnd = new Random();
                 searchIdentifier = rnd.Next(1, 10000);
 
-                List<string>? startIds = searchMatch.Select(m => m.Id).ToList();
+                List<string>? startIds = searchMatch.Select(m => m.Id.Split("_").First()).ToList();
 
                 var ids = _context.Players.Where(p => startIds.Contains(p.Id)).Select(p => p.Id).ToList();
 
@@ -588,7 +588,7 @@ namespace BeatLeader_Server.Controllers
 
                 foreach (var item in searchMatch) {
                     _context.PlayerSearches.Add(new PlayerSearch {
-                        PlayerId = item.Id,
+                        PlayerId = item.Id.Split("_").First(),
                         Score = item.Score,
                         SearchId = (int)searchIdentifier
                     });

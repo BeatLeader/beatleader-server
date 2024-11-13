@@ -7,6 +7,8 @@ public class PlayerSearchSelect {
     public string Id { get; set; }
 
     public string Name { get; set; }
+    public string? Alias { get; set; }
+    public string? OldAlias { get; set; }
     public string[]? Changes { get; set; }
 }
 
@@ -39,6 +41,20 @@ public class PlayerMetadata
                 changeIndex++;
             }
         }
+        if (player.Alias != null) {
+            result.Add(new PlayerMetadata
+            {
+                Id = player.Id.ToLower() + "_change_alias",
+                Name = player.Alias.Replace(" ", "").ToLower()
+            });
+        }
+        if (player.OldAlias != null) {
+            result.Add(new PlayerMetadata
+            {
+                Id = player.Id.ToLower() + "_change_oldalias",
+                Name = player.OldAlias.Replace(" ", "").ToLower()
+            });
+        }
         return result;
     }
 
@@ -46,6 +62,8 @@ public class PlayerMetadata
         return GetPlayerMetadata(new PlayerSearchSelect {
             Id = player.Id,
             Name = player.Name,
+            Alias = player.Alias,
+            OldAlias = player.OldAlias,
             Changes = player.Changes != null ? player.Changes.Where(c => c.OldName != null).Select(c => c.OldName).ToArray() : null
         });
     }
