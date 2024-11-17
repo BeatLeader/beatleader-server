@@ -961,6 +961,15 @@ namespace BeatLeader_Server.Controllers {
             return result;
         }
 
+        [HttpGet("~/player/legacygame")]
+        public async Task<ActionResult<bool>> ShowLegacy() {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null) {
+                return Unauthorized();
+            }
+            return (await _context.Scores.Where(s => s.PlayerId == currentID).OrderByDescending(s => s.Timepost).Take(10).Select(s => s.Platform).ToListAsync()).All(p => p.Contains("1.29.1"));
+        }
+
         [HttpGet("~/player/{id}/pinnedScores")]
         [SwaggerOperation(Summary = "Retrieve player's pinned scores", Description = "Fetches a paginated list of scores pinned by player for their ID.")]
         [SwaggerResponse(200, "Scores retrieved successfully")]

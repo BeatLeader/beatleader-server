@@ -141,7 +141,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            string fileName = Time.UnixNow() + "-event";
+            string fileName = Time.UnixNow() + "-newspost";
             string? imageUrl = null;
             try
             {
@@ -150,7 +150,7 @@ namespace BeatLeader_Server.Controllers
                 await Request.Body.CopyToAsync(ms);
                 ms.Position = 0;
 
-                (string extension, MemoryStream stream2) = ImageUtils.GetFormatAndResize(ms);
+                (string extension, MemoryStream stream2) = ImageUtils.GetFormat(ms);
                 fileName += extension;
 
                 imageUrl = await _s3Client.UploadAsset(fileName, stream2);

@@ -602,6 +602,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     result.Selection = highlightedScore;
                     result.Selection.Player = PostProcessSettings(result.Selection.Player, false);
+                    result.Selection.FillNames();
                     if (scope.ToLower() == "friends" || scope.ToLower() == "country" || scope.ToLower().StartsWith("clan_")) {
                         result.Selection.Rank = await query.CountAsync(s => s.Rank < result.Selection.Rank) + 1;
                     } else {
@@ -804,6 +805,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     result.Selection = highlightedScore;
                     result.Selection.Player = PostProcessSettings(result.Selection.Player, false);
+                    result.Selection.FillNames();
                     if (scope.ToLower() == "friends" || scope.ToLower() == "country") {
                         result.Selection.Rank = query.Count(s => s.Rank < result.Selection.Rank) + 1;
                     }

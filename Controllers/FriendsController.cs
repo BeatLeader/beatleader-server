@@ -178,6 +178,8 @@ namespace BeatLeader_Server.Controllers {
                                 PassRating  = s.Leaderboard.Difficulty.PassRating,
                                 AccRating  = s.Leaderboard.Difficulty.AccRating,
                                 TechRating  = s.Leaderboard.Difficulty.TechRating,
+                                ModifiersRating = s.Leaderboard.Difficulty.ModifiersRating,
+                                ModifierValues = s.Leaderboard.Difficulty.ModifierValues,
                                 Type  = s.Leaderboard.Difficulty.Type,
 
                                 Njs  = s.Leaderboard.Difficulty.Njs,
