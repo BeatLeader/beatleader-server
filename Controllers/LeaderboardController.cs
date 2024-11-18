@@ -1651,7 +1651,8 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("End date to filter leaderboards by (timestamp)")] int? date_to = null,
             [FromQuery, SwaggerParameter("Types of leaderboards to filter, default is null(All). Same as type but multiple")] string? types = null,
             [FromQuery, SwaggerParameter("Filter maps from a specific mappers. BeatSaver profile ID list, comma separated, default is null")] string? mappers = null,
-            [FromQuery, SwaggerParameter("Override current user ID")] string? overrideCurrentId = null) {
+            string? overrideCurrentId = null,
+            int? uploadTreshold = null) {
 
             var dbContext = _dbFactory.CreateDbContext();
 
@@ -1666,12 +1667,15 @@ namespace BeatLeader_Server.Controllers {
 
                 return Ok(await LeaderboardControllerHelper.GetModList(dbContext, currentPlayer?.ProfileSettings?.ShowAllRatings ?? false, page, count, sortBy, order, date_from, date_to));
             }
-
+            
             var sequence = dbContext
                 .Leaderboards
                 .AsNoTracking()
-                .Where(lb => lb.Song.Mapper != "Beat Sage")
-                .Filter(dbContext, out int? searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, mappers, currentPlayer);
+                .Where(lb => lb.Song.Mapper != "Beat Sage");
+            if (uploadTreshold != null) {
+                sequence = sequence.Where(lb => lb.Song.UploadTime > uploadTreshold);
+            }
+            sequence = sequence.Filter(dbContext, out int? searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, mappers, currentPlayer);
 
             var result = new ResponseWithMetadata<LeaderboardInfoResponse>() {
                 Metadata = new Metadata() {

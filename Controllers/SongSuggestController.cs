@@ -17,6 +17,7 @@ namespace BeatLeader_Server.Controllers
     public class SongSuggestController : Controller
     {
         private readonly AppContext _context;
+        private readonly IDbContextFactory<AppContext> _dbFactory;
 
         private readonly IAmazonS3 _s3Client;
 
@@ -26,12 +27,15 @@ namespace BeatLeader_Server.Controllers
 
         public SongSuggestController(
             AppContext context,
+            IDbContextFactory<AppContext> dbFactory,
             IWebHostEnvironment env,
             IServerTiming serverTiming,
             IConfiguration configuration,
             LeaderboardController leaderboardController)
         {
             _context = context;
+            _dbFactory = dbFactory;
+
             _serverTiming = serverTiming;
             _s3Client = configuration.GetS3Client();
             _configuration = configuration;
@@ -294,9 +298,100 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/mod/maps/trending/")]
         public async Task<ActionResult<ResponseWithMetadata<LeaderboardInfoResponse>>> ModTrendingMaps()
         {
-            var stream = await _s3Client.DownloadAsset("trendingmaps-list.json");
+            var currentId = HttpContext.CurrentUserID(_context);
+            if (currentId == null) {
+                var stream = await _s3Client.DownloadAsset("trendingmaps-list.json");
 
-            return File(stream, "application/json");
+                return File(stream, "application/json");
+            }
+
+            var tasks = new Task<LeaderboardInfoResponse?>[4];
+            for (int i = 0; i < 4; i++) {
+                var dbContext = _dbFactory.CreateDbContext();
+                var query = dbContext.Leaderboards.Where(l => !l.Scores.Any(s => s.PlayerId == currentId));
+                switch (i) {
+                    case 0:
+                        query = query
+                            .Where(l => l.Song.UploadTime > (Time.UnixNow() - 60 * 60 * 24 * 2 * 30))
+                            .OrderByDescending(l => l.Scores.Where(s => s.Timepost > (Time.UnixNow() - 60 * 60 * 24)).Count());
+                        break;
+                    case 1:
+                        query = query
+                            .Where(l => l.Song.UploadTime > (Time.UnixNow() - 60 * 60 * 24 * 2 * 30))
+                            .OrderByDescending(l => l.Scores.Where(s => s.Timepost > (Time.UnixNow() - 60 * 60 * 24 * 7)).Count());
+                        break;
+                    case 2:
+                        query = query
+                            .Where(l => l.Song.ExternalStatuses != null && l.Song.ExternalStatuses.Any(s => s.Status == SongStatus.Curated))
+                            .OrderByDescending(l => l.Song.UploadTime);
+                        break;
+                    case 3:
+                        query = query
+                            .Where(l => l.Song.UploadTime > (Time.UnixNow() - 60 * 60 * 24 * 2 * 30))
+                            .OrderByDescending(l => l.PositiveVotes);
+                        break;
+                    default:
+                        break;
+                }
+
+                tasks[i] = query
+                    .AsNoTracking()
+                    .Select(lb => new LeaderboardInfoResponse {
+                        Id = lb.Id,
+                        Song = lb.Song,
+                        Difficulty = new DifficultyResponse {
+                            Id = lb.Difficulty.Id,
+                            Value = lb.Difficulty.Value,
+                            Mode = lb.Difficulty.Mode,
+                            DifficultyName = lb.Difficulty.DifficultyName,
+                            ModeName = lb.Difficulty.ModeName,
+                            Status = lb.Difficulty.Status,
+                            NominatedTime  = lb.Difficulty.NominatedTime,
+                            QualifiedTime  = lb.Difficulty.QualifiedTime,
+                            RankedTime = lb.Difficulty.RankedTime,
+
+                            Stars  = lb.Difficulty.Stars,
+                            PredictedAcc  = lb.Difficulty.PredictedAcc,
+                            PassRating  = lb.Difficulty.PassRating,
+                            AccRating  = lb.Difficulty.AccRating,
+                            TechRating  = lb.Difficulty.TechRating,
+                            Type  = lb.Difficulty.Type,
+
+                            SpeedTags = lb.Difficulty.SpeedTags,
+                            StyleTags = lb.Difficulty.StyleTags,
+                            FeatureTags = lb.Difficulty.FeatureTags,
+
+                            Njs  = lb.Difficulty.Njs,
+                            Nps  = lb.Difficulty.Nps,
+                            Notes  = lb.Difficulty.Notes,
+                            Bombs  = lb.Difficulty.Bombs,
+                            Walls  = lb.Difficulty.Walls,
+                            MaxScore = lb.Difficulty.MaxScore,
+                            Duration  = lb.Difficulty.Duration,
+
+                            Requirements = lb.Difficulty.Requirements,
+                        },
+                        VoteStars = lb.VoteStars,
+                        StarVotes = lb.StarVotes,
+                    })
+                    .FirstOrDefaultAsync();
+            }
+
+            Task.WaitAll(tasks);
+            var result = tasks
+                    .Where(t => t.Result != null)
+                    .Select(t => t.Result)
+                    .DistinctBy(t => t.Song.Id)
+                    .ToList();
+
+            return new ResponseWithMetadata<LeaderboardInfoResponse> {
+                Metadata = new Metadata {
+                    Page = 1,
+                    ItemsPerPage = result.Count,
+                    Total = result.Count
+                },
+                Data = result
+            };
         }
 
         [HttpGet("~/maps/trending/")]
@@ -314,21 +409,22 @@ namespace BeatLeader_Server.Controllers
 
             int timeset = Time.UnixNow();
             var currentId = HttpContext.CurrentUserID(_context);
-            var topToday = _leaderboardController.GetAll(1, 1, MapSortBy.PlayCount, date_from: timeset - 60 * 60 * 24, overrideCurrentId: currentId);
-            var topWeek = _leaderboardController.GetAll(1, 1, MapSortBy.PlayCount, date_from: timeset - 60 * 60 * 24 * 7, overrideCurrentId: currentId);
-            var topVoted = _leaderboardController.GetAll(1, 1, MapSortBy.Voting, date_from: timeset - 60 * 60 * 24 * 30, overrideCurrentId: currentId);
+            var uploadTreshold = timeset - 60 * 60 * 24 * 30 * 2;
+            var topToday = _leaderboardController.GetAll(1, 1, MapSortBy.PlayCount, date_from: timeset - 60 * 60 * 24, overrideCurrentId: currentId, uploadTreshold: uploadTreshold);
+            var topWeek = _leaderboardController.GetAll(1, 1, MapSortBy.PlayCount, date_from: timeset - 60 * 60 * 24 * 7, overrideCurrentId: currentId, uploadTreshold: uploadTreshold);
+            var topVoted = _leaderboardController.GetAll(1, 1, MapSortBy.Voting, date_from: timeset - 60 * 60 * 24 * 30, overrideCurrentId: currentId, uploadTreshold: uploadTreshold);
 
             Task.WaitAll([topToday, topWeek, topVoted]);
 
             var topTodayResult = topToday.Result;
             if (topTodayResult.Value?.Data.FirstOrDefault()?.Id == topWeek.Result.Value?.Data.FirstOrDefault()?.Id) {
-                topTodayResult = await _leaderboardController.GetAll(2, 1, MapSortBy.PlayCount, date_from: timeset - 60 * 60 * 24, overrideCurrentId: currentId);
+                topTodayResult = await _leaderboardController.GetAll(2, 1, MapSortBy.PlayCount, date_from: timeset - 60 * 60 * 24, overrideCurrentId: currentId, uploadTreshold: uploadTreshold);
             }
 
             var topVotedResult = topVoted.Result;
             if (topVotedResult.Value?.Data.FirstOrDefault()?.Id == topWeek.Result.Value?.Data.FirstOrDefault()?.Id || 
                 topVotedResult.Value?.Data.FirstOrDefault()?.Id == topTodayResult.Value?.Data.FirstOrDefault()?.Id) {
-                topVotedResult = await _leaderboardController.GetAll(2, 1, MapSortBy.Voting, date_from: timeset - 60 * 60 * 24 * 30, overrideCurrentId: currentId);
+                topVotedResult = await _leaderboardController.GetAll(2, 1, MapSortBy.Voting, date_from: timeset - 60 * 60 * 24 * 30, overrideCurrentId: currentId, uploadTreshold: uploadTreshold);
             }
 
             var response = new ResponseWithMetadata<LeaderboardInfoResponse> {

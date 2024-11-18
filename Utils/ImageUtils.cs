@@ -89,5 +89,25 @@ namespace BeatLeader_Server.Utils
 
             return (extension, ms);
         }
+
+        public static (string, MemoryStream) GetFormatPng(MemoryStream memoryStream)
+        {
+            IImageFormat format = Image.DetectFormat(memoryStream);
+            Image image = Image.Load(memoryStream);
+
+            var ms = new MemoryStream(5);
+            string extension;
+
+            if (format.Name == "GIF") {
+                image.SaveAsGif(ms);
+                extension = ".gif";
+            } else {
+                image.SaveAsPng(ms);
+                extension = ".png";
+            }
+            ms.Position = 0;
+
+            return (extension, ms);
+        }
     }
 }

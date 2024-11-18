@@ -150,7 +150,7 @@ namespace BeatLeader_Server.Controllers
                 await Request.Body.CopyToAsync(ms);
                 ms.Position = 0;
 
-                (string extension, MemoryStream stream2) = ImageUtils.GetFormat(ms);
+                (string extension, MemoryStream stream2) = ImageUtils.GetFormatPng(ms);
                 fileName += extension;
 
                 imageUrl = await _s3Client.UploadAsset(fileName, stream2);
@@ -159,15 +159,39 @@ namespace BeatLeader_Server.Controllers
             {
                 return BadRequest("Error saving avatar");
             }
-
-            _context.ModNews.Add(new ModNews {
+            var news = new ModNews {
                 Owner = owner,
                 OwnerIcon = ownerIcon,
                 Body = body,
                 Timepost = Time.UnixNow(),
                 Image = imageUrl,
-            });
+            };
+
+            _context.ModNews.Add(news);
             await _context.SaveChangesAsync();
+
+            return Ok(news);
+        }
+
+        [ApiExplorerSettings(IgnoreApi = true)]
+        [HttpDelete("~/mod/news")]
+        public async Task<ActionResult> DeleteNews(
+               [FromQuery] int id)
+        {
+            if (HttpContext != null)
+            {
+                string userId = HttpContext.CurrentUserID(_context);
+                var currentPlayer = await _context.Players.FindAsync(userId);
+
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+
+            var newsPost = _context.ModNews.Where(n => n.Id == id).First();
+            _context.ModNews.Remove(newsPost);
+            _context.SaveChanges();
 
             return Ok();
         }
