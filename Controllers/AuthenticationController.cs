@@ -454,6 +454,25 @@ namespace BeatLeader_Server.Controllers {
             };
         }
 
+        [HttpPost("~/cookieRefresh")]
+        public async Task<ActionResult> CookieRefresh() {
+            var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            
+            if (!result.Succeeded) {
+                return Unauthorized();
+            }
+
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                result.Principal,
+                new AuthenticationProperties { 
+                    IsPersistent = true,
+                    ExpiresUtc = DateTimeOffset.UtcNow.AddDays(30)
+                });
+
+            return Ok();
+        }
+
         [HttpGet("~/signout"), HttpPost("~/signout")]
         public async Task<IActionResult> SignOutCurrentUser() {
             string? userId = HttpContext.CurrentUserID(_context);

@@ -1605,10 +1605,13 @@ namespace BeatLeader_Server.Controllers {
                 Player? currentPlayer = currentID != null 
                     ? await _context.Players.Include(p => p.ProfileSettings).FirstOrDefaultAsync(p => p.Id == currentID) 
                     : null;
+
                 bool showRatings = currentPlayer?.ProfileSettings?.ShowAllRatings ?? false;
                 foreach (var leaderboard in resultList) {
                     if (!showRatings && !leaderboard.Difficulty.Status.WithRating()) {
                         leaderboard.HideRatings();
+                    } else {
+                        leaderboard.RemoveSpeedMultipliers();
                     }
                 }
             }

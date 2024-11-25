@@ -486,7 +486,6 @@ namespace BeatLeader_Server.Utils
             if (lowerHmd.Contains("vive pro 2")) return HMD.vivePro2;
             if (lowerHmd.Contains("vive elite")) return HMD.viveElite;
             if (lowerHmd.Contains("focus3")) return HMD.viveFocus;
-            if (lowerHmd.Contains("miramar")) return HMD.miramar;
             if (lowerHmd.Contains("pimax") && lowerHmd.Contains("8k")) return HMD.pimax8k;
             if (lowerHmd.Contains("pimax") && lowerHmd.Contains("5k")) return HMD.pimax5k;
             if (lowerHmd.Contains("pimax") && lowerHmd.Contains("artisan")) return HMD.pimaxArtisan;
@@ -527,6 +526,7 @@ namespace BeatLeader_Server.Utils
             if (lowerHmd.Contains("unknown_panther")) return HMD.quest3s;
             if (lowerHmd.Contains("quest") && lowerHmd.Contains("3")) return HMD.quest3;
             if (lowerHmd.Contains("quest") && lowerHmd.Contains("2")) return HMD.quest2;
+            if (lowerHmd.Contains("miramar")) return HMD.quest2;
             if (lowerHmd.Contains("quest") && lowerHmd.Contains("pro")) return HMD.questPro;
 
             if (lowerHmd.Contains("vive cosmos")) return HMD.viveCosmos;
@@ -562,7 +562,6 @@ namespace BeatLeader_Server.Utils
             if (lowerController.Contains("pico neo") && lowerController.Contains("3")) return ControllerEnum.picoNeo3;
             if (lowerController.Contains("pico neo") && lowerController.Contains("2")) return ControllerEnum.picoNeo2;
             if (lowerController.Contains("knuckles")) return ControllerEnum.knuckles;
-            if (lowerController.Contains("miramar")) return ControllerEnum.miramar;
 
             if (lowerController.Contains("gamepad")) return ControllerEnum.gamepad;
             if (lowerController.Contains("joy-con")) return ControllerEnum.joycon;
@@ -573,6 +572,7 @@ namespace BeatLeader_Server.Utils
             if (lowerController.Contains("ventura")) return ControllerEnum.quest3;
             if (lowerController.Contains("unknown_panther")) return ControllerEnum.quest3;
             if (lowerController.Contains("quest2")) return ControllerEnum.quest2;
+            if (lowerController.Contains("miramar")) return ControllerEnum.quest2;
             if (lowerController.Contains("oculus touch") || lowerController.Contains("rift cv1")) return ControllerEnum.oculustouch;
             if (lowerController.Contains("rift s") || lowerController.Contains("quest")) return ControllerEnum.oculustouch2;
 

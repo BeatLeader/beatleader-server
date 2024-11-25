@@ -66,6 +66,10 @@ namespace BeatLeader_Server.ControllerHelpers {
             public void HideRatings() {
                 Difficulty.HideRatings();
             }
+
+            public void RemoveSpeedMultipliers() {
+                Difficulty.RemoveSpeedMultipliers();
+            }
         }
 
         public class SongInfo {
@@ -99,6 +103,14 @@ namespace BeatLeader_Server.ControllerHelpers {
                 this.Stars = null;
 
                 this.ModifiersRating = null;
+            }
+
+            public void RemoveSpeedMultipliers() {
+                if (ModifierValues != null) {
+                    ModifierValues.SF = 0;
+                    ModifierValues.FS = 0;
+                    ModifierValues.SS = 0;
+                }
             }
         }
 
@@ -178,6 +190,8 @@ namespace BeatLeader_Server.ControllerHelpers {
                 foreach (var leaderboard in resultList) {
                     if (!showRatings && !leaderboard.Difficulty.Status.WithRating()) {
                         leaderboard.HideRatings();
+                    } else {
+                        leaderboard.RemoveSpeedMultipliers();
                     }
                 }
             }
