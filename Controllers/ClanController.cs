@@ -217,9 +217,9 @@ namespace BeatLeader_Server.Controllers
             [FromQuery, SwaggerParameter("Amount of days to include")] int count = 50) {
             var result = await _context
                     .GlobalMapHistory
+                    .TagWithCaller()
                     .AsNoTracking()
                     .Where(p => p.ClanId == id)
-                    .TagWithCaller()
                     .OrderByDescending(s => s.Timestamp)
                     .Take(count)
                     .ToListAsync();

@@ -1371,6 +1371,7 @@ namespace BeatLeader_Server.Controllers {
                         var difficulty = score.Leaderboard.Difficulty;
                         score.ContextExtensions = new List<ScoreContextExtension>();
                         score.ValidContexts = LeaderboardContexts.None;
+                        score.ValidForGeneral = false;
                         var noModsExtension = ReplayUtils.NoModsContextExtension(score, difficulty);
                         if (noModsExtension != null) {
                             noModsExtension.LeaderboardId = score.LeaderboardId;
@@ -1405,6 +1406,7 @@ namespace BeatLeader_Server.Controllers {
                     }
 
                     bestScore.ValidContexts |= LeaderboardContexts.General;
+                    bestScore.ValidForGeneral = true;
 
                     foreach (var context in ContextExtensions.NonGeneral) {
                         var extensions = scores
@@ -1450,6 +1452,7 @@ namespace BeatLeader_Server.Controllers {
                     var firstValid = valid.First();
                     var save = firstValid.ValidContexts;
                     firstValid.ValidContexts = LeaderboardContexts.None;
+                    firstValid.ValidForGeneral = false;
 
                     await _context.SaveChangesAsync();
 

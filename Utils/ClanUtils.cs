@@ -93,7 +93,7 @@ namespace BeatLeader_Server.Utils
                 var associatedScores = await context
                     .Scores
                     .Where(s => 
-                        s.ValidContexts.HasFlag(LeaderboardContexts.General) && 
+                        s.ValidForGeneral && 
                         s.LeaderboardId == newScore.LeaderboardId && 
                         !s.Banned &&
                         s.Player.Clans
@@ -198,7 +198,7 @@ namespace BeatLeader_Server.Utils
                     .Scores
                     .Where(s => 
                         s.LeaderboardId == leaderboard.Id && 
-                        s.ValidContexts.HasFlag(LeaderboardContexts.General) && 
+                        s.ValidForGeneral && 
                         !s.Banned && 
                         s.Player.Clans.Count > 0)
                     .Select(s => new {

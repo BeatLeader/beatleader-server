@@ -8,6 +8,7 @@ using Lib.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using static BeatLeader_Server.Utils.ResponseUtils;
@@ -18,7 +19,8 @@ namespace BeatLeader_Server.Controllers
     {
         private readonly AppContext _context;
         private readonly IDbContextFactory<AppContext> _dbFactory;
-
+        
+        private readonly IMemoryCache _cache;
         private readonly IAmazonS3 _s3Client;
 
         private readonly IServerTiming _serverTiming;
@@ -28,6 +30,7 @@ namespace BeatLeader_Server.Controllers
         public SongSuggestController(
             AppContext context,
             IDbContextFactory<AppContext> dbFactory,
+            IMemoryCache cache,
             IWebHostEnvironment env,
             IServerTiming serverTiming,
             IConfiguration configuration,
@@ -35,7 +38,7 @@ namespace BeatLeader_Server.Controllers
         {
             _context = context;
             _dbFactory = dbFactory;
-
+            _cache = cache;
             _serverTiming = serverTiming;
             _s3Client = configuration.GetS3Client();
             _configuration = configuration;
@@ -156,7 +159,7 @@ namespace BeatLeader_Server.Controllers
                         s.Player.Rank <= topCount &&
                         s.Player.Rank >= 1 &&
                         s.Weight > 0.4 &&
-                        s.ValidContexts.HasFlag(LeaderboardContexts.General))
+                        s.ValidForGeneral)
                     .Select(s => new {
                         P = s.Pp,
                         W = s.Weight,
@@ -184,7 +187,7 @@ namespace BeatLeader_Server.Controllers
 
             var list = (await _context.Scores
                 .Where(s => 
-                    s.ValidContexts.HasFlag(LeaderboardContexts.General) &&
+                    s.ValidForGeneral &&
                     !s.Qualification &&
                     !s.Modifiers.Contains("FS") &&
                     !s.Modifiers.Contains("SF") &&
@@ -296,8 +299,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/mod/maps/trending/")]
-        public async Task<ActionResult<ResponseWithMetadata<LeaderboardInfoResponse>>> ModTrendingMaps()
-        {
+        public async Task<ActionResult<ResponseWithMetadata<LeaderboardInfoResponse>>> ModTrendingMaps() {
             var currentId = HttpContext.CurrentUserID(_context);
             if (currentId == null) {
                 var stream = await _s3Client.DownloadAsset("trendingmaps-list.json");
@@ -305,29 +307,37 @@ namespace BeatLeader_Server.Controllers
                 return File(stream, "application/json");
             }
 
-            var tasks = new Task<LeaderboardInfoResponse?>[4];
+            var cacheKey = $"modTrendingMaps_{currentId}";
+            var cachedResponse = _cache.Get<ResponseWithMetadata<LeaderboardInfoResponse>>(cacheKey);
+            if (cachedResponse != null)
+            {
+                return cachedResponse;
+            }
+
+            var tasks = new Task<string?>[4];
+            var treshold = Time.UnixNow() - 60 * 60 * 24 * 2 * 30;
             for (int i = 0; i < 4; i++) {
                 var dbContext = _dbFactory.CreateDbContext();
                 var query = dbContext.Leaderboards.Where(l => !l.Scores.Any(s => s.PlayerId == currentId));
                 switch (i) {
                     case 0:
                         query = query
-                            .Where(l => l.Song.UploadTime > (Time.UnixNow() - 60 * 60 * 24 * 2 * 30))
-                            .OrderByDescending(l => l.Scores.Where(s => s.Timepost > (Time.UnixNow() - 60 * 60 * 24)).Count());
+                            .Where(l => l.Song.UploadTime > treshold)
+                            .OrderByDescending(l => l.TodayPlays);
                         break;
                     case 1:
                         query = query
-                            .Where(l => l.Song.UploadTime > (Time.UnixNow() - 60 * 60 * 24 * 2 * 30))
-                            .OrderByDescending(l => l.Scores.Where(s => s.Timepost > (Time.UnixNow() - 60 * 60 * 24 * 7)).Count());
+                            .Where(l => l.Song.UploadTime > treshold)
+                            .OrderByDescending(l => l.ThisWeekPlays);
                         break;
                     case 2:
                         query = query
-                            .Where(l => l.Song.ExternalStatuses != null && l.Song.ExternalStatuses.Any(s => s.Status == SongStatus.Curated))
-                            .OrderByDescending(l => l.Song.UploadTime);
+                            .Where(l => l.Song.Status.HasFlag(SongStatus.Curated))
+                            .OrderByDescending(l => l.Id);
                         break;
                     case 3:
                         query = query
-                            .Where(l => l.Song.UploadTime > (Time.UnixNow() - 60 * 60 * 24 * 2 * 30))
+                            .Where(l => l.Song.UploadTime > treshold)
                             .OrderByDescending(l => l.PositiveVotes);
                         break;
                     default:
@@ -335,7 +345,28 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 tasks[i] = query
+                    .TagWithCallerS()
                     .AsNoTracking()
+                    .Select(lb => lb.Id)
+                    .FirstOrDefaultAsync();
+            }
+
+            Task.WaitAll(tasks);
+            var result = tasks
+                    .Where(t => t.Result != null)
+                    .Select(t => t.Result)
+                    .Distinct()
+                    .ToList();
+
+            var response = new ResponseWithMetadata<LeaderboardInfoResponse> {
+                Metadata = new Metadata {
+                    Page = 1,
+                    ItemsPerPage = result.Count,
+                    Total = result.Count
+                },
+                Data = await _context
+                    .Leaderboards
+                    .Where(lb => result.Contains(lb.Id))
                     .Select(lb => new LeaderboardInfoResponse {
                         Id = lb.Id,
                         Song = lb.Song,
@@ -346,54 +377,42 @@ namespace BeatLeader_Server.Controllers
                             DifficultyName = lb.Difficulty.DifficultyName,
                             ModeName = lb.Difficulty.ModeName,
                             Status = lb.Difficulty.Status,
-                            NominatedTime  = lb.Difficulty.NominatedTime,
-                            QualifiedTime  = lb.Difficulty.QualifiedTime,
+                            NominatedTime = lb.Difficulty.NominatedTime,
+                            QualifiedTime = lb.Difficulty.QualifiedTime,
                             RankedTime = lb.Difficulty.RankedTime,
 
-                            Stars  = lb.Difficulty.Stars,
-                            PredictedAcc  = lb.Difficulty.PredictedAcc,
-                            PassRating  = lb.Difficulty.PassRating,
-                            AccRating  = lb.Difficulty.AccRating,
-                            TechRating  = lb.Difficulty.TechRating,
-                            Type  = lb.Difficulty.Type,
+                            Stars = lb.Difficulty.Stars,
+                            PredictedAcc = lb.Difficulty.PredictedAcc,
+                            PassRating = lb.Difficulty.PassRating,
+                            AccRating = lb.Difficulty.AccRating,
+                            TechRating = lb.Difficulty.TechRating,
+                            Type = lb.Difficulty.Type,
 
                             SpeedTags = lb.Difficulty.SpeedTags,
                             StyleTags = lb.Difficulty.StyleTags,
                             FeatureTags = lb.Difficulty.FeatureTags,
 
-                            Njs  = lb.Difficulty.Njs,
-                            Nps  = lb.Difficulty.Nps,
-                            Notes  = lb.Difficulty.Notes,
-                            Bombs  = lb.Difficulty.Bombs,
-                            Walls  = lb.Difficulty.Walls,
+                            Njs = lb.Difficulty.Njs,
+                            Nps = lb.Difficulty.Nps,
+                            Notes = lb.Difficulty.Notes,
+                            Bombs = lb.Difficulty.Bombs,
+                            Walls = lb.Difficulty.Walls,
                             MaxScore = lb.Difficulty.MaxScore,
-                            Duration  = lb.Difficulty.Duration,
+                            Duration = lb.Difficulty.Duration,
 
                             Requirements = lb.Difficulty.Requirements,
                         },
                         VoteStars = lb.VoteStars,
                         StarVotes = lb.StarVotes,
-                    })
-                    .FirstOrDefaultAsync();
-            }
-
-            Task.WaitAll(tasks);
-            var result = tasks
-                    .Where(t => t.Result != null)
-                    .Select(t => t.Result)
-                    .DistinctBy(t => t.Song.Id)
-                    .ToList();
-
-            return new ResponseWithMetadata<LeaderboardInfoResponse> {
-                Metadata = new Metadata {
-                    Page = 1,
-                    ItemsPerPage = result.Count,
-                    Total = result.Count
-                },
-                Data = result
+                    }).ToListAsync()
             };
+
+            _cache.Set(cacheKey, response, TimeSpan.FromDays(1));
+
+            return response;
         }
 
+        //[HttpGet("~/mod/maps/trending/")]
         [HttpGet("~/maps/trending/")]
         public async Task<ActionResult<ResponseWithMetadata<LeaderboardInfoResponse>>> TrendingMaps()
         {

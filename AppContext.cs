@@ -16,6 +16,7 @@ namespace BeatLeader_Server
         public DbSet<Leaderboard> Leaderboards { get; set; }
         public DbSet<Player> Players { get; set; }
         public DbSet<Score> Scores { get; set; }
+        public DbSet<DifficultyDescription> DifficultyDescription { get; set; }
         public DbSet<FailedScore> FailedScores { get; set; }
         public DbSet<PlayerScoreStats> Stats { get; set; }
         public DbSet<AuthInfo> Auths { get; set; }

@@ -71,11 +71,19 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Provide player or authenticate");
             }
 
+            var songId = await _context.DifficultyDescription.Where(d => d.DifficultyName == diff && d.ModeName == mode && d.Hash == hash).Select(d => new { d.SongId, d.Value, d.Mode }).FirstOrDefaultAsync();
+            if (songId == null) {
+                return VoteStatus.CantVote;
+            }
+
+            var lbId = songId.SongId + songId.Value + songId.Mode;
+
             var score = await _context
                 .Scores
-                .Where(l => l.Leaderboard.Song.Hash == hash && l.Leaderboard.Difficulty.DifficultyName == diff && l.Leaderboard.Difficulty.ModeName == mode && l.PlayerId == userId)
-                .Select(s => new { s.Modifiers, s.Id })
                 .TagWithCaller()
+                .AsNoTracking()
+                .Where(l => l.LeaderboardId == lbId && l.PlayerId == userId)
+                .Select(s => new { s.Modifiers, s.Id })
                 .FirstOrDefaultAsync();
 
             if (score == null) {

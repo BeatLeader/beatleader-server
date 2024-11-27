@@ -137,7 +137,7 @@ namespace BeatLeader_Server.ControllerHelpers {
             }
 
             var rankingList = await rankings
-            
+            .TagWithCaller()
             .Skip((page - 1) * count)
             .Take(count)
             .Select(cr => new ClanRankingResponse {
@@ -224,12 +224,11 @@ namespace BeatLeader_Server.ControllerHelpers {
                     MaxStreak = s.MaxStreak,
                 }).FirstOrDefault(),
             })
-            .TagWithCaller()
-            .AsSplitQuery()
             .ToListAsync();
 
             if (sortBy == ClanMapsSortBy.Tohold || sortBy == ClanMapsSortBy.Toconquer) {
                 var pps = await rankings
+                    .TagWithCaller()
                     .Skip((page - 1) * count)
                     .Take(count)
                     .Select(t => new { t.LeaderboardId, Pp = t.Pp, SecondPp = t
@@ -239,7 +238,6 @@ namespace BeatLeader_Server.ControllerHelpers {
                         .Select(cr => cr.Pp)
                         .FirstOrDefault()
                     })
-                    .TagWithCaller()
                     .AsSplitQuery()
                     .ToListAsync();
 
@@ -304,7 +302,7 @@ namespace BeatLeader_Server.ControllerHelpers {
             {
                 Container = clan,
                 Data = (await players
-                    .TagWithCaller()
+                    .TagWithCallerS()
                     .AsNoTracking()
                     .Skip((page - 1) * count)
                     .Take(count)

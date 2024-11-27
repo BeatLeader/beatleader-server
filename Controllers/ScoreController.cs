@@ -8,8 +8,10 @@ using BeatLeader_Server.Utils;
 using Lib.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using ReplayDecoder;
+using System.Data;
 using System.Dynamic;
 using System.Linq.Expressions;
 using static BeatLeader_Server.Utils.ResponseUtils;
@@ -181,8 +183,10 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<ScoreResponseWithDifficulty>> GetRandomScore(
             [FromQuery] RandomScoreSource scoreSource = RandomScoreSource.General)
         {
-            IQueryable<Score> query = _context.Scores;
+            int? result = null;
+            
             if (scoreSource == RandomScoreSource.Friends) {
+                IQueryable<Score> query = _context.Scores;
                 string? userId = HttpContext.CurrentUserID(_context);
                 if (userId != null) {
                     var friends = await _context
@@ -206,16 +210,30 @@ namespace BeatLeader_Server.Controllers
                         exp = Expression.OrElse(exp, Expression.Equal(Expression.Property(score, "PlayerId"), Expression.Constant(term)));
                     }
                     query = query.Where((Expression<Func<Score, bool>>)Expression.Lambda(exp, score));
+                    var count = await query.CountAsync();
+                    if (count == 0) return NotFound();
+                    var offset = Random.Shared.Next(1, count);
+                    result = await query
+                        .TagWithCaller()
+                        .AsNoTracking()
+                        .OrderBy(s => s.Id)
+                        .Skip(offset)
+                        .Select(s => s.Id)
+                        .FirstOrDefaultAsync();
                 }
+            } 
+
+            if (result == null) {
+                var idParam = new SqlParameter("Id", SqlDbType.Int) { Direction = ParameterDirection.Output };
+                await _context.Database.ExecuteSqlRawAsync(
+                    """
+                    SELECT TOP 1 @Id = [s].[Id]
+                    FROM [Scores] AS [s]
+                    TABLESAMPLE (1 PERCENT);
+                    """, idParam);
+                result = (int?)idParam.Value;
             }
 
-            var offset = Random.Shared.Next(1, await query.CountAsync());
-            int? result = await query
-                .AsNoTracking()
-                .Skip(offset)
-                .Take(1)
-                .Select(s => s.Id)
-                .FirstOrDefaultAsync();
             if (result == null) {
                 return NotFound();
             }
@@ -231,68 +249,39 @@ namespace BeatLeader_Server.Controllers
 
             // Filter out scores that are less than a week old
             var treshold = Time.UnixNow() - timeback;
-            query = query.Where(s => 
-                s.Timepost < treshold &&
-                s.Leaderboard.Difficulty.Mode == 1 &&
-                !s.Leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles) &&
-                !s.Leaderboard.Difficulty.Requirements.HasFlag(Requirements.MappingExtensions));
 
             string? userId = HttpContext.CurrentUserID(_context);
             List<string>? friendsList = null;
 
             if (userId != null)
             {
-                var friends = await _context
-                    .Friends
-                    .AsNoTracking()
-                    .Where(f => f.Id == userId)
-                    .Include(f => f.Friends)
-                    .FirstOrDefaultAsync();
-
-                friendsList = new List<string> { userId };
-                if (friends != null)
-                {
-                    friendsList.AddRange(friends.Friends.Select(f => f.Id));
-                }
 
                 // Select scores based on the defined probabilities
                 var randomValue = Random.Shared.NextDouble();
-                if (randomValue < 0.10) // 10% chance for a random player's score
+                if (randomValue < 0.40) // 20% chance for the user's own scores
                 {
-                    if (friendsList != null)
-                    {
-                        // Exclude the user and their friends
-                        query = query.Where(s => !friendsList.Contains(s.PlayerId));
-                    }
-                }
-                else if (randomValue < 0.30) // 20% chance for the user's own scores
-                {
-                    query = query.Where(s => s.PlayerId == userId);
+                    return await GetRandomScore(RandomScoreSource.General);
                 }
                 else // 70% chance for a friend's score
                 {
-                    if (friendsList != null && friendsList.Count > 1) // Check to ensure friends exist
-                    {
-                        query = query.Where(s => friendsList.Contains(s.PlayerId));
-                    }
+                    return await GetRandomScore(RandomScoreSource.Friends);
                 }
             }
 
-            int totalScores = await query.CountAsync();
-            if (totalScores == 0)
-            {
+            var idParam = new SqlParameter("Id", SqlDbType.Int) { Direction = ParameterDirection.Output };
+                await _context.Database.ExecuteSqlRawAsync(
+                    """
+                    SELECT TOP 1 @Id = [s].[Id]
+                    FROM [Scores] AS [s]
+                    TABLESAMPLE (1 PERCENT);
+                    """, idParam);
+            int? scoreId = (int?)idParam.Value;
+            var score = _context.Scores.Where(s => s.Id == scoreId).Include(s => s.Leaderboard).ThenInclude(s => s.Difficulty).FirstOrDefault();
+            if (score?.Leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles) == true || score?.Leaderboard.Difficulty.Requirements.HasFlag(Requirements.MappingExtensions) == true) {
                 return await GetRandomScore(RandomScoreSource.General);
             }
 
-            var offset = Random.Shared.Next(totalScores);
-            var scoreId = await query
-                .AsNoTracking()
-                .Skip(offset)
-                .Take(1)
-                .Select(s => s.Id)
-                .FirstOrDefaultAsync();
-
-            return await GetScore(scoreId, false);
+            return await GetScore(scoreId ?? 1, false);
         }
 
         [HttpDelete("~/score/{id}")]
@@ -399,6 +388,7 @@ namespace BeatLeader_Server.Controllers
 
             result.Metadata.Total = await query.CountAsync();
             result.Data = await query
+                .TagWithCaller()
                 .Skip((page - 1) * count)
                 .Take(count)
                 .Select(s => new SaverScoreResponse
@@ -415,7 +405,6 @@ namespace BeatLeader_Server.Controllers
                     LeaderboardId = s.LeaderboardId,
                     Player = s.Player.Name
                 })
-                .TagWithCaller()
                 .ToListAsync();
 
             return result;
@@ -459,11 +448,12 @@ namespace BeatLeader_Server.Controllers
                 .AsNoTracking()
                 .Where(s => !s.Banned && 
                              s.LeaderboardId == leaderboard.Id &&
-                             s.ValidContexts.HasFlag(LeaderboardContexts.General))
+                             s.ValidForGeneral)
                 .OrderBy(p => p.Rank);
 
             result.Metadata.Total = await query.CountAsync();
             result.Data = await query
+                .TagWithCaller()
                 .Skip((page - 1) * count)
                 .Take(count)
                 .Select(s => new SaverScoreResponse
@@ -480,7 +470,6 @@ namespace BeatLeader_Server.Controllers
                     LeaderboardId = s.LeaderboardId,
                     Player = s.Player.Name
                 })
-                .TagWithCaller()
                 .ToListAsync();
 
             result.Container.LeaderboardId = leaderboard.Id;
@@ -503,7 +492,7 @@ namespace BeatLeader_Server.Controllers
             IQueryable<Score> query = _context
                 .Scores
                 .AsNoTracking()
-                .Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && 
+                .Where(s => s.ValidForGeneral && 
                             (!s.Banned || (s.Bot && showBots)) && 
                             s.LeaderboardId == leaderboardId);
 
@@ -549,7 +538,7 @@ namespace BeatLeader_Server.Controllers
             }
             else
             {
-                ScoreResponseWithHeadsets? highlightedScore = await query.Where(el => el.PlayerId == player).Select(s => new ScoreResponseWithHeadsets
+                ScoreResponseWithHeadsets? highlightedScore = await query.TagWithCaller().Where(el => el.PlayerId == player).Select(s => new ScoreResponseWithHeadsets
                 {
                     Id = s.Id,
                     PlayerId = s.PlayerId,
@@ -595,8 +584,7 @@ namespace BeatLeader_Server.Controllers
                     },
                     ScoreImprovement = s.ScoreImprovement
                 })
-                    .TagWithCaller()
-                    .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync();
 
                 if (highlightedScore != null)
                 {
@@ -619,6 +607,7 @@ namespace BeatLeader_Server.Controllers
             result.Metadata.Total = await query.CountAsync();
 
             var ids = await query
+                .TagWithCaller()
                 .OrderBy(p => p.Rank)
                 .Skip((page - 1) * count)
                 .Take(count)
@@ -626,6 +615,7 @@ namespace BeatLeader_Server.Controllers
                 .ToListAsync();
 
             List<ScoreResponseWithHeadsets> resultList = await query
+                .TagWithCaller()
                 .Where(s => ids.Contains(s.Id))
                 .Select(s => new ScoreResponseWithHeadsets
                 {
@@ -675,7 +665,6 @@ namespace BeatLeader_Server.Controllers
                     },
                     ScoreImprovement = s.ScoreImprovement
                 })
-                .TagWithCaller()
                 .ToListAsync();
 
             return ((resultList.Any(s => s.Pp > 0)
@@ -751,6 +740,8 @@ namespace BeatLeader_Server.Controllers
             else
             {
                 ScoreResponseWithHeadsets? highlightedScore = await query
+                    .TagWithCaller()
+                    .AsNoTracking()
                     .Where(s => s.Context == context && (!s.ScoreInstance.Banned || (s.ScoreInstance.Bot && showBots)) && s.LeaderboardId == leaderboardId && s.PlayerId == player)
                     .Select(s => new ScoreResponseWithHeadsets
                 {
@@ -798,8 +789,7 @@ namespace BeatLeader_Server.Controllers
                     },
                     ScoreImprovement = s.ScoreImprovement
                 })
-                    .TagWithCaller()
-                    .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync();
 
                 if (highlightedScore != null)
                 {
@@ -823,6 +813,8 @@ namespace BeatLeader_Server.Controllers
             result.Metadata.Total = await query.CountAsync();
 
             var ids = await query
+                .TagWithCaller()
+                .AsNoTracking()
                 .OrderBy(p => p.Rank)
                 .Skip((page - 1) * count)
                 .Take(count)
@@ -830,6 +822,8 @@ namespace BeatLeader_Server.Controllers
                 .ToListAsync();
 
             List<ScoreResponseWithHeadsets> resultList = await query
+                .TagWithCaller()
+                .AsNoTracking()
                 .Where(s => ids.Contains(s.Id))
                 .Select(s => new ScoreResponseWithHeadsets
                 {
@@ -879,7 +873,6 @@ namespace BeatLeader_Server.Controllers
                     },
                     ScoreImprovement = s.ScoreImprovement
                 })
-                .TagWithCaller()
                 .ToListAsync();
 
             foreach (var score in resultList) {
@@ -951,6 +944,7 @@ namespace BeatLeader_Server.Controllers
             PlayerResponse? currentPlayer = 
                 await _context
                 .Players
+                .TagWithCallerS()
                 .AsNoTracking()
                 .Select(p => new PlayerResponse {
                     Id = p.Id,
@@ -968,13 +962,12 @@ namespace BeatLeader_Server.Controllers
                     ProfileSettings = p.ProfileSettings,
                     Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                 })
-                .TagWithCaller()
                 .FirstOrDefaultAsync(p => p.Id == player);
             var song = await _context
                 .Songs
+                .TagWithCallerS()
                 .AsNoTracking()
                 .Select(s => new { Id = s.Id, Hash = s.Hash })
-                .TagWithCaller()
                 .FirstOrDefaultAsync(s => s.Hash == hash);
             if (song == null) {
                 return result;
@@ -1315,9 +1308,9 @@ namespace BeatLeader_Server.Controllers
 
             var song = await _context
                 .Songs
+                .TagWithCallerS()
                 .AsNoTracking()
                 .Select(s => new { s.Id, s.Hash })
-                .TagWithCaller()
                 .FirstOrDefaultAsync(s => s.Hash == hash);
             if (song == null) {
                 return result;
@@ -1347,6 +1340,8 @@ namespace BeatLeader_Server.Controllers
             result.Metadata.Total = await query.CountAsync();
 
             var resultList = (await query
+                .TagWithCaller()
+                .AsNoTracking()
                 .OrderBy(p => p.Rank)
                 .Skip((page - 1) * count)
                 .Take(count)
@@ -1372,7 +1367,6 @@ namespace BeatLeader_Server.Controllers
                         Rank = s.Clan.Rank,
                     },
                 })
-                .TagWithCaller()
                 .ToListAsync())
                 .OrderByDescending(el => Math.Round(el.Pp, 2))
                 .ThenByDescending(el => Math.Round(el.Accuracy, 4))

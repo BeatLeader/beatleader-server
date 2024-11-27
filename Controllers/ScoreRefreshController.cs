@@ -178,7 +178,7 @@ namespace BeatLeader_Server.Controllers
             
             var query = _context
                 .Leaderboards
-                .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked || lb.Difficulty.Status == DifficultyStatus.nominated || lb.Difficulty.Status == DifficultyStatus.qualified);
+                .Where(lb => lb.Difficulty.Status == DifficultyStatus.qualified);
             
             query = (leaderboardId != null ? _context.Leaderboards.Where(s => s.Id == leaderboardId) : query);
 

@@ -53,7 +53,7 @@ public static partial class MapListUtils
             return sequence;
         }
 
-        return sequence.Where(s => s.Difficulties.Any(d => d.Status != DifficultyStatus.outdated) && s.ExternalStatuses.FirstOrDefault(s => status.HasFlag(s.Status)) != null);
+        return sequence.Where(s => s.Difficulties.Any(d => d.Status != DifficultyStatus.outdated) && status.HasFlag(s.Status));
     }
 
     private static IQueryable<Song> WhereMapper(this IQueryable<Song> sequence, string? mapper)

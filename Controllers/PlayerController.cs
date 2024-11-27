@@ -457,13 +457,12 @@ namespace BeatLeader_Server.Controllers
                 (result.Metadata.Total, result.Data) = await request.CountAsync().CoundAndResults(
                     anotherContext
                     .Players
+                    .TagWithCallerS()
                     .AsNoTracking()
                     .Where(p => playerIds.Contains(p.Id))
                     .Include(p => p.ScoreStats)
                     .Include(p => p.Clans)
                     .Include(p => p.ProfileSettings)
-                    .AsSplitQuery()
-                    .TagWithCaller()
                     .Select(p => new PlayerResponseWithStats
                     {
                         Id = p.Id,
@@ -716,10 +715,10 @@ namespace BeatLeader_Server.Controllers
                 (result.Metadata.Total, result.Data) = await request.CountAsync().CoundAndResults(
                     anotherContext
                     .PlayerContextExtensions
+                    .TagWithCaller()
                     .AsNoTracking()
                     .Where(p => playerIds.Contains(p.Id))
                     .AsSplitQuery()
-                    .TagWithCaller()
                     .Select(p => new PlayerResponseWithStats
                     {
                         Id = p.PlayerId,

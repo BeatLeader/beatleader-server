@@ -16,6 +16,7 @@ namespace BeatLeader_Server.Services
         private readonly IGauge _scoreCounter;
 
         public static string CurrentHost = "";
+        public static int ScoresCount = 0;
 
         public MinuteRefresh(IServiceScopeFactory serviceScopeFactory, IMetricFactory metricFactory)
         {
@@ -36,7 +37,7 @@ namespace BeatLeader_Server.Services
                     Console.WriteLine($"EXCEPTION MinuteRefresh {e}");
                 }
 
-                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
             }
             while (!stoppingToken.IsCancellationRequested);
         }
@@ -53,8 +54,10 @@ namespace BeatLeader_Server.Services
                 _rankedPlayerCounter.Set(await _context.Players.Where(p => !p.Banned && p.ScoreStats.LastRankedScoreTime >= timeset).CountAsync());
                 _playerCounter.Set(await _context.Players.CountAsync());
 
-                _rankedScoreCounter.Set(await _context.Scores.Where(s => s.Pp > 0 && !s.Qualification && !s.Banned).CountAsync());
-                _scoreCounter.Set(await _context.Scores.CountAsync());
+                ScoresCount = await _context.Scores.TagWithCaller().CountAsync();
+
+                _rankedScoreCounter.Set(await _context.Scores.TagWithCaller().Where(s => s.Pp > 0 && !s.Qualification && !s.Banned).CountAsync());
+                _scoreCounter.Set(ScoresCount);
             }
         }
     }

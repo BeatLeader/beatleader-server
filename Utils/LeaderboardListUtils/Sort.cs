@@ -21,7 +21,7 @@ public static partial class LeaderboardListUtils
         var result = sortBy switch
         {
             MapSortBy.Timestamp  => sequence.SortByTimestamp(order, type, dateFrom, dateTo, searchId),
-            MapSortBy.Name       => sequence.SortByName(order, dateFrom, dateTo, searchId),
+            MapSortBy.Name       => sequence.SortById(order, dateFrom, dateTo, searchId),
             MapSortBy.Stars      => sequence.SortByStars(order, dateFrom, dateTo, searchId, currentPlayer),
             MapSortBy.PassRating => sequence.SortByPassRating(order, dateFrom, dateTo, searchId, currentPlayer),
             MapSortBy.AccRating  => sequence.SortByAccRating(order, dateFrom, dateTo, searchId, currentPlayer),
@@ -32,7 +32,7 @@ public static partial class LeaderboardListUtils
             MapSortBy.VoteCount  => sequence.SortByVoteCount(order, dateFrom, dateTo, searchId),
             MapSortBy.VoteRatio  => sequence.SortByVoteRatio(order, dateFrom, dateTo, searchId),
             MapSortBy.Duration   => sequence.SortByDuration(order, dateFrom, dateTo, searchId),
-            _                 => sequence.SortByName(order, dateFrom, dateTo, searchId),
+            _                 => sequence.SortById(order, dateFrom, dateTo, searchId),
         };
 
         return result.ThenByDescending(l => l.Difficulty.Status <= DifficultyStatus.ranked ? (int)l.Difficulty.Status : -1).ThenBy(l => l.Timestamp);
@@ -82,6 +82,11 @@ public static partial class LeaderboardListUtils
         sequence.Where(leaderboard => (dateFrom == null || leaderboard.Song.UploadTime >= dateFrom) && (dateTo == null || leaderboard.Song.UploadTime <= dateTo))
                 .OrderByDescending(l => searchId != null ? l.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
                 .ThenOrder(order, leaderboard => leaderboard.Song.Name);
+
+    private static IOrderedQueryable<Leaderboard> SortById(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo, int? searchId) =>
+        sequence.Where(leaderboard => (dateFrom == null || leaderboard.Song.UploadTime >= dateFrom) && (dateTo == null || leaderboard.Song.UploadTime <= dateTo))
+                .OrderByDescending(l => searchId != null ? l.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
+                .ThenOrder(order, leaderboard => leaderboard.Id);
 
     private static IOrderedQueryable<Leaderboard> SortByStars(this IQueryable<Leaderboard> sequence, Order order, int? dateFrom, int? dateTo, int? searchId, Player? player) {
         bool showRatings = player?.ProfileSettings?.ShowAllRatings ?? false;

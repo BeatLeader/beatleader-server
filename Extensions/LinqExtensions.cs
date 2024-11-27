@@ -1,7 +1,7 @@
 ﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using BeatLeader_Server.Enums;
-using Microsoft.EntityFrameworkCore;
+using BeatLeader_Server.Models;
 using Microsoft.EntityFrameworkCore.Query;
 
 namespace BeatLeader_Server.Extensions
@@ -34,9 +34,29 @@ namespace BeatLeader_Server.Extensions
         public static IQueryable<T> TagWithCaller<T>(
         this IQueryable<T> source,
         [NotParameterized] [CallerFilePath] string? filePath = null,
-        [NotParameterized] [CallerLineNumber] int lineNumber = 0)
+        [NotParameterized] [CallerLineNumber] int lineNumber = 0) where T : TrackedEntity
         {
-            return source.Where(_ => $"{filePath}:{lineNumber}" == $"{filePath}:{lineNumber}");
+            //return source;
+            var currentLine = $"{filePath.Split("\\").Last()}:{lineNumber}";
+
+            var toString = 1.GetType().GetMethod("ToString", new System.Type[] { });
+
+            var entity = Expression.Parameter(typeof(T), "s");
+            var exp = Expression.NotEqual(Expression.Call(Expression.Property(entity, "Id"), toString), Expression.Constant(currentLine));
+            return source.Where((Expression<Func<T, bool>>)Expression.Lambda(exp, entity));
+        }
+
+        public static IQueryable<T> TagWithCallerS<T>(
+        this IQueryable<T> source,
+        [NotParameterized] [CallerFilePath] string? filePath = null,
+        [NotParameterized] [CallerLineNumber] int lineNumber = 0) where T : StringTrackedEntity
+        {
+            //return source;
+            var currentLine = $"{filePath.Split("\\").Last()}:{lineNumber}";
+
+            var entity = Expression.Parameter(typeof(T), "s");
+            var exp = Expression.NotEqual(Expression.Property(entity, "Id"), Expression.Constant(currentLine));
+            return source.Where((Expression<Func<T, bool>>)Expression.Lambda(exp, entity));
         }
     }
 }

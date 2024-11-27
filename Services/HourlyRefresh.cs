@@ -96,6 +96,7 @@ namespace BeatLeader_Server.Services {
                                 foreach (var status in map.ExternalStatuses)
                                 {
                                     song.ExternalStatuses.Add(status);
+                                    song.Status |= SongStatus.Curated;
                                 }
                             }
                         }
@@ -170,6 +171,7 @@ namespace BeatLeader_Server.Services {
                             Timeset = timeset,
                             Link = videoUrl
                         });
+                        song.Status |= SongStatus.NoodleMonday;
                     }
 
                     await _context.SaveChangesAsync();

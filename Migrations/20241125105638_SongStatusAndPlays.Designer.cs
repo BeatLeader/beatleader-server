@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20241125105638_SongStatusAndPlays")]
+    partial class SongStatusAndPlays
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -745,19 +748,13 @@ namespace BeatLeader_Server.Migrations
 
                     b.Property<string>("DifficultyName")
                         .IsRequired()
-                        .HasMaxLength(25)
-                        .HasColumnType("nvarchar(25)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<double>("Duration")
                         .HasColumnType("float");
 
                     b.Property<int>("FeatureTags")
                         .HasColumnType("int");
-
-                    b.Property<string>("Hash")
-                        .IsRequired()
-                        .HasMaxLength(80)
-                        .HasColumnType("nvarchar(80)");
 
                     b.Property<int>("MaxScore")
                         .HasColumnType("int");
@@ -770,8 +767,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.Property<string>("ModeName")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("ModifierValuesModifierId")
                         .HasColumnType("int");
@@ -847,8 +843,6 @@ namespace BeatLeader_Server.Migrations
                     b.HasIndex("SongId");
 
                     b.HasIndex("Status");
-
-                    b.HasIndex("Hash", "ModeName", "DifficultyName");
 
                     b.ToTable("DifficultyDescription");
                 });
@@ -1901,8 +1895,7 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("real");
 
                     b.Property<string>("Alias")
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<float>("AllContextsPp")
                         .HasColumnType("real");
@@ -1955,12 +1948,10 @@ namespace BeatLeader_Server.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(80)
-                        .HasColumnType("nvarchar(80)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("OldAlias")
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<float>("PassPp")
                         .HasColumnType("real");
@@ -2020,8 +2011,6 @@ namespace BeatLeader_Server.Migrations
                     b.HasIndex("ScoreStatsId");
 
                     b.HasIndex("Banned", "Pp", "ScoreStatsId");
-
-                    b.HasIndex("Id", "Alias", "OldAlias");
 
                     b.ToTable("Players");
                 });
@@ -3410,9 +3399,6 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int>("ValidContexts")
                         .HasColumnType("int");
 
-                    b.Property<bool>("ValidForGeneral")
-                        .HasColumnType("bit");
-
                     b.Property<int>("WallsHit")
                         .HasColumnType("int");
 
@@ -3443,8 +3429,6 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("PlayerId", "LeaderboardId", "ValidContexts")
                         .IsUnique();
-
-                    b.HasIndex("PlayerId", "LeaderboardId", "ValidForGeneral");
 
                     b.HasIndex("PlayerId", "Banned", "Qualification", "Pp");
 

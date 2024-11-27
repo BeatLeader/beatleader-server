@@ -11,13 +11,13 @@ namespace BeatLeader_Server.ControllerHelpers {
 
             leaderboard = await dbContext
                 .Leaderboards
+                .TagWithCallerS()
                 .Include(lb => lb.Difficulty)
                 .ThenInclude(d => d.ModifierValues)
                 .Include(lb => lb.Difficulty)
                 .ThenInclude(d => d.ModifiersRating)
                 .Include(lb => lb.Difficulty)
                 .ThenInclude(d => d.MaxScoreGraph)
-                .TagWithCaller()
                 .AsSplitQuery()
                 .FirstOrDefaultAsync(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff);
 
@@ -115,17 +115,22 @@ namespace BeatLeader_Server.ControllerHelpers {
         }
 
         public static async Task<ResponseWithMetadata<MassLeaderboardsInfoResponse>> GetModList(
-            AppContext dbContext,
+            IDbContextFactory<AppContext> contextFactory,
             bool showRatings,
             int page = 1,
             int count = 10,
-            MapSortBy sortBy = MapSortBy.None,
-            Order order = Order.Desc,
             int? date_from = null,
             int? date_to = null
             ) {
-            var sequence = dbContext.Leaderboards.AsQueryable();
-            (sequence, int totalMatches) = await sequence.FilterRanking(dbContext, page, count, sortBy, order, date_from, date_to);
+
+            var dbContext = contextFactory.CreateDbContext();
+            var dbContext2 = contextFactory.CreateDbContext();
+
+            var sequence = dbContext.Leaderboards.FilterRanking(dbContext, MapSortBy.None, Order.Asc, date_from, date_to);
+            var sequence2 = dbContext2.Leaderboards.FilterRanking(dbContext2, MapSortBy.None, Order.Asc, date_from, date_to);
+
+            (var totalMatches, var ids) = await sequence.TagWithCallerS().CountAsync()
+                .CoundAndResults(sequence2.TagWithCallerS().Skip((page - 1) * count).Take(count).Select(l => l.Id).ToListAsync());
 
             var result = new ResponseWithMetadata<MassLeaderboardsInfoResponse>() {
                 Metadata = new Metadata() {
@@ -135,13 +140,14 @@ namespace BeatLeader_Server.ControllerHelpers {
                 }
             };
 
-            sequence = sequence
+            var resultList = await dbContext.Leaderboards
+                .Where(lb => ids.Contains(lb.Id))
+                .TagWithCallerS()
+                .AsNoTracking()
                 .Include(lb => lb.Difficulty)
                 .ThenInclude(d => d.ModifierValues)
                 .Include(lb => lb.Difficulty)
-                .ThenInclude(d => d.ModifiersRating);
-
-            var resultList = await sequence
+                .ThenInclude(d => d.ModifiersRating)
                 .Select(lb => new MassLeaderboardsInfoResponse {
                     Id = lb.Id,
                     Song = new SongInfo {

@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20241126073004_PlayerAliasOptimization")]
+    partial class PlayerAliasOptimization
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -3410,9 +3413,6 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int>("ValidContexts")
                         .HasColumnType("int");
 
-                    b.Property<bool>("ValidForGeneral")
-                        .HasColumnType("bit");
-
                     b.Property<int>("WallsHit")
                         .HasColumnType("int");
 
@@ -3443,8 +3443,6 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("PlayerId", "LeaderboardId", "ValidContexts")
                         .IsUnique();
-
-                    b.HasIndex("PlayerId", "LeaderboardId", "ValidForGeneral");
 
                     b.HasIndex("PlayerId", "Banned", "Qualification", "Pp");
 

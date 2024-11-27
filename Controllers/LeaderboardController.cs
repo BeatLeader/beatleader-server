@@ -53,7 +53,7 @@ namespace BeatLeader_Server.Controllers {
             IQueryable<Score> scoreQuery = _context
                 .Scores
                 .AsNoTracking()
-                .Where(s => s.LeaderboardId == leaderboard.Id && s.ValidContexts.HasFlag(LeaderboardContexts.General));
+                .Where(s => s.LeaderboardId == leaderboard.Id && s.ValidForGeneral);
 
             if (countries == null) {
                 if (friendsList != null) {
@@ -1066,7 +1066,7 @@ namespace BeatLeader_Server.Controllers {
                         .Scores
                         .Where(s => 
                             s.LeaderboardId == leaderboardId && 
-                            s.ValidContexts.HasFlag(LeaderboardContexts.General) && 
+                            s.ValidForGeneral && 
                             !s.Banned &&
                             s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
                             .ThenBy(c => c.Id).Take(1).Contains(cr.Clan))
@@ -1119,7 +1119,7 @@ namespace BeatLeader_Server.Controllers {
                         .Scores
                         .Where(sc => 
                             sc.LeaderboardId == leaderboardId && 
-                            sc.ValidContexts.HasFlag(LeaderboardContexts.General) &&
+                            sc.ValidForGeneral &&
                             !sc.Banned &&
                             sc.Player.Clans.OrderBy(c => sc.Player.ClanOrder.IndexOf(c.Tag))
                             .ThenBy(c => c.Id).Take(1).Contains(cr.Clan))
@@ -1197,7 +1197,7 @@ namespace BeatLeader_Server.Controllers {
                         .Scores
                         .Where(s => 
                             s.LeaderboardId == leaderboardId && 
-                            s.ValidContexts.HasFlag(LeaderboardContexts.General) && 
+                            s.ValidForGeneral && 
                             !s.Banned &&
                             s
                              .Player
@@ -1255,7 +1255,7 @@ namespace BeatLeader_Server.Controllers {
                         .Scores
                         .Where(sc => 
                             sc.LeaderboardId == leaderboardId && 
-                            sc.ValidContexts.HasFlag(LeaderboardContexts.General) && 
+                            sc.ValidForGeneral && 
                             !sc.Banned &&
                             sc.Player.Clans.OrderBy(c => sc.Player.ClanOrder.IndexOf(c.Tag))
                             .ThenBy(c => c.Id).Take(1).Contains(cr.Clan))
@@ -1597,7 +1597,7 @@ namespace BeatLeader_Server.Controllers {
                 },
                 ClanRankingContested = lb.ClanRankingContested,
                 MyScore = my_scores && currentID != null 
-                    ? lb.Scores.AsQueryable().Where(s => s.PlayerId == currentID && s.ValidContexts.HasFlag(LeaderboardContexts.General)).Select(ScoreResponseQuery.SelectWithAcc()).FirstOrDefault()
+                    ? lb.Scores.AsQueryable().Where(s => s.PlayerId == currentID && s.ValidForGeneral).Select(ScoreResponseQuery.SelectWithAcc()).FirstOrDefault()
                     : null
             }).ToListAsync();
 
@@ -1668,7 +1668,7 @@ namespace BeatLeader_Server.Controllers {
 
             if (type == Type.Ranking && count == 500) {
 
-                return Ok(await LeaderboardControllerHelper.GetModList(dbContext, currentPlayer?.ProfileSettings?.ShowAllRatings ?? false, page, count, sortBy, order, date_from, date_to));
+                return Ok(await LeaderboardControllerHelper.GetModList(_dbFactory, currentPlayer?.ProfileSettings?.ShowAllRatings ?? false, page, count, date_from, date_to));
             }
             
             var sequence = dbContext
@@ -1694,6 +1694,8 @@ namespace BeatLeader_Server.Controllers {
             }
 
             var idsList = await sequence
+                .TagWithCallerS()
+                .AsNoTracking()
                 .Skip((page - 1) * count)
                 .Take(count)
                 .Select(lb => lb.Id)
@@ -1720,7 +1722,7 @@ namespace BeatLeader_Server.Controllers {
                 }
 
                 (result.Metadata.Total, result.Data) = await sequence.CountAsync().CoundAndResults(lbsequence
-                    .TagWithCaller()
+                    .TagWithCallerS()
                     .AsSplitQuery()
                     .Select(lb => new LeaderboardInfoResponse {
                         Id = lb.Id,
@@ -2068,7 +2070,7 @@ namespace BeatLeader_Server.Controllers {
             [SwaggerParameter("ID of the leaderboard to retrieve score graph for")] string id) {
             return await _context.Scores.Where(s => 
                 s.LeaderboardId == id &&
-                s.ValidContexts.HasFlag(LeaderboardContexts.General) &&
+                s.ValidForGeneral &&
                 !s.Banned)
                 .Select(s => new ScoreGraphEntry {
                     PlayerId = s.PlayerId,

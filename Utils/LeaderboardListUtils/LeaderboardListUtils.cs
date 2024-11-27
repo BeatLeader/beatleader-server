@@ -7,18 +7,15 @@ namespace BeatLeader_Server.Utils;
 
 public static partial class LeaderboardListUtils
 {
-    public static async Task<(IQueryable<Leaderboard>, int)> FilterRanking(this IQueryable<Leaderboard> source,
+    public static IQueryable<Leaderboard> FilterRanking(this IQueryable<Leaderboard> source,
                                                  AppContext _context,
-                                                 int page,
-                                                 int count,
                                                  MapSortBy sortBy = MapSortBy.None,
                                                  Order order = Order.Desc,
                                                  int? dateFrom = null,
                                                  int? dateTo = null) =>
-        await source
+        source
               .WhereType(Type.Ranking)
-              .Sort(sortBy, order, Type.Ranking, MyType.None, dateFrom, dateTo, null, null)
-              .WherePage(page, count);
+              .Sort(sortBy, order, Type.Ranking, MyType.None, dateFrom, dateTo, null, null);
 
     public static IQueryable<Leaderboard> Filter(this IQueryable<Leaderboard> source,
                                                  AppContext _context,

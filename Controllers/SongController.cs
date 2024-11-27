@@ -95,7 +95,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             var idsList = await sequence
-                .TagWithCaller()
+                .TagWithCallerS()
                 .Skip((page - 1) * count)
                 .Take(count)
                 .Select(s => s.Id)
@@ -108,7 +108,7 @@ namespace BeatLeader_Server.Controllers
                     .Where(s => idsList.Contains(s.Id));
 
                 (result.Metadata.Total, result.Data) = await sequence.CountAsync().CoundAndResults(songSequence
-                    .TagWithCaller()
+                    .TagWithCallerS()
                     .Select(s => new MapInfoResponse {
                         Id = s.Id,
                         Hash = s.Hash,
@@ -515,6 +515,7 @@ namespace BeatLeader_Server.Controllers
                     DifficultyName = set.Difficulty,
                     ModeName = set.Characteristic,
                     Status = DifficultyStatus.OST,
+                    Hash = song.Hash,
 
                     Njs = diff._noteJumpMovementSpeed,
                     Nps = set.Data.Notes.Count() / (float)map.SongLength,

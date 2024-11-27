@@ -1,4 +1,5 @@
 ﻿using BeatLeader_Server.Enums;
+using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
 using Microsoft.EntityFrameworkCore;
@@ -60,7 +61,7 @@ public static partial class LeaderboardListUtils
             return sequence;
         }
 
-        return sequence.Where(leaderboard => leaderboard.Difficulty.Status != DifficultyStatus.outdated && leaderboard.Song.ExternalStatuses.FirstOrDefault(s => status.HasFlag(s.Status)) != null);
+        return sequence.Where(leaderboard => leaderboard.Difficulty.Status != DifficultyStatus.outdated && (leaderboard.Song.Status & status) != 0);
     }
 
     private static IQueryable<Leaderboard> WhereMapper(this IQueryable<Leaderboard> sequence, string? mapper)
@@ -179,6 +180,6 @@ public static partial class LeaderboardListUtils
             page = 1;
         }
 
-        return (sequence.Skip((page - 1) * count).Take(count), await sequence.CountAsync());
+        return (sequence.Skip((page - 1) * count).Take(count), await sequence.TagWithCallerS().CountAsync());
     }
 }

@@ -819,12 +819,14 @@ namespace BeatLeader_Server.Controllers
 
             if (currentScore != null) {
                 currentScore.ValidContexts &= ~LeaderboardContexts.General;
+                currentScore.ValidForGeneral = false;
                 resultScore.PlayCount = currentScore.PlayCount;
             } else {
                 resultScore.PlayCount = await storageContext.PlayerLeaderboardStats.Where(st => st.PlayerId == player.Id && st.LeaderboardId == leaderboard.Id).CountAsync();
             }
 
             resultScore.ValidContexts |= LeaderboardContexts.General;
+            resultScore.ValidForGeneral = true;
             player.ScoreStats.UpdateScoreStats(currentScore, resultScore, player, leaderboard.Difficulty.Status == DifficultyStatus.ranked);
 
             ScoreImprovement improvement = new ScoreImprovement();
@@ -980,7 +982,7 @@ namespace BeatLeader_Server.Controllers
                     .Scores
                     .Where(s => s.LeaderboardId == leaderboard.Id && 
                                 !s.Banned && 
-                                s.ValidContexts.HasFlag(LeaderboardContexts.General))
+                                s.ValidForGeneral)
                     .AsNoTracking()
                     .Select(s => new Score { 
                         Id = s.Id, 
@@ -1275,7 +1277,7 @@ namespace BeatLeader_Server.Controllers
                         message += Math.Round(resultScore.Accuracy * 100, 2) + "% " + Math.Round(resultScore.Pp, 2) + "pp (" + Math.Round((weight ?? 0) * resultScore.Pp, 2) + "pp)\n";
                         var secondScore = await dbContext
                             .Scores
-                            .Where(s => s.LeaderboardId == leaderboard.Id && !s.Banned && s.LeaderboardId != null && s.ValidContexts.HasFlag(LeaderboardContexts.General))
+                            .Where(s => s.LeaderboardId == leaderboard.Id && !s.Banned && s.LeaderboardId != null && s.ValidForGeneral)
                             .OrderByDescending(s => s.Pp)
                             .Skip(1)
                             .Take(1)
@@ -1311,6 +1313,8 @@ namespace BeatLeader_Server.Controllers
                 // Calculate clan ranking for this leaderboard
                 await dbContext.BulkSaveChangesAsync();
                 (var changes, var playerClans) = await dbContext.UpdateClanRanking(leaderboard, resultScore);
+                leaderboard.ThisWeekPlays = await dbContext.Scores.CountAsync(s => s.Timepost > Time.UnixNow() - 60 * 60 * 24 * 7);
+                leaderboard.TodayPlays = await dbContext.Scores.CountAsync(s => s.Timepost > Time.UnixNow() - 60 * 60 * 24);
                 await dbContext.BulkSaveChangesAsync();
 
                 if (changes?.Count > 0) {

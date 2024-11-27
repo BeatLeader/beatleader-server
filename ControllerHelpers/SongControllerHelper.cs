@@ -127,6 +127,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                         ModifierValues = modifiersMap,
                         MaxScoreGraph = difficulty.MaxScoreGraph,
                         ModeName = mode,
+                        Hash = song.Hash,
 
                         Njs = difficulty.Njs,
                         Nps = difficulty.Nps,

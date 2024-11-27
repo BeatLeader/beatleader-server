@@ -346,20 +346,20 @@ namespace BeatLeader_Server.Controllers {
                 .GroupBy(p => p.Country)
                 .ToDictionary(g => g.Key, g => g.Count());
 
-            for (int i = 0; i < playersWithScores.Count; i += 1000) {
-                await playersWithScores.Skip(i).Take(1000).ParallelForEachAsync(async player => {
-                    await PlayerRefreshControllerHelper.RefreshStats(
-                        _context, 
-                        player.ScoreStats, 
-                        player.Id, 
-                        player.Rank, 
-                        player.Pp > 0 ? player.Rank / (float)playerCount : 0,
-                        player.Pp > 0 ? player.CountryRank / (float)countryCounts[player.Country] : 0, 
-                        context, 
-                        player.Scores);
-                }, maxDegreeOfParallelism: 50);
-
-                await _context.BulkSaveChangesAsync();
+            for (int i = 0; i < playersWithScores.Count; i++) {
+                var player = playersWithScores[i];
+                await PlayerRefreshControllerHelper.RefreshStats(
+                    _context, 
+                    player.ScoreStats, 
+                    player.Id, 
+                    player.Rank, 
+                    player.Pp > 0 ? player.Rank / (float)playerCount : 0,
+                    player.Pp > 0 ? player.CountryRank / (float)countryCounts[player.Country] : 0, 
+                    context, 
+                    player.Scores);
+                if (i % 1000 == 0) {
+                    await _context.BulkSaveChangesAsync();
+                }
             }
             
 

@@ -69,7 +69,7 @@ namespace BeatLeader_Server.Controllers {
 
             bool showRatings = player.ProfileSettings?.ShowAllRatings ?? false;
             IQueryable<IScore> sequence = leaderboardContext == LeaderboardContexts.General 
-                ? _context.Scores.AsNoTracking().Where(s => s.ValidContexts.HasFlag(leaderboardContext))
+                ? _context.Scores.AsNoTracking().Where(s => s.ValidForGeneral)
                 : _context.ScoreContextExtensions.AsNoTracking().Include(ce => ce.ScoreInstance).Where(s => s.Context == leaderboardContext);
 
             using (_serverTiming.TimeAction("sequence")) {
@@ -105,6 +105,7 @@ namespace BeatLeader_Server.Controllers {
                         ? _context.Scores.AsNoTracking().Where(s => scoreIds.Contains(s.Id))
                         : _context.ScoreContextExtensions.AsNoTracking().Include(ce => ce.ScoreInstance).Where(s => s.Context == leaderboardContext && s.ScoreId != null && scoreIds.Contains((int)s.ScoreId));
             var resultList = await filteredSequence
+                    .TagWithCaller()
                     .Select(s => new ScoreResponseWithMyScore {
                         Id = s.ScoreId,
                         BaseScore = s.BaseScore,
@@ -198,8 +199,6 @@ namespace BeatLeader_Server.Controllers {
                         AccRight = s.AccRight,
                         MaxStreak = s.MaxStreak
                     })
-                    .AsSplitQuery()
-                    .TagWithCaller()
                     .ToListAsync();
 
             foreach (var resultScore in resultList) {
@@ -218,7 +217,7 @@ namespace BeatLeader_Server.Controllers {
 
             var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
 
-            var myScores = await ((IQueryable<IScore>)(leaderboardContext == LeaderboardContexts.General ? _context.Scores.Where(s => s.ValidContexts.HasFlag(leaderboardContext)) : _context.ScoreContextExtensions.Include(ce => ce.ScoreInstance).Where(ce => ce.Context == leaderboardContext)))
+            var myScores = await ((IQueryable<IScore>)(leaderboardContext == LeaderboardContexts.General ? _context.Scores.TagWithCaller().Where(s => s.ValidForGeneral) : _context.ScoreContextExtensions.TagWithCaller().Include(ce => ce.ScoreInstance).Where(ce => ce.Context == leaderboardContext)))
                 .Where(s => s.PlayerId == userId && leaderboards.Contains(s.LeaderboardId))
                 .Select(s => new ScoreResponseWithAcc
                     {
@@ -277,7 +276,6 @@ namespace BeatLeader_Server.Controllers {
                         AccRight = s.AccRight,
                         MaxStreak = s.MaxStreak
                     })
-                .TagWithCaller()
                 .ToListAsync();
             foreach (var score in result.Data)
             {

@@ -777,7 +777,7 @@ namespace BeatLeader_Server.Controllers
             IQueryable<IScore> query = leaderboardContext == LeaderboardContexts.General 
                 ? _context.Scores
                    .AsNoTracking()
-                   .Where(t => t.PlayerId == userId && t.ValidContexts.HasFlag(leaderboardContext))
+                   .Where(t => t.PlayerId == userId && t.ValidForGeneral)
                    .TagWithCaller()
                 : _context.ScoreContextExtensions
                    .AsNoTracking()

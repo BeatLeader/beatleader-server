@@ -69,7 +69,7 @@ namespace BeatLeader_Server.Controllers {
             IQueryable<IScore> query = leaderboardContext == LeaderboardContexts.General 
                 ? _context.Scores
                    .AsNoTracking()
-                   .Where(t => t.PlayerId == id && t.ValidContexts.HasFlag(leaderboardContext))
+                   .Where(t => t.PlayerId == id && t.ValidForGeneral)
                    .TagWithCaller()
                 : _context.ScoreContextExtensions
                    .AsNoTracking()
@@ -277,7 +277,7 @@ namespace BeatLeader_Server.Controllers {
                     IQueryable<IScore> myScoresQuery = leaderboardContext == LeaderboardContexts.General 
                         ? _context.Scores
                            .AsNoTracking()
-                           .Where(s => s.PlayerId == currentID && s.ValidContexts.HasFlag(leaderboardContext) && leaderboards.Contains(s.LeaderboardId))
+                           .Where(s => s.PlayerId == currentID && s.ValidForGeneral && leaderboards.Contains(s.LeaderboardId))
                            .TagWithCaller()
                         : _context.ScoreContextExtensions
                            .AsNoTracking()
@@ -603,7 +603,7 @@ namespace BeatLeader_Server.Controllers {
                 Stars = s.Leaderboard.Difficulty.Stars,
                 Rank = s.Rank,
                 Weight = s.Weight,
-                ScoreCount = s.Leaderboard.PlayCount,
+                ScoreCount = s.Leaderboard.Plays,
                 Timeset = s.Timepost,
                 Pp = s.Pp,
                 Modifiers = s.Modifiers,
@@ -656,7 +656,6 @@ namespace BeatLeader_Server.Controllers {
                 .Include(p => p.ProfileSettings)
                 .Where(p => p.Id == currentID)
                 .Select(p => p.ProfileSettings)
-                .TagWithCaller()
                 .FirstOrDefaultAsync())?.ShowAllRatings ?? false : false;
 
             object? result = null;
@@ -679,7 +678,7 @@ namespace BeatLeader_Server.Controllers {
                 .AsNoTracking()
                 .Where(s => 
                     s.PlayerId == id && 
-                    s.ValidContexts.HasFlag(leaderboardContext) && 
+                    s.ValidForGeneral && 
                     !s.IgnoreForStats && 
                     ((showRatings && s.Leaderboard.Difficulty.Stars != null) || s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked))
                 .TagWithCaller();
@@ -752,7 +751,6 @@ namespace BeatLeader_Server.Controllers {
                     .PlayerScoreStatsHistory
                     .AsNoTracking()
                     .Where(p => p.PlayerId == id && p.Context == leaderboardContext)
-                    .TagWithCaller()
                     .OrderByDescending(s => s.Timestamp)
                     .Take(count)
                     .ToListAsync();
@@ -813,7 +811,6 @@ namespace BeatLeader_Server.Controllers {
                     .PlayerScoreStatsHistory
                     .AsNoTracking()
                     .Where(p => p.PlayerId == id && p.Context == leaderboardContext)
-                    .TagWithCaller()
                     .OrderByDescending(s => s.Timestamp)
                     .Take(count)
                     .Select(h => new HistoryCompactResponse {
@@ -895,7 +892,6 @@ namespace BeatLeader_Server.Controllers {
                     .PlayerScoreStatsHistory
                     .AsNoTracking()
                     .Where(p => p.PlayerId == id && p.Context == leaderboardContext)
-                    .TagWithCaller()
                     .OrderByDescending(s => s.Timestamp)
                     .Select(h => new HistoryTriangleResponse {
                         Timestamp = h.Timestamp,
