@@ -442,7 +442,7 @@ namespace BeatLeader_Server.Controllers
 
                         <meta name="twitter:player:width" content="700">
                         <meta name="twitter:player:height" content="400">
-                        <meta name="twitter:card" content="{(string.Join("", Request.Headers.UserAgent).ToLower().Contains("bsky") ? "player" : "summary_large_image")}">
+                        <meta name="twitter:card" content="{(string.Join("", (string[])Request.Headers.UserAgent).ToLower().Contains("bsky") ? "player" : "summary_large_image")}">
 
                         <meta property="og:type" content="website">
                         <meta property="og:image:width" content="700">
@@ -452,7 +452,7 @@ namespace BeatLeader_Server.Controllers
                         <meta property="og:url" content="https://replay.beatleader.xyz/?scoreId={score.ScoreId}">
                         <meta property="twitter:player" content="https://replay.beatleader.xyz/?scoreId={score.ScoreId}">
                         <meta property="twitter:image" content="https://api.beatleader.xyz/preview/replay.png?scoreId={score.ScoreId}&twitter=true">
-                        <meta property="og:image" content="https://api.beatleader.xyz/preview/replay.png?scoreId={score.ScoreId}{(string.Join("", Request.Headers.UserAgent).ToLower().Contains("bsky") ? "&twitter=true" : "")}">
+                        <meta property="og:image" content="https://api.beatleader.xyz/preview/replay.png?scoreId={score.ScoreId}{(string.Join("", (string[])Request.Headers.UserAgent).ToLower().Contains("bsky") ? "&twitter=true" : "")}">
                         """ : """
                         <meta property="og:url" content="https://replay.beatleader.xyz">
                         <meta property="twitter:player" content="https://replay.beatleader.xyz">

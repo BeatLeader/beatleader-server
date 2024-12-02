@@ -266,7 +266,7 @@ namespace BeatLeader_Server.Utils
             // Tied -> Tied : Good
             // Tied -> Null : Impossible
             // ------------------------------------------
-            if (!clanRankingData.IsNullOrEmpty())
+            if (clanRankingData != null && clanRankingData.Count > 0)
             {   
                 var clanRanking = leaderboard.ClanRanking?.ToList();
                 if (clanRanking == null) {
