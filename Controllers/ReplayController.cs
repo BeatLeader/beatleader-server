@@ -19,6 +19,9 @@ using ReplayDecoder;
 using static BeatLeader_Server.Utils.ResponseUtils;
 using System.Text;
 using BeatLeader_Server.ControllerHelpers;
+using System.Net;
+using beatleader_parser;
+using Parser.Utils;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -319,7 +322,7 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Replay missing frame data past note data.");
             }
 
-            if (leaderboard.Difficulty.Notes > 0 && replay.notes.Count() >= leaderboard.Difficulty.Notes * 1.8) {
+            if (leaderboard.Difficulty.Notes > 0 && replay.notes.Count >= leaderboard.Difficulty.Notes * 1.8) {
                 var cleanedNotes = new List<NoteEvent>();
                 for (int i = 0; i < replay.notes.Count() - 1; i += 2) {
                     var firstNote = replay.notes[i];
@@ -348,6 +351,10 @@ namespace BeatLeader_Server.Controllers
                         return BadRequest("Failed to delete duplicate note: " + error);
                     }
                 }
+            }
+
+            if (leaderboard.Difficulty.Notes + leaderboard.Difficulty.Chains > replay.notes.Count) {
+                await RefreshNoteCount(dbContext, leaderboard);
             }
 
             if (replay.info.score <= 0) {
@@ -1611,6 +1618,36 @@ namespace BeatLeader_Server.Controllers
                     }
 
                 }
+            }
+        }
+
+        [NonAction]
+        private async Task RefreshNoteCount(AppContext dbContext, Leaderboard leaderboard) {
+            try {
+                var downloadUrl = dbContext.Songs.Where(s => s.Id == leaderboard.SongId).Select(s => s.DownloadUrl).FirstOrDefault();
+                if (downloadUrl == null) return;
+                HttpWebResponse res = (HttpWebResponse)await WebRequest.Create(downloadUrl).GetResponseAsync();
+                if (res.StatusCode != HttpStatusCode.OK) return;
+
+                var memoryStream = new MemoryStream();
+                await res.GetResponseStream().CopyToAsync(memoryStream);
+                var parse = new Parse();
+                memoryStream.Position = 0;
+                var map = parse.TryLoadZip(memoryStream)?.FirstOrDefault();
+                var songDiff = map?.Difficulties.FirstOrDefault(d => d.Difficulty == leaderboard.Difficulty.DifficultyName && d.Characteristic == leaderboard.Difficulty.ModeName);
+                if (songDiff != null) {
+                    leaderboard.Difficulty.Notes = songDiff.Data.Notes.Where(n => n.Seconds >= 0 && n.Seconds <= leaderboard.Difficulty.Duration).Count();
+                    leaderboard.Difficulty.Chains = songDiff.Data.Chains.Where(n => n.Seconds >= 0 && n.Seconds <= leaderboard.Difficulty.Duration).Sum(c => c.SliceCount > 1 ? c.SliceCount - 1 : 0);
+                    leaderboard.Difficulty.Sliders = songDiff.Data.Arcs.Where(n => n.Seconds >= 0 && n.Seconds <= leaderboard.Difficulty.Duration).Count();
+
+                    leaderboard.Difficulty.MaxScore = songDiff.MaxScore();
+
+                    await dbContext.BulkUpdateAsync(new List<DifficultyDescription> { leaderboard.Difficulty }, options => options.ColumnInputExpression = c => new { c.Notes, c.Chains, c.Sliders, c.MaxScore });
+                    await ScoreRefreshControllerHelper.BulkRefreshScores(dbContext, leaderboard.Id);
+
+                }
+            } catch (Exception e) {
+                Console.WriteLine($"RefreshNoteCount EXCEPTION {e}");
             }
         }
 

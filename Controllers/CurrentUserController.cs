@@ -1463,6 +1463,9 @@ namespace BeatLeader_Server.Controllers {
 
                         if (score.ValidContexts != LeaderboardContexts.None) {
                             score.PlayerId = migrateToId;
+                            if (score.ValidContexts.HasFlag(LeaderboardContexts.General)) {
+                                score.ValidForGeneral = true;
+                            }
                         }
                     }
 

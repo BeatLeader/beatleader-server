@@ -47,7 +47,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/songsuggest")]
-        public async Task<ActionResult> GetSongSuggest([FromQuery] int? before_time = null)
+        public async Task<ActionResult> GetSongSuggest([FromQuery] int? before_time = null, [FromQuery] LeaderboardContexts? leaderboardContext = null)
         {
             var refresh = await _context
                 .SongSuggestRefreshes
@@ -56,11 +56,20 @@ namespace BeatLeader_Server.Controllers
                 .FirstOrDefaultAsync();
             if (refresh == null) return NotFound();
 
-            var playersUrl = await _s3Client.GetPresignedUrl(refresh.File, S3Container.assets);
-            if (playersUrl == null) {
+            var filename = refresh.File;
+            if (leaderboardContext != null) {
+                filename = filename.Replace($"songsuggestions-{refresh.Timeset}", $"songsuggestions-{refresh.Timeset}-{leaderboardContext}");
+            }
+
+            var stream = await _s3Client.DownloadAsset(filename);
+
+            if (stream != null) {
+                Response.Headers.Add("Content-Type", "application/json");
+                return Ok(stream);
+                
+            } else {
                 return NotFound();
             }
-            return Redirect(playersUrl);
         }
 
         [HttpGet("~/songsuggest/songs")]
@@ -175,6 +184,74 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [NonAction]
+        public async Task<ActionResult> RefreshSongSuggestContext(LeaderboardContexts leaderboardContext, int timeset)
+        {
+            var activeTreshold = timeset - 60 * 60 * 24 * 365;
+
+            IQueryable<IScore> query = leaderboardContext.HasFlag(LeaderboardContexts.General) ?
+                _context.Scores
+                .Where(s => 
+                    s.ValidForGeneral &&
+                    !s.Qualification &&
+                    s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked &&
+                    s.Player.ScoreStats.RankedPlayCount >= 30 &&
+                    !s.Player.Banned &&
+                    s.Player.ScoreStats.LastRankedScoreTime >= activeTreshold)
+                : _context.ScoreContextExtensions
+                .Where(s => 
+                    s.Context == leaderboardContext &&
+                    !s.Qualification &&
+                    s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked &&
+                    s.Player.ScoreStats.RankedPlayCount >= 30 &&
+                    !s.Player.Banned &&
+                    s.Player.ScoreStats.LastRankedScoreTime >= activeTreshold);
+
+            var list = (await query
+                .Select(s => new { 
+                    score = new Top10kScoreV2 {
+                        songID = s.LeaderboardId,
+                        pp = s.Pp,
+                        accuracy = s.Accuracy,
+                        timepost = s.Timepost,
+                        modifiers = s.Modifiers.Length > 0 ? s.Modifiers : null
+                    },
+                    player = new Top10kPlayer {
+                        id = s.Player.Id,
+                        name = s.Player.Name,
+                        rank = s.Player.Rank
+                    }
+                })
+                .ToListAsync())
+                .GroupBy(m => m.player.id)
+                .OrderBy(group => group.First().player.rank)
+                .Where(g => g.Count() >= 30)
+                .Select((group, i) => new Top10kPlayerV2 {
+                    id = group.First().player.id,
+                    name = group.First().player.name,
+                    rank = i + 1,
+                    top10kScore = group
+                        .Select(m => m.score)
+                        .OrderByDescending(s => s.pp)
+                        .Take(30)
+                        .Select((score, i) => new Top10kScoreV2 {
+                            songID = score.songID,
+                            pp = score.pp,
+                            rank = i + 1,
+                            timepost = score.timepost,
+                            modifiers = score.modifiers
+                        })
+                        .ToList()
+                })
+                .Where(p => p.top10kScore.Last().pp / p.top10kScore.First().pp > 0.7)
+                .ToList();
+
+            var filename = $"songsuggestions-{timeset}-{leaderboardContext}.json";
+            await _s3Client.UploadStream(filename, S3Container.assets, new BinaryData(JsonConvert.SerializeObject(list)).ToStream());
+
+            return Ok();
+        }
+
         [ApiExplorerSettings(IgnoreApi = true)]
         [HttpGet("~/songsuggest/refresh")]
         public async Task<ActionResult> RefreshSongSuggest()
@@ -259,15 +336,21 @@ namespace BeatLeader_Server.Controllers
             var songsfilename = $"songsuggestions-{timeset}-songs.json";
             await _s3Client.UploadStream(songsfilename, S3Container.assets, new BinaryData(JsonConvert.SerializeObject(songs)).ToStream());
 
+            await RefreshSongSuggestContext(LeaderboardContexts.General, timeset);
+            await RefreshSongSuggestContext(LeaderboardContexts.NoMods, timeset);
+
             _context.SongSuggestRefreshes.Add(new SongSuggestRefresh {
                 Timeset = timeset,
                 File = filename,
                 SongsFile = songsfilename
             });
             await _context.SaveChangesAsync();
+            
 
             return Ok();
         }
+
+        
 
         [HttpGet("~/maps/curated/")]
         public async Task<ActionResult<ResponseWithMetadata<LeaderboardInfoResponse>>> CuratedMaps()
