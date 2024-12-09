@@ -938,6 +938,63 @@ namespace BeatLeader_Server.Controllers
         }
 
         [Authorize]
+        [HttpGet("~/grantNQTCore/{playerId}")]
+        public async Task<ActionResult> GrantNQTCore(
+            string playerId)
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || currentID == playerId || (!currentPlayer.Role.Contains("admin") && (!currentPlayer.Role.Contains("qualityteam") || !currentPlayer.Role.Contains("creator"))))
+            {
+                return Unauthorized();
+            }
+
+            Player? player = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId);
+            if (player == null) {
+                return NotFound();
+            }
+
+            if (!player.Role.Contains("qualityteam"))
+            {
+                player.Role = string.Join(",", player.Role.Split(",").Append("qualityteam"));
+
+                await _context.SaveChangesAsync();
+            }
+
+            return Ok();
+        }
+
+        [Authorize]
+        [HttpGet("~/removeNQTCore/{playerId}")]
+        public async Task<ActionResult> RemoveNQTCore(
+            string playerId)
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || currentID == playerId || (!currentPlayer.Role.Contains("admin") && (!currentPlayer.Role.Contains("qualityteam") || !currentPlayer.Role.Contains("creator"))))
+            {
+                return Unauthorized();
+            }
+
+            Player? player = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId);
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            if (player.Role.Contains("qualityteam"))
+            {
+                player.Role = string.Join(",", player.Role.Split(",").Where(s => s != "qualityteam"));
+
+                await _context.SaveChangesAsync();
+            }
+
+            return Ok();
+        }
+
+        [Authorize]
         [HttpPost("~/qualification/comment/{id}")]
         public async Task<ActionResult<QualificationCommentary>> PostComment(int id)
         {
