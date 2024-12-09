@@ -167,7 +167,9 @@ namespace BeatLeader_Server.Controllers
             (Player? bsplayer, UserDetail? bsmapper) = await PlayerUtils.GetPlayerFromBeatSaver(beatSaverId);
 
             if (playerId == null) {
-                if (bslink == null) {
+                var existingP = _context.Players.Where(p => p.Id == bsplayer.Id).FirstOrDefault();
+
+                if (bslink == null && existingP == null) {
                     player = bsplayer;
                     if (player == null) {
                         return (null, "Could not receive this user from BeatSaver");
@@ -177,7 +179,9 @@ namespace BeatLeader_Server.Controllers
                     playerId = player.Id;
                     PlayerSearchService.AddNewPlayer(player);
 
-                } else {
+                } else if (existingP != null) {
+                    playerId = existingP.Id;
+                } else if (bslink != null) {
                     playerId = bslink.Id;
                 }
 

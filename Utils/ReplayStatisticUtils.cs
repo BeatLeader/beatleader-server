@@ -24,7 +24,7 @@ namespace BeatLeader_Server.Utils
             float endTime = replay.notes.Count > 0 ? replay.notes.Last().eventTime : 0;
 
             if (leaderboard.Difficulty.Notes / 3 != 0 && 
-                replay.notes.Count < (leaderboard.Difficulty.Notes + leaderboard.Difficulty.Chains) && 
+                (float)replay.notes.Count < ((float)leaderboard.Difficulty.Notes) * 0.8f && 
                 !leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles))
             {
                 return "Too few notes in the replay";

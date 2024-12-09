@@ -5,6 +5,7 @@ using PuppeteerSharp;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Gif;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 using System.Web;
 
 namespace Renderer.Controllers
@@ -117,6 +118,86 @@ namespace Renderer.Controllers
                 } else {
                     Response.Headers["Cache-Control"] = "public, max-age=604800";
                 }
+
+                await browserPool?.ReturnBrowser(browser);
+
+                return File(screenshot, "image/png", imagename + ".png");
+            }
+        }
+
+        [HttpGet("/screenshot/cropped/{width}x{height}/{cropx}x{cropy}x{cropw}x{croph}/{imagename}/{context}/{*path}")]
+        public async Task<IActionResult> GetScreenshot(int width, int height, int cropx, int cropy, int cropw, int croph, string context, string imagename, string path, [FromQuery] Dictionary<string, string> queryStringParameters)
+        {
+            var browser = await browserPool?.GetBrowserAsync();
+
+            var options = new
+            {
+                Base = $"https://{(context != "general" ? (context + ".") : "")}screenshot.beatleader.xyz/",
+                MaxAge = 60 * 60 * 24 * 7,
+                Params = HttpUtility.ParseQueryString(""),
+                Scale = 1
+            };
+
+            foreach (var param in queryStringParameters)
+            {
+                options.Params[param.Key] = param.Value;
+            }
+
+            var cookies = Request.Headers["Cookie"].ToString().Split(';')
+                .Select(cookie => cookie.Trim().Split('='))
+                .Where(parts => parts.Length >= 2)
+                .Select(parts => new CookieParam
+                {
+                    Name = parts[0],
+                    Value = string.Join("=", parts.Skip(1)),
+                    Domain = ".beatleader.xyz",
+                    Secure = true,
+                    SameSite = SameSite.None,
+                    Path = "/"
+                }).ToList();
+
+            var url = $"{options.Base}{path}?{options.Params}";
+
+            using (var page = await browser.NewPageAsync())
+            {
+                await page.SetViewportAsync(new ViewPortOptions
+                {
+                    Width = width,
+                    Height = height,
+                    DeviceScaleFactor = 1
+                });
+
+                foreach (var cookie in cookies)
+                {
+                    await page.SetCookieAsync(cookie);
+                }
+
+                await page.GoToAsync(url, WaitUntilNavigation.Networkidle0);
+
+                var screenshot = await page.ScreenshotDataAsync(new ScreenshotOptions
+                {
+                    OmitBackground = true
+                });
+
+                using (var image = Image.Load(screenshot))
+                {
+                    var rect = new Rectangle(cropx, cropy, cropw, croph);
+                    image.Mutate(ctx => ctx.Crop(rect));
+
+                    using (var ms = new MemoryStream())
+                    {
+                        await image.SaveAsPngAsync(ms);
+                        screenshot = ms.ToArray();
+                    }
+                }
+
+                var maxAge = options.MaxAge;
+                //if (queryStringParameters.ContainsKey("nocache")) {
+                    Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+                    Response.Headers["Expires"] = "0";
+                //} else {
+                //    Response.Headers["Cache-Control"] = "public, max-age=604800";
+                //}
 
                 await browserPool?.ReturnBrowser(browser);
 

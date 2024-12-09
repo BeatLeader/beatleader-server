@@ -353,7 +353,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            if (leaderboard.Difficulty.Notes + leaderboard.Difficulty.Chains > replay.notes.Count) {
+            if ((leaderboard.Difficulty.Notes + leaderboard.Difficulty.Chains) * 0.8 > replay.notes.Count) {
                 await RefreshNoteCount(dbContext, leaderboard);
             }
 
@@ -1025,11 +1025,7 @@ namespace BeatLeader_Server.Controllers
                 s.Rank = i + 1;
             }
 
-            try {
-                await dbContext.BulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = s => new { s.Rank });
-            } catch (Exception e) {
-                await dbContext.BulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = s => new { s.Rank });
-            }
+            await dbContext.SafeBulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = s => new { s.Rank });
         }
 
         class ScoreSelection {
@@ -1106,11 +1102,7 @@ namespace BeatLeader_Server.Controllers
                 s.Rank = i + 1;
             }
 
-            try {
-                await dbContext.BulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = s => new { s.Rank });
-            } catch (Exception e) {
-                await dbContext.BulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = s => new { s.Rank });
-            }
+            await dbContext.SafeBulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = s => new { s.Rank });
         }
 
         [NonAction]
