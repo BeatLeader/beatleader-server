@@ -201,22 +201,51 @@ namespace BeatLeader_Server.Services {
                         var info = infoFile.Open().ObjectFromStream<json_MapInfo>();
                         if (info == null) continue;
 
-                        foreach (var set in info.beatmapSets) {
-                            foreach (var beatmap in set._diffMaps) {
-                                var diffFile = archive.Entries.FirstOrDefault(e => e.Name == beatmap._beatmapFilename);
+                        if (info.beatmapSets == null) {
+                            // Temporary V4 check
+                            var info_v4 = infoFile.Open().ObjectFromStream<json_MapInfo_v4>();
+                            if (info_v4 == null || info_v4.difficultyBeatmaps == null) continue;
+
+                            foreach (var beatmap in info_v4.difficultyBeatmaps) {
+                                var diffFile = archive.Entries.FirstOrDefault(e => e.Name == beatmap.beatmapDataFilename);
                                 if (diffFile == null) continue;
 
-                                var diff = diffFile.Open().ObjectFromStream<DiffFileV3>();
+                                var diff = diffFile.Open().ObjectFromStream<DiffFileV4>();
                                 if (diff != null) {
-                                    var songDiff = song.Difficulties.FirstOrDefault(d => d.DifficultyName == beatmap._difficulty && d.ModeName == set._beatmapCharacteristicName);
+                                    var songDiff = song.Difficulties.FirstOrDefault(d => d.DifficultyName == beatmap.difficulty && d.ModeName == beatmap.characteristic);
                                     if (songDiff != null) {
-                                        if (diff.burstSliders?.Length > 0 || diff.sliders?.Length > 0) {
+                                        if (diff.chains?.Length > 0 || diff.arcs?.Length > 0) {
                                             songDiff.Requirements |= Models.Requirements.V3;
-                                            songDiff.Chains = diff.burstSliders?.Sum(c => c.SliceCount > 1 ? c.SliceCount - 1 : 0) ?? 0;
-                                            songDiff.Sliders = diff.sliders?.Length ?? 0;
+                                            songDiff.Chains = diff.chainsData?.Sum(c => c.SliceCount > 1 ? c.SliceCount - 1 : 0) ?? 0;
+                                            songDiff.Sliders = diff.arcs?.Length ?? 0;
                                         }
-                                        if (diff.colorNotes?.FirstOrDefault(n => n.Optional()) != null) {
-                                            songDiff.Requirements |= Models.Requirements.OptionalProperties;
+                                        if (diff.njsEvents?.Length > 0) {
+                                            songDiff.Requirements |= Models.Requirements.VNJS;
+                                        }
+                                    }
+                                }
+                            }
+
+                            song.Checked = true;
+                            continue;
+                        } else {
+                            foreach (var set in info.beatmapSets) {
+                                foreach (var beatmap in set._diffMaps) {
+                                    var diffFile = archive.Entries.FirstOrDefault(e => e.Name == beatmap._beatmapFilename);
+                                    if (diffFile == null) continue;
+
+                                    var diff = diffFile.Open().ObjectFromStream<DiffFileV3>();
+                                    if (diff != null) {
+                                        var songDiff = song.Difficulties.FirstOrDefault(d => d.DifficultyName == beatmap._difficulty && d.ModeName == set._beatmapCharacteristicName);
+                                        if (songDiff != null) {
+                                            if (diff.burstSliders?.Length > 0 || diff.sliders?.Length > 0) {
+                                                songDiff.Requirements |= Models.Requirements.V3;
+                                                songDiff.Chains = diff.burstSliders?.Sum(c => c.SliceCount > 1 ? c.SliceCount - 1 : 0) ?? 0;
+                                                songDiff.Sliders = diff.sliders?.Length ?? 0;
+                                            }
+                                            if (diff.colorNotes?.FirstOrDefault(n => n.Optional()) != null) {
+                                                songDiff.Requirements |= Models.Requirements.OptionalProperties;
+                                            }
                                         }
                                     }
                                 }

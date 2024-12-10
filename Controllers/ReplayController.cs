@@ -304,6 +304,12 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
+            var gameVersion = info.gameVersion.Split(".");
+            if (version.Length == 3 && int.Parse(version[1]) < 40 && leaderboard.Difficulty.Requirements.HasFlag(Requirements.VNJS)) {
+                Thread.Sleep(8000); // Error may not show if returned too quick
+                return BadRequest("Variable NJS maps supported only 1.40+");
+            }
+
             if (type != EndType.Unknown && type != EndType.Clear) {
                 int? forcetimeset = null;
                 if (timesetForce == 0) {

@@ -36,6 +36,50 @@ namespace BeatMapEvaluator
         public json_beatMapSet[] beatmapSets { get; set; }
     }
 
+    public class json_MapInfo_v4 {
+        public string version { get; set; }
+        public json_Song song { get; set; }
+        public json_Audio audio { get; set; }
+        public string songPreviewFilename { get; set; }
+        public string coverImageFilename { get; set; }
+        public string[] environmentNames { get; set; }
+        public object[] colorSchemes { get; set; }
+        public json_DifficultyBeatmap[] difficultyBeatmaps { get; set; }
+    }
+
+    public class json_Song {
+        public string title { get; set; }
+        public string subTitle { get; set; }
+        public string author { get; set; }
+    }
+
+    public class json_Audio {
+        public string songFilename { get; set; }
+        public double songDuration { get; set; }
+        public string audioDataFilename { get; set; }
+        public double bpm { get; set; }
+        public double lufs { get; set; }
+        public double previewStartTime { get; set; }
+        public double previewDuration { get; set; }
+    }
+
+    public class json_DifficultyBeatmap {
+        public string characteristic { get; set; }
+        public string difficulty { get; set; }
+        public json_BeatmapAuthors beatmapAuthors { get; set; }
+        public int environmentNameIdx { get; set; }
+        public int beatmapColorSchemeIdx { get; set; }
+        public double noteJumpMovementSpeed { get; set; }
+        public double noteJumpStartBeatOffset { get; set; }
+        public string beatmapDataFilename { get; set; }
+        public string lightshowDataFilename { get; set; }
+    }
+
+    public class json_BeatmapAuthors {
+        public string[] mappers { get; set; }
+        public string[] lighters { get; set; }
+    }
+
     //Based off: https://bsmg.wiki/mapping/map-format.html#difficulty-beatmap-sets
     public class json_beatMapSet {
         public string _beatmapCharacteristicName { get; set; }
