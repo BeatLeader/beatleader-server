@@ -831,7 +831,7 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            if (currentPlayer == null || currentID == playerId || currentPlayer.Role.Contains("juniorrankedteam") || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
+            if (currentPlayer == null || currentID == playerId || !(currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("creator") || currentPlayer.Role.Contains("rankadminteam")))
             {
                 return Unauthorized();
             }
@@ -859,7 +859,7 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            if (currentPlayer == null || currentID == playerId || currentPlayer.Role.Contains("juniorrankedteam") || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
+            if (currentPlayer == null || currentID == playerId || !(currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("creator") || currentPlayer.Role.Contains("rankadminteam")))
             {
                 return Unauthorized();
             }
@@ -888,7 +888,7 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            if (currentPlayer == null || currentID == playerId || (!currentPlayer.Role.Contains("admin") && (!currentPlayer.Role.Contains("rankedteam") || !currentPlayer.Role.Contains("creator"))))
+            if (currentPlayer == null || currentID == playerId || !(currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("creator") || currentPlayer.Role.Contains("rankadminteam")))
             {
                 return Unauthorized();
             }
@@ -916,7 +916,7 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            if (currentPlayer == null || currentID == playerId || (!currentPlayer.Role.Contains("admin") && (!currentPlayer.Role.Contains("rankedteam") || !currentPlayer.Role.Contains("creator"))))
+            if (currentPlayer == null || currentID == playerId || !(currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("creator") || currentPlayer.Role.Contains("rankadminteam")))
             {
                 return Unauthorized();
             }
@@ -945,7 +945,7 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            if (currentPlayer == null || currentID == playerId || (!currentPlayer.Role.Contains("admin") && (!currentPlayer.Role.Contains("qualityteam") || !currentPlayer.Role.Contains("creator"))))
+            if (currentPlayer == null || currentID == playerId || !(currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("creator") || currentPlayer.Role.Contains("rankadminteam")))
             {
                 return Unauthorized();
             }
@@ -973,7 +973,7 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            if (currentPlayer == null || currentID == playerId || (!currentPlayer.Role.Contains("admin") && (!currentPlayer.Role.Contains("qualityteam") || !currentPlayer.Role.Contains("creator"))))
+            if (currentPlayer == null || currentID == playerId || !(currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("creator") || currentPlayer.Role.Contains("rankadminteam")))
             {
                 return Unauthorized();
             }
@@ -987,6 +987,63 @@ namespace BeatLeader_Server.Controllers
             if (player.Role.Contains("qualityteam"))
             {
                 player.Role = string.Join(",", player.Role.Split(",").Where(s => s != "qualityteam"));
+
+                await _context.SaveChangesAsync();
+            }
+
+            return Ok();
+        }
+
+        [Authorize]
+        [HttpGet("~/grantRAT/{playerId}")]
+        public async Task<ActionResult> GrantRAT(
+            string playerId)
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || currentID == playerId || !(currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("creator")))
+            {
+                return Unauthorized();
+            }
+
+            Player? player = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId);
+            if (player == null) {
+                return NotFound();
+            }
+
+            if (!player.Role.Contains("rankadminteam"))
+            {
+                player.Role = string.Join(",", player.Role.Split(",").Append("rankadminteam"));
+
+                await _context.SaveChangesAsync();
+            }
+
+            return Ok();
+        }
+
+        [Authorize]
+        [HttpGet("~/removeRAT/{playerId}")]
+        public async Task<ActionResult> RemoveRAT(
+            string playerId)
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || currentID == playerId || !(currentPlayer.Role.Contains("admin") || currentPlayer.Role.Contains("creator")))
+            {
+                return Unauthorized();
+            }
+
+            Player? player = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId);
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            if (player.Role.Contains("rankadminteam"))
+            {
+                player.Role = string.Join(",", player.Role.Split(",").Where(s => s != "rankadminteam"));
 
                 await _context.SaveChangesAsync();
             }
