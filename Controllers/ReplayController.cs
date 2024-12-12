@@ -328,7 +328,7 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Replay missing frame data past note data.");
             }
 
-            if (leaderboard.Difficulty.Notes > 0 && replay.notes.Count >= leaderboard.Difficulty.Notes * 1.8) {
+            if (leaderboard.Difficulty.Notes > 0 && replay.notes.Count >= (leaderboard.Difficulty.Notes + leaderboard.Difficulty.Chains) * 1.8) {
                 var cleanedNotes = new List<NoteEvent>();
                 for (int i = 0; i < replay.notes.Count() - 1; i += 2) {
                     var firstNote = replay.notes[i];
@@ -368,7 +368,7 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("The score should be positive");
             }
 
-            if ((leaderboard.Difficulty.Status.WithRating()) && leaderboard.Difficulty.Notes != 0 && replay.notes.Count > leaderboard.Difficulty.Notes) {
+            if ((leaderboard.Difficulty.Status.WithRating()) && leaderboard.Difficulty.Notes != 0 && replay.notes.Count > (leaderboard.Difficulty.Notes + leaderboard.Difficulty.Chains)) {
                 string? error = ReplayUtils.RemoveDuplicates(replay, leaderboard);
                 if (error != null) {
                     return BadRequest("Failed to delete duplicate note: " + error);

@@ -389,6 +389,10 @@ namespace BeatLeader_Server {
                     options.AddDevelopmentEncryptionCertificate()
                            .AddDevelopmentSigningCertificate();
                 } else {
+                    var signingCertificate2 = new X509Certificate2("../keys/openiddict_certificate2.pfx", Configuration.GetValue<string>("OpeniddictPassword2"));
+                    options.AddSigningCertificate(signingCertificate2);
+                    options.AddEncryptionCertificate(signingCertificate2);
+
                     var signingCertificate = new X509Certificate2("../keys/openiddict_certificate.pfx", Configuration.GetValue<string>("OpeniddictPassword"));
                     options.AddSigningCertificate(signingCertificate);
                     options.AddEncryptionCertificate(signingCertificate);
