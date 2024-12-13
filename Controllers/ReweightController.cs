@@ -20,7 +20,6 @@ namespace BeatLeader_Server.Controllers
         private readonly IServerTiming _serverTiming;
         private readonly IConfiguration _configuration;
         private readonly ScoreRefreshController _scoreRefreshController;
-        private readonly MapEvaluationController _mapEvaluationController;
         private readonly PlayerRefreshController _playerRefreshController;
         private readonly PlaylistController _playlistController;
         private readonly RTNominationsForum _rtNominationsForum;
@@ -31,7 +30,6 @@ namespace BeatLeader_Server.Controllers
             IServerTiming serverTiming,
             IConfiguration configuration,
             ScoreRefreshController scoreRefreshController,
-            MapEvaluationController mapEvaluationController,
             PlayerRefreshController playerRefreshController,
             PlaylistController playlistController,
             RTNominationsForum rtNominationsForum)
@@ -41,7 +39,6 @@ namespace BeatLeader_Server.Controllers
             _serverTiming = serverTiming;
             _configuration = configuration;
             _scoreRefreshController = scoreRefreshController;
-            _mapEvaluationController = mapEvaluationController;
             _playerRefreshController = playerRefreshController;
             _playlistController = playlistController;
             _rtNominationsForum = rtNominationsForum;

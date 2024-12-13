@@ -21,7 +21,6 @@ namespace BeatLeader_Server.Controllers
         private readonly IServerTiming _serverTiming;
         private readonly IConfiguration _configuration;
         private readonly ScoreRefreshController _scoreRefreshController;
-        private readonly MapEvaluationController _mapEvaluationController;
         private readonly PlayerRefreshController _playerRefreshController;
         private readonly PlaylistController _playlistController;
         private readonly RTNominationsForum _rtNominationsForum;
@@ -32,7 +31,6 @@ namespace BeatLeader_Server.Controllers
             IServerTiming serverTiming,
             IConfiguration configuration,
             ScoreRefreshController scoreRefreshController,
-            MapEvaluationController mapEvaluationController,
             PlayerRefreshController playerRefreshController,
             PlaylistController playlistController,
             RTNominationsForum rtNominationsForum)
@@ -42,7 +40,6 @@ namespace BeatLeader_Server.Controllers
             _serverTiming = serverTiming;
             _configuration = configuration;
             _scoreRefreshController = scoreRefreshController;
-            _mapEvaluationController = mapEvaluationController;
             _playerRefreshController = playerRefreshController;
             _playlistController = playlistController;
             _rtNominationsForum = rtNominationsForum;
@@ -350,14 +347,6 @@ namespace BeatLeader_Server.Controllers
 
                 await RatingUtils.UpdateFromExMachina(leaderboard, null);
 
-                string? criteriaCheck = qualifiedLeaderboards.FirstOrDefault(lb => lb.Qualification.CriteriaCheck != null)?.Qualification.CriteriaCheck;
-                if (criteriaCheck == null) {
-                    try {
-                        MapCheckResult? mapCheckResult = (await _mapEvaluationController.Get(leaderboard.Song.Id)).Value;
-                        criteriaCheck = JsonExtensions.SerializeObject(mapCheckResult);
-                    } catch { }
-                }
-
                 leaderboard.Qualification = new RankQualification {
                     Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,
                     RTMember = currentID,
@@ -365,7 +354,6 @@ namespace BeatLeader_Server.Controllers
                     MapperAllowed = !isRT || alreadyApproved != null,
                     MapperQualification = !isRT,
                     Modifiers = modifierValues,
-                    CriteriaCheck = criteriaCheck
                 };
                 
                 difficulty.ModifierValues = modifierValues;

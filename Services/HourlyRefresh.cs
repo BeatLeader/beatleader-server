@@ -4,8 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using System.IO.Compression;
 using System.Net;
 using BeatLeader_Server.Extensions;
-using BeatMapEvaluator;
-using BeatLeader_Server.BeatMapEvaluator;
 using BeatLeader_Server.Models;
 using Google.Apis.YouTube.v3;
 using Google.Apis.Services;
@@ -195,87 +193,45 @@ namespace BeatLeader_Server.Services {
                         await res.GetResponseStream().CopyToAsync(memoryStream);
                         var archive = new ZipArchive(memoryStream);
 
-                        var infoFile = archive.Entries.FirstOrDefault(e => e.Name.ToLower() == "info.dat");
-                        if (infoFile == null) continue;
-
-                        var info = infoFile.Open().ObjectFromStream<json_MapInfo>();
-                        if (info == null) continue;
-
-                        if (info.beatmapSets == null) {
-                            // Temporary V4 check
-                            var info_v4 = infoFile.Open().ObjectFromStream<json_MapInfo_v4>();
-                            if (info_v4 == null || info_v4.difficultyBeatmaps == null) continue;
-
-                            foreach (var beatmap in info_v4.difficultyBeatmaps) {
-                                var diffFile = archive.Entries.FirstOrDefault(e => e.Name == beatmap.beatmapDataFilename);
-                                if (diffFile == null) continue;
-
-                                var diff = diffFile.Open().ObjectFromStream<DiffFileV4>();
-                                if (diff != null) {
-                                    var songDiff = song.Difficulties.FirstOrDefault(d => d.DifficultyName == beatmap.difficulty && d.ModeName == beatmap.characteristic);
-                                    if (songDiff != null) {
-                                        if (diff.chains?.Length > 0 || diff.arcs?.Length > 0) {
-                                            songDiff.Requirements |= Models.Requirements.V3;
-                                            songDiff.Chains = diff.chainsData?.Sum(c => c.SliceCount > 1 ? c.SliceCount - 1 : 0) ?? 0;
-                                            songDiff.Sliders = diff.arcs?.Length ?? 0;
-                                        }
-                                        if (diff.njsEvents?.Length > 0) {
-                                            songDiff.Requirements |= Models.Requirements.VNJS;
-                                        }
-                                    }
-                                }
-                            }
-
-                            song.Checked = true;
-                            continue;
-                        } else {
-                            foreach (var set in info.beatmapSets) {
-                                foreach (var beatmap in set._diffMaps) {
-                                    var diffFile = archive.Entries.FirstOrDefault(e => e.Name == beatmap._beatmapFilename);
-                                    if (diffFile == null) continue;
-
-                                    var diff = diffFile.Open().ObjectFromStream<DiffFileV3>();
-                                    if (diff != null) {
-                                        var songDiff = song.Difficulties.FirstOrDefault(d => d.DifficultyName == beatmap._difficulty && d.ModeName == set._beatmapCharacteristicName);
-                                        if (songDiff != null) {
-                                            if (diff.burstSliders?.Length > 0 || diff.sliders?.Length > 0) {
-                                                songDiff.Requirements |= Models.Requirements.V3;
-                                                songDiff.Chains = diff.burstSliders?.Sum(c => c.SliceCount > 1 ? c.SliceCount - 1 : 0) ?? 0;
-                                                songDiff.Sliders = diff.sliders?.Length ?? 0;
-                                            }
-                                            if (diff.colorNotes?.FirstOrDefault(n => n.Optional()) != null) {
-                                                songDiff.Requirements |= Models.Requirements.OptionalProperties;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        if (info._coverImageFilename != null) {
-                            var coverFile = archive.Entries.FirstOrDefault(e => e.Name.ToLower() == info._coverImageFilename.ToLower());
-                            if (coverFile != null) {
-                                using (var coverStream = coverFile.Open()) {
-                                    using (var ms = new MemoryStream(5)) {
-                                        await coverStream.CopyToAsync(ms);
-                                        ms.Position = 0;
-                                        MemoryStream imageStream = ImageUtils.ResizeToWebp(ms, 512);
-                                        var fileName = $"songcover-{song.Id}-full.webp";
-
-                                        song.FullCoverImage = await _s3Client.UploadAsset(fileName, imageStream);
-                                    }
-                                }
-                            }
-                        }
-
                         var parse = new Parse();
                         memoryStream.Position = 0;
                         var map = parse.TryLoadZip(memoryStream)?.FirstOrDefault();
                         if (map != null) {
+                            var info = map.Info;
+
+                            if (info._coverImageFilename != null) {
+                                var coverFile = archive.Entries.FirstOrDefault(e => e.Name.ToLower() == info._coverImageFilename.ToLower());
+                                if (coverFile != null) {
+                                    using (var coverStream = coverFile.Open()) {
+                                        using (var ms = new MemoryStream(5)) {
+                                            await coverStream.CopyToAsync(ms);
+                                            ms.Position = 0;
+                                            MemoryStream imageStream = ImageUtils.ResizeToWebp(ms, 512);
+                                            var fileName = $"songcover-{song.Id}-full.webp";
+
+                                            song.FullCoverImage = await _s3Client.UploadAsset(fileName, imageStream);
+                                        }
+                                    }
+                                }
+                            }
+
                             foreach (var set in map.Difficulties)
                             {
                                 var songDiff = song.Difficulties.FirstOrDefault(d => d.DifficultyName == set.Difficulty && d.ModeName == set.Characteristic);
-                                if (songDiff == null || songDiff.MaxScoreGraph != null) continue;
+                                if (songDiff == null) continue;
+                                var diff = set.Data;
+                                if (diff.Chains.Count > 0 || diff.Arcs.Count > 0) {
+                                    songDiff.Requirements |= Models.Requirements.V3;
+                                    songDiff.Chains = diff.Chains.Sum(c => c.SliceCount > 1 ? c.SliceCount - 1 : 0);
+                                    songDiff.Sliders = diff.Arcs.Count;
+                                }
+                                //if (diff.Notes.FirstOrDefault(n => n.Optional()) != null) {
+                                //    songDiff.Requirements |= Models.Requirements.OptionalProperties;
+                                //}
+                                if (diff.njsEvents.Count > 0) {
+                                    songDiff.Requirements |= Models.Requirements.VNJS;
+                                }
+
                                 songDiff.MaxScoreGraph = new MaxScoreGraph();
                                 songDiff.MaxScoreGraph.SaveList(set.MaxScoreGraph());
                                 if (songDiff.MaxScore == 0) {
