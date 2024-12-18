@@ -42,7 +42,7 @@ namespace BeatLeader_Server.Bot
             string message = "";
             message += $"**{leaderboard.Song.Name}** | {leaderboard.Difficulty.DifficultyName} \n";
             message += "\n";
-            message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
+            message += "https://beatleader.com/leaderboard/global/" + leaderboard.Id;
 
             return message;
         }
@@ -55,7 +55,7 @@ namespace BeatLeader_Server.Bot
                 new EmbedBuilder()
                     .WithThumbnailUrl(leaderboard.Song.CoverImage)
                     .WithTitle("Leaderboard")
-                    .WithUrl("https://beatleader.xyz/leaderboard/global/" + leaderboard.Id)
+                    .WithUrl("https://beatleader.com/leaderboard/global/" + leaderboard.Id)
                     .Build()
             },
             
@@ -141,7 +141,7 @@ namespace BeatLeader_Server.Bot
                 await channel.SendMessageAsync(message, embeds: new Embed []{ 
                 new EmbedBuilder()
                     .WithTitle("Leaderboard")
-                    .WithUrl("https://beatleader.xyz/leaderboard/global/" + newLeaderboardId)
+                    .WithUrl("https://beatleader.com/leaderboard/global/" + newLeaderboardId)
                     .Build()
             });
             }

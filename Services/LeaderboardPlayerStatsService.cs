@@ -38,7 +38,7 @@ namespace BeatLeader_Server.Services {
                 try {
                     string fileName = job.fileName;
                     await _s3Client.UploadOtherReplay(fileName, job.replayData);
-                    replayLink = $"https://api.beatleader.xyz/otherreplays/{fileName}";
+                    replayLink = $"https://api.beatleader.com/otherreplays/{fileName}";
                 } catch {
                 }
             }

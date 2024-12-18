@@ -338,7 +338,7 @@ namespace BeatLeader_Server.Services
                 var _s3Client = _configuration.GetS3Client();
                 var client = _httpClientFactory.CreateClient();
 
-                string url = $"https://render.beatleader.xyz/animatedscreenshot/600x600/clansmapchange/general/clansmap/history/{previousTimeset}/{timeset}";
+                string url = $"https://render.beatleader.com/animatedscreenshot/600x600/clansmapchange/general/clansmap/history/{previousTimeset}/{timeset}";
                 string? path = null;
                 try {
                     HttpResponseMessage response = await client.GetAsync(url);

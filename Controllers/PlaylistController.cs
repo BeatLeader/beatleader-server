@@ -341,7 +341,7 @@ namespace BeatLeader_Server.Controllers
             playlistRecord.IsShared = shared;
 
             var customData = new CustomData { 
-                syncURL = "https://api.beatleader.xyz/playlist/guid/" + playlistRecord.Guid.ToString().Replace("-", ""),
+                syncURL = "https://api.beatleader.com/playlist/guid/" + playlistRecord.Guid.ToString().Replace("-", ""),
                 owner = currentID,
                 id = id?.ToString() ?? "",
                 hash = playlistRecord.Hash,
@@ -463,7 +463,7 @@ namespace BeatLeader_Server.Controllers
             playlist.songs = songs.DistinctBy(s => s.hash).OrderByDescending(a => a.rankedTime).ToList();
             playlist.customData = new CustomData
             {
-                syncURL = "https://api.beatleader.xyz/playlist/ranked",
+                syncURL = "https://api.beatleader.com/playlist/ranked",
                 owner = "BeatLeader",
                 id = "ranked"
             };
@@ -524,7 +524,7 @@ namespace BeatLeader_Server.Controllers
             playlist.songs = songs.DistinctBy(s => s.hash).OrderByDescending(a => a.nominatedTime).ToList();
             playlist.customData = new CustomData
             {
-                syncURL = "https://api.beatleader.xyz/playlist/nominated",
+                syncURL = "https://api.beatleader.com/playlist/nominated",
                 owner = "BeatLeader",
                 id = "nominated"
             };
@@ -584,7 +584,7 @@ namespace BeatLeader_Server.Controllers
             playlist.songs = songs.DistinctBy(s => s.hash).OrderByDescending(a => a.qualifiedTime).ToList();
             playlist.customData = new CustomData
             {
-                syncURL = "https://api.beatleader.xyz/playlist/qualified",
+                syncURL = "https://api.beatleader.com/playlist/qualified",
                 owner = "BeatLeader",
                 id = "qualified"
             };

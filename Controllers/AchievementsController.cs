@@ -211,7 +211,7 @@ namespace BeatLeader_Server.Controllers {
                 return Unauthorized();
             }
 
-            var profileUrl = $"beatleader.xyz/u/{currentId}";
+            var profileUrl = $"beatleader.com/u/{currentId}";
             var existingResponse = await _context.SurveyResponses.FirstOrDefaultAsync(
                 r => r.PlayerId == currentId || 
                 r.PlayerId.EndsWith(profileUrl) ||

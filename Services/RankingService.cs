@@ -160,7 +160,7 @@ namespace BeatLeader_Server.Services
                             new EmbedBuilder()
                               .WithThumbnailUrl(leaderboard.Song.CoverImage)
                               .WithTitle("Leaderboard")
-                              .WithUrl("https://beatleader.xyz/leaderboard/global/" + leaderboard.Id)
+                              .WithUrl("https://beatleader.com/leaderboard/global/" + leaderboard.Id)
                               .Build()
                         });
 

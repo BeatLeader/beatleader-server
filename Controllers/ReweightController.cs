@@ -109,7 +109,7 @@ namespace BeatLeader_Server.Controllers
                         message += FormatUtils.DescribeTypeChanges(leaderboard.Difficulty.Type, reweight.Type);
                         message += FormatUtils.DescribeModifiersChanges(leaderboard.Difficulty.ModifierValues, reweight.Modifiers);
                     }
-                    message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
+                    message += "https://beatleader.com/leaderboard/global/" + leaderboard.Id;
 
                     await dsClient.SendMessageAsync(message);
                 }
@@ -250,7 +250,7 @@ namespace BeatLeader_Server.Controllers
                         message += FormatUtils.DescribeTypeChanges(leaderboard.Difficulty.Type, reweight.Type);
                         message += FormatUtils.DescribeModifiersChanges(leaderboard.Difficulty.ModifierValues, reweight.Modifiers);
                     }
-                    message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
+                    message += "https://beatleader.com/leaderboard/global/" + leaderboard.Id;
 
                     await dsClient.SendMessageAsync(message);
                 }
@@ -336,7 +336,7 @@ namespace BeatLeader_Server.Controllers
                 if (dsClient != null)
                 {
                     string message = currentPlayer.Name + " canceled reweight for **" + leaderboard.Song.Name + "**\n";
-                    message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
+                    message += "https://beatleader.com/leaderboard/global/" + leaderboard.Id;
 
                     await dsClient.SendMessageAsync(message);
                 }

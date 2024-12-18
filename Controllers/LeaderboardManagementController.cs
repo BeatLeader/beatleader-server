@@ -153,7 +153,7 @@ namespace BeatLeader_Server.Controllers {
 
             var featuredPlaylist = new FeaturedPlaylist
             {
-                PlaylistLink = linkToSave ?? $"https://beatleader.xyz/playlist/{id}",
+                PlaylistLink = linkToSave ?? $"https://beatleader.com/playlist/{id}",
                 Cover = imageUrl,
                 Title = title,
 

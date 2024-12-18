@@ -101,7 +101,7 @@ namespace BeatLeader_Server.Controllers
     public class SocketController : Controller
     {
         public static WebSocketClient SocketClient;
-        public static string SocketHost = "wss://sockets.api.beatleader.xyz/";
+        public static string SocketHost = "wss://sockets.api.beatleader.com/";
 
         private readonly AppContext _context;
 

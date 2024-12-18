@@ -103,7 +103,7 @@ namespace BeatLeader_Server.Controllers {
             try {
                 var client = _httpClientFactory.CreateClient();
                 client.Timeout = TimeSpan.FromMinutes(5);
-                string url = "https://render.beatleader.xyz/download/general/clansmap/save";
+                string url = "https://render.beatleader.com/download/general/clansmap/save";
 
                 HttpResponseMessage response = await client.GetAsync(url);
 

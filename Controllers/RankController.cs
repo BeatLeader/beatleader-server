@@ -369,7 +369,7 @@ namespace BeatLeader_Server.Controllers
                     if (isRT || verified) {
                         message += $"Acc: {difficulty.AccRating:0.00}★\nPass: {difficulty.PassRating:0.00}★\nTech: {difficulty.TechRating:0.00}★\n";
                     }
-                    message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
+                    message += "https://beatleader.com/leaderboard/global/" + leaderboard.Id;
 
                     await dsClient.SendMessageAsync(message);
                 }
@@ -470,7 +470,7 @@ namespace BeatLeader_Server.Controllers
                             message += " **T**  ";
                             message += FormatUtils.DescribeType(difficulty.Type);
                             message += "\n";
-                            message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
+                            message += "https://beatleader.com/leaderboard/global/" + leaderboard.Id;
 
                             await dsClient.SendMessageAsync(message);
                         }
@@ -632,7 +632,7 @@ namespace BeatLeader_Server.Controllers
 
                                 message += FormatUtils.DescribeModifiersChanges(qualificationChange.OldModifiers, qualificationChange.NewModifiers);
                             }
-                            message += "\nhttps://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
+                            message += "\nhttps://beatleader.com/leaderboard/global/" + leaderboard.Id;
 
                             await dsClient.SendMessageAsync(message);
                         }
@@ -1320,7 +1320,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     string message = "Bot updated nomination for **" + leaderboard.Song.Name + "**!\n";
                     message += "**Declined!**\n Reason: Reached 3 NQT downvotes.\n";
-                    message += "https://beatleader.xyz/leaderboard/global/" + leaderboard.Id;
+                    message += "https://beatleader.com/leaderboard/global/" + leaderboard.Id;
 
                     await dsClient.SendMessageAsync(message);
                 }

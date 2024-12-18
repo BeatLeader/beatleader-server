@@ -56,7 +56,7 @@ namespace BeatLeader_Server.Utils
                     data.Close();
                 }
 
-                return $"https://cdn.{container}.beatleader.xyz/{filename}";
+                return $"https://cdn.{container}.beatleader.com/{filename}";
             } catch (Exception e) {
                 string directoryPath = Path.Combine("/root", container.ToString());
                 string filePath = Path.Combine(directoryPath, filename);

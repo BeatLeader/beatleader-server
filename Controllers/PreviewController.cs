@@ -413,18 +413,18 @@ namespace BeatLeader_Server.Controllers
                     <html class="a-fullscreen shoqbzame idc0_350"><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
                         <title>{title}</title>
                         
-                        <link rel="apple-touch-icon-precomposed" sizes="57x57" href="https://replay.beatleader.xyz/assets/img/apple-touch-icon-57x57.png">
-                        <link rel="apple-touch-icon-precomposed" sizes="114x114" href="https://replay.beatleader.xyz/assets/img/apple-touch-icon-114x114.png">
-                        <link rel="apple-touch-icon-precomposed" sizes="72x72" href="https://replay.beatleader.xyz/assets/img/apple-touch-icon-72x72.png">
-                        <link rel="apple-touch-icon-precomposed" sizes="144x144" href="https://replay.beatleader.xyz/assets/img/apple-touch-icon-144x144.png">
-                        <link rel="apple-touch-icon-precomposed" sizes="60x60" href="https://replay.beatleader.xyz/assets/img/apple-touch-icon-60x60.png">
-                        <link rel="apple-touch-icon-precomposed" sizes="120x120" href="https://replay.beatleader.xyz/assets/img/apple-touch-icon-120x120.png">
-                        <link rel="apple-touch-icon-precomposed" sizes="76x76" href="https://replay.beatleader.xyz/assets/img/apple-touch-icon-76x76.png">
-                        <link rel="apple-touch-icon-precomposed" sizes="152x152" href="https://replay.beatleader.xyz/assets/img/apple-touch-icon-152x152.png">
-                        <link rel="icon" type="image/png" href="https://replay.beatleader.xyz/assets/img/favicon-96x96.png" sizes="96x96">
-                        <link rel="icon" type="image/png" href="https://replay.beatleader.xyz/assets/img/favicon-32x32.png" sizes="32x32">
-                        <link rel="icon" type="image/png" href="https://replay.beatleader.xyz/assets/img/favicon-16x16.png" sizes="16x16">
-                        <link rel="icon" type="image/png" href="https://replay.beatleader.xyz/assets/img/favicon-128.png" sizes="128x128">
+                        <link rel="apple-touch-icon-precomposed" sizes="57x57" href="https://replay.beatleader.com/assets/img/apple-touch-icon-57x57.png">
+                        <link rel="apple-touch-icon-precomposed" sizes="114x114" href="https://replay.beatleader.com/assets/img/apple-touch-icon-114x114.png">
+                        <link rel="apple-touch-icon-precomposed" sizes="72x72" href="https://replay.beatleader.com/assets/img/apple-touch-icon-72x72.png">
+                        <link rel="apple-touch-icon-precomposed" sizes="144x144" href="https://replay.beatleader.com/assets/img/apple-touch-icon-144x144.png">
+                        <link rel="apple-touch-icon-precomposed" sizes="60x60" href="https://replay.beatleader.com/assets/img/apple-touch-icon-60x60.png">
+                        <link rel="apple-touch-icon-precomposed" sizes="120x120" href="https://replay.beatleader.com/assets/img/apple-touch-icon-120x120.png">
+                        <link rel="apple-touch-icon-precomposed" sizes="76x76" href="https://replay.beatleader.com/assets/img/apple-touch-icon-76x76.png">
+                        <link rel="apple-touch-icon-precomposed" sizes="152x152" href="https://replay.beatleader.com/assets/img/apple-touch-icon-152x152.png">
+                        <link rel="icon" type="image/png" href="https://replay.beatleader.com/assets/img/favicon-96x96.png" sizes="96x96">
+                        <link rel="icon" type="image/png" href="https://replay.beatleader.com/assets/img/favicon-32x32.png" sizes="32x32">
+                        <link rel="icon" type="image/png" href="https://replay.beatleader.com/assets/img/favicon-16x16.png" sizes="16x16">
+                        <link rel="icon" type="image/png" href="https://replay.beatleader.com/assets/img/favicon-128.png" sizes="128x128">
                         <meta name="application-name" content="Beat Saber web replays">
                         <meta name="msapplication-TileColor" content="#FFFFFF">
                         <meta name="msapplication-TileImage" content="assets/img/mstile-144x144.png">
@@ -437,7 +437,7 @@ namespace BeatLeader_Server.Controllers
                         <meta property="og:description" content="Beat Saber web replays">
                         <meta property="twitter:description" content="Beat Saber web replays">
                         <meta name="twitter:title" content="{title}">
-                        <meta name="twitter:site" content="replay.beatleader.xyz">
+                        <meta name="twitter:site" content="replay.beatleader.com">
                         <meta name="twitter:image:alt" content="Beat Saber replay">
 
                         <meta name="twitter:player:width" content="700">
@@ -449,15 +449,15 @@ namespace BeatLeader_Server.Controllers
                         <meta property="og:image:height" content="400">
 
                         {(score != null ? $"""
-                        <meta property="og:url" content="https://replay.beatleader.xyz/?scoreId={score.ScoreId}">
-                        <meta property="twitter:player" content="https://replay.beatleader.xyz/?scoreId={score.ScoreId}">
-                        <meta property="twitter:image" content="https://api.beatleader.xyz/preview/replay.png?scoreId={score.ScoreId}&twitter=true">
-                        <meta property="og:image" content="https://api.beatleader.xyz/preview/replay.png?scoreId={score.ScoreId}{(string.Join("", (string[])Request.Headers.UserAgent).ToLower().Contains("bsky") ? "&twitter=true" : "")}">
+                        <meta property="og:url" content="https://replay.beatleader.com/?scoreId={score.ScoreId}">
+                        <meta property="twitter:player" content="https://replay.beatleader.com/?scoreId={score.ScoreId}">
+                        <meta property="twitter:image" content="https://api.beatleader.com/preview/replay.png?scoreId={score.ScoreId}&twitter=true">
+                        <meta property="og:image" content="https://api.beatleader.com/preview/replay.png?scoreId={score.ScoreId}{(string.Join("", (string[])Request.Headers.UserAgent).ToLower().Contains("bsky") ? "&twitter=true" : "")}">
                         """ : """
-                        <meta property="og:url" content="https://replay.beatleader.xyz">
-                        <meta property="twitter:player" content="https://replay.beatleader.xyz">
-                        <meta property="twitter:image" content="https://replay.beatleader.xyz/preview.png">
-                        <meta property="og:image" content="https://replay.beatleader.xyz/preview.png">
+                        <meta property="og:url" content="https://replay.beatleader.com">
+                        <meta property="twitter:player" content="https://replay.beatleader.com">
+                        <meta property="twitter:image" content="https://replay.beatleader.com/preview.png">
+                        <meta property="og:image" content="https://replay.beatleader.com/preview.png">
                         """)}
                       </head>
                       <body>

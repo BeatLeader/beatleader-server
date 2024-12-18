@@ -2,7 +2,7 @@
 
 Server for the BeatLeader website and Beat Saber mod.
 
-Deployed here: https://api.beatleader.xyz/
+Deployed here: https://api.beatleader.com/
 
 I don't know what I'm doing, so there can be very stupid mistakes!
 
@@ -40,7 +40,7 @@ The server should be accessible at https://localhost:44313/
 
 There is an automatically generated Swagger documentation available at the following link:
 
-http://api.beatleader.xyz/swagger/index.html
+http://api.beatleader.com/swagger/index.html
 
 ---
 
@@ -56,7 +56,7 @@ For this example, we'll use these variables:
 
 Disclaimer! It will be much easier to use a library for that, for example with AspNet.Security.OpenId. There is a C# example [here](/Auth/Beatleader/BeatLeaderAuthenticationDefaults.cs)
 
-Now you need to construct a URL for the oauth2. If we use the variables above, the URL should look something like this: `https://api.beatleader.xyz/oauth2/authorize?client_id=exampleID&response_type=code&scope=profile&redirect_uri=http://localhost:3000/beatleader-login`.
+Now you need to construct a URL for the oauth2. If we use the variables above, the URL should look something like this: `https://api.beatleader.com/oauth2/authorize?client_id=exampleID&response_type=code&scope=profile&redirect_uri=http://localhost:3000/beatleader-login`.
 
 **Note:** If you want the server issue also refresh token, you need to add ``offline_access`` to ``scope`` parameter of ``oauth2/authorize`` request. Scopes in OAuth2 Specification are separated by a space, so the parameter should be ``profile%20offline_access`` (%20 is a space encoded in the url).
 
@@ -64,9 +64,9 @@ When the person authorizes access to their account information, BeatLeader will 
 
 Let's say that the code we got back is `exampleCode`.
 
-Example return link: `http://localhost:3000/beatleader-login?code=exampleCode&iss=https%3A%2F%2Fapi.beatleader.xyz%2F`.
+Example return link: `http://localhost:3000/beatleader-login?code=exampleCode&iss=https%3A%2F%2Fapi.beatleader.com%2F`.
 
-Now you need to get a token to make a request to identify a user. So now, on your server, you need to send a POST request to the following url: `https://api.beatleader.xyz/oauth2/token`. The headers should contain Content-Type of "application/x-www-form-urlencoded". And the body of the request needs to contain the following string: `grant_type=authorization_code&client_id=exampleID&client_secret=exampleSecret&code=exampleCode&redirect_uri=http://localhost:3000/beatleader-login`.
+Now you need to get a token to make a request to identify a user. So now, on your server, you need to send a POST request to the following url: `https://api.beatleader.com/oauth2/token`. The headers should contain Content-Type of "application/x-www-form-urlencoded". And the body of the request needs to contain the following string: `grant_type=authorization_code&client_id=exampleID&client_secret=exampleSecret&code=exampleCode&redirect_uri=http://localhost:3000/beatleader-login`.
 
 Simplified:
 ```
@@ -93,13 +93,13 @@ If the request was successful, you should get a JSON response containing the acc
 
 Let's say our access_token is `exampleToken`.
 
-Now, to identify the user, we have to send a GET request to `https://api.beatleader.xyz/oauth2/identity` with a header "Authorization". The content of the Authorization header should be `Bearer exampleToken`.
+Now, to identify the user, we have to send a GET request to `https://api.beatleader.com/oauth2/identity` with a header "Authorization". The content of the Authorization header should be `Bearer exampleToken`.
 
 If everything was done correctly you should have gotten a JSON response with the user's id and name.
 
 **Note:** the following flow is only available if you also specified ``offline_access`` in ``scope`` parameter during authorization.
 
-When the ``access_token`` expires you must refresh it. To do so, you must send a POST request to the endpoint ``https://api.beatleader.xyz/oauth2/token``. The headers should contain Content-Type of "application/x-www-form-urlencoded". And the body of the request needs to contain the following string: `grant_type=refresh_token&client_id=exampleID&client_secret=exampleSecret&refresh_token=OLD_REFRESH_TOKEN`.
+When the ``access_token`` expires you must refresh it. To do so, you must send a POST request to the endpoint ``https://api.beatleader.com/oauth2/token``. The headers should contain Content-Type of "application/x-www-form-urlencoded". And the body of the request needs to contain the following string: `grant_type=refresh_token&client_id=exampleID&client_secret=exampleSecret&refresh_token=OLD_REFRESH_TOKEN`.
 
 If the request was successful, you should get a JSON response containing the **new access token** in the `access_token` field and **new refresh token** in the ``refresh_token`` field. The old tokens will be invalidated, so from then on you must use new ones.
 

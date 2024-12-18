@@ -64,7 +64,7 @@ namespace Renderer.Controllers
 
             var options = new
             {
-                Base = $"https://{(context != "general" ? (context + ".") : "")}screenshot.beatleader.xyz/",
+                Base = $"https://{(context != "general" ? (context + ".") : "")}screenshot.beatleader.com/",
                 MaxAge = 60 * 60 * 24 * 7,
                 Params = HttpUtility.ParseQueryString(""),
                 Scale = 1
@@ -82,7 +82,7 @@ namespace Renderer.Controllers
                 {
                     Name = parts[0],
                     Value = string.Join("=", parts.Skip(1)),
-                    Domain = ".beatleader.xyz",
+                    Domain = ".beatleader.com",
                     Secure = true,
                     SameSite = SameSite.None,
                     Path = "/"
@@ -132,7 +132,7 @@ namespace Renderer.Controllers
 
             var options = new
             {
-                Base = $"https://{(context != "general" ? (context + ".") : "")}screenshot.beatleader.xyz/",
+                Base = $"https://{(context != "general" ? (context + ".") : "")}screenshot.beatleader.com/",
                 MaxAge = 60 * 60 * 24 * 7,
                 Params = HttpUtility.ParseQueryString(""),
                 Scale = 1
@@ -150,7 +150,7 @@ namespace Renderer.Controllers
                 {
                     Name = parts[0],
                     Value = string.Join("=", parts.Skip(1)),
-                    Domain = ".beatleader.xyz",
+                    Domain = ".beatleader.com",
                     Secure = true,
                     SameSite = SameSite.None,
                     Path = "/"
@@ -211,7 +211,7 @@ namespace Renderer.Controllers
             var browser = await browserPool?.GetBrowserAsync();
             var options = new
             {
-                Base = $"https://{(context != "general" ? (context + ".") : "")}screenshot.beatleader.xyz/",
+                Base = $"https://{(context != "general" ? (context + ".") : "")}screenshot.beatleader.com/",
                 Params = HttpUtility.ParseQueryString("")
             };
 
@@ -240,7 +240,7 @@ namespace Renderer.Controllers
                         {
                             Name = parts[0],
                             Value = string.Join("=", parts.Skip(1)),
-                            Domain = ".beatleader.xyz",
+                            Domain = ".beatleader.com",
                             Secure = true,
                             SameSite = SameSite.None,
                             Path = "/"
@@ -300,7 +300,7 @@ namespace Renderer.Controllers
 
             var options = new
             {
-                Base = $"https://{(context != "general" ? (context + ".") : "")}screenshot.beatleader.xyz/",
+                Base = $"https://{(context != "general" ? (context + ".") : "")}screenshot.beatleader.com/",
                 MaxAge = 60 * 60 * 24 * 7,
                 Params = HttpUtility.ParseQueryString(""),
                 Scale = 1
@@ -330,7 +330,7 @@ namespace Renderer.Controllers
                         {
                             Name = parts[0],
                             Value = string.Join("=", parts.Skip(1)),
-                            Domain = ".beatleader.xyz",
+                            Domain = ".beatleader.com",
                             Secure = true,
                             SameSite = SameSite.None,
                             Path = "/"

@@ -145,7 +145,7 @@ namespace BeatLeader_Server.Controllers
                 Tag = upperTag,
                 Color = color,
                 LeaderID = currentID,
-                Icon = icon ?? "https://cdn.assets.beatleader.xyz/clan.png",
+                Icon = icon ?? "https://cdn.assets.beatleader.com/clan.png",
                 Description = description,
                 Bio = bio,
                 PlayersCount = 1,

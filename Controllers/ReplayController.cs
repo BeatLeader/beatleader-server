@@ -686,7 +686,7 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
-                resultScore.Replay = "https://cdn.replays.beatleader.xyz/" + ReplayUtils.ReplayFilename(replay, resultScore);
+                resultScore.Replay = "https://cdn.replays.beatleader.com/" + ReplayUtils.ReplayFilename(replay, resultScore);
                 await dbContext.SaveChangesAsync();
 
                 await RecalculateRanks(dbContext, resultScore, currentScores, leaderboard, player);
@@ -1305,9 +1305,9 @@ namespace BeatLeader_Server.Controllers
                         var messageId = await dsClient.SendMessageAsync(message,
                             embeds: new List<Embed> { new EmbedBuilder()
                                     .WithTitle("Open leaderboard ↗")
-                                    .WithUrl("https://beatleader.xyz/leaderboard/global/" + leaderboard.Id)
-                                    .WithDescription("[Watch replay with BL](" + "https://replay.beatleader.xyz?scoreId=" + resultScore.Id + ") | [Watch replay with ArcViewer](" +"https://allpoland.github.io/ArcViewer/?scoreID=" + resultScore.Id + ")" )
-                                    .WithImageUrl("https://api.beatleader.xyz/preview/replay?scoreId=" + resultScore.Id)
+                                    .WithUrl("https://beatleader.com/leaderboard/global/" + leaderboard.Id)
+                                    .WithDescription("[Watch replay with BL](" + "https://replay.beatleader.com?scoreId=" + resultScore.Id + ") | [Watch replay with ArcViewer](" +"https://allpoland.github.io/ArcViewer/?scoreID=" + resultScore.Id + ")" )
+                                    .WithImageUrl("https://api.beatleader.com/preview/replay?scoreId=" + resultScore.Id)
                                     .Build()
                             });
                         await Task.Delay(TimeSpan.FromSeconds(30));
@@ -1501,11 +1501,11 @@ namespace BeatLeader_Server.Controllers
 
             if (uploaded) {
                 if (stats != null) {
-                    stats.Replay = "https://api.beatleader.xyz/otherreplays/" + fileName;
+                    stats.Replay = "https://api.beatleader.com/otherreplays/" + fileName;
                     storageContext.SaveChanges();
                 } else {
                      await LeaderboardPlayerStatsService.AddJob(new PlayerStatsJob {
-                        fileName = "https://api.beatleader.xyz/otherreplays/" + fileName,
+                        fileName = "https://api.beatleader.com/otherreplays/" + fileName,
                         playerId = score.PlayerId,
                         leaderboardId = leaderboardId,
                         timeset = score.Timepost > 0 ? score.Timepost : int.Parse(score.Timeset),

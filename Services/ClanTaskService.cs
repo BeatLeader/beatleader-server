@@ -352,7 +352,7 @@ namespace BeatLeader_Server.Services
                                 var hooks = new List<string> { blhook, chhook };
                                 await AddCustomHooks(_context, hooks, job.Changes);
 
-                                string url = $"https://render.beatleader.xyz/animatedscreenshot/620x280/clansmapchange/general/clansmap/leaderboard/{job.Score.LeaderboardId}";
+                                string url = $"https://render.beatleader.com/animatedscreenshot/620x280/clansmapchange/general/clansmap/leaderboard/{job.Score.LeaderboardId}";
                                 string? path = null;
                                 try {
                                     HttpResponseMessage response = await client.GetAsync(url);

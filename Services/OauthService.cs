@@ -58,7 +58,7 @@ namespace BeatLeader_Server.Services {
                         },
                         Properties =
                         {
-                            ["PictureUrl"] = JsonDocument.Parse($"\"https://www.beatleader.xyz/assets/favicon-96x96.png\"").RootElement
+                            ["PictureUrl"] = JsonDocument.Parse($"\"https://www.beatleader.com/assets/favicon-96x96.png\"").RootElement
                         }
                     });
                 }

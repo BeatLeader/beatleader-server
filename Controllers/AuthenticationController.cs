@@ -41,7 +41,7 @@ namespace BeatLeader_Server.Controllers {
             _configuration = configuration;
             _scopeManager = scopeManager;
 
-            _websiteUrl = (environment.IsDevelopment() ? "http://localhost:8888" : "https://beatleader.xyz") + "/signin/oauth2";
+            _websiteUrl = (environment.IsDevelopment() ? "http://localhost:8888" : "https://beatleader.com") + "/signin/oauth2";
         }
 
         [HttpGet("~/signin")]
