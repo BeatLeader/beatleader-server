@@ -162,6 +162,8 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
+            playerId = await _context.PlayerIdToMain(playerId);
+
             Player? player = await _context.Players.Include(p => p.Badges).FirstOrDefaultAsync(p => p.Id == playerId);
             if (player == null)
             {

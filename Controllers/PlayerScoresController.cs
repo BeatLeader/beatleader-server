@@ -104,7 +104,8 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Filter scores on ranked maps with stars lower than, default is null")] float? stars_to = null,
             [FromQuery, SwaggerParameter("Filter scores made after unix timestamp, default is null")] int? time_from = null,
             [FromQuery, SwaggerParameter("Filter scores made before unix timestamp, default is null")] int? time_to = null,
-            [FromQuery, SwaggerParameter("Show only scores from the event with ID, default is null")] int? eventId = null) {
+            [FromQuery, SwaggerParameter("Show only scores from the event with ID, default is null")] int? eventId = null,
+            [FromQuery, SwaggerParameter("Include score improvement and offsets, default is false")] bool includeIO = false) {
             if (count > 100 || count < 0) {
                 return BadRequest("Please use `count` value in range of 0 to 100");
             }
@@ -156,21 +157,30 @@ namespace BeatLeader_Server.Controllers {
                 return result;
             }
 
+            var ids = await sequence.Select(s => s.Id).Skip((page - 1) * count).Take(count).ToListAsync();
+            IQueryable<IScore> scoreQuery = leaderboardContext == LeaderboardContexts.General 
+                ? _context.Scores
+                   .AsNoTracking()
+                   .Where(s => ids.Contains(s.Id))
+                : _context.ScoreContextExtensions
+                   .AsNoTracking()
+                   .Include(es => es.ScoreInstance)
+                   .Where(t => ids.Contains(t.Id));
+
             List<ScoreResponseWithMyScore> resultList;
             using (_serverTiming.TimeAction("list")) {
-                resultList = await sequence
+                resultList = await scoreQuery
                     .Include(s => s.Leaderboard)
                     .ThenInclude(l => l.Difficulty)
                     .ThenInclude(d => d.ModifiersRating)
                     .Include(s => s.Leaderboard)
                     .ThenInclude(l => l.Difficulty)
                     .ThenInclude(d => d.ModifierValues)
-                    .AsSplitQuery()
                     .TagWithCaller()
-                    .Skip((page - 1) * count)
-                    .Take(count)
+                    
                     .Select(s => new ScoreResponseWithMyScore {
                         Id = s.ScoreId,
+                        OriginalId = s.Id,
                         BaseScore = s.BaseScore,
                         ModifiedScore = s.ModifiedScore,
                         PlayerId = s.PlayerId,
@@ -201,8 +211,8 @@ namespace BeatLeader_Server.Controllers {
                         Timepost = s.Timepost,
                         LeaderboardId = s.LeaderboardId,
                         Platform = s.Platform,
-                        ScoreImprovement = s.ScoreImprovement,
-                        Offsets = s.ReplayOffsets,
+                        ScoreImprovement = includeIO ? s.ScoreImprovement : null,
+                        Offsets = includeIO ? s.ReplayOffsets : null,
                         Country = s.Country,
                         Leaderboard = new CompactLeaderboardResponse {
                             Id = s.LeaderboardId,
@@ -261,6 +271,10 @@ namespace BeatLeader_Server.Controllers {
                     })
                     
                     .ToListAsync();
+            }
+
+            if (ids.Count > 0) {
+                resultList = resultList.OrderBy(e => ids.IndexOf(e.OriginalId)).ToList();
             }
 
             using (_serverTiming.TimeAction("postprocess")) {

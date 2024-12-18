@@ -396,5 +396,24 @@ namespace BeatLeader_Server.Controllers
 
             return Ok();
         }
+
+        [HttpGet("~/players/allcontextspprefresh")]
+        [Authorize]
+        public async Task<ActionResult> allcontextspprefresh()
+        {
+            if (HttpContext != null) {
+                string currentId = HttpContext.CurrentUserID(_context);
+                Player? currentPlayer = await _context.Players.FindAsync(currentId);
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+
+            var players = await _context.Players.Select(p => new Player { AllContextsPp = p.Pp + p.ContextExtensions.Sum(ce => ce.Pp), Id = p.Id }).ToListAsync();
+            await _context.BulkUpdateAsync(players, options => options.ColumnInputExpression = c => new { c.AllContextsPp });
+
+            return Ok();
+        }
     }
 }
