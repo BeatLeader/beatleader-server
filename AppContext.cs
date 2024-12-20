@@ -109,6 +109,10 @@ namespace BeatLeader_Server
         public DbSet<PlayerChange> PlayerChange { get; set; }
         public DbSet<PromotionHit> PromotionHits { get; set; }
         public DbSet<ScoreImprovement> ScoreImprovement { get; set; }
+        
+        public DbSet<TreeMap> TreeMaps { get; set; }
+        public DbSet<TreeOrnament> TreeOrnaments { get; set; }
+        public DbSet<PlayerTreeOrnament> PlayerTreeOrnaments { get; set; }
         public void RejectChanges()
         {
             foreach (var entry in ChangeTracker.Entries())

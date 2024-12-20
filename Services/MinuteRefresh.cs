@@ -1,4 +1,6 @@
-﻿using BeatLeader_Server.Extensions;
+﻿using BeatLeader_Server.ControllerHelpers;
+using BeatLeader_Server.Extensions;
+using BeatLeader_Server.Utils;
 using Microsoft.EntityFrameworkCore;
 using Prometheus.Client;
 using System.Net;
@@ -8,6 +10,7 @@ namespace BeatLeader_Server.Services
     public class MinuteRefresh : BackgroundService
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
+        private readonly IConfiguration _configuration;
 
         private readonly IGauge _rankedPlayerCounter;
         private readonly IGauge _rankedScoreCounter;
@@ -18,9 +21,10 @@ namespace BeatLeader_Server.Services
         public static string CurrentHost = "";
         public static int ScoresCount = 0;
 
-        public MinuteRefresh(IServiceScopeFactory serviceScopeFactory, IMetricFactory metricFactory)
+        public MinuteRefresh(IServiceScopeFactory serviceScopeFactory, IMetricFactory metricFactory, IConfiguration configuration)
         {
             _serviceScopeFactory = serviceScopeFactory;
+            _configuration = configuration;
 
             _rankedPlayerCounter = metricFactory.CreateGauge("ranked_player_count", "Ranked player count in the last 3 month");
             _rankedScoreCounter = metricFactory.CreateGauge("ranked_score_count", "Ranked score count");
@@ -33,6 +37,7 @@ namespace BeatLeader_Server.Services
             do {
                 try {
                     await RefreshPrometheus();
+                    await RefreshTreeMaps();
                 } catch (Exception e) {
                     Console.WriteLine($"EXCEPTION MinuteRefresh {e}");
                 }
@@ -58,6 +63,59 @@ namespace BeatLeader_Server.Services
 
                 _rankedScoreCounter.Set(await _context.Scores.TagWithCaller().Where(s => s.Pp > 0 && !s.Qualification && !s.Banned).CountAsync());
                 _scoreCounter.Set(ScoresCount);
+            }
+        }
+
+        public async Task RefreshTreeMaps() {
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+                var now = Time.UnixNow();
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+                var _s3Client = _configuration.GetS3Client();
+                var maps = await _context.TreeMaps.Where(m => m.Timestart < now).OrderByDescending(m => m.Timestart).ToListAsync();
+
+                var ids = maps.Select(m => m.SongId).ToList();
+
+                var songs = _context.Songs.Where(s => ids.Contains(s.Id)).Include(s => s.Leaderboards).ThenInclude(l => l.Difficulty).ToList();
+                foreach (var song in songs) {
+                    foreach (var lb in song.Leaderboards) {
+                        if (lb.Difficulty.Status != Models.DifficultyStatus.inevent) {
+                            lb.Difficulty.Status = Models.DifficultyStatus.inevent;
+                            await RatingUtils.UpdateFromExMachina(lb, null);
+                            await _context.SaveChangesAsync();
+                            await ScoreRefreshControllerHelper.BulkRefreshScores(_context, lb.Id);
+                        }
+                    }
+                }
+
+                dynamic? playlist = null;
+
+                using (var stream = await _s3Client.DownloadPlaylist("83999.bplist")) {
+                    if (stream != null) {
+                        playlist = stream.ObjectFromStream();
+                    }
+                }
+
+                if (playlist == null)
+                {
+                    return;
+                }
+
+                var psongs = songs.Select(s => new
+                {
+                    hash = s.Hash,
+                    songName = s.Name,
+                    levelAuthorName = s.Mapper,
+                    difficulties = s.Difficulties.Select(d => new
+                    {
+                        name = d.DifficultyName.FirstCharToLower(),
+                        characteristic = d.ModeName
+                    })
+                }).ToList();
+
+                playlist.songs = psongs;
+
+                await S3Helper.UploadPlaylist(_s3Client, "83999.bplist", playlist);
             }
         }
     }

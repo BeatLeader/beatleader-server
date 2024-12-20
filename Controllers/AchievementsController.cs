@@ -125,6 +125,24 @@ namespace BeatLeader_Server.Controllers {
                 .ToListAsync();
         }
 
+        [HttpDelete("~/achievement/{id}")]
+        public async Task<ActionResult> RemoveAchievement(int id) {
+            string currentId = HttpContext.CurrentUserID(_context);
+            Player? currentPlayer = await _context.Players.FindAsync(currentId);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin")) {
+                return Unauthorized();
+            }
+
+            var ach = await _context.Achievements
+                .Where(a => a.Id == id)
+                .FirstOrDefaultAsync();
+
+            _context.Achievements.Remove(ach);
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
         [HttpPost("~/player/{id}/achievement")]
         public async Task<ActionResult<Achievement>> GrantPlayerAchievement(
             string id,

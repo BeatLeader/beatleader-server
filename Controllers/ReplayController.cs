@@ -1261,7 +1261,9 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 await CollectStats(dbContext, storageContext, replay, offsets, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, resultScore);
-                
+                if (leaderboard.SongId == "42743" || leaderboard.SongId.StartsWith("42743x")) {
+                    await AddAnniversaryAchievement(dbContext, resultScore);
+                }
                 await dbContext.BulkSaveChangesAsync();
 
                 await SocketController.TryPublishNewScore(resultScore, dbContext);
@@ -1647,6 +1649,38 @@ namespace BeatLeader_Server.Controllers
             } catch (Exception e) {
                 Console.WriteLine($"RefreshNoteCount EXCEPTION {e}");
             }
+        }
+
+        [NonAction]
+        private async Task AddAnniversaryAchievement(AppContext dbContext, Score newScore) {
+            var existingAch = await dbContext.Achievements.Where(a => a.PlayerId == newScore.PlayerId && a.AchievementDescriptionId == 3).FirstOrDefaultAsync();
+
+            var levelId = 5;
+
+            if (!newScore.Modifiers.Contains("NF") &&
+                !newScore.Modifiers.Contains("SS") &&
+                !newScore.Modifiers.Contains("NA") &&
+                !newScore.Modifiers.Contains("NB") &&
+                !newScore.Modifiers.Contains("NO")) {
+                levelId = 6;
+                if (newScore.Accuracy > 0.9) {
+                    levelId = 7;
+                }
+            }
+
+            var newAchievement = new Achievement {
+                AchievementDescriptionId = 3,
+                PlayerId = newScore.PlayerId,
+                LevelId = levelId,
+                Timeset = Time.UnixNow()
+            };
+
+            if (existingAch != null) {
+                if (existingAch.LevelId >= newAchievement.LevelId) return;
+                dbContext.Achievements.Remove(existingAch);
+            }
+
+            dbContext.Achievements.Add(newAchievement);
         }
 
         class OldPlayerStats {
