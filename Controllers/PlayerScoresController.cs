@@ -15,6 +15,8 @@ namespace BeatLeader_Server.Controllers {
         private readonly AppContext _context;
         private readonly StorageContext _storageContext;
 
+        private readonly IDbContextFactory<AppContext> _dbFactory;
+
         private readonly IConfiguration _configuration;
         IWebHostEnvironment _environment;
 
@@ -22,11 +24,13 @@ namespace BeatLeader_Server.Controllers {
 
         public PlayerScoresController(
             AppContext context,
+            IDbContextFactory<AppContext> dbFactory,
             StorageContext storageContext,
             IConfiguration configuration,
             IServerTiming serverTiming,
             IWebHostEnvironment env) {
             _context = context;
+            _dbFactory = dbFactory;
             _storageContext = storageContext;
 
             _configuration = configuration;
@@ -432,23 +436,31 @@ namespace BeatLeader_Server.Controllers {
                 return NotFound();
             }
 
-            ResponseWithMetadata<CompactScoreResponse> result;
+            var ids = await sequence.Select(s => s.Id).Skip((page - 1) * count).Take(count).ToListAsync();
+            var dbContext = _dbFactory.CreateDbContext();
+            IQueryable<IScore> scoreQuery = leaderboardContext == LeaderboardContexts.General 
+                ? dbContext.Scores
+                   .AsNoTracking()
+                   .Where(s => ids.Contains(s.Id))
+                : dbContext.ScoreContextExtensions
+                   .AsNoTracking()
+                   .Include(es => es.ScoreInstance)
+                   .Where(t => ids.Contains(t.Id));
+
+            ResponseWithMetadata<CompactScoreResponse> result = new ResponseWithMetadata<CompactScoreResponse>() {
+                Metadata = new Metadata() {
+                    Page = page,
+                    ItemsPerPage = count
+                }
+            };
             using (_serverTiming.TimeAction("db")) {
-                result = new ResponseWithMetadata<CompactScoreResponse>() {
-                    Metadata = new Metadata() {
-                        Page = page,
-                        ItemsPerPage = count,
-                        Total = await sequence.CountAsync()
-                    },
-                    Data = await sequence
-                    .Include(s => s.Leaderboard)
+                (result.Metadata.Total, result.Data) = await sequence.CountAsync().CoundAndResults(scoreQuery
+                    .AsNoTracking()
                     .TagWithCaller()
-                    .AsSplitQuery()
-                    .Skip((page - 1) * count)
-                    .Take(count)
                     .Select(s => new CompactScoreResponse {
                         Score = new CompactScore {
                             Id = s.ScoreId,
+                            OriginalId = s.Id,
                             BaseScore = s.BaseScore,
                             ModifiedScore = s.ModifiedScore,
                             EpochTime = s.Timepost,
@@ -469,9 +481,11 @@ namespace BeatLeader_Server.Controllers {
                             SongHash = s.Leaderboard.Song.Hash
                         }
                     })
-                    
-                    .ToListAsync()
-                };
+                    .ToListAsync());
+            }
+
+            if (ids.Count > 0) {
+                result.Data = result.Data.OrderBy(e => ids.IndexOf(e.Score.OriginalId)).ToList();
             }
 
             return result;
