@@ -2072,6 +2072,8 @@ namespace BeatLeader_Server.Controllers {
                 s.LeaderboardId == id &&
                 s.ValidForGeneral &&
                 !s.Banned)
+                .AsNoTracking()
+                .TagWithCaller()
                 .Select(s => new ScoreGraphEntry {
                     PlayerId = s.PlayerId,
                     Weight = s.Weight,

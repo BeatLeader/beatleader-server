@@ -492,6 +492,7 @@ namespace BeatLeader_Server.Controllers
             IQueryable<Score> query = _context
                 .Scores
                 .AsNoTracking()
+                .TagWithCaller()
                 .Where(s => s.ValidForGeneral && 
                             (!s.Banned || (s.Bot && showBots)) && 
                             s.LeaderboardId == leaderboardId);
@@ -607,7 +608,6 @@ namespace BeatLeader_Server.Controllers
             result.Metadata.Total = await query.CountAsync();
 
             var ids = await query
-                .TagWithCaller()
                 .OrderBy(p => p.Rank)
                 .Skip((page - 1) * count)
                 .Take(count)

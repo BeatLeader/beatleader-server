@@ -1261,9 +1261,10 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 await CollectStats(dbContext, storageContext, replay, offsets, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, resultScore);
-                if (leaderboard.SongId == "42743" || leaderboard.SongId.StartsWith("42743x")) {
-                    await AddAnniversaryAchievement(dbContext, resultScore);
-                }
+                //if (leaderboard.SongId == "42743" || leaderboard.SongId.StartsWith("42743x")) {
+                //    await AddAnniversaryAchievement(dbContext, resultScore);
+                //}
+                await AddTreeAchievement(dbContext, resultScore);
                 await dbContext.BulkSaveChangesAsync();
 
                 await SocketController.TryPublishNewScore(resultScore, dbContext);
@@ -1309,7 +1310,7 @@ namespace BeatLeader_Server.Controllers
                                     .WithTitle("Open leaderboard ↗")
                                     .WithUrl("https://beatleader.com/leaderboard/global/" + leaderboard.Id)
                                     .WithDescription("[Watch replay with BL](" + "https://replay.beatleader.com?scoreId=" + resultScore.Id + ") | [Watch replay with ArcViewer](" +"https://allpoland.github.io/ArcViewer/?scoreID=" + resultScore.Id + ")" )
-                                    .WithImageUrl("https://api.beatleader.com/preview/replay?scoreId=" + resultScore.Id)
+                                    .WithImageUrl("https://api.beatleader.xyz/preview/replay?scoreId=" + resultScore.Id)
                                     .Build()
                             });
                         await Task.Delay(TimeSpan.FromSeconds(30));
@@ -1679,6 +1680,45 @@ namespace BeatLeader_Server.Controllers
                 if (existingAch.LevelId >= newAchievement.LevelId) return;
                 dbContext.Achievements.Remove(existingAch);
             }
+
+            dbContext.Achievements.Add(newAchievement);
+        }
+
+        List<string> TreeMaps = new List<string>() { 
+            "426af",
+            "427e6",
+            "42851",
+            "428a3x",
+            "4293e",
+            "429a9",
+            "42a36",
+            "42a96",
+            "42abf",
+            "427ee",
+            "42bb3",
+            "41aaa",
+            "42939" };
+
+        [NonAction]
+        private async Task AddTreeAchievement(AppContext dbContext, Score newScore) {
+            if (newScore.Leaderboard?.SongId == null) return;
+            if (!TreeMaps.Contains(newScore.Leaderboard?.SongId)) return;
+
+            var existingAch = await dbContext.Achievements.Where(a => a.PlayerId == newScore.PlayerId && a.AchievementDescriptionId == 4).FirstOrDefaultAsync();
+
+            if (existingAch != null) return;
+
+            var maps = await dbContext.TreeMaps.ToListAsync();
+            var songIds = maps.Select(m => m.SongId).ToList();
+            var scores = await dbContext.Scores.Where(s => s.PlayerId == newScore.PlayerId && !s.Modifiers.Contains("NF") && songIds.Contains(s.Leaderboard.SongId)).Select(s => s.Leaderboard.SongId).ToListAsync();
+            if (scores.Distinct().Count() < 12) return;
+
+            var newAchievement = new Achievement {
+                AchievementDescriptionId = 4,
+                PlayerId = newScore.PlayerId,
+                LevelId = 9,
+                Timeset = Time.UnixNow()
+            };
 
             dbContext.Achievements.Add(newAchievement);
         }

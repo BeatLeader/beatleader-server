@@ -71,7 +71,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                 var allScores = leaderboard.Scores.Where(s => (!s.Banned || s.Bot) && s.ValidContexts.HasFlag(LeaderboardContexts.General)).ToList();
 
                 var status = leaderboard.Status;
-                var modifiers = leaderboard.ModifierValues;
+                var modifiers = leaderboard.ModifierValues ?? new ModifiersMap();
                 bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
                 bool hasPp = status == DifficultyStatus.ranked || qualification;
                 var newScores = new List<Score>();

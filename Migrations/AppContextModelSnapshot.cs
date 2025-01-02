@@ -3452,8 +3452,6 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("Accuracy");
 
-                    b.HasIndex("LeaderboardId");
-
                     b.HasIndex("MetadataId");
 
                     b.HasIndex("PlayerId");
@@ -3470,12 +3468,16 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("Banned", "Qualification", "Pp");
 
+                    b.HasIndex("LeaderboardId", "Banned", "ValidForGeneral");
+
                     b.HasIndex("PlayerId", "LeaderboardId", "ValidContexts")
                         .IsUnique();
 
                     b.HasIndex("PlayerId", "LeaderboardId", "ValidForGeneral");
 
                     b.HasIndex("PlayerId", "Banned", "Qualification", "Pp");
+
+                    b.HasIndex("PlayerId", "Banned", "ValidForGeneral", "Pp", "Timepost");
 
                     b.ToTable("Scores");
                 });
@@ -3900,6 +3902,32 @@ namespace BeatLeader_Server.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("SurveyResponses");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.TreeChampion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BundleId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Day")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Diffs")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PlayerId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TreeChampions");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.TreeMap", b =>

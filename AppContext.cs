@@ -113,6 +113,7 @@ namespace BeatLeader_Server
         public DbSet<TreeMap> TreeMaps { get; set; }
         public DbSet<TreeOrnament> TreeOrnaments { get; set; }
         public DbSet<PlayerTreeOrnament> PlayerTreeOrnaments { get; set; }
+        public DbSet<TreeChampion> TreeChampions { get; set; }
         public void RejectChanges()
         {
             foreach (var entry in ChangeTracker.Entries())
