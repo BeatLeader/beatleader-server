@@ -188,7 +188,7 @@ namespace BeatLeader_Server {
 
                     await Task.CompletedTask;
                 };
-                options.Cookie.SameSite = SameSiteMode.Lax;
+                options.Cookie.SameSite = Environment.IsDevelopment() ? SameSiteMode.None : SameSiteMode.Lax;
                 options.Cookie.HttpOnly = false;
                 options.ExpireTimeSpan = TimeSpan.FromDays(30);
                 options.Cookie.MaxAge = options.ExpireTimeSpan;

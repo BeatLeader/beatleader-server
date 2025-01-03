@@ -200,41 +200,8 @@ namespace BeatLeader_Server.Controllers
                             Weight = s.Weight,
                             AccLeft = s.AccLeft,
                             AccRight = s.AccRight,
-                            Player = s.Player != null ? new PlayerResponse {
-                                Id = s.Player.Id,
-                                Name = s.Player.Name,
-                                Alias = s.Player.Alias,
-                                Platform = s.Player.Platform,
-                                Avatar = s.Player.Avatar,
-                                Country = s.Player.Country,
-
-                                Pp = s.Player.Pp,
-                                Rank = s.Player.Rank,
-                                CountryRank = s.Player.CountryRank,
-                                Role = s.Player.Role,
-                                Socials = s.Player.Socials,
-                                PatreonFeatures = s.Player.PatreonFeatures,
-                                ProfileSettings = s.Player.ProfileSettings,
-                                ContextExtensions = s.Player.ContextExtensions != null ? s.Player.ContextExtensions.Select(ce => new PlayerContextExtension {
-                                    Context = ce.Context,
-                                    Pp = ce.Pp,
-                                    AccPp = ce.AccPp,
-                                    TechPp = ce.TechPp,
-                                    PassPp = ce.PassPp,
-                                    PlayerId = ce.PlayerId,
-
-                                    Rank = ce.Rank,
-                                    Country  = ce.Country,
-                                    CountryRank  = ce.CountryRank,
-                                }).ToList() : null,
-                                Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
-                                        .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                            } : null,
                             ScoreImprovement = s.ScoreImprovement,
-                            RankVoting = s.RankVoting,
-                            Metadata = s.Metadata,
                             Country = s.Country,
-                            Offsets = s.ReplayOffsets,
                             MaxStreak = s.MaxStreak
                         }).ToListAsync();
                 foreach (var score in result.Data) {
@@ -484,6 +451,163 @@ namespace BeatLeader_Server.Controllers
                     }
 
                     await _s3Client.UploadStatsRecord(filename, result);
+                }
+            }
+
+            return result;
+        }
+
+        public class LeaderboardScoreInfo {
+            public int Rank { get; set; }
+            public string PlayerId { get; set; }
+            public string PlayerName { get; set; }
+            public string PlayerAvatar { get; set; }
+            public string Replay { get; set; }
+            public string Modifiers { get; set; }
+            public ReplayOffsets ReplayOffsets { get; set; }
+        }
+
+        [NonAction]
+        public async Task<(LeaderboardStatsGraph?, ReplayOffsets?)> CollectLbGraph(LeaderboardScoreInfo scoreInfo, string replayLink, int? start, int? length) {
+
+            List<NoteEvent>? notes = null;
+            List<WallEvent>? walls = null;
+            ReplayOffsets? offsets = null;
+
+            string filename = replayLink.Split("/").Last();
+            
+            try {
+                if (start != null && length != null) {
+                    using (var stream = await _s3Client.DownloadStreamOffset(filename, replayLink.Contains("otherreplays") ? S3Container.otherreplays : S3Container.replays, (int)start, (int)length)) {
+                        if (stream == null) return (null, null);
+
+                        byte[] replayData;
+
+                        List<byte> replayDataList = new List<byte>(); 
+                        byte[] buffer = ArrayPool<byte>.Shared.Rent(4096);
+
+                        while (true)
+                        {
+                            var bytesRemaining = await stream.ReadAsync(buffer, offset: 0, buffer.Length);
+                            if (bytesRemaining == 0)
+                            {
+                                break;
+                            }
+                            replayDataList.AddRange(new Span<byte>(buffer, 0, bytesRemaining).ToArray());
+                        }
+
+                        ArrayPool<byte>.Shared.Return(buffer);
+
+                        replayData = replayDataList.ToArray();
+                        
+                        int pointer = 0;
+                        notes = ReplayDecoder.ReplayDecoder.DecodeNotes(replayData, ref pointer);
+                        pointer++;
+                        walls = ReplayDecoder.ReplayDecoder.DecodeWalls(replayData, ref pointer);
+                    }
+                } else {
+                    using (var stream = await _s3Client.DownloadStream(filename, replayLink.Contains("otherreplays") ? S3Container.otherreplays : S3Container.replays)) {
+                        if (stream == null) return (null, null);
+
+                        Replay? replay;
+                        byte[] replayData;
+
+                        List<byte> replayDataList = new List<byte>(); 
+                        byte[] buffer = ArrayPool<byte>.Shared.Rent(4096);
+
+                        while (true)
+                        {
+                            var bytesRemaining = await stream.ReadAsync(buffer, offset: 0, buffer.Length);
+                            if (bytesRemaining == 0)
+                            {
+                                break;
+                            }
+                            replayDataList.AddRange(new Span<byte>(buffer, 0, bytesRemaining).ToArray());
+                        }
+
+                        ArrayPool<byte>.Shared.Return(buffer);
+
+                        replayData = replayDataList.ToArray();
+                        (replay, offsets) = ReplayDecoder.ReplayDecoder.Decode(replayData);
+                        notes = replay?.notes;
+                        walls = replay?.walls;
+                    }
+                }
+            } catch {
+            }
+
+            if (notes == null || walls == null) return (null, null);
+
+            (_, var notesStructs, _, _) = ReplayStatistic.Accuracy(notes, walls);
+
+            return (new LeaderboardStatsGraph { 
+                Rank = scoreInfo.Rank,
+                PlayerId = scoreInfo.PlayerId,
+                PlayerName = scoreInfo.PlayerName,
+                PlayerAvatar = scoreInfo.PlayerAvatar,
+                Modifiers = scoreInfo.Modifiers,
+                Notes = notesStructs.Select(n => new LeaderboardStatsNote {
+                    SpawnTime = n.spawnTime,
+                    Score = n.score,
+                    Accuracy = n.accuracy
+                }).ToList()
+            }, offsets);
+        }
+
+        [HttpGet("~/map/scorestats/graph/top")]
+        public async Task<ActionResult<LeaderboardStatsRecord>> GetTopScoresGraphOnMap([FromQuery] string leaderboardId, [FromQuery] int page = 1) {
+            string? currentID = HttpContext.CurrentUserID(_context);
+
+            LeaderboardStatsRecord? result = null;
+            int count = 10;
+            var scoreSum = await _context
+                .Scores
+                .Where(s => s.ValidForGeneral && !s.Bot && s.LeaderboardId == leaderboardId)
+                .OrderBy(s => s.Rank)
+                .Skip((page - 1) * count)
+                .Take(count)
+                .Select(s => s.BaseScore)
+                .SumAsync();
+            string filename = $"{leaderboardId}_accgraph_{page}_{scoreSum}.json";
+
+            using (var stream = await _s3Client.DownloadStream(filename, S3Container.attempts)) {
+                if (stream != null) {
+                    result = stream.ObjectFromStream<LeaderboardStatsRecord>();
+                }
+            }
+            if (result != null) {
+                return result;
+            } else {
+                result = new LeaderboardStatsRecord { Scores = new List<LeaderboardStatsGraph>() };
+            }
+
+            var replays = await _context
+                .Scores
+                .AsNoTracking()
+                .Where(s => s.ValidForGeneral && !s.Bot && s.LeaderboardId == leaderboardId)
+                .OrderBy(s => s.Rank)
+                .Skip((page - 1) * count)
+                .Take(count)
+                .Select(s => new LeaderboardScoreInfo { 
+                    Rank = s.Rank,
+                    PlayerId = s.PlayerId, 
+                    PlayerAvatar = s.Player.Avatar,
+                    PlayerName = s.Player.Name,
+                    Replay = s.Replay, 
+                    ReplayOffsets = s.ReplayOffsets,
+                    Modifiers = s.Modifiers
+                })
+                .ToListAsync();
+            if (replays.Count > 0) {
+                var tasks = replays.Select(r => CollectLbGraph(r, r.Replay, r.ReplayOffsets?.Notes, (r.ReplayOffsets?.Heights ?? 0) - (r.ReplayOffsets?.Notes ?? 0)));
+                var scores = (await Task.WhenAll(tasks)).Where(t => t.Item1 != null).ToList();
+
+                if (scores.Count > 0) {
+                    foreach (var score in scores) {
+                        result.Scores.Add(score.Item1);
+                    }
+
+                    await _s3Client.UploadLeaderboardStatsRecord(filename, result);
                 }
             }
 
