@@ -66,6 +66,12 @@ public enum ClanSortBy {
     Captures
 }
 
+public enum MapperSortBy {
+    Name,
+    Maps,
+    RankedMaps
+}
+
 public enum PlayedStatus {
     Any,
     Played,

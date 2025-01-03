@@ -785,7 +785,7 @@ namespace BeatLeader_Server.Controllers
                    .Where(t => t.PlayerId == userId && t.Context == leaderboardContext)
                    .TagWithCaller();
 
-            IQueryable<IScore> sequence = await query
+            (IQueryable<IScore> sequence, int? searchId) = await query
                 .Filter(_context, !player.Banned, false, sortBy, order, search, diff, mode, requirements, ScoreFilterStatus.None, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId); 
 
             if (await sequence.CountAsync() == 0) { return NotFound(); }
@@ -842,6 +842,16 @@ namespace BeatLeader_Server.Controllers
             {
                 owner = HttpContext.CurrentUserID(_context) ?? ""
             };
+
+            if (searchId != null) {
+                HttpContext.Response.OnCompleted(async () => {
+                    var searchRecords = await _context.SongSearches.Where(s => s.SearchId == searchId).ToListAsync();
+                    foreach (var item in searchRecords) {
+                        _context.SongSearches.Remove(item);
+                    }
+                    await _context.BulkSaveChangesAsync();
+                });
+            }
 
             return JsonConvert.SerializeObject(playlist);
         }

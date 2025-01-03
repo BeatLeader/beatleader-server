@@ -54,8 +54,6 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Filter scores made before unix timestamp, default is null")] int? time_to = null,
             [FromQuery, SwaggerParameter("Show only scores from the event with ID, default is null")] int? eventId = null) {
 
-            search = null;
-
             string? userId = HttpContext.CurrentUserID(_context);
             var player = userId != null 
                 ? await _context
@@ -71,6 +69,7 @@ namespace BeatLeader_Server.Controllers {
             IQueryable<IScore> sequence = leaderboardContext == LeaderboardContexts.General 
                 ? _context.Scores.AsNoTracking().Where(s => s.ValidForGeneral)
                 : _context.ScoreContextExtensions.AsNoTracking().Include(ce => ce.ScoreInstance).Where(s => s.Context == leaderboardContext);
+            int? searchId = null;
 
             using (_serverTiming.TimeAction("sequence")) {
                 var friends = await _context
@@ -80,7 +79,7 @@ namespace BeatLeader_Server.Controllers {
                     .Include(f => f.Friends)
                     .FirstOrDefaultAsync();
 
-                sequence = await sequence.Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+                (sequence, searchId) = await sequence.Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId);
 
                 var friendsList = new List<string> { player.Id };
                 if (friends != null) {
@@ -215,7 +214,7 @@ namespace BeatLeader_Server.Controllers {
                 Data = resultList.OrderBy(s => scoreIds.IndexOf((int)s.Id))
             };
 
-            var leaderboards = result.Data.Select(s => s.LeaderboardId).ToList();
+            var leaderboards = result.Data.Where(s => s.PlayerId != userId).Select(s => s.LeaderboardId).ToList();
 
             var myScores = await ((IQueryable<IScore>)(leaderboardContext == LeaderboardContexts.General ? _context.Scores.TagWithCaller().Where(s => s.ValidForGeneral) : _context.ScoreContextExtensions.TagWithCaller().Include(ce => ce.ScoreInstance).Where(ce => ce.Context == leaderboardContext)))
                 .Where(s => s.PlayerId == userId && leaderboards.Contains(s.LeaderboardId))
@@ -250,27 +249,7 @@ namespace BeatLeader_Server.Controllers {
                         Timepost = s.Timepost,
                         LeaderboardId = s.LeaderboardId,
                         Platform = s.Platform,
-                        Player = new PlayerResponse
-                        {
-                            Id = s.Player.Id,
-                            Name = s.Player.Name,
-                            Alias = s.Player.Alias,
-                            Platform = s.Player.Platform,
-                            Avatar = s.Player.Avatar,
-                            Country = s.Player.Country,
-
-                            Pp = s.Player.Pp,
-                            Rank = s.Player.Rank,
-                            CountryRank = s.Player.CountryRank,
-                            Role = s.Player.Role,
-                            Socials = s.Player.Socials,
-                            ProfileSettings = s.Player.ProfileSettings,
-                            Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                        },
                         ScoreImprovement = s.ScoreImprovement,
-                        RankVoting = s.RankVoting,
-                        Metadata = s.Metadata,
-                        Offsets = s.ReplayOffsets,
                         Weight = s.Weight,
                         AccLeft = s.AccLeft,
                         AccRight = s.AccRight,
@@ -280,10 +259,19 @@ namespace BeatLeader_Server.Controllers {
             foreach (var score in result.Data)
             {
                 PostProcessSettings(score.Player, false);
-                score.MyScore = myScores.FirstOrDefault(s => s.LeaderboardId == score.LeaderboardId);
-                if (score.MyScore != null) {
-                    PostProcessSettings(score.MyScore.Player, false);
+                if (score.PlayerId != userId) {
+                    score.MyScore = myScores.FirstOrDefault(s => s.LeaderboardId == score.LeaderboardId);
                 }
+            }
+
+            if (searchId != null) {
+                HttpContext.Response.OnCompleted(async () => {
+                    var searchRecords = await _context.SongSearches.Where(s => s.SearchId == searchId).ToListAsync();
+                    foreach (var item in searchRecords) {
+                        _context.SongSearches.Remove(item);
+                    }
+                    await _context.BulkSaveChangesAsync();
+                });
             }
 
             return result;

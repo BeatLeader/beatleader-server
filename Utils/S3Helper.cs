@@ -141,6 +141,21 @@ namespace BeatLeader_Server.Utils
             return await client.UploadStream(filename, S3Container.attempts, new BinaryData(serialized).ToStream());
         }
 
+        public static async Task<string> UploadLeaderboardStatsRecord(this IAmazonS3 client, string filename, LeaderboardStatsRecord statsRecord)
+        {
+            var contractResolver = new DefaultContractResolver {
+                NamingStrategy = new CamelCaseNamingStrategy()
+            };
+
+            var serialized = JsonConvert.SerializeObject(statsRecord, new JsonSerializerSettings
+            {
+                ContractResolver = contractResolver,
+                Formatting = Formatting.Indented
+            });
+
+            return await client.UploadStream(filename, S3Container.attempts, new BinaryData(serialized).ToStream());
+        }
+
         public static async Task<string> UploadPlaylist(IAmazonS3 client, string filename, dynamic playlist)
         {
             return await client.UploadStream(filename, S3Container.playlists, new BinaryData(JsonConvert.SerializeObject(playlist)).ToStream());

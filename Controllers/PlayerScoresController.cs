@@ -39,7 +39,7 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [NonAction]
-        public async Task<(IQueryable<IScore>?, string)> ScoresQuery(
+        public async Task<(IQueryable<IScore>?, int?, string)> ScoresQuery(
             string id,
             string currentID,
             bool showRatings,
@@ -67,7 +67,7 @@ namespace BeatLeader_Server.Controllers {
                     .Select(p => new { p.Banned })
                     .FirstOrDefaultAsync();
             if (player == null) {
-                return (null, "");
+                return (null, null, "");
             }
 
             IQueryable<IScore> query = leaderboardContext == LeaderboardContexts.General 
@@ -80,8 +80,8 @@ namespace BeatLeader_Server.Controllers {
                    .Include(ce => ce.ScoreInstance)
                    .Where(t => t.PlayerId == id && t.Context == leaderboardContext)
                    .TagWithCaller();
-
-            return (await query.Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId), id);
+            (var resultQuery, int? searchId) = await query.Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+            return (resultQuery, searchId, id);
         }
 
         [HttpGet("~/player/{id}/scores")]
@@ -140,7 +140,8 @@ namespace BeatLeader_Server.Controllers {
             }
 
             (
-                IQueryable<IScore>? sequence,
+                IQueryable<IScore>? sequence, 
+                int? searchId,
                 string userId
             ) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             if (sequence == null) {
@@ -339,41 +340,8 @@ namespace BeatLeader_Server.Controllers {
                             Weight = s.Weight,
                             AccLeft = s.AccLeft,
                             AccRight = s.AccRight,
-                            Player = s.Player != null ? new PlayerResponse {
-                                Id = s.Player.Id,
-                                Name = s.Player.Name,
-                                Alias = s.Player.Alias,
-                                Platform = s.Player.Platform,
-                                Avatar = s.Player.Avatar,
-                                Country = s.Player.Country,
-
-                                Pp = s.Player.Pp,
-                                Rank = s.Player.Rank,
-                                CountryRank = s.Player.CountryRank,
-                                Role = s.Player.Role,
-                                Socials = s.Player.Socials,
-                                PatreonFeatures = s.Player.PatreonFeatures,
-                                ProfileSettings = s.Player.ProfileSettings,
-                                ContextExtensions = s.Player.ContextExtensions != null ? s.Player.ContextExtensions.Select(ce => new PlayerContextExtension {
-                                    Context = ce.Context,
-                                    Pp = ce.Pp,
-                                    AccPp = ce.AccPp,
-                                    TechPp = ce.TechPp,
-                                    PassPp = ce.PassPp,
-                                    PlayerId = ce.PlayerId,
-
-                                    Rank = ce.Rank,
-                                    Country  = ce.Country,
-                                    CountryRank  = ce.CountryRank,
-                                }).ToList() : null,
-                                Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
-                                        .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
-                            } : null,
                             ScoreImprovement = s.ScoreImprovement,
-                            RankVoting = s.RankVoting,
-                            Metadata = s.Metadata,
                             Country = s.Country,
-                            Offsets = s.ReplayOffsets,
                             MaxStreak = s.MaxStreak
                         })
                         .ToListAsync();
@@ -381,6 +349,16 @@ namespace BeatLeader_Server.Controllers {
                         score.MyScore = myScores.FirstOrDefault(s => s.LeaderboardId == score.LeaderboardId);
                     }
                 }
+            }
+
+            if (searchId != null) {
+                HttpContext.Response.OnCompleted(async () => {
+                    var searchRecords = await _context.SongSearches.Where(s => s.SearchId == searchId).ToListAsync();
+                    foreach (var item in searchRecords) {
+                        _context.SongSearches.Remove(item);
+                    }
+                    await _context.BulkSaveChangesAsync();
+                });
             }
 
             return result;
@@ -431,7 +409,7 @@ namespace BeatLeader_Server.Controllers {
                 sortBy = ScoresSortBy.Pp;
             }
 
-            (IQueryable<IScore>? sequence, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+            (IQueryable<IScore>? sequence, int? searchId, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             if (sequence == null) {
                 return NotFound();
             }
@@ -486,6 +464,16 @@ namespace BeatLeader_Server.Controllers {
 
             if (ids.Count > 0) {
                 result.Data = result.Data.OrderBy(e => ids.IndexOf(e.Score.OriginalId)).ToList();
+            }
+
+            if (searchId != null) {
+                HttpContext.Response.OnCompleted(async () => {
+                    var searchRecords = await _context.SongSearches.Where(s => s.SearchId == searchId).ToListAsync();
+                    foreach (var item in searchRecords) {
+                        _context.SongSearches.Remove(item);
+                    }
+                    await _context.BulkSaveChangesAsync();
+                });
             }
 
             return result;
@@ -565,9 +553,19 @@ namespace BeatLeader_Server.Controllers {
                 sortBy = ScoresSortBy.Pp;
             }
 
-            (IQueryable<IScore>? sequence, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+            (IQueryable<IScore>? sequence, int? searchId, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId);
             if (sequence == null) {
                 return NotFound();
+            }
+
+            if (searchId != null) {
+                HttpContext.Response.OnCompleted(async () => {
+                    var searchRecords = await _context.SongSearches.Where(s => s.SearchId == searchId).ToListAsync();
+                    foreach (var item in searchRecords) {
+                        _context.SongSearches.Remove(item);
+                    }
+                    await _context.BulkSaveChangesAsync();
+                });
             }
 
             switch (sortBy) {
