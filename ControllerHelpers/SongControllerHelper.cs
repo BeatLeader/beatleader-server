@@ -219,7 +219,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                 newLeaderboard.NegativeVotes = oldLeaderboard.NegativeVotes;
                 newLeaderboard.PositiveVotes = oldLeaderboard.PositiveVotes;
                 if (oldLeaderboard.Qualification.DiscordRTChannelId.Length > 0 && diff.Status.WithRating()) {
-                    await RTNominationsForum.NominationReuploaded(dbContext, oldLeaderboard.Qualification, oldLeaderboardId);
+                    await RTNominationsForum.NominationReuploaded(dbContext, oldLeaderboard.Qualification, newLeaderboard.Id);
                 }
                 oldLeaderboard.Qualification = null;
             }
