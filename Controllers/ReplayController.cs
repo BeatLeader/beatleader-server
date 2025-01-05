@@ -1264,7 +1264,7 @@ namespace BeatLeader_Server.Controllers
                 //if (leaderboard.SongId == "42743" || leaderboard.SongId.StartsWith("42743x")) {
                 //    await AddAnniversaryAchievement(dbContext, resultScore);
                 //}
-                await AddTreeAchievement(dbContext, resultScore);
+                //await AddTreeAchievement(dbContext, resultScore);
                 await dbContext.BulkSaveChangesAsync();
 
                 await SocketController.TryPublishNewScore(resultScore, dbContext);

@@ -37,7 +37,7 @@ namespace BeatLeader_Server.Services
             do {
                 try {
                     await RefreshPrometheus();
-                    await RefreshTreeMaps();
+                    //await RefreshTreeMaps();
                 } catch (Exception e) {
                     Console.WriteLine($"EXCEPTION MinuteRefresh {e}");
                 }
