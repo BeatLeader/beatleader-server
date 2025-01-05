@@ -270,6 +270,18 @@ namespace BeatLeader_Server.ControllerHelpers {
                         await dbContext.SaveChangesAsync();
                     }
                 }
+
+                if (map.Nsfw && !song.Explicity.HasFlag(SongExplicitStatus.Cover)) {
+                    song.Explicity |= SongExplicitStatus.Cover;
+                    if (save) {
+                        await dbContext.SaveChangesAsync();
+                    }
+                } else if (song.Explicity.HasFlag(SongExplicitStatus.Cover)) {
+                    song.Explicity &= ~SongExplicitStatus.Cover;
+                    if (save) {
+                        await dbContext.SaveChangesAsync();
+                    }
+                }
             }
         }
 

@@ -170,6 +170,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                         Mapper = cr.Leaderboard.Song.Mapper,
                         CoverImage  = cr.Leaderboard.Song.CoverImage,
                         FullCoverImage = cr.Leaderboard.Song.FullCoverImage,
+                        DownloadUrl = cr.Leaderboard.Song.DownloadUrl
                     },
                     Difficulty = new DifficultyResponse {
                         Id = cr.Leaderboard.Difficulty.Id,

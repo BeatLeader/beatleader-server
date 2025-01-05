@@ -51,7 +51,11 @@ namespace BeatLeader_Server.Utils {
 
                 IEnumerable<string> ids = matches.Select(songMetadata => songMetadata.Id);
 
-                sequence = sequence.Where(s => ids.Contains(s.Leaderboard.SongId));
+                if (sequence is IQueryable<Score>) {
+                    sequence = (IQueryable<Score>)(((IQueryable<Score>)sequence).Where(s => ids.Contains(s.Leaderboard.SongId)));
+                } else {
+                    sequence = sequence.Where(s => ids.Contains(s.Leaderboard.SongId));
+                }
             }
             switch (sortBy) {
                 case ScoresSortBy.Date:

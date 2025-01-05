@@ -664,6 +664,7 @@ namespace BeatLeader_Server.Controllers {
                     Bpm = l.Song.Bpm,
                     Duration = l.Song.Duration,
                     UploadTime = l.Song.UploadTime,
+                    Explicity = l.Song.Explicity,
                     Mappers = l.Song != null ? l.Song.Mappers.Select(m => new MapperResponse {
                         Id = m.Id,
                         PlayerId = m.Player != null ? m.Player.Id : null,
@@ -906,6 +907,7 @@ namespace BeatLeader_Server.Controllers {
                     Bpm = l.Song.Bpm,
                     Duration = l.Song.Duration,
                     UploadTime = l.Song.UploadTime,
+                    Explicity = l.Song.Explicity,
                     Mappers = l.Song.Mappers != null ? l.Song.Mappers.Select(m => new MapperResponse {
                         Id = m.Id,
                         PlayerId = m.Player != null ? m.Player.Id : null,
@@ -1041,6 +1043,8 @@ namespace BeatLeader_Server.Controllers {
                             Mapper = cr.Leaderboard.Song.Mapper,
                             CoverImage  = cr.Leaderboard.Song.CoverImage,
                             FullCoverImage = cr.Leaderboard.Song.FullCoverImage,
+                            DownloadUrl = cr.Leaderboard.Song.DownloadUrl,
+                            Explicity = cr.Leaderboard.Song.Explicity
                         },
                         Difficulty = new DifficultyResponse {
                             Id = cr.Leaderboard.Difficulty.Id,
@@ -1172,6 +1176,7 @@ namespace BeatLeader_Server.Controllers {
                             Mapper = cr.Leaderboard.Song.Mapper,
                             CoverImage  = cr.Leaderboard.Song.CoverImage,
                             FullCoverImage = cr.Leaderboard.Song.FullCoverImage,
+                            Explicity = cr.Leaderboard.Song.Explicity
                         },
                         Difficulty = new DifficultyResponse {
                             Id = cr.Leaderboard.Difficulty.Id,
@@ -1356,6 +1361,7 @@ namespace BeatLeader_Server.Controllers {
                         Bpm = l.Song.Bpm,
                         Duration = l.Song.Duration,
                         UploadTime = l.Song.UploadTime,
+                        Explicity = l.Song.Explicity,
                         Mappers = l.Song.Mappers != null ? l.Song.Mappers.Select(m => new MapperResponse {
                             Id = m.Id,
                             PlayerId = m.Player != null ? m.Player.Id : null,
@@ -1484,6 +1490,7 @@ namespace BeatLeader_Server.Controllers {
                                 Mapper = cr.Leaderboard.Song.Mapper,
                                 CoverImage  = cr.Leaderboard.Song.CoverImage,
                                 FullCoverImage = cr.Leaderboard.Song.FullCoverImage,
+                                Explicity = cr.Leaderboard.Song.Explicity
                             },
                             Difficulty = new DifficultyResponse {
                                 Id = cr.Leaderboard.Difficulty.Id,
@@ -1726,7 +1733,38 @@ namespace BeatLeader_Server.Controllers {
                     .AsSplitQuery()
                     .Select(lb => new LeaderboardInfoResponse {
                         Id = lb.Id,
-                        Song = lb.Song,
+                        Song = type == Type.Staff ? new SongResponse {
+                            Id = lb.Song.Id,
+                            Hash = lb.Song.Hash,
+                            Name = lb.Song.Name,
+                            SubName = lb.Song.SubName,
+                            Author = lb.Song.Author,
+                            Mapper = lb.Song.Mapper,
+                            CoverImage  = lb.Song.CoverImage,
+                            DownloadUrl = lb.Song.DownloadUrl,
+                            FullCoverImage = lb.Song.FullCoverImage,
+                            Explicity = lb.Song.Explicity,
+                            Mappers = lb.Song != null ? lb.Song.Mappers.Select(m => new MapperResponse {
+                                Id = m.Id,
+                                PlayerId = m.Player != null ? m.Player.Id : null,
+                                Name = m.Player != null ? m.Player.Name : m.Name,
+                                Avatar = m.Player != null ? m.Player.Avatar : m.Avatar,
+                                Curator = m.Curator,
+                                VerifiedMapper = m.VerifiedMapper,
+                            }).ToList() : null,
+                            Difficulties = lb.Song.Difficulties,
+                        } : new SongResponse {
+                            Id = lb.Song.Id,
+                            Hash = lb.Song.Hash,
+                            Name = lb.Song.Name,
+                            SubName = lb.Song.SubName,
+                            Author = lb.Song.Author,
+                            Mapper = lb.Song.Mapper,
+                            CoverImage  = lb.Song.CoverImage,
+                            DownloadUrl = lb.Song.DownloadUrl,
+                            FullCoverImage = lb.Song.FullCoverImage,
+                            Explicity = lb.Song.Explicity
+                        },
                         Difficulty = new DifficultyResponse {
                             Id = lb.Difficulty.Id,
                             Value = lb.Difficulty.Value,
@@ -1930,7 +1968,18 @@ namespace BeatLeader_Server.Controllers {
             result.Data = await sequence
                 .Select(lb => new LeaderboardInfoResponse {
                     Id = lb.Id,
-                    Song = lb.Song,
+                    Song = new SongResponse {
+                        Id = lb.Song.Id,
+                        Hash = lb.Song.Hash,
+                        Name = lb.Song.Name,
+                        SubName = lb.Song.SubName,
+                        Author = lb.Song.Author,
+                        Mapper = lb.Song.Mapper,
+                        CoverImage  = lb.Song.CoverImage,
+                        DownloadUrl = lb.Song.DownloadUrl,
+                        FullCoverImage = lb.Song.FullCoverImage,
+                        Explicity = lb.Song.Explicity
+                    },
                     Difficulty = new DifficultyResponse {
                         Id = lb.Difficulty.Id,
                         Value = lb.Difficulty.Value,

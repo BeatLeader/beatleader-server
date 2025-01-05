@@ -452,7 +452,18 @@ namespace BeatLeader_Server.Controllers
                     .Where(lb => result.Contains(lb.Id))
                     .Select(lb => new LeaderboardInfoResponse {
                         Id = lb.Id,
-                        Song = lb.Song,
+                        Song = new SongResponse {
+                            Id = lb.Song.Id,
+                            Hash = lb.Song.Hash,
+                            Name = lb.Song.Name,
+                            SubName = lb.Song.SubName,
+                            Author = lb.Song.Author,
+                            Mapper = lb.Song.Mapper,
+                            CoverImage  = lb.Song.CoverImage,
+                            FullCoverImage = lb.Song.FullCoverImage,
+                            DownloadUrl = lb.Song.DownloadUrl,
+                            Explicity = lb.Song.Explicity
+                        },
                         Difficulty = new DifficultyResponse {
                             Id = lb.Difficulty.Id,
                             Value = lb.Difficulty.Value,

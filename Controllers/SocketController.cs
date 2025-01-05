@@ -180,7 +180,8 @@ namespace BeatLeader_Server.Controllers
                             Mapper = s.Mapper,
                             MapperId = s.MapperId,
                             CollaboratorIds = s.CollaboratorIds,
-                            CoverImage = s.CoverImage
+                            CoverImage = s.CoverImage,
+                            Explicity = s.Explicity
                         })
                         .FirstOrDefaultAsync();
                 }
@@ -276,7 +277,8 @@ namespace BeatLeader_Server.Controllers
                             Mapper = s.Mapper,
                             MapperId = s.MapperId,
                             CollaboratorIds = s.CollaboratorIds,
-                            CoverImage = s.CoverImage
+                            CoverImage = s.CoverImage,
+                            Explicity = s.Explicity
                         })
                         .FirstOrDefaultAsync();
                 }

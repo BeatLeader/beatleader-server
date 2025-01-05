@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20241220125037_ScoresIndexWithTimeset")]
+    partial class ScoresIndexWithTimeset
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -3452,6 +3455,8 @@ namespace BeatLeader_Server.Migrations
 
                     b.HasIndex("Accuracy");
 
+                    b.HasIndex("LeaderboardId");
+
                     b.HasIndex("MetadataId");
 
                     b.HasIndex("PlayerId");
@@ -3467,8 +3472,6 @@ namespace BeatLeader_Server.Migrations
                     b.HasIndex("Timepost", "Replay");
 
                     b.HasIndex("Banned", "Qualification", "Pp");
-
-                    b.HasIndex("LeaderboardId", "Banned", "ValidForGeneral");
 
                     b.HasIndex("PlayerId", "LeaderboardId", "ValidContexts")
                         .IsUnique();
@@ -3746,9 +3749,6 @@ namespace BeatLeader_Server.Migrations
                     b.Property<double>("Duration")
                         .HasColumnType("float");
 
-                    b.Property<int>("Explicity")
-                        .HasColumnType("int");
-
                     b.Property<string>("FullCoverImage")
                         .HasColumnType("nvarchar(max)");
 
@@ -3905,32 +3905,6 @@ namespace BeatLeader_Server.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("SurveyResponses");
-                });
-
-            modelBuilder.Entity("BeatLeader_Server.Models.TreeChampion", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("BundleId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Day")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Diffs")
-                        .HasColumnType("int");
-
-                    b.Property<string>("PlayerId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("TreeChampions");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.TreeMap", b =>
