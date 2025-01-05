@@ -81,7 +81,7 @@ namespace BeatLeader_Server.Controllers
                 }
             };
 
-            int[] undownloadable = [48, 46, 32];
+            int[] undownloadable = [48, 46, 32, 63];
             result.Data = await query.Select(e => new EventResponse {
                 Id = e.Id,
                 Name = e.Name,
@@ -414,6 +414,58 @@ namespace BeatLeader_Server.Controllers
         }
 
         [ApiExplorerSettings(IgnoreApi = true)]
+        [HttpPost("~/event/start/noplaylist")]
+        public async Task<ActionResult> StartEventWithoutPlaylist(
+               [FromQuery] string name,
+               [FromQuery] string? description,
+               [FromQuery] int endDate)
+        {
+            if (HttpContext != null)
+            {
+                string userId = HttpContext.CurrentUserID(_context);
+                var currentPlayer = await _context.Players.FindAsync(userId);
+
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+
+            var lastEvent = _context.EventRankings.OrderBy(e => e.Id).FirstOrDefault();
+
+            string fileName = (lastEvent?.Id ?? 0) + "-event-cover";
+            string? imageUrl = null;
+            try
+            {
+                var ms = new MemoryStream(5);
+                await Request.Body.CopyToAsync(ms);
+                ms.Position = 0;
+
+                (string extension, MemoryStream stream2) = ImageUtils.GetFormatAndResize(ms);
+                fileName += extension;
+
+                imageUrl = await _s3Client.UploadAsset(fileName, stream2);
+            }
+            catch (Exception)
+            {
+                return BadRequest("Error saving avatar");
+            }
+
+            var eventRanking = new EventRanking {
+                Name = name,
+                EndDate = endDate,
+                Description = description,
+                Image = imageUrl ?? ""
+            };
+
+            _context.EventRankings.Add(eventRanking);
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [ApiExplorerSettings(IgnoreApi = true)]
         [HttpDelete("~/event/{id}")]
         public async Task<ActionResult> DeleteEvent(int id)
         {
@@ -459,6 +511,82 @@ namespace BeatLeader_Server.Controllers
             var eventRanking = await _context.EventRankings.FirstOrDefaultAsync(e => e.Id == id);
             eventRanking.Description = value;
             _context.SaveChanges();
+            return Ok();
+        }
+
+        [ApiExplorerSettings(IgnoreApi = true)]
+        [HttpPost("~/event/project-tree/champion")]
+        public async Task<ActionResult> ProjectTreeChampion([FromQuery] string playerId, [FromQuery] int diff, [FromQuery] int day) {
+            if (HttpContext != null)
+            {
+                string userId = HttpContext.CurrentUserID(_context);
+                var currentPlayer = await _context.Players.FindAsync(userId);
+
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+
+            var player = _context.Players.Where(p => p.Id == playerId).Include(p => p.EventsParticipating).FirstOrDefault();
+            if (player == null) {
+                return NotFound();
+            }
+
+            if (player.EventsParticipating == null) {
+                player.EventsParticipating = new List<EventPlayer>();
+            }
+
+            var currentEvent = player.EventsParticipating.FirstOrDefault(ep => ep.EventRankingId == 62);
+            if (currentEvent == null) {
+                currentEvent = new EventPlayer {
+                    PlayerId = player.Id,
+                    Country = player.Country,
+                    EventName = "Project Tree",
+                    PlayerName = player.Name,
+                    EventRankingId = 62
+                };
+                player.EventsParticipating.Add(currentEvent);
+            }
+
+            var champion = _context.TreeChampions.FirstOrDefault(c => c.Day == day && c.PlayerId == player.Id);
+
+            if (champion == null) {
+                currentEvent.Pp += 1f;
+            }
+
+            _context.TreeChampions.Add(new TreeChampion {
+                Day = day,
+                PlayerId = player.Id,
+                Diffs = diff
+            });
+
+            _context.SaveChanges();
+
+            var champions = _context.TreeChampions.ToList();
+
+            var eps = _context.EventPlayer.Where(e => e.EventRankingId == 62).ToList();
+            Dictionary<string, int> countries = new Dictionary<string, int>();
+            
+            int ii = 0;
+            foreach (EventPlayer p in eps.OrderByDescending(s => (int)s.Pp).ThenByDescending(s => champions.Where(c => c.PlayerId == s.PlayerId).Sum(c => c.Diffs)))
+            {
+                if (p.Rank != 0) {
+                    p.Rank = p.Rank;
+                }
+                p.Rank = ii + 1;
+                if (!countries.ContainsKey(p.Country))
+                {
+                    countries[p.Country] = 1;
+                }
+
+                p.CountryRank = countries[p.Country];
+                countries[p.Country]++;
+                ii++;
+            }
+
+            _context.SaveChanges();
+
             return Ok();
         }
     }
