@@ -594,9 +594,6 @@ namespace BeatLeader_Server.Controllers
                     result.Selection.FillNames();
                     if (scope.ToLower() == "friends" || scope.ToLower() == "country" || scope.ToLower().StartsWith("clan_")) {
                         result.Selection.Rank = await query.CountAsync(s => s.Rank < result.Selection.Rank) + 1;
-                    } else {
-                        result.Selection.Rank += await query.CountAsync(s => s.Bot && (
-                            highlightedScore.Pp > 0 ? (s.Pp > highlightedScore.Pp) : (s.ModifiedScore > highlightedScore.ModifiedScore)));
                     }
                 }
 

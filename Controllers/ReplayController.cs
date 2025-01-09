@@ -1261,10 +1261,6 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 await CollectStats(dbContext, storageContext, replay, offsets, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, resultScore);
-                //if (leaderboard.SongId == "42743" || leaderboard.SongId.StartsWith("42743x")) {
-                //    await AddAnniversaryAchievement(dbContext, resultScore);
-                //}
-                //await AddTreeAchievement(dbContext, resultScore);
                 await dbContext.BulkSaveChangesAsync();
 
                 await SocketController.TryPublishNewScore(resultScore, dbContext);
@@ -1650,77 +1646,6 @@ namespace BeatLeader_Server.Controllers
             } catch (Exception e) {
                 Console.WriteLine($"RefreshNoteCount EXCEPTION {e}");
             }
-        }
-
-        [NonAction]
-        private async Task AddAnniversaryAchievement(AppContext dbContext, Score newScore) {
-            var existingAch = await dbContext.Achievements.Where(a => a.PlayerId == newScore.PlayerId && a.AchievementDescriptionId == 3).FirstOrDefaultAsync();
-
-            var levelId = 5;
-
-            if (!newScore.Modifiers.Contains("NF") &&
-                !newScore.Modifiers.Contains("SS") &&
-                !newScore.Modifiers.Contains("NA") &&
-                !newScore.Modifiers.Contains("NB") &&
-                !newScore.Modifiers.Contains("NO")) {
-                levelId = 6;
-                if (newScore.Accuracy > 0.9) {
-                    levelId = 7;
-                }
-            }
-
-            var newAchievement = new Achievement {
-                AchievementDescriptionId = 3,
-                PlayerId = newScore.PlayerId,
-                LevelId = levelId,
-                Timeset = Time.UnixNow()
-            };
-
-            if (existingAch != null) {
-                if (existingAch.LevelId >= newAchievement.LevelId) return;
-                dbContext.Achievements.Remove(existingAch);
-            }
-
-            dbContext.Achievements.Add(newAchievement);
-        }
-
-        List<string> TreeMaps = new List<string>() { 
-            "426af",
-            "427e6",
-            "42851",
-            "428a3x",
-            "4293e",
-            "429a9",
-            "42a36",
-            "42a96",
-            "42abf",
-            "427ee",
-            "42bb3",
-            "41aaa",
-            "42939" };
-
-        [NonAction]
-        private async Task AddTreeAchievement(AppContext dbContext, Score newScore) {
-            if (newScore.Leaderboard?.SongId == null) return;
-            if (!TreeMaps.Contains(newScore.Leaderboard?.SongId)) return;
-
-            var existingAch = await dbContext.Achievements.Where(a => a.PlayerId == newScore.PlayerId && a.AchievementDescriptionId == 4).FirstOrDefaultAsync();
-
-            if (existingAch != null) return;
-
-            var maps = await dbContext.TreeMaps.ToListAsync();
-            var songIds = maps.Select(m => m.SongId).ToList();
-            var scores = await dbContext.Scores.Where(s => s.PlayerId == newScore.PlayerId && !s.Modifiers.Contains("NF") && songIds.Contains(s.Leaderboard.SongId)).Select(s => s.Leaderboard.SongId).ToListAsync();
-            if (scores.Distinct().Count() < 12) return;
-
-            var newAchievement = new Achievement {
-                AchievementDescriptionId = 4,
-                PlayerId = newScore.PlayerId,
-                LevelId = 9,
-                Timeset = Time.UnixNow()
-            };
-
-            dbContext.Achievements.Add(newAchievement);
         }
 
         class OldPlayerStats {

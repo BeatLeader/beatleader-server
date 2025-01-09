@@ -1,9 +1,11 @@
 ﻿using BeatLeader_Server.ControllerHelpers;
+using BeatLeader_Server.Enums;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Utils;
 using Microsoft.EntityFrameworkCore;
 using Prometheus.Client;
 using System.Net;
+using static BeatLeader_Server.ControllerHelpers.LeaderboardControllerHelper;
 
 namespace BeatLeader_Server.Services
 {
@@ -21,6 +23,8 @@ namespace BeatLeader_Server.Services
         public static string CurrentHost = "";
         public static int ScoresCount = 0;
 
+        public static List<MassLeaderboardsInfoResponse> massLeaderboards = new List<MassLeaderboardsInfoResponse>();
+
         public MinuteRefresh(IServiceScopeFactory serviceScopeFactory, IMetricFactory metricFactory, IConfiguration configuration)
         {
             _serviceScopeFactory = serviceScopeFactory;
@@ -36,6 +40,7 @@ namespace BeatLeader_Server.Services
         {
             do {
                 try {
+                    await RefreshMaps();
                     await RefreshPrometheus();
                     //await RefreshTreeMaps();
                 } catch (Exception e) {
@@ -45,6 +50,65 @@ namespace BeatLeader_Server.Services
                 await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
             }
             while (!stoppingToken.IsCancellationRequested);
+        }
+
+        public async Task RefreshMaps() {
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+
+                massLeaderboards = await _context.Leaderboards.FilterRanking(_context, MapSortBy.None, Order.Asc)
+                    .TagWithCallerS()
+                    .AsNoTracking()
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(d => d.ModifierValues)
+                    .Include(lb => lb.Difficulty)
+                    .ThenInclude(d => d.ModifiersRating)
+                    .Select(lb => new MassLeaderboardsInfoResponse {
+                        Id = lb.Id,
+                        Song = new SongInfo {
+                            Id = lb.Song.Id,
+                            Hash = lb.Song.Hash,
+                            UploadTime = lb.Song.UploadTime
+                        },
+                        Difficulty = new MassLeaderboardsDiffInfo {
+                            Id = lb.Difficulty.Id,
+                            Value = lb.Difficulty.Value,
+                            Mode = lb.Difficulty.Mode,
+                            DifficultyName = lb.Difficulty.DifficultyName,
+                            ModeName = lb.Difficulty.ModeName,
+                            Status = lb.Difficulty.Status,
+                            ModifierValues = lb.Difficulty.ModifierValues,
+                            ModifiersRating = lb.Difficulty.ModifiersRating,
+                            NominatedTime  = lb.Difficulty.NominatedTime,
+                            QualifiedTime  = lb.Difficulty.QualifiedTime,
+                            RankedTime = lb.Difficulty.RankedTime,
+
+                            Stars  = lb.Difficulty.Stars,
+                            PassRating  = lb.Difficulty.PassRating,
+                            AccRating  = lb.Difficulty.AccRating,
+                            TechRating  = lb.Difficulty.TechRating,
+                            Type  = lb.Difficulty.Type,
+                            MaxScore = lb.Difficulty.MaxScore,
+                        },
+                        Qualification = lb.Qualification != null ? new QualificationInfo {
+                            Id = lb.Qualification.Id,
+                            Timeset = lb.Qualification.Timeset,
+                            RTMember = lb.Qualification.RTMember,
+                            CriteriaMet = lb.Qualification.CriteriaMet,
+                            CriteriaTimeset = lb.Qualification.CriteriaTimeset,
+                            CriteriaChecker = lb.Qualification.CriteriaChecker,
+                            CriteriaCommentary = lb.Qualification.CriteriaCommentary,
+                            MapperAllowed = lb.Qualification.MapperAllowed,
+                            MapperId = lb.Qualification.MapperId,
+                            MapperQualification = lb.Qualification.MapperQualification,
+                            ApprovalTimeset = lb.Qualification.ApprovalTimeset,
+                            Approved = lb.Qualification.Approved,
+                            Approvers = lb.Qualification.Approvers,
+                        } : null
+                    })
+                    .ToListAsync();
+            }
         }
 
         public async Task RefreshPrometheus()

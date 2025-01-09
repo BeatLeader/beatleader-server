@@ -1,6 +1,7 @@
 ﻿using BeatLeader_Server.Enums;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
+using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Microsoft.EntityFrameworkCore;
 
@@ -75,6 +76,7 @@ namespace BeatLeader_Server.ControllerHelpers {
         public class SongInfo {
             public string Id { get; set; }
             public string Hash { get; set; }
+            public int UploadTime { get; set; }
         }
 
         public class MassLeaderboardsDiffInfo {
@@ -123,74 +125,17 @@ namespace BeatLeader_Server.ControllerHelpers {
             int? date_to = null
             ) {
 
-            var dbContext = contextFactory.CreateDbContext();
-            var dbContext2 = contextFactory.CreateDbContext();
-
-            var sequence = dbContext.Leaderboards.FilterRanking(dbContext, MapSortBy.None, Order.Asc, date_from, date_to);
-            var sequence2 = dbContext2.Leaderboards.FilterRanking(dbContext2, MapSortBy.None, Order.Asc, date_from, date_to);
-
-            (var totalMatches, var ids) = await sequence.TagWithCallerS().CountAsync()
-                .CoundAndResults(sequence2.TagWithCallerS().Skip((page - 1) * count).Take(count).Select(l => l.Id).ToListAsync());
+            var allBoards = MinuteRefresh.massLeaderboards;
 
             var result = new ResponseWithMetadata<MassLeaderboardsInfoResponse>() {
                 Metadata = new Metadata() {
                     Page = page,
                     ItemsPerPage = count,
-                    Total = totalMatches,
+                    Total = allBoards.Where(lb => (date_from == null || lb.Song.UploadTime >= date_from) && (date_to == null || lb.Song.UploadTime <= date_to)).Count(),
                 }
             };
 
-            var resultList = await dbContext.Leaderboards
-                .Where(lb => ids.Contains(lb.Id))
-                .TagWithCallerS()
-                .AsNoTracking()
-                .Include(lb => lb.Difficulty)
-                .ThenInclude(d => d.ModifierValues)
-                .Include(lb => lb.Difficulty)
-                .ThenInclude(d => d.ModifiersRating)
-                .Select(lb => new MassLeaderboardsInfoResponse {
-                    Id = lb.Id,
-                    Song = new SongInfo {
-                        Id = lb.Song.Id,
-                        Hash = lb.Song.Hash
-                    },
-                    Difficulty = new MassLeaderboardsDiffInfo {
-                        Id = lb.Difficulty.Id,
-                        Value = lb.Difficulty.Value,
-                        Mode = lb.Difficulty.Mode,
-                        DifficultyName = lb.Difficulty.DifficultyName,
-                        ModeName = lb.Difficulty.ModeName,
-                        Status = lb.Difficulty.Status,
-                        ModifierValues = lb.Difficulty.ModifierValues,
-                        ModifiersRating = lb.Difficulty.ModifiersRating,
-                        NominatedTime  = lb.Difficulty.NominatedTime,
-                        QualifiedTime  = lb.Difficulty.QualifiedTime,
-                        RankedTime = lb.Difficulty.RankedTime,
-
-                        Stars  = lb.Difficulty.Stars,
-                        PassRating  = lb.Difficulty.PassRating,
-                        AccRating  = lb.Difficulty.AccRating,
-                        TechRating  = lb.Difficulty.TechRating,
-                        Type  = lb.Difficulty.Type,
-                        MaxScore = lb.Difficulty.MaxScore,
-                    },
-                    Qualification = lb.Qualification != null ? new QualificationInfo {
-                        Id = lb.Qualification.Id,
-                        Timeset = lb.Qualification.Timeset,
-                        RTMember = lb.Qualification.RTMember,
-                        CriteriaMet = lb.Qualification.CriteriaMet,
-                        CriteriaTimeset = lb.Qualification.CriteriaTimeset,
-                        CriteriaChecker = lb.Qualification.CriteriaChecker,
-                        CriteriaCommentary = lb.Qualification.CriteriaCommentary,
-                        MapperAllowed = lb.Qualification.MapperAllowed,
-                        MapperId = lb.Qualification.MapperId,
-                        MapperQualification = lb.Qualification.MapperQualification,
-                        ApprovalTimeset = lb.Qualification.ApprovalTimeset,
-                        Approved = lb.Qualification.Approved,
-                        Approvers = lb.Qualification.Approvers,
-                    } : null
-                })
-                .ToListAsync();
+            var resultList = allBoards.Where(lb => (date_from == null || lb.Song.UploadTime >= date_from) && (date_to == null || lb.Song.UploadTime <= date_to)).OrderBy(lb => lb.Id).Skip((page - 1) * count).Take(count).ToList();
 
             if (resultList.Count > 0) {
                 foreach (var leaderboard in resultList) {

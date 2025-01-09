@@ -43,7 +43,6 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/events")]
-        [HttpGet("~/mod/events")]
         public async Task<ActionResult<ResponseWithMetadata<EventResponse>>> GetEvents(
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
@@ -82,7 +81,10 @@ namespace BeatLeader_Server.Controllers
             };
 
             int[] undownloadable = [48, 46, 32, 63];
-            result.Data = await query.Select(e => new EventResponse {
+            result.Data = await query
+            .TagWithCaller()
+            .AsNoTracking()
+            .Select(e => new EventResponse {
                 Id = e.Id,
                 Name = e.Name,
                 EndDate = e.EndDate,
@@ -95,12 +97,73 @@ namespace BeatLeader_Server.Controllers
                 Leader = new PlayerResponse {
                     Id = e.Players.OrderByDescending(p => p.Pp).FirstOrDefault().PlayerId
                 }
-            }).Skip((page - 1) * count).Take(count).ToListAsync();
+            })
+            .Skip((page - 1) * count)
+            .Take(count)
+            .ToListAsync();
 
             foreach (var item in result.Data)
             {
                 item.Leader = ResponseFromPlayer(await _context.Players.Include(p => p.Clans).FirstOrDefaultAsync(p => p.Id == item.Leader.Id));
             }
+
+            return result;
+        }
+
+        [HttpGet("~/mod/events")]
+        public async Task<ActionResult<ResponseWithMetadata<EventResponse>>> GetModEvents(
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10,
+            [FromQuery] string? sortBy = "date",
+            [FromQuery] string? search = null,
+            [FromQuery] Order order = Order.Desc)
+        {
+            IQueryable<EventRanking> query = _context.EventRankings.Include(e => e.Players);
+
+            switch (sortBy)
+            {
+                case "date":
+                    query = query.Order(order, p => p.EndDate);
+                    break;
+                case "name":
+                    query = query.Order(order, t => t.Name);
+                    break;
+                default:
+                    break;
+            }
+
+            if (search != null)
+            {
+                string lowSearch = search.ToLower();
+                query = query.Where(p => p.Name.ToLower().Contains(lowSearch));
+            }
+
+            var result = new ResponseWithMetadata<EventResponse>
+            {
+                Metadata = new Metadata
+                {
+                    Page = page,
+                    ItemsPerPage = count,
+                    Total = await query.CountAsync()
+                }
+            };
+
+            int[] undownloadable = [48, 46, 32, 63];
+            result.Data = await query
+            .TagWithCaller()
+            .AsNoTracking()
+            .Select(e => new EventResponse {
+                Id = e.Id,
+                Name = e.Name,
+                EndDate = e.EndDate,
+                PlaylistId = e.PlaylistId,
+                Image = e.Image,
+                Downloadable = !undownloadable.Contains(e.Id), 
+                Description = e.Description,
+            })
+            .Skip((page - 1) * count)
+            .Take(count)
+            .ToListAsync();
 
             return result;
         }

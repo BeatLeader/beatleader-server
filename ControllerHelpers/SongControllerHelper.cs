@@ -273,11 +273,25 @@ namespace BeatLeader_Server.ControllerHelpers {
 
                 if (map.Nsfw && !song.Explicity.HasFlag(SongExplicitStatus.Cover)) {
                     song.Explicity |= SongExplicitStatus.Cover;
+
+                    song.CoverImage = System.Text.RegularExpressions.Regex.Replace(
+                        song.CoverImage, 
+                        @"https?://(?:[a-z]{2}\.)?cdn\.beatsaver\.com/",
+                        $"https://api.beatleader.com/cover/processed/{song.Id}/"
+                    );
+                    if (song.FullCoverImage != null) {
+                        song.FullCoverImage = System.Text.RegularExpressions.Regex.Replace(song.FullCoverImage, "https?://cdn.assets.beatleader.(?:[a-z]{3})?/", $"https://api.beatleader.com/cover/processed/{song.Id}/");
+                    }
                     if (save) {
                         await dbContext.SaveChangesAsync();
                     }
                 } else if (song.Explicity.HasFlag(SongExplicitStatus.Cover)) {
                     song.Explicity &= ~SongExplicitStatus.Cover;
+
+                    song.CoverImage = song.CoverImage.Replace($"https://api.beatleader.com/cover/processed/{song.Id}/", "https://cdn.beatsaver.com/");
+                    if (song.FullCoverImage != null) {
+                        song.FullCoverImage = song.FullCoverImage.Replace($"https://api.beatleader.com/cover/processed/{song.Id}/", "https://cdn.assets.beatleader.xyz/");
+                    }
                     if (save) {
                         await dbContext.SaveChangesAsync();
                     }

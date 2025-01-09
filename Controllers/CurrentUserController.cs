@@ -364,6 +364,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] bool? showBots = null,
             [FromQuery] bool? showAllRatings = null,
             [FromQuery] bool? showStatsPublic = null,
+            [FromQuery] bool? showExplicitCovers = null,
             [FromQuery] bool? showStatsPublicPinned = null,
             [FromQuery] bool? horizontalRichBio = null,
             [FromQuery] string? rankedMapperSort = null,
@@ -660,6 +661,9 @@ namespace BeatLeader_Server.Controllers {
             }
             if (Request.Query.ContainsKey("showStatsPublicPinned")) {
                 settings.ShowStatsPublicPinned = showStatsPublicPinned ?? false;
+            }
+            if (Request.Query.ContainsKey("showExplicitCovers")) {
+                settings.ShowExplicitCovers = showExplicitCovers ?? false;
             }
 
             if (Request.Query.ContainsKey("horizontalRichBio")) {

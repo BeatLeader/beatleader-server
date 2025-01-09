@@ -519,7 +519,7 @@ namespace BeatLeader_Server.Utils
                 if (songName != null && change.Leaderboard.Difficulty != null) {
                     message += $"[{songName} - {change.Leaderboard.Difficulty.DifficultyName}{
                         (change.Leaderboard.Difficulty.ModeName != "Standard" ? " / " + change.Leaderboard.Difficulty.ModeName : "")
-                    }](https://beatleader.net/leaderboard/clanranking/{change.Leaderboard.Id}) ";
+                    }](https://beatleader.com/leaderboard/clanranking/{change.Leaderboard.Id}) ";
                 }
 
                 message += $"by getting {Math.Round(score.Pp, 2)}pp with {Math.Round(score.Accuracy * 100, 2)}% acc{(score.Modifiers.Length > 0 ? (" and " + score.Modifiers) : "")}.\n";
@@ -563,7 +563,7 @@ namespace BeatLeader_Server.Utils
                 if (songName != null && change.Leaderboard.Difficulty != null) {
                     message += $"[{songName} - {change.Leaderboard.Difficulty.DifficultyName}{
                         (change.Leaderboard.Difficulty.ModeName != "Standard" ? " / " + change.Leaderboard.Difficulty.ModeName : "")
-                    }](https://beatleader.net/leaderboard/clanranking/{change.Leaderboard.Id}) ";
+                    }](https://beatleader.com/leaderboard/clanranking/{change.Leaderboard.Id}) ";
                 }
 
                 message += $"by getting {string.Join(", ", scores.Select(s => Math.Round(s.Score.Pp, 2) + "pp")) }.\n";
@@ -633,7 +633,7 @@ namespace BeatLeader_Server.Utils
                         if (songName != null && change.Leaderboard.Difficulty != null) {
                             message += $"[{songName} - {change.Leaderboard.Difficulty.DifficultyName}{                        
                                 (change.Leaderboard.Difficulty.ModeName != "Standard" ? " / " + change.Leaderboard.Difficulty.ModeName : "")
-                            }](https://beatleader.net/leaderboard/clanranking/{change.Leaderboard.Id})";
+                            }](https://beatleader.com/leaderboard/clanranking/{change.Leaderboard.Id})";
                         }
 
                         if (currentCaptor != null) {
@@ -647,7 +647,7 @@ namespace BeatLeader_Server.Utils
                     var messageId = await dsClient.SendMessageAsync(message,
                         embeds: new List<Embed> { new EmbedBuilder()
                             .WithTitle("View changes on a map 🌐")
-                            .WithUrl("https://beatleader.net/clansmap")
+                            .WithUrl("https://beatleader.com/clansmap")
                             .Build()
                         });
                     //await Bot.BotService.PublishAnnouncement(1195125703830683678, messageId);

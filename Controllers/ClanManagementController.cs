@@ -1079,7 +1079,7 @@ namespace BeatLeader_Server.Controllers
                 clan.FeaturedPlaylists.Add(playlist);
             }
             string playlistLink = "";
-            if (link.Contains("beatleader.xyz") || link.Contains("beatleader.net")) {
+            if (link.Contains("beatleader.xyz") || link.Contains("beatleader.com")) {
                 playlistLink = "https://api.beatleader.xyz/playlist/" + link.Split("/").Last();
             } else if (link.Contains("beatsaver.com")) {
                 playlistLink = $"https://api.beatsaver.com/playlists/id/{link.Split("/").Last()}/download";

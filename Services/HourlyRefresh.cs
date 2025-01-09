@@ -210,6 +210,12 @@ namespace BeatLeader_Server.Services {
                                             var fileName = $"songcover-{song.Id}-full.webp";
 
                                             song.FullCoverImage = await _s3Client.UploadAsset(fileName, imageStream);
+
+                                            if (song.Explicity.HasFlag(SongExplicitStatus.Cover)) {
+                                                if (song.FullCoverImage != null) {
+                                                    song.FullCoverImage = System.Text.RegularExpressions.Regex.Replace(song.FullCoverImage, "https?://cdn.assets.beatleader.(?:[a-z]{3})?/", $"https://api.beatleader.com/cover/processed/{song.Id}/");
+                                                }
+                                            }
                                         }
                                     }
                                 }

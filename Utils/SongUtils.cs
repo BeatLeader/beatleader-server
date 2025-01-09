@@ -123,6 +123,36 @@ namespace BeatLeader_Server.Utils
             }
         }
 
+        public static async Task<ExmachinaResponse?> LocalExmachinaStars(string hash, int diff, string mode)
+        {
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"http://localhost:5168/ppai2/{hash}/{mode}/{diff}");
+            request.Method = "GET";
+            request.Proxy = null;
+
+            try
+            {
+                return await request.DynamicResponse<ExmachinaResponse>();
+            } catch (Exception e)
+            {
+                return null;
+            }
+        }
+
+        public static async Task<string?> ApiTags(float acc, float pass, float tech)
+        {
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"http://localhost:5168/ppai2/tag?acc={acc}&pass={pass}&tech={tech}");
+            request.Method = "GET";
+            request.Proxy = null;
+
+            try
+            {
+                return await request.DynamicResponse<string>();
+            } catch (Exception e)
+            {
+                return null;
+            }
+        }
+
         public static async Task<ExmachinaResponse?> ExmachinaStarsLink(string link, int diff, string mode)
         {
 

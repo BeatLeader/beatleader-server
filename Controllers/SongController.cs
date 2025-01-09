@@ -15,6 +15,17 @@ using BeatLeader_Server.ControllerHelpers;
 using Swashbuckle.AspNetCore.Annotations;
 using BeatLeader_Server.Enums;
 
+using SixLabors.Fonts;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Drawing.Processing;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.Drawing;
+using System.Dynamic;
+using System.Net;
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.Formats.Webp;
+
 namespace BeatLeader_Server.Controllers
 {
     [ApiController]
@@ -302,6 +313,77 @@ namespace BeatLeader_Server.Controllers
                 return NotFound();
             }
             return song;
+        }
+
+        [NonAction]
+        private async Task<Image<Rgba32>?> LoadRemoteImage(string url)
+        {
+            Image<Rgba32>? result = null;
+            using (var request = new HttpRequestMessage(HttpMethod.Get, url))
+            {
+                try {
+                    Stream contentStream = await (await new HttpClient().SendAsync(request)).Content.ReadAsStreamAsync();
+                    result = Image.Load<Rgba32>(contentStream);
+                } catch { }
+            }
+            return result;
+        }
+        
+        [HttpGet("~/cover/processed/{songId}/{covername}")]
+        public async Task<ActionResult> GetProcessedCover(string songId, string covername, [FromQuery] bool original = false)
+        {
+            var song = _context.Songs.Where(s => s.Id == songId).Select(s => new { s.CoverImage, s.FullCoverImage }).FirstOrDefault();
+            string? coverUrl = null;
+            if (song != null) {
+                if (song.CoverImage.EndsWith(covername) || song.FullCoverImage?.EndsWith(covername) == true) {
+                    coverUrl = song.CoverImage.Replace($"https://api.beatleader.com/cover/processed/{songId}/", "https://cdn.beatsaver.com/");
+                }
+            }
+            if (coverUrl == null) {
+                return NotFound();
+            }
+
+            string? currentID = HttpContext.CurrentUserID(_context);
+            Player? currentPlayer = currentID != null ? await _context
+                .Players
+                .AsNoTracking()
+                .Include(p => p.ProfileSettings)
+                .FirstOrDefaultAsync(p => p.Id == currentID) : null;
+
+            if (currentPlayer?.ProfileSettings?.ShowExplicitCovers ?? false) {
+                original = true;
+            }
+
+            if (original) {
+                return Redirect(coverUrl);
+            }
+
+            var bluredUrl = $"cover-blured-{songId}.png";
+            var previewUrl = await _s3Client.GetPresignedUrl(bluredUrl, S3Container.previews);
+            if (previewUrl != null)
+            {
+                return Redirect(previewUrl);
+            }
+
+            var originalImage = await LoadRemoteImage(coverUrl);
+            if (originalImage == null) {
+                return NotFound();
+            }
+
+            // Apply Gaussian blur
+            originalImage.Mutate(x => x.GaussianBlur(10f));
+
+            MemoryStream ms = new MemoryStream();
+            originalImage.SaveAsPng(ms);
+            ms.Position = 0;
+            try
+            {
+                await _s3Client.UploadPreview(bluredUrl, ms);
+            }
+            catch { }
+            ms.Position = 0;
+
+            return File(ms, "image/png");
         }
 
         [HttpGet("~/map/modinterface/{hash}")]

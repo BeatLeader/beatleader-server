@@ -66,6 +66,7 @@ namespace BeatLeader_Server.Extensions
                 await @this.BulkUpdateAsync(entities, options);
             } catch (Exception e) {
                 if (attempt < 5) {
+                    Console.WriteLine($"EXCEPTION SafeBulkUpdateAsync Retry {attempt}");
                     await @this.SafeBulkUpdateAsync(entities, options, attempt + 1);
                 } else {
                     Console.WriteLine($"EXCEPTION SafeBulkUpdateAsync {e}");
