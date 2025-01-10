@@ -1,7 +1,5 @@
-﻿using Amazon.S3;
-using BeatLeader_Server.Extensions;
+﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
-using BeatLeader_Server.Utils;
 using Dasync.Collections;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,18 +14,11 @@ namespace BeatLeader_Server.Controllers
     public class BanAdminController : Controller
     {
         private readonly AppContext _context;
-        IWebHostEnvironment _environment;
-        private readonly IAmazonS3 _s3Client;
 
         public BanAdminController(
-            AppContext context,
-            IWebHostEnvironment env,
-            IConfiguration configuration)
+            AppContext context)
         {
             _context = context;
-
-            _environment = env;
-            _s3Client = configuration.GetS3Client();
         }
 
         [HttpGet("~/admin/bans")]
