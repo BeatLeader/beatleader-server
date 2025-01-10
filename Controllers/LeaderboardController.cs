@@ -2116,8 +2116,9 @@ namespace BeatLeader_Server.Controllers {
         [SwaggerResponse(200, "Score graph retrieved successfully", typeof(ICollection<ScoreGraphEntry>))]
         [SwaggerResponse(404, "Leaderboard not found")]
         public async Task<ActionResult<ICollection<ScoreGraphEntry>>> GetScoregraph(
-            [SwaggerParameter("ID of the leaderboard to retrieve score graph for")] string id) {
-            return await _context.Scores.Where(s => 
+            [SwaggerParameter("ID of the leaderboard to retrieve score graph for")] string id,
+            [SwaggerParameter("Leaderboard context, general by default."), FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General) {
+            return leaderboardContext == LeaderboardContexts.General ? await _context.Scores.Where(s => 
                 s.LeaderboardId == id &&
                 s.ValidForGeneral &&
                 !s.Banned)
@@ -2131,6 +2132,27 @@ namespace BeatLeader_Server.Controllers {
                     Pauses = s.Pauses,
                     MaxStreak = s.MaxStreak,
                     Mistakes = s.BadCuts + s.MissedNotes + s.WallsHit + s.BombCuts,
+                    Modifiers = s.Modifiers,
+                    PlayerRank = s.Player.Rank,
+                    PlayerName = s.Player.Name,
+                    PlayerAlias = s.Player.Alias,
+                    Accuracy = s.Accuracy * 100f,
+                    Pp = s.Pp,
+                    PlayerAvatar = s.Player.Avatar
+                }).ToListAsync() : await _context.ScoreContextExtensions.Where(s => 
+                s.LeaderboardId == id &&
+                s.Context == leaderboardContext &&
+                !s.Banned)
+                .AsNoTracking()
+                .TagWithCaller()
+                .Select(s => new ScoreGraphEntry {
+                    PlayerId = s.PlayerId,
+                    Weight = s.Weight,
+                    Rank = s.Rank,
+                    Timepost = s.Timepost,
+                    Pauses = s.ScoreInstance.Pauses,
+                    MaxStreak = s.ScoreInstance.MaxStreak,
+                    Mistakes = s.ScoreInstance.BadCuts + s.ScoreInstance.MissedNotes + s.ScoreInstance.WallsHit + s.ScoreInstance.BombCuts,
                     Modifiers = s.Modifiers,
                     PlayerRank = s.Player.Rank,
                     PlayerName = s.Player.Name,
