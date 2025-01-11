@@ -1432,7 +1432,10 @@ namespace BeatLeader_Server.Controllers
             [FromQuery, SwaggerParameter("Number of players per page, default is 50")] int count = 50)
         {
             if (page < 1) page = 1;
-            if (count < 1) count = 1;
+            if (count < 0 || count > 100)
+            {
+                return BadRequest("Please use count between 0 and 100");
+            }
 
             player1Id = await _context.PlayerIdToMain(player1Id);
             player2Id = await _context.PlayerIdToMain(player2Id);
