@@ -1386,17 +1386,20 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            string result = "Count,Count >80%,Count >95%,Count/80,Count/95,Average,Top250,Total PP,PP/topPP filtered,PP/topPP unfiltered,Acc Rating,Pass Rating,Tech Rating,Name,Link\n";
+            string result = "Count,Count >80%,Count >95%,Count/80,Count/95,95/80,Average,Percentile,Megametric,Megametric125,Megametric75,Megametric40,Top250,Total PP,PP/topPP filtered,PP/topPP unfiltered,Acc Rating,Pass Rating,Tech Rating,Name,Link\n";
             float weightTreshold = MathF.Pow(0.965f, 40);
 
-            var leaderboards = await _context
+            var leaderboards = _context
                 .Leaderboards
                 .Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked)
-                .Select(lb => new { 
-                    Average = lb.Scores.Average(s => s.Weight), 
+                .Select(lb => new
+                {
+                    Average = lb.Scores.Average(s => s.Weight),
+                    Megametric = lb.Scores.Where(s => s.Player.ScoreStats.TopPp != 0).Select(s => new { s.Weight, s.Player.ScoreStats.RankedPlayCount, s.Pp, s.Player.ScoreStats.TopPp }),
                     Count8 = lb.Scores.Where(s => s.Weight > 0.8).Count(),
                     Count95 = lb.Scores.Where(s => s.Weight > 0.95).Count(),
                     PPsum = lb.Scores.Sum(s => s.Pp * s.Weight),
+
                     PPAverage = lb
                         .Scores
                         .Where(s => s.Player.ScoreStats.RankedPlayCount >= 50 && s.Player.ScoreStats.TopPp != 0)
@@ -1411,12 +1414,29 @@ namespace BeatLeader_Server.Controllers
                     lb.Song.Name,
                     lb.Difficulty.AccRating,
                     lb.Difficulty.PassRating,
-                    lb.Difficulty.TechRating})
-                .ToListAsync();
+                    lb.Difficulty.TechRating
+                })
+                .ToList();
 
             foreach (var item in leaderboards)
             {
-                result += $"{item.Count},{item.Count8},{item.Count95},{item.Count8/(float)item.Count},{item.Count95/(float)item.Count},{item.Average},{item.Top250},{item.PPsum},{item.PPAverage},{item.PPAverage2},{item.AccRating},{item.PassRating},{item.TechRating},{item.Name.Replace(",","")},https://stage.beatleader.net/leaderboard/global/{item.Id}/1\n";
+                var l = item.Megametric.OrderByDescending(s => s.Weight).Take((int)(((double)item.Megametric.Count()) * 0.33));
+                var ll = l.Count() > 10 ? l.Average(s => s.Weight) : 0;
+
+                var m = item.Megametric.OrderByDescending(s => s.Weight).Take((int)(((double)item.Megametric.Count()) * 0.33)).Where(s => s.RankedPlayCount > 75);
+                var mm = m.Count() > 10 ? m.Average(s => (s.Pp / s.TopPp) * s.Weight) : 0;
+
+                var m2 = item.Megametric.Where(s => s.RankedPlayCount > 125).OrderByDescending(s => s.Weight).Take((int)(((double)item.Megametric.Count()) * 0.33));
+                var mm2 = m2.Count() > 10 ? m2.Average(s => (s.Pp / s.TopPp) * s.Weight) : 0;
+
+                var m3 = item.Megametric.Where(s => s.RankedPlayCount > 75).OrderByDescending(s => s.Weight).Take((int)(((double)item.Megametric.Count()) * 0.33));
+                var mm3 = m3.Count() > 10 ? m3.Average(s => (s.Pp / s.TopPp) * s.Weight) : 0;
+
+                var m4 = item.Megametric.Where(s => s.RankedPlayCount > 40).OrderByDescending(s => s.Weight).Take((int)(((double)item.Megametric.Count()) * 0.33));
+                var mm4 = m4.Count() > 10 ? m4.Average(s => (s.Pp / s.TopPp) * s.Weight) : 0;
+
+
+                result += $"{item.Count},{item.Count8},{item.Count95},{item.Count8 / (float)item.Count},{item.Count95 / (float)item.Count},{item.Count95 / (float)item.Count8},{item.Average},{ll},{mm},{mm2},{mm3},{mm4},{item.Top250},{item.PPsum},{item.PPAverage},{item.PPAverage2},{item.AccRating},{item.PassRating},{item.TechRating},{item.Name.Replace(",", "")},https://stage5.beatleader.net/leaderboard/global/{item.Id}/1\n";
             }
 
             return result;
