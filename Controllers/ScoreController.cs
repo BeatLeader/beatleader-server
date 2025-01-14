@@ -1443,10 +1443,9 @@ namespace BeatLeader_Server.Controllers
         }
 
         [ApiExplorerSettings(IgnoreApi = true)]
-        [HttpGet("~/scores/common/{player1Id}/{player2Id}")]
+        [HttpGet("~/scores/common/players")]
         public async Task<ActionResult<ResponseWithMetadata<List<CommonScores>>>> GetCommonScores(
-            [FromRoute] string player1Id,
-            [FromRoute] string player2Id,
+            [FromQuery] string players,
             [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
             [FromQuery, SwaggerParameter("Number of players per page, default is 50")] int count = 50)
@@ -1457,8 +1456,16 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Please use count between 0 and 100");
             }
 
-            player1Id = await _context.PlayerIdToMain(player1Id);
-            player2Id = await _context.PlayerIdToMain(player2Id);
+            var playerIds = new List<string>();
+
+            foreach (var item in players.Split(",")) {
+                playerIds.Add(await _context.PlayerIdToMain(item));
+            }
+            playerIds = playerIds.Distinct().ToList();
+
+            if (playerIds.Count < 2 || playerIds.Count > 50) {
+                return BadRequest("Please use 2-50 different players");
+            }
 
             var result = new ResponseWithMetadata<CommonScores>()
             {
@@ -1469,71 +1476,143 @@ namespace BeatLeader_Server.Controllers
                 }
             };
 
-            IQueryable<Score?> query = leaderboardContext == LeaderboardContexts.General
+            var allPlayersScores = await (leaderboardContext == LeaderboardContexts.General
                         ? _context.Scores
                            .AsNoTracking()
-                           .Where(s => (s.PlayerId == player1Id || s.PlayerId == player2Id) && s.ValidContexts.HasFlag(LeaderboardContexts.General))
+                           .Where(s => playerIds.Contains(s.PlayerId) && s.ValidContexts.HasFlag(LeaderboardContexts.General))
+                           .Select(s => new { s.LeaderboardId, s.Id, s.Timepost })
                         : _context.ScoreContextExtensions
                            .AsNoTracking()
-                           .Include(ce => ce.ScoreInstance)
-                           .Where(s => (s.PlayerId == player1Id || s.PlayerId == player2Id) && s.Context == leaderboardContext)
-                           .Select(ce => ce.ScoreInstance);
+                           .Where(s => playerIds.Contains(s.PlayerId) && s.Context == leaderboardContext)
+                           .Select(ce => new { ce.LeaderboardId, ce.Id, ce.Timepost })).ToListAsync();
 
-            var filteredCommon = query
-                .Include(s => s.Leaderboard)
-                .ThenInclude(l => l.Difficulty)
-                .GroupBy(s => s.Leaderboard.Id)
-                .Where(g => g.Select(s => s.PlayerId).Distinct().Count() > 1);
+            var common = allPlayersScores
+                .GroupBy(s => s.LeaderboardId)
+                .Where(g => g.Count() > 1);
 
-            result.Metadata.Total = await filteredCommon.CountAsync();
-
-            var scores = filteredCommon
-                .Select(g => new
-                {
-                    list = g.ToList<Score>(),
-                    recent = g.Max(s => s.Timepost)
-                })
-                .OrderByDescending(cs => cs.recent)
+            var pagedCommon = common.OrderByDescending(g => g.Max(s => s.Timepost))
                 .Skip((page - 1) * count)
                 .Take(count)
-                .Select(g => MapToResponse(g.list))
                 .ToList();
 
-            result.Data = scores;
+            var allScoreIds = pagedCommon.SelectMany(g => g.Select(s => s.Id)).ToList();
+
+            IQueryable<IScore> scoresQuery = leaderboardContext == LeaderboardContexts.General
+                        ? _context.Scores
+                           .AsNoTracking()
+                           .TagWithCaller()
+                           .Where(s => allScoreIds.Contains(s.Id))
+                        : _context.ScoreContextExtensions
+                           .AsNoTracking()
+                           .TagWithCaller()
+                           .Include(ce => ce.ScoreInstance)
+                           .Where(s => allScoreIds.Contains(s.Id));
+
+            var scores = await scoresQuery.Select(s => new ScoreResponse {
+                Id = s.Id,
+                LeaderboardId = s.LeaderboardId,
+                BaseScore = s.BaseScore,
+                ModifiedScore = s.ModifiedScore,
+                PlayerId = s.PlayerId,
+                Accuracy = s.Accuracy,
+                Pp = s.Pp,
+                Rank = s.Rank,
+                Modifiers = s.Modifiers,
+                BadCuts = s.BadCuts,
+                MissedNotes = s.MissedNotes,
+                BombCuts = s.BombCuts,
+                WallsHit = s.WallsHit,
+                Pauses = s.Pauses,
+                FullCombo = s.FullCombo,
+                Timepost = s.Timepost,
+                Hmd = s.Hmd,
+                Player = new PlayerResponse
+                {
+                    Id = s.Player.Id,
+                    Name = s.Player.Name,
+                    Alias = s.Player.Alias,
+                    Avatar = s.Player.Avatar,
+                    Country = s.Player.Country,
+                    Pp = s.Player.Pp,
+                    Rank = s.Player.Rank,
+                    CountryRank = s.Player.CountryRank,
+                    Role = s.Player.Role,
+                    ProfileSettings = s.Player.ProfileSettings,
+                    Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                        .ThenBy(c => c.Id).Take(1)
+                        .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                }
+            }).ToListAsync();
+
+            var allLeaderboardIds = pagedCommon.Select(g => g.Key).ToList();
+
+            var leaderboards = await _context
+                .Leaderboards
+                .AsNoTracking()
+                .TagWithCallerS()
+                .Where(lb => allLeaderboardIds.Contains(lb.Id))
+                .Select(lb => new CompactLeaderboardResponse {
+                    Id = lb.Id,
+                    Song = new CompactSongResponse {
+                        Id = lb.Song.Id,
+                        Hash = lb.Song.Hash,
+                        Name = lb.Song.Name,
+            
+                        SubName = lb.Song.SubName,
+                        Author = lb.Song.Author,
+                        Mapper = lb.Song.Mapper,
+                        MapperId = lb.Song.MapperId,
+                        CollaboratorIds = lb.Song.CollaboratorIds,
+                        CoverImage = lb.Song.CoverImage,
+                        FullCoverImage = lb.Song.FullCoverImage,
+                        Bpm = lb.Song.Bpm,
+                        Duration = lb.Song.Duration,
+                        Explicity = lb.Song.Explicity
+                    },
+                    Difficulty = new DifficultyResponse {
+                        Id = lb.Difficulty.Id,
+                        Value = lb.Difficulty.Value,
+                        Mode = lb.Difficulty.Mode,
+                        DifficultyName = lb.Difficulty.DifficultyName,
+                        ModeName = lb.Difficulty.ModeName,
+                        Status = lb.Difficulty.Status,
+                        NominatedTime  = lb.Difficulty.NominatedTime,
+                        QualifiedTime  = lb.Difficulty.QualifiedTime,
+                        RankedTime = lb.Difficulty.RankedTime,
+
+                        Stars  = lb.Difficulty.Stars,
+                        PredictedAcc  = lb.Difficulty.PredictedAcc,
+                        PassRating  = lb.Difficulty.PassRating,
+                        AccRating  = lb.Difficulty.AccRating,
+                        TechRating  = lb.Difficulty.TechRating,
+                        ModifiersRating = lb.Difficulty.ModifiersRating,
+                        ModifierValues = lb.Difficulty.ModifierValues,
+                        Type  = lb.Difficulty.Type,
+
+                        Njs  = lb.Difficulty.Njs,
+                        Nps  = lb.Difficulty.Nps,
+                        Notes  = lb.Difficulty.Notes,
+                        Bombs  = lb.Difficulty.Bombs,
+                        Walls  = lb.Difficulty.Walls,
+                        MaxScore = lb.Difficulty.MaxScore,
+                        Duration  = lb.Difficulty.Duration,
+
+                        Requirements = lb.Difficulty.Requirements,
+                    }
+                })
+                .ToListAsync();
+
+
+            result.Metadata.Total = common.Count();
+
+            result.Data = leaderboards.Select(lb => new CommonScores {
+                Leaderboard = lb,
+                Scores = scores.Where(s => s.LeaderboardId == lb.Id).OrderByDescending(s => s.Timepost).ToList()
+            })
+            .OrderByDescending(lb => lb.Scores.Max(s => s.Timepost))
+            .ToList();
 
             return Ok(result);
-        }
-
-        private static CommonScores MapToResponse(List<Score> s)
-        {
-            var l = s[0].Leaderboard;
-            return new CommonScores()
-            {
-                Leaderboard = new CompactLeaderboardResponse()
-                {
-                    Id = l.Id,
-                    Difficulty = new DifficultyResponse
-                    {
-                        Id = l.Difficulty.Id,
-                        Value = l.Difficulty.Value,
-                        Mode = l.Difficulty.Mode,
-                        DifficultyName = l.Difficulty.DifficultyName,
-                        ModeName = l.Difficulty.ModeName,
-                        Status = l.Difficulty.Status,
-
-                        Njs = l.Difficulty.Njs,
-                        Nps = l.Difficulty.Nps,
-                        Notes = l.Difficulty.Notes,
-                        Bombs = l.Difficulty.Bombs,
-                        Walls = l.Difficulty.Walls,
-                        MaxScore = l.Difficulty.MaxScore,
-                        Duration = l.Difficulty.Duration,
-
-                        Requirements = l.Difficulty.Requirements
-                    }
-                },
-                Scores = s.Select(s => RemoveLeaderboard(s, 0)).ToList()
-            };
         }
     }
 }

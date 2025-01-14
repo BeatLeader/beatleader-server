@@ -55,58 +55,51 @@ namespace BeatLeader_Server.Controllers
                 }
             };
 
-            var groupedBans = _context.Bans
+            var groupedBans = (await _context.Bans
                 .AsNoTracking()
-                .OrderByDescending(b => b.Timeset)
-                .GroupBy(b => b.PlayerId).ToList();
+                .Where(b => (selfBan || (b.BannedBy != b.PlayerId)) && b.BanReason != "Bot")
+                .ToListAsync())
+                .GroupBy(b => b.PlayerId);
 
-            var filtered = groupedBans.Select(group => new
-                {
-                    Player = _context.Players.Where(p => p.Id == group.Key).FirstOrDefault()!,
-                    Bans = group.OrderByDescending(b => b.Timeset).ToList(),
-                    LatestBan = group.OrderByDescending(b => b.Timeset).FirstOrDefault()!
-                })
-                // idk, but
-                .Where(item => item.Player != null)
-                // bots
-                .Where(pb => !pb.Player.Banned || pb.LatestBan.BanReason != "Bot")
-                // filter self banned
-                .Where(pb => selfBan || (!pb.Player.Banned || pb.LatestBan.BannedBy != pb.Player.Id));
-
-            result.Metadata.Total = filtered.Count();
-
-            var data = filtered
+            var playerIds = groupedBans
+                .OrderByDescending(g => g.Max(b => b.Timeset))
                 .Skip((page - 1) * count)
                 .Take(count)
-                .Select(item => MapToResponse(item.Player, item.Bans))
+                .Select(g => g.Key)
                 .ToList();
 
-            result.Data = data;
+            var data = await _context
+                .Players
+                .AsNoTracking()
+                .TagWithCallerS()
+                .Where(p => playerIds.Contains(p.Id))
+                .Select(p => new PlayerWithBanHistory()
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Platform = p.Platform,
+                    Avatar = p.Avatar,
+                    Country = p.Country,
+                    Alias = p.Alias,
+
+                    Bot = p.Bot,
+                    Banned = p.Banned,
+
+                    Pp = p.Pp,
+                    Rank = p.Rank,
+                    CountryRank = p.CountryRank,
+                    Role = p.Role
+                })
+                .ToListAsync();
+
+            result.Metadata.Total = groupedBans.Count();
+            foreach (var item in data) {
+                item.Bans = groupedBans.First(g => g.Key == item.Id).ToList();
+            }
+
+            result.Data = data.OrderByDescending(p => p.Bans.Max(b => b.Timeset));
 
             return Ok(result);
-        }
-
-        private PlayerWithBanHistory MapToResponse(Player p, List<Ban> bans)
-        {
-            return new PlayerWithBanHistory()
-            {
-                Id = p.Id,
-                Name = p.Name,
-                Platform = p.Platform,
-                Avatar = p.Avatar,
-                Country = p.Country,
-                Alias = p.Alias,
-
-                Bot = p.Bot,
-                Banned = p.Banned,
-
-                Pp = p.Pp,
-                Rank = p.Rank,
-                CountryRank = p.CountryRank,
-                Role = p.Role,
-
-                Bans = bans
-            };
         }
     }
 }
