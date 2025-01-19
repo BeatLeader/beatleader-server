@@ -63,16 +63,14 @@ namespace BeatLeader_Server.Controllers
 
             var playerIds = groupedBans
                 .OrderByDescending(g => g.Max(b => b.Timeset))
-                .Skip((page - 1) * count)
-                .Take(count)
                 .Select(g => g.Key)
                 .ToList();
 
-            var data = await _context
+            var data = (await _context
                 .Players
                 .AsNoTracking()
                 .TagWithCallerS()
-                .Where(p => playerIds.Contains(p.Id))
+                .Where(p => !p.Banned && !p.Bot && playerIds.Contains(p.Id))
                 .Select(p => new PlayerWithBanHistory()
                 {
                     Id = p.Id,
@@ -90,11 +88,14 @@ namespace BeatLeader_Server.Controllers
                     CountryRank = p.CountryRank,
                     Role = p.Role
                 })
-                .ToListAsync();
+                .ToListAsync())
+                .OrderBy(p => playerIds.IndexOf(p.Id))
+                .Skip((page - 1) * count)
+                .Take(count);
 
             result.Metadata.Total = groupedBans.Count();
             foreach (var item in data) {
-                item.Bans = groupedBans.First(g => g.Key == item.Id).ToList();
+                item.Bans = groupedBans.First(g => g.Key == item.Id).OrderByDescending(b => b.Timeset).ToList();
             }
 
             result.Data = data.OrderByDescending(p => p.Bans.Max(b => b.Timeset));

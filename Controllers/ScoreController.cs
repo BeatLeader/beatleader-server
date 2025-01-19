@@ -1526,6 +1526,8 @@ namespace BeatLeader_Server.Controllers
                 FullCombo = s.FullCombo,
                 Timepost = s.Timepost,
                 Hmd = s.Hmd,
+                Replay = s.Replay,
+                Offsets = s.ReplayOffsets,
                 Player = new PlayerResponse
                 {
                     Id = s.Player.Id,

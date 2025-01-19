@@ -230,6 +230,7 @@ namespace BeatLeader_Server.Controllers
                             FullCoverImage = l.Song.FullCoverImage,
                             Bpm = l.Song.Bpm,
                             Duration = l.Song.Duration,
+                            Explicity = l.Song.Explicity
                         },
                         Difficulty = new DifficultyResponse {
                             Id = l.Difficulty.Id,
@@ -625,7 +626,12 @@ namespace BeatLeader_Server.Controllers
                 .FirstOrDefaultAsync())
                 ?.Contains("admin") ?? false) : false;
 
-            var playerId = await _context.PlayerIdToMain(name.Split("-").First());
+            string? playerId = null;
+            if (name.Split("-").Count() > 1) { 
+                playerId = await _context.PlayerIdToMain(name.Split("-").First());
+            } else if (int.TryParse(name.Split(".").First(), out int scoreId)) {
+                playerId = await _storageContext.PlayerLeaderboardStats.Where(p => p.ScoreId == scoreId).Select(s => s.PlayerId).FirstOrDefaultAsync();
+            }
 
             var features = await _context
                 .Players
