@@ -489,7 +489,8 @@ namespace BeatLeader_Server.Controllers
             string method,
             int page,
             int count,
-            PlayerResponse? currentPlayer) {
+            PlayerResponse? currentPlayer,
+            bool primaryClan = false) {
             IQueryable<Score> query = _context
                 .Scores
                 .AsNoTracking()
@@ -520,7 +521,14 @@ namespace BeatLeader_Server.Controllers
                 var clanTag = scope.ToLower().Replace("clan_", "").ToUpper();
                 var clanId = await _context.Clans.Where(c => c.Tag == clanTag).Select(c => c.Id).FirstOrDefaultAsync();
                 if (clanId != 0) {
-                    query = query.Where(s => s.Player.Clans.Any(c => c.Id == clanId));
+                    if (primaryClan) {
+                        query = query.Where(s => s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag) >= 0 ? s.Player.ClanOrder.IndexOf(c.Tag) : 1000)
+                        .ThenBy(c => c.Id)
+                        .Take(1)
+                        .Any(c => c.Id == clanId));
+                    } else {
+                        query = query.Where(s => s.Player.Clans.Any(c => c.Id == clanId));
+                    }
                 }
             }
 
@@ -688,7 +696,8 @@ namespace BeatLeader_Server.Controllers
             string method,
             int page,
             int count,
-            PlayerResponse? currentPlayer) {
+            PlayerResponse? currentPlayer,
+            bool primaryClan = false) {
 
             IQueryable<ScoreContextExtension> query = _context
                 .ScoreContextExtensions
@@ -717,7 +726,14 @@ namespace BeatLeader_Server.Controllers
                 var clanTag = scope.ToLower().Replace("clan_", "").ToUpper();
                 var clanId = await _context.Clans.Where(c => c.Tag == clanTag).Select(c => c.Id).FirstOrDefaultAsync();
                 if (clanId != 0) {
-                    query = query.Where(s => s.Player.Clans.Any(c => c.Id == clanId));
+                    if (primaryClan) {
+                        query = query.Where(s => s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag) >= 0 ? s.Player.ClanOrder.IndexOf(c.Tag) : 1000)
+                        .ThenBy(c => c.Id)
+                        .Take(1)
+                        .Any(c => c.Id == clanId));
+                    } else {
+                        query = query.Where(s => s.Player.Clans.Any(c => c.Id == clanId));
+                    }
                 }
             }
 
@@ -922,7 +938,8 @@ namespace BeatLeader_Server.Controllers
             string method,
             [FromQuery] string player,
             [FromQuery] int page = 1,
-            [FromQuery] int count = 10)
+            [FromQuery] int count = 10,
+            [FromQuery] bool primaryClan = false)
         {
             var result = new ResponseWithMetadataAndSelection<ScoreResponseWithHeadsets>
             {
@@ -1008,8 +1025,8 @@ namespace BeatLeader_Server.Controllers
             
             (var resultList, page) =
                 contexts == LeaderboardContexts.General 
-                ? await GeneralScoreList(result, showBots, leaderboardId, scope, player, method, page, count, currentPlayer)
-                : await ContextScoreList(result, contexts, showBots, leaderboardId, scope, player, method, page, count, currentPlayer);
+                ? await GeneralScoreList(result, showBots, leaderboardId, scope, player, method, page, count, currentPlayer, primaryClan)
+                : await ContextScoreList(result, contexts, showBots, leaderboardId, scope, player, method, page, count, currentPlayer, primaryClan);
 
             if (resultList != null) {
                 int shift = 0;
@@ -1281,100 +1298,7 @@ namespace BeatLeader_Server.Controllers
             };
         }
 
-        [HttpGet("~/v1/clanScores/{hash}/{diff}/{mode}/page")]
-        public async Task<ActionResult<ResponseWithMetadataAndSelection<ClanScoreResponse>>> ClanScoresV1(
-            string hash,
-            string diff,
-            string mode,
-            [FromQuery] int page = 1,
-            [FromQuery] int count = 10)
-        {
-            var result = new ResponseWithMetadataAndSelection<ClanScoreResponse>
-            {
-                Data = new List<ClanScoreResponse>(),
-                Metadata =
-                    {
-                        ItemsPerPage = count,
-                        Page = page,
-                        Total = 0
-                    }
-            };
-
-            if (hash.Length >= 40) {
-                hash = hash.Substring(0, 40);
-            }
-
-            var song = await _context
-                .Songs
-                .TagWithCallerS()
-                .AsNoTracking()
-                .Select(s => new { s.Id, s.Hash })
-                .FirstOrDefaultAsync(s => s.Hash == hash);
-            if (song == null) {
-                return result;
-            }
-
-            if (mode.EndsWith("OldDots")) {
-                mode = mode.Replace("OldDots", "");
-            }
-
-            int modeValue = Song.ModeForModeName(mode);
-            if (modeValue == 0) {
-                var customMode = await _context.CustomModes.FirstOrDefaultAsync(m => m.Name == mode);
-                if (customMode != null) {
-                    modeValue = customMode.Id + 10;
-                } else {
-                    return result;
-                }
-            }
-
-            var leaderboardId = song.Id + Song.DiffForDiffName(diff).ToString() + modeValue.ToString();
-
-            var query = _context
-                .ClanRanking
-                .AsNoTracking()
-                .Where(s => s.LeaderboardId == leaderboardId);
-
-            result.Metadata.Total = await query.CountAsync();
-
-            var resultList = (await query
-                .TagWithCaller()
-                .AsNoTracking()
-                .OrderBy(p => p.Rank)
-                .Skip((page - 1) * count)
-                .Take(count)
-                .Select(s => new ClanScoreResponse
-                {
-                    Id = s.Id,
-                    ClanId = s.ClanId ?? 0,
-                    ModifiedScore = s.TotalScore,
-                    Accuracy = s.AverageAccuracy,
-                    Pp = s.Pp,
-                    Rank = s.Rank,
-                    Timepost = s.LastUpdateTime.ToString(),
-                    LeaderboardId = s.LeaderboardId,
-                    Clan = new ClanScoreClanResponse
-                    {
-                        Id = s.Clan.Id,
-                        Tag = s.Clan.Tag,
-                        Name = s.Clan.Name,
-                        Avatar = s.Clan.Icon,
-                        Color = s.Clan.Color,
-
-                        Pp = s.Clan.Pp,
-                        Rank = s.Clan.Rank,
-                    },
-                })
-                .ToListAsync())
-                .OrderByDescending(el => Math.Round(el.Pp, 2))
-                .ThenByDescending(el => Math.Round(el.Accuracy, 4))
-                .ThenBy(el => el.Timepost)
-                .ToList();
-
-            result.Data = resultList;
-
-            return result;
-        }
+        
 
         [HttpGet("~/scorestats/")]
         public async Task<ActionResult<string>> GetStats()

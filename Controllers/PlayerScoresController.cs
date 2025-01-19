@@ -216,8 +216,8 @@ namespace BeatLeader_Server.Controllers {
                         Timepost = s.Timepost,
                         LeaderboardId = s.LeaderboardId,
                         Platform = s.Platform,
-                        ScoreImprovement = includeIO ? s.ScoreImprovement : null,
-                        Offsets = includeIO ? s.ReplayOffsets : null,
+                        ScoreImprovement = includeIO ? (leaderboardContext == LeaderboardContexts.General || leaderboardContext == LeaderboardContexts.None ? s.ScoreImprovement : s.ScoreInstance.ScoreImprovement) : null,
+                        Offsets = includeIO ? (leaderboardContext == LeaderboardContexts.General || leaderboardContext == LeaderboardContexts.None ? s.ReplayOffsets : s.ScoreInstance.ReplayOffsets) : null,
                         Country = s.Country,
                         Leaderboard = new CompactLeaderboardResponse {
                             Id = s.LeaderboardId,
