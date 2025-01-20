@@ -482,39 +482,6 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
-        [HttpGet("~/admin/map/refresh")]
-        public async Task<ActionResult> RefreshHash()
-        {
-            string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
-
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
-
-            var songs = _context.Songs.Where(el => el.Difficulties.FirstOrDefault(d => d.Status == DifficultyStatus.outdated) != null).Include(song => song.Difficulties).ToList();
-
-            foreach (var song in songs)
-            {
-                Song? updatedSong = await SongUtils.GetSongFromBeatSaver(song.Hash);
-
-                if (updatedSong != null && updatedSong.Hash == song.Hash)
-                {
-                    foreach (var diff in song.Difficulties)
-                    {
-                        if (diff.Status == DifficultyStatus.outdated) {
-                            diff.Status = DifficultyStatus.unranked;
-                        }
-                    }
-                }
-            }
-
-            await _context.BulkSaveChangesAsync();
-
-            return Ok();
-        }
-
         [HttpGet("~/admin/refreshClanRankings")]
         public async Task<ActionResult> RefreshClanRankings([FromQuery] string? lbId = null)
         {
@@ -1222,55 +1189,32 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/checkratings")]
-        public async Task<ActionResult> checkratings()
-        {
+        public async Task<ActionResult> checkratings() {
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin")) {
                 return Unauthorized();
             }
 
             var songs = await _context
                 .Songs
-                .Where(s => s.Mapper != "Beat Sage" && s.Mapper != "TK2774" && s.Duration < 1500 && s.Difficulties.FirstOrDefault(d =>
-                (d.Status == DifficultyStatus.unranked || d.Status == DifficultyStatus.nominated || d.Status == DifficultyStatus.inevent || d.Status == DifficultyStatus.unrankable) && 
-                !d.Requirements.HasFlag(Requirements.Noodles) && 
+                .Where(s => s.Leaderboards != null && s.Leaderboards.Any(l => l.Timestamp > 1734206466) && s.MapperId != 249827 && s.Mapper != "Beat Sage" && s.Mapper != "TopMapper" && s.Mapper != "TK2774" && s.Duration < 1500 && s.Difficulties.FirstOrDefault(d =>
+                (d.Status == DifficultyStatus.unranked || d.Status == DifficultyStatus.nominated || d.Status == DifficultyStatus.inevent || d.Status == DifficultyStatus.unrankable) &&
+                !d.Requirements.HasFlag(Requirements.Noodles) &&
                 !d.Requirements.HasFlag(Requirements.MappingExtensions) &&
+
                 (d.Stars == null || d.Stars == 0) &&
                 d.Notes > 20 &&
-                d.ModeName != "Lightshow" &&
-                d.ModeName != "Generated360Degree" &&
-                d.ModeName != "Generated90Degree" &&
-                d.ModeName != "StandardOldDots" &&
-                d.ModeName != "InvertedStandard" &&
-                d.ModeName != "VerticalStandard" &&
-                d.ModeName != "HorizontalStandard" &&
-                d.ModeName != "InverseStandard" &&
-                d.ModeName !=  "RhythmGameStandard" &&
-                !d.ModeName.Contains("PinkPlay") &&
-                !d.ModeName.Contains("Controllable")) != null)
+                d.Notes < 40000 &&
+                d.Mode < 10) != null)
                 .OrderByDescending(s => s.UploadTime)
                 .Include(s => s.Difficulties)
                 .ToListAsync();
 
             foreach (var song in songs) {
-                try {
-                    var newSong = await SongUtils.GetSongFromBeatSaver(song.Hash);
-                    if (newSong == null || newSong.Hash.ToLower() != song.Hash.ToLower()) {
-                        foreach (var d in song.Difficulties) {
-                            d.Status = DifficultyStatus.outdated;
-                        }
-                        continue;
-                    } else {
-                        
-                        foreach (var d in song.Difficulties) {
-                            d.Status = DifficultyStatus.unranked;
-                            d.Requirements |= newSong.Difficulties.FirstOrDefault(dd => dd.DifficultyName == d.DifficultyName && dd.ModeName == d.ModeName)?.Requirements ?? Requirements.None;
-                        }
-                    }
-                } catch {
+                (var newSong, var error) = await SongUtils.GetSongFromBeatSaver(song.Hash);
+                if ((newSong == null && (error != null && (HttpStatusCode)error?.Response.ToDictionary()["StatusCode"] == HttpStatusCode.NotFound)) || newSong?.Versions[0].Hash.ToLower() != song.Hash.ToLower()) {
                     foreach (var d in song.Difficulties) {
                         d.Status = DifficultyStatus.outdated;
                     }
@@ -1278,21 +1222,12 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 foreach (var d in song.Difficulties) {
-                    if ((d.Stars == null || d.Stars == 0) && 
-                        !d.Requirements.HasFlag(Requirements.Noodles) && 
+                    if (
+                        //(d.Stars == null || d.Stars == 0) &&
+                        !d.Requirements.HasFlag(Requirements.Noodles) &&
                         !d.Requirements.HasFlag(Requirements.MappingExtensions) &&
                         d.Notes > 20 &&
-                        d.ModeName != "Lightshow" &&
-                        d.ModeName != "InvertedStandard" &&
-                        d.ModeName != "VerticalStandard" &&
-                        d.ModeName != "Generated360Degree" &&
-                        d.ModeName != "Generated90Degree" &&
-                        d.ModeName != "StandardOldDots" &&
-                        d.ModeName != "HorizontalStandard" &&
-                        d.ModeName != "InverseStandard" &&
-                        d.ModeName !=  "RhythmGameStandard" &&
-                        !d.ModeName.Contains("PinkPlay") && 
-                        !d.ModeName.Contains("Controllable")) {
+                        d.Mode < 10) {
                         await RatingUtils.UpdateFromExMachina(d, song, null);
                     }
                 }
