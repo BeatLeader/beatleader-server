@@ -1,10 +1,8 @@
 # BeatLeader Server
 
-Server for the BeatLeader website and Beat Saber mod.
+Server for the BeatLeader website, mods and Discord bot.
 
 Deployed here: https://api.beatleader.com/
-
-I don't know what I'm doing, so there can be very stupid mistakes!
 
 ## Description
 
@@ -16,23 +14,27 @@ The main data source for the server are replays. It is operating by the simple r
 
 To start this thing you need to install several tools:
 
-- Visual Studio 2022
-- Docker
+- [Visual Studio 2022](https://visualstudio.microsoft.com/vs/) (make sure to select ASP.NET during installation)
+- [Docker](https://www.docker.com/products/docker-desktop/)
+- [IIS Express](https://learn.microsoft.com/en-us/iis/extensions/introduction-to-iis-express/iis-express-overview#installing-iis-express)
 
-For testing use Postman.
+For testing use [Postman](https://www.postman.com/downloads/).
+
+Warning: This project uses private submodules, your git client might be not happy about that.
+For the best experience use [SourceTree App](https://www.sourcetreeapp.com/) as it allows selective submodule pull
+by double clicking them in a list.
 
 After everything is installed:
 
 1) Change working directory to project.
-2) `dotnet tool install --global dotnet-ef`
-3) `dotnet tool restore`
-4) `dotnet ef database update --context AppContext`
-5) ```
-    sudo docker pull mcr.microsoft.com/mssql/server:2022-latest
-    sudo docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=SuperStrong!" -p 1433:1433 --name sqlserver1 --hostname sqlserver1 -d mcr.microsoft.com/mssql/server:2022-latest
-    sudo docker start sqlserver1
-   ```
-6) Open the .sln in Visual Studio and run the server with "IIS Express".
+2) `docker pull mcr.microsoft.com/mssql/server:2022-latest`
+3) `docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=SuperStrong!" -p 1433:1433 --name sqlserver1 --hostname sqlserver1 -d mcr.microsoft.com/mssql/server:2022-latest`
+4) `docker start sqlserver1`
+5) `dotnet tool install --global dotnet-ef`
+6) `dotnet tool restore`
+7) `dotnet ef database update --context AppContext`
+8) `dotnet ef database update --context StorageContext` 
+9) Open the .sln in Visual Studio and run the server with "IIS Express".
 
 The server should be accessible at https://localhost:44313/
 

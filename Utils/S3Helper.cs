@@ -72,7 +72,7 @@ namespace BeatLeader_Server.Utils
                     await data.CopyToAsync(fs);
                 }
 
-                return $"{MinuteRefresh.CurrentHost}backup/file/{container}/{filename}";
+                return $"https://localhost:44313/{MinuteRefresh.CurrentHost}backup/file/{container}/{filename}";
             }
         }
 		
