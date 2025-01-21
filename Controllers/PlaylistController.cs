@@ -76,15 +76,6 @@ namespace BeatLeader_Server.Controllers
             }
         }
 
-        public class CustomData
-        {
-            public string syncURL { get; set; }
-            public string owner { get; set; }
-            public string id { get; set; }
-            public string hash { get; set; }
-            public bool shared { get; set; }
-        }
-
         [Authorize]
         [HttpPost("~/user/oneclickplaylist")]
         public async Task<ActionResult> UpdateOneClickPlaylist()
@@ -302,7 +293,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpPost("~/user/playlist")]
-        public async Task<ActionResult<CustomData>> PostPlaylist([FromQuery] int? id = null, [FromQuery] bool shared = false)
+        public async Task<ActionResult<PlaylisCustomData>> PostPlaylist([FromQuery] int? id = null, [FromQuery] bool shared = false)
         {
             string? currentID = HttpContext.CurrentUserID(_context);
             if (currentID == null) return Unauthorized();
@@ -340,7 +331,7 @@ namespace BeatLeader_Server.Controllers
             playlistRecord.Hash = CalculateSha256(playlist);
             playlistRecord.IsShared = shared;
 
-            var customData = new CustomData { 
+            var customData = new PlaylisCustomData { 
                 syncURL = "https://api.beatleader.com/playlist/guid/" + playlistRecord.Guid.ToString().Replace("-", ""),
                 owner = currentID,
                 id = id?.ToString() ?? "",
@@ -461,7 +452,7 @@ namespace BeatLeader_Server.Controllers
             }).ToListAsync();
 
             playlist.songs = songs.DistinctBy(s => s.hash).OrderByDescending(a => a.rankedTime).ToList();
-            playlist.customData = new CustomData
+            playlist.customData = new PlaylisCustomData
             {
                 syncURL = "https://api.beatleader.com/playlist/ranked",
                 owner = "BeatLeader",
@@ -522,7 +513,7 @@ namespace BeatLeader_Server.Controllers
             }).ToListAsync();
 
             playlist.songs = songs.DistinctBy(s => s.hash).OrderByDescending(a => a.nominatedTime).ToList();
-            playlist.customData = new CustomData
+            playlist.customData = new PlaylisCustomData
             {
                 syncURL = "https://api.beatleader.com/playlist/nominated",
                 owner = "BeatLeader",
@@ -582,7 +573,7 @@ namespace BeatLeader_Server.Controllers
             }).ToListAsync();
 
             playlist.songs = songs.DistinctBy(s => s.hash).OrderByDescending(a => a.qualifiedTime).ToList();
-            playlist.customData = new CustomData
+            playlist.customData = new PlaylisCustomData
             {
                 syncURL = "https://api.beatleader.com/playlist/qualified",
                 owner = "BeatLeader",
@@ -592,11 +583,6 @@ namespace BeatLeader_Server.Controllers
             await S3Helper.UploadPlaylist(_s3Client, "qualified.bplist", playlist);
 
             return Ok();
-        }
-
-        public class PlaylistDifficulty {
-            public string name { get; set; }
-            public string characteristic { get; set; }
         }
 
         [HttpGet("~/playlist/generate")]
@@ -709,7 +695,7 @@ namespace BeatLeader_Server.Controllers
                 }
                 ).ToList();
             }
-            playlist.customData = new CustomData
+            playlist.customData = new PlaylisCustomData
             {
                 owner = currentID,
                 syncURL = HttpContext.Request.GetDisplayUrl(),
@@ -838,7 +824,7 @@ namespace BeatLeader_Server.Controllers
                 }
                 ).ToList();
             }
-            playlist.customData = new CustomData
+            playlist.customData = new PlaylisCustomData
             {
                 owner = HttpContext.CurrentUserID(_context) ?? ""
             };
@@ -852,6 +838,167 @@ namespace BeatLeader_Server.Controllers
                     await _context.BulkSaveChangesAsync();
                 });
             }
+
+            return JsonConvert.SerializeObject(playlist);
+        }
+
+        public class LeaderboardSelection {
+            public float Pp { get; set; }
+            public string LeaderboardId { get; set; }
+            public string Hash { get; set; }
+            public string Mapper { get; set; }
+            public string Name { get; set; }
+            public string DifficultyName { get; set; }
+            public string ModeName { get; set; }
+        }
+
+        [HttpGet("~/playlist/clan/generate")]
+        public async Task<ActionResult<string>> ClanMapsPlaylist(
+            [FromQuery] float ppLimit = 100,
+            [FromQuery] int clanId = 1,
+            [FromQuery] ClanMapsSortBy sortBy = ClanMapsSortBy.Tohold,
+            [FromQuery] PlayedStatus playedStatus = PlayedStatus.Any,
+            [FromQuery] bool duplicate_diffs = false)
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+
+            var clanTag = await _context.Clans.Where(c => c.Id == clanId).Select(c => c.Tag).FirstOrDefaultAsync();
+            if (clanTag == null) {
+                return NotFound();
+            }
+
+            var rankings = _context
+                .ClanRanking
+                .AsNoTracking()
+                .Where(p => p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked && p.ClanId == clanId);
+
+            if (currentID != null && playedStatus != PlayedStatus.Any) {
+                if (playedStatus == PlayedStatus.Played) {
+                    rankings = rankings.Where(p => p.Leaderboard.Scores.Any(s => s.PlayerId == currentID));
+                } else {
+                    rankings = rankings.Where(p => !p.Leaderboard.Scores.Any(s => s.PlayerId == currentID));
+                }
+            }
+
+            Order order = Order.Desc;
+
+            switch (sortBy)
+            {
+                case ClanMapsSortBy.Tohold:
+                    rankings = rankings
+                        .Where(cr => cr.Rank == 1 && cr.Leaderboard.ClanRanking.Count > 1)
+                        .Order(
+                            order.Reverse(), 
+                            t => t.Pp - t
+                                    .Leaderboard
+                                    .ClanRanking
+                                    .Where(cr => cr.ClanId != clanId && cr.Rank == 2)
+                                    .Select(cr => cr.Pp)
+                                    .First());
+                    break;
+                case ClanMapsSortBy.Toconquer:
+                    rankings = rankings
+                        .Where(cr => cr.Rank != 1 || cr.Leaderboard.ClanRankingContested)
+                        .Order(
+                            order, 
+                            t => t.Pp - t
+                                    .Leaderboard
+                                    .ClanRanking
+                                    .Where(cr => cr.ClanId != clanId && cr.Rank == 1)
+                                    .Select(cr => cr.Pp)
+                                    .First());
+                    break;
+                default:
+                    break;
+            }
+
+            var rankingList = await rankings
+            .TagWithCaller()
+            .Select(cr => new LeaderboardSelection {
+                Pp = cr.Pp,
+                LeaderboardId = cr.LeaderboardId,
+                Hash = cr.Leaderboard.Song.Hash,
+                Mapper = cr.Leaderboard.Song.Mapper,
+                Name = cr.Leaderboard.Song.Name,
+                DifficultyName = cr.Leaderboard.Difficulty.DifficultyName,
+                ModeName = cr.Leaderboard.Difficulty.ModeName,
+            })
+            .ToListAsync();
+
+            if (sortBy == ClanMapsSortBy.Tohold || sortBy == ClanMapsSortBy.Toconquer) {
+                var pps = await rankings
+                    .TagWithCaller()
+                    .Select(t => new { t.LeaderboardId, Pp = t.Pp, SecondPp = t
+                        .Leaderboard
+                        .ClanRanking
+                        .Where(cr => cr.ClanId != clanId && (cr.Rank == (sortBy == ClanMapsSortBy.Tohold ? 2 : 1)))
+                        .Select(cr => cr.Pp)
+                        .FirstOrDefault()
+                    })
+                    .AsSplitQuery()
+                    .ToListAsync();
+
+                foreach (var item in pps)
+                {
+                    rankingList.First(cr => cr.LeaderboardId == item.LeaderboardId).Pp = item.Pp - item.SecondPp;
+                }
+            }
+
+            var diffsCount = rankingList.Where(r => Math.Abs(r.Pp) < ppLimit).Select(s => s.Hash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash).Last().Index + 1;
+
+            var diffs = rankingList.Take(diffsCount).Select(s => new {
+                hash = s.Hash,
+                songName = s.Name,
+                levelAuthorName = s.Mapper,
+                difficulties = new List<PlaylistDifficulty> { new PlaylistDifficulty
+                    {
+                        name = s.DifficultyName.FirstCharToLower(),
+                        characteristic = s.ModeName
+                    }
+                }
+            }).ToList();
+
+            dynamic? playlist = null;
+
+            using (var stream = await _s3Client.DownloadPlaylist("clanmapsresult.bplist")) {
+                if (stream != null) {
+                    playlist = stream.ObjectFromStream();
+                }
+            }
+
+            if (playlist == null)
+            {
+                return BadRequest("Original plist dead. Wake up NSGolova!");
+            }
+
+            playlist.playlistTitle = "[" + clanTag + "] " + (sortBy == ClanMapsSortBy.Tohold ? "maps to hold" : "maps to conquer");
+
+            if (duplicate_diffs) {
+                playlist.songs = diffs.Select(diff => 
+                 new
+                {
+                    hash = diff.hash,
+                    songName = diff.songName,
+                    levelAuthorName = diff.levelAuthorName,
+                    difficulties = diff.difficulties
+                }
+                ).ToList();
+            } else {
+                playlist.songs = diffs.GroupBy(s => s.hash).Select(group => 
+                 new
+                {
+                    hash = group.First().hash,
+                    songName = group.First().songName,
+                    levelAuthorName = group.First().levelAuthorName,
+                    difficulties = group.Select(s => s.difficulties.First())
+                }
+                ).ToList();
+            }
+
+            playlist.customData = new PlaylisCustomData
+            {
+                owner = currentID ?? ""
+            };
 
             return JsonConvert.SerializeObject(playlist);
         }
