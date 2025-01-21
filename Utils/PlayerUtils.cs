@@ -27,13 +27,6 @@ namespace BeatLeader_Server.Utils
                     await dbcontext.RecalculatePPAndRankFastContext(context, player);
                 }
             }
-
-            player.AllContextsPp = player.Pp;
-            if (player.ContextExtensions != null) {
-                foreach (var extension in player.ContextExtensions) {
-                    player.AllContextsPp += extension.Pp;
-                }
-            }
         }
 
         public static async Task RecalculatePPAndRankFastGeneral(
@@ -41,6 +34,7 @@ namespace BeatLeader_Server.Utils
             Player player)
         {
             float oldPp = player.Pp;
+            player.AllContextsPp -= oldPp;
 
             var rankedScores = await context
                 .Scores
@@ -79,6 +73,7 @@ namespace BeatLeader_Server.Utils
             player.AccPp = accPP;
             player.TechPp = techPP;
             player.PassPp = passPP;
+            player.AllContextsPp += resultPP;
 
             int rankOffset = 0;
 
@@ -187,6 +182,7 @@ namespace BeatLeader_Server.Utils
             if (player == null) return;
 
             float oldPp = player.Pp;
+            playerProfile.AllContextsPp -= oldPp;
 
             var rankedScores = await dbContext
                 .ScoreContextExtensions
@@ -223,6 +219,7 @@ namespace BeatLeader_Server.Utils
             player.AccPp = accPP;
             player.TechPp = techPP;
             player.PassPp = passPP;
+            playerProfile.AllContextsPp += resultPP;
 
             int rankOffset = 0;
 

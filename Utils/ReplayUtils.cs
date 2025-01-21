@@ -147,6 +147,27 @@ namespace BeatLeader_Server.Utils
             return Inflate(passPP + accPP + techPP) / 52f;
         }
 
+        public static float EffectiveStarRating(
+            string modifiers,
+            float baseStars,
+            ModifiersMap modifierValues, 
+            ModifiersRating? modifiersRating) {
+
+            float mp = modifierValues.GetTotalMultiplier(modifiers, modifiersRating == null);
+
+            if (modifiersRating != null) {
+                if (modifiers.Contains("SS")) {
+                    baseStars = modifiersRating.SSStars;
+                } else if (modifiers.Contains("FS")) {
+                    baseStars = modifiersRating.FSStars;
+                } else if (modifiers.Contains("SF")) {
+                    baseStars = modifiersRating.SFStars;
+                }
+            }
+
+            return baseStars * mp;
+        }
+
         public static (float, float, float, float, float) PpFromScore(
             float accuracy, 
             LeaderboardContexts context,
@@ -299,6 +320,7 @@ namespace BeatLeader_Server.Utils
                 (score.Pp, score.BonusPp, score.PassPP, score.AccPP, score.TechPP) = PpFromScore(score, difficulty);
             }
 
+            score.ModifiedStars = EffectiveStarRating(score.Modifiers, difficulty.Stars ?? 0, difficulty.ModifierValues, difficulty.ModifiersRating);
             score.Qualification = qualification;
             score.Platform = info.platform + "," + info.gameVersion + "," + info.version;
             score.Timepost = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
@@ -385,6 +407,8 @@ namespace BeatLeader_Server.Utils
                 difficulty.ModeName.ToLower() == "rhythmgamestandard");
             }
 
+            result.ModifiedStars = EffectiveStarRating(result.Modifiers, difficulty.Stars ?? 0, difficulty.ModifierValues, difficulty.ModifiersRating);
+
             return result;
         }
 
@@ -412,6 +436,8 @@ namespace BeatLeader_Server.Utils
                 difficulty.TechRating ?? 0.0f, 
                 difficulty.ModeName.ToLower() == "rhythmgamestandard");
             }
+
+            result.ModifiedStars = EffectiveStarRating(result.Modifiers, difficulty.Stars ?? 0, difficulty.ModifierValues, difficulty.ModifiersRating);
             
             return result;
         }
@@ -429,7 +455,8 @@ namespace BeatLeader_Server.Utils
                 AccPP = score.AccPP,
                 TechPP = score.TechPP,
                 PassPP = score.PassPP,
-                Qualification = score.Qualification
+                Qualification = score.Qualification,
+                ModifiedStars = score.ModifiedStars
             };
         }
 
@@ -445,7 +472,8 @@ namespace BeatLeader_Server.Utils
                 Timepost = score.Timepost,
                 Modifiers = score.Modifiers,
                 Accuracy = score.Accuracy,
-                Qualification = score.Qualification
+                Qualification = score.Qualification,
+                ModifiedStars = score.ModifiedStars
             };
 
             if (score.Pp > 0) {
@@ -472,7 +500,8 @@ namespace BeatLeader_Server.Utils
                 AccPP = score.AccPP,
                 TechPP = score.TechPP,
                 PassPP = score.PassPP,
-                Qualification = score.Qualification
+                Qualification = score.Qualification,
+                ModifiedStars = score.ModifiedStars
             };
         }
 

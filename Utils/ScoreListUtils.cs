@@ -161,11 +161,8 @@ namespace BeatLeader_Server.Utils {
                         showAllRatings || 
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
-                        s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked ? 
-                        (s.Modifiers.Contains("SF") ? s.Leaderboard.Difficulty.ModifiersRating.SFStars :
-                        (s.Modifiers.Contains("SS") ? s.Leaderboard.Difficulty.ModifiersRating.SSStars :
-                        (s.Modifiers.Contains("FS") ? s.Leaderboard.Difficulty.ModifiersRating.FSStars :
-                        s.Leaderboard.Difficulty.Stars)))
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked 
+                        ? s.ModifiedStars
                         : 0);
                     break;
                 case ScoresSortBy.Mistakes:
@@ -222,20 +219,14 @@ namespace BeatLeader_Server.Utils {
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) && 
-                        (s.Modifiers.Contains("SF") ? s.Leaderboard.Difficulty.ModifiersRating.SFStars :
-                        (s.Modifiers.Contains("SS") ? s.Leaderboard.Difficulty.ModifiersRating.SSStars :
-                        (s.Modifiers.Contains("FS") ? s.Leaderboard.Difficulty.ModifiersRating.FSStars :
-                        s.Leaderboard.Difficulty.Stars))) >= stars_from);
+                        s.ModifiedStars >= stars_from);
             }
             if (stars_to != null) {
                 sequence = sequence.Where(s => (
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) && 
-                        (s.Modifiers.Contains("SF") ? s.Leaderboard.Difficulty.ModifiersRating.SFStars :
-                        (s.Modifiers.Contains("SS") ? s.Leaderboard.Difficulty.ModifiersRating.SSStars :
-                        (s.Modifiers.Contains("FS") ? s.Leaderboard.Difficulty.ModifiersRating.FSStars :
-                        s.Leaderboard.Difficulty.Stars))) <= stars_to);
+                        s.ModifiedStars <= stars_to);
             }
             if (time_from != null) {
                 sequence = sequence.Where(s => s.Timepost >= time_from);

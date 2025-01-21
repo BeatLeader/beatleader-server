@@ -365,6 +365,18 @@ namespace BeatLeader_Server.Utils
                         });
                     }
                 }
+
+                var rankingsToDelete = new List<ClanRanking>();
+                foreach (var clan in leaderboard.ClanRanking) {
+                    if (!rankedData.Any(d => d.Id == clan.ClanId)) {
+                        rankingsToDelete.Add(clan);
+                    }
+                }
+
+                foreach (var clan in rankingsToDelete) {
+                    leaderboard.ClanRanking.Remove(clan);
+                    context.ClanRanking.Remove(clan);
+                }
             }
 
             return changes;
