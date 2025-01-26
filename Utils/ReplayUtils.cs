@@ -6,39 +6,6 @@ namespace BeatLeader_Server.Utils
 {
     static class ReplayUtils
     {
-        static List<(double, double)> pointList = new List<(double, double)> { 
-                (1.0, 7.424),
-                (0.999, 6.241),
-                (0.9975, 5.158),
-                (0.995, 4.010),
-                (0.9925, 3.241),
-                (0.99, 2.700),
-                (0.9875, 2.303),
-                (0.985, 2.007),
-                (0.9825, 1.786),
-                (0.98, 1.618),
-                (0.9775, 1.490),
-                (0.975, 1.392),
-                (0.9725, 1.315),
-                (0.97, 1.256),
-                (0.965, 1.167),
-                (0.96, 1.101),
-                (0.955, 1.047),
-                (0.95, 1.000),
-                (0.94, 0.919),
-                (0.93, 0.847),
-                (0.92, 0.786),
-                (0.91, 0.734),
-                (0.9, 0.692),
-                (0.875, 0.606),
-                (0.85, 0.537),
-                (0.825, 0.480),
-                (0.8, 0.429),
-                (0.75, 0.345),
-                (0.7, 0.286),
-                (0.65, 0.246),
-                (0.6, 0.217),
-                (0.0, 0.000) };
 
         static List<(double, double)> pointList2 = new List<(double, double)> { 
                 (1.0, 7.424),
@@ -74,24 +41,6 @@ namespace BeatLeader_Server.Utils
                 (0.6, 0.256),
                 (0.0, 0.000), };
 
-        public static float Curve(float acc)
-        {
-            int i = 0;
-            for (; i < pointList.Count; i++)
-            {
-                if (pointList[i].Item1 <= acc) {
-                    break;
-                }
-            }
-    
-            if (i == 0) {
-                i = 1;
-            }
-    
-            double middle_dis = (acc - pointList[i-1].Item1) / (pointList[i].Item1 - pointList[i-1].Item1);
-            return (float)(pointList[i-1].Item2 + middle_dis * (pointList[i].Item2 - pointList[i-1].Item2));
-        }
-
         public static float Curve2(float acc)
         {
             int i = 0;
@@ -108,20 +57,6 @@ namespace BeatLeader_Server.Utils
     
             double middle_dis = (acc - pointList2[i-1].Item1) / (pointList2[i].Item1 - pointList2[i-1].Item1);
             return (float)(pointList2[i-1].Item2 + middle_dis * (pointList2[i].Item2 - pointList2[i-1].Item2));
-        }
-
-        public static float AccRating(float? predictedAcc, float? passRating, float? techRating) {
-            float difficulty_to_acc;
-            if (predictedAcc > 0) {
-                difficulty_to_acc = 15f / Curve((predictedAcc ?? 0) + 0.0022f);
-            } else {
-                float tiny_tech = 0.0208f * (techRating ?? 0) + 1.1284f;
-                difficulty_to_acc = (-MathF.Pow(tiny_tech, -(passRating ?? 0)) + 1) * 8 + 2 + 0.01f * (techRating ?? 0) * (passRating ?? 0);
-            }
-            if (float.IsInfinity(difficulty_to_acc) || float.IsNaN(difficulty_to_acc) || float.IsNegativeInfinity(difficulty_to_acc)) {
-                difficulty_to_acc = 0;
-            }
-            return difficulty_to_acc;
         }
 
         private static float Inflate(float peepee) {

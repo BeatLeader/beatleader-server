@@ -176,7 +176,7 @@ namespace BeatLeader_Server.Controllers
                     return Unauthorized();
                 }
             }
-            
+
             await ScoreRefreshControllerHelper.BulkRefreshScores(_context, leaderboardId);
 
             return Ok();
@@ -207,7 +207,7 @@ namespace BeatLeader_Server.Controllers
 
             _context.ChangeTracker.AutoDetectChangesEnabled = false; 
             
-            var query = _context.Leaderboards.Where(lb => true);
+            var query = _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked);
 
             
                 query = (leaderboardId != null ? query.Where(s => s.Id == leaderboardId) : query);
@@ -434,39 +434,42 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            _context.ChangeTracker.AutoDetectChangesEnabled = false; 
-            
-            var allLeaderboards = await _context.Leaderboards
-                .Select(lb => new {
-                    lb.Difficulty,
-                    Scores = lb.Scores.Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General)).Select(s => new { s.Id, s.Banned, s.Pp, s.Accuracy, s.Timeset, s.ModifiedScore, s.Priority })
-                }).ToListAsync();
+            var lbsCount = await _context.Leaderboards.CountAsync();
 
-            for (int i = 0; i < allLeaderboards.Count; i += 1000)
-            {
-                await allLeaderboards.Skip(i).Take(1000).ParallelForEachAsync(async leaderboard => {
+            for (int i = 0; i < lbsCount; i += 1000) {
+                var allLeaderboards = await _context
+                    .Leaderboards
+                    .AsNoTracking()
+                    .OrderBy(lb => lb.Id)
+                    .Skip(i)
+                    .Take(1000)
+                    .Select(lb => new {
+                        lb.Difficulty,
+                        Scores = lb.Scores
+                        .Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General))
+                        .Select(s => new Score { 
+                            Id = s.Id, 
+                            Banned = s.Banned, 
+                            Pp = s.Pp, 
+                            Accuracy = s.Accuracy, 
+                            Timeset = s.Timeset, 
+                            ModifiedScore = s.ModifiedScore, 
+                            Priority = s.Priority 
+                        })
+                    }).ToListAsync();
+
+                await Task.WhenAll(allLeaderboards.Select(async leaderboard => {
                     var allScores = leaderboard.Scores.Where(s => !s.Banned).ToList();
 
                     var status = leaderboard.Difficulty.Status;
                     bool hasPp = status == DifficultyStatus.ranked || status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
-                    var newScores = new List<Score>();
-
-                    foreach (var s in allScores)
-                    {
-                        var score = new Score() { Id = s.Id, Pp = s.Pp, Accuracy = s.Accuracy, Timeset = s.Timeset, ModifiedScore = s.ModifiedScore, Priority = s.Priority };
-                        try {
-                            _context.Scores.Attach(score);
-                        } catch { }
-
-                        newScores.Add(score);
-                    }
 
                     var rankedScores = hasPp 
-                        ? newScores
+                        ? allScores
                             .OrderByDescending(el => Math.Round(el.Pp, 2))
                             .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                             .ThenBy(el => el.Timeset).ToList() 
-                        : newScores
+                        : allScores
                             .OrderBy(el => el.Priority)
                             .OrderByDescending(el => el.ModifiedScore)
                             .ThenByDescending(el => Math.Round(el.Accuracy, 4))
@@ -474,15 +477,11 @@ namespace BeatLeader_Server.Controllers
                     foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
                     {
                         s.Rank = i + 1;
-                        _context.Entry(s).Property(x => x.Rank).IsModified = true;
                     }
-                }, maxDegreeOfParallelism: 20);
+                }));
 
-                await _context.BulkSaveChangesAsync();
+                await _context.BulkUpdateAsync(allLeaderboards.SelectMany(l => l.Scores), options => options.ColumnInputExpression = c => new { c.Rank });
             }
-            
-
-            _context.ChangeTracker.AutoDetectChangesEnabled = true;
 
             return Ok();
         }

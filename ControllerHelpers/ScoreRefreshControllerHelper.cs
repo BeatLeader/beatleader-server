@@ -13,11 +13,11 @@ namespace BeatLeader_Server.ControllerHelpers {
             
             var query = dbContext
                 .Leaderboards
-                .Where(lb => lb.Difficulty.Status == DifficultyStatus.qualified);
+                .Where(lb => lb.Difficulty.Status == DifficultyStatus.qualified || lb.Difficulty.Status == DifficultyStatus.nominated);
             
             query = (leaderboardId != null ? dbContext.Leaderboards.Where(s => s.Id == leaderboardId) : query);
-
-            var allLeaderboards = await query
+                var allLeaderboards = await query
+                .OrderBy(lb => lb.Id)
                 .Select(lb => new {
                     lb.Difficulty.Status,
                     lb.Difficulty.MaxScore,
@@ -173,20 +173,21 @@ namespace BeatLeader_Server.ControllerHelpers {
                         .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                         .ThenBy(el => el.Timeset)
                         .ToList();
-                foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
+                foreach ((int u, var s) in rankedScores.Select((value, i) => (i, value)))
                 {
-                    s.Rank = i + 1;
+                    s.Rank = u + 1;
                 }
 
                 changes.AddRange(rankedScores);
 
-                if (rankedScores.Count > 100000) {
+                if (changes.Count > 100000) {
                     await saveChanges();
                     changes = new List<Score>();
                 }
             }
 
             await saveChanges();
+            
         }
     }
 }

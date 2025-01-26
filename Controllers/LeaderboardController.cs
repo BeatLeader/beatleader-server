@@ -742,12 +742,14 @@ namespace BeatLeader_Server.Controllers {
 
                 bool showRatings = currentPlayer?.ShowAllRatings ?? false;
 
-                if (!showRatings && !leaderboard.Difficulty.Status.WithRating()) {
-                    leaderboard.HideRatings();
+                if (!showRatings) {
+                    if (!leaderboard.Difficulty.Status.WithRating()) {
+                        leaderboard.HideRatings();
+                    }
 
                     if (leaderboard.Song?.Difficulties != null) {
                         foreach (var diff in leaderboard.Song.Difficulties) {
-                            if (!showRatings && !diff.Status.WithRating()) {
+                            if (!diff.Status.WithRating()) {
                                 diff.HideRatings();
                             }
                         }

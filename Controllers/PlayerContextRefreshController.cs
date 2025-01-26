@@ -305,32 +305,46 @@ namespace BeatLeader_Server.Controllers {
                     return Unauthorized();
                 }
             }
-            var allScores =
-                await _context.ScoreContextExtensions
+
+            var scoresCount = await _context.ScoreContextExtensions
+                .AsNoTracking()
                 .Where(s => s.Context == context && (!s.ScoreInstance.Banned || s.ScoreInstance.Bot) && !s.ScoreInstance.IgnoreForStats)
-                .Select(s => new SubScore
-                {
-                    PlayerId = s.PlayerId,
-                    Platform = s.ScoreInstance.Platform,
-                    Hmd = s.ScoreInstance.Hmd,
-                    ModifiedScore = s.ModifiedScore,
-                    Accuracy = s.Accuracy,
-                    Pp = s.Pp,
-                    BonusPp = s.BonusPp,
-                    PassPP = s.PassPP,
-                    AccPP = s.AccPP,
-                    TechPP = s.TechPP,
-                    Rank = s.Rank,
-                    Timeset = s.ScoreInstance.Timepost,
-                    Weight = s.Weight,
-                    Qualification = s.ScoreInstance.Qualification,
-                    MaxStreak = s.ScoreInstance.MaxStreak,
-                    RightTiming = s.ScoreInstance.RightTiming,
-                    LeftTiming = s.ScoreInstance.LeftTiming,
-                }).ToListAsync();
+                .CountAsync();
+
+            var allScores = new List<SubScore>();
+
+            for (int i = 0; i < scoresCount; i += 100000) {
+                allScores.AddRange(
+                    await _context.ScoreContextExtensions
+                    .AsNoTracking()
+                    .Skip(i)
+                    .Take(100000)
+                    .Where(s => s.Context == context && (!s.ScoreInstance.Banned || s.ScoreInstance.Bot) && !s.ScoreInstance.IgnoreForStats)
+                    .Select(s => new SubScore
+                    {
+                        PlayerId = s.PlayerId,
+                        Platform = s.ScoreInstance.Platform,
+                        Hmd = s.ScoreInstance.Hmd,
+                        ModifiedScore = s.ModifiedScore,
+                        Accuracy = s.Accuracy,
+                        Pp = s.Pp,
+                        BonusPp = s.BonusPp,
+                        PassPP = s.PassPP,
+                        AccPP = s.AccPP,
+                        TechPP = s.TechPP,
+                        Rank = s.Rank,
+                        Timeset = s.ScoreInstance.Timepost,
+                        Weight = s.Weight,
+                        Qualification = s.ScoreInstance.Qualification,
+                        MaxStreak = s.ScoreInstance.MaxStreak,
+                        RightTiming = s.ScoreInstance.RightTiming,
+                        LeftTiming = s.ScoreInstance.LeftTiming,
+                    }).ToListAsync());
+            }
 
             var players = await _context
                     .PlayerContextExtensions
+                    .AsNoTracking()
                     .Where(p => p.Context == context && p.ScoreStats != null)
                     .OrderBy(p => p.Rank)
                     .Select(p => new { p.PlayerId, p.ScoreStats, p.Rank, p.Pp, p.Country, p.CountryRank })
@@ -346,9 +360,7 @@ namespace BeatLeader_Server.Controllers {
                 .GroupBy(p => p.Country)
                 .ToDictionary(g => g.Key, g => g.Count());
 
-            for (int i = 0; i < playersWithScores.Count; i++) {
-                var player = playersWithScores[i];
-                await PlayerRefreshControllerHelper.RefreshStats(
+            await Task.WhenAll(playersWithScores.Select(player => PlayerRefreshControllerHelper.RefreshStats(
                     _context, 
                     player.ScoreStats, 
                     player.Id, 
@@ -356,12 +368,8 @@ namespace BeatLeader_Server.Controllers {
                     player.Pp > 0 ? player.Rank / (float)playerCount : 0,
                     player.Pp > 0 ? player.CountryRank / (float)countryCounts[player.Country] : 0, 
                     context, 
-                    player.Scores);
-                if (i % 1000 == 0) {
-                    await _context.BulkSaveChangesAsync();
-                }
-            }
-            
+                    player.Scores)));
+            await _context.BulkUpdateAsync(players.Select(p => p.ScoreStats).ToList());
 
             return Ok();
         }
