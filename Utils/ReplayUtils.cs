@@ -204,6 +204,10 @@ namespace BeatLeader_Server.Utils
             score.Hmd = HMDFromName(info.hmd);
             score.Controller = ControllerFromName(info.controller);
 
+            if (score.Hmd == HMD.psvr2 && score.Controller == ControllerEnum.oculustouch) {
+                score.Controller = ControllerEnum.playstationSense;
+            }
+
             var status = difficulty.Status;
             var modifers = difficulty.ModifierValues ?? new ModifiersMap();
             bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
@@ -460,7 +464,9 @@ namespace BeatLeader_Server.Utils
             if (lowerHmd.Contains("beyond")) return HMD.bigscreenbeyond;
             if (lowerHmd.Contains("nolo") && lowerHmd.Contains("sonic")) return HMD.nolosonic;
             if (lowerHmd.Contains("hypereal")) return HMD.hypereal;
+
             if (lowerHmd.Contains("varjo") && lowerHmd.Contains("aero")) return HMD.varjoaero;
+            if (lowerHmd.Contains("varjo") && lowerHmd.Contains("xr") && lowerHmd.Contains("3")) return HMD.varjoxr3;
 
             if (lowerHmd.Contains("hp reverb")) return HMD.hpReverb;
             if (lowerHmd.Contains("samsung windows")) return HMD.samsungWmr;
@@ -556,6 +562,7 @@ namespace BeatLeader_Server.Utils
             if (lowerController.Contains("e4")) return ControllerEnum.e4;
             if (lowerController.Contains("etee")) return ControllerEnum.etee;
             if (lowerController.Contains("contactglove")) return ControllerEnum.contactglove;
+            if (lowerController.Contains("playstation")) return ControllerEnum.playstationSense;
 
             return ControllerEnum.unknown;
         }

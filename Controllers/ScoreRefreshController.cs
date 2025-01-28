@@ -360,6 +360,17 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpGet("~/scores/bulkrankrefresh/allContexts")]
+        [Authorize]
+        public async Task<ActionResult> BulkRankRefreshScoresAllContexts()
+        {
+            foreach (var context in ContextExtensions.NonGeneral) {
+                await BulkRankRefreshScores(context);
+            }
+
+            return Ok();
+        }
+
         [HttpGet("~/scores/{leaderboardContext}/bulkrankrefresh")]
         [Authorize]
         public async Task<ActionResult> BulkRankRefreshScores(LeaderboardContexts leaderboardContext)
@@ -378,7 +389,7 @@ namespace BeatLeader_Server.Controllers
                 .AsNoTracking()
                 .Select(lb => new {
                     lb.Difficulty,
-                    Scores = lb.ContextExtensions.Where(s => s.Context == leaderboardContext).Select(s => new ScoreContextExtension { Id = s.Id, Pp = s.Pp, Accuracy = s.Accuracy, Timepost = s.Timepost, ModifiedScore = s.ModifiedScore })
+                    Scores = lb.ContextExtensions.Where(s => s.Context == leaderboardContext && !s.Banned).Select(s => new ScoreContextExtension { Id = s.Id, Pp = s.Pp, Accuracy = s.Accuracy, Timepost = s.Timepost, ModifiedScore = s.ModifiedScore })
                 }).ToListAsync();
 
             foreach (var leaderboard in allLeaderboards) {

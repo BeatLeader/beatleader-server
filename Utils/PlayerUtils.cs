@@ -186,7 +186,7 @@ namespace BeatLeader_Server.Utils
 
             var rankedScores = await dbContext
                 .ScoreContextExtensions
-                .Where(s => s.PlayerId == player.PlayerId && s.Pp != 0 && s.Context == context && !s.Banned && !s.Qualification)
+                .Where(s => s.PlayerId == player.PlayerId && s.Pp != 0 && s.ScoreId != null && s.Context == context && !s.Banned && !s.Qualification)
                 .AsNoTracking()
                 .OrderByDescending(s => s.Pp)
                 .Select(s => new ScoreContextExtension { 
