@@ -49,6 +49,7 @@ namespace BeatLeader_Server.Controllers {
             string? modifiers,
             List<string>? friendsList,
             string? clanTag,
+            string? hmd,
             bool offsets = false) {
             IQueryable<Score> scoreQuery = _context
                 .Scores
@@ -99,6 +100,13 @@ namespace BeatLeader_Server.Controllers {
                 } else {
                     scoreQuery = scoreQuery.Where(s => s.Modifiers.Length == 0);
                 }
+            }
+
+            if (hmd != null) {
+                try {
+                    var hmds = hmd.ToLower().Split(",").Select(s => (HMD)Int32.Parse(s));
+                    scoreQuery = scoreQuery.Where(s => hmds.Contains(s.Hmd));
+                } catch { }
             }
 
             Order oppositeOrder = order.Reverse();
@@ -393,6 +401,7 @@ namespace BeatLeader_Server.Controllers {
             string? modifiers,
             List<string>? friendsList,
             string? clanTag,
+            string? hmd,
             bool offsets = false) {
             IQueryable<ScoreContextExtension> scoreQuery = _context
                 .ScoreContextExtensions
@@ -444,6 +453,13 @@ namespace BeatLeader_Server.Controllers {
                 } else {
                     scoreQuery = scoreQuery.Where(s => s.Modifiers.Length == 0);
                 }
+            }
+
+            if (hmd != null) {
+                try {
+                    var hmds = hmd.ToLower().Split(",").Select(s => (HMD)Int32.Parse(s));
+                    scoreQuery = scoreQuery.Where(s => hmds.Contains(s.ScoreInstance.Hmd));
+                } catch { }
             }
 
             Order oppositeOrder = order.Reverse();
@@ -578,6 +594,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Whether to include only scores from friends, default is false")] bool friends = false,
             [FromQuery, SwaggerParameter("Whether to include only scores from voters, default is false")] bool voters = false,
             [FromQuery, SwaggerParameter("Whether to include only scores from clan, default is false")] string? clanTag = null,
+            [FromQuery, SwaggerParameter("Comma-separated range to filter by hmd (headset), default is null")] string? hmd = null,
             [FromQuery, SwaggerParameter("Whether to include predicted scores, default is false")] bool prediction = false) {
 
             string? currentID = HttpContext.CurrentUserID(_context);
@@ -791,9 +808,9 @@ namespace BeatLeader_Server.Controllers {
                     await PredictedScores(leaderboard, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList);
                 } else {
                     if (leaderboardContext == LeaderboardContexts.General || leaderboardContext == LeaderboardContexts.None) {
-                        await GeneralScores(leaderboard, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, clanTag);
+                        await GeneralScores(leaderboard, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, clanTag, hmd);
                     } else {
-                        await ContextScores(leaderboard, leaderboardContext, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, clanTag);
+                        await ContextScores(leaderboard, leaderboardContext, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, clanTag, hmd);
                     }
                 }
 
@@ -862,6 +879,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] string? countries = null,
             [FromQuery] string? search = null,
             [FromQuery] string? modifiers = null,
+            [FromQuery] string? hmds = null,
             [FromQuery] bool friends = false,
             [FromQuery] bool voters = false) {
 
@@ -986,9 +1004,9 @@ namespace BeatLeader_Server.Controllers {
                 }
 
                 if (leaderboardContext == LeaderboardContexts.General || leaderboardContext == LeaderboardContexts.None) {
-                    await GeneralScores(leaderboard, showBots, voters, false, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, null, true);
+                    await GeneralScores(leaderboard, showBots, voters, false, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, null, hmds, true);
                 } else {
-                    await ContextScores(leaderboard, leaderboardContext, showBots, voters, false, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, null, true);
+                    await ContextScores(leaderboard, leaderboardContext, showBots, voters, false, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, null, hmds, true);
                 }
 
                 foreach (var score in leaderboard.Scores) {

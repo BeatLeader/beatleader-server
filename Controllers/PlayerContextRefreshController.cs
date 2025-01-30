@@ -313,13 +313,13 @@ namespace BeatLeader_Server.Controllers {
 
             var allScores = new List<SubScore>();
 
-            for (int i = 0; i < scoresCount; i += 100000) {
-                allScores.AddRange(
-                    await _context.ScoreContextExtensions
+            for (int i = 0; i < scoresCount; i += 1000000) {
+                var sublist = await _context.ScoreContextExtensions
                     .AsNoTracking()
-                    .Skip(i)
-                    .Take(100000)
+                    .OrderBy(s => s.Id)
                     .Where(s => s.Context == context && (!s.ScoreInstance.Banned || s.ScoreInstance.Bot) && !s.ScoreInstance.IgnoreForStats)
+                    .Skip(i)
+                    .Take(1000000)
                     .Select(s => new SubScore
                     {
                         PlayerId = s.PlayerId,
@@ -335,11 +335,12 @@ namespace BeatLeader_Server.Controllers {
                         Rank = s.Rank,
                         Timeset = s.ScoreInstance.Timepost,
                         Weight = s.Weight,
-                        Qualification = s.ScoreInstance.Qualification,
+                        Qualification = s.Qualification,
                         MaxStreak = s.ScoreInstance.MaxStreak,
                         RightTiming = s.ScoreInstance.RightTiming,
                         LeftTiming = s.ScoreInstance.LeftTiming,
-                    }).ToListAsync());
+                    }).ToListAsync();
+                allScores.AddRange(sublist);
             }
 
             var players = await _context
