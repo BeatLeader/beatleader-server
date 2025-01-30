@@ -244,6 +244,16 @@ namespace BeatLeader_Server.Services {
                                     songDiff.MaxScore = set.MaxScore();
                                 }
                             }
+
+                            foreach (var mode in info._difficultyBeatmapSets) {
+                                foreach (var diff in mode._difficultyBeatmaps) {
+                                    var songDiff = song.Difficulties.FirstOrDefault(d => d.DifficultyName == diff._difficulty && d.ModeName == mode._beatmapCharacteristicName);
+                                    if (songDiff == null || diff._customData == null || diff._customData._requirements == null) continue;
+                                    if (diff._customData._requirements.Any(r => r.ToLower().Contains("vivify"))) {
+                                        songDiff.Requirements |= Models.Requirements.Vivify;
+                                    }
+                                }
+                            }
                         }
                     } catch { }
 

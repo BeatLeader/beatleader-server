@@ -104,7 +104,7 @@ namespace BeatLeader_Server.Controllers
                     Id = LeaderboardContexts.SCPM,
                     Icon = "https://cdn.assets.beatleader.com/Ingame_BL_ContextSCPM.png",
                     Name = "SCPM",
-                    Description = "Smaller Notes+Pro Mod pnly",
+                    Description = "Smaller Notes+Pro Mod only",
                     Key = "scpm"
                 }
             };
