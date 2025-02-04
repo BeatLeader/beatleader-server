@@ -345,7 +345,7 @@ namespace BeatLeader_Server.Controllers {
                         Socials = a.Player.Socials,
                         PatreonFeatures = a.Player.PatreonFeatures,
                         ProfileSettings = a.Player.ProfileSettings,
-                        Clans = a.Player.Clans.OrderBy(c => player.ClanOrder.IndexOf(c.Tag))
+                        Clans = a.Player.Clans.OrderBy(c => ("," + player.ClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + player.ClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
                             .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                     },
                     Achievement = a

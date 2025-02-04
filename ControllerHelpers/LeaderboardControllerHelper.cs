@@ -1,4 +1,5 @@
-﻿using BeatLeader_Server.Enums;
+﻿using Amazon.S3;
+using BeatLeader_Server.Enums;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
@@ -148,6 +149,38 @@ namespace BeatLeader_Server.ControllerHelpers {
             }
 
             result.Data = resultList;
+
+            return result;
+        }
+
+         public static async Task<List<PlaylistResponse>?> GetPlaylistList(
+            AppContext _context,
+            string? currentID,
+            IAmazonS3 _s3Client,
+            string? playlistIds,
+            List<PlaylistResponse>? playlists
+            ) {
+            var result = playlists;
+            if (playlistIds != null) {
+                var playlistIntIds = playlistIds.Split(",").Select(s => (int?)(int.TryParse(s, out int result) ? result : null)).Where(s => s != null).Select(s => (int)s).ToList();
+                if (playlistIntIds.Count == 0 && playlists == null) {
+                    return null;
+                }
+
+                if (result == null) {
+                    result = new List<PlaylistResponse>();
+                }
+
+                var remotePlaylists = await _context.Playlists.Where(p => playlistIntIds.Contains(p.Id) && (p.OwnerId == currentID || p.IsShared)).ToListAsync();
+                foreach (var remotePlaylist in remotePlaylists) {
+                    using (var stream = await _s3Client.DownloadPlaylist(remotePlaylist.Id + ".bplist")) {
+                        var toAdd = stream.ObjectFromStream<PlaylistResponse>();
+                        if (toAdd != null) {
+                            result.Add(toAdd);
+                        }
+                    }
+                }
+            }
 
             return result;
         }

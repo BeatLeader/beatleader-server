@@ -224,7 +224,7 @@ namespace BeatLeader_Server.Controllers {
                         ProfileSettings = s.Player.ProfileSettings,
                         Clans = s.Player
                             .Clans
-                            .OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                            .OrderBy(c => ("," + s.Player.ClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + s.Player.ClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
                             .ThenBy(c => c.Id)
                             .Take(1)
                                 .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
@@ -374,7 +374,7 @@ namespace BeatLeader_Server.Controllers {
                         ProfileSettings = s.Player.ProfileSettings,
                         Clans = s.Player
                             .Clans
-                            .OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                            .OrderBy(c => ("," + s.Player.ClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + s.Player.ClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
                             .ThenBy(c => c.Id)
                             .Take(1)
                                 .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
@@ -1092,7 +1092,7 @@ namespace BeatLeader_Server.Controllers {
                             s.LeaderboardId == leaderboardId && 
                             s.ValidForGeneral && 
                             !s.Banned &&
-                            s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                            s.Player.Clans.OrderBy(c => ("," + s.Player.ClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + s.Player.ClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
                             .ThenBy(c => c.Id).Take(1).Contains(cr.Clan))
                         .Include(sc => sc.Player)
                         .ThenInclude(p => p.ProfileSettings)
@@ -1132,7 +1132,7 @@ namespace BeatLeader_Server.Controllers {
                                 CountryRank = s.Player.CountryRank,
                                 Role = s.Player.Role,
                                 ProfileSettings = s.Player.ProfileSettings,
-                                Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                                Clans = s.Player.Clans.OrderBy(c => ("," + s.Player.ClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + s.Player.ClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
                             .ThenBy(c => c.Id).Take(1)
                                     .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                             },
@@ -1145,7 +1145,7 @@ namespace BeatLeader_Server.Controllers {
                             sc.LeaderboardId == leaderboardId && 
                             sc.ValidForGeneral &&
                             !sc.Banned &&
-                            sc.Player.Clans.OrderBy(c => sc.Player.ClanOrder.IndexOf(c.Tag))
+                            sc.Player.Clans.OrderBy(c => ("," + sc.Player.ClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + sc.Player.ClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
                             .ThenBy(c => c.Id).Take(1).Contains(cr.Clan))
                         .Count()
                 })
@@ -1227,7 +1227,7 @@ namespace BeatLeader_Server.Controllers {
                             s
                              .Player
                              .Clans
-                             .OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                             .OrderBy(c => ("," + s.Player.ClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + s.Player.ClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
                              .ThenBy(c => c.Id)
                              .Take(1)
                              .Contains(cr.Clan))
@@ -1269,7 +1269,7 @@ namespace BeatLeader_Server.Controllers {
                                 CountryRank = s.Player.CountryRank,
                                 Role = s.Player.Role,
                                 ProfileSettings = s.Player.ProfileSettings,
-                                Clans = s.Player.Clans.OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag))
+                                Clans = s.Player.Clans.OrderBy(c => ("," + s.Player.ClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + s.Player.ClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
                             .ThenBy(c => c.Id).Take(1)
                                     .Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
                             },
@@ -1282,7 +1282,7 @@ namespace BeatLeader_Server.Controllers {
                             sc.LeaderboardId == leaderboardId && 
                             sc.ValidForGeneral && 
                             !sc.Banned &&
-                            sc.Player.Clans.OrderBy(c => sc.Player.ClanOrder.IndexOf(c.Tag))
+                            sc.Player.Clans.OrderBy(c => ("," + sc.Player.ClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + sc.Player.ClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
                             .ThenBy(c => c.Id).Take(1).Contains(cr.Clan))
                         .Count()
                 })
@@ -1703,7 +1703,7 @@ namespace BeatLeader_Server.Controllers {
             var sequence = dbContext
                 .Leaderboards
                 .AsNoTracking()
-                .Where(lb => lb.Song.Mapper != "Beat Sage");
+                .Where(lb => lb.Song.Mapper != "Beat Sage" && lb.Song.Mapper != "TopMapper" && lb.Song.Mapper != "TK2774");
             if (uploadTreshold != null) {
                 sequence = sequence.Where(lb => lb.Song.UploadTime > uploadTreshold);
             }

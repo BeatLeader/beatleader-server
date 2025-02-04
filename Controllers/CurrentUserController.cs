@@ -156,7 +156,7 @@ namespace BeatLeader_Server.Controllers {
                     PatreonFeatures = p.PatreonFeatures,
                     ProfileSettings = p.ProfileSettings,
                     ContextExtensions = p.ContextExtensions,
-                    Clans = p.Clans.OrderBy(c => p.ClanOrder.IndexOf(c.Tag))
+                    Clans = p.Clans.OrderBy(c => ("," + p.ClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + p.ClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
                                 .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color, Name = c.Name })
                 })
                 .AsSplitQuery()
@@ -562,7 +562,7 @@ namespace BeatLeader_Server.Controllers {
                     }
 
                     newClanOrder = string.Join(",", player.Clans
-                        .OrderBy(c => newClanOrder.IndexOf(c.Tag) >= 0 ? newClanOrder.IndexOf(c.Tag) : 1000)
+                        .OrderBy(c => ("," + newClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + newClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
                         .Select(c => c.Tag));
 
                     _context.ClanOrderChanges.Add(new ClanOrderChange {

@@ -278,7 +278,7 @@ namespace BeatLeader_Server.ControllerHelpers {
             if (primary) {
                 players = players
                         .Where(p => !p.Banned && 
-                        p.Clans.OrderBy(c => p.ClanOrder.IndexOf(c.Tag) >= 0 ? p.ClanOrder.IndexOf(c.Tag) : 1000)
+                        p.Clans.OrderBy(c => ("," + p.ClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + p.ClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
                             .ThenBy(c => c.Id)
                             .Take(1)
                             .Any(c => c.Id == clan.Id));

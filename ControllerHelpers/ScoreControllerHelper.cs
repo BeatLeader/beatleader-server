@@ -53,6 +53,47 @@ namespace BeatLeader_Server.ControllerHelpers {
             return (statistic, null);
         }
 
+        public static async Task<(ScoreStatistic?, string?)> CalculateStatisticScoreData(
+            AppContext? dbContext, 
+            byte[] data,
+            IAmazonS3 _s3Client, 
+            Score score)
+        {
+            string fileName = score.Replay.Split("/").Last();
+            Replay? replay;
+
+            using (var ms = new MemoryStream(data))
+            {
+                try
+                {
+                    (replay, _) = ReplayDecoder.ReplayDecoder.Decode(ms.ToArray());
+                }
+                catch (Exception)
+                {
+                    return (null, "Error decoding replay");
+                }
+            }
+
+            (ScoreStatistic? statistic, string? error) = await CalculateAndSaveStatistic(_s3Client, replay, score);
+            if (statistic == null) {
+                return (null, error);
+            }
+
+            if (dbContext != null) {
+                score.AccLeft = statistic.accuracyTracker.accLeft;
+                score.AccRight = statistic.accuracyTracker.accRight;
+                score.MaxCombo = statistic.hitTracker.maxCombo;
+                score.FcAccuracy = statistic.accuracyTracker.fcAcc;
+                score.MaxStreak = statistic.hitTracker.maxStreak;
+                score.LeftTiming = statistic.hitTracker.leftTiming;
+                score.RightTiming = statistic.hitTracker.rightTiming;
+
+                await dbContext.SaveChangesAsync();
+            }
+
+            return (statistic, null);
+        }
+
         public static (ScoreStatistic?, string?) CalculateStatisticFromReplay(Replay? replay, Leaderboard leaderboard, bool allow = false)
         {
             ScoreStatistic? statistic;

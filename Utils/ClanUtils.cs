@@ -65,7 +65,7 @@ namespace BeatLeader_Server.Utils
             var playerClans = newScore
                 .Player?
                 .Clans?
-                .OrderBy(c => clanOrder.IndexOf(c.Tag) >= 0 ? clanOrder.IndexOf(c.Tag) : 1000)
+                .OrderBy(c => ("," + clanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + clanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
                 .ThenBy(c => c.Id)
                 .Take(1)
                 .ToList();
@@ -97,7 +97,7 @@ namespace BeatLeader_Server.Utils
                         s.LeaderboardId == newScore.LeaderboardId && 
                         !s.Banned &&
                         s.Player.Clans
-                        .OrderBy(c => s.Player.ClanOrder.IndexOf(c.Tag) >= 0 ? s.Player.ClanOrder.IndexOf(c.Tag) : 1000)
+                        .OrderBy(c => ("," + s.Player.ClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + s.Player.ClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
                         .ThenBy(c => c.Id)
                         .Take(1)
                         .Contains(clan))
@@ -228,7 +228,7 @@ namespace BeatLeader_Server.Utils
                 foreach (Clan clan in 
                     score
                         .Clans
-                        .OrderBy(c => score.ClanOrder.IndexOf(c.Tag) >= 0 ? score.ClanOrder.IndexOf(c.Tag) : 1000)
+                        .OrderBy(c => ("," + score.ClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + score.ClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
                         .ThenBy(c => c.Id)
                         .Take(1))
                 {
@@ -486,7 +486,7 @@ namespace BeatLeader_Server.Utils
             foreach (var clan in clans) {
                 updates.Add(new Clan {
                     Id = clan.Id,
-                    MainPlayersCount = clan.Players.Count(p => p.Clans.OrderBy(c => p.ClanOrder.IndexOf(c.Tag) >= 0 ? p.ClanOrder.IndexOf(c.Tag) : 1000)
+                    MainPlayersCount = clan.Players.Count(p => p.Clans.OrderBy(c => ("," + p.ClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + p.ClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
                         .ThenBy(c => c.Id)
                         .Take(1).FirstOrDefault()?.Tag == clan.Tag)
                 });

@@ -14,6 +14,7 @@ using static BeatLeader_Server.Utils.ResponseUtils;
 using Type = BeatLeader_Server.Enums.Type;
 using System.Security.Cryptography;
 using System.Dynamic;
+using BeatLeader_Server.ControllerHelpers;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -601,6 +602,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] SongStatus songStatus = SongStatus.None,
             [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery] MyType mytype = MyType.None,
+            [FromQuery] string? playlistIds = null,
+            [FromBody] List<PlaylistResponse>? playlists = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
             [FromQuery] float? accrating_from = null,
@@ -628,8 +631,9 @@ namespace BeatLeader_Server.Controllers
                 .FirstOrDefaultAsync(p => p.Id == currentID) : null;
 
             int searchCount = 0;
+            var playlistList = await LeaderboardControllerHelper.GetPlaylistList(_context, currentID, _s3Client, playlistIds, playlists);
             sequence = sequence
-                .Filter(_context, out int? searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, mappers, currentPlayer);
+                .Filter(_context, out int? searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, mappers, playlistList, currentPlayer);
             (sequence, int totalMatches) = await sequence.WherePage(0, count);
 
             var diffsList = sequence.Select(s => s.Song.Hash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash);
@@ -840,6 +844,25 @@ namespace BeatLeader_Server.Controllers
             }
 
             return JsonConvert.SerializeObject(playlist);
+        }
+
+        [HttpGet("~/playlists/featured")]
+        public async Task<ActionResult<List<FeaturedPlaylistResponse>>> FeaturedPlaylists()
+        {
+            return await _context
+                .FeaturedPlaylist
+                .OrderByDescending(p => p.Id)
+                .Select(fp => new FeaturedPlaylistResponse {
+                    Id = fp.Id,
+                    PlaylistLink = fp.PlaylistLink,
+                    Cover = fp.Cover,
+                    Title = fp.Title,
+                    Description = fp.Description,
+
+                    Owner = fp.Owner,
+                    OwnerCover = fp.OwnerCover,
+                    OwnerLink = fp.OwnerLink,
+                }).ToListAsync();
         }
 
         public class LeaderboardSelection {
