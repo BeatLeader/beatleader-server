@@ -594,7 +594,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Whether to include only scores from friends, default is false")] bool friends = false,
             [FromQuery, SwaggerParameter("Whether to include only scores from voters, default is false")] bool voters = false,
             [FromQuery, SwaggerParameter("Whether to include only scores from clan, default is false")] string? clanTag = null,
-            [FromQuery, SwaggerParameter("Comma-separated range to filter by hmd (headset), default is null")] string? hmd = null,
+            [FromQuery, SwaggerParameter("Comma-separated range to filter by hmd (headset), default is null")] string? hmds = null,
             [FromQuery, SwaggerParameter("Whether to include predicted scores, default is false")] bool prediction = false) {
 
             string? currentID = HttpContext.CurrentUserID(_context);
@@ -808,9 +808,9 @@ namespace BeatLeader_Server.Controllers {
                     await PredictedScores(leaderboard, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList);
                 } else {
                     if (leaderboardContext == LeaderboardContexts.General || leaderboardContext == LeaderboardContexts.None) {
-                        await GeneralScores(leaderboard, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, clanTag, hmd);
+                        await GeneralScores(leaderboard, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, clanTag, hmds);
                     } else {
-                        await ContextScores(leaderboard, leaderboardContext, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, clanTag, hmd);
+                        await ContextScores(leaderboard, leaderboardContext, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, clanTag, hmds);
                     }
                 }
 
@@ -1680,6 +1680,8 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Start date to filter leaderboards by (timestamp)")] int? date_from = null,
             [FromQuery, SwaggerParameter("End date to filter leaderboards by (timestamp)")] int? date_to = null,
             [FromQuery, SwaggerParameter("Types of leaderboards to filter, default is null(All). Same as type but multiple")] string? types = null,
+            [FromQuery, SwaggerParameter("Types of leaderboards to filter, default is null(All). Same as type but multiple")] string? playlistIds = null,
+            [FromBody, SwaggerParameter("Types of leaderboards to filter, default is null(All). Same as type but multiple")] List<PlaylistResponse>? playlists = null,
             [FromQuery, SwaggerParameter("Filter maps from a specific mappers. BeatSaver profile ID list, comma separated, default is null")] string? mappers = null,
             string? overrideCurrentId = null,
             int? uploadTreshold = null) {
@@ -1705,7 +1707,10 @@ namespace BeatLeader_Server.Controllers {
             if (uploadTreshold != null) {
                 sequence = sequence.Where(lb => lb.Song.UploadTime > uploadTreshold);
             }
-            sequence = sequence.Filter(dbContext, out int? searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, mappers, currentPlayer);
+
+            var playlistList = await LeaderboardControllerHelper.GetPlaylistList(_context, currentID, _s3Client, playlistIds, playlists);
+
+            sequence = sequence.Filter(dbContext, out int? searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, mappers, playlistList, currentPlayer);
 
             var result = new ResponseWithMetadata<LeaderboardInfoResponse>() {
                 Metadata = new Metadata() {
@@ -1920,6 +1925,8 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] SongStatus songStatus = SongStatus.None,
             [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery] MyType mytype = MyType.None,
+            [FromQuery] string? playlistIds = null,
+            [FromBody] List<PlaylistResponse>? playlists = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
             [FromQuery] float? accrating_from = null,
@@ -1939,8 +1946,9 @@ namespace BeatLeader_Server.Controllers {
                 .Players
                 .Include(p => p.ProfileSettings)
                 .FirstOrDefaultAsync(p => p.Id == currentID) : null;
+            var playlistList = await LeaderboardControllerHelper.GetPlaylistList(_context, currentID, _s3Client, playlistIds, playlists);
             sequence = sequence
-                .Filter(_context, out int? searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, mappers, currentPlayer);
+                .Filter(_context, out int? searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, mappers, playlistList, currentPlayer);
 
             var nonuniqueids = await sequence.Select(lb => lb.SongId).ToListAsync();
             var ids = new List<string>();
@@ -1971,7 +1979,7 @@ namespace BeatLeader_Server.Controllers {
             }
 
             sequence = _context.Leaderboards
-                .Where(lb => ids.Contains(lb.SongId)).Filter(_context, out searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, mappers, currentPlayer)
+                .Where(lb => ids.Contains(lb.SongId)).Filter(_context, out searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, mappers, playlistList, currentPlayer)
                 .Include(lb => lb.Difficulty)
                 .Include(lb => lb.Song);
 

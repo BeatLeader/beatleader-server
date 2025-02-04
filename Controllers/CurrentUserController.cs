@@ -388,6 +388,7 @@ namespace BeatLeader_Server.Controllers {
                     .Include(p => p.ProfileSettings)
                     .Include(p => p.PatreonFeatures)
                     .Include(p => p.Changes)
+                    .Include(p => p.Clans)
                     .FirstOrDefaultAsync(p => p.Id == id);
             }
 

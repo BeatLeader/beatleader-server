@@ -83,7 +83,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                             Rank = s.Rank,
                             Timeset = s.ScoreInstance.Timepost,
                             Weight = s.Weight,
-                            Qualification = s.ScoreInstance.Qualification,
+                            Qualification = s.Qualification,
                             MaxStreak = s.ScoreInstance.MaxStreak,
                             RightTiming = s.ScoreInstance.RightTiming,
                             LeftTiming = s.ScoreInstance.LeftTiming,

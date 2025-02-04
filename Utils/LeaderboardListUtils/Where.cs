@@ -78,6 +78,22 @@ public static partial class LeaderboardListUtils
         return sequence.Where(lb => lb.Song.Mappers.Any(m => ids.Contains(m.Id)));
     }
 
+    private static IQueryable<Leaderboard> WherePlaylists(this IQueryable<Leaderboard> sequence, List<PlaylistResponse>? playlists)
+    {
+        if (playlists == null)
+        {
+            return sequence;
+        }
+
+        var hashes = playlists.SelectMany(p => p.songs.Where(s => s.hash != null).Select(s => (string)s.hash!)).ToList();
+        var keys = playlists.SelectMany(p => p.songs.Where(s => s.hash == null && s.key != null).Select(s => (string)s.key!)).ToList();
+
+        if (hashes.Count == 0 && keys.Count == 0) {
+            return sequence;
+        }
+        return sequence.Where(lb => (hashes.Count > 0 && hashes.Contains(lb.Song.Hash)) || (keys.Count > 0 && keys.Contains(lb.SongId)));
+    }
+
     private static IQueryable<Leaderboard> WhereMyType(this IQueryable<Leaderboard> sequence, MyType mytype, Player? currentPlayer, LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
     {
         int mapperId = 0;

@@ -45,6 +45,7 @@ public static partial class LeaderboardListUtils
                                                  int? dateFrom = null,
                                                  int? dateTo = null,
                                                  string? mapper = null,
+                                                 List<PlaylistResponse>? playlists = null,
                                                  Player? currentPlayer = null) =>
         source.FilterBySearch(search,
                               _context,
@@ -73,6 +74,7 @@ public static partial class LeaderboardListUtils
               .WhereMapRequirements(mapRequirements, allRequirements)
               .WhereSongStatus(songStatus)
               .WhereMapper(mapper)
+              .WherePlaylists(playlists)
               .WhereMyType(mytype, currentPlayer, leaderboardContext)
               .WhereRatingFrom(RatingType.Stars, starsFrom)
               .WhereRatingFrom(RatingType.Acc, accRatingFrom)
