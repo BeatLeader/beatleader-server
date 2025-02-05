@@ -60,49 +60,52 @@ public static class SongSearchService
         using DirectoryReader directoryReader = DirectoryReader.Open(Directory);
         IndexSearcher searcher = new(directoryReader);
 
-        Query query = GetQuery(searchQuery);
+        return searchQuery.Split(",").SelectMany((queryPart, i) => {
+            queryPart = queryPart.Trim();
+            bool exactMatch = queryPart.StartsWith("\"") && queryPart.EndsWith("\"");
+            queryPart = queryPart.Replace("\"", "");
+            Query query = GetQuery(queryPart);
 
-        TopFieldDocs topFieldDocs = searcher.Search(query, null, HitsLimit, Sort.RELEVANCE, true, false);
-        ScoreDoc[] hits = topFieldDocs.ScoreDocs;
-        string lowerQuery = searchQuery.ToLower();
-        var words = lowerQuery.Split(" ").Select(CleanWord).ToArray();
+            TopFieldDocs topFieldDocs = searcher.Search(query, null, HitsLimit, Sort.RELEVANCE, true, false);
+            ScoreDoc[] hits = topFieldDocs.ScoreDocs;
+            string lowerQuery = queryPart.ToLower();
+            var words = lowerQuery.Split(" ").Select(CleanWord).ToArray();
 
-        return hits.Select(scoreDoc =>
-        {
-            SongMetadata result = (SongMetadata)searcher.Doc(scoreDoc.Doc);
-            if (result.Hash == lowerQuery ||
-                result.Mapper == lowerQuery ||
-                result.Name == lowerQuery ||
-                result.Author == lowerQuery) {
-                result.Score = 500;
-            } else {
-                result.Score = (int)(scoreDoc.Score * 100.0f);
-            }
-            if (result.Name.StartsWith(lowerQuery)) {
-                result.Score += 250;
-            } else if (result.Name.Contains(lowerQuery)) {
-                result.Score += 150;
-            }
-            if (result.Mapper.StartsWith(lowerQuery)) {
-                result.Score += 250;
-            } else if (result.Mapper.Contains(lowerQuery)) {
-                result.Score += 150;
-            }
-            if (result.Author.StartsWith(lowerQuery)) {
-                result.Score += 250;
-            } else if (result.Author.Contains(lowerQuery)) {
-                result.Score += 150;
-            }
+            return hits.Select(scoreDoc =>
+            {
+                SongMetadata result = (SongMetadata)searcher.Doc(scoreDoc.Doc);
+                if (result.Hash == lowerQuery ||
+                    result.Mapper == lowerQuery ||
+                    result.Name == lowerQuery ||
+                    result.Author == lowerQuery) {
+                    result.Score = 500;
+                } else {
+                    result.Score = (int)(scoreDoc.Score * 100.0f);
+                }
+                if (result.Name.StartsWith(lowerQuery)) {
+                    result.Score += 250;
+                } else if (result.Name.Contains(lowerQuery)) {
+                    result.Score += 150;
+                }
+                if (result.Mapper.StartsWith(lowerQuery)) {
+                    result.Score += 250;
+                } else if (result.Mapper.Contains(lowerQuery)) {
+                    result.Score += 150;
+                }
+                if (result.Author.StartsWith(lowerQuery)) {
+                    result.Score += 250;
+                } else if (result.Author.Contains(lowerQuery)) {
+                    result.Score += 150;
+                }
             
-            if (words.Length > 1) {
-                result.Score += words.Intersect(result.Name.Split(" ").Select(CleanWord).ToArray()).Count() * 60;
-            }
+                if (words.Length > 1) {
+                    result.Score += words.Intersect(result.Name.Split(" ").Select(CleanWord).ToArray()).Count() * 60;
+                }
 
-            if (result.Mapper == "beat sage") {
-                result.Score -= 1000;
-            }
+                result.Score = (int)((float)result.Score * ((float)1 - 0.1 * (float)i));
 
-            return result;
+                return result;
+            }).Where(h => !exactMatch || h.Score > 300).ToList();
         }).ToList();
     }
 
