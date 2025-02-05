@@ -561,7 +561,7 @@ namespace BeatLeader_Server.Utils
             bool isRanked) {
             if (currentScore != null)
             {
-                if (!resultScore.IgnoreForStats) {
+                if (!currentScore.IgnoreForStats) {
                     playerScoreStats.TotalScore -= currentScore.ModifiedScore;
 
                     if (playerScoreStats.TotalPlayCount == 1)
