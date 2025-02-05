@@ -296,6 +296,10 @@ namespace BeatLeader_Server.ControllerHelpers {
                         await dbContext.SaveChangesAsync();
                     }
                 }
+
+                if (map.Automapper && song.MapCreator == SongCreator.Human) {
+                    song.MapCreator = Song.BotName(song.Mapper, map.DeclatedAi);
+                }
             }
         }
 

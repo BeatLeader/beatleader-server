@@ -601,6 +601,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] Operation allRequirements = Operation.Any,
             [FromQuery] SongStatus songStatus = SongStatus.None,
             [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
+            [FromQuery] SongCreator mapCreator = SongCreator.Human,
             [FromQuery] MyType mytype = MyType.None,
             [FromQuery] string? playlistIds = null,
             [FromBody] List<PlaylistResponse>? playlists = null,
@@ -623,7 +624,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized("Count is too big. 2000 max");
             }
 
-            var sequence = _context.Leaderboards.AsQueryable();
+            var sequence = _context.Leaderboards.Where(lb => lb.Song.MapCreator == mapCreator);
             string? currentID = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = currentID != null ? await _context
                 .Players

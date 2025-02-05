@@ -405,22 +405,22 @@ namespace BeatLeader_Server.Controllers
                 switch (i) {
                     case 0:
                         query = query
-                            .Where(l => l.Song.UploadTime > treshold && l.Song.Mapper != "Beat Sage")
+                            .Where(l => l.Song.UploadTime > treshold && l.Song.MapCreator == SongCreator.Human)
                             .OrderByDescending(l => l.TodayPlays);
                         break;
                     case 1:
                         query = query
-                            .Where(l => l.Song.UploadTime > treshold && l.Song.Mapper != "Beat Sage")
+                            .Where(l => l.Song.UploadTime > treshold && l.Song.MapCreator == SongCreator.Human)
                             .OrderByDescending(l => l.ThisWeekPlays);
                         break;
                     case 2:
                         query = query
-                            .Where(l => l.Song.Status.HasFlag(SongStatus.Curated) && l.Song.Mapper != "Beat Sage")
+                            .Where(l => l.Song.Status.HasFlag(SongStatus.Curated) && l.Song.MapCreator == SongCreator.Human)
                             .OrderByDescending(l => l.Id);
                         break;
                     case 3:
                         query = query
-                            .Where(l => l.Song.UploadTime > treshold && l.Song.Mapper != "Beat Sage")
+                            .Where(l => l.Song.UploadTime > treshold && l.Song.MapCreator == SongCreator.Human)
                             .OrderByDescending(l => l.PositiveVotes);
                         break;
                     default:

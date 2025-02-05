@@ -1668,6 +1668,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Operation to filter all requirements, default is Any")] Operation allRequirements = Operation.Any,
             [FromQuery, SwaggerParameter("Song status to filter leaderboards by, default is None")] SongStatus songStatus = SongStatus.None,
             [FromQuery, SwaggerParameter("Context of the leaderboard, default is General")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
+            [FromQuery, SwaggerParameter("Map creator, human by default")] SongCreator mapCreator = SongCreator.Human,
             [FromQuery, SwaggerParameter("My type to filter leaderboards by, default is None")] MyType mytype = MyType.None,
             [FromQuery, SwaggerParameter("Minimum stars to filter leaderboards by")] float? stars_from = null,
             [FromQuery, SwaggerParameter("Maximum stars to filter leaderboards by")] float? stars_to = null,
@@ -1703,7 +1704,7 @@ namespace BeatLeader_Server.Controllers {
             var sequence = dbContext
                 .Leaderboards
                 .AsNoTracking()
-                .Where(lb => lb.Song.Mapper != "Beat Sage" && lb.Song.Mapper != "TopMapper" && lb.Song.Mapper != "TK2774");
+                .Where(lb => lb.Song.MapCreator == mapCreator);
             if (uploadTreshold != null) {
                 sequence = sequence.Where(lb => lb.Song.UploadTime > uploadTreshold);
             }
