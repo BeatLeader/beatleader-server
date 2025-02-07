@@ -142,7 +142,7 @@ namespace BeatLeader_Server.Controllers
             {
                 var redirect = fallbackToRedirect ? await _context.ScoreRedirects.FirstOrDefaultAsync(sr => sr.OldScoreId == id) : null;
                 if (redirect != null && redirect.NewScoreId != id) {
-                    return await GetScore(redirect.NewScoreId);
+                    return await GetScore(redirect.NewScoreId, true);
                 } else {
                     return NotFound();
                 }
