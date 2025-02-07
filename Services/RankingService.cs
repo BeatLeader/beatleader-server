@@ -111,6 +111,8 @@ namespace BeatLeader_Server.Services
                     .Include(l => l.Qualification)
                     .Include(l => l.Changes)
                     .Include(l => l.ClanRanking)
+                    .Include(l => l.Song)
+                    .ThenInclude(s => s.Mappers)
                     .OrderBy(l => l.Difficulty.Stars)
                     .ToListAsync();
 
@@ -140,6 +142,12 @@ namespace BeatLeader_Server.Services
                     }
 
                     difficulty.Status = DifficultyStatus.ranked;
+
+                    if (leaderboard.Song.Mappers != null) {
+                        foreach (var mapper in leaderboard.Song.Mappers) {
+                            mapper.Status |= MapperStatus.Ranked;
+                        }
+                    }
                     await _context.SaveChangesAsync();
 
                     await _scoreController.RefreshScores(leaderboard.Id);

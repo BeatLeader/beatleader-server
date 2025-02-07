@@ -1,4 +1,5 @@
-﻿using BeatLeader_Server.Extensions;
+﻿using BeatLeader_Server.ControllerHelpers;
+using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Migrations;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
@@ -222,13 +223,15 @@ namespace BeatLeader_Server.Controllers
                     var intId = Int32.Parse(beatSaverId);
                     var mapper = _context.Mappers.FirstOrDefault(m => m.Id == intId);
                     if (mapper == null) {
-                        _context.Mappers.Add(new Mapper {
+                        var newMapper = new Mapper {
                             Id = intId,
                             Name = bsmapper.Name,
                             Avatar = bsmapper.Avatar,
                             Curator = bsmapper.Curator,
                             VerifiedMapper = bsmapper.VerifiedMapper
-                        });
+                        };
+                        newMapper.Status = await PlayerControllerHelper.GetMapperStatus(_context, player.Role, bsmapper);
+                        _context.Mappers.Add(newMapper);
                     }
 
                     player.MapperId = intId;

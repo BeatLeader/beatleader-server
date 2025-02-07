@@ -260,6 +260,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                         var dbMapper = await dbContext.Mappers.FindAsync(mapper.Id);
                         if (dbMapper == null) {
                             dbMapper = Mapper.MapperFromBeatSaverUser(mapper);
+                            dbMapper.Status = await PlayerControllerHelper.GetMapperStatus(dbContext, "", mapper);
                             dbContext.Mappers.Add(dbMapper);
                         }
 

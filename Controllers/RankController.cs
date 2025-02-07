@@ -712,7 +712,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            Player? player = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId);
+            Player? player = await _context.Players.Include(p => p.Mapper).FirstOrDefaultAsync(p => p.Id == playerId);
             if (player == null) {
                 return NotFound();
             }
@@ -720,6 +720,9 @@ namespace BeatLeader_Server.Controllers
             if (!player.Role.Contains("juniorrankedteam"))
             {
                 player.Role = string.Join(",", player.Role.Split(",").Append("juniorrankedteam"));
+                if (player.Mapper != null) {
+                    player.Mapper.Status |= MapperStatus.Team;
+                }
 
                 await _context.SaveChangesAsync();
             }
@@ -740,7 +743,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            Player? player = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId);
+            Player? player = await _context.Players.Include(p => p.Mapper).FirstOrDefaultAsync(p => p.Id == playerId);
             if (player == null)
             {
                 return NotFound();
@@ -749,6 +752,9 @@ namespace BeatLeader_Server.Controllers
             if (player.Role.Contains("juniorrankedteam"))
             {
                 player.Role = string.Join(",", player.Role.Split(",").Where(s => s != "juniorrankedteam"));
+                if (player.Mapper != null && !player.AnyTeam()) {
+                    player.Mapper.Status &= ~MapperStatus.Team;
+                }
 
                 await _context.SaveChangesAsync();
             }
@@ -769,7 +775,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            Player? player = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId);
+            Player? player = await _context.Players.Include(p => p.Mapper).FirstOrDefaultAsync(p => p.Id == playerId);
             if (player == null) {
                 return NotFound();
             }
@@ -777,6 +783,9 @@ namespace BeatLeader_Server.Controllers
             if (!player.Role.Contains("rankedteam"))
             {
                 player.Role = string.Join(",", player.Role.Split(",").Append("rankedteam"));
+                if (player.Mapper != null) {
+                    player.Mapper.Status |= MapperStatus.Team;
+                }
 
                 await _context.SaveChangesAsync();
             }
@@ -797,7 +806,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            Player? player = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId);
+            Player? player = await _context.Players.Include(p => p.Mapper).FirstOrDefaultAsync(p => p.Id == playerId);
             if (player == null)
             {
                 return NotFound();
@@ -806,6 +815,9 @@ namespace BeatLeader_Server.Controllers
             if (player.Role.Contains("rankedteam"))
             {
                 player.Role = string.Join(",", player.Role.Split(",").Where(s => s != "rankedteam"));
+                if (player.Mapper != null && !player.AnyTeam()) {
+                    player.Mapper.Status &= ~MapperStatus.Team;
+                }
 
                 await _context.SaveChangesAsync();
             }
@@ -826,7 +838,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            Player? player = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId);
+            Player? player = await _context.Players.Include(p => p.Mapper).FirstOrDefaultAsync(p => p.Id == playerId);
             if (player == null) {
                 return NotFound();
             }
@@ -834,6 +846,9 @@ namespace BeatLeader_Server.Controllers
             if (!player.Role.Contains("qualityteam"))
             {
                 player.Role = string.Join(",", player.Role.Split(",").Append("qualityteam"));
+                if (player.Mapper != null) {
+                    player.Mapper.Status |= MapperStatus.Team;
+                }
 
                 await _context.SaveChangesAsync();
             }
@@ -854,7 +869,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            Player? player = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId);
+            Player? player = await _context.Players.Include(p => p.Mapper).FirstOrDefaultAsync(p => p.Id == playerId);
             if (player == null)
             {
                 return NotFound();
@@ -863,6 +878,9 @@ namespace BeatLeader_Server.Controllers
             if (player.Role.Contains("qualityteam"))
             {
                 player.Role = string.Join(",", player.Role.Split(",").Where(s => s != "qualityteam"));
+                if (player.Mapper != null && !player.AnyTeam()) {
+                    player.Mapper.Status &= ~MapperStatus.Team;
+                }
 
                 await _context.SaveChangesAsync();
             }
@@ -883,7 +901,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            Player? player = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId);
+            Player? player = await _context.Players.Include(p => p.Mapper).FirstOrDefaultAsync(p => p.Id == playerId);
             if (player == null) {
                 return NotFound();
             }
@@ -891,6 +909,9 @@ namespace BeatLeader_Server.Controllers
             if (!player.Role.Contains("rankoperatorteam"))
             {
                 player.Role = string.Join(",", player.Role.Split(",").Append("rankoperatorteam"));
+                if (player.Mapper != null) {
+                    player.Mapper.Status |= MapperStatus.Team;
+                }
 
                 await _context.SaveChangesAsync();
             }
@@ -911,7 +932,7 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            Player? player = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId);
+            Player? player = await _context.Players.Include(p => p.Mapper).FirstOrDefaultAsync(p => p.Id == playerId);
             if (player == null)
             {
                 return NotFound();
@@ -920,6 +941,9 @@ namespace BeatLeader_Server.Controllers
             if (player.Role.Contains("rankoperatorteam"))
             {
                 player.Role = string.Join(",", player.Role.Split(",").Where(s => s != "rankoperatorteam"));
+                if (player.Mapper != null && !player.AnyTeam()) {
+                    player.Mapper.Status &= ~MapperStatus.Team;
+                }
 
                 await _context.SaveChangesAsync();
             }

@@ -256,6 +256,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery, SwaggerParameter("Value in seconds to filter by the last score time, default is null")] int? activityPeriod = null,
             [FromQuery, SwaggerParameter("Unix timestamp to filter by the first score time, default is null")] int? firstScoreTime = null,
             [FromQuery, SwaggerParameter("Unix timestamp to filter by the first score time, default is null")] int? recentScoreTime = null,
+            [FromQuery, SwaggerParameter("Mapper status filter, default is null")] MapperStatus? mapperStatus = null,
             [FromQuery, SwaggerParameter("Flag to filter only banned players, default is null")] bool? banned = null)
         {
             if (count < 0 || count > 100) {
@@ -263,7 +264,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
-                return await GetContextPlayers(sortBy, page, count, search, order, countries, mapsType, ppType, leaderboardContext, friends, pp_range, score_range, platform, role, hmd, activityPeriod, banned);
+                return await GetContextPlayers(sortBy, page, count, search, order, countries, mapsType, ppType, leaderboardContext, friends, pp_range, score_range, platform, role, hmd, activityPeriod, mapperStatus, banned);
             }
 
             IQueryable<Player> request = 
@@ -350,6 +351,9 @@ namespace BeatLeader_Server.Controllers
                     exp = Expression.OrElse(exp, Expression.Call(Expression.Property(player, "Role"), contains, Expression.Constant(term)));
                 }
                 request = request.Where((Expression<Func<Player, bool>>)Expression.Lambda(exp, player));
+            }
+            if (mapperStatus != null) {
+                request = request.Where(p => p.Mapper != null && p.Mapper.Status == mapperStatus);
             }
             if (hmd != null)
             {
@@ -532,6 +536,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? role = null,
             [FromQuery] string? hmd = null,
             [FromQuery] int? activityPeriod = null,
+            [FromQuery] MapperStatus? mapperStatus = null,
             [FromQuery] bool? banned = null)
         {
             IQueryable<PlayerContextExtension> request = 
@@ -623,6 +628,9 @@ namespace BeatLeader_Server.Controllers
                     exp = Expression.OrElse(exp, Expression.Call(Expression.Property(Expression.Property(player, "PlayerInstance"), "Role"), contains, Expression.Constant(term)));
                 }
                 request = request.Where((Expression<Func<PlayerContextExtension, bool>>)Expression.Lambda(exp, player));
+            }
+            if (mapperStatus != null) {
+                request = request.Where(p => p.PlayerInstance.Mapper != null && p.PlayerInstance.Mapper.Status == mapperStatus);
             }
             if (hmd != null) {
                 try {

@@ -79,6 +79,7 @@ namespace BeatLeader_Server.Controllers {
                         Name = m.Name,
                         Avatar = m.Avatar,
                         Curator = m.Curator,
+                        Status = m.Status,
                         VerifiedMapper = m.VerifiedMapper
                     })
                     .ToListAsync()

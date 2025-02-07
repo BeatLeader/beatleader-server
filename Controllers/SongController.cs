@@ -134,6 +134,7 @@ namespace BeatLeader_Server.Controllers
                             Avatar = m.Player != null ? m.Player.Avatar : m.Avatar,
                             Curator = m.Curator,
                             VerifiedMapper = m.VerifiedMapper,
+                            Status = m.Status,
                         }).ToList() : null,
                         MapperId = s.MapperId,
                         CollaboratorIds = s.CollaboratorIds,
