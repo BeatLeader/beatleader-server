@@ -901,6 +901,7 @@ namespace BeatLeader_Server.Controllers
         [SwaggerResponse(404, "Player not found")]
         public async Task<ActionResult<RankedMapperResponse>> GetRankedMaps(
             [FromRoute, SwaggerParameter("The ID of the player")] int id,
+            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery] string? sortBy = null) {
 
             var lbs = await _context
@@ -909,11 +910,11 @@ namespace BeatLeader_Server.Controllers
                     lb.Difficulty.Status == DifficultyStatus.ranked &&
                     lb.Song.Mappers.FirstOrDefault(m => m.Id == id) != null)
                 .Select(lb => new { 
-                    lb.Plays,
+                    Plays = leaderboardContext == LeaderboardContexts.General ? lb.Plays : lb.ContextExtensions.Where(ce => ce.Context == leaderboardContext).Count(),
                     lb.Song.UploadTime,
                     lb.Difficulty.Stars,
                     lb.SongId,
-                    Pp = lb.Scores.Sum(s => s.Pp) })
+                    Pp = leaderboardContext == LeaderboardContexts.General ? lb.Scores.Sum(s => s.Pp) : lb.ContextExtensions.Where(ce => ce.Context == leaderboardContext).Sum(s => s.Pp) })
                 .ToListAsync();
 
             if (lbs.Count == 0) {

@@ -518,5 +518,23 @@ namespace BeatLeader_Server.ControllerHelpers {
 
             return (allFollowingIds, pagedFollowersCounts);
         }
+
+        public static async Task<MapperStatus> GetMapperStatus(AppContext _context, string role, UserDetail mapper) {
+            var result = MapperStatus.None;
+            if (mapper.VerifiedMapper) {
+                result |= MapperStatus.Verified;
+            }
+            if (mapper.Curator == true) {
+                result |= MapperStatus.Curator;
+            }
+            if (await _context.Leaderboards.AnyAsync(lb => lb.Song.MapperId == mapper.Id && lb.Difficulty.Status == DifficultyStatus.ranked)) {
+                result |= MapperStatus.Ranked;
+            }
+            if (Player.RoleIsAnyTeam(role)) {
+                result |= MapperStatus.Team;
+            }
+
+            return result;
+        }
     }
 }
