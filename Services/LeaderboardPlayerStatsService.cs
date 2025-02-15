@@ -21,7 +21,7 @@ namespace BeatLeader_Server.Services {
         public static async Task AddJob(PlayerStatsJob job, AppContext _context, StorageContext _storageContext, IAmazonS3 _s3Client) {
             var score = job.score;
 
-            var leaderboard = await _context.Leaderboards.Where(l => l.Id == job.leaderboardId).FirstOrDefaultAsync();
+            var leaderboard = await _context.Leaderboards.Where(l => l.Id == job.leaderboardId).Include(lb => lb.Song).FirstOrDefaultAsync();
             if (leaderboard == null) return;
 
             var playerRole = await _context.Players.Where(p => p.Id == job.playerId).Select(p => p.Role).FirstOrDefaultAsync();
@@ -45,7 +45,7 @@ namespace BeatLeader_Server.Services {
 
             var stats = new PlayerLeaderboardStats {
                 Timeset = timeset,
-                Time = job.time,
+                Time = (float)Math.Min(job.time, leaderboard.Song.Duration),
                 StartTime = job.startTime,
                 Score = score.BaseScore,
                 Type = job.type,

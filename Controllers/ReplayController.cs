@@ -473,7 +473,7 @@ namespace BeatLeader_Server.Controllers
                 var counter = _replayLocation.WithLabels(new string[] { hash });
                 counter.Inc();
 
-                Console.WriteLine($"POSTED: {info.playerID} {ip}");
+                resultScore.HashId = AuthUtils.HashIp(ip);
 
                 Task.Run(async () => {
                     await Task.Delay(TimeSpan.FromMinutes(10));

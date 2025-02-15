@@ -305,6 +305,77 @@ namespace BeatLeader_Server.Controllers
                 .ToListAsync());
         }
 
+        public class FailurePoint {
+            public float Fails { get; set; }
+            public float Restarts { get; set; }
+            public float Quits { get; set; }
+        }
+
+        public class AttemptsGraph {
+            public int Count { get; set; }
+            public int TodayCount { get; set; }
+            public int WeekCount { get; set; }
+            public float SuccessRate { get; set; }
+            public float Duration { get; set; }
+
+            public List<FailurePoint> FailurePoints { get; set; }
+        }
+
+        [HttpGet("~/leaderboard/scorestats/{leaderboardId}")]
+        public async Task<ActionResult<AttemptsGraph>> GetAllLbScorestats(string leaderboardId) {
+            
+            var attemptsList = await _storageContext
+                .PlayerLeaderboardStats
+                .Where(s => s.LeaderboardId == leaderboardId)
+                .AsNoTracking()
+                .Select(ls => new {
+                    ls.Time,
+                    ls.Type,
+                    ls.Timepost,
+                    ls.PlayerId
+                })
+                .ToListAsync();
+
+            var groupedAttempts = attemptsList.GroupBy(a => a.PlayerId).ToList();
+
+            var now = DateTime.UtcNow;
+            var today = now.Date;
+            var weekAgo = today.AddDays(-7);
+
+            var totalAttempts = attemptsList.Count;
+            var todayAttempts = attemptsList.Count(a => a.Timepost >= today.Subtract(new DateTime(1970, 1, 1)).TotalSeconds);
+            var weekAttempts = attemptsList.Count(a => a.Timepost >= weekAgo.Subtract(new DateTime(1970, 1, 1)).TotalSeconds);
+
+            var successCount = groupedAttempts.Count(g => g.Any(a => a.Type == EndType.Clear));
+            var successRate = totalAttempts > 0 ? (float)successCount / groupedAttempts.Count : 0;
+
+            var maxTime = attemptsList.Max(a => a.Time);
+            var segments = Math.Min(100, (int)Math.Ceiling(maxTime));
+            var failurePoints = new List<FailurePoint>();
+
+            var allFails = (float)attemptsList.Count(a => a.Type == EndType.Fail || a.Type == EndType.Restart || a.Type == EndType.Quit);
+            
+            for (int i = 0; i < segments; i++) {
+                var timeStart = (maxTime * i) / segments;
+                var timeEnd = (maxTime * (i + 1)) / segments;
+                
+                var timePoint = new FailurePoint {
+                    Fails = attemptsList.Count(a => a.Type == EndType.Fail && a.Time >= timeStart && a.Time < timeEnd) / allFails,
+                    Restarts = attemptsList.Count(a => a.Type == EndType.Restart && a.Time >= timeStart && a.Time < timeEnd) / allFails,
+                    Quits = attemptsList.Count(a => a.Type == EndType.Quit && a.Time >= timeStart && a.Time < timeEnd) / allFails,
+                };
+                failurePoints.Add(timePoint);
+            }
+
+            return new AttemptsGraph {
+                Count = totalAttempts,
+                TodayCount = todayAttempts,
+                WeekCount = weekAttempts,
+                SuccessRate = successRate,
+                Duration = maxTime,
+                FailurePoints = failurePoints
+            };
+        }
         [NonAction]
         public async Task<(StatsGraph?, ReplayOffsets?)> CollectGraph(int id, string replayLink, int? start, int? length) {
 

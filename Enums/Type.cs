@@ -29,3 +29,9 @@ public enum RandomScoreSource {
     General,
     Friends
 }
+
+public enum DateRangeType {
+    Upload,
+    Ranked,
+    Score
+}

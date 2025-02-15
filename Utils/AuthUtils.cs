@@ -25,5 +25,17 @@ namespace BeatLeader_Server.Utils
 
             return Convert.ToBase64String(hash);
         }
+
+        public static string HashIp(string ip, int iterations = 10000, int hashSize = 15)
+        {
+            byte[] hash;
+            var salt = GenerateSalt(hashSize);
+            using (var pbkdf2 = new Rfc2898DeriveBytes(ip, salt, iterations, HashAlgorithmName.SHA256))
+            {
+                hash = pbkdf2.GetBytes(hashSize);
+            }
+
+            return Convert.ToBase64String(hash);
+        }
     }
 }

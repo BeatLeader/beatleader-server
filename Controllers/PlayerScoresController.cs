@@ -933,7 +933,24 @@ namespace BeatLeader_Server.Controllers {
                     })
                     .ToListAsync();
 
-            var first = _context.Players.Where(p => p.Id == id).Select(p => new HistoryTriangleResponse {
+            var first = leaderboardContext == LeaderboardContexts.General ? _context
+                .Players
+                .Where(p => p.Id == id)
+                .Select(p => new HistoryTriangleResponse {
+                Timestamp = Time.UnixNow(),
+
+                Pp = p.Pp,
+                AccPp = p.AccPp,
+                PassPp = p.PassPp,
+                TechPp = p.TechPp,
+
+                Improvements = p.ScoreStats.RankedImprovementsCount,
+                NewScores = p.ScoreStats.RankedPlayCount
+            })
+            .FirstOrDefault() : _context
+                .PlayerContextExtensions
+                .Where(p => p.PlayerId == id && p.Context == leaderboardContext)
+                .Select(p => new HistoryTriangleResponse {
                 Timestamp = Time.UnixNow(),
 
                 Pp = p.Pp,

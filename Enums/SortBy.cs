@@ -15,6 +15,10 @@ public enum MapSortBy
     VoteCount,
     VoteRatio,
     Duration,
+    Attempts,
+    NJS,
+    NPS,
+    BPM
 }
 
 public enum ScoresSortBy {

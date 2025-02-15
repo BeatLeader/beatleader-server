@@ -190,6 +190,54 @@ public static partial class LeaderboardListUtils
         };
     }
 
+    private static IQueryable<Leaderboard> WhereDateFrom(this IQueryable<Leaderboard> sequence, DateRangeType rangeType, Type type, int? dateFrom, int? dateTo)
+    {
+        if (dateFrom == null && dateTo == null)
+        {
+            return sequence;
+        }
+
+        switch (rangeType) {
+            case DateRangeType.Upload:
+                sequence = sequence.Where(leaderboard => (dateFrom == null || leaderboard.Song.UploadTime >= dateFrom) && (dateTo == null || leaderboard.Song.UploadTime <= dateTo));
+                break;
+            case DateRangeType.Ranked:
+                switch (type) {
+                    case Type.Ranked:
+                        sequence = sequence.Where(leaderboard => (dateFrom == null || leaderboard.Difficulty.RankedTime >= dateFrom) && (dateTo == null || leaderboard.Difficulty.RankedTime <= dateTo));
+                        break;
+                    case Type.Ranking:
+                        sequence = sequence.Where(leaderboard => (dateFrom == null
+                                    || leaderboard.Difficulty.RankedTime >= dateFrom
+                                    || leaderboard.Difficulty.NominatedTime >= dateFrom
+                                    || leaderboard.Difficulty.QualifiedTime >= dateFrom
+                                    || leaderboard.Changes!.OrderByDescending(leaderboardChange => leaderboardChange.Timeset).FirstOrDefault()!.Timeset >= dateFrom)
+                                   && (dateTo == null
+                                    || leaderboard.Difficulty.RankedTime <= dateTo
+                                    || leaderboard.Difficulty.NominatedTime <= dateTo
+                                    || leaderboard.Difficulty.QualifiedTime <= dateTo
+                                    || leaderboard.Changes!.OrderByDescending(leaderboardChange => leaderboardChange.Timeset).FirstOrDefault()!.Timeset <= dateTo));
+                        break;
+                    case Type.Nominated:
+                        sequence = sequence.Where(leaderboard => (dateFrom == null || leaderboard.Difficulty.NominatedTime >= dateFrom) && (dateTo == null || leaderboard.Difficulty.NominatedTime <= dateTo));
+                        break;
+                    case Type.Qualified:
+                        sequence = sequence.Where(leaderboard => (dateFrom == null || leaderboard.Difficulty.QualifiedTime >= dateFrom) && (dateTo == null || leaderboard.Difficulty.QualifiedTime <= dateTo));
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            case DateRangeType.Score:
+                sequence = sequence.Where(leaderboard => leaderboard.Scores.Any(score => (dateFrom == null || score.Timepost >= dateFrom) && (dateTo == null || score.Timepost <= dateTo)));
+                break;
+            default:
+                break;
+        }
+
+        return sequence;
+    }
+
     public static async Task<(IQueryable<Leaderboard>, int)> WherePage(this IQueryable<Leaderboard> sequence, int page, int count)
     {
         if (page <= 0) {

@@ -1683,6 +1683,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Maximum tech rating to filter leaderboards by")] float? techrating_to = null,
             [FromQuery, SwaggerParameter("Start date to filter leaderboards by (timestamp)")] int? date_from = null,
             [FromQuery, SwaggerParameter("End date to filter leaderboards by (timestamp)")] int? date_to = null,
+            [FromQuery, SwaggerParameter("Type of the date filter, default by map upload date")] DateRangeType date_range = DateRangeType.Upload,
             [FromQuery, SwaggerParameter("Types of leaderboards to filter, default is null(All). Same as type but multiple")] string? types = null,
             [FromQuery, SwaggerParameter("Types of leaderboards to filter, default is null(All). Same as type but multiple")] string? playlistIds = null,
             [FromBody, SwaggerParameter("Types of leaderboards to filter, default is null(All). Same as type but multiple")] List<PlaylistResponse>? playlists = null,
@@ -1714,7 +1715,7 @@ namespace BeatLeader_Server.Controllers {
 
             var playlistList = await LeaderboardControllerHelper.GetPlaylistList(_context, currentID, _s3Client, playlistIds, playlists);
 
-            sequence = sequence.Filter(dbContext, out int? searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, mappers, playlistList, currentPlayer);
+            sequence = sequence.Filter(dbContext, out int? searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, date_range, mappers, playlistList, currentPlayer);
 
             var result = new ResponseWithMetadata<LeaderboardInfoResponse>() {
                 Metadata = new Metadata() {
@@ -1793,7 +1794,9 @@ namespace BeatLeader_Server.Controllers {
                             CoverImage  = lb.Song.CoverImage,
                             DownloadUrl = lb.Song.DownloadUrl,
                             FullCoverImage = lb.Song.FullCoverImage,
-                            Explicity = lb.Song.Explicity
+                            Explicity = lb.Song.Explicity,
+                            Duration = lb.Song.Duration,
+                            Bpm = lb.Song.Bpm
                         },
                         Difficulty = new DifficultyResponse {
                             Id = lb.Difficulty.Id,
@@ -1878,7 +1881,8 @@ namespace BeatLeader_Server.Controllers {
                             AccRight = s.AccRight,
                             MaxStreak = s.MaxStreak,
                         }).FirstOrDefault(),
-                        Plays = showPlays ? lb.Scores.Where(s => s.ValidContexts.HasFlag(leaderboardContext)).Count(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)) : 0
+                        Plays = showPlays ? lb.Scores.Where(s => s.ValidContexts.HasFlag(leaderboardContext)).Count(s => date_range != DateRangeType.Score || ((date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to))) : 0,
+                        Attempts = lb.PlayCount
                     })
                     .ToListAsync());
             }
@@ -1943,6 +1947,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] string? types = null,
             [FromQuery] int? date_from = null,
             [FromQuery] int? date_to = null,
+            [FromQuery] DateRangeType date_range = DateRangeType.Upload,
             [FromQuery] string? mappers = null) {
 
             var sequence = _context.Leaderboards.AsQueryable();
@@ -1953,7 +1958,7 @@ namespace BeatLeader_Server.Controllers {
                 .FirstOrDefaultAsync(p => p.Id == currentID) : null;
             var playlistList = await LeaderboardControllerHelper.GetPlaylistList(_context, currentID, _s3Client, playlistIds, playlists);
             sequence = sequence
-                .Filter(_context, out int? searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, mappers, playlistList, currentPlayer);
+                .Filter(_context, out int? searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, date_range, mappers, playlistList, currentPlayer);
 
             var nonuniqueids = await sequence.Select(lb => lb.SongId).ToListAsync();
             var ids = new List<string>();
@@ -1984,7 +1989,7 @@ namespace BeatLeader_Server.Controllers {
             }
 
             sequence = _context.Leaderboards
-                .Where(lb => ids.Contains(lb.SongId)).Filter(_context, out searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, mappers, playlistList, currentPlayer)
+                .Where(lb => ids.Contains(lb.SongId)).Filter(_context, out searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, date_range, mappers, playlistList, currentPlayer)
                 .Include(lb => lb.Difficulty)
                 .Include(lb => lb.Song);
 

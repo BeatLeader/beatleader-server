@@ -10,12 +10,10 @@ public static partial class LeaderboardListUtils
     public static IQueryable<Leaderboard> FilterRanking(this IQueryable<Leaderboard> source,
                                                  AppContext _context,
                                                  MapSortBy sortBy = MapSortBy.None,
-                                                 Order order = Order.Desc,
-                                                 int? dateFrom = null,
-                                                 int? dateTo = null) =>
+                                                 Order order = Order.Desc) =>
         source
               .WhereType(Type.Ranking)
-              .Sort(sortBy, order, Type.Ranking, MyType.None, dateFrom, dateTo, null, null);
+              .Sort(sortBy, order, Type.Ranking, MyType.None, null, null, DateRangeType.Upload, null, null);
 
     public static IQueryable<Leaderboard> Filter(this IQueryable<Leaderboard> source,
                                                  AppContext _context,
@@ -44,6 +42,7 @@ public static partial class LeaderboardListUtils
                                                  float? techRatingTo = null,
                                                  int? dateFrom = null,
                                                  int? dateTo = null,
+                                                 DateRangeType date_range = DateRangeType.Upload,
                                                  string? mapper = null,
                                                  List<PlaylistResponse>? playlists = null,
                                                  Player? currentPlayer = null) =>
@@ -84,5 +83,6 @@ public static partial class LeaderboardListUtils
               .WhereRatingTo(RatingType.Acc, accRatingTo)
               .WhereRatingTo(RatingType.Pass, passRatingTo)
               .WhereRatingTo(RatingType.Tech, techRatingTo)
-              .Sort(sortBy, order, type, mytype, dateFrom, dateTo, searchId, currentPlayer, leaderboardContext);
+              .WhereDateFrom(date_range, type, dateFrom, dateTo)
+              .Sort(sortBy, order, type, mytype, dateFrom, dateTo, date_range, searchId, currentPlayer, leaderboardContext);
 }
