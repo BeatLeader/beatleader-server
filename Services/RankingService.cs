@@ -141,6 +141,7 @@ namespace BeatLeader_Server.Services
                         difficulty.RankedTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                     }
 
+                    difficulty.ModifierValues = ModifiersMap.RankedMap();
                     difficulty.Status = DifficultyStatus.ranked;
 
                     if (leaderboard.Song.Mappers != null) {

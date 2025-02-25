@@ -7,19 +7,6 @@ namespace BeatLeader_Server.Utils;
 
 public static partial class MapListUtils
 {
-    public static async Task<(IQueryable<Song>, int)> FilterRanking(this IQueryable<Song> source,
-                                                 AppContext _context,
-                                                 int page,
-                                                 int count,
-                                                 MapSortBy sortBy = MapSortBy.None,
-                                                 Order order = Order.Desc,
-                                                 int? dateFrom = null,
-                                                 int? dateTo = null) =>
-        await source
-              .WhereType(Type.Ranking)
-              .Sort(sortBy, order, Type.Ranking, MyType.None, dateFrom, dateTo, null, null)
-              .WherePage(page, count);
-
     public static IQueryable<Song> Filter(this IQueryable<Song> source,
                                                  AppContext _context,
                                                  out int? searchId,
@@ -27,6 +14,7 @@ public static partial class MapListUtils
                                                  Order order = Order.Desc,
                                                  string? search = null,
                                                  Type type = Type.All,
+                                                 string? types = null,
                                                  string? mode = null,
                                                  string? difficulty = null,
                                                  int? mapType = null,
@@ -35,7 +23,7 @@ public static partial class MapListUtils
                                                  Operation allRequirements = Operation.Any,
                                                  SongStatus songStatus = SongStatus.None,
                                                  LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-                                                 MyType mytype = MyType.None,
+                                                 MyTypeMaps mytype = MyTypeMaps.None,
                                                  float? starsFrom = null,
                                                  float? starsTo = null,
                                                  float? accRatingFrom = null,
@@ -46,7 +34,9 @@ public static partial class MapListUtils
                                                  float? techRatingTo = null,
                                                  int? dateFrom = null,
                                                  int? dateTo = null,
+                                                 DateRangeType date_range = DateRangeType.Upload,
                                                  string? mapper = null,
+                                                 List<PlaylistResponse>? playlists = null,
                                                  Player? currentPlayer = null) =>
         source.FilterBySearch(search,
                               _context,
@@ -57,7 +47,6 @@ public static partial class MapListUtils
                               ref allTypes,
                               ref mapRequirements,
                               ref allRequirements,
-                              ref mytype,
                               ref starsFrom,
                               ref starsTo,
                               ref accRatingFrom,
@@ -68,13 +57,14 @@ public static partial class MapListUtils
                               ref techRatingTo,
                               ref dateFrom,
                               ref dateTo)
-              .WhereType(type)
+              .WhereTypes(type, types)
               .WhereDifficulty(difficulty)
               .WhereMapType(mapType, allTypes)
               .WhereMode(mode)
               .WhereMapRequirements(mapRequirements, allRequirements)
               .WhereSongStatus(songStatus)
               .WhereMapper(mapper)
+              .WherePlaylists(playlists)
               .WhereMyType(mytype, currentPlayer, leaderboardContext)
               .WhereRatingFrom(RatingType.Stars, starsFrom)
               .WhereRatingFrom(RatingType.Acc, accRatingFrom)
@@ -84,5 +74,6 @@ public static partial class MapListUtils
               .WhereRatingTo(RatingType.Acc, accRatingTo)
               .WhereRatingTo(RatingType.Pass, passRatingTo)
               .WhereRatingTo(RatingType.Tech, techRatingTo)
-              .Sort(sortBy, order, type, mytype, dateFrom, dateTo, searchId, currentPlayer, leaderboardContext);
+              .WhereDateFrom(date_range, type, dateFrom, dateTo)
+              .Sort(sortBy, order, type, mytype, dateFrom, dateTo, date_range, searchId, currentPlayer, leaderboardContext);
 }

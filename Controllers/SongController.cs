@@ -64,7 +64,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery, SwaggerParameter("Operation to filter all requirements, default is Any")] Operation allRequirements = Operation.Any,
             [FromQuery, SwaggerParameter("Song status to filter leaderboards by, default is None")] SongStatus songStatus = SongStatus.None,
             [FromQuery, SwaggerParameter("Context of the leaderboard, default is General")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            [FromQuery, SwaggerParameter("My type to filter leaderboards by, default is None")] MyType mytype = MyType.None,
+            [FromQuery, SwaggerParameter("Map creator, human by default")] SongCreator mapCreator = SongCreator.Human,
+            [FromQuery, SwaggerParameter("My type to filter leaderboards by, default is None")] MyTypeMaps mytype = MyTypeMaps.None,
             [FromQuery, SwaggerParameter("Minimum stars to filter leaderboards by")] float? stars_from = null,
             [FromQuery, SwaggerParameter("Maximum stars to filter leaderboards by")] float? stars_to = null,
             [FromQuery, SwaggerParameter("Minimum accuracy rating to filter leaderboards by")] float? accrating_from = null,
@@ -75,22 +76,34 @@ namespace BeatLeader_Server.Controllers
             [FromQuery, SwaggerParameter("Maximum tech rating to filter leaderboards by")] float? techrating_to = null,
             [FromQuery, SwaggerParameter("Start date to filter leaderboards by (timestamp)")] int? date_from = null,
             [FromQuery, SwaggerParameter("End date to filter leaderboards by (timestamp)")] int? date_to = null,
+            [FromQuery, SwaggerParameter("Type of the date filter, default by map upload date")] DateRangeType date_range = DateRangeType.Upload,
+            [FromQuery, SwaggerParameter("Types of leaderboards to filter, default is null(All). Same as type but multiple")] string? types = null,
+            [FromQuery, SwaggerParameter("Types of leaderboards to filter, default is null(All). Same as type but multiple")] string? playlistIds = null,
+            [FromBody, SwaggerParameter("Types of leaderboards to filter, default is null(All). Same as type but multiple")] List<PlaylistResponse>? playlists = null,
             [FromQuery, SwaggerParameter("Filter maps from a specific mappers. BeatSaver profile ID list, comma separated, default is null")] string? mappers = null,
             [FromQuery, SwaggerParameter("Override current user ID")] string? overrideCurrentId = null) {
 
             var dbContext = _dbFactory.CreateDbContext();
 
             string? currentID = HttpContext == null ? overrideCurrentId : HttpContext.CurrentUserID(dbContext);
-            Player? currentPlayer = currentID != null ? await dbContext
+
+            IQueryable<Player>? currentPlayerQuery = currentID != null ? dbContext
                 .Players
                 .AsNoTracking()
-                .Include(p => p.ProfileSettings)
-                .FirstOrDefaultAsync(p => p.Id == currentID) : null;
+                .Include(p => p.ProfileSettings) : null;
+            if (mytype == MyTypeMaps.FriendsPlayed && currentPlayerQuery != null) {
+                currentPlayerQuery = currentPlayerQuery.Include(p => p.Friends).ThenInclude(f => f.Friends);
+            }
+
+            Player? currentPlayer = currentPlayerQuery != null ? await currentPlayerQuery.FirstOrDefaultAsync(p => p.Id == currentID) : null;
+
+            var playlistList = await LeaderboardControllerHelper.GetPlaylistList(_context, currentID, _s3Client, playlistIds, playlists);
 
             var sequence = dbContext
                 .Songs
                 .AsNoTracking()
-                .Filter(dbContext, out int? searchId, sortBy, order, search, type, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, mappers, currentPlayer);
+                .Where(s => s.MapCreator == mapCreator)
+                .Filter(dbContext, out int? searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, date_range, mappers, playlistList, currentPlayer);
 
             var result = new ResponseWithMetadata<MapInfoResponse>() {
                 Metadata = new Metadata() {
@@ -145,9 +158,10 @@ namespace BeatLeader_Server.Controllers
                         Duration = s.Duration,
                         UploadTime = s.UploadTime,
                         Tags = s.Tags,
-                        ExternalStatuses = s.ExternalStatuses,
+                        ExternalStatuses = s.ExternalStatuses.Where(es => es.Status == SongStatus.Curated).ToList(),
 
-                        Difficulties = s.Leaderboards.Select(lb => new MapDiffResponse {
+                        Difficulties = s.Leaderboards
+                        .Select(lb => new MapDiffResponse {
                             Id = lb.Difficulty.Id,
                             Value = lb.Difficulty.Value,
                             Mode = lb.Difficulty.Mode,
@@ -161,7 +175,8 @@ namespace BeatLeader_Server.Controllers
                             RankedTime = lb.Difficulty.RankedTime,
 
                             LeaderboardId = lb.Id,
-                            Plays = lb.Plays,
+                            Plays = showPlays ? lb.Scores.Where(s => s.ValidContexts.HasFlag(leaderboardContext)).Count(s => date_range != DateRangeType.Score || ((date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to))) : 0,
+                            Attempts = lb.PlayCount,
                             PositiveVotes = lb.PositiveVotes,
                             StarVotes = lb.StarVotes,
                             NegativeVotes = lb.NegativeVotes,
@@ -186,7 +201,38 @@ namespace BeatLeader_Server.Controllers
                             Duration = lb.Difficulty.Duration,
 
                             Requirements = lb.Difficulty.Requirements,
-                        }).ToList(),
+                            MyScore = currentID == null ? null : lb.Scores.Where(s => s.PlayerId == currentID && s.ValidContexts.HasFlag(leaderboardContext) && !s.Banned).Select(s => new ScoreResponseWithAcc {
+                                Id = s.Id,
+                                    BaseScore = s.BaseScore,
+                                    ModifiedScore = s.ModifiedScore,
+                                    PlayerId = s.PlayerId,
+                                    Accuracy = s.Accuracy,
+                                    Pp = s.Pp,
+                                    FcAccuracy = s.FcAccuracy,
+                                    FcPp = s.FcPp,
+                                    BonusPp = s.BonusPp,
+                                    Rank = s.Rank,
+                                    Replay = s.Replay,
+                                    Offsets = s.ReplayOffsets,
+                                    Modifiers = s.Modifiers,
+                                    BadCuts = s.BadCuts,
+                                    MissedNotes = s.MissedNotes,
+                                    BombCuts = s.BombCuts,
+                                    WallsHit = s.WallsHit,
+                                    Pauses = s.Pauses,
+                                    FullCombo = s.FullCombo,
+                                    Hmd = s.Hmd,
+                                    Timeset = s.Timeset,
+                                    Timepost = s.Timepost,
+                                    ReplaysWatched = s.AuthorizedReplayWatched + s.AnonimusReplayWatched,
+                                    LeaderboardId = s.LeaderboardId,
+                                    Platform = s.Platform,
+                                    Weight = s.Weight,
+                                    AccLeft = s.AccLeft,
+                                    AccRight = s.AccRight,
+                                    MaxStreak = s.MaxStreak,
+                                }).FirstOrDefault(),
+                        }).OrderBy(d => d.Mode > 0 ? d.Mode : 2000).ThenBy(d => d.Value).ToList(),
                         //Song = lb.Song,
                         //Difficulty = new DifficultyResponse {
                         //    Id = lb.Difficulty.Id,
@@ -240,37 +286,7 @@ namespace BeatLeader_Server.Controllers
                         //NegativeVotes = lb.NegativeVotes,
                         //VoteStars = lb.VoteStars,
                         //StarVotes = lb.StarVotes,
-                        //MyScore = currentID == null ? null : lb.Scores.Where(s => s.PlayerId == currentID && s.ValidContexts.HasFlag(leaderboardContext) && !s.Banned).Select(s => new ScoreResponseWithAcc {
-                        //    Id = s.Id,
-                        //    BaseScore = s.BaseScore,
-                        //    ModifiedScore = s.ModifiedScore,
-                        //    PlayerId = s.PlayerId,
-                        //    Accuracy = s.Accuracy,
-                        //    Pp = s.Pp,
-                        //    FcAccuracy = s.FcAccuracy,
-                        //    FcPp = s.FcPp,
-                        //    BonusPp = s.BonusPp,
-                        //    Rank = s.Rank,
-                        //    Replay = s.Replay,
-                        //    Offsets = s.ReplayOffsets,
-                        //    Modifiers = s.Modifiers,
-                        //    BadCuts = s.BadCuts,
-                        //    MissedNotes = s.MissedNotes,
-                        //    BombCuts = s.BombCuts,
-                        //    WallsHit = s.WallsHit,
-                        //    Pauses = s.Pauses,
-                        //    FullCombo = s.FullCombo,
-                        //    Hmd = s.Hmd,
-                        //    Timeset = s.Timeset,
-                        //    Timepost = s.Timepost,
-                        //    ReplaysWatched = s.AuthorizedReplayWatched + s.AnonimusReplayWatched,
-                        //    LeaderboardId = s.LeaderboardId,
-                        //    Platform = s.Platform,
-                        //    Weight = s.Weight,
-                        //    AccLeft = s.AccLeft,
-                        //    AccRight = s.AccRight,
-                        //    MaxStreak = s.MaxStreak,
-                        //}).FirstOrDefault(),
+                        //
                         //Plays = showPlays ? lb.Scores.Where(s => s.ValidContexts.HasFlag(leaderboardContext)).Count(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)) : 0
                     })
                     .ToListAsync());
@@ -288,6 +304,11 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 result.Data = result.Data.OrderBy(e => idsList.IndexOf(e.Id));
+
+                foreach (var song in result.Data) {
+                    song.SortDifficulties(sortBy, order);
+                }
+
             }
             if (searchId != null) {
                 HttpContext.Response.OnCompleted(async () => {

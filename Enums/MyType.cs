@@ -9,3 +9,11 @@ public enum MyType
     OthersNominated,
     MyMaps,
 }
+
+public enum MyTypeMaps
+{
+    None,
+    Played,
+    Unplayed,
+    FriendsPlayed
+}

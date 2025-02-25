@@ -49,14 +49,13 @@ namespace BeatLeader_Server.Services
                 if (lastHistory != null && lastHistory.Timestamp > timeset - 60 * 60 * 10) {
                     return;
                 }
-
-                _storageContext.ChangeTracker.AutoDetectChangesEnabled = false;
                 
                 shouldSave = true;
                 var playersCount = await _context.Players.Where(p => !p.Banned).CountAsync();
                 for (int i = 0; i < playersCount; i += 10000) {
                     var ranked = await _context
                         .Players
+                        .AsNoTracking()
                         .OrderBy(p => p.Id)
                         .Where(p => !p.Banned || p.Bot)
                         .Include(p => p.ScoreStats)
@@ -64,9 +63,10 @@ namespace BeatLeader_Server.Services
                         .Take(10000)
                         .Select(p => new { p.Pp, p.AccPp, p.PassPp, p.TechPp, p.ScoreStats, p.Rank, p.CountryRank, p.Id })
                         .ToListAsync();
-                    foreach (var p in ranked) {
-                        if (p.ScoreStats == null) continue;
-                        _storageContext.PlayerScoreStatsHistory.Add(new PlayerScoreStatsHistory {
+
+                    await _storageContext.BulkInsertAsync(ranked
+                        .Where(p => p.ScoreStats != null)
+                        .Select(p => new PlayerScoreStatsHistory {
                             PlayerId = p.Id,
                             Timestamp = timeset,
                             Rank = p.Rank,
@@ -131,15 +131,11 @@ namespace BeatLeader_Server.Services
 
                             ReplaysWatched = p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched,
                             WatchedReplays = p.ScoreStats.WatchedReplays,
-                        });
-                    }
-                    await _storageContext.BulkSaveChangesAsync();
-
+                        }));
                 }
                 if (shouldSave) {
                     await SetContextHistories();
                 }
-                
             }
         }
 
@@ -171,10 +167,10 @@ namespace BeatLeader_Server.Services
                             .Take(10000)
                             .Select(p => new { p.Pp, p.AccPp, p.PassPp, p.TechPp, p.ScoreStats, p.Rank, p.CountryRank, Id = p.PlayerId })
                             .ToListAsync();
-                        foreach (var p in ranked)
-                        {
-                            if (p.ScoreStats == null) continue;
-                            _storageContext.PlayerScoreStatsHistory.Add(new PlayerScoreStatsHistory {
+
+                        await _storageContext.BulkInsertAsync(ranked
+                            .Where(p => p.ScoreStats != null)
+                            .Select(p => new PlayerScoreStatsHistory {
                                 PlayerId = p.Id,
                                 Timestamp = timeset,
                                 Rank = p.Rank,
@@ -239,9 +235,7 @@ namespace BeatLeader_Server.Services
 
                                 ReplaysWatched = p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched,
                                 WatchedReplays = p.ScoreStats.WatchedReplays,
-                            });
-                        }
-                        await _storageContext.BulkSaveChangesAsync();
+                            }));
                     }
                 }
             }
@@ -253,7 +247,6 @@ namespace BeatLeader_Server.Services
             {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
                 var _storageContext = scope.ServiceProvider.GetRequiredService<StorageContext>();
-                _context.ChangeTracker.AutoDetectChangesEnabled = false;
 
                 int timesetFrom = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - 60 * 60 * 24 * 7 - 60 * 60 * 2;
                 int timesetTo = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds - 60 * 60 * 24 * 7 + 60 * 60 * 2;
@@ -261,28 +254,16 @@ namespace BeatLeader_Server.Services
                 var ranked = (await _storageContext
                     .PlayerScoreStatsHistory
                     .Where(p => p.Timestamp > timesetFrom && p.Timestamp < timesetTo && p.Context == LeaderboardContexts.General)
-                    .Select(p => new { 
-                        Rank = p.Rank,
-                        CountryRank = p.CountryRank,
-                        Pp = p.Pp,
-                        Id = p.PlayerId,
-                        Timestamp = p.Timestamp,
+                    .Select(p => new Player { 
+                        LastWeekRank = p.Rank,
+                        LastWeekCountryRank = p.CountryRank,
+                        LastWeekPp = p.Pp,
+                        Id = p.PlayerId
                         })
                     .ToListAsync())
                     .DistinctBy(p => p.Id)
                     .ToList();
-                foreach (var p in ranked)
-                {
-                    if (p.Id != null) {
-                        var player = new Player() { Id = p.Id, LastWeekRank = p.Rank, LastWeekPp = p.Pp, LastWeekCountryRank = p.CountryRank };
-                        _context.Players.Attach(player);
-                        _context.Entry(player).Property(x => x.LastWeekRank).IsModified = true;
-                        _context.Entry(player).Property(x => x.LastWeekPp).IsModified = true;
-                        _context.Entry(player).Property(x => x.LastWeekCountryRank).IsModified = true;
-                    }
-                }
-
-                await _context.BulkSaveChangesAsync();
+                await _context.BulkUpdateAsync(ranked, options => options.ColumnInputExpression = c => new { c.LastWeekRank, c.LastWeekPp, c.LastWeekCountryRank });
             }
         }
 

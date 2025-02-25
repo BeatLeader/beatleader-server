@@ -30,6 +30,19 @@ public static partial class MapListUtils
             _                => sequence.Where(s => s.Difficulties.Any(d => d.Status != DifficultyStatus.outdated)),
         };
 
+    private static IQueryable<Song> WhereTypes(this IQueryable<Song> sequence, Type type, string? types) {
+        if (types != null) {
+            if (types == "all") {
+                return sequence.Where(s => s.Difficulties.Any(d => d.Status != DifficultyStatus.outdated));
+            } else {
+                var statuses = types.Split(",").Select(type => (DifficultyStatus)Enum.Parse(typeof(DifficultyStatus), type)).ToList();
+                return sequence.Where(s => s.Difficulties.Any(d => statuses.Contains(d.Status) && d.Status != DifficultyStatus.outdated));
+            }
+        } else {
+            return sequence.WhereType(type);
+        }
+    }
+
     private static IQueryable<Song> WhereMapType(this IQueryable<Song> sequence, int? mapType, Operation allTypes)
     {
         if (mapType == null)
@@ -70,30 +83,39 @@ public static partial class MapListUtils
         return sequence.Where(s => s.Mappers.Any(m => ids.Contains(m.Id)));
     }
 
-    private static IQueryable<Song> WhereMyType(this IQueryable<Song> sequence, MyType mytype, Player? currentPlayer, LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
+    private static IQueryable<Song> WherePlaylists(this IQueryable<Song> sequence, List<PlaylistResponse>? playlists)
     {
-        int mapperId = 0;
-        string? currentId = currentPlayer?.Id;
-
-        if (currentId == null) { 
+        if (playlists == null)
+        {
             return sequence;
         }
 
-        if (mytype != MyType.None)
-        {
-            if (currentPlayer != null && currentPlayer.MapperId != null)
-            {
-                mapperId = currentPlayer.MapperId ?? 0;
-            }
+        var hashes = playlists.SelectMany(p => p.songs.Where(s => s.hash != null).Select(s => (string)s.hash!.ToLower())).ToList();
+        var keys = playlists.SelectMany(p => p.songs.Where(s => s.hash == null && s.key != null).Select(s => (string)s.key!.ToLower())).ToList();
+
+        if (hashes.Count == 0 && keys.Count == 0) {
+            return sequence;
+        }
+        return sequence.Where(s => hashes.Contains(s.Hash.ToLower()) || keys.Contains(s.Id));
+    }
+
+    private static IQueryable<Song> WhereMyType(this IQueryable<Song> sequence, MyTypeMaps mytype, Player? currentPlayer, LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
+    {
+        string? currentId = currentPlayer?.Id;
+        
+        if (currentId == null) { 
+            return sequence;
+        }
+        var friendIds = new List<string> { currentId };
+        if (mytype == MyTypeMaps.FriendsPlayed && currentPlayer?.Friends != null) {
+            friendIds.AddRange(currentPlayer.Friends.First().Friends.Select(f => f.Id).ToList());
         }
 
         return mytype switch
         {
-            MyType.Played          => sequence.Where(s => s.Leaderboards.Any(l => l.Scores.Any(sc => sc.PlayerId == currentId && sc.ValidContexts.HasFlag(leaderboardContext)))),
-            MyType.Unplayed        => sequence.Where(s => s.Leaderboards.Any(l => !l.Scores.Any(sc => sc.PlayerId == currentId && sc.ValidContexts.HasFlag(leaderboardContext)))),
-            MyType.MyNominated     => sequence.Where(s => s.Leaderboards.Any(l => l.Qualification != null && l.Qualification.RTMember == currentId)),
-            MyType.OthersNominated => sequence.Where(s => s.Leaderboards.Any(l => l.Qualification != null && l.Qualification.RTMember != currentId)),
-            MyType.MyMaps          => sequence.Where(s => s.MapperId == mapperId),
+            MyTypeMaps.Played          => sequence.Where(s => s.Leaderboards.Any(l => l.Scores.Any(sc => sc.PlayerId == currentId && sc.ValidContexts.HasFlag(leaderboardContext)))),
+            MyTypeMaps.Unplayed        => sequence.Where(s => s.Leaderboards.Any(l => !l.Scores.Any(sc => sc.PlayerId == currentId && sc.ValidContexts.HasFlag(leaderboardContext)))),
+            MyTypeMaps.FriendsPlayed   => sequence.Where(s => s.Leaderboards.Any(l => l.Scores.Any(sc => friendIds.Contains(sc.PlayerId) && sc.ValidContexts.HasFlag(leaderboardContext)))),
             _                      => sequence,
         };
     }
@@ -164,6 +186,52 @@ public static partial class MapListUtils
             RatingType.Tech => sequence.Where(s => s.Difficulties.Any(d => d.TechRating <= to)),
             _ => sequence,
         };
+    }
+
+    private static IQueryable<Song> WhereDateFrom(this IQueryable<Song> sequence, DateRangeType rangeType, Type type, int? dateFrom, int? dateTo)
+    {
+        if (dateFrom == null && dateTo == null)
+        {
+            return sequence;
+        }
+
+        switch (rangeType) {
+            case DateRangeType.Upload:
+                sequence = sequence.Where(s => (dateFrom == null || s.UploadTime >= dateFrom) && (dateTo == null || s.UploadTime <= dateTo));
+                break;
+            case DateRangeType.Ranked:
+                switch (type) {
+                    case Type.Ranked:
+                        sequence = sequence.Where(s => s.Difficulties.Any(d => (dateFrom == null || d.RankedTime >= dateFrom) && (dateTo == null || d.RankedTime <= dateTo)));
+                        break;
+                    case Type.Ranking:
+                        sequence = sequence.Where(s => s.Difficulties.Any(d => (dateFrom == null
+                                    || d.RankedTime >= dateFrom
+                                    || d.NominatedTime >= dateFrom
+                                    || d.QualifiedTime >= dateFrom)
+                                   && (dateTo == null
+                                    || d.RankedTime <= dateTo
+                                    || d.NominatedTime <= dateTo
+                                    || d.QualifiedTime <= dateTo)));
+                        break;
+                    case Type.Nominated:
+                        sequence = sequence.Where(s => s.Difficulties.Any(d => (dateFrom == null || d.NominatedTime >= dateFrom) && (dateTo == null || d.NominatedTime <= dateTo)));
+                        break;
+                    case Type.Qualified:
+                        sequence = sequence.Where(s => s.Difficulties.Any(d => (dateFrom == null || d.QualifiedTime >= dateFrom) && (dateTo == null || d.QualifiedTime <= dateTo)));
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            case DateRangeType.Score:
+                sequence = sequence.Where(s => s.Leaderboards.Any(l => l.Scores.Any(score => (dateFrom == null || score.Timepost >= dateFrom) && (dateTo == null || score.Timepost <= dateTo))));
+                break;
+            default:
+                break;
+        }
+
+        return sequence;
     }
 
     public static async Task<(IQueryable<Song>, int)> WherePage(this IQueryable<Song> sequence, int page, int count)

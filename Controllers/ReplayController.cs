@@ -310,6 +310,57 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Variable NJS maps supported only on 1.40+");
             }
 
+            var ip = context.Request.HttpContext.GetIpAddress();
+            Player? player;
+            using (_serverTiming.TimeAction("player"))
+            {
+                player = await PlayerControllerHelper.GetLazy(dbContext, _configuration, info.playerID);
+                if (player == null)
+                {
+                    player = new Player();
+                    player.Id = info.playerID;
+                    player.Name = info.playerName;
+                    player.Platform = info.platform;
+                    player.ScoreStats = new PlayerScoreStats();
+                    player.ContextExtensions = new List<PlayerContextExtension>();
+                    foreach (var contxt in ContextExtensions.NonGeneral) {
+                        if (player.ContextExtensions.FirstOrDefault(ce => ce.Context == contxt) == null) {
+                            player.ContextExtensions.Add(new PlayerContextExtension {
+                                Context = contxt,
+                                ScoreStats = new PlayerScoreStats(),
+                                PlayerId = player.Id,
+                                Country = player.Country
+                            });
+                        }
+                    }
+                    player.SetDefaultAvatar();
+                    player.SanitizeName();
+
+                    dbContext.Players.Add(player);
+
+                    PlayerSearchService.AddNewPlayer(player);
+                }
+
+                if (player.Country == "not set")
+                {
+                    string? country = null;
+
+                    if (context.Request.Headers["cf-ipcountry"] != StringValues.Empty) {
+                       country = context.Request.Headers["cf-ipcountry"].ToString();
+                    }
+                    
+                    if (country == null && ip != null)
+                    {
+                        country = WebUtils.GetCountryByIp(ip.ToString());
+                    }
+                    if (country != null) {
+                        player.Country = country;
+                    }
+                }
+            }
+
+            if (!player.Bot && player.Banned) return BadRequest("You are banned!");
+
             if (type != EndType.Unknown && type != EndType.Clear) {
                 int? forcetimeset = null;
                 if (timesetForce == 0) {
@@ -409,54 +460,7 @@ namespace BeatLeader_Server.Controllers
                     .TagWithCaller()
                     .ToListAsync();
             }
-            var ip = context.Request.HttpContext.GetIpAddress();
-            Player? player;
-            using (_serverTiming.TimeAction("player"))
-            {
-                player = currentScores.FirstOrDefault()?.Player ?? await PlayerControllerHelper.GetLazy(dbContext, _configuration, info.playerID);
-                if (player == null)
-                {
-                    player = new Player();
-                    player.Id = info.playerID;
-                    player.Name = info.playerName;
-                    player.Platform = info.platform;
-                    player.ScoreStats = new PlayerScoreStats();
-                    player.ContextExtensions = new List<PlayerContextExtension>();
-                    foreach (var contxt in ContextExtensions.NonGeneral) {
-                        if (player.ContextExtensions.FirstOrDefault(ce => ce.Context == contxt) == null) {
-                            player.ContextExtensions.Add(new PlayerContextExtension {
-                                Context = contxt,
-                                ScoreStats = new PlayerScoreStats(),
-                                PlayerId = player.Id,
-                                Country = player.Country
-                            });
-                        }
-                    }
-                    player.SetDefaultAvatar();
-                    player.SanitizeName();
-
-                    dbContext.Players.Add(player);
-
-                    PlayerSearchService.AddNewPlayer(player);
-                }
-
-                if (player.Country == "not set")
-                {
-                    string? country = null;
-
-                    if (context.Request.Headers["cf-ipcountry"] != StringValues.Empty) {
-                       country = context.Request.Headers["cf-ipcountry"].ToString();
-                    }
-                    
-                    if (country == null && ip != null)
-                    {
-                        country = WebUtils.GetCountryByIp(ip.ToString());
-                    }
-                    if (country != null) {
-                        player.Country = country;
-                    }
-                }
-            }
+            
 
             string[] njsExceptions = ["8bc991", "30a2e91", "620591"];
 
@@ -563,8 +567,6 @@ namespace BeatLeader_Server.Controllers
             HttpContext context,
             int maxScore,
             bool allow = false) {
-
-            if (!player.Bot && player.Banned) return (BadRequest("You are banned!"), false, false);
 
             var wrappedCurrentScores = currentScores.Select(s => new CurrentScoreWrapper {
                 Score = s,
@@ -1306,7 +1308,7 @@ namespace BeatLeader_Server.Controllers
                                     .WithTitle("Open leaderboard ↗")
                                     .WithUrl("https://beatleader.com/leaderboard/global/" + leaderboard.Id)
                                     .WithDescription("[Watch replay with BL](" + "https://replay.beatleader.com?scoreId=" + resultScore.Id + ") | [Watch replay with ArcViewer](" +"https://allpoland.github.io/ArcViewer/?scoreID=" + resultScore.Id + ")" )
-                                    .WithImageUrl("https://api.beatleader.xyz/preview/replay?scoreId=" + resultScore.Id)
+                                    .WithImageUrl("https://api.beatleader.com/preview/replay?scoreId=" + resultScore.Id)
                                     .Build()
                             });
                         await Task.Delay(TimeSpan.FromSeconds(30));

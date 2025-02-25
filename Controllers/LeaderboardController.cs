@@ -1685,7 +1685,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("End date to filter leaderboards by (timestamp)")] int? date_to = null,
             [FromQuery, SwaggerParameter("Type of the date filter, default by map upload date")] DateRangeType date_range = DateRangeType.Upload,
             [FromQuery, SwaggerParameter("Types of leaderboards to filter, default is null(All). Same as type but multiple")] string? types = null,
-            [FromQuery, SwaggerParameter("Types of leaderboards to filter, default is null(All). Same as type but multiple")] string? playlistIds = null,
+            [FromQuery, SwaggerParameter("Playlits Ids to filter, default is null")] string? playlistIds = null,
             [FromBody, SwaggerParameter("Types of leaderboards to filter, default is null(All). Same as type but multiple")] List<PlaylistResponse>? playlists = null,
             [FromQuery, SwaggerParameter("Filter maps from a specific mappers. BeatSaver profile ID list, comma separated, default is null")] string? mappers = null,
             string? overrideCurrentId = null,

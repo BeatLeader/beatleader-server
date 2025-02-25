@@ -1,4 +1,5 @@
 ﻿using Amazon.S3;
+using beatleader_parser;
 using BeatLeader_Server.Enums;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
@@ -9,6 +10,8 @@ using Microsoft.EntityFrameworkCore;
 using ReplayDecoder;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Buffers;
+using Parser.Utils;
+using System.IO.Compression;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
 namespace BeatLeader_Server.Controllers
@@ -339,12 +342,12 @@ namespace BeatLeader_Server.Controllers
             var groupedAttempts = attemptsList.GroupBy(a => a.PlayerId).ToList();
 
             var now = DateTime.UtcNow;
-            var today = now.Date;
-            var weekAgo = today.AddDays(-7);
+            var today = Time.UnixNow() - 60 * 60 * 24;
+            var weekAgo = Time.UnixNow() - 60 * 60 * 24 * 7;
 
             var totalAttempts = attemptsList.Count;
-            var todayAttempts = attemptsList.Count(a => a.Timepost >= today.Subtract(new DateTime(1970, 1, 1)).TotalSeconds);
-            var weekAttempts = attemptsList.Count(a => a.Timepost >= weekAgo.Subtract(new DateTime(1970, 1, 1)).TotalSeconds);
+            var todayAttempts = attemptsList.Count(a => a.Timepost >= today);
+            var weekAttempts = attemptsList.Count(a => a.Timepost >= weekAgo);
 
             var successCount = groupedAttempts.Count(g => g.Any(a => a.Type == EndType.Clear));
             var successRate = totalAttempts > 0 ? (float)successCount / groupedAttempts.Count : 0;
@@ -376,6 +379,7 @@ namespace BeatLeader_Server.Controllers
                 FailurePoints = failurePoints
             };
         }
+
         [NonAction]
         public async Task<(StatsGraph?, ReplayOffsets?)> CollectGraph(int id, string replayLink, int? start, int? length) {
 

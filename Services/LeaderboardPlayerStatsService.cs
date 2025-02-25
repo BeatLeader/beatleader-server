@@ -79,6 +79,7 @@ namespace BeatLeader_Server.Services {
 
             try {
                 await _storageContext.SaveChangesAsync();
+                await _context.SaveChangesAsync();
             } catch (Exception e) {
                 Console.WriteLine($"LeaderboardPlayerStatsService EXCEPTION: {e}");
             }

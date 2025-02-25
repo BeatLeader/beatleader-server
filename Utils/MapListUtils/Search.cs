@@ -19,7 +19,6 @@ public static partial class MapListUtils
                                                           ref Operation allTypes,
                                                           ref Requirements mapRequirements,
                                                           ref Operation allRequirements,
-                                                          ref MyType mytype,
                                                           ref float? starsFrom,
                                                           ref float? starsTo,
                                                           ref float? accRatingFrom,
