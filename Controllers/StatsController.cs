@@ -119,7 +119,7 @@ namespace BeatLeader_Server.Controllers
                         .Skip((page - 1) * count)
                         .Take(count)
                         .Select(s => new AttemptResponseWithMyScore {
-                            Id = s.ScoreId,
+                            Id = s.Id,
                             EndType = s.Type,
                             AttemptsCount = s.AttemptsCount,
                             Time = s.Time,
