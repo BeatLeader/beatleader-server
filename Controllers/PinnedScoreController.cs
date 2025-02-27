@@ -346,6 +346,8 @@ namespace BeatLeader_Server.Controllers
             resultList.AddRange(await _storageContext
                     .PlayerLeaderboardStats
                     .AsNoTracking()
+                    .TagWithCaller()
+                    .AsSplitQuery()
                     .Where(s => 
                         s.PlayerId == id && 
                         s.Metadata != null && 

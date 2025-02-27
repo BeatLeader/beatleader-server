@@ -708,9 +708,13 @@ namespace BeatLeader_Server.Controllers
                 playerId = await _storageContext.PlayerLeaderboardStats.Where(p => p.ScoreId == scoreId).Select(s => s.PlayerId).FirstOrDefaultAsync();
             }
 
-
-            var stats = await _storageContext.PlayerLeaderboardStats.Where(p => p.Replay == $"hhttps://api.beatleader.com/otherreplays/{name}").Include(p => p.Metadata).ToListAsync();
-            if (stats.Count == 0 || !stats.Any(s => s.Metadata.PinnedContexts != LeaderboardContexts.None)) {
+            var replayFile = $"https://api.beatleader.com/otherreplays/{name}";
+            var stats = await _storageContext.PlayerLeaderboardStats.Where(p => p.Replay == replayFile && p.Metadata != null)
+                .AsNoTracking()
+                .TagWithCaller()
+                .Select(s => s.Metadata.PinnedContexts)
+                .ToListAsync();
+            if (stats.Count == 0 || !stats.Any(s => s != LeaderboardContexts.None)) {
                 var features = await _context
                     .Players
                     .Where(p => p.Id == playerId)
