@@ -94,7 +94,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             var pinLimit = 3;
-            if (currentPlayer.Role.Contains("tipper") || currentPlayer.Role.Contains("supporter") || currentPlayer.Role.Contains("sponsor"))
+            if (currentPlayer.AnySupporter())
             {
                 pinLimit = 9;
             }
@@ -130,7 +130,7 @@ namespace BeatLeader_Server.Controllers
                 && pin 
                 && !isAlreadyPinned)
             {
-                return BadRequest("Too many scores pinned");
+                return currentPlayer.AnySupporter() ? BadRequest("Too many scores pinned") : BadRequest("Support us on Patreon to pin more scores!");
             }
 
             ScoreMetadata? metadata;

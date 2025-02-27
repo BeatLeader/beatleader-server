@@ -708,14 +708,18 @@ namespace BeatLeader_Server.Controllers
                 playerId = await _storageContext.PlayerLeaderboardStats.Where(p => p.ScoreId == scoreId).Select(s => s.PlayerId).FirstOrDefaultAsync();
             }
 
-            var features = await _context
-                .Players
-                .Where(p => p.Id == playerId)
-                .Select(p => p.ProfileSettings)
-                .FirstOrDefaultAsync();
 
-            if (!(currentID == playerId || admin || (features != null && features.ShowStatsPublic))) {
-                return Unauthorized();
+            var stats = await _storageContext.PlayerLeaderboardStats.Where(p => p.Replay == $"hhttps://api.beatleader.com/otherreplays/{name}").Include(p => p.Metadata).ToListAsync();
+            if (stats.Count == 0 || !stats.Any(s => s.Metadata.PinnedContexts != LeaderboardContexts.None)) {
+                var features = await _context
+                    .Players
+                    .Where(p => p.Id == playerId)
+                    .Select(p => p.ProfileSettings)
+                    .FirstOrDefaultAsync();
+
+                if (!(currentID == playerId || admin || (features != null && features.ShowStatsPublic))) {
+                    return Unauthorized();
+                }
             }
 
             var stream = await _s3Client.DownloadOtherReplay(name);

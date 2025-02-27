@@ -456,6 +456,7 @@ namespace BeatLeader_Server.Controllers
                     .Include(s => s.ContextExtensions)
                     .Include(s => s.ReplayOffsets)
                     .Include(s => s.ScoreImprovement)
+                    .Include(s => s.Metadata)
                     .AsSplitQuery()
                     .TagWithCaller()
                     .ToListAsync();
@@ -1479,6 +1480,7 @@ namespace BeatLeader_Server.Controllers
             if (score.Replay == null) return;
             var stats = await storageContext.PlayerLeaderboardStats
                 .Where(s => s.LeaderboardId == leaderboardId && s.Score == score.BaseScore && s.PlayerId == score.PlayerId && (s.Replay == null || s.Replay == score.Replay))
+                .Include(s => s.Metadata)
                 .FirstOrDefaultAsync();
             
             string? name = score.Replay.Split("/").LastOrDefault();
@@ -1503,6 +1505,18 @@ namespace BeatLeader_Server.Controllers
             if (uploaded) {
                 if (stats != null) {
                     stats.Replay = "https://api.beatleader.com/otherreplays/" + fileName;
+                    if (score.Metadata != null) {
+                        stats.Metadata = new ScoreMetadata {
+                            PinnedContexts = score.Metadata.PinnedContexts,
+                            HighlightedInfo = score.Metadata.HighlightedInfo,
+                            Priority = score.Metadata.Priority,
+                            Description = score.Metadata.Description,
+
+                            LinkService = score.Metadata.LinkService,
+                            LinkServiceIcon = score.Metadata.LinkServiceIcon,
+                            Link = score.Metadata.Link
+                        };
+                    }
                     storageContext.SaveChanges();
                 } else {
                      await LeaderboardPlayerStatsService.AddJob(new PlayerStatsJob {

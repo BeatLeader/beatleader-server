@@ -993,7 +993,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             int modeValue = Song.ModeForModeName(mode);
-            if (modeValue == 0) {
+            if (modeValue == 0 && mode != "Legacy") {
                 var customMode = await _context.CustomModes.FirstOrDefaultAsync(m => m.Name == mode);
                 if (customMode != null) {
                     modeValue = customMode.Id + 10;
