@@ -33,6 +33,7 @@ namespace BeatLeader_Server.Services {
                     try {
                         await SortChannels();
                         await RefreshClans();
+                        await RefreshPlays();
                         await FetchCurated();
                         await RefreshMapsPageEndpoints();
                         await CheckMaps();
@@ -282,6 +283,29 @@ namespace BeatLeader_Server.Services {
 
             await Bot.BotService.UpdateChannelOrder(1137885973921935372, criteriaPosition + 1);
             await Bot.BotService.UpdateChannelOrder(1137886176947220633, criteriaPosition + 2);
+        }
+
+        public async Task RefreshPlays() {
+            using (var scope = _serviceScopeFactory.CreateScope()) {
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+                var yesterday = Time.UnixNow() - 60 * 60 * 24;
+                var lastWeek = Time.UnixNow() - 60 * 60 * 24 * 7;
+
+                var lbs = (await _context.Leaderboards.AsNoTracking().Select(l => new {
+                    l.Id,
+                    Daily = l.Scores.Where(s => s.Timepost > yesterday).Count(),
+                    Weekly = l.Scores.Where(s => s.Timepost > lastWeek).Count()
+                }).ToListAsync())
+                .Select(lb => new Leaderboard {
+                    Id = lb.Id,
+                    ThisWeekPlays = lb.Weekly,
+                    TodayPlays = lb.Daily
+                })
+                .ToList();
+
+                await _context.BulkUpdateAsync(lbs, options => options.ColumnInputExpression = c => new { c.ThisWeekPlays, c.TodayPlays });
+                await _context.SaveChangesAsync();
+            }
         }
 
         public async Task RefreshMaps() {
