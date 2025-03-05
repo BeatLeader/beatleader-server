@@ -19,6 +19,7 @@ using System.Net;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.Formats.Webp;
 using ReplayDecoder;
+using System.Linq.Expressions;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -33,6 +34,14 @@ namespace BeatLeader_Server.Controllers
 
         private static Image<Rgba32> StarImage;
         private static Image<Rgba32> AvatarMask;
+        private static Image<Rgba32> NinetyDegreeImage;
+        private static Image<Rgba32> ThreeSixtyDegreeImage;
+        private static Image<Rgba32> LawlessImage;
+        private static Image<Rgba32> LegacyImage;
+        private static Image<Rgba32> LightshowImage;
+        private static Image<Rgba32> NoArrowsImage;
+        private static Image<Rgba32> OneSaberImage;
+        private static Image<Rgba32> StandardImage;
         private static Image<Rgba32> AvatarShadow;
         private static Image<Rgba32> GradientMask; 
         private static Image<Rgba32> CoverMask;
@@ -58,6 +67,15 @@ namespace BeatLeader_Server.Controllers
 
             if (StarImage == null) {
                 StarImage = LoadImage("Star.png");
+                NinetyDegreeImage = LoadImage("90degree.png");
+                ThreeSixtyDegreeImage = LoadImage("360degree.png");
+                LawlessImage = LoadImage("lawless.png");
+                LegacyImage = LoadImage("legacy.png");
+                LightshowImage = LoadImage("lightshow.png");
+                NoArrowsImage = LoadImage("noarrows.png");
+                OneSaberImage = LoadImage("onesaber.png");
+                StandardImage = LoadImage("standard.png");
+
                 AvatarMask = LoadImage("AvatarMask.png");
                 AvatarShadow = LoadImage("AvatarShadow.png");
                 GradientMask = LoadImage("GradientMask.png");
@@ -82,32 +100,6 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 FallbackFamilies = fallbackCollection.Families.ToList();
-
-                _generalEmbedGenerator = new EmbedGenerator(
-                    new Size(500, 300),
-                    StarImage,
-                    AvatarMask,
-                    AvatarShadow,
-                    GradientMask,
-                    GradientMaskBlurred,
-                    CoverMask,
-                    FinalMask,
-                    FontFamily,
-                    FallbackFamilies
-                );
-
-                _twitterEmbedGenerator = new EmbedGenerator(
-                    new Size(512, 268),
-                    StarImage,
-                    AvatarMask,
-                    AvatarShadow,
-                    GradientMask,
-                    GradientMaskBlurred,
-                    CoverMask,
-                    FinalMask,
-                    FontFamily,
-                    FallbackFamilies
-                );
             }
         }
         class SongSelect {
@@ -131,7 +123,7 @@ namespace BeatLeader_Server.Controllers
             public string Modifiers { get; set; }
             public bool FullCombo { get; set; }
             public string Difficulty { get; set; }
-
+            public string ModeName { get; set; }
             public string PlayerAvatar { get; set; }
             public string PlayerName { get; set; }
             public string PlayerRole { get; set; }
@@ -213,7 +205,47 @@ namespace BeatLeader_Server.Controllers
             }
 
             Image<Rgba32>? result = null;
-            
+
+            Image<Rgba32>? ModeImage = score.ModeName.Trim().ToUpper() switch
+            {
+                "90DEGREE" => NinetyDegreeImage,
+                "360DEGREE" => ThreeSixtyDegreeImage,
+                "LAWLESS" => LawlessImage,
+                "LEGACY" => LegacyImage,
+                "LIGHTSHOW" => LightshowImage,
+                "NOARROWS" => NoArrowsImage,
+                "ONESABER" => OneSaberImage,
+                _ => StandardImage
+            };
+
+            _generalEmbedGenerator = new EmbedGenerator(
+                new Size(500, 300),
+                StarImage,
+                ModeImage,
+                AvatarMask,
+                AvatarShadow,
+                GradientMask,
+                GradientMaskBlurred,
+                CoverMask,
+                FinalMask,
+                FontFamily,
+                FallbackFamilies
+            );
+
+            _twitterEmbedGenerator = new EmbedGenerator(
+                new Size(512, 268),
+                StarImage,
+                ModeImage,
+                AvatarMask,
+                AvatarShadow,
+                GradientMask,
+                GradientMaskBlurred,
+                CoverMask,
+                FinalMask,
+                FontFamily,
+                FallbackFamilies
+            );
+
             using (_serverTiming.TimeAction("generate"))
             {
                 result = await Task.Run(() => (twitter ? _twitterEmbedGenerator : _generalEmbedGenerator).Generate(
@@ -310,6 +342,7 @@ namespace BeatLeader_Server.Controllers
                             Modifiers = s.Modifiers,
                             FullCombo = s.FullCombo,
                             Difficulty = s.Leaderboard.Difficulty.DifficultyName,
+                            ModeName = s.Leaderboard.Difficulty.ModeName,
 
                             PlayerAvatar = s.Player.Avatar,
                             PlayerName = s.Player.Name,

@@ -15,6 +15,7 @@
     private readonly ImageTexture _avatarImageTexture;
     private readonly ImageTexture? _avatarBorderTexture;
     private readonly ImageTexture? _starTexture;
+    private readonly ImageTexture _modeTexture;
     private readonly ImageTexture _finalMaskTexture;
     private readonly float _hueShiftRadians;
     private readonly float _saturation;
@@ -37,6 +38,7 @@
         ImageTexture avatarImageTexture,
         ImageTexture? avatarBorderTexture,
         ImageTexture? starTexture,
+        ImageTexture modeTexture,
         ImageTexture finalMaskTexture,
         float hueShiftRadians,
         float saturation
@@ -57,6 +59,7 @@
         _avatarBorderTexture = avatarBorderTexture;
         _finalMaskTexture = finalMaskTexture;
         _starTexture = starTexture;
+        _modeTexture = modeTexture;
         _hueShiftRadians = hueShiftRadians;
         _saturation = saturation;
 
@@ -113,6 +116,10 @@
             star.AlphaMask(_starTexture!.GetPixel(x, y));
             result.AlphaBlend(star);
         }
+
+        var mode = _diffColor;
+        mode.AlphaMask(_modeTexture.GetPixel(x, y));
+        result.AlphaBlend(mode);
 
         result.AlphaMask(_finalMaskTexture.GetPixel(x, y));
         return result;
