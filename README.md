@@ -48,19 +48,29 @@ http://api.beatleader.com/swagger/index.html
 
 ### Using Oauth2.0 on BeatLeader
 
-BeatLeader Oauth2.0 supports only Authorization Code Grant, it will work only if you have server side as well.
-First off you need to dm [nsgolova](https://discordapp.com/users/698212038106677259) on Discord and send him the service information, the icon for the service and the callback endpoint for your website and local development (for example: `https://api.example-site.com/beatleader-login` and `http://localhost:3000/beatleader-login`). You will get a client id and client secret.
+BeatLeader Oauth2.0 supports only Authorization Code Grant, it will work only if you have a server side application as well.
+
+To start, you go to the [BeatLeader developer page](https://beatleader.com/developer). There you create a new oauth2 application. You can give it a square image for the cover and then fill out the application name and application ID (the ID is impossible to change after the app's creation). After you choose which scopes your application needs, currently there's 3 available scopes:
+- profile
+- clan
+- offline_access
+
+Lastly you specify which callback URLs the app will have.
+
+After the app has been created you will get a client secret, **save it**, because in order to get a new one, you have to reset the old one. And now you're done on the site!
 
 For this example, we'll use these variables:
-- Client ID = exampleID
-- Client Secret = exampleSecret
-- Callback URL = http://localhost:3000/beatleader-login
+```ini
+Client_ID = exampleID
+Client_Secret = exampleSecret
+Callback_URL = http://localhost:3000/beatleader-login
+```
 
-Disclaimer! It will be much easier to use a library for that, for example with AspNet.Security.OpenId. There is a C# example [here](/Auth/Beatleader/BeatLeaderAuthenticationDefaults.cs)
+Disclaimer! It will be much easier to use a library for that, for example with AspNet.Security.OpenId. There is a C# example [here](/Auth/Beatleader/BeatLeaderAuthenticationDefaults.cs).
 
 Now you need to construct a URL for the oauth2. If we use the variables above, the URL should look something like this: `https://api.beatleader.com/oauth2/authorize?client_id=exampleID&response_type=code&scope=profile&redirect_uri=http://localhost:3000/beatleader-login`.
 
-**Note:** If you want the server issue also refresh token, you need to add ``offline_access`` to ``scope`` parameter of ``oauth2/authorize`` request. Scopes in OAuth2 Specification are separated by a space, so the parameter should be ``profile%20offline_access`` (%20 is a space encoded in the url).
+**Note:** If you want the server to issue a refresh token, you need to add ``offline_access`` to the ``scope`` parameter of ``oauth2/authorize`` request. Scopes in OAuth2 Specification are separated by a space, so the parameter should be ``profile%20offline_access`` (%20 is a space encoded in the url).
 
 When the person authorizes access to their account information, BeatLeader will redirect the user to your callback URL with a `code` and `iss` query parameter.
 
@@ -71,7 +81,7 @@ Example return link: `http://localhost:3000/beatleader-login?code=exampleCode&is
 Now you need to get a token to make a request to identify a user. So now, on your server, you need to send a POST request to the following url: `https://api.beatleader.com/oauth2/token`. The headers should contain Content-Type of "application/x-www-form-urlencoded". And the body of the request needs to contain the following string: `grant_type=authorization_code&client_id=exampleID&client_secret=exampleSecret&code=exampleCode&redirect_uri=http://localhost:3000/beatleader-login`.
 
 Simplified:
-```
+```ini
 grant_type = authorization_code
 client_id = exampleID
 client_secret = exampleSecret
@@ -103,6 +113,12 @@ If everything was done correctly you should have gotten a JSON response with the
 
 When the ``access_token`` expires you must refresh it. To do so, you must send a POST request to the endpoint ``https://api.beatleader.com/oauth2/token``. The headers should contain Content-Type of "application/x-www-form-urlencoded". And the body of the request needs to contain the following string: `grant_type=refresh_token&client_id=exampleID&client_secret=exampleSecret&refresh_token=OLD_REFRESH_TOKEN`.
 
+Simplified:
+```ini
+grant_type = refresh_token
+client_id = exampleID
+client_secret = exampleSecret
+refresh_token = old_refresh_token
+```
+
 If the request was successful, you should get a JSON response containing the **new access token** in the `access_token` field and **new refresh token** in the ``refresh_token`` field. The old tokens will be invalidated, so from then on you must use new ones.
-
-
