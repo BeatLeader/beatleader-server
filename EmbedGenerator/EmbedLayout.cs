@@ -81,6 +81,7 @@ internal class EmbedLayout {
     public void CalculateCornerRectangles(Font font, string diffText, bool hasStars,
         out Rectangle textRectangle,
         out Rectangle starRectangle,
+        out Rectangle modeRectangle,
         out Rectangle cornerAreaRectangle
     )
     {
@@ -88,15 +89,18 @@ internal class EmbedLayout {
 
         var textSize = new SizeF(DrawingUtils.MeasureString(diffText, font).Width, font.Size);
         var starSize = hasStars ? textSize with { Width = textSize.Height } : SizeF.Empty;
-        var cornerAreaSize = new SizeF(textSize.Width + starSize.Width + pad * 2, textSize.Height + pad * 2);
+        var modeIconSize = textSize with { Width = textSize.Height };
+        var cornerAreaSize = new SizeF(textSize.Width + starSize.Width + pad * 2 + modeIconSize.Width + pad, textSize.Height + pad * 2);
 
         var cornerAreaCenter = new PointF(Width - cornerAreaSize.Width / 2, cornerAreaSize.Height / 2);
-        var textCenter = cornerAreaCenter with { X = cornerAreaCenter.X - starSize.Width / 2 };
+        var textCenter = cornerAreaCenter with { X = (cornerAreaCenter.X - (starSize.Width) / 2) + 2 };
         var starCenter = textCenter with { X = textCenter.X + (textSize.Width + starSize.Width) / 2 };
+        var modeCenter = textCenter with { X = (textCenter.X - (textSize.Width + modeIconSize.Width) / 2) - 2, Y = textCenter.Y + 2 };
 
         cornerAreaRectangle = DrawingUtils.CenteredRectangle(cornerAreaCenter, cornerAreaSize);
         textRectangle = DrawingUtils.CenteredRectangle(textCenter, textSize);
         starRectangle = DrawingUtils.CenteredRectangle(starCenter, starSize);
+        modeRectangle = DrawingUtils.CenteredRectangle(modeCenter, modeIconSize);
     }
 
     #endregion

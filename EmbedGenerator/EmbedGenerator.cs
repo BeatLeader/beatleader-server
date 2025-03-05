@@ -18,6 +18,7 @@ internal class EmbedGenerator
     #region Constructor
 
     private readonly Image<Rgba32> _starImage;
+    private readonly Image<Rgba32> _modeImage;
     private readonly ImageTexture _avatarMaskTexture;
     private readonly ImageTexture _avatarShadowTexture;
     private readonly ImageTexture _sharpGradientMaskTexture;
@@ -32,6 +33,7 @@ internal class EmbedGenerator
     public EmbedGenerator(
         Size size,
         Image<Rgba32> starImage,
+        Image<Rgba32> modeImage,
         Image<Rgba32> avatarMask,
         Image<Rgba32> avatarShadow,
         Image<Rgba32> sharpGradientMask,
@@ -48,6 +50,7 @@ internal class EmbedGenerator
         _fallbackFamilies = fallbackFamilies;
 
         _starImage = starImage;
+        _modeImage = modeImage;
         _avatarMaskTexture = new ImageTexture(avatarMask, _layout.AvatarRectangle);
         _avatarShadowTexture = new ImageTexture(avatarShadow, _layout.AvatarOverlayRectangle);
         _sharpGradientMaskTexture = new ImageTexture(sharpGradientMask, _layout.FullRectangle);
@@ -86,7 +89,7 @@ internal class EmbedGenerator
         var diffText = hasStars ? $"{difficulty} {MathF.Round(stars, 2)}" : difficulty;
 
         _layout.CalculateCornerRectangles(_diffFont, diffText, hasStars,
-            out var textRectangle, out var starRectangle, out var cornerAreaRectangle
+            out var textRectangle, out var starRectangle, out var modeRectangle, out var cornerAreaRectangle
         );
 
         var preBlurredCover = PreBlurCover(coverImage);
@@ -95,6 +98,7 @@ internal class EmbedGenerator
         var avatarImageTexture = new ImageTexture(avatarImage, _layout.AvatarRectangle);
         var avatarBorderTexture = avatarBorderImage == null ? null : new ImageTexture(avatarBorderImage, _layout.AvatarOverlayRectangle);
         var starTexture = hasStars ? new ImageTexture(_starImage, starRectangle) : null;
+        var modeTexture = new ImageTexture(_modeImage, modeRectangle);
 
         var gradientTexture = new LinearGradientTexture(
             FloatColor.FromColor(leftColor), FloatColor.FromColor(rightColor),
@@ -119,6 +123,7 @@ internal class EmbedGenerator
             avatarImageTexture,
             avatarBorderTexture,
             starTexture,
+            modeTexture,
             _finalMaskTexture,
             hueShiftRadians,
             overlaySaturation
