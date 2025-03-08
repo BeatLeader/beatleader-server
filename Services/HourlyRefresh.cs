@@ -10,6 +10,7 @@ using Google.Apis.Services;
 using BeatLeader_Server.Controllers;
 using beatleader_parser;
 using Parser.Utils;
+using Parser.Map.Difficulty.V3.Grid;
 
 namespace BeatLeader_Server.Services {
     public class HourlyRefresh : BackgroundService {
@@ -178,6 +179,16 @@ namespace BeatLeader_Server.Services {
             }
         }
 
+        private bool Overlaps(List<Chain> chains, List<Arc> arcs) {
+            foreach (var arc in arcs) {
+                if (chains.Any(c => c.BpmTime == arc.BpmTime && (c.x == arc.x && c.y == arc.y))) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public async Task CheckMaps() {
             using (var scope = _serviceScopeFactory.CreateScope()) {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
@@ -231,6 +242,10 @@ namespace BeatLeader_Server.Services {
                                     songDiff.Requirements |= Models.Requirements.V3;
                                     songDiff.Chains = diff.Chains.Sum(c => c.SliceCount > 1 ? c.SliceCount - 1 : 0);
                                     songDiff.Sliders = diff.Arcs.Count;
+
+                                    if (Overlaps(diff.Chains, diff.Arcs)) {
+                                        songDiff.Requirements |= Models.Requirements.V3Pepega;
+                                    }
                                 }
                                 //if (diff.Notes.FirstOrDefault(n => n.Optional()) != null) {
                                 //    songDiff.Requirements |= Models.Requirements.OptionalProperties;
