@@ -301,6 +301,16 @@ namespace BeatLeader_Server.ControllerHelpers {
                 if (map.Automapper && song.MapCreator == SongCreator.Human) {
                     song.MapCreator = Song.BotName(song.Mapper, map.DeclatedAi);
                 }
+
+                if (map.CuratedAt == null && song.Status.HasFlag(SongStatus.Curated)) {
+                    if (song.ExternalStatuses != null) {
+                        var curatedStatus = song.ExternalStatuses.FirstOrDefault(es => es.Status == SongStatus.Curated);
+                        if (curatedStatus != null) {
+                            song.ExternalStatuses.Remove(curatedStatus);
+                        }
+                        song.Status &= ~SongStatus.Curated;
+                    }
+                }
             }
         }
 
