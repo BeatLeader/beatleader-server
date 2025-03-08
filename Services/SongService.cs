@@ -66,7 +66,13 @@ namespace BeatLeader_Server.Services {
 
                 var map = mapMessage.Msg;
 
-                var existingSong = await _context.Songs.Include(s => s.Mappers).Where(el => el.Hash.ToLower() == map.Versions[0].Hash.ToLower()).Include(s => s.Difficulties).FirstOrDefaultAsync();
+                var existingSong = await _context
+                    .Songs
+                    .Include(s => s.Mappers)
+                    .Where(el => el.Hash.ToLower() == map.Versions[0].Hash.ToLower())
+                    .Include(s => s.Difficulties)
+                    .Include(s => s.ExternalStatuses)
+                    .FirstOrDefaultAsync();
                 if (existingSong != null) {
                     (map, _) = await SongUtils.GetSongFromBeatSaver(map.Versions[0].Hash);
                     await SongControllerHelper.UpdateFromMap(_context, existingSong, map);

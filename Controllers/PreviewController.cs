@@ -398,6 +398,7 @@ namespace BeatLeader_Server.Controllers
                     .Select(s => new ScoreSelect {
                         ScoreId = s.Id,
                         SongId = s.Leaderboard.Song.Id,
+                        ModeName = s.Leaderboard.Difficulty.ModeName,
                         CoverImage = s.Leaderboard.Song.CoverImage,
                         SongName = s.Leaderboard.Song.Name,
                         Stars = 

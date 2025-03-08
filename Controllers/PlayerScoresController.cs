@@ -776,7 +776,9 @@ namespace BeatLeader_Server.Controllers {
             id = await _context.PlayerIdToMain(id);
             var result = await _storageContext
                     .PlayerScoreStatsHistory
+                    .TagWithCaller()
                     .AsNoTracking()
+                    .AsSplitQuery()
                     .Where(p => p.PlayerId == id && p.Context == leaderboardContext)
                     .OrderByDescending(s => s.Timestamp)
                     .Take(count)

@@ -11,6 +11,7 @@ namespace BeatLeader_Server.Utils
         {
             IImageFormat format = Image.DetectFormat(memoryStream);
             Image image = Image.Load(memoryStream);
+            
             Size size = image.Size;
 
             int width = Math.Min(200, size.Width);
@@ -23,6 +24,10 @@ namespace BeatLeader_Server.Utils
             } else {
                 image.Mutate(i => i.Resize(width, height));
             }
+
+            image.Mutate(x => x.AutoOrient());
+            image.Metadata.ExifProfile = null;
+            image.Metadata.XmpProfile = null;
 
             var ms = new MemoryStream(5);
             string extension;
@@ -55,6 +60,10 @@ namespace BeatLeader_Server.Utils
                 image.Mutate(i => i.Resize(width, height));
             }
 
+            image.Mutate(x => x.AutoOrient());
+            image.Metadata.ExifProfile = null;
+            image.Metadata.XmpProfile = null;
+
             var ms = new MemoryStream(5);
             image.SaveAsWebp(ms);
             ms.Position = 0;
@@ -81,6 +90,10 @@ namespace BeatLeader_Server.Utils
                     TransparentColorMode = WebpTransparentColorMode.Preserve,
                     Quality = 75,
                 };
+
+                image.Mutate(x => x.AutoOrient());
+                image.Metadata.ExifProfile = null;
+                image.Metadata.XmpProfile = null;
 
                 image.SaveAsWebp(ms, webpEncoder);
                 extension = ".webp";

@@ -1631,7 +1631,7 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [HttpGet("~/user/config/link")]
-        public async Task<ActionResult<string>> GetConfig() {
+        public async Task<ActionResult<string>> GetConfigLink() {
             string? userId = GetId();
             if (userId == null) {
                 return Unauthorized();
@@ -1642,6 +1642,22 @@ namespace BeatLeader_Server.Controllers {
                 return NotFound();
             }
             return configUrl;
+        }
+
+        [HttpGet("~/user/config")]
+        public async Task<ActionResult> GetConfig() {
+            string? userId = GetId();
+            if (userId == null) {
+                return Unauthorized();
+            }
+
+            var stream = await _s3Client.DownloadStream(userId + "-config.json", S3Container.configs);
+            if (stream == null) {
+                return NotFound();
+            }
+
+            Response.Headers.Add("Content-Type", "application/json");
+            return Ok(stream);
         }
 
         [HttpPost("~/user/config")]
