@@ -108,7 +108,7 @@ public static partial class MapListUtils
         }
         var friendIds = new List<string> { currentId };
         if (mytype == MyTypeMaps.FriendsPlayed && currentPlayer?.Friends != null) {
-            friendIds.AddRange(currentPlayer.Friends.First().Friends.Select(f => f.Id).ToList());
+            friendIds.AddRange(currentPlayer.Friends.Select(f => f.Id).ToList());
         }
 
         return mytype switch

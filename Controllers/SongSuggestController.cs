@@ -397,8 +397,8 @@ namespace BeatLeader_Server.Controllers
                 return cachedResponse;
             }
 
-            var tasks = new Task<string?>[4];
-            var treshold = Time.UnixNow() - 60 * 60 * 24 * 2 * 30;
+            var tasks = new Task<List<string>>[4];
+            var treshold = Time.UnixNow() - 60 * 60 * 24 * 30;
             for (int i = 0; i < 4; i++) {
                 var dbContext = _dbFactory.CreateDbContext();
                 var query = dbContext.Leaderboards.Where(l => !l.Scores.Any(s => s.PlayerId == currentId));
@@ -416,7 +416,7 @@ namespace BeatLeader_Server.Controllers
                     case 2:
                         query = query
                             .Where(l => l.Song.Status.HasFlag(SongStatus.Curated) && l.Song.MapCreator == SongCreator.Human)
-                            .OrderByDescending(l => l.Id);
+                            .OrderByDescending(l => l.Song.UploadTime);
                         break;
                     case 3:
                         query = query
@@ -431,15 +431,25 @@ namespace BeatLeader_Server.Controllers
                     .TagWithCallerS()
                     .AsNoTracking()
                     .Select(lb => lb.Id)
-                    .FirstOrDefaultAsync();
+                    .Take(3)
+                    .ToListAsync();
             }
 
-            Task.WaitAll(tasks);
-            var result = tasks
-                    .Where(t => t.Result != null)
-                    .Select(t => t.Result)
-                    .Distinct()
-                    .ToList();
+            await Task.WhenAll(tasks);
+
+            var result = new List<string>();
+            int counter = 0;
+            foreach (var group in tasks) {
+                counter++;
+                foreach (var item in group.Result) {
+                    if (!result.Contains(item)) {
+                        result.Add(item);
+                    }
+                    if (result.Count == counter) {
+                        break;
+                    }
+                }
+            }
 
             var response = new ResponseWithMetadata<LeaderboardInfoResponse> {
                 Metadata = new Metadata {

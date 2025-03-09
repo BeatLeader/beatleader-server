@@ -92,7 +92,7 @@ namespace BeatLeader_Server.Controllers
                 .AsNoTracking()
                 .Include(p => p.ProfileSettings) : null;
             if (mytype == MyTypeMaps.FriendsPlayed && currentPlayerQuery != null) {
-                currentPlayerQuery = currentPlayerQuery.Include(p => p.Friends).ThenInclude(f => f.Friends);
+                currentPlayerQuery = currentPlayerQuery.Include(p => p.Friends);
             }
 
             Player? currentPlayer = currentPlayerQuery != null ? await currentPlayerQuery.FirstOrDefaultAsync(p => p.Id == currentID) : null;
