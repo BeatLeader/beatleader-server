@@ -118,6 +118,8 @@ namespace BeatLeader_Server.Controllers
                     Data = await sequence
                         .Skip((page - 1) * count)
                         .Take(count)
+                        .TagWithCaller()
+                        .AsSplitQuery()
                         .Select(s => new AttemptResponseWithMyScore {
                             Id = s.Id,
                             EndType = s.Type,
@@ -701,28 +703,28 @@ namespace BeatLeader_Server.Controllers
                 .FirstOrDefaultAsync())
                 ?.Contains("admin") ?? false) : false;
 
-            string? playerId = null;
-            if (name.Split("-").Count() > 1) { 
-                playerId = await _context.PlayerIdToMain(name.Split("-").First());
-            } else if (int.TryParse(name.Split(".").First(), out int scoreId)) {
-                playerId = await _storageContext.PlayerLeaderboardStats.Where(p => p.ScoreId == scoreId).Select(s => s.PlayerId).FirstOrDefaultAsync();
-            }
-
             var replayFile = $"https://api.beatleader.com/otherreplays/{name}";
-            var stats = await _storageContext.PlayerLeaderboardStats.Where(p => p.Replay == replayFile && p.Metadata != null)
+            var stats = await _storageContext.PlayerLeaderboardStats.Where(p => p.Replay == replayFile)
                 .AsNoTracking()
                 .TagWithCaller()
-                .Select(s => s.Metadata.PinnedContexts)
+                .Select(s => new { PinnedContexts = s.Metadata != null ? s.Metadata.PinnedContexts : LeaderboardContexts.None, s.PlayerId })
                 .ToListAsync();
-            if (stats.Count == 0 || !stats.Any(s => s != LeaderboardContexts.None)) {
-                var features = await _context
-                    .Players
-                    .Where(p => p.Id == playerId)
-                    .Select(p => p.ProfileSettings)
-                    .FirstOrDefaultAsync();
 
-                if (!(currentID == playerId || admin || (features != null && features.ShowStatsPublic))) {
-                    return Unauthorized();
+            if (stats.Count == 0) return NotFound();
+            
+            if (!stats.Any(s => s.PinnedContexts != LeaderboardContexts.None)) {
+                string? playerId = await _context.PlayerIdToMain(stats.First().PlayerId);
+
+                if (playerId != currentID) {
+                    var features = await _context
+                        .Players
+                        .Where(p => p.Id == playerId)
+                        .Select(p => p.ProfileSettings)
+                        .FirstOrDefaultAsync();
+
+                    if (!(currentID == playerId || admin || (features != null && features.ShowStatsPublic))) {
+                        return Unauthorized();
+                    }
                 }
             }
 
