@@ -378,6 +378,13 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
+            if (ip != null) {
+                string hashId = AuthUtils.HashIp(ip);
+                if (await dbContext.IpBans.AnyAsync(ib => ib.HashId == hashId)) {
+                    return BadRequest("You are banned!");
+                }
+            }
+
             if (!player.Bot && player.Banned) return BadRequest("You are banned!");
 
             if (type != EndType.Unknown && type != EndType.Clear) {
@@ -1263,8 +1270,10 @@ namespace BeatLeader_Server.Controllers
 
                 resultScore.Country = (context?.Request.Headers["cf-ipcountry"] ?? "") == StringValues.Empty ? "not set" : context?.Request.Headers["cf-ipcountry"].ToString();
 
+                if (resultScore.Rank <= 4) {
+                    await UpdateTop4(dbContext, leaderboard.Id);
+                }
                 if (oldPlayerStats.Count > 0) {
-                    await UpdateTop4(dbContext, resultScore, currentScores, player, oldPlayerStats, leaderboard);
                     UpdateImprovements(resultScore, currentScores, player, oldPlayerStats, leaderboard);
                 }
 
@@ -1553,101 +1562,78 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         private async Task UpdateTop4(
             AppContext dbContext,
-            Score resultScore,
-            List<CurrentScoreWrapper> currentScores, 
-            Player player,
-            List<OldPlayerStats> oldPlayerStats,
-            Leaderboard leaderboard) {
+            string leaderboardId) {
 
-            bool ranked = leaderboard.Difficulty.Status == DifficultyStatus.ranked;
-
-            var generalCurrentScore = currentScores.FirstOrDefault(s => s.ValidContexts.HasFlag(LeaderboardContexts.General));
-            if (resultScore.ValidContexts.HasFlag(LeaderboardContexts.General) && 
-                resultScore.Rank < 4 &&
-
-                (generalCurrentScore == null || generalCurrentScore.Score.Rank != resultScore.Rank)) {
-                var scores = await dbContext
+            {
+                var playerIds = await dbContext
                     .Scores
-                    .Where(s =>                                                                                            
-                        s.LeaderboardId == leaderboard.Id && 
-                        s.Rank >= resultScore.Rank && 
-                        s.Rank <= 4 &&
-                        s.PlayerId != player.Id)
-                    .Select(s => new {
-                        s.Rank,
-                        s.Player.ScoreStats
-                    })
+                    .Where(s => s.LeaderboardId == leaderboardId && s.Rank <= 4 && s.ValidForGeneral)
+                    .Select(s => s.PlayerId)
                     .ToListAsync();
-                foreach (var score in scores) {
-                    if (score.ScoreStats == null) continue;
-                    var scoreStats = score.ScoreStats;
-                    if (score.Rank == 2) {
-                        if (ranked) {
-                            scoreStats.RankedTop1Count--;
-                        } else {
-                            scoreStats.UnrankedTop1Count--;
-                        }
-                        scoreStats.Top1Count--;
-                    }
-                    if (ranked) {
-                        scoreStats.RankedTop1Score = ReplayUtils.UpdateRankScore(scoreStats.RankedTop1Score, score.Rank - 1, score.Rank);
+
+                foreach (var playerId in playerIds) {
+                    var stats = await dbContext.Players.Where(p => p.Id == playerId).Select(p => p.ScoreStats).FirstOrDefaultAsync();
+                    if (stats == null) continue;
+
+                    var scores = await dbContext
+                        .Scores
+                        .AsNoTracking()
+                        .Where(s => s.PlayerId == playerId && s.ValidForGeneral)
+                        .Select(s => new { s.Rank, s.Leaderboard.Difficulty.Status })
+                        .ToListAsync();
+
+                    stats.RankedTop1Count = scores.Count(s => s.Status == DifficultyStatus.ranked && s.Rank == 1);
+                    stats.UnrankedTop1Count = scores.Count(s => s.Status != DifficultyStatus.ranked && s.Rank == 1);
+                    stats.Top1Count = scores.Count(s => s.Rank == 1);
+
+                    if (scores.Where(s => s.Status == DifficultyStatus.ranked).Count() > 0) {
+                        stats.RankedTop1Score = scores.Where(s => s.Status == DifficultyStatus.ranked).Sum(s => ReplayUtils.ScoreForRank(s.Rank));
                     } else {
-                        scoreStats.UnrankedTop1Score = ReplayUtils.UpdateRankScore(scoreStats.UnrankedTop1Score, score.Rank - 1, score.Rank);
+                        stats.RankedTop1Score = 0;
                     }
-                    scoreStats.Top1Score = ReplayUtils.UpdateRankScore(scoreStats.Top1Score, score.Rank - 1, score.Rank);
+                    if (scores.Where(s => s.Status != DifficultyStatus.ranked).Count() > 0) {
+                        stats.UnrankedTop1Score = scores.Where(s => s.Status != DifficultyStatus.ranked).Sum(s => ReplayUtils.ScoreForRank(s.Rank));
+                    } else {
+                        stats.UnrankedTop1Score = 0;
+                    }
+                    stats.Top1Score = scores.Sum(s => ReplayUtils.ScoreForRank(s.Rank));
                 }
             }
 
-            if (resultScore.ContextExtensions != null) {
-                foreach (var ce in resultScore.ContextExtensions)
-                {
-                    var currentScore = currentScores
-                        .FirstOrDefault(s => s.ValidContexts.HasFlag(ce.Context));
-                    var currentScoreExtenstion = currentScore?.ContextExtensions
-                        ?.FirstOrDefault(sce => sce.Context == ce.Context);
+            foreach (var context in ContextExtensions.NonGeneral) {
+                var playerIds = await dbContext
+                .ScoreContextExtensions
+                .Where(s => s.LeaderboardId == leaderboardId && s.Rank <= 4 && s.Context == context)
+                .Select(s => s.PlayerId)
+                .ToListAsync();
 
-                    if (ce.Rank < 4 &&
-                        (currentScoreExtenstion == null || currentScoreExtenstion.Rank != ce.Rank)) {
-                        var scores = await dbContext
-                            .ScoreContextExtensions
-                            .Where(s =>                                                                                            
-                                s.LeaderboardId == leaderboard.Id && 
-                                s.Rank >= resultScore.Rank && 
-                                s.Rank <= 4 &&
-                                s.PlayerId != player.Id &&
-                                s.Context == ce.Context)
-                            .AsNoTracking()
-                            .Select(s => new {
-                                s.Rank,
-                                s.PlayerId
-                            })
-                            .ToListAsync();
-                        foreach (var score in scores) {
-                            var scoreStats = await dbContext
-                                .PlayerContextExtensions
-                                .Where(pe => pe.PlayerId == score.PlayerId && pe.Context == ce.Context)
-                                .Include(p => p.ScoreStats)
-                                .Select(p => p.ScoreStats)
-                                .FirstOrDefaultAsync();
+                foreach (var playerId in playerIds) {
+                    var stats = await dbContext.PlayerContextExtensions.Where(p => p.PlayerId == playerId && p.Context == context).Select(p => p.ScoreStats).FirstOrDefaultAsync();
+                    if (stats == null) continue;
 
-                            if (scoreStats == null) continue;
-                            if (score.Rank == 2) {
-                                if (ranked) {
-                                    scoreStats.RankedTop1Count--;
-                                } else {
-                                    scoreStats.UnrankedTop1Count--;
-                                }
-                                scoreStats.Top1Count--;
-                            }
-                            if (ranked) {
-                                scoreStats.RankedTop1Score = ReplayUtils.UpdateRankScore(scoreStats.RankedTop1Score, score.Rank - 1, score.Rank);
-                            } else {
-                                scoreStats.UnrankedTop1Score = ReplayUtils.UpdateRankScore(scoreStats.UnrankedTop1Score, score.Rank - 1, score.Rank);
-                            }
-                            scoreStats.Top1Score = ReplayUtils.UpdateRankScore(scoreStats.Top1Score, score.Rank - 1, score.Rank);
-                        }
+                    var scores = await dbContext
+                        .ScoreContextExtensions
+                        .AsNoTracking()
+                        .Where(s => s.PlayerId == playerId && s.Context == context)
+                        .Select(s => new { s.Rank, s.Leaderboard.Difficulty.Status })
+                        .ToListAsync();
+
+                    stats.RankedTop1Count = scores.Count(s => s.Status == DifficultyStatus.ranked && s.Rank == 1);
+                    stats.UnrankedTop1Count = scores.Count(s => s.Status != DifficultyStatus.ranked && s.Rank == 1);
+                    stats.Top1Count = scores.Count(s => s.Rank == 1);
+
+                    if (scores.Where(s => s.Status == DifficultyStatus.ranked).Count() > 0) {
+                        stats.RankedTop1Score = scores.Where(s => s.Status == DifficultyStatus.ranked).Sum(s => ReplayUtils.ScoreForRank(s.Rank));
+                    } else {
+                        stats.RankedTop1Score = 0;
                     }
 
+                    if (scores.Where(s => s.Status != DifficultyStatus.ranked).Count() > 0) {
+                        stats.UnrankedTop1Score = scores.Where(s => s.Status != DifficultyStatus.ranked).Sum(s => ReplayUtils.ScoreForRank(s.Rank));
+                    } else {
+                        stats.UnrankedTop1Score = 0;
+                    }
+                    stats.Top1Score = scores.Sum(s => ReplayUtils.ScoreForRank(s.Rank));
                 }
             }
         }

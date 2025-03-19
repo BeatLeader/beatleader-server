@@ -800,16 +800,6 @@ namespace BeatLeader_Server.Utils
             }
         }
 
-        public static int UpdateRankScore(int oldScore, int? oldRank, int newRank) {
-            int result = oldScore;
-            if (oldRank != null) {
-                result -= ScoreForRank(oldRank ?? 4);
-            }
-            result += ScoreForRank(newRank);
-
-            return result; 
-        }
-
         public static string SafeSubstring(this string text, int start, int length)
         {
             return text.Length <= start ? ""

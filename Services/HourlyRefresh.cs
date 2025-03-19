@@ -271,7 +271,10 @@ namespace BeatLeader_Server.Services {
                                 }
                             }
                         }
-                    } catch { }
+                    } 
+                    catch (Exception e) { 
+                        Console.WriteLine($"HourlyRefresh EXPETION: {e}");
+                    }
 
                     foreach (var diff in song.Difficulties) {
                         if (!diff.Requirements.HasFlag(Requirements.Noodles) && !diff.Requirements.HasFlag(Requirements.MappingExtensions)) {

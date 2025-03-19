@@ -29,7 +29,7 @@ namespace BeatLeader_Server.Utils
         public static string HashIp(string ip, int iterations = 10000, int hashSize = 15)
         {
             byte[] hash;
-            var salt = GenerateSalt(hashSize);
+            var salt = Encoding.UTF8.GetBytes("iphash");
             using (var pbkdf2 = new Rfc2898DeriveBytes(ip, salt, iterations, HashAlgorithmName.SHA256))
             {
                 hash = pbkdf2.GetBytes(hashSize);

@@ -102,5 +102,74 @@ namespace BeatLeader_Server.Controllers
 
             return Ok(result);
         }
+
+        [HttpGet("~/admin/bans/ip")]
+        public async Task<ActionResult> GetIpBans([FromQuery] string playerId)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null)
+            {
+                return Unauthorized();
+            }
+
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            return Ok(await _context.IpBans.AnyAsync(s => s.PlayerId == playerId));
+        }
+
+        [HttpPost("~/admin/ban/ip")]
+        public async Task<ActionResult> AddIpBan([FromQuery] string playerId)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null)
+            {
+                return Unauthorized();
+            }
+
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var ids = _context.Scores.Where(s => s.PlayerId == playerId).OrderByDescending(s => s.Timepost).Select(s => s.HashId).ToList().Distinct().ToList();
+            foreach (var item in ids) {
+                _context.IpBans.Add(new IpBan {
+                    HashId = item,
+                    PlayerId = playerId
+                });
+            }
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
+        [HttpDelete("~/admin/ban/ip")]
+        public async Task<ActionResult> DeleteIpBan([FromQuery] string playerId)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            if (currentID == null)
+            {
+                return Unauthorized();
+            }
+
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var ids = _context.IpBans.Where(s => s.PlayerId == playerId).ToList();
+            foreach (var item in ids) {
+                _context.IpBans.Remove(item);
+            }
+            _context.SaveChanges();
+
+            return Ok();
+        }
     }
 }

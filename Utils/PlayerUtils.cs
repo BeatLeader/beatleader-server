@@ -660,12 +660,6 @@ namespace BeatLeader_Server.Utils
                     {
                         playerScoreStats.TopPp = resultScore.Pp;
                     }
-                    if (resultScore.Rank == 1 && (currentScore == null || currentScore.Rank != 1)) {
-                        playerScoreStats.RankedTop1Count++;
-                        playerScoreStats.Top1Count++;
-                    }
-                    playerScoreStats.RankedTop1Score = ReplayUtils.UpdateRankScore(playerScoreStats.RankedTop1Score, currentScore?.Rank, resultScore.Rank);
-                    playerScoreStats.Top1Score = ReplayUtils.UpdateRankScore(playerScoreStats.Top1Score, currentScore?.Rank, resultScore.Rank);
 
                     if (resultScore.BonusPp > playerScoreStats.TopBonusPP)
                     {
@@ -709,12 +703,6 @@ namespace BeatLeader_Server.Utils
                         playerScoreStats.TotalImprovementsCount++;
                     }
                 } else {
-                    if (resultScore.Rank == 1 && (currentScore == null || currentScore.Rank != 1)) {
-                        playerScoreStats.UnrankedTop1Count++;
-                        playerScoreStats.Top1Count++;
-                    }
-                    playerScoreStats.UnrankedTop1Score = ReplayUtils.UpdateRankScore(playerScoreStats.UnrankedTop1Score, currentScore?.Rank, resultScore.Rank);
-                    playerScoreStats.Top1Score = ReplayUtils.UpdateRankScore(playerScoreStats.Top1Score, currentScore?.Rank, resultScore.Rank);
                     if (currentScore != null) {
                         playerScoreStats.UnrankedImprovementsCount++;
                         playerScoreStats.TotalImprovementsCount++;
