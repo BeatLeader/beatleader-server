@@ -351,6 +351,18 @@ namespace BeatLeader_Server.Controllers
                         s.Rank = i + 1;
                         _context.Entry(s).Property(x => x.Rank).IsModified = true;
                     }
+
+                    if (leaderboardContext == LeaderboardContexts.Funny) {
+                        foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
+                        {
+                            if (i + 1 == 1 || (i + 1) % 5 == 0) {
+                                s.Pp = 500;
+                            } else {
+                                s.Pp = 0;
+                            }
+                            _context.Entry(s).Property(x => x.Pp).IsModified = true;
+                        }
+                    }
                 }, maxDegreeOfParallelism: 20);
 
             await _context.BulkSaveChangesAsync();
@@ -385,18 +397,19 @@ namespace BeatLeader_Server.Controllers
                 }
             }
             
-            var allLeaderboards = await _context.Leaderboards
+            var scores = await _context
+                .ScoreContextExtensions
+                .Where(s => s.Context == leaderboardContext && !s.Banned)
                 .AsNoTracking()
-                .Select(lb => new {
-                    lb.Difficulty,
-                    Scores = lb.ContextExtensions.Where(s => s.Context == leaderboardContext && !s.Banned).Select(s => new ScoreContextExtension { Id = s.Id, Pp = s.Pp, Accuracy = s.Accuracy, Timepost = s.Timepost, ModifiedScore = s.ModifiedScore })
-                }).ToListAsync();
+                .Select(s => new ScoreContextExtension { Id = s.Id, LeaderboardId = s.LeaderboardId, Pp = s.Pp, Accuracy = s.Accuracy, Timepost = s.Timepost, ModifiedScore = s.ModifiedScore })
+                .ToListAsync();
+            var allLeaderboards = scores
+                .GroupBy(s => s.LeaderboardId)
+                .ToList();
 
-            foreach (var leaderboard in allLeaderboards) {
-                var allScores = leaderboard.Scores.ToList();
+            foreach (var allScores in allLeaderboards) {
 
-                var status = leaderboard.Difficulty.Status;
-                bool hasPp = status == DifficultyStatus.ranked || status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
+                bool hasPp = allScores.Count(s => s.Pp > 0) > 2;
 
                 List<ScoreContextExtension> rankedScores;
                 if (leaderboardContext != LeaderboardContexts.Golf) {
@@ -426,7 +439,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            await _context.BulkUpdateAsync(allLeaderboards.SelectMany(l => l.Scores), options => options.ColumnInputExpression = c => new { c.Rank });
+            await _context.BulkUpdateAsync(scores, options => options.ColumnInputExpression = c => new { c.Rank });
 
             return Ok();
         }

@@ -318,6 +318,10 @@ namespace BeatLeader_Server.Utils
             if (scpmExtenstion != null) {
                 score.ContextExtensions.Add(scpmExtenstion);
             }
+            var funnyExtension = FunnyContextExtension(score, difficulty);
+            if (funnyExtension != null) {
+                score.ContextExtensions.Add(funnyExtension);
+            }
 
             return (score, maxScore);
         }
@@ -347,6 +351,33 @@ namespace BeatLeader_Server.Utils
             }
 
             result.ModifiedStars = EffectiveStarRating(result.Modifiers, difficulty.Stars ?? 0, difficulty.ModifierValues, difficulty.ModifiersRating);
+
+            return result;
+        }
+
+        public static ScoreContextExtension? FunnyContextExtension(Score score, DifficultyDescription difficulty) {
+            if (score.Modifiers?.Split(",").Where(m => m != "IF" && m != "BE" && m != "SC" && m != "PM").Count() > 0) {
+                return null;
+            }
+
+            var result = new ScoreContextExtension {
+                Context = LeaderboardContexts.Funny,
+                BaseScore = score.BaseScore,
+                ModifiedScore = score.BaseScore,
+                Timepost = score.Timepost,
+                Modifiers = "",
+                Accuracy = score.Accuracy,
+                Qualification = score.Qualification
+            };
+
+            if (score.Pp > 0) {
+                (result.Pp, result.BonusPp, result.PassPP, result.AccPP, result.TechPP) = PpFromScore(score.Accuracy, LeaderboardContexts.NoMods, "", difficulty.ModifierValues, 
+                difficulty.ModifiersRating,
+                difficulty.AccRating ?? 0.0f, 
+                difficulty.PassRating ?? 0.0f, 
+                difficulty.TechRating ?? 0.0f, 
+                difficulty.ModeName.ToLower() == "rhythmgamestandard");
+            }
 
             return result;
         }
@@ -764,6 +795,9 @@ namespace BeatLeader_Server.Utils
         public static bool IsNewScoreExtensionBetter(ScoreContextExtension? oldScore, ScoreContextExtension newScore) {
             if (oldScore == null) return true;
             if (oldScore.Modifiers.Contains("OP")) return true;
+            if (newScore.Context == LeaderboardContexts.Funny) {
+                return newScore.ModifiedScore > oldScore.ModifiedScore;
+            }
             if (newScore.Pp != 0 || oldScore?.Pp != 0) {
                 if (newScore.Pp > (oldScore?.Pp ?? 0)) return true;
             } else {
