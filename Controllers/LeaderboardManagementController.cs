@@ -100,7 +100,8 @@ namespace BeatLeader_Server.Controllers {
                [FromQuery] string? ownerLink = null,
                [FromQuery] int? id = null,
                [FromQuery] string? playlistLink = null,
-               [FromQuery] string? linkToSave = null)
+               [FromQuery] string? linkToSave = null,
+               [FromQuery] string? description = null)
         {
             if (HttpContext != null)
             {
@@ -156,6 +157,8 @@ namespace BeatLeader_Server.Controllers {
                 PlaylistLink = linkToSave ?? $"https://beatleader.com/playlist/{id}",
                 Cover = imageUrl,
                 Title = title,
+                MapCount = playlist.songs.Count,
+                Description = description,
 
                 Owner = owner,
                 OwnerCover = ownerCover,

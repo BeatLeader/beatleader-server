@@ -859,12 +859,42 @@ namespace BeatLeader_Server.Controllers
                     PlaylistLink = fp.PlaylistLink,
                     Cover = fp.Cover,
                     Title = fp.Title,
-                    Description = fp.Description,
 
                     Owner = fp.Owner,
                     OwnerCover = fp.OwnerCover,
                     OwnerLink = fp.OwnerLink,
                 }).ToListAsync();
+        }
+
+        [HttpGet("~/playlists/featured/paged")]
+        public async Task<ActionResult<ResponseWithMetadata<FeaturedPlaylistResponse>>> PagedFeaturedPlaylists([FromQuery] int page = 1, [FromQuery] int count = 10)
+        {
+            return new ResponseWithMetadata<FeaturedPlaylistResponse> {
+                Data = await _context
+                .FeaturedPlaylist
+                .OrderByDescending(p => p.Id)
+                .Select(fp => new FeaturedPlaylistResponse {
+                    Id = fp.Id,
+                    PlaylistLink = fp.PlaylistLink,
+                    Cover = fp.Cover,
+                    Title = fp.Title,
+
+                    Description = fp.Description,
+                    MapCount = fp.MapCount,
+
+                    Owner = fp.Owner,
+                    OwnerCover = fp.OwnerCover,
+                    OwnerLink = fp.OwnerLink,
+                })
+                .Skip((page - 1) * count)
+                .Take(count)
+                .ToListAsync(),
+                Metadata = new Metadata {
+                    Page = page,
+                    ItemsPerPage = count,
+                    Total = await _context.FeaturedPlaylist.CountAsync()
+                }
+            };
         }
 
         public class LeaderboardSelection {

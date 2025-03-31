@@ -646,7 +646,7 @@ namespace BeatLeader_Server.Controllers
                 .Take(count)
                 .Select(s => s.BaseScore)
                 .SumAsync();
-            string filename = $"{leaderboardId}_accgraph_{page}_{scoreSum}.json";
+            string filename = $"{leaderboardId}_accgraph_{page}_{scoreSum}_1.json";
 
             using (var stream = await _s3Client.DownloadStream(filename, S3Container.attempts)) {
                 if (stream != null) {

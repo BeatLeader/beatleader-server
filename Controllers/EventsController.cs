@@ -379,9 +379,13 @@ namespace BeatLeader_Server.Controllers
                         .Include(lb => lb.Difficulty)
                         .Include(lb => lb.Scores)
                         .ThenInclude(s => s.Player)
+                        .Include(lb => lb.Song)
                         .FirstOrDefaultAsync();
 
                     if (lb != null && lb.Difficulty.Status != DifficultyStatus.outdated) {
+                        if (lb.Difficulty.Stars == null) {
+                            await RatingUtils.UpdateFromExMachina(lb, null);
+                        }
                         if (lb.Difficulty.Stars != null) {
 
                             if (lb.Difficulty.Status == DifficultyStatus.unranked) {

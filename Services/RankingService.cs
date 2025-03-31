@@ -1,5 +1,6 @@
 ﻿using BeatLeader_Server.Bot;
 using BeatLeader_Server.Controllers;
+using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Discord;
@@ -159,10 +160,23 @@ namespace BeatLeader_Server.Services
                     if (dsClient != null)
                     {
                         string message = "The **" + difficulty.DifficultyName + "** diff of **" + leaderboard.Song.Name + "** was ranked! \n";
+
+                        string? nominator = null;
+                        if (leaderboard.Qualification?.RTMember != null) {
+                            var mainId = await _context.PlayerIdToMain(leaderboard.Qualification.RTMember);
+                            nominator = (await _context.Players.FindAsync(mainId))?.Name;
+                        }
+
+                        string? criteriaChecker = null;
+                        if (leaderboard.Qualification?.CriteriaChecker != null) {
+                            var mainId = await _context.PlayerIdToMain(leaderboard.Qualification.CriteriaChecker);
+                            criteriaChecker = (await _context.Players.FindAsync(mainId))?.Name;
+                        }
+
                         message += $"**{difficulty.Stars:0.00}★**\n";
                         message += "Mapped by: **" + leaderboard.Song.Mapper
-                              + "** Nominated: **" + ((await _context.Players.FindAsync(leaderboard.Qualification.RTMember))?.Name ?? "None")
-                              + "** Criteria: **" + ((await _context.Players.FindAsync(leaderboard.Qualification.CriteriaChecker))?.Name ?? "None") + "**\n";
+                              + "** Nominated: **" + (nominator ?? "None")
+                              + "** Criteria: **" + (criteriaChecker ?? "None") + "**\n";
                         message += $"{totalpp:0.00} total pp and {(totalRanks > 0 ? totalRanks : totalRanks * -1)} total ranks were acquired \n";
 
                         await dsClient.SendMessageAsync(message, embeds: new List<Embed> {

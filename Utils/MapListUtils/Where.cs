@@ -1,4 +1,5 @@
 ﻿using BeatLeader_Server.Enums;
+using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
 using Microsoft.EntityFrameworkCore;
@@ -66,7 +67,7 @@ public static partial class MapListUtils
             return sequence;
         }
 
-        return sequence.Where(s => s.Difficulties.Any(d => d.Status != DifficultyStatus.outdated) && status.HasFlag(s.Status));
+        return sequence.Where(s => s.Difficulties.Any(d => d.Status != DifficultyStatus.outdated) && (s.Status & status) != 0);
     }
 
     private static IQueryable<Song> WhereMapper(this IQueryable<Song> sequence, string? mapper)
@@ -225,6 +226,17 @@ public static partial class MapListUtils
                 }
                 break;
             case DateRangeType.Score:
+                if (dateTo == null && dateFrom != null) {
+                    var currentTime = Time.UnixNow();
+                    if (Math.Abs(currentTime - (int)dateFrom - 60 * 60 * 24) < 60 * 30) {
+                        sequence = sequence.Where(s => s.Leaderboards.Any(l => l.TodayPlays > 0));
+                        break;
+                    }
+                    if (Math.Abs(currentTime - (int)dateFrom - 60 * 60 * 24 * 7) < 60 * 30) {
+                        sequence = sequence.Where(s => s.Leaderboards.Any(l => l.ThisWeekPlays > 0));
+                        break;
+                    }
+                }
                 sequence = sequence.Where(s => s.Leaderboards.Any(l => l.Scores.Any(score => (dateFrom == null || score.Timepost >= dateFrom) && (dateTo == null || score.Timepost <= dateTo))));
                 break;
             default:

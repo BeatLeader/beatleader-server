@@ -65,6 +65,22 @@ namespace BeatLeader_Server.Utils
             return songs;
         }
 
+        public static async Task<List<MapDetail>?> GetTrendingSongsFromBeatSaver(DateTime afterTime)
+        {
+            DateTime? curatedAfter = afterTime;
+            SearchResponse? searchResponse;
+            string url = "https://beatsaver.com/api/search/text/0?order=Rating";
+            if (curatedAfter.HasValue)
+            {
+                url += "&from=" + curatedAfter.Value.ToString("yyyy-MM-ddTHH:mm:ssZ");
+            }
+
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+            searchResponse = await request.DynamicResponse<SearchResponse>();
+
+            return searchResponse?.Docs;
+        }
+
         public class LackMapCalculation
         {
             [JsonProperty("avg_pattern_rating")]

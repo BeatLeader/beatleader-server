@@ -382,7 +382,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/mod/maps/trending/")]
-        public async Task<ActionResult<ResponseWithMetadata<LeaderboardInfoResponse>>> ModTrendingMaps() {
+        public async Task<ActionResult<ResponseWithMetadata<TrendingLeaderboardInfoResponse>>> ModTrendingMaps() {
             var currentId = HttpContext.CurrentUserID(_context);
             if (currentId == null) {
                 var stream = await _s3Client.DownloadAsset("trendingmaps-list.json");
@@ -391,7 +391,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             var cacheKey = $"modTrendingMaps_{currentId}";
-            var cachedResponse = _cache.Get<ResponseWithMetadata<LeaderboardInfoResponse>>(cacheKey);
+            var cachedResponse = _cache.Get<ResponseWithMetadata<TrendingLeaderboardInfoResponse>>(cacheKey);
             if (cachedResponse != null)
             {
                 return cachedResponse;
@@ -437,21 +437,22 @@ namespace BeatLeader_Server.Controllers
 
             await Task.WhenAll(tasks);
 
-            var result = new List<string>();
+            var result = new Dictionary<string, int>();
             int counter = 0;
             foreach (var group in tasks) {
                 counter++;
                 foreach (var item in group.Result) {
-                    if (!result.Contains(item)) {
-                        result.Add(item);
+                    if (!result.ContainsKey(item)) {
+                        result[item] = counter - 1;
                     }
                     if (result.Count == counter) {
                         break;
                     }
                 }
             }
+            var ids = result.Keys.ToList();
 
-            var response = new ResponseWithMetadata<LeaderboardInfoResponse> {
+            var response = new ResponseWithMetadata<TrendingLeaderboardInfoResponse> {
                 Metadata = new Metadata {
                     Page = 1,
                     ItemsPerPage = result.Count,
@@ -459,8 +460,8 @@ namespace BeatLeader_Server.Controllers
                 },
                 Data = await _context
                     .Leaderboards
-                    .Where(lb => result.Contains(lb.Id))
-                    .Select(lb => new LeaderboardInfoResponse {
+                    .Where(lb => ids.Contains(lb.Id))
+                    .Select(lb => new TrendingLeaderboardInfoResponse {
                         Id = lb.Id,
                         Song = new SongResponse {
                             Id = lb.Song.Id,
@@ -472,7 +473,8 @@ namespace BeatLeader_Server.Controllers
                             CoverImage  = lb.Song.CoverImage,
                             FullCoverImage = lb.Song.FullCoverImage,
                             DownloadUrl = lb.Song.DownloadUrl,
-                            Explicity = lb.Song.Explicity
+                            Explicity = lb.Song.Explicity,
+                            UploadTime = lb.Song.UploadTime
                         },
                         Difficulty = new DifficultyResponse {
                             Id = lb.Difficulty.Id,
@@ -506,10 +508,35 @@ namespace BeatLeader_Server.Controllers
 
                             Requirements = lb.Difficulty.Requirements,
                         },
-                        VoteStars = lb.VoteStars,
-                        StarVotes = lb.StarVotes,
+                        PositiveVotes = lb.PositiveVotes,
+                        TodayPlays = lb.TodayPlays,
+                        ThisWeekPlays = lb.ThisWeekPlays
                     }).ToListAsync()
             };
+
+            response.Data = response.Data.OrderBy(s => result[s.Id]);
+            foreach (var item in response.Data) {
+                switch (result[item.Id]) {
+                    case 0:
+                        item.Description = "Top played today";
+                        item.TrendingValue = $"{item.TodayPlays} plays";
+                        break;
+                    case 1:
+                        item.Description = "Top played this week";
+                        item.TrendingValue = $"{item.ThisWeekPlays} plays";
+                        break;
+                    case 2:
+                        item.Description = "Newly curated map";
+                        item.TrendingValue = $"{item.ThisWeekPlays} plays";
+                        break;
+                    case 3:
+                        item.Description = "Top voted new map";
+                        item.TrendingValue = $"{item.PositiveVotes} votes";
+                        break;
+                    default:
+                        break;
+                }
+            }
 
             _cache.Set(cacheKey, response, TimeSpan.FromDays(1));
 
@@ -532,22 +559,21 @@ namespace BeatLeader_Server.Controllers
 
             int timeset = Time.UnixNow();
             var currentId = HttpContext.CurrentUserID(_context);
-            var uploadTreshold = timeset - 60 * 60 * 24 * 30 * 2;
-            var topToday = _leaderboardController.GetAll(1, 1, MapSortBy.PlayCount, date_from: timeset - 60 * 60 * 24, overrideCurrentId: currentId, uploadTreshold: uploadTreshold);
-            var topWeek = _leaderboardController.GetAll(1, 1, MapSortBy.PlayCount, date_from: timeset - 60 * 60 * 24 * 7, overrideCurrentId: currentId, uploadTreshold: uploadTreshold);
-            var topVoted = _leaderboardController.GetAll(1, 1, MapSortBy.Voting, date_from: timeset - 60 * 60 * 24 * 30, overrideCurrentId: currentId, uploadTreshold: uploadTreshold);
+            var topToday = _leaderboardController.GetAll(1, 1, MapSortBy.PlayCount, date_from: timeset - 60 * 60 * 24, date_range: DateRangeType.Score, overrideCurrentId: currentId);
+            var topWeek = _leaderboardController.GetAll(1, 1, MapSortBy.PlayCount, date_from: timeset - 60 * 60 * 24 * 7, date_range: DateRangeType.Score, overrideCurrentId: currentId);
+            var topVoted = _leaderboardController.GetAll(1, 1, MapSortBy.Voting, date_from: timeset - 60 * 60 * 24 * 30, date_range: DateRangeType.Upload, overrideCurrentId: currentId);
 
             Task.WaitAll([topToday, topWeek, topVoted]);
 
             var topTodayResult = topToday.Result;
             if (topTodayResult.Value?.Data.FirstOrDefault()?.Id == topWeek.Result.Value?.Data.FirstOrDefault()?.Id) {
-                topTodayResult = await _leaderboardController.GetAll(2, 1, MapSortBy.PlayCount, date_from: timeset - 60 * 60 * 24, overrideCurrentId: currentId, uploadTreshold: uploadTreshold);
+                topTodayResult = await _leaderboardController.GetAll(2, 1, MapSortBy.PlayCount, date_from: timeset - 60 * 60 * 24, overrideCurrentId: currentId);
             }
 
             var topVotedResult = topVoted.Result;
             if (topVotedResult.Value?.Data.FirstOrDefault()?.Id == topWeek.Result.Value?.Data.FirstOrDefault()?.Id || 
                 topVotedResult.Value?.Data.FirstOrDefault()?.Id == topTodayResult.Value?.Data.FirstOrDefault()?.Id) {
-                topVotedResult = await _leaderboardController.GetAll(2, 1, MapSortBy.Voting, date_from: timeset - 60 * 60 * 24 * 30, overrideCurrentId: currentId, uploadTreshold: uploadTreshold);
+                topVotedResult = await _leaderboardController.GetAll(2, 1, MapSortBy.Voting, date_from: timeset - 60 * 60 * 24 * 30, overrideCurrentId: currentId);
             }
 
             var response = new ResponseWithMetadata<LeaderboardInfoResponse> {

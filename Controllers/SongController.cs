@@ -28,6 +28,11 @@ using SixLabors.ImageSharp.Formats.Webp;
 
 namespace BeatLeader_Server.Controllers
 {
+    public class BeatSaverTrendingMap {
+        public string Id { get; set; }
+        public int Votes { get; set; }
+    }
+
     [ApiController]
     [Route("[controller]")]
     public class SongController : Controller
@@ -113,6 +118,17 @@ namespace BeatLeader_Server.Controllers
             };
 
             bool showPlays = sortBy == MapSortBy.PlayCount;
+            bool todayPlays = false;
+            bool thisWeekPlays = false;
+
+            if (date_to == null && date_from != null) {
+                var currentTime = Time.UnixNow();
+                if (Math.Abs(currentTime - (int)date_from - 60 * 60 * 24) < 60 * 30) {
+                    todayPlays = true;
+                } else if (Math.Abs(currentTime - (int)date_from - 60 * 60 * 24 * 7) < 60 * 30) {
+                    thisWeekPlays = true;
+                }
+            }
 
             if (page <= 0) {
                 page = 1;
@@ -175,7 +191,13 @@ namespace BeatLeader_Server.Controllers
                             RankedTime = lb.Difficulty.RankedTime,
 
                             LeaderboardId = lb.Id,
-                            Plays = showPlays ? lb.Scores.Where(s => s.ValidContexts.HasFlag(leaderboardContext)).Count(s => date_range != DateRangeType.Score || ((date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to))) : 0,
+                            Plays = showPlays 
+                                ? (todayPlays 
+                                    ? lb.TodayPlays
+                                    : (thisWeekPlays
+                                    ? lb.ThisWeekPlays
+                                    : lb.Scores.Where(s => s.ValidContexts.HasFlag(leaderboardContext)).Count(s => date_range != DateRangeType.Score || ((date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)))))
+                                : 0,
                             Attempts = lb.PlayCount,
                             PositiveVotes = lb.PositiveVotes,
                             StarVotes = lb.StarVotes,
@@ -318,6 +340,181 @@ namespace BeatLeader_Server.Controllers
                     }
                     await _context.BulkSaveChangesAsync();
                 });
+            }
+
+            return result;
+        }
+
+        [HttpGet("~/maps/trending/beatsaver")]
+        [SwaggerOperation(Summary = "Retrieve a list of maps", Description = "Fetches a paginated and optionally filtered list of Beat Saber maps.")]
+        [SwaggerResponse(200, "Maps retrieved successfully", typeof(ResponseWithMetadata<MapInfoResponseWithUpvotes>))]
+        [SwaggerResponse(404, "Maps not found")]
+        public async Task<ActionResult<ResponseWithMetadata<MapInfoResponseWithUpvotes>>> GetBeatSaverTrending([FromQuery, SwaggerParameter("Context of the leaderboard, default is General")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General) {
+
+            var dbContext = _dbFactory.CreateDbContext();
+
+            string? currentID = HttpContext.CurrentUserID(dbContext);
+
+            IQueryable<Player>? currentPlayerQuery = currentID != null ? dbContext
+                .Players
+                .AsNoTracking()
+                .Include(p => p.ProfileSettings) : null;
+
+            Player? currentPlayer = currentPlayerQuery != null ? await currentPlayerQuery.FirstOrDefaultAsync(p => p.Id == currentID) : null;
+
+            var result = new ResponseWithMetadata<MapInfoResponseWithUpvotes>() {
+                Metadata = new Metadata() {
+                    Page = 1,
+                    ItemsPerPage = 5
+                }
+            };
+
+            var cacheKey = $"beatsaverTrendingMaps";
+            var trendingMaps = _cache.Get<List<BeatSaverTrendingMap>>(cacheKey);
+
+            if (trendingMaps == null) {
+                var songs = await SongUtils.GetTrendingSongsFromBeatSaver(DateTime.Now.Date.AddDays(-7));
+                trendingMaps = songs?.Select(s => new BeatSaverTrendingMap {
+                    Id = s.Id,
+                    Votes = s.Stats?.Upvotes ?? 0
+                }).OrderByDescending(s => s.Votes).ToList();
+
+                if (trendingMaps == null) {
+                    return NotFound("Can't reach BeatSaver for trending maps");
+                }
+
+                _cache.Set(cacheKey, trendingMaps, TimeSpan.FromDays(1));
+            }
+
+            var idsList = trendingMaps
+                .Select(s => s.Id)
+                .ToList();
+
+            using (var anotherContext = _dbFactory.CreateDbContext()) {
+                var songSequence = anotherContext
+                    .Songs
+                    .AsNoTracking()
+                    .Where(s => idsList.Contains(s.Id));
+
+                (result.Metadata.Total, result.Data) = await dbContext
+                .Songs
+                .AsNoTracking().CountAsync().CoundAndResults(songSequence
+                    .TagWithCallerS()
+                    .Select(s => new MapInfoResponseWithUpvotes {
+                        Id = s.Id,
+                        Hash = s.Hash,
+                        Name = s.Name,
+                        SubName = s.SubName,
+                        Author = s.Author,
+                        Mapper = s.Mapper,
+                        Mappers = s.Mappers != null ? s.Mappers.Select(m => new MapperResponse {
+                            Id = m.Id,
+                            PlayerId = m.Player != null ? m.Player.Id : null,
+                            Name = m.Player != null ? m.Player.Name : m.Name,
+                            Avatar = m.Player != null ? m.Player.Avatar : m.Avatar,
+                            Curator = m.Curator,
+                            VerifiedMapper = m.VerifiedMapper,
+                            Status = m.Status,
+                        }).ToList() : null,
+                        MapperId = s.MapperId,
+                        CollaboratorIds = s.CollaboratorIds,
+                        CoverImage = s.CoverImage,
+                        FullCoverImage = s.FullCoverImage,
+                        DownloadUrl = s.DownloadUrl,
+                        Bpm = s.Bpm,
+                        Duration = s.Duration,
+                        UploadTime = s.UploadTime,
+                        Tags = s.Tags,
+                        ExternalStatuses = s.ExternalStatuses.Where(es => es.Status == SongStatus.Curated).ToList(),
+
+                        Difficulties = s.Leaderboards
+                        .Select(lb => new MapDiffResponse {
+                            Id = lb.Difficulty.Id,
+                            Value = lb.Difficulty.Value,
+                            Mode = lb.Difficulty.Mode,
+                            DifficultyName = lb.Difficulty.DifficultyName,
+                            ModeName = lb.Difficulty.ModeName,
+                            Status = lb.Difficulty.Status,
+                            ModifierValues = lb.Difficulty.ModifierValues,
+                            ModifiersRating = lb.Difficulty.ModifiersRating,
+                            NominatedTime = lb.Difficulty.NominatedTime,
+                            QualifiedTime = lb.Difficulty.QualifiedTime,
+                            RankedTime = lb.Difficulty.RankedTime,
+
+                            LeaderboardId = lb.Id,
+                            Attempts = lb.PlayCount,
+                            PositiveVotes = lb.PositiveVotes,
+                            StarVotes = lb.StarVotes,
+                            NegativeVotes = lb.NegativeVotes,
+
+                            Stars = lb.Difficulty.Stars,
+                            PredictedAcc = lb.Difficulty.PredictedAcc,
+                            PassRating = lb.Difficulty.PassRating,
+                            AccRating = lb.Difficulty.AccRating,
+                            TechRating = lb.Difficulty.TechRating,
+                            Type = lb.Difficulty.Type,
+
+                            SpeedTags = lb.Difficulty.SpeedTags,
+                            StyleTags = lb.Difficulty.StyleTags,
+                            FeatureTags = lb.Difficulty.FeatureTags,
+
+                            Njs = lb.Difficulty.Njs,
+                            Nps = lb.Difficulty.Nps,
+                            Notes = lb.Difficulty.Notes,
+                            Bombs = lb.Difficulty.Bombs,
+                            Walls = lb.Difficulty.Walls,
+                            MaxScore = lb.Difficulty.MaxScore,
+                            Duration = lb.Difficulty.Duration,
+
+                            Requirements = lb.Difficulty.Requirements,
+                            MyScore = currentID == null ? null : lb.Scores.Where(s => s.PlayerId == currentID && s.ValidContexts.HasFlag(leaderboardContext) && !s.Banned).Select(s => new ScoreResponseWithAcc {
+                                Id = s.Id,
+                                    BaseScore = s.BaseScore,
+                                    ModifiedScore = s.ModifiedScore,
+                                    PlayerId = s.PlayerId,
+                                    Accuracy = s.Accuracy,
+                                    Pp = s.Pp,
+                                    FcAccuracy = s.FcAccuracy,
+                                    FcPp = s.FcPp,
+                                    BonusPp = s.BonusPp,
+                                    Rank = s.Rank,
+                                    Replay = s.Replay,
+                                    Offsets = s.ReplayOffsets,
+                                    Modifiers = s.Modifiers,
+                                    BadCuts = s.BadCuts,
+                                    MissedNotes = s.MissedNotes,
+                                    BombCuts = s.BombCuts,
+                                    WallsHit = s.WallsHit,
+                                    Pauses = s.Pauses,
+                                    FullCombo = s.FullCombo,
+                                    Hmd = s.Hmd,
+                                    Timeset = s.Timeset,
+                                    Timepost = s.Timepost,
+                                    ReplaysWatched = s.AuthorizedReplayWatched + s.AnonimusReplayWatched,
+                                    LeaderboardId = s.LeaderboardId,
+                                    Platform = s.Platform,
+                                    Weight = s.Weight,
+                                    AccLeft = s.AccLeft,
+                                    AccRight = s.AccRight,
+                                    MaxStreak = s.MaxStreak,
+                                }).FirstOrDefault(),
+                        }).OrderBy(d => d.Mode > 0 ? d.Mode : 2000).ThenBy(d => d.Value).ToList(),
+                    })
+                    .ToListAsync());
+            }
+
+            if (result.Data.Count() > 0) {
+                bool showRatings = currentPlayer?.ProfileSettings?.ShowAllRatings ?? false;
+                foreach (var song in result.Data) {
+                    song.Upvotes = trendingMaps.FirstOrDefault(m => m.Id == song.Id)?.Votes ?? 0;
+                    foreach (var diff in song.Difficulties) {
+                        if (!showRatings && !diff.Status.WithRating()) {
+                            diff.HideRatings();
+                        }
+                    }
+                }
+
+                result.Data = result.Data.OrderBy(e => idsList.IndexOf(e.Id));
             }
 
             return result;

@@ -457,7 +457,11 @@ namespace BeatLeader_Server.Controllers
                         if (dsClient != null)
                         {
                             string message = currentPlayer.Name + " qualified **" + diff + "** diff of **" + leaderboard.Song.Name + "**! \n";
-                            var mapper = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == qualification.MapperId);
+                            Player? mapper = null;
+                            if (qualification.MapperId != null) {
+                                var mainId = await _context.PlayerIdToMain(qualification.MapperId);
+                                mapper = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == mainId);
+                            }
                             if (mapper != null) {
                                 var discord = mapper.Socials?.FirstOrDefault(s => s.Service == "Discord");
                                 if (discord != null)

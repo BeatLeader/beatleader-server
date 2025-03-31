@@ -167,12 +167,14 @@ namespace BeatLeader_Server.ControllerHelpers {
             Player? player = await dbContext.Players.Where(p => p.Id == playerID)
                 .Include(p => p.Socials)
                 .Include(p => p.ProfileSettings)
-                .Include(p => p.Changes).FirstOrDefaultAsync();
+                .Include(p => p.Changes)
+                .Include(p => p.Badges).FirstOrDefaultAsync();
 
             if (player != null)
             {
                 player.Socials = null;
                 player.ProfileSettings = null;
+                player.Badges = null;
                 dbContext.Players.Remove(player);
                 PlayerSearchService.RemovePlayer(player);
                 await dbContext.SaveChangesAsync();
@@ -442,14 +444,14 @@ namespace BeatLeader_Server.ControllerHelpers {
             // Step 1: Get all follower IDs
             var allFollowersIds = await dbContext
                 .Friends
-                .Where(f => !f.HideFriends && f.Friends.Any(p => p.Id == id))
+                .Where(f => !f.HideFriends && f.Friends.Any(p => !p.Banned && p.Id == id))
                 .Select(f => f.Id)
                 .ToListAsync();
 
             var following = await dbContext
                 .Friends
                 .Where(f => !f.HideFriends && f.Id == id)
-                .Select(f => f.Friends.Select(ff => ff.Id).ToList())
+                .Select(f => f.Friends.Where(f => !f.Banned).Select(ff => ff.Id).ToList())
                 .FirstOrDefaultAsync() ?? new List<string> { };
 
             if (!allFollowersIds.Any()) {
@@ -462,7 +464,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                 .Where(f => !f.HideFriends && allFollowersIds.Contains(f.Id))
                 .Select(f => new {
                     FollowerId = f.Id,
-                    FollowingIds = f.Friends.Select(ff => ff.Id).ToList()
+                    FollowingIds = f.Friends.Where(f => !f.Banned).Select(ff => ff.Id).ToList()
                 })
                 .ToListAsync();
 
@@ -488,7 +490,7 @@ namespace BeatLeader_Server.ControllerHelpers {
             List<string> allFollowingIds = await dbContext
                 .Friends
                 .Where(f => (!f.HideFriends || currentID == id) && f.Id == id)
-                .SelectMany(f => f.Friends.Select(f => f.Id))
+                .SelectMany(f => f.Friends.Where(f => !f.Banned).Select(f => f.Id))
                 .ToListAsync() ?? new List<string>();
 
             if (!allFollowingIds.Any()) {
@@ -499,13 +501,13 @@ namespace BeatLeader_Server.ControllerHelpers {
             var followersCounts = await dbContext
                 .Friends
                 .Where(f => !f.HideFriends)
-                .SelectMany(f => f.Friends)
+                .SelectMany(f => f.Friends.Where(f => !f.Banned))
                 .Where(f => allFollowingIds.Contains(f.Id))
                 .GroupBy(f => f.Id)
                 .Select(g => new FollowerCounter {
                     Id = g.Key,
                     Count = g.Count(),
-                    Mutual = dbContext.Friends.FirstOrDefault(f => !f.HideFriends && f.Id == g.Key && f.Friends.FirstOrDefault(ff => ff.Id == id) != null) != null
+                    Mutual = dbContext.Friends.FirstOrDefault(f => !f.HideFriends && f.Id == g.Key && f.Friends.FirstOrDefault(ff => !ff.Banned && ff.Id == id) != null) != null
                 })
                 .ToListAsync();
 
