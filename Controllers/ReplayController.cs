@@ -1106,7 +1106,7 @@ namespace BeatLeader_Server.Controllers
                     .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                     .ThenByDescending(el => el.ModifiedScore)
                     .ThenBy(el => el.Timepost)
-                    .Select(s => new ScoreContextExtension() { Id = s.Id, Rank = s.Rank })
+                    .Select(s => new ScoreContextExtension() { Id = s.Id, Rank = s.Rank, Timepost = s.Timepost })
                     .ToListAsync();
                 } else {
                     rankedScores = await dbContext
@@ -1117,7 +1117,7 @@ namespace BeatLeader_Server.Controllers
                     .ThenBy(el => Math.Round(el.Accuracy, 4))
                     .ThenBy(el => el.ModifiedScore)
                     .ThenBy(el => el.Timepost)
-                    .Select(s => new ScoreContextExtension() { Id = s.Id, Rank = s.Rank })
+                    .Select(s => new ScoreContextExtension() { Id = s.Id, Rank = s.Rank, Timepost = s.Timepost })
                     .ToListAsync();
                 }
             } else {
@@ -1130,7 +1130,7 @@ namespace BeatLeader_Server.Controllers
                     .ThenByDescending(el => el.ModifiedScore)
                     .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                     .ThenBy(el => el.Timepost)
-                    .Select(s => new ScoreContextExtension() { Id = s.Id, Rank = s.Rank })
+                    .Select(s => new ScoreContextExtension() { Id = s.Id, Rank = s.Rank, Timepost = s.Timepost })
                     .ToListAsync();
                 } else {
                     rankedScores = await dbContext
@@ -1141,7 +1141,7 @@ namespace BeatLeader_Server.Controllers
                     .ThenBy(el => el.ModifiedScore)
                     .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                     .ThenBy(el => el.Timepost)
-                    .Select(s => new ScoreContextExtension() { Id = s.Id, Rank = s.Rank })
+                    .Select(s => new ScoreContextExtension() { Id = s.Id, Rank = s.Rank, Timepost = s.Timepost })
                     .ToListAsync();
                 }
             }
@@ -1154,7 +1154,7 @@ namespace BeatLeader_Server.Controllers
                 s.Rank = i + 1;
 
                 if (isRanked && context == LeaderboardContexts.Funny) {
-                    if (s.Rank == 1 || s.Rank % 5 == 0) {
+                    if ((s.Rank == 1 || s.Rank % 5 == 0) && s.Timepost >= 1735689600) {
                         s.Pp = 500;
                     } else {
                         s.Pp = 0;

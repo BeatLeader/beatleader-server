@@ -1401,7 +1401,7 @@ namespace BeatLeader_Server.Controllers {
                             scpmExtension.PlayerId = migrateToId;
                             score.ContextExtensions.Add(scpmExtension);
                         }
-                        var funnyExtension = ReplayUtils.FunnyContextExtension(score, difficulty);
+                        var funnyExtension = ReplayUtils.FunnyContextExtension(score);
                         if (funnyExtension != null) {
                             funnyExtension.LeaderboardId = score.LeaderboardId;
                             funnyExtension.PlayerId = migrateToId;

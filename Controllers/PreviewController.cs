@@ -197,8 +197,8 @@ namespace BeatLeader_Server.Controllers
             (Color diffColor, string diff) = DiffColorAndName(score.Difficulty);
 
             if (score.ContextExtensions?.Count > 0) {
-                var bestScore = score.ContextExtensions.OrderBy(ce => ce.Rank).First();
-                if ((bestScore.Rank < score.Rank || score.Rank == 0) && bestScore.Rank != 0) {
+                var bestScore = score.ContextExtensions.Where(s => s.Context != LeaderboardContexts.Speedrun && s.Context != LeaderboardContexts.Funny).OrderBy(ce => ce.Rank).FirstOrDefault();
+                if (bestScore != null && (bestScore.Rank < score.Rank || score.Rank == 0) && bestScore.Rank != 0) {
                     score.ToContext(bestScore);
                     score.Context = bestScore.Context;
                 }

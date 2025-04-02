@@ -1019,6 +1019,9 @@ namespace BeatLeader_Server.Controllers
                 case "scpm":
                     contexts = LeaderboardContexts.SCPM;
                     break;
+                case "funny":
+                    contexts = LeaderboardContexts.Funny;
+                    break;
                 default:
                     break;
             }
@@ -1046,6 +1049,10 @@ namespace BeatLeader_Server.Controllers
 
                     if (score.Player.Bot) {
                         score.Player.Name += " [BOT]";
+                    }
+
+                    if (contexts == LeaderboardContexts.Funny && score.Pp == 0) {
+                        score.Pp = 0.005f;
                     }
                 }
                 result.Data = resultList;

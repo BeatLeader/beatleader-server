@@ -318,7 +318,7 @@ namespace BeatLeader_Server.Utils
             if (scpmExtenstion != null) {
                 score.ContextExtensions.Add(scpmExtenstion);
             }
-            var funnyExtension = FunnyContextExtension(score, difficulty);
+            var funnyExtension = FunnyContextExtension(score);
             if (funnyExtension != null) {
                 score.ContextExtensions.Add(funnyExtension);
             }
@@ -355,8 +355,8 @@ namespace BeatLeader_Server.Utils
             return result;
         }
 
-        public static ScoreContextExtension? FunnyContextExtension(Score score, DifficultyDescription difficulty) {
-            if (score.Modifiers?.Split(",").Where(m => m != "IF" && m != "BE" && m != "SC" && m != "PM").Count() > 0) {
+        public static ScoreContextExtension? FunnyContextExtension(Score score) {
+            if (score.Modifiers?.Split(",").Where(m => m != "" && m != "IF" && m != "BE" && m != "SC" && m != "PM").Count() > 0) {
                 return null;
             }
 
@@ -365,19 +365,10 @@ namespace BeatLeader_Server.Utils
                 BaseScore = score.BaseScore,
                 ModifiedScore = score.BaseScore,
                 Timepost = score.Timepost,
-                Modifiers = "",
+                Modifiers = score.Modifiers,
                 Accuracy = score.Accuracy,
                 Qualification = score.Qualification
             };
-
-            if (score.Pp > 0) {
-                (result.Pp, result.BonusPp, result.PassPP, result.AccPP, result.TechPP) = PpFromScore(score.Accuracy, LeaderboardContexts.NoMods, "", difficulty.ModifierValues, 
-                difficulty.ModifiersRating,
-                difficulty.AccRating ?? 0.0f, 
-                difficulty.PassRating ?? 0.0f, 
-                difficulty.TechRating ?? 0.0f, 
-                difficulty.ModeName.ToLower() == "rhythmgamestandard");
-            }
 
             return result;
         }
