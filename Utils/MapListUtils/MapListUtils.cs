@@ -7,7 +7,7 @@ namespace BeatLeader_Server.Utils;
 
 public static partial class MapListUtils
 {
-    public static IQueryable<Song> Filter(this IQueryable<Song> source,
+    public static IQueryable<SongHelper> Filter(this IQueryable<Song> source,
                                                  AppContext _context,
                                                  out int? searchId,
                                                  MapSortBy sortBy = MapSortBy.None,

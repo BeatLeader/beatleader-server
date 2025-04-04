@@ -8,43 +8,74 @@ using Type = BeatLeader_Server.Enums.Type;
 
 namespace BeatLeader_Server.Utils;
 
+public class SongHelper {
+    public Song Song { get; set; }
+    public IEnumerable<DifficultyDescription> Difficulties { get; set; }
+}
+
 public static partial class MapListUtils
 {
-    private static IQueryable<Song> WhereType(this IQueryable<Song> sequence, Type type) =>
+    private static IQueryable<SongHelper> WhereType(this IQueryable<Song> sequence, Type type) =>
         type switch
         {
-            Type.Ranked      => sequence.Where(s => s.Difficulties.Any(d => d.Status == DifficultyStatus.ranked)),
-            Type.Ranking     => sequence.Where(s => 
-                s.Difficulties.Any(d => 
+            Type.Ranked      => sequence.Select(s => new SongHelper {
+                Song = s,
+                Difficulties = s.Difficulties.Where(d => d.Status == DifficultyStatus.ranked),
+            }),
+            Type.Ranking     => sequence.Select(s => new SongHelper {
+                Song = s,
+                Difficulties = s.Difficulties.Where(d => 
                     d.Status != DifficultyStatus.unranked && 
                     d.Status != DifficultyStatus.outdated && 
                     d.Status != DifficultyStatus.inevent
                 )
-            ),
-            Type.Nominated   => sequence.Where(s => s.Difficulties.Any(d => d.Status == DifficultyStatus.nominated)),
-            Type.Qualified   => sequence.Where(s => s.Difficulties.Any(d => d.Status == DifficultyStatus.qualified)),
-            Type.Staff       => sequence.Where(s => s.Difficulties.Any(d => d.Status == DifficultyStatus.qualified || d.Status == DifficultyStatus.nominated)),
-            Type.Reweighting => sequence.Where(s => s.Leaderboards.Any(l => l.Reweight != null && !l.Reweight.Finished)),
-            Type.Reweighted  => sequence.Where(s => s.Leaderboards.Any(l => l.Reweight != null && l.Reweight.Finished)),
-            Type.Unranked    => sequence.Where(s => s.Difficulties.Any(d => d.Status == DifficultyStatus.unranked)),
-            Type.Ost         => sequence.Where(s => s.Difficulties.Any(d => d.Status == DifficultyStatus.OST)),
-            _                => sequence.Where(s => s.Difficulties.Any(d => d.Status != DifficultyStatus.outdated)),
+            }),
+            Type.Nominated   => sequence.Select(s => new SongHelper {
+                Song = s,
+                Difficulties = s.Difficulties.Where(d => d.Status == DifficultyStatus.nominated)
+            }),
+            Type.Qualified   => sequence.Select(s => new SongHelper {
+                Song = s,
+                Difficulties = s.Difficulties.Where(d => d.Status == DifficultyStatus.qualified)
+            }),
+            Type.Staff       => sequence.Select(s => new SongHelper {
+                Song = s,
+                Difficulties = s.Difficulties.Where(d => d.Status == DifficultyStatus.qualified || d.Status == DifficultyStatus.nominated)
+            }),
+            Type.Unranked    => sequence.Select(s => new SongHelper {
+                Song = s,
+                Difficulties = s.Difficulties.Where(d => d.Status == DifficultyStatus.unranked)
+            }),
+            Type.Ost         => sequence.Select(s => new SongHelper {
+                Song = s,
+                Difficulties = s.Difficulties.Where(d => d.Status == DifficultyStatus.OST)
+            }),
+            _                => sequence.Select(s => new SongHelper {
+                Song = s,
+                Difficulties = s.Difficulties.Where(d => d.Status != DifficultyStatus.outdated)
+            }),
         };
 
-    private static IQueryable<Song> WhereTypes(this IQueryable<Song> sequence, Type type, string? types) {
+    private static IQueryable<SongHelper> WhereTypes(this IQueryable<Song> sequence, Type type, string? types) {
         if (types != null) {
             if (types == "all") {
-                return sequence.Where(s => s.Difficulties.Any(d => d.Status != DifficultyStatus.outdated));
+                return sequence.Select(s => new SongHelper {
+                    Song = s,
+                    Difficulties = s.Difficulties.Where(d => d.Status != DifficultyStatus.outdated)
+                });
             } else {
                 var statuses = types.Split(",").Select(type => (DifficultyStatus)Enum.Parse(typeof(DifficultyStatus), type)).ToList();
-                return sequence.Where(s => s.Difficulties.Any(d => statuses.Contains(d.Status) && d.Status != DifficultyStatus.outdated));
+                return sequence.Select(s => new SongHelper {
+                    Song = s,
+                    Difficulties = s.Difficulties.Where(d => statuses.Contains(d.Status) && d.Status != DifficultyStatus.outdated)
+                });
             }
         } else {
             return sequence.WhereType(type);
         }
     }
 
-    private static IQueryable<Song> WhereMapType(this IQueryable<Song> sequence, int? mapType, Operation allTypes)
+    private static IQueryable<SongHelper> WhereMapType(this IQueryable<SongHelper> sequence, int? mapType, Operation allTypes)
     {
         if (mapType == null)
         {
@@ -53,24 +84,33 @@ public static partial class MapListUtils
 
         return allTypes switch
         {
-            Operation.Any => sequence.Where(s => s.Difficulties.Any(d => (d.Type & mapType) != 0)),
-            Operation.All => sequence.Where(s => s.Difficulties.Any(d => d.Type == mapType)),
-            Operation.Not => sequence.Where(s => s.Difficulties.Any(d => (d.Type & mapType) == 0)),
+            Operation.Any => sequence.Select(s => new SongHelper {
+                Song = s.Song,
+                Difficulties = s.Difficulties.Where(d => (d.Type & mapType) != 0)
+            }),
+            Operation.All => sequence.Select(s => new SongHelper {
+                Song = s.Song,
+                Difficulties = s.Difficulties.Where(d => d.Type == mapType)
+            }),
+            Operation.Not => sequence.Select(s => new SongHelper {
+                Song = s.Song,
+                Difficulties = s.Difficulties.Where(d => (d.Type & mapType) == 0)
+            }),
             _             => sequence,
         };
     }
 
-    private static IQueryable<Song> WhereSongStatus(this IQueryable<Song> sequence, SongStatus status)
+    private static IQueryable<SongHelper> WhereSongStatus(this IQueryable<SongHelper> sequence, SongStatus status)
     {
         if (status == SongStatus.None)
         {
             return sequence;
         }
 
-        return sequence.Where(s => s.Difficulties.Any(d => d.Status != DifficultyStatus.outdated) && (s.Status & status) != 0);
+        return sequence.Where(s => (s.Song.Status & status) != 0);
     }
 
-    private static IQueryable<Song> WhereMapper(this IQueryable<Song> sequence, string? mapper)
+    private static IQueryable<SongHelper> WhereMapper(this IQueryable<SongHelper> sequence, string? mapper)
     {
         if (mapper == null)
         {
@@ -81,10 +121,10 @@ public static partial class MapListUtils
         if (ids.Length == 0) {
             return sequence;
         }
-        return sequence.Where(s => s.Mappers.Any(m => ids.Contains(m.Id)));
+        return sequence.Where(s => s.Song.Mappers.Any(m => ids.Contains(m.Id)));
     }
 
-    private static IQueryable<Song> WherePlaylists(this IQueryable<Song> sequence, List<PlaylistResponse>? playlists)
+    private static IQueryable<SongHelper> WherePlaylists(this IQueryable<SongHelper> sequence, List<PlaylistResponse>? playlists)
     {
         if (playlists == null)
         {
@@ -97,10 +137,10 @@ public static partial class MapListUtils
         if (hashes.Count == 0 && keys.Count == 0) {
             return sequence;
         }
-        return sequence.Where(s => hashes.Contains(s.Hash.ToLower()) || keys.Contains(s.Id));
+        return sequence.Where(s => hashes.Contains(s.Song.Hash.ToLower()) || keys.Contains(s.Song.Id));
     }
 
-    private static IQueryable<Song> WhereMyType(this IQueryable<Song> sequence, MyTypeMaps mytype, Player? currentPlayer, LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
+    private static IQueryable<SongHelper> WhereMyType(this IQueryable<SongHelper> sequence, MyTypeMaps mytype, Player? currentPlayer, LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
     {
         string? currentId = currentPlayer?.Id;
         
@@ -114,34 +154,40 @@ public static partial class MapListUtils
 
         return mytype switch
         {
-            MyTypeMaps.Played          => sequence.Where(s => s.Leaderboards.Any(l => l.Scores.Any(sc => sc.PlayerId == currentId && sc.ValidContexts.HasFlag(leaderboardContext)))),
-            MyTypeMaps.Unplayed        => sequence.Where(s => s.Leaderboards.Any(l => !l.Scores.Any(sc => sc.PlayerId == currentId && sc.ValidContexts.HasFlag(leaderboardContext)))),
-            MyTypeMaps.FriendsPlayed   => sequence.Where(s => s.Leaderboards.Any(l => l.Scores.Any(sc => friendIds.Contains(sc.PlayerId) && sc.ValidContexts.HasFlag(leaderboardContext)))),
+            MyTypeMaps.Played          => sequence.Where(s => s.Song.Leaderboards.Any(l => l.Scores.Any(sc => sc.PlayerId == currentId && sc.ValidContexts.HasFlag(leaderboardContext)))),
+            MyTypeMaps.Unplayed        => sequence.Where(s => s.Song.Leaderboards.Any(l => !l.Scores.Any(sc => sc.PlayerId == currentId && sc.ValidContexts.HasFlag(leaderboardContext)))),
+            MyTypeMaps.FriendsPlayed   => sequence.Where(s => s.Song.Leaderboards.Any(l => l.Scores.Any(sc => friendIds.Contains(sc.PlayerId) && sc.ValidContexts.HasFlag(leaderboardContext)))),
             _                      => sequence,
         };
     }
 
-    private static IQueryable<Song> WhereMode(this IQueryable<Song> sequence, string? mode)
+    private static IQueryable<SongHelper> WhereMode(this IQueryable<SongHelper> sequence, string? mode)
     {
         if (mode == null)
         {
             return sequence;
         }
 
-        return sequence.Where(s => s.Difficulties.Any(d => d.ModeName == mode));
+        return sequence.Select(s => new SongHelper {
+                Song = s.Song,
+                Difficulties = s.Difficulties.Where(d => d.ModeName == mode)
+        });
     }
 
-    private static IQueryable<Song> WhereDifficulty(this IQueryable<Song> sequence, string? difficulty)
+    private static IQueryable<SongHelper> WhereDifficulty(this IQueryable<SongHelper> sequence, string? difficulty)
     {
         if (difficulty == null)
         {
             return sequence;
         }
 
-        return sequence.Where(s => s.Difficulties.Any(d => d.DifficultyName == difficulty));
+        return sequence.Select(s => new SongHelper {
+                Song = s.Song,
+                Difficulties = s.Difficulties.Where(d => d.DifficultyName == difficulty)
+        });
     }
 
-    private static IQueryable<Song> WhereMapRequirements(this IQueryable<Song> sequence, Requirements mapRequirements, Operation allRequirements)
+    private static IQueryable<SongHelper> WhereMapRequirements(this IQueryable<SongHelper> sequence, Requirements mapRequirements, Operation allRequirements)
     {
         if (mapRequirements == Requirements.Ignore)
         {
@@ -150,14 +196,23 @@ public static partial class MapListUtils
 
         return allRequirements switch
         {
-            Operation.Any => sequence.Where(s => s.Difficulties.Any(d => (d.Requirements & mapRequirements) != 0)),
-            Operation.All => sequence.Where(s => s.Difficulties.Any(d => d.Requirements == mapRequirements)),
-            Operation.Not => sequence.Where(s => s.Difficulties.Any(d => (d.Requirements & mapRequirements) == 0)),
+            Operation.Any => sequence.Select(s => new SongHelper {
+                Song = s.Song,
+                Difficulties = s.Difficulties.Where(d => (d.Requirements & mapRequirements) != 0)
+            }),
+            Operation.All => sequence.Select(s => new SongHelper {
+                Song = s.Song,
+                Difficulties = s.Difficulties.Where(d => d.Requirements == mapRequirements)
+            }),
+            Operation.Not => sequence.Select(s => new SongHelper {
+                Song = s.Song,
+                Difficulties = s.Difficulties.Where(d => (d.Requirements & mapRequirements) == 0)
+            }),
             _             => sequence,
         };
     }
 
-    private static IQueryable<Song> WhereRatingFrom(this IQueryable<Song> sequence, RatingType rating, float? from)
+    private static IQueryable<SongHelper> WhereRatingFrom(this IQueryable<SongHelper> sequence, RatingType rating, float? from)
     {
         if (from == null)
         {
@@ -165,15 +220,27 @@ public static partial class MapListUtils
         }
 
         return rating switch {
-            RatingType.Stars => sequence.Where(s => s.Difficulties.Any(d => d.Stars >= from)),
-            RatingType.Acc => sequence.Where(s => s.Difficulties.Any(d => d.AccRating >= from)),
-            RatingType.Pass => sequence.Where(s => s.Difficulties.Any(d => d.PassRating >= from)),
-            RatingType.Tech => sequence.Where(s => s.Difficulties.Any(d => d.TechRating >= from)),
+            RatingType.Stars => sequence.Select(s => new SongHelper {
+                Song = s.Song,
+                Difficulties = s.Difficulties.Where(d => d.Stars >= from)
+            }),
+            RatingType.Acc => sequence.Select(s => new SongHelper {
+                Song = s.Song,
+                Difficulties = s.Difficulties.Where(d => d.AccRating >= from)
+            }),
+            RatingType.Pass => sequence.Select(s => new SongHelper {
+                Song = s.Song,
+                Difficulties = s.Difficulties.Where(d => d.PassRating >= from)
+            }),
+            RatingType.Tech => sequence.Select(s => new SongHelper {
+                Song = s.Song,
+                Difficulties = s.Difficulties.Where(d => d.TechRating >= from)
+            }),
             _ => sequence,
         };
     }
 
-    private static IQueryable<Song> WhereRatingTo(this IQueryable<Song> sequence, RatingType rating, float? to)
+    private static IQueryable<SongHelper> WhereRatingTo(this IQueryable<SongHelper> sequence, RatingType rating, float? to)
     {
         if (to == null)
         {
@@ -181,15 +248,27 @@ public static partial class MapListUtils
         }
 
         return rating switch {
-            RatingType.Stars => sequence.Where(s => s.Difficulties.Any(d => d.Stars <= to)),
-            RatingType.Acc => sequence.Where(s => s.Difficulties.Any(d => d.AccRating <= to)),
-            RatingType.Pass => sequence.Where(s => s.Difficulties.Any(d => d.PassRating <= to)),
-            RatingType.Tech => sequence.Where(s => s.Difficulties.Any(d => d.TechRating <= to)),
+            RatingType.Stars => sequence.Select(s => new SongHelper {
+                Song = s.Song,
+                Difficulties = s.Difficulties.Where(d => d.Stars <= to)
+            }),
+            RatingType.Acc => sequence.Select(s => new SongHelper {
+                Song = s.Song,
+                Difficulties = s.Difficulties.Where(d => d.AccRating <= to)
+            }),
+            RatingType.Pass => sequence.Select(s => new SongHelper {
+                Song = s.Song,
+                Difficulties = s.Difficulties.Where(d => d.PassRating <= to)
+            }),
+            RatingType.Tech => sequence.Select(s => new SongHelper {
+                Song = s.Song,
+                Difficulties = s.Difficulties.Where(d => d.TechRating <= to)
+            }),
             _ => sequence,
         };
     }
 
-    private static IQueryable<Song> WhereDateFrom(this IQueryable<Song> sequence, DateRangeType rangeType, Type type, int? dateFrom, int? dateTo)
+    private static IQueryable<SongHelper> WhereDateFrom(this IQueryable<SongHelper> sequence, DateRangeType rangeType, Type type, int? dateFrom, int? dateTo)
     {
         if (dateFrom == null && dateTo == null)
         {
@@ -198,28 +277,40 @@ public static partial class MapListUtils
 
         switch (rangeType) {
             case DateRangeType.Upload:
-                sequence = sequence.Where(s => (dateFrom == null || s.UploadTime >= dateFrom) && (dateTo == null || s.UploadTime <= dateTo));
+                sequence = sequence.Where(s => (dateFrom == null || s.Song.UploadTime >= dateFrom) && (dateTo == null || s.Song.UploadTime <= dateTo));
                 break;
             case DateRangeType.Ranked:
                 switch (type) {
                     case Type.Ranked:
-                        sequence = sequence.Where(s => s.Difficulties.Any(d => (dateFrom == null || d.RankedTime >= dateFrom) && (dateTo == null || d.RankedTime <= dateTo)));
+                        sequence = sequence.Select(s => new SongHelper {
+                            Song = s.Song,
+                            Difficulties = s.Difficulties.Where(d => (dateFrom == null || d.RankedTime >= dateFrom) && (dateTo == null || d.RankedTime <= dateTo))
+                        });
                         break;
                     case Type.Ranking:
-                        sequence = sequence.Where(s => s.Difficulties.Any(d => (dateFrom == null
+                        sequence = sequence.Select(s => new SongHelper {
+                            Song = s.Song,
+                            Difficulties = s.Difficulties.Where(d => (dateFrom == null
                                     || d.RankedTime >= dateFrom
                                     || d.NominatedTime >= dateFrom
                                     || d.QualifiedTime >= dateFrom)
                                    && (dateTo == null
                                     || d.RankedTime <= dateTo
                                     || d.NominatedTime <= dateTo
-                                    || d.QualifiedTime <= dateTo)));
+                                    || d.QualifiedTime <= dateTo))
+                        });
                         break;
                     case Type.Nominated:
-                        sequence = sequence.Where(s => s.Difficulties.Any(d => (dateFrom == null || d.NominatedTime >= dateFrom) && (dateTo == null || d.NominatedTime <= dateTo)));
+                        sequence = sequence.Select(s => new SongHelper {
+                            Song = s.Song,
+                            Difficulties = s.Difficulties.Where(d => (dateFrom == null || d.NominatedTime >= dateFrom) && (dateTo == null || d.NominatedTime <= dateTo))
+                        });
                         break;
                     case Type.Qualified:
-                        sequence = sequence.Where(s => s.Difficulties.Any(d => (dateFrom == null || d.QualifiedTime >= dateFrom) && (dateTo == null || d.QualifiedTime <= dateTo)));
+                        sequence = sequence.Select(s => new SongHelper {
+                            Song = s.Song,
+                            Difficulties = s.Difficulties.Where(d => (dateFrom == null || d.QualifiedTime >= dateFrom) && (dateTo == null || d.QualifiedTime <= dateTo))
+                        });
                         break;
                     default:
                         break;
@@ -229,15 +320,15 @@ public static partial class MapListUtils
                 if (dateTo == null && dateFrom != null) {
                     var currentTime = Time.UnixNow();
                     if (Math.Abs(currentTime - (int)dateFrom - 60 * 60 * 24) < 60 * 30) {
-                        sequence = sequence.Where(s => s.Leaderboards.Any(l => l.TodayPlays > 0));
+                        sequence = sequence.Where(s => s.Song.Leaderboards.Any(l => l.TodayPlays > 0));
                         break;
                     }
                     if (Math.Abs(currentTime - (int)dateFrom - 60 * 60 * 24 * 7) < 60 * 30) {
-                        sequence = sequence.Where(s => s.Leaderboards.Any(l => l.ThisWeekPlays > 0));
+                        sequence = sequence.Where(s => s.Song.Leaderboards.Any(l => l.ThisWeekPlays > 0));
                         break;
                     }
                 }
-                sequence = sequence.Where(s => s.Leaderboards.Any(l => l.Scores.Any(score => (dateFrom == null || score.Timepost >= dateFrom) && (dateTo == null || score.Timepost <= dateTo))));
+                sequence = sequence.Where(s => s.Song.Leaderboards.Any(l => l.Scores.Any(score => (dateFrom == null || score.Timepost >= dateFrom) && (dateTo == null || score.Timepost <= dateTo))));
                 break;
             default:
                 break;

@@ -11,88 +11,85 @@ public static class DifficultySort
     {
         if (map.Difficulties == null) return;
 
-        var difficulties = map.Difficulties.ToList();
+        var difficulties = map.Difficulties.OrderBy(d => d.Applicable ? 0 : 1);
 
         switch (sortBy)
         {
             case MapSortBy.Stars:
                 difficulties = order == Order.Desc
-                    ? difficulties.OrderByDescending(d => d.Stars ?? 0).ToList()
-                    : difficulties.OrderBy(d => d.Stars ?? 0).ToList();
+                    ? difficulties.ThenByDescending(d => d.Stars ?? 0)
+                    : difficulties.ThenBy(d => d.Stars ?? 0);
                 break;
 
             case MapSortBy.PassRating:
                 difficulties = order == Order.Desc
-                    ? difficulties.OrderByDescending(d => d.PassRating ?? 0).ToList()
-                    : difficulties.OrderBy(d => d.PassRating ?? 0).ToList();
+                    ? difficulties.ThenByDescending(d => d.PassRating ?? 0)
+                    : difficulties.ThenBy(d => d.PassRating ?? 0);
                 break;
 
             case MapSortBy.AccRating:
                 difficulties = order == Order.Desc
-                    ? difficulties.OrderByDescending(d => d.AccRating ?? 0).ToList()
-                    : difficulties.OrderBy(d => d.AccRating ?? 0).ToList();
+                    ? difficulties.ThenByDescending(d => d.AccRating ?? 0)
+                    : difficulties.ThenBy(d => d.AccRating ?? 0);
                 break;
 
             case MapSortBy.TechRating:
                 difficulties = order == Order.Desc
-                    ? difficulties.OrderByDescending(d => d.TechRating ?? 0).ToList()
-                    : difficulties.OrderBy(d => d.TechRating ?? 0).ToList();
+                    ? difficulties.ThenByDescending(d => d.TechRating ?? 0)
+                    : difficulties.ThenBy(d => d.TechRating ?? 0);
                 break;
 
             case MapSortBy.PlayCount:
                 difficulties = order == Order.Desc
-                    ? difficulties.OrderByDescending(d => d.Plays).ToList()
-                    : difficulties.OrderBy(d => d.Plays).ToList();
+                    ? difficulties.ThenByDescending(d => d.Plays)
+                    : difficulties.ThenBy(d => d.Plays);
                 break;
 
             case MapSortBy.Attempts:
                 difficulties = order == Order.Desc
-                    ? difficulties.OrderByDescending(d => d.Attempts).ToList()
-                    : difficulties.OrderBy(d => d.Attempts).ToList();
+                    ? difficulties.ThenByDescending(d => d.Attempts)
+                    : difficulties.ThenBy(d => d.Attempts);
                 break;
 
             case MapSortBy.NJS:
                 difficulties = order == Order.Desc
-                    ? difficulties.OrderByDescending(d => d.Njs).ToList()
-                    : difficulties.OrderBy(d => d.Njs).ToList();
+                    ? difficulties.ThenByDescending(d => d.Njs)
+                    : difficulties.ThenBy(d => d.Njs);
                 break;
 
             case MapSortBy.NPS:
                 difficulties = order == Order.Desc
-                    ? difficulties.OrderByDescending(d => d.Nps).ToList()
-                    : difficulties.OrderBy(d => d.Nps).ToList();
+                    ? difficulties.ThenByDescending(d => d.Nps)
+                    : difficulties.ThenBy(d => d.Nps);
                 break;
 
             case MapSortBy.Voting:
                 difficulties = order == Order.Desc
-                    ? difficulties.OrderByDescending(d => d.PositiveVotes - d.NegativeVotes).ToList()
-                    : difficulties.OrderBy(d => d.PositiveVotes - d.NegativeVotes).ToList();
+                    ? difficulties.ThenByDescending(d => d.PositiveVotes - d.NegativeVotes)
+                    : difficulties.ThenBy(d => d.PositiveVotes - d.NegativeVotes);
                 break;
 
             case MapSortBy.VoteCount:
                 difficulties = order == Order.Desc
-                    ? difficulties.OrderByDescending(d => d.PositiveVotes + d.NegativeVotes).ToList()
-                    : difficulties.OrderBy(d => d.PositiveVotes + d.NegativeVotes).ToList();
+                    ? difficulties.ThenByDescending(d => d.PositiveVotes + d.NegativeVotes)
+                    : difficulties.ThenBy(d => d.PositiveVotes + d.NegativeVotes);
                 break;
 
             case MapSortBy.VoteRatio:
                 difficulties = order == Order.Desc
-                    ? difficulties.OrderByDescending(d => d.PositiveVotes + d.NegativeVotes == 0 ? 0 : (double)d.PositiveVotes / (d.PositiveVotes + d.NegativeVotes))
+                    ? difficulties.ThenByDescending(d => d.PositiveVotes + d.NegativeVotes == 0 ? 0 : (double)d.PositiveVotes / (d.PositiveVotes + d.NegativeVotes))
                         .ThenByDescending(d => d.PositiveVotes + d.NegativeVotes)
-                        .ToList()
-                    : difficulties.OrderBy(d => d.PositiveVotes + d.NegativeVotes == 0 ? 0 : (double)d.PositiveVotes / (d.PositiveVotes + d.NegativeVotes))
-                        .ThenBy(d => d.PositiveVotes + d.NegativeVotes)
-                        .ToList();
+                    : difficulties.ThenBy(d => d.PositiveVotes + d.NegativeVotes == 0 ? 0 : (double)d.PositiveVotes / (d.PositiveVotes + d.NegativeVotes))
+                        .ThenBy(d => d.PositiveVotes + d.NegativeVotes);
                 break;
 
             default:
                 // Default sorting by mode and value
-                difficulties = difficulties.OrderBy(d => d.Mode > 0 ? d.Mode : 2000)
-                    .ThenBy(d => d.Value)
-                    .ToList();
+                difficulties = difficulties.ThenBy(d => d.Mode > 0 ? d.Mode : 2000)
+                    .ThenBy(d => d.Value);
                 break;
         }
 
-        map.Difficulties = difficulties;
+        map.Difficulties = difficulties.ToList();
     }
 } 
