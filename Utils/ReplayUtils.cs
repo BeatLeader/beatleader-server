@@ -318,10 +318,6 @@ namespace BeatLeader_Server.Utils
             if (scpmExtenstion != null) {
                 score.ContextExtensions.Add(scpmExtenstion);
             }
-            var funnyExtension = FunnyContextExtension(score);
-            if (funnyExtension != null) {
-                score.ContextExtensions.Add(funnyExtension);
-            }
 
             return (score, maxScore);
         }
@@ -351,24 +347,6 @@ namespace BeatLeader_Server.Utils
             }
 
             result.ModifiedStars = EffectiveStarRating(result.Modifiers, difficulty.Stars ?? 0, difficulty.ModifierValues, difficulty.ModifiersRating);
-
-            return result;
-        }
-
-        public static ScoreContextExtension? FunnyContextExtension(Score score) {
-            if (score.Modifiers?.Split(",").Where(m => m != "" && m != "IF" && m != "BE" && m != "SC" && m != "PM").Count() > 0) {
-                return null;
-            }
-
-            var result = new ScoreContextExtension {
-                Context = LeaderboardContexts.Funny,
-                BaseScore = score.BaseScore,
-                ModifiedScore = score.BaseScore,
-                Timepost = score.Timepost,
-                Modifiers = score.Modifiers,
-                Accuracy = score.Accuracy,
-                Qualification = score.Qualification
-            };
 
             return result;
         }
@@ -786,9 +764,6 @@ namespace BeatLeader_Server.Utils
         public static bool IsNewScoreExtensionBetter(ScoreContextExtension? oldScore, ScoreContextExtension newScore) {
             if (oldScore == null) return true;
             if (oldScore.Modifiers.Contains("OP")) return true;
-            if (newScore.Context == LeaderboardContexts.Funny) {
-                return newScore.ModifiedScore > oldScore.ModifiedScore;
-            }
             if (newScore.Pp != 0 || oldScore?.Pp != 0) {
                 if (newScore.Pp > (oldScore?.Pp ?? 0)) return true;
             } else {

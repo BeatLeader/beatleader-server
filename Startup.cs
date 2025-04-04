@@ -425,7 +425,6 @@ namespace BeatLeader_Server {
                     services.AddHostedService<BotService>();
                     services.AddHostedService<RankingService>();
                     services.AddHostedService<SongService>();
-                    services.AddHostedService<FunnyRefresh>();
                 }
             }
             

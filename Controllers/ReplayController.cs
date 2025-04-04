@@ -676,8 +676,6 @@ namespace BeatLeader_Server.Controllers
                 await ContextScore(dbContext, leaderboardContext, leaderboard, player, resultScore, currentScores, replay);
             }
 
-            await ContextScore(dbContext, LeaderboardContexts.Funny, leaderboard, player, resultScore, currentScores, replay);
-
             if (resultScore.ValidContexts == LeaderboardContexts.None) {
                 return (BadRequest("Score is lower than existing one"), true, false);
             } else {
@@ -690,7 +688,7 @@ namespace BeatLeader_Server.Controllers
                         }
                     }
 
-                    foreach (var leaderboardContext in ContextExtensions.NonGeneralAndFunny) {
+                    foreach (var leaderboardContext in ContextExtensions.NonGeneral) {
                         if (resultScore.ValidContexts.HasFlag(leaderboardContext)) {
                             var ce = await dbContext
                                 .ScoreContextExtensions
@@ -1027,9 +1025,6 @@ namespace BeatLeader_Server.Controllers
                 
                 foreach (var leaderboardContext in ContextExtensions.NonGeneral) {
                     await RefreshContextRank(dbContext, leaderboardContext, resultScore, leaderboard, isRanked);
-                    if (isRanked) {
-                        await RefreshContextRank(dbContext, LeaderboardContexts.Funny, resultScore, leaderboard, isRanked);
-                    }
                 }
             }
         }
@@ -1096,7 +1091,7 @@ namespace BeatLeader_Server.Controllers
             if (!resultScore.ValidContexts.HasFlag(context) || resultContextExtension == null) return;
 
             List<ScoreContextExtension> rankedScores;
-            if (isRanked && context != LeaderboardContexts.Funny) {
+            if (isRanked) {
                 if (context != LeaderboardContexts.Golf) {
                     rankedScores = await dbContext
                     .ScoreContextExtensions
@@ -1152,21 +1147,9 @@ namespace BeatLeader_Server.Controllers
                     resultContextExtension.Rank = i + 1;
                 }
                 s.Rank = i + 1;
-
-                if (isRanked && context == LeaderboardContexts.Funny) {
-                    if ((s.Rank == 1 || s.Rank % 5 == 0) && s.Timepost >= 1735689600) {
-                        s.Pp = 500;
-                    } else {
-                        s.Pp = 0;
-                    }
-                }
             }
 
-            if (context == LeaderboardContexts.Funny) {
-                await dbContext.SafeBulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = s => new { s.Rank, s.Pp });
-            } else {
-                await dbContext.SafeBulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = s => new { s.Rank });
-            }
+            await dbContext.SafeBulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = s => new { s.Rank });
         }
 
         [NonAction]
@@ -1188,15 +1171,15 @@ namespace BeatLeader_Server.Controllers
 
             resultScore.Replay = await _s3Client.UploadReplay(ReplayUtils.ReplayFilename(replay, resultScore), replayData);
 
-            if (resultScore.ValidContexts.HasFlag(LeaderboardContexts.Funny) && leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
-                var playerIds = await dbContext
-                    .ScoreContextExtensions
-                    .Where(s => s.LeaderboardId == leaderboard.Id)
-                    .Select(s => s.PlayerId)
-                    .ToListAsync();
+            //if (resultScore.ValidContexts.HasFlag(LeaderboardContexts.Funny) && leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
+            //    var playerIds = await dbContext
+            //        .ScoreContextExtensions
+            //        .Where(s => s.LeaderboardId == leaderboard.Id)
+            //        .Select(s => s.PlayerId)
+            //        .ToListAsync();
 
-                await PlayerContextRefreshControllerHelper.RefreshPlayersContext(dbContext, LeaderboardContexts.Funny, playerIds);
-            }
+            //    await PlayerContextRefreshControllerHelper.RefreshPlayersContext(dbContext, LeaderboardContexts.Funny, playerIds);
+            //}
 
             if (statistic != null) {
                 await _s3Client.UploadScoreStats(resultScore.Id + ".json", statistic);
@@ -1401,6 +1384,8 @@ namespace BeatLeader_Server.Controllers
                 await SaveFailedScore(dbContext, resultScore, leaderboard, (e.StackTrace ?? "") + e.ToString());
             }
         }
+
+        
 
         [NonAction]
         private async Task SaveFailedScore(AppContext dbContext, Score score, Leaderboard leaderboard, string failReason) {

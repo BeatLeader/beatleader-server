@@ -73,11 +73,11 @@ namespace BeatLeader_Server.Controllers
         {
             return new List<ScoresContext> {
                 new ScoresContext {
-                    Id = LeaderboardContexts.Funny,
-                    Icon = "https://cdn.assets.beatleader.com/Ingame_BL_ContextFunny.png",
-                    Name = "OurSaber",
-                    Description = "PP GRINDERS UNITE!",
-                    Key = "funny"
+                    Id = LeaderboardContexts.General,
+                    Icon = "https://cdn.assets.beatleader.com/Ingame_BL_ContextGeneral.png",
+                    Name = "General",
+                    Description = "Everything allowed",
+                    Key = "modifiers"
                 },
                 new ScoresContext {
                     Id = LeaderboardContexts.NoMods,
@@ -106,14 +106,7 @@ namespace BeatLeader_Server.Controllers
                     Name = "SCPM",
                     Description = "Smaller Notes+Pro Mod only",
                     Key = "scpm"
-                },
-                new ScoresContext {
-                    Id = LeaderboardContexts.General,
-                    Icon = "https://cdn.assets.beatleader.com/Ingame_BL_ContextGeneral.png",
-                    Name = "General",
-                    Description = "Everything allowed",
-                    Key = "modifiers"
-                },
+                }
             };
         }
 
