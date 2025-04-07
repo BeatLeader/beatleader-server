@@ -1003,5 +1003,16 @@ namespace BeatLeader_Server.Controllers
 
             return Ok();
         }
+
+        [HttpGet("~/players/top/pp")]
+        public async Task<ActionResult<float>> TopPp(
+            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
+        {
+            if (leaderboardContext == LeaderboardContexts.General) {
+                return await _context.Players.Where(p => !p.Banned).OrderByDescending(p => p.Pp).Select(p => p.Pp).FirstOrDefaultAsync();
+            } else {
+                return await _context.PlayerContextExtensions.Where(p => !p.Banned && p.Context == leaderboardContext).OrderByDescending(p => p.Pp).Select(p => p.Pp).FirstOrDefaultAsync();
+            }
+        }
     }
 }

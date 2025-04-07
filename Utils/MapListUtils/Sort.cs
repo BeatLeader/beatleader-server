@@ -213,13 +213,13 @@ public static partial class MapListUtils
         var tempSeq3 = sequence
             .OrderByDescending(s => searchId != null ? s.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0);
         if (order == Order.Desc) {
-            return tempSeq3.ThenOrder(order, s => s.Song.Leaderboards.Max(l => l.Scores
-                                                           .Where(score => rangeType != DateRangeType.Score || ((dateFrom == null || score.Timepost >= dateFrom) && (dateTo == null || score.Timepost <= dateTo)))
-                                                           .Max(score => score.Timepost)));
+            return tempSeq3.ThenOrder(order, s => s.Song.Leaderboards
+                .Where(lb => rangeType != DateRangeType.Score || ((dateFrom == null || lb.LastScoreTime >= dateFrom) && (dateTo == null || lb.LastScoreTime <= dateTo)))
+                .Max(lb => lb.LastScoreTime));
         } else {
-            return tempSeq3.ThenOrder(order, s => s.Song.Leaderboards.Min(l => l.Scores
-                                                           .Where(score => rangeType != DateRangeType.Score || ((dateFrom == null || score.Timepost >= dateFrom) && (dateTo == null || score.Timepost <= dateTo)))
-                                                           .Min(score => score.Timepost)));
+            return tempSeq3.ThenOrder(order, s => s.Song.Leaderboards
+                .Where(lb => rangeType != DateRangeType.Score || ((dateFrom == null || lb.LastScoreTime >= dateFrom) && (dateTo == null || lb.LastScoreTime <= dateTo)))
+                .Min(lb => lb.LastScoreTime));
         }
     }
 
@@ -258,7 +258,9 @@ public static partial class MapListUtils
         .Where(s => 
             s.Song.Leaderboards.Any(l => l.PositiveVotes > 0 || l.NegativeVotes > 0))
         .OrderByDescending(s => searchId != null ? s.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-        .ThenOrder(order, s => s.Song.Leaderboards.Sum(l => (int)(l.PositiveVotes / (l.PositiveVotes + l.NegativeVotes) * 100.0)))
+        .ThenOrder(order, s => 
+            (int)(s.Song.Leaderboards.Where(l => l.PositiveVotes > 0 || l.NegativeVotes > 0).Sum(l => l.PositiveVotes) / 
+            s.Song.Leaderboards.Where(l => l.PositiveVotes > 0 || l.NegativeVotes > 0).Sum(l => l.PositiveVotes + l.NegativeVotes) * 100.0))
         .ThenOrder(order, s => s.Song.Leaderboards.Sum(l => l.PositiveVotes + l.NegativeVotes));
 
     private static IOrderedQueryable<SongHelper> SortByDuration(this IQueryable<SongHelper> sequence, Order order, int? searchId) => 

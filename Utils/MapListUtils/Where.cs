@@ -317,18 +317,7 @@ public static partial class MapListUtils
                 }
                 break;
             case DateRangeType.Score:
-                if (dateTo == null && dateFrom != null) {
-                    var currentTime = Time.UnixNow();
-                    if (Math.Abs(currentTime - (int)dateFrom - 60 * 60 * 24) < 60 * 30) {
-                        sequence = sequence.Where(s => s.Song.Leaderboards.Any(l => l.TodayPlays > 0));
-                        break;
-                    }
-                    if (Math.Abs(currentTime - (int)dateFrom - 60 * 60 * 24 * 7) < 60 * 30) {
-                        sequence = sequence.Where(s => s.Song.Leaderboards.Any(l => l.ThisWeekPlays > 0));
-                        break;
-                    }
-                }
-                sequence = sequence.Where(s => s.Song.Leaderboards.Any(l => l.Scores.Any(score => (dateFrom == null || score.Timepost >= dateFrom) && (dateTo == null || score.Timepost <= dateTo))));
+                sequence = sequence.Where(s => s.Song.Leaderboards.Any(l => (dateFrom == null || l.LastScoreTime >= dateFrom) && (dateTo == null || l.LastScoreTime <= dateTo)));
                 break;
             default:
                 break;

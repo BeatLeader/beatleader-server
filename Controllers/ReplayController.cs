@@ -932,6 +932,7 @@ namespace BeatLeader_Server.Controllers
 
             if (!player.Bot) {
                 leaderboard.Plays++;
+                leaderboard.LastScoreTime = resultScore.Timepost;
             }
         }
 

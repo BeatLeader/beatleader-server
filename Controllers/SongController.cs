@@ -191,6 +191,7 @@ namespace BeatLeader_Server.Controllers
                             NominatedTime = lb.Difficulty.NominatedTime,
                             QualifiedTime = lb.Difficulty.QualifiedTime,
                             RankedTime = lb.Difficulty.RankedTime,
+                            LastScoreTime = lb.LastScoreTime,
 
                             LeaderboardId = lb.Id,
                             Plays = showPlays 
@@ -392,6 +393,8 @@ namespace BeatLeader_Server.Controllers
                             NominatedTime = lb.Difficulty.NominatedTime,
                             QualifiedTime = lb.Difficulty.QualifiedTime,
                             RankedTime = lb.Difficulty.RankedTime,
+
+                            Applicable = true,
 
                             LeaderboardId = lb.Id,
                             Attempts = lb.PlayCount,

@@ -77,9 +77,11 @@ public static class DifficultySort
 
             case MapSortBy.VoteRatio:
                 difficulties = order == Order.Desc
-                    ? difficulties.ThenByDescending(d => d.PositiveVotes + d.NegativeVotes == 0 ? 0 : (double)d.PositiveVotes / (d.PositiveVotes + d.NegativeVotes))
+                    ? difficulties
+                        .ThenByDescending(d => d.PositiveVotes + d.NegativeVotes == 0 ? 0 : (int)((double)d.PositiveVotes / (d.PositiveVotes + d.NegativeVotes) * 100.0))
                         .ThenByDescending(d => d.PositiveVotes + d.NegativeVotes)
-                    : difficulties.ThenBy(d => d.PositiveVotes + d.NegativeVotes == 0 ? 0 : (double)d.PositiveVotes / (d.PositiveVotes + d.NegativeVotes))
+                    : difficulties
+                        .ThenBy(d => d.PositiveVotes + d.NegativeVotes == 0 ? 0 : (int)((double)d.PositiveVotes / (d.PositiveVotes + d.NegativeVotes) * 100.0))
                         .ThenBy(d => d.PositiveVotes + d.NegativeVotes);
                 break;
 
