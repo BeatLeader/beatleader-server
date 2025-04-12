@@ -37,7 +37,6 @@ namespace BeatLeader_Server.Services {
                         await RefreshPlays();
                         await FetchCurated();
                         await RefreshMapsPageEndpoints();
-                        await CheckMaps();
                         await CheckNoodleMonday();
                     } catch (Exception e) {
                         Console.WriteLine($"EXCEPTION HourlyRefresh {e}");
@@ -188,106 +187,7 @@ namespace BeatLeader_Server.Services {
 
             return false;
         }
-
-        public async Task CheckMaps() {
-            using (var scope = _serviceScopeFactory.CreateScope()) {
-                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
-                var _s3Client = _configuration.GetS3Client();
-
-                var songs = await _context.Songs.Where(s => !s.Checked).OrderByDescending(s => s.UploadTime).Take(50).Include(s => s.Difficulties).ToListAsync();
-
-                foreach (var song in songs) {
-                    try {
-                        HttpWebResponse res = (HttpWebResponse)await WebRequest.Create(song.DownloadUrl).GetResponseAsync();
-                        if (res.StatusCode != HttpStatusCode.OK) continue;
-
-                        var memoryStream = new MemoryStream();
-                        await res.GetResponseStream().CopyToAsync(memoryStream);
-                        var archive = new ZipArchive(memoryStream);
-
-                        var parse = new Parse();
-                        memoryStream.Position = 0;
-                        var map = parse.TryLoadZip(memoryStream)?.FirstOrDefault();
-                        if (map != null) {
-                            var info = map.Info;
-
-                            if (info._coverImageFilename != null) {
-                                var coverFile = archive.Entries.FirstOrDefault(e => e.Name.ToLower() == info._coverImageFilename.ToLower());
-                                if (coverFile != null) {
-                                    using (var coverStream = coverFile.Open()) {
-                                        using (var ms = new MemoryStream(5)) {
-                                            await coverStream.CopyToAsync(ms);
-                                            ms.Position = 0;
-                                            MemoryStream imageStream = ImageUtils.ResizeToWebp(ms, 512);
-                                            var fileName = $"songcover-{song.Id}-full.webp";
-
-                                            song.FullCoverImage = await _s3Client.UploadAsset(fileName, imageStream);
-
-                                            if (song.Explicity.HasFlag(SongExplicitStatus.Cover)) {
-                                                if (song.FullCoverImage != null) {
-                                                    song.FullCoverImage = System.Text.RegularExpressions.Regex.Replace(song.FullCoverImage, "https?://cdn.assets.beatleader.(?:[a-z]{3})?/", $"https://api.beatleader.com/cover/processed/{song.Id}/");
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            foreach (var set in map.Difficulties)
-                            {
-                                var songDiff = song.Difficulties.FirstOrDefault(d => d.DifficultyName == set.Difficulty && d.ModeName == set.Characteristic);
-                                if (songDiff == null) continue;
-                                var diff = set.Data;
-                                if (diff.Chains.Count > 0 || diff.Arcs.Count > 0) {
-                                    songDiff.Requirements |= Models.Requirements.V3;
-                                    songDiff.Chains = diff.Chains.Sum(c => c.SliceCount > 1 ? c.SliceCount - 1 : 0);
-                                    songDiff.Sliders = diff.Arcs.Count;
-
-                                    if (Overlaps(diff.Chains, diff.Arcs)) {
-                                        songDiff.Requirements |= Models.Requirements.V3Pepega;
-                                    }
-                                }
-                                //if (diff.Notes.FirstOrDefault(n => n.Optional()) != null) {
-                                //    songDiff.Requirements |= Models.Requirements.OptionalProperties;
-                                //}
-                                if (diff.njsEvents.Count > 0) {
-                                    songDiff.Requirements |= Models.Requirements.VNJS;
-                                }
-
-                                songDiff.MaxScoreGraph = new MaxScoreGraph();
-                                songDiff.MaxScoreGraph.SaveList(set.MaxScoreGraph());
-                                if (songDiff.MaxScore == 0) {
-                                    songDiff.MaxScore = set.MaxScore();
-                                }
-                            }
-
-                            foreach (var mode in info._difficultyBeatmapSets) {
-                                foreach (var diff in mode._difficultyBeatmaps) {
-                                    var songDiff = song.Difficulties.FirstOrDefault(d => d.DifficultyName == diff._difficulty && d.ModeName == mode._beatmapCharacteristicName);
-                                    if (songDiff == null || diff._customData == null || diff._customData._requirements == null) continue;
-                                    if (diff._customData._requirements.Any(r => r.ToLower().Contains("vivify"))) {
-                                        songDiff.Requirements |= Models.Requirements.Vivify;
-                                    }
-                                }
-                            }
-                        }
-                    } 
-                    catch (Exception e) { 
-                        Console.WriteLine($"HourlyRefresh EXPETION: {e}");
-                    }
-
-                    foreach (var diff in song.Difficulties) {
-                        if (!diff.Requirements.HasFlag(Requirements.Noodles) && !diff.Requirements.HasFlag(Requirements.MappingExtensions)) {
-                            await RatingUtils.UpdateFromExMachina(diff, song, null);
-                        }
-                    }
-
-                    song.Checked = true;
-                }
-
-                await _context.SaveChangesAsync();
-            }
-        }
+        
         public async Task RefreshMapsPageEndpoints() {
             using (var scope = _serviceScopeFactory.CreateScope()) {
                 var songSuggestController = scope.ServiceProvider.GetRequiredService<SongSuggestController>();

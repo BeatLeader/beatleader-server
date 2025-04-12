@@ -181,10 +181,19 @@ public static partial class MapListUtils
             return sequence;
         }
 
-        return sequence.Select(s => new SongHelper {
+        if (difficulty == "fullspread") {
+            return sequence
+                .Where(s => s.Difficulties.Where(d => d.Mode == 1).Sum(d => d.Value) == (1 + 3 + 5 + 7 + 9))
+                .Select(s => new SongHelper {
+                Song = s.Song,
+                Difficulties = s.Difficulties.Where(d => d.Mode == 1)
+            });
+        } else {
+            return sequence.Select(s => new SongHelper {
                 Song = s.Song,
                 Difficulties = s.Difficulties.Where(d => d.DifficultyName == difficulty)
-        });
+            });
+        }
     }
 
     private static IQueryable<SongHelper> WhereMapRequirements(this IQueryable<SongHelper> sequence, Requirements mapRequirements, Operation allRequirements)

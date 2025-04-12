@@ -149,7 +149,7 @@ namespace BeatLeader_Server.Controllers
                     .AsNoTracking()
                     .Where(s => idsList.Contains(s.Id));
 
-                (result.Metadata.Total, result.Data) = await sequence.CountAsync().CoundAndResults(songSequence
+                (result.Metadata.Total, result.Data) = await sequence.Where(s => s.Difficulties.Any()).CountAsync().CoundAndResults(songSequence
                     .TagWithCallerS()
                     .Select(s => new MapInfoResponse {
                         Id = s.Id,

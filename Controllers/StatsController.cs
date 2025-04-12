@@ -326,6 +326,14 @@ namespace BeatLeader_Server.Controllers
             public List<FailurePoint> FailurePoints { get; set; }
         }
 
+        class AttemptsSelection {
+            public float Time { get; set; }
+            public EndType Type { get; set; }
+            public int Timepost { get; set; }
+            public string PlayerId { get; set; }
+            public string? Modifiers { get; set; }
+        }
+
         [HttpGet("~/leaderboard/scorestats/{leaderboardId}")]
         public async Task<ActionResult<AttemptsGraph>> GetAllLbScorestats(string leaderboardId) {
             
@@ -333,13 +341,18 @@ namespace BeatLeader_Server.Controllers
                 .PlayerLeaderboardStats
                 .Where(s => s.LeaderboardId == leaderboardId)
                 .AsNoTracking()
-                .Select(ls => new {
-                    ls.Time,
-                    ls.Type,
-                    ls.Timepost,
-                    ls.PlayerId
+                .Select(ls => new AttemptsSelection {
+                    Time = ls.Time,
+                    Type = ls.Type,
+                    Timepost = ls.Timepost,
+                    PlayerId = ls.PlayerId,
+                    Modifiers = ls.Modifiers
                 })
                 .ToListAsync();
+
+            foreach (var item in attemptsList.Where(ls => ls.Modifiers?.Contains("NF") == true)) {
+                item.Type = EndType.Fail;
+            }
 
             var groupedAttempts = attemptsList.GroupBy(a => a.PlayerId).ToList();
 

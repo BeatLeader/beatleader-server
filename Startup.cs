@@ -436,9 +436,11 @@ namespace BeatLeader_Server {
                     services.AddHostedService<BotService>();
                     services.AddHostedService<RankingService>();
                     services.AddHostedService<SongService>();
+                } else {
+                    services.AddHostedService<MapRefresh>();
                 }
             }
-            
+
             services.AddHostedService<ConstantsService>();
             services.AddHostedService<RefreshTaskService>();
             services.AddHostedService<MinuteRefresh>();

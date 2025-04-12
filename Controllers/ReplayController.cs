@@ -405,7 +405,7 @@ namespace BeatLeader_Server.Controllers
                     time = replay.info.failTime;
                     forcetimeset = int.Parse(replay.info.timestamp);
                 }
-                await CollectStats(dbContext, storageContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, time, type, null, forcetimeset);
+                await CollectStats(dbContext, storageContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, time, type, null, null, forcetimeset);
                 return Ok();
             }
 
@@ -1314,7 +1314,7 @@ namespace BeatLeader_Server.Controllers
                     });
                 }
 
-                await CollectStats(dbContext, storageContext, replay, offsets, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, resultScore);
+                await CollectStats(dbContext, storageContext, replay, offsets, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, resultScore, statistic);
                 await dbContext.BulkSaveChangesAsync();
 
                 await SocketController.TryPublishNewScore(resultScore, dbContext);
@@ -1475,6 +1475,7 @@ namespace BeatLeader_Server.Controllers
             float time = 0, 
             EndType type = 0,
             Score? resultScore = null,
+            ScoreStatistic? statistic = null,
             int? forceTimeset = null) {
 
             if (storageContext == null) return;
@@ -1484,7 +1485,6 @@ namespace BeatLeader_Server.Controllers
                 (resultScore, int maxScore) = ReplayUtils.ProcessReplay(replay, leaderboard.Difficulty, time);
 
                 if (type == EndType.Clear) {
-                    ScoreStatistic? statistic = null;
 
                     try
                     {
@@ -1520,7 +1520,7 @@ namespace BeatLeader_Server.Controllers
                 fileName = fileName ?? $"{replay.info.playerID}-{timeset}{(replay.info.speed != 0 ? "-practice" : "")}{(replay.info.failTime != 0 ? "-fail" : "")}-{replay.info.difficulty}-{replay.info.mode}-{replay.info.hash}.bsor",
                 playerId = playerId,
                 leaderboardId = leaderboard.Id,
-                time = time,
+                time = statistic?.winTracker.failTime > 0 ? statistic!.winTracker.failTime : time,
                 startTime = replay.info.startTime,
                 type = type,
                 score = resultScore,
