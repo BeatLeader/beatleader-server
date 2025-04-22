@@ -122,5 +122,20 @@ namespace BeatLeader_Server.Utils
 
             return (extension, ms);
         }
+
+        public static (string, MemoryStream) GetFormatGif(MemoryStream memoryStream)
+        {
+            IImageFormat format = Image.DetectFormat(memoryStream);
+            Image image = Image.Load(memoryStream);
+
+            var ms = new MemoryStream(5);
+            string extension;
+
+            image.SaveAsGif(ms);
+            extension = ".gif";
+            ms.Position = 0;
+
+            return (extension, ms);
+        }
     }
 }

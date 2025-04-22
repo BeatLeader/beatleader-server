@@ -715,13 +715,18 @@ namespace BeatLeader_Server.Utils
             int noteIndex = 0;
             int zSum = 0;
 
+            var firstTime = replay.notes.First().eventTime;
+            var lastTime = replay.notes.Last().eventTime;
+
             foreach (var frame in replay.frames)
             {
-                if (frame.time >= replay.notes[noteIndex].eventTime) {
+                if (frame.time >= replay.notes[noteIndex].eventTime && frame.time >= firstTime && frame.time <= lastTime) {
                     if (frame.head.position.z > 1.05) {
                         zSum++;
                     }
-                    if (zSum == (int)Math.Min(50, replay.notes.Count * 0.1f)) return false;
+                    if (zSum == (int)Math.Min(50, replay.notes.Count * 0.1f)) {
+                        return false;
+                    }
 
                     if (noteIndex + 1 != replay.notes.Count) {
                         noteIndex++;

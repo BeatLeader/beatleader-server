@@ -154,9 +154,21 @@ public static partial class MapListUtils
 
         return mytype switch
         {
-            MyTypeMaps.Played          => sequence.Where(s => s.Song.Leaderboards.Any(l => l.Scores.Any(sc => sc.PlayerId == currentId && sc.ValidContexts.HasFlag(leaderboardContext)))),
-            MyTypeMaps.Unplayed        => sequence.Where(s => s.Song.Leaderboards.Any(l => !l.Scores.Any(sc => sc.PlayerId == currentId && sc.ValidContexts.HasFlag(leaderboardContext)))),
-            MyTypeMaps.FriendsPlayed   => sequence.Where(s => s.Song.Leaderboards.Any(l => l.Scores.Any(sc => friendIds.Contains(sc.PlayerId) && sc.ValidContexts.HasFlag(leaderboardContext)))),
+            MyTypeMaps.Played          => sequence.Where(s => s
+                .Song
+                .Leaderboards
+                .Where(l => l.Difficulty.Value < 10)
+                .Any(l => l.Scores.Any(sc => sc.PlayerId == currentId && sc.ValidContexts.HasFlag(leaderboardContext)))),
+            MyTypeMaps.Unplayed        => sequence.Where(s => s
+                .Song
+                .Leaderboards
+                .Where(l => l.Difficulty.Value < 10)
+                .All(l => !l.Scores.Any(sc => sc.PlayerId == currentId && sc.ValidContexts.HasFlag(leaderboardContext)))),
+            MyTypeMaps.FriendsPlayed   => sequence.Where(s => s
+                .Song
+                .Leaderboards
+                .Where(l => l.Difficulty.Value < 10)
+                .Any(l => l.Scores.Any(sc => friendIds.Contains(sc.PlayerId) && sc.ValidContexts.HasFlag(leaderboardContext)))),
             _                      => sequence,
         };
     }
