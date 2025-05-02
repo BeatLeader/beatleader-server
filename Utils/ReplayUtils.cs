@@ -250,6 +250,8 @@ namespace BeatLeader_Server.Utils
             if (replay.info.mode.StartsWith(ReBeatUtils.MODE_IDENTIFIER)) {
                 score.BaseScore = ReBeatUtils.GetScore(replay);
                 score.Accuracy = (float)score.BaseScore / (float)ReBeatUtils.MaxScoreForNote(difficulty.Notes + difficulty.Chains);
+            } if (replay.info.hash == "EarthDay2025") {
+                score.Accuracy = 0;
             } else {
                 score.Accuracy = (float)score.BaseScore / (float)maxScore;
             }
