@@ -46,17 +46,78 @@ namespace BeatLeader_Server.Utils
             int i = 0;
             for (; i < pointList2.Count; i++)
             {
-                if (pointList2[i].Item1 <= acc) {
+                if (pointList2[i].Item1 <= acc)
+                {
                     break;
                 }
             }
-    
-            if (i == 0) {
+
+            if (i == 0)
+            {
                 i = 1;
             }
-    
-            double middle_dis = (acc - pointList2[i-1].Item1) / (pointList2[i].Item1 - pointList2[i-1].Item1);
-            return (float)(pointList2[i-1].Item2 + middle_dis * (pointList2[i].Item2 - pointList2[i-1].Item2));
+
+            double middle_dis = (acc - pointList2[i - 1].Item1) / (pointList2[i].Item1 - pointList2[i - 1].Item1);
+            return (float)(pointList2[i - 1].Item2 + middle_dis * (pointList2[i].Item2 - pointList2[i - 1].Item2));
+        }
+
+        static List<(double, double)> expCurve = new List<(double, double)> {
+                (30, 4000),
+                (15, 2500),
+                (7.5, 1900),
+                (0, 1000), };
+
+        static List<(double, double)> accMult = new List<(double, double)> {
+                (1.0, 2.5),
+                (0.99, 1.75),
+                (0.98, 1.25),
+                (0.97, 1.1),
+                (0.96, 1),
+                (0.95, 0.95),
+                (0.0, 0), };
+
+        static List<(double, double)> durMult = new List<(double, double)> {
+                (300, 1.25),
+                (240, 1.1),
+                (180, 1),
+                (90, 0.5),
+                (0, 0), };
+
+        public static float GetCurveVal(int type, float value)
+        {
+            List<(double, double)> curve = new();
+
+            switch (type)
+            {
+                case 0: 
+                    curve = expCurve;
+                    break;
+                case 1:
+                    curve = accMult;
+                    break;
+                case 2:
+                    curve = durMult;
+                    break;
+                default:
+                    return 0;
+            }
+
+            int i = 0;
+            for (; i < curve.Count; i++)
+            {
+                if (curve[i].Item1 <= value)
+                {
+                    break;
+                }
+            }
+
+            if (i == 0)
+            {
+                i = 1;
+            }
+
+            double middle_dis = (value - curve[i - 1].Item1) / (curve[i].Item1 - curve[i - 1].Item1);
+            return (float)(curve[i - 1].Item2 + middle_dis * (curve[i].Item2 - curve[i - 1].Item2));
         }
 
         private static float Inflate(float peepee) {

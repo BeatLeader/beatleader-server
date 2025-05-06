@@ -134,6 +134,9 @@ namespace BeatLeader_Server.Controllers
                     PassPp = player.PassPp,
                     Rank = player.Rank,
                     CountryRank = player.CountryRank,
+                    Level = player.Level,
+                    Experience = player.Experience,
+                    Prestige = player.Prestige,
                     LastWeekPp = player.LastWeekPp,
                     LastWeekRank = player.LastWeekRank,
                     LastWeekCountryRank = player.LastWeekCountryRank,
@@ -1000,6 +1003,32 @@ namespace BeatLeader_Server.Controllers
 
             ingameAvatar.Value = JsonConvert.SerializeObject(avatarData);
             await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpGet("~/player/{id}/prestige")]
+        [SwaggerOperation(Summary = "Reset the player level and prestige", Description = "Reset the player level and prestige")]
+        [SwaggerResponse(200, "Successful prestige")]
+        [SwaggerResponse(404, "Player not found")]
+        public async Task<ActionResult> PrestigePlayer()
+        {
+            string? currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = currentID == null ? null : await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null)
+            {
+                return NotFound();
+            }
+
+            if (currentPlayer.Level >= 100)
+            {
+                currentPlayer.Level = 0;
+                currentPlayer.Experience = 0;
+                currentPlayer.Prestige++;
+
+                await _context.SaveChangesAsync();
+            }
 
             return Ok();
         }
