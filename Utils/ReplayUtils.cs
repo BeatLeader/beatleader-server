@@ -479,6 +479,9 @@ namespace BeatLeader_Server.Utils
             if (lowerHmd.Contains("arpara")) return HMD.arpara;
             if (lowerHmd.Contains("dell visor")) return HMD.dellVisor;
             if (lowerHmd.Contains("meganex") && lowerHmd.Contains("1")) return HMD.megane1;
+            if (lowerHmd.Contains("meganex") && lowerHmd.Contains("superlight")) return HMD.meganexsuperlight;
+
+            if (lowerHmd.Contains("somnium") && lowerHmd.Contains("1")) return HMD.somniumvr1;
 
             if (lowerHmd.Contains("e3")) return HMD.e3;
             if (lowerHmd.Contains("e4")) return HMD.e4;
