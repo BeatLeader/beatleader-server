@@ -397,11 +397,23 @@ namespace BeatLeader_Server.Controllers
                 return cachedResponse;
             }
 
-            var tasks = new Task<List<string>>[4];
+            var friends = await _context
+                .Friends
+                .AsNoTracking()
+                .Where(f => f.Id == currentId)
+                .Include(f => f.Friends)
+                .FirstOrDefaultAsync();
+
+            var friendsList = new List<string>();
+            if (friends != null) {
+                friendsList.AddRange(friends.Friends.Select(f => f.Id));
+            }
+
+            var tasks = new Task<List<string>>[5];
             var treshold = Time.UnixNow() - 60 * 60 * 24 * 30;
-            for (int i = 0; i < 4; i++) {
+            for (int i = 0; i < 5; i++) {
                 var dbContext = _dbFactory.CreateDbContext();
-                var query = dbContext.Leaderboards.Where(l => !l.Scores.Any(s => s.PlayerId == currentId));
+                var query = dbContext.Leaderboards.Where(l => !l.Song.Leaderboards.Any(ll => ll.Scores.Any(s => s.PlayerId == currentId)));
                 switch (i) {
                     case 0:
                         query = query
@@ -415,10 +427,15 @@ namespace BeatLeader_Server.Controllers
                         break;
                     case 2:
                         query = query
+                            .Where(l => l.Song.MapCreator == SongCreator.Human)
+                            .OrderByDescending(l => l.Scores.Where(s => s.Timepost > treshold && friendsList.Contains(s.PlayerId)).Count());
+                        break;
+                    case 3:
+                        query = query
                             .Where(l => l.Song.Status.HasFlag(SongStatus.Curated) && l.Song.MapCreator == SongCreator.Human)
                             .OrderByDescending(l => l.Song.UploadTime);
                         break;
-                    case 3:
+                    case 4:
                         query = query
                             .Where(l => l.Song.UploadTime > treshold && l.Song.MapCreator == SongCreator.Human)
                             .OrderByDescending(l => l.PositiveVotes);
@@ -431,7 +448,7 @@ namespace BeatLeader_Server.Controllers
                     .TagWithCallerS()
                     .AsNoTracking()
                     .Select(lb => lb.Id)
-                    .Take(3)
+                    .Take(2)
                     .ToListAsync();
             }
 
@@ -526,10 +543,14 @@ namespace BeatLeader_Server.Controllers
                         item.TrendingValue = $"{item.ThisWeekPlays} plays";
                         break;
                     case 2:
-                        item.Description = "Newly curated map";
+                        item.Description = "Top played by friends";
                         item.TrendingValue = $"{item.ThisWeekPlays} plays";
                         break;
                     case 3:
+                        item.Description = "Newly curated map";
+                        item.TrendingValue = $"{item.ThisWeekPlays} plays";
+                        break;
+                    case 4:
                         item.Description = "Top voted new map";
                         item.TrendingValue = $"{item.PositiveVotes} votes";
                         break;

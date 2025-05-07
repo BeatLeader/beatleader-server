@@ -956,6 +956,10 @@ namespace BeatLeader_Server.Controllers
                 hash = hash.Substring(0, 40);
             }
 
+            if (await _context.EarthDayMaps.AnyAsync(dm => dm.Hash == hash)) {
+                hash = "EarthDay2025";
+            }
+
             PlayerResponse? currentPlayer = 
                 await _context
                 .Players
@@ -1002,7 +1006,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            var leaderboardId = song.Id + Song.DiffForDiffName(diff).ToString() + modeValue.ToString();
+            var leaderboardId = hash == "EarthDay2025" ? hash : song.Id + Song.DiffForDiffName(diff).ToString() + modeValue.ToString();
 
             bool showBots = currentPlayer?.ProfileSettings?.ShowBots ?? false;
             LeaderboardContexts contexts = LeaderboardContexts.General;
@@ -1018,9 +1022,6 @@ namespace BeatLeader_Server.Controllers
                     break;
                 case "scpm":
                     contexts = LeaderboardContexts.SCPM;
-                    break;
-                case "funny":
-                    contexts = LeaderboardContexts.Funny;
                     break;
                 default:
                     break;
@@ -1044,15 +1045,14 @@ namespace BeatLeader_Server.Controllers
                             shift++;
                         } else {
                             score.Rank = i + (page - 1) * count + 1 - shift;
+                            if (result.Selection?.PlayerId == score.PlayerId) {
+                                result.Selection.Rank = i + (page - 1) * count + 1 - shift;
+                            }
                         }
                     }
 
                     if (score.Player.Bot) {
                         score.Player.Name += " [BOT]";
-                    }
-
-                    if (contexts == LeaderboardContexts.Funny && score.Pp == 0) {
-                        score.Pp = 0.005f;
                     }
                 }
                 result.Data = resultList;

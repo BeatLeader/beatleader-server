@@ -1,5 +1,6 @@
 ﻿using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
+using SixLabors.ImageSharp.Formats.Gif;
 using SixLabors.ImageSharp.Formats.Webp;
 using SixLabors.ImageSharp.Processing;
 
@@ -46,6 +47,7 @@ namespace BeatLeader_Server.Utils
 
         public static MemoryStream ResizeToWebp(MemoryStream memoryStream, int desiredWidth = 300)
         {
+            IImageFormat format = Image.DetectFormat(memoryStream);
             Image image = Image.Load(memoryStream);
             Size size = image.Size;
 
@@ -63,6 +65,14 @@ namespace BeatLeader_Server.Utils
             image.Mutate(x => x.AutoOrient());
             image.Metadata.ExifProfile = null;
             image.Metadata.XmpProfile = null;
+
+            if (format.Name == "GIF") {
+                GifMetadata gMeta = image.Metadata.GetGifMetadata();
+                WebpMetadata wMeta = image.Metadata.GetWebpMetadata();
+                wMeta.FileFormat = WebpFileFormatType.Lossless;
+                wMeta.RepeatCount = gMeta.RepeatCount;
+                wMeta.BackgroundColor = Color.Transparent;
+            }
 
             var ms = new MemoryStream(5);
             image.SaveAsWebp(ms);
@@ -118,6 +128,21 @@ namespace BeatLeader_Server.Utils
                 image.SaveAsPng(ms);
                 extension = ".png";
             }
+            ms.Position = 0;
+
+            return (extension, ms);
+        }
+
+        public static (string, MemoryStream) GetFormatGif(MemoryStream memoryStream)
+        {
+            IImageFormat format = Image.DetectFormat(memoryStream);
+            Image image = Image.Load(memoryStream);
+
+            var ms = new MemoryStream(5);
+            string extension;
+
+            image.SaveAsGif(ms);
+            extension = ".gif";
             ms.Position = 0;
 
             return (extension, ms);

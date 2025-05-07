@@ -32,30 +32,6 @@ namespace BeatLeader_Server.Controllers {
             _configuration = configuration;
         }
 
-        //[HttpGet("~/wefwfwefwf")]
-        //[Authorize]
-        //public async Task<ActionResult> wefwfwefwf() {
-        //    var betterScore = new List<(string, string)>();
-
-        //    var scores = (await _context
-        //        .ScoreContextExtensions
-        //        .Where(s => s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked && s.Context == LeaderboardContexts.NoMods && !s.ScoreInstance.ValidForGeneral)
-        //        .Select(s => new { s.PlayerId, s.Pp, s.LeaderboardId })
-        //        .ToListAsync()).GroupBy(s => s.LeaderboardId);
-        //    foreach (var group in scores) {
-        //        var playerIds = group.Select(s => s.PlayerId).ToList();
-        //        var lbScores = await _context.Scores.Where(s => s.ValidForGeneral && s.LeaderboardId == group.Key && playerIds.Contains(s.PlayerId)).Select(s => new { s.PlayerId, s.Pp }).ToListAsync();
-        //        foreach (var score in lbScores) {
-        //            if (group.Any(s => s.Pp < score.Pp)) {
-        //                betterScore.Add((group.Key, score.PlayerId));
-        //            }
-        //        }
-        //    }
-
-        //    return Ok(betterScore);
-         
-        //}
-
         [HttpGet("~/scores/all")]
         [Authorize]
         public async Task<ActionResult<ResponseWithMetadata<ScoreResponseWithMyScore>>> AllScores(

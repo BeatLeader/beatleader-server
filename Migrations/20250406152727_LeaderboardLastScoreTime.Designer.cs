@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,13 +12,15 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20250406152727_LeaderboardLastScoreTime")]
+    partial class LeaderboardLastScoreTime
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.4")
+                .HasAnnotation("ProductVersion", "9.0.3")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -877,33 +880,6 @@ namespace BeatLeader_Server.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("DiscordLinks");
-                });
-
-            modelBuilder.Entity("BeatLeader_Server.Models.EarthDayMap", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Hash")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PlayerId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<int>("Timeset")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PlayerId")
-                        .IsUnique();
-
-                    b.ToTable("EarthDayMaps");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.EventPlayer", b =>
@@ -4752,15 +4728,6 @@ namespace BeatLeader_Server.Migrations
                     b.Navigation("ModifiersRating");
                 });
 
-            modelBuilder.Entity("BeatLeader_Server.Models.EarthDayMap", b =>
-                {
-                    b.HasOne("BeatLeader_Server.Models.Player", null)
-                        .WithOne("EarthDayMap")
-                        .HasForeignKey("BeatLeader_Server.Models.EarthDayMap", "PlayerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("BeatLeader_Server.Models.EventPlayer", b =>
                 {
                     b.HasOne("BeatLeader_Server.Models.EventRanking", "Event")
@@ -5470,8 +5437,6 @@ namespace BeatLeader_Server.Migrations
                     b.Navigation("Changes");
 
                     b.Navigation("ContextExtensions");
-
-                    b.Navigation("EarthDayMap");
 
                     b.Navigation("EventsParticipating");
 
