@@ -1006,32 +1006,6 @@ namespace BeatLeader_Server.Controllers
 
             return Ok();
         }
-
-        [HttpGet("~/player/{id}/prestige")]
-        [SwaggerOperation(Summary = "Reset the player level and prestige", Description = "Reset the player level and prestige")]
-        [SwaggerResponse(200, "Successful prestige")]
-        [SwaggerResponse(404, "Player not found")]
-        public async Task<ActionResult> PrestigePlayer()
-        {
-            string? currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = currentID == null ? null : await _context.Players.FindAsync(currentID);
-
-            if (currentPlayer == null)
-            {
-                return NotFound();
-            }
-
-            if (currentPlayer.Level >= 100)
-            {
-                currentPlayer.Level = 0;
-                currentPlayer.Experience = 0;
-                currentPlayer.Prestige++;
-
-                await _context.SaveChangesAsync();
-            }
-
-            return Ok();
-        }
         
         [HttpGet("~/players/top/pp")]
         public async Task<ActionResult<float>> TopPp(

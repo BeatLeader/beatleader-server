@@ -539,23 +539,6 @@ namespace BeatLeader_Server.Controllers
             bool keepContext = false;
              
             try {
-                (result, stats, keepContext) = await UploadScores(
-                    dbContext,
-                    storageContext,
-                    leaderboard, 
-                    player,
-                    resultScore, 
-                    currentScores, 
-                    replay,
-                    replayData,
-                    offsets,
-                    context, 
-                    maxScore,
-                    allow);
-                if (stats) {
-                    await CollectStats(dbContext, storageContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, replay.frames.Last().time, EndType.Clear, null);
-                }
-
                 // This is clear only. Maybe NF should be 50% exp.
                 // Maybe add first map clear bonus or something (small).
                 if (replay.notes.Count >= 20 && player.Level < 100)
@@ -563,18 +546,22 @@ namespace BeatLeader_Server.Controllers
                     int baseExp = 500;
                     int incExp = 50;
 
-                    float star = resultScore.ModifiedStars;
                     float accuracy = resultScore.Accuracy;
                     float firstNoteTime = replay.notes.FirstOrDefault()?.eventTime ?? 0.0f;
                     float lastNoteTime = replay.notes.LastOrDefault()?.eventTime ?? 0.0f;
                     float duration = lastNoteTime - firstNoteTime;
-                    if (resultScore.Modifiers.Contains("SS")) duration /= 0.85f;
-                    else if (resultScore.Modifiers.Contains("FS")) duration /= 1.2f;
-                    else if (resultScore.Modifiers.Contains("SF")) duration /= 1.5f;
+                    if (resultScore.Modifiers.Contains("SS")) { 
+                        duration /= 0.85f;
+                    } else if (resultScore.Modifiers.Contains("FS")) {
+                        duration /= 1.2f;
+                    } else if (resultScore.Modifiers.Contains("SF")) {
+                        duration /= 1.5f;
+                    }
 
                     float exp;
                     if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
                     {
+                        float star = resultScore.ModifiedStars;
                         exp = ReplayUtils.GetCurveVal(0, star);
                     }
                     else
@@ -584,7 +571,7 @@ namespace BeatLeader_Server.Controllers
                     float accMult = ReplayUtils.GetCurveVal(1, accuracy);
                     float durMult = ReplayUtils.GetCurveVal(2, duration);
 
-                    float gainedExp = exp * accMult * durMult;
+                    float gainedExp = exp * accMult * durMult / (resultScore.Modifiers.Contains("NF") ? 2f : 1f);
 
                     player.Experience += (int)Math.Round(gainedExp);
                     while (player.Experience > 0)
@@ -604,6 +591,24 @@ namespace BeatLeader_Server.Controllers
                             break;
                         }
                     }
+                }
+
+
+                (result, stats, keepContext) = await UploadScores(
+                    dbContext,
+                    storageContext,
+                    leaderboard, 
+                    player,
+                    resultScore, 
+                    currentScores, 
+                    replay,
+                    replayData,
+                    offsets,
+                    context, 
+                    maxScore,
+                    allow);
+                if (stats) {
+                    await CollectStats(dbContext, storageContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, replay.frames.Last().time, EndType.Clear, null);
                 }
             } catch (Exception e) {
 
