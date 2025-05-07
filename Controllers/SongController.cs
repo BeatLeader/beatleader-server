@@ -828,5 +828,76 @@ namespace BeatLeader_Server.Controllers
 
             return Ok();
         }
+
+        [HttpPost("~/map/uploadEarthDay")]
+        public async Task<ActionResult> uploadEarthDay()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var song = new Song
+            {
+                Id = "EarthDay2025",
+                Hash = "EarthDay2025",
+                Name = "Earth Day 2025",
+                SubName = "RECYCLED",
+                Author = "Various",
+                Mapper = "BeatLeader",
+                Bpm = 120,
+                Duration = 3600,
+                UploadTime = Time.UnixNow() - 60 * 60 * 24 * 180,
+                DownloadUrl = ""
+            };
+
+            var diffs = new List<DifficultyDescription>();
+
+            var newDD = new DifficultyDescription
+            {
+                Value = 9,
+                Mode = 1,
+                DifficultyName = "ExpertPlus",
+                ModeName = "Standard",
+                Status = DifficultyStatus.unranked,
+                Hash = song.Hash,
+
+                Njs = 18,
+                Nps = 0,
+                Notes = 0,
+                Bombs = 0,
+                Walls = 0,
+                MaxScore = 1,
+                Duration = 3600,
+            };
+
+            diffs.Add(newDD);
+            song.Difficulties = diffs;
+
+            song.FullCoverImage = "https://cdn.assets.beatleader.com/EarthDayMapCover.jpg";
+            song.CoverImage = "https://cdn.assets.beatleader.com/EarthDayMapCover.jpg";
+
+            _context.Songs.Add(song);
+            await _context.SaveChangesAsync();
+
+            var leaderboard = new Leaderboard();
+            leaderboard.SongId = song.Id;
+
+            leaderboard.Difficulty = newDD;
+            leaderboard.Scores = new List<Score>();
+            leaderboard.Id = "EarthDay2025";
+            leaderboard.Timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
+
+            _context.Leaderboards.Add(leaderboard);
+
+            song.Checked = true;
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
     }
 }

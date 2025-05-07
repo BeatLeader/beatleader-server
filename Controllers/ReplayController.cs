@@ -313,6 +313,10 @@ namespace BeatLeader_Server.Controllers
                 info.hash = info.hash.Substring(0, 40);
             }
 
+            if (await dbContext.EarthDayMaps.AnyAsync(dm => dm.Hash == info.hash && dm.PlayerId == authenticatedPlayerID)) {
+                info.hash = "EarthDay2025";
+            }
+
             Leaderboard? leaderboard;
             using (_serverTiming.TimeAction("ldbrd"))
             {
@@ -399,7 +403,7 @@ namespace BeatLeader_Server.Controllers
             //    }
             //}
 
-            if (type != EndType.Unknown && type != EndType.Clear) {
+            if (type != EndType.Unknown && type != EndType.Clear && (info.hash != "EarthDay2025" || type == EndType.Practice)) {
                 int? forcetimeset = null;
                 if (timesetForce == 0) {
                     time = replay.info.failTime;
@@ -1231,63 +1235,65 @@ namespace BeatLeader_Server.Controllers
                 if (leaderboard.Difficulty.Requirements.HasFlag(Requirements.V3)) {
                     maxScore *= 1.1f;
                 }
-                if (resultScore.BaseScore > maxScore) {
-                    await SaveFailedScore(dbContext, resultScore, leaderboard, "Score is bigger than max possible on this map!");
-                    return;
-                }
+                if (leaderboard.Id != "EarthDay2025") {
+                    if (resultScore.BaseScore > maxScore) {
+                        await SaveFailedScore(dbContext, resultScore, leaderboard, "Score is bigger than max possible on this map!");
+                        return;
+                    }
 
-                if (!leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles) && !allow) {
-                    double scoreRatio = resultScore.BaseScore / (double)statistic.winTracker.totalScore;
-                    if (scoreRatio > 1.01 || scoreRatio < 0.99)
-                    {
-                        if (_replayRecalculator != null) {
-                            (int? newScore, replay) = await _replayRecalculator.RecalculateReplay(replay);
-                            if (newScore != null) {
-                                scoreRatio = resultScore.BaseScore / (double)newScore;
-                            }
-                        }
-
+                    if (!leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles) && !allow) {
+                        double scoreRatio = resultScore.BaseScore / (double)statistic.winTracker.totalScore;
                         if (scoreRatio > 1.01 || scoreRatio < 0.99)
                         {
-                            await SaveFailedScore(dbContext, resultScore, leaderboard, "Calculated on server score is too different: " + statistic.winTracker.totalScore + ". You probably need to update the mod.");
-
-                            return;
-                        } else {
-                            using (var recalculatedStream = new MemoryStream()) {
-                                ReplayEncoder.Encode(replay, new BinaryWriter(recalculatedStream, Encoding.UTF8));
-                                resultScore.Replay = await _s3Client.UploadReplay("recalculated-" + ReplayUtils.ReplayFilename(replay, resultScore), recalculatedStream.ToArray());
+                            if (_replayRecalculator != null) {
+                                (int? newScore, replay) = await _replayRecalculator.RecalculateReplay(replay);
+                                if (newScore != null) {
+                                    scoreRatio = resultScore.BaseScore / (double)newScore;
+                                }
                             }
 
-                            try {
-                                (statistic, statisticError) = await ScoreControllerHelper.CalculateAndSaveStatistic(_s3Client, replay, resultScore);
-                
-                            } catch (Exception e)
+                            if (scoreRatio > 1.01 || scoreRatio < 0.99)
                             {
-                                await SaveFailedScore(dbContext, resultScore, leaderboard, e.ToString());
+                                await SaveFailedScore(dbContext, resultScore, leaderboard, "Calculated on server score is too different: " + statistic.winTracker.totalScore + ". You probably need to update the mod.");
+
                                 return;
+                            } else {
+                                using (var recalculatedStream = new MemoryStream()) {
+                                    ReplayEncoder.Encode(replay, new BinaryWriter(recalculatedStream, Encoding.UTF8));
+                                    resultScore.Replay = await _s3Client.UploadReplay("recalculated-" + ReplayUtils.ReplayFilename(replay, resultScore), recalculatedStream.ToArray());
+                                }
+
+                                try {
+                                    (statistic, statisticError) = await ScoreControllerHelper.CalculateAndSaveStatistic(_s3Client, replay, resultScore);
+                
+                                } catch (Exception e)
+                                {
+                                    await SaveFailedScore(dbContext, resultScore, leaderboard, e.ToString());
+                                    return;
+                                }
                             }
                         }
                     }
-                }
 
-                if (leaderboard.Difficulty.Notes > 30 && !allow && statistic != null)
-                {
-                    var sameAccScore = await dbContext
-                        .Scores
-                        .Where(s => s.LeaderboardId == leaderboard.Id &&
-                                             s.PlayerId != resultScore.PlayerId && 
-                                             s.AccLeft != 0 && 
-                                             s.AccRight != 0 && 
-                                             s.AccLeft == statistic.accuracyTracker.accLeft && 
-                                             s.AccRight == statistic.accuracyTracker.accRight &&
-                                             s.BaseScore == resultScore.BaseScore)
-                        .Select(s => s.PlayerId)
-                        .FirstOrDefaultAsync();
-                    if (sameAccScore != null)
+                    if (leaderboard.Difficulty.Notes > 30 && !allow && statistic != null)
                     {
-                        await SaveFailedScore(dbContext, resultScore, leaderboard, "Acc is suspiciously exact same as: " + sameAccScore + "'s score");
+                        var sameAccScore = await dbContext
+                            .Scores
+                            .Where(s => s.LeaderboardId == leaderboard.Id &&
+                                                 s.PlayerId != resultScore.PlayerId && 
+                                                 s.AccLeft != 0 && 
+                                                 s.AccRight != 0 && 
+                                                 s.AccLeft == statistic.accuracyTracker.accLeft && 
+                                                 s.AccRight == statistic.accuracyTracker.accRight &&
+                                                 s.BaseScore == resultScore.BaseScore)
+                            .Select(s => s.PlayerId)
+                            .FirstOrDefaultAsync();
+                        if (sameAccScore != null)
+                        {
+                            await SaveFailedScore(dbContext, resultScore, leaderboard, "Acc is suspiciously exact same as: " + sameAccScore + "'s score");
 
-                        return;
+                            return;
+                        }
                     }
                 }
 

@@ -173,7 +173,7 @@ namespace BeatLeader_Server.Controllers
                     !s.Requirements.HasFlag(Requirements.Vivify))
                 .ToList()
                 .OrderBy(s => random.Next(2000))
-                .Take(300)
+                .Take(200)
                 .ToList(); // Convert to List for potential modification/removal
 
             if (!scores.Any()) {
@@ -261,9 +261,9 @@ namespace BeatLeader_Server.Controllers
             generatedDuration = initialCutTime; // Set initial duration
 
             using var reader0 = new NVorbis.VorbisReader(seedMapData.SongPath);
-            var _audioSampleRate = reader0.SampleRate;
-            var _audioChannels = reader0.Channels;
-            long samplesToRead0 = (long)(initialCutTime * _audioSampleRate * _audioChannels);
+            var _audioSampleRate = 44100;
+            var _audioChannels = 2;
+            long samplesToRead0 = (long)(initialCutTime * reader0.SampleRate * reader0.Channels);
             float[] buffer0 = new float[4096]; // Read in chunks
             long samplesRead0 = 0;
             List<float> _generatedAudioSamples = new List<float>();
@@ -277,7 +277,7 @@ namespace BeatLeader_Server.Controllers
                 samplesRead0 += read;
             }
 
-            byte[] songOutput = ConvertRawPCMFile(_audioSampleRate, _audioChannels, _generatedAudioSamples.ToArray(), _audioSampleRate, _audioChannels);
+            byte[] songOutput = ConvertRawPCMFile(_audioSampleRate, _audioChannels, _generatedAudioSamples.ToArray(), reader0.SampleRate, reader0.Channels, initialCutTime);
             _generatedAudioSamples = new List<float>();
 
             //2.Loop to splice maps
@@ -337,11 +337,6 @@ namespace BeatLeader_Server.Controllers
                                 readCount = reader.ReadSamples(buffer, 0, count);
                                 if (readCount <= 0) {
                                     Console.WriteLine($"Warning: End of audio stream reached prematurely while reading from {matchedMapData.Hash}");
-
-                                    while (samplesRead < samplesToRead) {
-                                        _generatedAudioSamples.Add(0);
-                                        samplesRead++;
-                                    }
                                 } else {
                                     _generatedAudioSamples.AddRange(buffer.Take(readCount));
                                     samplesRead += readCount;
@@ -349,7 +344,7 @@ namespace BeatLeader_Server.Controllers
                             }
 
                             songOutput = songOutput
-                                .Concat(ConvertRawPCMFile(_audioSampleRate, _audioChannels, _generatedAudioSamples.ToArray(), reader.SampleRate, reader.Channels))
+                                .Concat(ConvertRawPCMFile(_audioSampleRate, _audioChannels, _generatedAudioSamples.ToArray(), reader.SampleRate, reader.Channels, spliceDuration))
                                 .ToArray();
                             _generatedAudioSamples = new List<float>();
 
@@ -363,7 +358,7 @@ namespace BeatLeader_Server.Controllers
                         availableMaps.Remove(matchedMapData);
                         continue;
                     }
-                    
+
                     generatedMap = AppendMapSegment(generatedMap, matchedMapData, matchTime, generatedDuration, spliceDuration);
                     generatedDuration += spliceDuration;
                     availableMaps.Remove(matchedMapData);
@@ -374,7 +369,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            generatedMap.Info._beatsPerMinute = 120;
+            generatedMap.Info._beatsPerMinute = 160;
             generatedMap.Difficulties[0].Data.bpmEvents = new List<BpmEvent>();
 
             ToBeats(generatedMap.Difficulties[0].Data);
@@ -409,8 +404,8 @@ namespace BeatLeader_Server.Controllers
                                 _difficultyRank = 9,
                                 _beatmapFilename = "ExpertPlus.dat",
                                 _lightshowDataFilename = "",
-                                _noteJumpMovementSpeed = 18,
-                                _noteJumpStartBeatOffset = -0.2f,
+                                _noteJumpMovementSpeed = 19,
+                                _noteJumpStartBeatOffset = 0.1f,
                                 _beatmapColorSchemeIdx = 0,
                                 _environmentNameIdx = 0,
                                 _customData = new _Customdata1 {
@@ -548,7 +543,7 @@ namespace BeatLeader_Server.Controllers
 
         private void ToBeats(DifficultyV3 diff)
         {
-            var _bpm = 120;
+            var _bpm = 160;
             foreach (var item in diff.Notes) {
                 item.Beats = BeatsFromSecond(item.Seconds, _bpm);
             }
@@ -814,37 +809,70 @@ namespace BeatLeader_Server.Controllers
 
         private static readonly int WriteBufferSize = 512;
 
-        private static byte[] ConvertRawPCMFile(int outputSampleRate, int outputChannels, float[] pcmSamples, int pcmSampleRate, int pcmChannels)
+        // Helper function to safely get a sample from the PCM buffer, handling boundaries
+        private static float GetPcmSample(float[] pcmSamples, int index, int channel, int numChannels)
         {
-            int numPcmSamples = (pcmSamples.Length / 1 / pcmChannels);
-            float pcmDuraton = numPcmSamples / (float)pcmSampleRate;
-
-            int numOutputSamples = (int)(pcmDuraton * outputSampleRate);
-            //Ensure that samble buffer is aligned to write chunk size
-            numOutputSamples = (numOutputSamples / WriteBufferSize) * WriteBufferSize;
-
-            float[][] outSamples = new float[outputChannels][];
-
-            for (int ch = 0; ch < outputChannels; ch++)
+            int sampleIndex = index * numChannels + channel;
+            if (sampleIndex >= 0 && sampleIndex < pcmSamples.Length)
             {
-                outSamples[ch] = new float[numOutputSamples];
+                return pcmSamples[sampleIndex];
+            }
+            return 0.0f; // Return silence if index is out of bounds
+        }
+
+        private static byte[] ConvertRawPCMFile(
+            int outputSampleRate,
+            int outputChannels,
+            float[] pcmSamples,
+            int pcmSampleRate,
+            int pcmChannels,
+            float expectedDuration) // Added expected duration parameter
+        {
+            if (pcmSampleRate == 0 || pcmChannels == 0 || pcmSamples.Length == 0 || expectedDuration <= 0) {
+                 // Handle invalid input
+                 Console.WriteLine("Warning: Invalid PCM data or expected duration provided for conversion.");
+                 return new byte[0]; // Return empty byte array or throw an exception
             }
 
-            for (int sampleNumber = 0; sampleNumber < numOutputSamples; sampleNumber++)
+            // Target number of samples *per channel* in the output, based on expected duration
+            int numOutputSamplesPerChannel = (int)Math.Round(expectedDuration * outputSampleRate);
+            if (numOutputSamplesPerChannel == 0) {
+                Console.WriteLine("Warning: Calculated output samples is zero.");
+                return new byte[0];
+            }
+
+            float[][] outSamples = new float[outputChannels][];
+            for (int ch = 0; ch < outputChannels; ch++)
             {
-                float rawSample = 0.0f;
+                outSamples[ch] = new float[numOutputSamplesPerChannel];
+            }
+
+            double inputSampleRateDouble = pcmSampleRate;
+            double outputSampleRateDouble = outputSampleRate;
+
+            // Resample using linear interpolation to fill the exact number of output samples
+            for (int i = 0; i < numOutputSamplesPerChannel; i++)
+            {
+                // Calculate the corresponding fractional position in the input signal
+                // This position maps the output sample 'i' back to the input timeline
+                double inputPosition = i * inputSampleRateDouble / outputSampleRateDouble;
+                int inputIndex1 = (int)Math.Floor(inputPosition);
+                int inputIndex2 = inputIndex1 + 1;
+                double factor = inputPosition - inputIndex1; // Interpolation factor
 
                 for (int ch = 0; ch < outputChannels; ch++)
                 {
-                    int sampleIndex = (sampleNumber * pcmChannels) * 1;
+                    // Get the two nearest input samples for the current channel
+                    int sourceChannel = Math.Min(ch, pcmChannels - 1); // Use the available source channel
+                    float sample1 = GetPcmSample(pcmSamples, inputIndex1, sourceChannel, pcmChannels);
+                    float sample2 = GetPcmSample(pcmSamples, inputIndex2, sourceChannel, pcmChannels);
 
-                    if (ch < pcmChannels) sampleIndex += (ch * 1);
-                    rawSample = sampleIndex < pcmSamples.Length ? pcmSamples[sampleIndex] : 0;
-
-                    outSamples[ch][sampleNumber] = rawSample;
+                    // Linearly interpolate
+                    outSamples[ch][i] = (float)(sample1 * (1.0 - factor) + sample2 * factor);
                 }
             }
 
+            // GenerateFile will encode exactly the samples provided in outSamples
             return GenerateFile(outSamples, outputSampleRate, outputChannels);
         }
 
@@ -862,13 +890,9 @@ namespace BeatLeader_Server.Controllers
             // =========================================================
             // HEADER
             // =========================================================
-            // Vorbis streams begin with three headers; the initial header (with
-            // most of the codec setup parameters) which is mandated by the Ogg
-            // bitstream spec.  The second header holds any comment fields.  The
-            // third header holds the bitstream codebook.
-
             var comments = new Comments();
-            comments.AddTag("ARTIST", "TEST");
+            comments.AddTag("ARTIST", "BeatLeader");
+            comments.AddTag("TITLE", "Earth Day 2025 - RECYCLED");
 
             var infoPacket = HeaderPacketBuilder.BuildInfoPacket(info);
             var commentsPacket = HeaderPacketBuilder.BuildCommentsPacket(comments);
@@ -878,46 +902,61 @@ namespace BeatLeader_Server.Controllers
             oggStream.PacketIn(commentsPacket);
             oggStream.PacketIn(booksPacket);
 
-            // Flush to force audio data onto its own page per the spec
-            FlushPages(oggStream, outputData, true);
+            FlushPages(oggStream, outputData, true); // Flush headers
 
             // =========================================================
             // BODY (Audio Data)
             // =========================================================
-            var processingState = ProcessingState.Create(info);
-
-            for (int readIndex = 0; readIndex <= floatSamples[0].Length; readIndex += WriteBufferSize)
+            if (floatSamples == null || floatSamples.Length == 0 || floatSamples[0] == null || floatSamples[0].Length == 0)
             {
-                if (readIndex == floatSamples[0].Length)
+                 Console.WriteLine("Warning: No audio data to encode.");
+                 return outputData.ToArray();
+            }
+            var processingState = ProcessingState.Create(info);
+            long totalSamples = floatSamples[0].Length; // Samples per channel
+
+            // Write data in chunks
+            for (long readIndex = 0; readIndex < totalSamples; readIndex += WriteBufferSize)
+            {
+                long samplesToWrite = Math.Min(WriteBufferSize, totalSamples - readIndex);
+
+                if (samplesToWrite > 0)
                 {
-                    processingState.WriteEndOfStream();
-                }
-                else
-                {
-                    processingState.WriteData(floatSamples, WriteBufferSize, readIndex);
+                    // Provide the exact number of samples to write in this chunk
+                    processingState.WriteData(floatSamples, (int)samplesToWrite, (int)readIndex);
                 }
 
+                // Flush intermediate pages as they become available
                 while (!oggStream.Finished && processingState.PacketOut(out OggPacket packet))
                 {
                     oggStream.PacketIn(packet);
-
                     FlushPages(oggStream, outputData, false);
                 }
             }
 
-            FlushPages(oggStream, outputData, true);
+            // Signal end of stream after all samples are written
+            processingState.WriteEndOfStream();
+
+            // Flush any remaining packets and pages
+            while (!oggStream.Finished && processingState.PacketOut(out OggPacket packet))
+            {
+                oggStream.PacketIn(packet);
+                FlushPages(oggStream, outputData, false); // Flush remaining intermediate pages
+            }
+
+            FlushPages(oggStream, outputData, true); // Final flush for the last page
 
             return outputData.ToArray();
         }
 
-        private static void FlushPages(OggStream oggStream, Stream output, bool force)
-        {
-            while (oggStream.PageOut(out OggPage page, force))
-            {
-                output.Write(page.Header, 0, page.Header.Length);
-                output.Write(page.Body, 0, page.Body.Length);
-            }
-        }
+         private static void FlushPages(OggStream oggStream, Stream output, bool force)
+         {
+             while (oggStream.PageOut(out OggPage page, force))
+             {
+                 output.Write(page.Header, 0, page.Header.Length);
+                 output.Write(page.Body, 0, page.Body.Length);
+             }
+         }
 
         private static float SineSample(int sample, float frequency, int sampleRate)
         {
