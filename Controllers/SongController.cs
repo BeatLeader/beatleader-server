@@ -134,12 +134,14 @@ namespace BeatLeader_Server.Controllers
                 page = 1;
             }
 
-            var idsList = await sequence
-                .TagWithCallerS()
+            var helpersList = await sequence
+                .Where(s => s.Difficulties.Any())
                 .Skip((page - 1) * count)
                 .Take(count)
-                .Select(s => s.Id)
+                .Select(s => new { s.Song.Id, Difficulties = s.Difficulties.Select(d => d.Id) })
                 .ToListAsync();
+
+            var idsList = helpersList.Select(s => s.Id).ToList();
 
             using (var anotherContext = _dbFactory.CreateDbContext()) {
                 var songSequence = anotherContext
@@ -147,7 +149,7 @@ namespace BeatLeader_Server.Controllers
                     .AsNoTracking()
                     .Where(s => idsList.Contains(s.Id));
 
-                (result.Metadata.Total, result.Data) = await sequence.CountAsync().CoundAndResults(songSequence
+                (result.Metadata.Total, result.Data) = await sequence.Where(s => s.Difficulties.Any()).CountAsync().CoundAndResults(songSequence
                     .TagWithCallerS()
                     .Select(s => new MapInfoResponse {
                         Id = s.Id,
@@ -189,6 +191,7 @@ namespace BeatLeader_Server.Controllers
                             NominatedTime = lb.Difficulty.NominatedTime,
                             QualifiedTime = lb.Difficulty.QualifiedTime,
                             RankedTime = lb.Difficulty.RankedTime,
+                            LastScoreTime = lb.LastScoreTime,
 
                             LeaderboardId = lb.Id,
                             Plays = showPlays 
@@ -255,61 +258,6 @@ namespace BeatLeader_Server.Controllers
                                     MaxStreak = s.MaxStreak,
                                 }).FirstOrDefault(),
                         }).OrderBy(d => d.Mode > 0 ? d.Mode : 2000).ThenBy(d => d.Value).ToList(),
-                        //Song = lb.Song,
-                        //Difficulty = new DifficultyResponse {
-                        //    Id = lb.Difficulty.Id,
-                        //    Value = lb.Difficulty.Value,
-                        //    Mode = lb.Difficulty.Mode,
-                        //    DifficultyName = lb.Difficulty.DifficultyName,
-                        //    ModeName = lb.Difficulty.ModeName,
-                        //    Status = lb.Difficulty.Status,
-                        //    ModifierValues = lb.Difficulty.ModifierValues,
-                        //    ModifiersRating = lb.Difficulty.ModifiersRating,
-                        //    NominatedTime  = lb.Difficulty.NominatedTime,
-                        //    QualifiedTime  = lb.Difficulty.QualifiedTime,
-                        //    RankedTime = lb.Difficulty.RankedTime,
-
-                        //    Stars  = lb.Difficulty.Stars,
-                        //    PredictedAcc  = lb.Difficulty.PredictedAcc,
-                        //    PassRating  = lb.Difficulty.PassRating,
-                        //    AccRating  = lb.Difficulty.AccRating,
-                        //    TechRating  = lb.Difficulty.TechRating,
-                        //    Type  = lb.Difficulty.Type,
-
-                        //    SpeedTags = lb.Difficulty.SpeedTags,
-                        //    StyleTags = lb.Difficulty.StyleTags,
-                        //    FeatureTags = lb.Difficulty.FeatureTags,
-
-                        //    Njs  = lb.Difficulty.Njs,
-                        //    Nps  = lb.Difficulty.Nps,
-                        //    Notes  = lb.Difficulty.Notes,
-                        //    Bombs  = lb.Difficulty.Bombs,
-                        //    Walls  = lb.Difficulty.Walls,
-                        //    MaxScore = lb.Difficulty.MaxScore,
-                        //    Duration  = lb.Difficulty.Duration,
-
-                        //    Requirements = lb.Difficulty.Requirements,
-                        //},
-                        //Qualification = lb.Qualification,
-                        //Reweight = lb.Reweight,
-                        //ClanRankingContested = lb.ClanRankingContested,
-                        //Clan = lb.Clan == null ? null : new ClanResponseFull {
-                        //    Id = lb.Clan.Id,
-                        //    Name = lb.Clan.Name,
-                        //    Color = lb.Clan.Color,
-                        //    Icon = lb.Clan.Icon,
-                        //    Tag = lb.Clan.Tag,
-                        //    LeaderID = lb.Clan.LeaderID,
-                        //    Description = lb.Clan.Description,
-                        //    Pp = lb.Clan.Pp,
-                        //    Rank = lb.Clan.Rank
-                        //},
-                        //PositiveVotes = lb.PositiveVotes,
-                        //NegativeVotes = lb.NegativeVotes,
-                        //VoteStars = lb.VoteStars,
-                        //StarVotes = lb.StarVotes,
-                        //
-                        //Plays = showPlays ? lb.Scores.Where(s => s.ValidContexts.HasFlag(leaderboardContext)).Count(s => (date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)) : 0
                     })
                     .ToListAsync());
             }
@@ -317,15 +265,20 @@ namespace BeatLeader_Server.Controllers
             if (result.Data.Count() > 0) {
                 bool showRatings = currentPlayer?.ProfileSettings?.ShowAllRatings ?? false;
                 foreach (var song in result.Data) {
+                    var helper = helpersList.FirstOrDefault(s => s.Id == song.Id);
+                    
                     foreach (var diff in song.Difficulties) {
                         if (!showRatings && !diff.Status.WithRating()) {
                             diff.HideRatings();
+                        }
+                        if (helper != null) {
+                            diff.Applicable = helper.Difficulties.Any(d => d == diff.Id);
                         }
                     }
                     
                 }
 
-                result.Data = result.Data.OrderBy(e => idsList.IndexOf(e.Id));
+                result.Data = result.Data.OrderBy(e => helpersList.FindIndex(s => s.Id == e.Id));
 
                 foreach (var song in result.Data) {
                     song.SortDifficulties(sortBy, order);
@@ -440,6 +393,8 @@ namespace BeatLeader_Server.Controllers
                             NominatedTime = lb.Difficulty.NominatedTime,
                             QualifiedTime = lb.Difficulty.QualifiedTime,
                             RankedTime = lb.Difficulty.RankedTime,
+
+                            Applicable = true,
 
                             LeaderboardId = lb.Id,
                             Attempts = lb.PlayCount,
@@ -866,6 +821,77 @@ namespace BeatLeader_Server.Controllers
                 await RatingUtils.UpdateFromExMachina(diff, song.DownloadUrl, null);
                 var newLeaderboard = await SongControllerHelper.NewLeaderboard(_context, song, null, diff.DifficultyName, diff.ModeName);
             }
+
+            song.Checked = true;
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpPost("~/map/uploadEarthDay")]
+        public async Task<ActionResult> uploadEarthDay()
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var song = new Song
+            {
+                Id = "EarthDay2025",
+                Hash = "EarthDay2025",
+                Name = "Earth Day 2025",
+                SubName = "RECYCLED",
+                Author = "Various",
+                Mapper = "BeatLeader",
+                Bpm = 120,
+                Duration = 3600,
+                UploadTime = Time.UnixNow() - 60 * 60 * 24 * 180,
+                DownloadUrl = ""
+            };
+
+            var diffs = new List<DifficultyDescription>();
+
+            var newDD = new DifficultyDescription
+            {
+                Value = 9,
+                Mode = 1,
+                DifficultyName = "ExpertPlus",
+                ModeName = "Standard",
+                Status = DifficultyStatus.unranked,
+                Hash = song.Hash,
+
+                Njs = 18,
+                Nps = 0,
+                Notes = 0,
+                Bombs = 0,
+                Walls = 0,
+                MaxScore = 1,
+                Duration = 3600,
+            };
+
+            diffs.Add(newDD);
+            song.Difficulties = diffs;
+
+            song.FullCoverImage = "https://cdn.assets.beatleader.com/EarthDayMapCover.jpg";
+            song.CoverImage = "https://cdn.assets.beatleader.com/EarthDayMapCover.jpg";
+
+            _context.Songs.Add(song);
+            await _context.SaveChangesAsync();
+
+            var leaderboard = new Leaderboard();
+            leaderboard.SongId = song.Id;
+
+            leaderboard.Difficulty = newDD;
+            leaderboard.Scores = new List<Score>();
+            leaderboard.Id = "EarthDay2025";
+            leaderboard.Timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
+
+            _context.Leaderboards.Add(leaderboard);
 
             song.Checked = true;
 

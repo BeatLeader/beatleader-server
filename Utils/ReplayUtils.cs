@@ -313,6 +313,8 @@ namespace BeatLeader_Server.Utils
             if (replay.info.mode.StartsWith(ReBeatUtils.MODE_IDENTIFIER)) {
                 score.BaseScore = ReBeatUtils.GetScore(replay);
                 score.Accuracy = (float)score.BaseScore / (float)ReBeatUtils.MaxScoreForNote(difficulty.Notes + difficulty.Chains);
+            } if (replay.info.hash == "EarthDay2025") {
+                score.Accuracy = 0;
             } else {
                 score.Accuracy = (float)score.BaseScore / (float)maxScore;
             }
@@ -381,10 +383,6 @@ namespace BeatLeader_Server.Utils
             if (scpmExtenstion != null) {
                 score.ContextExtensions.Add(scpmExtenstion);
             }
-            var funnyExtension = FunnyContextExtension(score);
-            if (funnyExtension != null) {
-                score.ContextExtensions.Add(funnyExtension);
-            }
 
             return (score, maxScore);
         }
@@ -414,24 +412,6 @@ namespace BeatLeader_Server.Utils
             }
 
             result.ModifiedStars = EffectiveStarRating(result.Modifiers, difficulty.Stars ?? 0, difficulty.ModifierValues, difficulty.ModifiersRating);
-
-            return result;
-        }
-
-        public static ScoreContextExtension? FunnyContextExtension(Score score) {
-            if (score.Modifiers?.Split(",").Where(m => m != "" && m != "IF" && m != "BE" && m != "SC" && m != "PM").Count() > 0) {
-                return null;
-            }
-
-            var result = new ScoreContextExtension {
-                Context = LeaderboardContexts.Funny,
-                BaseScore = score.BaseScore,
-                ModifiedScore = score.BaseScore,
-                Timepost = score.Timepost,
-                Modifiers = score.Modifiers,
-                Accuracy = score.Accuracy,
-                Qualification = score.Qualification
-            };
 
             return result;
         }
@@ -562,6 +542,9 @@ namespace BeatLeader_Server.Utils
             if (lowerHmd.Contains("arpara")) return HMD.arpara;
             if (lowerHmd.Contains("dell visor")) return HMD.dellVisor;
             if (lowerHmd.Contains("meganex") && lowerHmd.Contains("1")) return HMD.megane1;
+            if (lowerHmd.Contains("meganex") && lowerHmd.Contains("superlight")) return HMD.meganexsuperlight;
+
+            if (lowerHmd.Contains("somnium") && lowerHmd.Contains("1")) return HMD.somniumvr1;
 
             if (lowerHmd.Contains("e3")) return HMD.e3;
             if (lowerHmd.Contains("e4")) return HMD.e4;
@@ -800,13 +783,18 @@ namespace BeatLeader_Server.Utils
             int noteIndex = 0;
             int zSum = 0;
 
+            var firstTime = replay.notes.First().eventTime;
+            var lastTime = replay.notes.Last().eventTime;
+
             foreach (var frame in replay.frames)
             {
-                if (frame.time >= replay.notes[noteIndex].eventTime) {
+                if (frame.time >= replay.notes[noteIndex].eventTime && frame.time >= firstTime && frame.time <= lastTime) {
                     if (frame.head.position.z > 1.05) {
                         zSum++;
                     }
-                    if (zSum == (int)Math.Min(50, replay.notes.Count * 0.1f)) return false;
+                    if (zSum == (int)Math.Min(50, replay.notes.Count * 0.1f)) {
+                        return false;
+                    }
 
                     if (noteIndex + 1 != replay.notes.Count) {
                         noteIndex++;
@@ -849,9 +837,6 @@ namespace BeatLeader_Server.Utils
         public static bool IsNewScoreExtensionBetter(ScoreContextExtension? oldScore, ScoreContextExtension newScore) {
             if (oldScore == null) return true;
             if (oldScore.Modifiers.Contains("OP")) return true;
-            if (newScore.Context == LeaderboardContexts.Funny) {
-                return newScore.ModifiedScore > oldScore.ModifiedScore;
-            }
             if (newScore.Pp != 0 || oldScore?.Pp != 0) {
                 if (newScore.Pp > (oldScore?.Pp ?? 0)) return true;
             } else {

@@ -156,7 +156,7 @@ namespace BeatLeader_Server.Utils
 
         public static async Task<string?> ApiTags(float acc, float pass, float tech)
         {
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"http://localhost:5168/ppai2/tag?acc={acc}&pass={pass}&tech={tech}");
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"https://stage.api.beatleader.net/ppai2/tag?acc={acc}&pass={pass}&tech={tech}");
             request.Method = "GET";
             request.Proxy = null;
 

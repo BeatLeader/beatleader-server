@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20250507005720_PlayerExperience")]
+    partial class PlayerExperience
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1991,6 +1994,9 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int?>("DeveloperProfileId")
                         .HasColumnType("int");
 
+                    b.Property<int>("Experience")
+                        .HasColumnType("int");
+
                     b.Property<string>("ExternalProfileUrl")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -2005,6 +2011,9 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("real");
 
                     b.Property<int>("LastWeekRank")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Level")
                         .HasColumnType("int");
 
                     b.Property<int?>("MapperId")
@@ -2031,6 +2040,9 @@ namespace BeatLeader_Server.Migrations
 
                     b.Property<float>("Pp")
                         .HasColumnType("real");
+
+                    b.Property<int>("Prestige")
+                        .HasColumnType("int");
 
                     b.Property<int?>("ProfileSettingsId")
                         .HasColumnType("int");
@@ -2143,6 +2155,9 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int>("CountryRank")
                         .HasColumnType("int");
 
+                    b.Property<int>("Experience")
+                        .HasColumnType("int");
+
                     b.Property<int>("LastWeekCountryRank")
                         .HasColumnType("int");
 
@@ -2150,6 +2165,9 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("real");
 
                     b.Property<int>("LastWeekRank")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Level")
                         .HasColumnType("int");
 
                     b.Property<float>("PassPp")
@@ -2161,6 +2179,9 @@ namespace BeatLeader_Server.Migrations
 
                     b.Property<float>("Pp")
                         .HasColumnType("real");
+
+                    b.Property<int>("Prestige")
+                        .HasColumnType("int");
 
                     b.Property<int>("Rank")
                         .HasColumnType("int");

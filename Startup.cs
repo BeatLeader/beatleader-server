@@ -231,6 +231,11 @@ namespace BeatLeader_Server {
             {
                 options.EnableEndpointRateLimiting = true;
                 options.StackBlockedRequests = false;
+                options.RequestBlockedBehaviorAsync = async (HttpContext context, ClientRequestIdentity identity, RateLimitCounter counter, RateLimitRule rule) => {
+                    context.Response.Headers.AccessControlAllowOrigin = context.Request.Headers.Origin;
+                    context.Response.Headers.AccessControlAllowCredentials = "true";
+                    context.Response.Headers.AccessControlExposeHeaders = "Retry-After";
+                };
                 options.HttpStatusCode = 429;
                 options.RealIpHeader = "cf-connecting-ip";
                 options.ClientIdHeader = "X-ClientId";
@@ -253,7 +258,13 @@ namespace BeatLeader_Server {
                             Endpoint = "GET:/user/friendScores",
                             Period = "1s",
                             Limit = 1,
-                        }
+                        },
+                        new RateLimitRule
+                        {
+                            Endpoint = "GET:/maps",
+                            Period = "1s",
+                            Limit = 8,
+                        },
                     };
             });
             services.AddSingleton<IIpPolicyStore, MemoryCacheIpPolicyStore>();
@@ -425,10 +436,11 @@ namespace BeatLeader_Server {
                     services.AddHostedService<BotService>();
                     services.AddHostedService<RankingService>();
                     services.AddHostedService<SongService>();
-                    services.AddHostedService<FunnyRefresh>();
+                } else {
+                    services.AddHostedService<MapRefresh>();
                 }
             }
-            
+
             services.AddHostedService<ConstantsService>();
             services.AddHostedService<RefreshTaskService>();
             services.AddHostedService<MinuteRefresh>();

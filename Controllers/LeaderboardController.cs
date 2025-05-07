@@ -1652,6 +1652,92 @@ namespace BeatLeader_Server.Controllers {
             };
         }
 
+        [HttpGet("~/leaderboard/{hash}/{difficulty}/{mode}")]
+        public async Task<ActionResult<CompactLeaderboardResponse>> GetLeaderboardByHash(
+            [FromRoute, SwaggerParameter("Maps's hash")] string hash, 
+            [FromRoute, SwaggerParameter("Maps's difficulty(Easy, Expert, Expert+, etc)")] string difficulty, 
+            [FromRoute, SwaggerParameter("Maps's characteristic(Standard, OneSaber, etc)")] string mode) {
+            if (hash.Length >= 40) {
+                hash = hash.Substring(0, 40);
+            }
+
+            string? currentID = HttpContext.CurrentUserID(_context);
+
+            var currentProfileSettings = currentID != null ? await _context
+                .Players
+                .AsNoTracking()
+                .Where(p => p.Id == currentID && p.ProfileSettings != null)
+                .Select(p => p.ProfileSettings)
+                .FirstOrDefaultAsync() : null;
+
+            bool showRatings = currentProfileSettings?.ShowAllRatings ?? false;
+
+            var lb = await _context
+                .Leaderboards
+                .Where(l => l.Song.Hash == hash && l.Difficulty.ModeName == mode && l.Difficulty.DifficultyName == difficulty)
+                    .Select(l => new CompactLeaderboardResponse {
+                    Id = l.Id,
+                    Song = new CompactSongResponse {
+                        Id = l.Song.Id,
+                        Hash = l.Song.Hash,
+                        Name = l.Song.Name,
+
+                        SubName = l.Song.SubName,
+                        Author = l.Song.Author,
+                        Mapper = l.Song.Mapper,
+                        MapperId = l.Song.MapperId,
+                        CollaboratorIds = l.Song.CollaboratorIds,
+                        CoverImage = l.Song.CoverImage,
+                        FullCoverImage = l.Song.FullCoverImage,
+                        Bpm = l.Song.Bpm,
+                        Duration = l.Song.Duration,
+                        Explicity = l.Song.Explicity
+                    },
+                    Difficulty = new DifficultyResponse {
+                        Id = l.Difficulty.Id,
+                        Value = l.Difficulty.Value,
+                        Mode = l.Difficulty.Mode,
+                        DifficultyName = l.Difficulty.DifficultyName,
+                        ModeName = l.Difficulty.ModeName,
+                        Status = l.Difficulty.Status,
+                        ModifierValues = l.Difficulty.ModifierValues != null 
+                            ? l.Difficulty.ModifierValues
+                            : new ModifiersMap(),
+                        ModifiersRating = l.Difficulty.ModifiersRating,
+                        NominatedTime  = l.Difficulty.NominatedTime,
+                        QualifiedTime  = l.Difficulty.QualifiedTime,
+                        RankedTime = l.Difficulty.RankedTime,
+
+                        Stars  = l.Difficulty.Stars,
+                        PredictedAcc  = l.Difficulty.PredictedAcc,
+                        PassRating  = l.Difficulty.PassRating,
+                        AccRating  = l.Difficulty.AccRating,
+                        TechRating  = l.Difficulty.TechRating,
+                        Type  = l.Difficulty.Type,
+
+                        Njs  = l.Difficulty.Njs,
+                        Nps  = l.Difficulty.Nps,
+                        Notes  = l.Difficulty.Notes,
+                        Bombs  = l.Difficulty.Bombs,
+                        Walls  = l.Difficulty.Walls,
+                        MaxScore = l.Difficulty.MaxScore,
+                        Duration  = l.Difficulty.Duration,
+
+                        Requirements = l.Difficulty.Requirements,
+                    }
+                })
+            .FirstOrDefaultAsync();
+
+            if (lb == null) {
+                return NotFound();
+            }
+            if (!showRatings && !lb.Difficulty.Status.WithRating()) {
+                lb.HideRatings();
+            }
+
+            return lb;
+        }
+
         [HttpGet("~/leaderboards/")]
         [SwaggerOperation(Summary = "Retrieve a list of leaderboards (maps)", Description = "Fetches a paginated and optionally filtered list of leaderboards (Beat Saber maps).")]
         [SwaggerResponse(200, "Leaderboards retrieved successfully", typeof(ResponseWithMetadata<LeaderboardInfoResponse>))]

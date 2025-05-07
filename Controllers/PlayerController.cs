@@ -1006,31 +1006,16 @@ namespace BeatLeader_Server.Controllers
 
             return Ok();
         }
-
-        [HttpGet("~/player/{id}/prestige")]
-        [SwaggerOperation(Summary = "Reset the player level and prestige", Description = "Reset the player level and prestige")]
-        [SwaggerResponse(200, "Successful prestige")]
-        [SwaggerResponse(404, "Player not found")]
-        public async Task<ActionResult> PrestigePlayer()
+        
+        [HttpGet("~/players/top/pp")]
+        public async Task<ActionResult<float>> TopPp(
+            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
         {
-            string? currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = currentID == null ? null : await _context.Players.FindAsync(currentID);
-
-            if (currentPlayer == null)
-            {
-                return NotFound();
+            if (leaderboardContext == LeaderboardContexts.General) {
+                return await _context.Players.Where(p => !p.Banned).OrderByDescending(p => p.Pp).Select(p => p.Pp).FirstOrDefaultAsync();
+            } else {
+                return await _context.PlayerContextExtensions.Where(p => !p.Banned && p.Context == leaderboardContext).OrderByDescending(p => p.Pp).Select(p => p.Pp).FirstOrDefaultAsync();
             }
-
-            if (currentPlayer.Level >= 100)
-            {
-                currentPlayer.Level = 0;
-                currentPlayer.Experience = 0;
-                currentPlayer.Prestige++;
-
-                await _context.SaveChangesAsync();
-            }
-
-            return Ok();
         }
     }
 }

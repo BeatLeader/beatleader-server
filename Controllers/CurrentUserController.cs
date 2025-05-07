@@ -532,8 +532,8 @@ namespace BeatLeader_Server.Controllers {
 
                 player.Avatar = await _s3Client.UploadAsset(fileName, stream);
                 ms.Position = 0;
-                MemoryStream webpstream = ImageUtils.ResizeToWebp(ms);
-                player.WebAvatar = await _s3Client.UploadAsset(fileName.Replace(extension, "webp"), webpstream);
+                MemoryStream webpstream = ImageUtils.ResizeToWebp(ms, 40);
+                player.WebAvatar = await _s3Client.UploadAsset(fileName.Replace(extension, ".webp"), webpstream);
             } catch {
             }
 
@@ -1401,12 +1401,6 @@ namespace BeatLeader_Server.Controllers {
                             scpmExtension.PlayerId = migrateToId;
                             score.ContextExtensions.Add(scpmExtension);
                         }
-                        var funnyExtension = ReplayUtils.FunnyContextExtension(score);
-                        if (funnyExtension != null) {
-                            funnyExtension.LeaderboardId = score.LeaderboardId;
-                            funnyExtension.PlayerId = migrateToId;
-                            score.ContextExtensions.Add(funnyExtension);
-                        }
                     }
 
                     var bestScore = scores[0];
@@ -1419,7 +1413,7 @@ namespace BeatLeader_Server.Controllers {
                     bestScore.ValidContexts |= LeaderboardContexts.General;
                     bestScore.ValidForGeneral = true;
 
-                    foreach (var context in ContextExtensions.NonGeneralAndFunny) {
+                    foreach (var context in ContextExtensions.NonGeneral) {
                         var extensions = scores
                             .Select(s => new {
                                 Context = s.ContextExtensions.FirstOrDefault(ce => ce.Context == context),

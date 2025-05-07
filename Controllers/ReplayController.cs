@@ -313,6 +313,10 @@ namespace BeatLeader_Server.Controllers
                 info.hash = info.hash.Substring(0, 40);
             }
 
+            if (await dbContext.EarthDayMaps.AnyAsync(dm => dm.Hash == info.hash && dm.PlayerId == authenticatedPlayerID)) {
+                info.hash = "EarthDay2025";
+            }
+
             Leaderboard? leaderboard;
             using (_serverTiming.TimeAction("ldbrd"))
             {
@@ -399,13 +403,13 @@ namespace BeatLeader_Server.Controllers
             //    }
             //}
 
-            if (type != EndType.Unknown && type != EndType.Clear) {
+            if (type != EndType.Unknown && type != EndType.Clear && (info.hash != "EarthDay2025" || type == EndType.Practice)) {
                 int? forcetimeset = null;
                 if (timesetForce == 0) {
                     time = replay.info.failTime;
                     forcetimeset = int.Parse(replay.info.timestamp);
                 }
-                await CollectStats(dbContext, storageContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, time, type, null, forcetimeset);
+                await CollectStats(dbContext, storageContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, time, type, null, null, forcetimeset);
                 return Ok();
             }
 
@@ -535,23 +539,6 @@ namespace BeatLeader_Server.Controllers
             bool keepContext = false;
              
             try {
-                (result, stats, keepContext) = await UploadScores(
-                    dbContext,
-                    storageContext,
-                    leaderboard, 
-                    player,
-                    resultScore, 
-                    currentScores, 
-                    replay,
-                    replayData,
-                    offsets,
-                    context, 
-                    maxScore,
-                    allow);
-                if (stats) {
-                    await CollectStats(dbContext, storageContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, replay.frames.Last().time, EndType.Clear, null);
-                }
-
                 // This is clear only. Maybe NF should be 50% exp.
                 // Maybe add first map clear bonus or something (small).
                 if (replay.notes.Count >= 20 && player.Level < 100)
@@ -559,18 +546,22 @@ namespace BeatLeader_Server.Controllers
                     int baseExp = 500;
                     int incExp = 50;
 
-                    float star = resultScore.ModifiedStars;
                     float accuracy = resultScore.Accuracy;
                     float firstNoteTime = replay.notes.FirstOrDefault()?.eventTime ?? 0.0f;
                     float lastNoteTime = replay.notes.LastOrDefault()?.eventTime ?? 0.0f;
                     float duration = lastNoteTime - firstNoteTime;
-                    if (resultScore.Modifiers.Contains("SS")) duration /= 0.85f;
-                    else if (resultScore.Modifiers.Contains("FS")) duration /= 1.2f;
-                    else if (resultScore.Modifiers.Contains("SF")) duration /= 1.5f;
+                    if (resultScore.Modifiers.Contains("SS")) { 
+                        duration /= 0.85f;
+                    } else if (resultScore.Modifiers.Contains("FS")) {
+                        duration /= 1.2f;
+                    } else if (resultScore.Modifiers.Contains("SF")) {
+                        duration /= 1.5f;
+                    }
 
                     float exp;
                     if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
                     {
+                        float star = resultScore.ModifiedStars;
                         exp = ReplayUtils.GetCurveVal(0, star);
                     }
                     else
@@ -580,7 +571,7 @@ namespace BeatLeader_Server.Controllers
                     float accMult = ReplayUtils.GetCurveVal(1, accuracy);
                     float durMult = ReplayUtils.GetCurveVal(2, duration);
 
-                    float gainedExp = exp * accMult * durMult;
+                    float gainedExp = exp * accMult * durMult / (resultScore.Modifiers.Contains("NF") ? 2f : 1f);
 
                     player.Experience += (int)Math.Round(gainedExp);
                     while (player.Experience > 0)
@@ -600,6 +591,24 @@ namespace BeatLeader_Server.Controllers
                             break;
                         }
                     }
+                }
+
+
+                (result, stats, keepContext) = await UploadScores(
+                    dbContext,
+                    storageContext,
+                    leaderboard, 
+                    player,
+                    resultScore, 
+                    currentScores, 
+                    replay,
+                    replayData,
+                    offsets,
+                    context, 
+                    maxScore,
+                    allow);
+                if (stats) {
+                    await CollectStats(dbContext, storageContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, replay.frames.Last().time, EndType.Clear, null);
                 }
             } catch (Exception e) {
 
@@ -726,8 +735,6 @@ namespace BeatLeader_Server.Controllers
                 await ContextScore(dbContext, leaderboardContext, leaderboard, player, resultScore, currentScores, replay);
             }
 
-            await ContextScore(dbContext, LeaderboardContexts.Funny, leaderboard, player, resultScore, currentScores, replay);
-
             if (resultScore.ValidContexts == LeaderboardContexts.None) {
                 return (BadRequest("Score is lower than existing one"), true, false);
             } else {
@@ -740,7 +747,7 @@ namespace BeatLeader_Server.Controllers
                         }
                     }
 
-                    foreach (var leaderboardContext in ContextExtensions.NonGeneralAndFunny) {
+                    foreach (var leaderboardContext in ContextExtensions.NonGeneral) {
                         if (resultScore.ValidContexts.HasFlag(leaderboardContext)) {
                             var ce = await dbContext
                                 .ScoreContextExtensions
@@ -984,6 +991,7 @@ namespace BeatLeader_Server.Controllers
 
             if (!player.Bot) {
                 leaderboard.Plays++;
+                leaderboard.LastScoreTime = resultScore.Timepost;
             }
         }
 
@@ -1077,9 +1085,6 @@ namespace BeatLeader_Server.Controllers
                 
                 foreach (var leaderboardContext in ContextExtensions.NonGeneral) {
                     await RefreshContextRank(dbContext, leaderboardContext, resultScore, leaderboard, isRanked);
-                    if (isRanked) {
-                        await RefreshContextRank(dbContext, LeaderboardContexts.Funny, resultScore, leaderboard, isRanked);
-                    }
                 }
             }
         }
@@ -1146,7 +1151,7 @@ namespace BeatLeader_Server.Controllers
             if (!resultScore.ValidContexts.HasFlag(context) || resultContextExtension == null) return;
 
             List<ScoreContextExtension> rankedScores;
-            if (isRanked && context != LeaderboardContexts.Funny) {
+            if (isRanked) {
                 if (context != LeaderboardContexts.Golf) {
                     rankedScores = await dbContext
                     .ScoreContextExtensions
@@ -1202,21 +1207,9 @@ namespace BeatLeader_Server.Controllers
                     resultContextExtension.Rank = i + 1;
                 }
                 s.Rank = i + 1;
-
-                if (isRanked && context == LeaderboardContexts.Funny) {
-                    if ((s.Rank == 1 || s.Rank % 5 == 0) && s.Timepost >= 1735689600) {
-                        s.Pp = 500;
-                    } else {
-                        s.Pp = 0;
-                    }
-                }
             }
 
-            if (context == LeaderboardContexts.Funny) {
-                await dbContext.SafeBulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = s => new { s.Rank, s.Pp });
-            } else {
-                await dbContext.SafeBulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = s => new { s.Rank });
-            }
+            await dbContext.SafeBulkUpdateAsync(rankedScores, options => options.ColumnInputExpression = s => new { s.Rank });
         }
 
         [NonAction]
@@ -1238,15 +1231,15 @@ namespace BeatLeader_Server.Controllers
 
             resultScore.Replay = await _s3Client.UploadReplay(ReplayUtils.ReplayFilename(replay, resultScore), replayData);
 
-            if (resultScore.ValidContexts.HasFlag(LeaderboardContexts.Funny) && leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
-                var playerIds = await dbContext
-                    .ScoreContextExtensions
-                    .Where(s => s.LeaderboardId == leaderboard.Id)
-                    .Select(s => s.PlayerId)
-                    .ToListAsync();
+            //if (resultScore.ValidContexts.HasFlag(LeaderboardContexts.Funny) && leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
+            //    var playerIds = await dbContext
+            //        .ScoreContextExtensions
+            //        .Where(s => s.LeaderboardId == leaderboard.Id)
+            //        .Select(s => s.PlayerId)
+            //        .ToListAsync();
 
-                await PlayerContextRefreshControllerHelper.RefreshPlayersContext(dbContext, LeaderboardContexts.Funny, playerIds);
-            }
+            //    await PlayerContextRefreshControllerHelper.RefreshPlayersContext(dbContext, LeaderboardContexts.Funny, playerIds);
+            //}
 
             if (statistic != null) {
                 await _s3Client.UploadScoreStats(resultScore.Id + ".json", statistic);
@@ -1297,63 +1290,65 @@ namespace BeatLeader_Server.Controllers
                 if (leaderboard.Difficulty.Requirements.HasFlag(Requirements.V3)) {
                     maxScore *= 1.1f;
                 }
-                if (resultScore.BaseScore > maxScore) {
-                    await SaveFailedScore(dbContext, resultScore, leaderboard, "Score is bigger than max possible on this map!");
-                    return;
-                }
+                if (leaderboard.Id != "EarthDay2025") {
+                    if (resultScore.BaseScore > maxScore) {
+                        await SaveFailedScore(dbContext, resultScore, leaderboard, "Score is bigger than max possible on this map!");
+                        return;
+                    }
 
-                if (!leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles) && !allow) {
-                    double scoreRatio = resultScore.BaseScore / (double)statistic.winTracker.totalScore;
-                    if (scoreRatio > 1.01 || scoreRatio < 0.99)
-                    {
-                        if (_replayRecalculator != null) {
-                            (int? newScore, replay) = await _replayRecalculator.RecalculateReplay(replay);
-                            if (newScore != null) {
-                                scoreRatio = resultScore.BaseScore / (double)newScore;
-                            }
-                        }
-
+                    if (!leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles) && !allow) {
+                        double scoreRatio = resultScore.BaseScore / (double)statistic.winTracker.totalScore;
                         if (scoreRatio > 1.01 || scoreRatio < 0.99)
                         {
-                            await SaveFailedScore(dbContext, resultScore, leaderboard, "Calculated on server score is too different: " + statistic.winTracker.totalScore + ". You probably need to update the mod.");
-
-                            return;
-                        } else {
-                            using (var recalculatedStream = new MemoryStream()) {
-                                ReplayEncoder.Encode(replay, new BinaryWriter(recalculatedStream, Encoding.UTF8));
-                                resultScore.Replay = await _s3Client.UploadReplay("recalculated-" + ReplayUtils.ReplayFilename(replay, resultScore), recalculatedStream.ToArray());
+                            if (_replayRecalculator != null) {
+                                (int? newScore, replay) = await _replayRecalculator.RecalculateReplay(replay);
+                                if (newScore != null) {
+                                    scoreRatio = resultScore.BaseScore / (double)newScore;
+                                }
                             }
 
-                            try {
-                                (statistic, statisticError) = await ScoreControllerHelper.CalculateAndSaveStatistic(_s3Client, replay, resultScore);
-                
-                            } catch (Exception e)
+                            if (scoreRatio > 1.01 || scoreRatio < 0.99)
                             {
-                                await SaveFailedScore(dbContext, resultScore, leaderboard, e.ToString());
+                                await SaveFailedScore(dbContext, resultScore, leaderboard, "Calculated on server score is too different: " + statistic.winTracker.totalScore + ". You probably need to update the mod.");
+
                                 return;
+                            } else {
+                                using (var recalculatedStream = new MemoryStream()) {
+                                    ReplayEncoder.Encode(replay, new BinaryWriter(recalculatedStream, Encoding.UTF8));
+                                    resultScore.Replay = await _s3Client.UploadReplay("recalculated-" + ReplayUtils.ReplayFilename(replay, resultScore), recalculatedStream.ToArray());
+                                }
+
+                                try {
+                                    (statistic, statisticError) = await ScoreControllerHelper.CalculateAndSaveStatistic(_s3Client, replay, resultScore);
+                
+                                } catch (Exception e)
+                                {
+                                    await SaveFailedScore(dbContext, resultScore, leaderboard, e.ToString());
+                                    return;
+                                }
                             }
                         }
                     }
-                }
 
-                if (leaderboard.Difficulty.Notes > 30 && !allow && statistic != null)
-                {
-                    var sameAccScore = await dbContext
-                        .Scores
-                        .Where(s => s.LeaderboardId == leaderboard.Id &&
-                                             s.PlayerId != resultScore.PlayerId && 
-                                             s.AccLeft != 0 && 
-                                             s.AccRight != 0 && 
-                                             s.AccLeft == statistic.accuracyTracker.accLeft && 
-                                             s.AccRight == statistic.accuracyTracker.accRight &&
-                                             s.BaseScore == resultScore.BaseScore)
-                        .Select(s => s.PlayerId)
-                        .FirstOrDefaultAsync();
-                    if (sameAccScore != null)
+                    if (leaderboard.Difficulty.Notes > 30 && !allow && statistic != null)
                     {
-                        await SaveFailedScore(dbContext, resultScore, leaderboard, "Acc is suspiciously exact same as: " + sameAccScore + "'s score");
+                        var sameAccScore = await dbContext
+                            .Scores
+                            .Where(s => s.LeaderboardId == leaderboard.Id &&
+                                                 s.PlayerId != resultScore.PlayerId && 
+                                                 s.AccLeft != 0 && 
+                                                 s.AccRight != 0 && 
+                                                 s.AccLeft == statistic.accuracyTracker.accLeft && 
+                                                 s.AccRight == statistic.accuracyTracker.accRight &&
+                                                 s.BaseScore == resultScore.BaseScore)
+                            .Select(s => s.PlayerId)
+                            .FirstOrDefaultAsync();
+                        if (sameAccScore != null)
+                        {
+                            await SaveFailedScore(dbContext, resultScore, leaderboard, "Acc is suspiciously exact same as: " + sameAccScore + "'s score");
 
-                        return;
+                            return;
+                        }
                     }
                 }
 
@@ -1380,7 +1375,7 @@ namespace BeatLeader_Server.Controllers
                     });
                 }
 
-                await CollectStats(dbContext, storageContext, replay, offsets, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, resultScore);
+                await CollectStats(dbContext, storageContext, replay, offsets, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, resultScore, statistic);
                 await dbContext.BulkSaveChangesAsync();
 
                 await SocketController.TryPublishNewScore(resultScore, dbContext);
@@ -1451,6 +1446,8 @@ namespace BeatLeader_Server.Controllers
                 await SaveFailedScore(dbContext, resultScore, leaderboard, (e.StackTrace ?? "") + e.ToString());
             }
         }
+
+        
 
         [NonAction]
         private async Task SaveFailedScore(AppContext dbContext, Score score, Leaderboard leaderboard, string failReason) {
@@ -1539,6 +1536,7 @@ namespace BeatLeader_Server.Controllers
             float time = 0, 
             EndType type = 0,
             Score? resultScore = null,
+            ScoreStatistic? statistic = null,
             int? forceTimeset = null) {
 
             if (storageContext == null) return;
@@ -1548,7 +1546,6 @@ namespace BeatLeader_Server.Controllers
                 (resultScore, int maxScore) = ReplayUtils.ProcessReplay(replay, leaderboard.Difficulty, time);
 
                 if (type == EndType.Clear) {
-                    ScoreStatistic? statistic = null;
 
                     try
                     {
@@ -1584,7 +1581,7 @@ namespace BeatLeader_Server.Controllers
                 fileName = fileName ?? $"{replay.info.playerID}-{timeset}{(replay.info.speed != 0 ? "-practice" : "")}{(replay.info.failTime != 0 ? "-fail" : "")}-{replay.info.difficulty}-{replay.info.mode}-{replay.info.hash}.bsor",
                 playerId = playerId,
                 leaderboardId = leaderboard.Id,
-                time = time,
+                time = statistic?.winTracker.failTime > 0 ? statistic!.winTracker.failTime : time,
                 startTime = replay.info.startTime,
                 type = type,
                 score = resultScore,
