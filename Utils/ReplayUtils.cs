@@ -102,6 +102,8 @@ namespace BeatLeader_Server.Utils
                     return 0;
             }
 
+            if (curve[0].Item1 <= value) return (float)curve[0].Item2;
+
             int i = 0;
             for (; i < curve.Count; i++)
             {
