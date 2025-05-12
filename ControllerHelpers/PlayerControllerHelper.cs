@@ -203,6 +203,18 @@ namespace BeatLeader_Server.ControllerHelpers {
                 return preSorted.ThenOrder(order, p => p.AllContextsPp);
             }
 
+            if (sortBy == PlayerSortBy.Prestige) {
+                return preSorted.ThenOrder(order, p => p.Prestige);
+            }
+
+            if (sortBy == PlayerSortBy.Experience) {
+                return preSorted.ThenOrder(order, p => p.Experience);
+            }
+
+            if (sortBy == PlayerSortBy.Level) {
+                return preSorted.ThenOrder(order, p => p.Level);
+            }
+
             if (sortBy == PlayerSortBy.Pp) {
                 switch (ppType)
                 {

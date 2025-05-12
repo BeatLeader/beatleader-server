@@ -480,6 +480,10 @@ namespace BeatLeader_Server.Controllers
                         ScoreStats = p.ScoreStats,
                         Alias = p.Alias,
 
+                        Level = p.Level,
+                        Prestige = p.Prestige,
+                        Experience = p.Experience,
+
                         Pp = p.Pp,
                         TechPp= p.TechPp,
                         AccPp = p.AccPp,

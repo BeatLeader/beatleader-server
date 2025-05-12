@@ -58,7 +58,10 @@ public enum PlayerSortBy {
     ReplaysWatched,
     DailyImprovements,
     Timing,
-    AllContextsPp
+    AllContextsPp,
+    Level,
+    Prestige,
+    Experience,
 }
 
 public enum ClanSortBy {

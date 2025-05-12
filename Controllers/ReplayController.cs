@@ -561,7 +561,7 @@ namespace BeatLeader_Server.Controllers
                     float exp;
                     if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
                     {
-                        float star = resultScore.ModifiedStars;
+                        float star = Math.Max(resultScore.ModifiedStars, 0);
                         exp = ReplayUtils.GetCurveVal(0, star);
                     }
                     else
