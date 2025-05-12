@@ -3415,6 +3415,9 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int>("CountryRank")
                         .HasColumnType("int");
 
+                    b.Property<float>("Experience")
+                        .HasColumnType("real");
+
                     b.Property<float>("FcAccuracy")
                         .HasColumnType("real");
 

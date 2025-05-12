@@ -17,7 +17,7 @@ namespace BeatLeader_Server.Migrations.Storage
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.2")
+                .HasAnnotation("ProductVersion", "9.0.4")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -71,6 +71,9 @@ namespace BeatLeader_Server.Migrations.Storage
 
                     b.Property<int>("CountryRank")
                         .HasColumnType("int");
+
+                    b.Property<float>("Experience")
+                        .HasColumnType("real");
 
                     b.Property<float>("FcAccuracy")
                         .HasColumnType("real");

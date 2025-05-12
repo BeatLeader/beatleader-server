@@ -571,6 +571,8 @@ namespace BeatLeader_Server.Controllers
 
                     float gainedExp = exp * accMult * durMult / (resultScore.Modifiers.Contains("NF") ? 2f : 1f);
 
+                    resultScore.Experience = gainedExp;
+
                     player.Experience += (int)Math.Round(gainedExp);
                     while (player.Experience > 0)
                     {
@@ -1549,6 +1551,40 @@ namespace BeatLeader_Server.Controllers
                     try
                     {
                         (statistic, string? error) = ReplayStatisticUtils.ProcessReplay(replay, leaderboard);
+                        if (replay.notes.Count >= 20)
+                        {
+                            int baseExp = 500;
+                            int incExp = 50;
+
+                            float accuracy = resultScore.Accuracy;
+                            float firstNoteTime = replay.notes.FirstOrDefault()?.eventTime ?? 0.0f;
+                            float lastNoteTime = replay.notes.LastOrDefault()?.eventTime ?? 0.0f;
+                            float duration = lastNoteTime - firstNoteTime;
+                            if (resultScore.Modifiers.Contains("SS")) { 
+                                duration /= 0.85f;
+                            } else if (resultScore.Modifiers.Contains("FS")) {
+                                duration /= 1.2f;
+                            } else if (resultScore.Modifiers.Contains("SF")) {
+                                duration /= 1.5f;
+                            }
+
+                            float exp;
+                            if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
+                            {
+                                float star = Math.Max(resultScore.ModifiedStars, 0);
+                                exp = ReplayUtils.GetCurveVal(0, star);
+                            }
+                            else
+                            {
+                                exp = 1000;
+                            }
+                            float accMult = ReplayUtils.GetCurveVal(1, accuracy);
+                            float durMult = ReplayUtils.GetCurveVal(2, duration);
+
+                            float gainedExp = exp * accMult * durMult / (resultScore.Modifiers.Contains("NF") ? 2f : 1f);
+
+                            resultScore.Experience = gainedExp;
+                        }
                     } catch (Exception e) {
                     }
                     if (statistic != null) {
