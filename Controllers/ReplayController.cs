@@ -539,8 +539,6 @@ namespace BeatLeader_Server.Controllers
             bool keepContext = false;
              
             try {
-                // This is clear only. Maybe NF should be 50% exp.
-                // Maybe add first map clear bonus or something (small).
                 if (replay.notes.Count >= 20 && player.Level < 100)
                 {
                     int baseExp = 500;
@@ -583,6 +581,7 @@ namespace BeatLeader_Server.Controllers
                             player.Experience -= reqExp;
                             if (player.Level == 100)
                             {
+                                player.Experience = 0;
                                 break;
                             }
                         }
