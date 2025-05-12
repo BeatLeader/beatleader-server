@@ -539,7 +539,7 @@ namespace BeatLeader_Server.Controllers
             bool keepContext = false;
              
             try {
-                if (replay.notes.Count >= 20 && player.Level < 100)
+                if (replay.notes.Count >= 20)
                 {
                     int baseExp = 500;
                     int incExp = 50;
@@ -573,23 +573,26 @@ namespace BeatLeader_Server.Controllers
 
                     resultScore.Experience = gainedExp;
 
-                    player.Experience += (int)Math.Round(gainedExp);
-                    while (player.Experience > 0)
+                    if (player.Level < 100)
                     {
-                        var reqExp = baseExp + (incExp * player.Level);
-                        if (player.Experience >= reqExp)
+                        player.Experience += (int)Math.Round(gainedExp);
+                        while (player.Experience > 0)
                         {
-                            player.Level++;
-                            player.Experience -= reqExp;
-                            if (player.Level == 100)
+                            var reqExp = baseExp + (incExp * player.Level);
+                            if (player.Experience >= reqExp)
                             {
-                                player.Experience = 0;
+                                player.Level++;
+                                player.Experience -= reqExp;
+                                if (player.Level == 100)
+                                {
+                                    player.Experience = 0;
+                                    break;
+                                }
+                            }
+                            else
+                            {
                                 break;
                             }
-                        }
-                        else
-                        {
-                            break;
                         }
                     }
                 }
