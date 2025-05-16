@@ -409,7 +409,7 @@ namespace BeatLeader_Server.Controllers
                     time = replay.info.failTime;
                     forcetimeset = int.Parse(replay.info.timestamp);
                 }
-                await CollectStats(dbContext, storageContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, time, type, null, null, forcetimeset);
+                await CollectStats(dbContext, storageContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, time, type, player, null, null, forcetimeset);
                 return Ok();
             }
 
@@ -553,7 +553,7 @@ namespace BeatLeader_Server.Controllers
                     maxScore,
                     allow);
                 if (stats) {
-                    await CollectStats(dbContext, storageContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, replay.frames.Last().time, EndType.Clear, null);
+                    await CollectStats(dbContext, storageContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, replay.frames.Last().time, EndType.Clear, player, null);
                 }
             } catch (Exception e) {
 
@@ -1320,7 +1320,7 @@ namespace BeatLeader_Server.Controllers
                     });
                 }
 
-                await CollectStats(dbContext, storageContext, replay, offsets, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, resultScore, statistic);
+                await CollectStats(dbContext, storageContext, replay, offsets, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, player, resultScore, statistic);
                 await dbContext.BulkSaveChangesAsync();
 
                 await SocketController.TryPublishNewScore(resultScore, dbContext);
@@ -1480,6 +1480,7 @@ namespace BeatLeader_Server.Controllers
             Leaderboard leaderboard,
             float time = 0, 
             EndType type = 0,
+            Player? player = null,
             Score? resultScore = null,
             ScoreStatistic? statistic = null,
             int? forceTimeset = null) {
@@ -1520,12 +1521,10 @@ namespace BeatLeader_Server.Controllers
                     }
                 }
 
-                if (type != EndType.Practice && type != EndType.Unknown)
+                if (player != null && type != EndType.Practice && type != EndType.Unknown)
                 {
                     if (replay.notes.Count >= 20)
                     {
-                        Player player = resultScore.Player;
-
                         int baseExp = 500;
                         int incExp = 50;
 
