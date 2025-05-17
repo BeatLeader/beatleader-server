@@ -42,6 +42,7 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/experience/prestige")]
         [SwaggerOperation(Summary = "Reset the current player level and prestige", Description = "Reset the current logged in player level and prestige")]
         [SwaggerResponse(200, "Successful prestige")]
+        [SwaggerResponse(400, "Player is already max prestige")]
         [SwaggerResponse(404, "Player not found")]
         public async Task<ActionResult> PrestigePlayer()
         {
@@ -51,6 +52,11 @@ namespace BeatLeader_Server.Controllers
             if (currentPlayer == null)
             {
                 return NotFound();
+            }
+
+            if (currentPlayer.Prestige == 10)
+            {
+                return BadRequest();
             }
 
             if (currentPlayer.Level >= 100)
