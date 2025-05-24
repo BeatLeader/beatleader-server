@@ -263,7 +263,7 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 string image = playlist.image;
-                image = image.Replace("data:image/png;base64,", "").Replace("data:image/jpeg;base64,", "");
+                image = image.Replace("data:image/png;base64,", "").Replace("data:image/jpeg;base64,", "").Replace("base64,", "");
 
                 return File(new MemoryStream(Convert.FromBase64String(image)), "image/png");
             }

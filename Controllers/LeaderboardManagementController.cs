@@ -217,6 +217,51 @@ namespace BeatLeader_Server.Controllers {
             return Ok();
         }
 
+        [HttpPost("~/leaderboard/feature")]
+        public async Task<ActionResult> FeatureLeaderboard(
+            [FromQuery] string leaderboardId,
+            [FromQuery] int featuredId) {
+
+            if (HttpContext != null)
+            {
+                string userId = HttpContext.CurrentUserID(_context);
+                var currentPlayer = await _context.Players.FindAsync(userId);
+
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+
+            var featuredPlaylist = await _context.FeaturedPlaylist.FirstOrDefaultAsync(f => f.Id == featuredId);
+            if (featuredPlaylist == null) {
+                return NotFound("Featured not found");
+            }
+            
+            var lb = await _context.Leaderboards.Where(lb =>
+                                lb.Id == leaderboardId)
+                                .Include(lb => lb.FeaturedPlaylists)
+                                .FirstOrDefaultAsync();
+
+            if (lb == null) {
+                return NotFound("LB not found");
+            }
+
+            if (lb != null)
+            {
+                if (lb.FeaturedPlaylists == null)
+                {
+                    lb.FeaturedPlaylists = new List<FeaturedPlaylist>();
+                }
+
+                lb.FeaturedPlaylists.Add(featuredPlaylist);
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok();
+        }
+
+
         [HttpDelete("~/leaderboards/feature/{id}")]
         public async Task<ActionResult> DeleteFeatureLeaderboards(
                int id)
