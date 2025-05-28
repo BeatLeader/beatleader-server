@@ -514,6 +514,12 @@ namespace BeatLeader_Server.Controllers
                 return BadRequest("Please stay on the platform.");
             }
 
+            if (!leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles) && 
+                ReplayUtils.IsPlayerCheesingPauses(replay)) {
+                Thread.Sleep(8000); // Error may not show if returned too quick
+                return BadRequest("Please pause less or stay still on pause.");
+            }
+
             if (ipLocation != null && ip != null) {
                 var location = ipLocation.IPQuery(ip);
                 var hash = _geoHasher.Encode(Math.Round(location.Latitude / 3f) * 3, Math.Round(location.Longitude / 3f) * 3, 3);

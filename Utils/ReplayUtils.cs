@@ -807,6 +807,44 @@ namespace BeatLeader_Server.Utils
             return true;
         }
 
+        public static bool IsPlayerCheesingPauses(Replay replay) {
+            if (replay.notes.Count < 2) return false;
+
+            var duration = replay.notes.OrderBy(n => n.spawnTime).Last().spawnTime - replay.notes.OrderBy(n => n.spawnTime).First().spawnTime;
+            if (replay.pauses.Count < Math.Max(Math.Max(replay.notes.Count / 100, duration / 60), 2)) return false;
+
+            float teleportedDistance = 0;
+            int pauseIndex = 0;
+            var currentPause = replay.pauses[pauseIndex];
+
+            var beforeX = 0f;
+            var beforeY = 0f;
+            var pauseStarted = false;
+            for (int i = 0; i < replay.frames.Count; i++) {
+                var currentFrame = replay.frames[i];
+                if (currentFrame.time >= currentPause.time && !pauseStarted) {
+                    beforeX = currentFrame.head.position.x;
+                    beforeY = currentFrame.head.position.y;
+                    pauseStarted = true;
+                    continue;
+                }
+
+                if (currentFrame.time >= currentPause.time && pauseStarted) {
+                    teleportedDistance += Math.Min((float)Math.Sqrt(Math.Pow(currentFrame.head.position.x - beforeX, 2) + Math.Pow(currentFrame.head.position.y - beforeY, 2)), 1f);
+
+                    pauseStarted = false;
+                    if (pauseIndex < replay.pauses.Count - 1) {
+                        pauseIndex++;
+                        currentPause = replay.pauses[pauseIndex];
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            return teleportedDistance > Math.Max(duration / 60, 2);
+        }
+
         public static bool IsNewScoreBetter(Score? oldScore, Score newScore) {
             if (oldScore == null) return true;
             if (oldScore.Modifiers.Contains("OP")) return true;

@@ -211,8 +211,8 @@ namespace BeatLeader_Server.Services {
 
                 var lbs = (await _context.Leaderboards.AsNoTracking().Select(l => new {
                     l.Id,
-                    Daily = l.Scores.Where(s => s.Timepost > yesterday).Count(),
-                    Weekly = l.Scores.Where(s => s.Timepost > lastWeek).Count()
+                    Daily = l.Scores.Where(s => s.Timepost > yesterday && !s.Banned).Count(),
+                    Weekly = l.Scores.Where(s => s.Timepost > lastWeek && !s.Banned).Count()
                 }).ToListAsync())
                 .Select(lb => new Leaderboard {
                     Id = lb.Id,

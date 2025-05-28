@@ -273,7 +273,8 @@ namespace BeatLeader_Server.Controllers {
                         Weight = s.Weight,
                         AccLeft = s.AccLeft,
                         AccRight = s.AccRight,
-                        MaxStreak = s.MaxStreak
+                        MaxStreak = s.MaxStreak,
+                        Experience = s.Experience
                     })
                     
                     .ToListAsync();
