@@ -1506,33 +1506,30 @@ namespace BeatLeader_Server.Controllers
             if (resultScore == null) {
                 (resultScore, int maxScore) = ReplayUtils.ProcessReplay(replay, leaderboard.Difficulty, time);
 
-                if (type == EndType.Clear) {
-
-                    try
-                    {
-                        (statistic, string? error) = ReplayStatisticUtils.ProcessReplay(replay, leaderboard);
-                    } catch (Exception e) {
-                    }
-                    if (statistic != null) {
-                        resultScore.AccLeft = statistic.accuracyTracker.accLeft;
-                        resultScore.AccRight = statistic.accuracyTracker.accRight;
-                        resultScore.MaxCombo = statistic.hitTracker.maxCombo;
-                        resultScore.FcAccuracy = statistic.accuracyTracker.fcAcc;
-                        resultScore.MaxStreak = statistic.hitTracker.maxStreak;
-                        resultScore.LeftTiming = statistic.hitTracker.leftTiming;
-                        resultScore.RightTiming = statistic.hitTracker.rightTiming;
-                        if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
-                            resultScore.FcPp = ReplayUtils.PpFromScore(
-                                resultScore.FcAccuracy, 
-                                resultScore.ValidContexts,
-                                resultScore.Modifiers, 
-                                leaderboard.Difficulty.ModifierValues, 
-                                leaderboard.Difficulty.ModifiersRating, 
-                                leaderboard.Difficulty.AccRating ?? 0, 
-                                leaderboard.Difficulty.PassRating ?? 0, 
-                                leaderboard.Difficulty.TechRating ?? 0, 
-                                leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
-                        }
+                try
+                {
+                    (statistic, string? error) = ReplayStatisticUtils.ProcessReplay(replay, leaderboard);
+                } catch (Exception e) {
+                }
+                if (statistic != null) {
+                    resultScore.AccLeft = statistic.accuracyTracker.accLeft;
+                    resultScore.AccRight = statistic.accuracyTracker.accRight;
+                    resultScore.MaxCombo = statistic.hitTracker.maxCombo;
+                    resultScore.FcAccuracy = statistic.accuracyTracker.fcAcc;
+                    resultScore.MaxStreak = statistic.hitTracker.maxStreak;
+                    resultScore.LeftTiming = statistic.hitTracker.leftTiming;
+                    resultScore.RightTiming = statistic.hitTracker.rightTiming;
+                    if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
+                        resultScore.FcPp = ReplayUtils.PpFromScore(
+                            resultScore.FcAccuracy, 
+                            resultScore.ValidContexts,
+                            resultScore.Modifiers, 
+                            leaderboard.Difficulty.ModifierValues, 
+                            leaderboard.Difficulty.ModifiersRating, 
+                            leaderboard.Difficulty.AccRating ?? 0, 
+                            leaderboard.Difficulty.PassRating ?? 0, 
+                            leaderboard.Difficulty.TechRating ?? 0, 
+                            leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
                     }
                 }
             }
@@ -1618,6 +1615,7 @@ namespace BeatLeader_Server.Controllers
                 leaderboardId = leaderboard.Id,
                 time = statistic?.winTracker.failTime > 0 ? statistic!.winTracker.failTime : time,
                 startTime = replay.info.startTime,
+                speed = replay.info.speed,
                 type = type,
                 score = resultScore,
                 saveReplay = replay.frames.Count > 0 && replay.info.score > 0 

@@ -159,7 +159,8 @@ namespace BeatLeader_Server.Controllers
                             Weight = s.Weight,
                             AccLeft = s.AccLeft,
                             AccRight = s.AccRight,
-                            MaxStreak = s.MaxStreak
+                            MaxStreak = s.MaxStreak,
+                            Experience = s.Experience
                         })
                         .ToListAsync()
                 };
@@ -350,6 +351,17 @@ namespace BeatLeader_Server.Controllers
                 })
                 .ToListAsync();
 
+            if (attemptsList.Count == 0) {
+                return new AttemptsGraph {
+                    Count = 0,
+                    TodayCount = 0,
+                    WeekCount = 0,
+                    SuccessRate = 0,
+                    Duration = 0,
+                    FailurePoints = null
+                };
+            }
+
             foreach (var item in attemptsList.Where(ls => ls.Modifiers?.Contains("NF") == true)) {
                 item.Type = EndType.Fail;
             }
@@ -378,9 +390,9 @@ namespace BeatLeader_Server.Controllers
                 var timeEnd = (maxTime * (i + 1)) / segments;
                 
                 var timePoint = new FailurePoint {
-                    Fails = attemptsList.Count(a => a.Type == EndType.Fail && a.Time >= timeStart && a.Time < timeEnd) / allFails,
-                    Restarts = attemptsList.Count(a => a.Type == EndType.Restart && a.Time >= timeStart && a.Time < timeEnd) / allFails,
-                    Quits = attemptsList.Count(a => a.Type == EndType.Quit && a.Time >= timeStart && a.Time < timeEnd) / allFails,
+                    Fails = allFails == 0 ? 0 : attemptsList.Count(a => a.Type == EndType.Fail && a.Time >= timeStart && a.Time < timeEnd) / allFails,
+                    Restarts = allFails == 0 ? 0 : attemptsList.Count(a => a.Type == EndType.Restart && a.Time >= timeStart && a.Time < timeEnd) / allFails,
+                    Quits = allFails == 0 ? 0 : attemptsList.Count(a => a.Type == EndType.Quit && a.Time >= timeStart && a.Time < timeEnd) / allFails,
                 };
                 failurePoints.Add(timePoint);
             }
