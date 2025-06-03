@@ -661,7 +661,7 @@ namespace BeatLeader_Server.Controllers
 
             if (user.Player.Banned)
             {
-                return BadRequest("This player are banned!");
+                return BadRequest("This player is banned!");
             }
 
             if (user.BannedClans.FirstOrDefault(c => c.Id == clan.Id) != null)

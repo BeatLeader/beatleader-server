@@ -160,7 +160,8 @@ namespace BeatLeader_Server.Controllers
                             AccLeft = s.AccLeft,
                             AccRight = s.AccRight,
                             MaxStreak = s.MaxStreak,
-                            Experience = s.Experience
+                            Experience = s.Experience,
+                            Speed = s.Speed
                         })
                         .ToListAsync()
                 };
@@ -382,12 +383,12 @@ namespace BeatLeader_Server.Controllers
             var maxTime = attemptsList.Max(a => a.Time);
             var segments = Math.Min(100, (int)Math.Ceiling(maxTime));
             var failurePoints = new List<FailurePoint>();
-
-            var allFails = (float)attemptsList.Count(a => a.Type == EndType.Fail || a.Type == EndType.Restart || a.Type == EndType.Quit);
             
             for (int i = 0; i < segments; i++) {
                 var timeStart = (maxTime * i) / segments;
                 var timeEnd = (maxTime * (i + 1)) / segments;
+
+                var allFails = (float)attemptsList.Count(a => a.Time >= timeStart || a.Type == EndType.Clear);
                 
                 var timePoint = new FailurePoint {
                     Fails = allFails == 0 ? 0 : attemptsList.Count(a => a.Type == EndType.Fail && a.Time >= timeStart && a.Time < timeEnd) / allFails,
