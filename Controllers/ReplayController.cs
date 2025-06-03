@@ -1505,11 +1505,12 @@ namespace BeatLeader_Server.Controllers
 
             if (resultScore == null) {
                 (resultScore, int maxScore) = ReplayUtils.ProcessReplay(replay, leaderboard.Difficulty, time);
-
+                string? error = null;
                 try
                 {
-                    (statistic, string? error) = ReplayStatisticUtils.ProcessReplay(replay, leaderboard);
+                    (statistic, error) = ReplayStatisticUtils.ProcessReplay(replay, leaderboard, true);
                 } catch (Exception e) {
+                    Console.WriteLine($"Attemp stats error: {e}");
                 }
                 if (statistic != null) {
                     resultScore.AccLeft = statistic.accuracyTracker.accLeft;

@@ -30,6 +30,12 @@ namespace BeatLeader_Server.Services
                     Console.WriteLine("SERVICE-STARTED DailyRefresh");
 
                     try {
+                        await CleanSearches();
+                    } catch (Exception e) {
+                        Console.WriteLine($"EXCEPTION DailyRefresh {e}");
+                    }
+
+                    try {
                         await FetchMapOfTheWeek();
                     } catch (Exception e) {
                         Console.WriteLine($"EXCEPTION DailyRefresh {e}");
@@ -71,6 +77,23 @@ namespace BeatLeader_Server.Services
                 await Task.Delay(TimeSpan.FromHours(hoursUntil21), stoppingToken);
             }
             while (!stoppingToken.IsCancellationRequested);
+        }
+
+        public async Task CleanSearches()
+        {
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+
+                _context.SongSearches.BulkDelete(_context.SongSearches);
+                _context.PlayerSearches.BulkDelete(_context.PlayerSearches);
+
+                await _context.Database.ExecuteSqlRawAsync(
+                    """
+                    DBCC CHECKIDENT ('dbo.SongSearches', RESEED, 0);
+                    DBCC CHECKIDENT ('dbo.PlayerSearches', RESEED, 0);
+                    """);
+            }
         }
 
         public async Task RefreshPatreon()

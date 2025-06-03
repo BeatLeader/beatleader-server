@@ -113,6 +113,8 @@ namespace BeatLeader_Server.Utils
                 }
             }
 
+            if (i == curve.Count) return 0;
+
             if (i == 0)
             {
                 i = 1;
