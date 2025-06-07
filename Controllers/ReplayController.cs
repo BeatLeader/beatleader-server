@@ -89,7 +89,12 @@ namespace BeatLeader_Server.Controllers
                     id = accountLink.SteamID;
                 }
             }
-            return await PostReplayFromBody(dbContext, storageContext, id);
+            var result = await PostReplayFromBody(dbContext, storageContext, id);
+            if (result.Value.Status == ScoreUploadStatus.Uploaded) {
+                return result.Value.Score;
+            } else {
+                return BadRequest(result.Value.Description);
+            }
         }
 
         [HttpPut("~/replayoculus"), DisableRequestSizeLimit]
@@ -120,7 +125,53 @@ namespace BeatLeader_Server.Controllers
             }
 
             var result = await PostReplayFromBody(dbContext, storageContext, userId, time, type);
-            if (result.Value == null && result.Result?.GetType() != typeof(ObjectResult)) {
+            if (result.Value.Status == ScoreUploadStatus.Error) {
+                await dbContext.DisposeAsync();
+                if (storageContext != null) {
+                    await storageContext.DisposeAsync();
+                }
+            }
+            if (Response.Headers.ContainsKey("Set-Cookie")) {
+                Response.Headers.Remove("Set-Cookie");
+            }
+            if (result.Value.Status == ScoreUploadStatus.Uploaded) {
+                return result.Value.Score;
+            } else if (result.Value.Status == ScoreUploadStatus.Attempt) {
+                return Ok();
+            } else {
+                return BadRequest(result.Value.Description);
+            }
+        }
+
+        [HttpPut("~/v2/replayoculus"), DisableRequestSizeLimit]
+        [Authorize]
+        public async Task<ActionResult<ScoreUploadResponse>> PostOculusReplayV2(
+            [FromQuery] float time = 0,
+            [FromQuery] EndType type = 0)
+        {
+            // DB Context disposed manually
+            var dbContext = _dbFactory.CreateDbContext();
+            StorageContext? storageContext = _storageFactory.CreateDbContext();
+            string? userId = HttpContext.CurrentUserID(dbContext);
+
+            if (userId == null)
+            {
+                dbContext.Dispose();
+                if (storageContext != null) {
+                    storageContext.Dispose();
+                }
+                return Unauthorized("User is not authorized");
+            }
+
+            try {
+                await storageContext.PlayerLeaderboardStats.Select(s => s.Id).FirstAsync();
+            } catch (Exception e) {
+                Console.WriteLine($"EXCEPTION storage DB: {e}");
+                storageContext = null;
+            }
+
+            var result = await PostReplayFromBody(dbContext, storageContext, userId, time, type);
+            if (result.Value.Status == ScoreUploadStatus.Error) {
                 await dbContext.DisposeAsync();
                 if (storageContext != null) {
                     await storageContext.DisposeAsync();
@@ -135,7 +186,7 @@ namespace BeatLeader_Server.Controllers
         //[HttpPut("~/replayoculusadmin/{playerId}"), DisableRequestSizeLimit]
         [NonAction]
         [Authorize]
-        public async Task<ActionResult<ScoreResponse>> PostOculusReplayAdmin(
+        public async Task<ActionResult<ScoreUploadResponse>> PostOculusReplayAdmin(
             string playerId,
             [FromQuery] float time = 0,
             [FromQuery] EndType type = 0)
@@ -160,7 +211,7 @@ namespace BeatLeader_Server.Controllers
             }
             
             var result = await PostReplay(dbContext, storageContext, playerId, Request.Body, HttpContext, time, type, false, 0);
-            if (result.Value == null) {
+            if (result.Status == ScoreUploadStatus.Error) {
                 await dbContext.DisposeAsync();
                 await storageContext.DisposeAsync();
             }
@@ -212,18 +263,18 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task<ActionResult<ScoreResponse>> PostReplayFromBody(AppContext dbContext, StorageContext? storage, string authenticatedPlayerID, float time = 0, EndType type = 0)
+        public async Task<ActionResult<ScoreUploadResponse>> PostReplayFromBody(AppContext dbContext, StorageContext? storage, string authenticatedPlayerID, float time = 0, EndType type = 0)
         {
             return await PostReplay(dbContext, storage, authenticatedPlayerID, Request.Body, HttpContext, time, type);
         }
 
         [NonAction]
-        public async Task<ActionResult<ScoreResponse>> PostReplayFromCDN(string authenticatedPlayerID, string name, bool backup, bool allow, string timeset, HttpContext context)
+        public async Task<ActionResult<ScoreUploadResponse>> PostReplayFromCDN(string authenticatedPlayerID, string name, bool backup, bool allow, string timeset, HttpContext context)
         {
             // DB Context disposed manually
             var dbContext = _dbFactory.CreateDbContext();
             var storageContext = _storageFactory.CreateDbContext();
-            ActionResult<ScoreResponse> result;
+            ActionResult<ScoreUploadResponse> result;
             if (backup) {
                 string directoryPath = Path.Combine("/root/replays");
                 string filePath = Path.Combine(directoryPath, name);
@@ -255,7 +306,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task<ActionResult<ScoreResponse>> PostReplay(
+        public async Task<ScoreUploadResponse> PostReplay(
             AppContext dbContext,
             StorageContext? storageContext,
             string authenticatedPlayerID, 
@@ -276,7 +327,10 @@ namespace BeatLeader_Server.Controllers
                 long length = ms.Length;
                 if (length > 200000000)
                 {
-                    return BadRequest("Replay is too big to save, sorry");
+                    return new() {
+                        Status = ScoreUploadStatus.Error,
+                        Description = "Replay is too big to save, sorry"
+                    };
                 }
                 replayData = ms.ToArray();
             }
@@ -287,13 +341,31 @@ namespace BeatLeader_Server.Controllers
             }
             catch (Exception)
             {
-                return BadRequest("Error decoding replay");
+                return new() {
+                    Status = ScoreUploadStatus.Error,
+                    Description = "Error decoding replay"
+                };
             }
             var info = replay?.info;
 
-            if (info == null) return BadRequest("It's not a replay or it has old version.");
-            if (replay.notes.Count == 0) {
-                return BadRequest("Replay is broken, update your mod please.");
+            if (replay == null || info == null) {
+                return new() {
+                    Status = ScoreUploadStatus.Error,
+                    Description = "It's not a replay or it has old version."
+                };
+            }
+            if (replay.notes.Count == 0 || replay.frames.Count == 0) {
+                return new() {
+                    Status = ScoreUploadStatus.Error,
+                    Description = "Replay is broken, update your mod please."
+                };
+            }
+
+            if (replay.info.score <= 0) {
+                return new() {
+                    Status = ScoreUploadStatus.Error,
+                    Description = "The score should be positive"
+                };
             }
 
             var gameversion = replay.info.gameVersion.Split(".");
@@ -304,8 +376,10 @@ namespace BeatLeader_Server.Controllers
 
             var version = info.version.Split(".");
             if (version.Length < 3 || int.Parse(version[1]) < 3) {
-                Thread.Sleep(8000); // Error may not show if returned too quick
-                return BadRequest("Please update your mod. v0.3 or higher");
+                return new() {
+                    Status = ScoreUploadStatus.Error,
+                    Description = "Please update your mod. v0.3 or higher"
+                };
             }
 
             info.playerID = authenticatedPlayerID;
@@ -323,14 +397,19 @@ namespace BeatLeader_Server.Controllers
                 leaderboard = await LeaderboardControllerHelper.GetByHash(dbContext, info.hash, info.difficulty, info.mode);
                 if (leaderboard == null)
                 {
-                    return NotFound("No such leaderboard exists.");
+                    return new() {
+                        Status = ScoreUploadStatus.Error,
+                        Description = "No such leaderboard exists."
+                    };
                 }
             }
 
             var gameVersion = info.gameVersion.Split(".");
             if (gameVersion.Length == 3 && int.Parse(gameVersion[1]) < 40 && leaderboard.Difficulty.Requirements.HasFlag(Requirements.VNJS)) {
-                Thread.Sleep(8000); // Error may not show if returned too quick
-                return BadRequest("Variable NJS maps supported only on 1.40+");
+                return new() {
+                    Status = ScoreUploadStatus.Error,
+                    Description = "Variable NJS maps supported only on 1.40+"
+                };
             }
 
             var ip = context.Request.HttpContext.GetIpAddress();
@@ -385,11 +464,19 @@ namespace BeatLeader_Server.Controllers
             if (ip != null) {
                 string hashId = AuthUtils.HashIp(ip);
                 if (await dbContext.IpBans.AnyAsync(ib => ib.HashId == hashId)) {
-                    return BadRequest("You are banned!");
+                    return new() {
+                        Status = ScoreUploadStatus.Error,
+                        Description = "You are banned!"
+                    };
                 }
             }
 
-            if (!player.Bot && player.Banned) return BadRequest("You are banned!");
+            if (!player.Bot && player.Banned) { 
+                return new() {
+                    Status = ScoreUploadStatus.Error,
+                    Description = "You are banned!"
+                };
+            }
 
             //if (_replayRecalculator != null && 
             //    leaderboard.Difficulty.Requirements.HasFlag(Requirements.V3Pepega) &&
@@ -409,16 +496,25 @@ namespace BeatLeader_Server.Controllers
                     time = replay.info.failTime;
                     forcetimeset = int.Parse(replay.info.timestamp);
                 }
-                await CollectStats(dbContext, storageContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, time, type, player, null, null, forcetimeset);
-                return Ok();
+                var returnScore = await CollectStats(dbContext, storageContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, time, type, player, null, null, forcetimeset);
+
+                var resultResponse = new ScoreUploadResponse {
+                    Status = ScoreUploadStatus.Attempt,
+                    Description = "New attempt"
+                };
+                resultResponse.Score = RemoveLeaderboard(returnScore, returnScore.Rank);
+                resultResponse.Score.Player = PostProcessSettings(resultResponse.Score.Player, false);
+
+                return resultResponse;
             }
 
-            if (replay.frames.Count == 0) {
-                return BadRequest("Replay is broken, update your mod please.");
-            }
+            
 
             if (replay.notes.Last().eventTime - replay.frames.Last().time > 2) {
-                return BadRequest("Replay missing frame data past note data.");
+                return new() {
+                    Status = ScoreUploadStatus.Error,
+                    Description = "Replay missing frame data past note data."
+                };
             }
 
             if (leaderboard.Difficulty.Notes > 0 && replay.notes.Count >= (leaderboard.Difficulty.Notes + leaderboard.Difficulty.Chains) * 1.8) {
@@ -446,9 +542,6 @@ namespace BeatLeader_Server.Controllers
 
                         replayData = recalculatedStream.ToArray();
                     }
-                    if (error != null) {
-                        return BadRequest("Failed to delete duplicate note: " + error);
-                    }
                 }
             }
 
@@ -456,15 +549,13 @@ namespace BeatLeader_Server.Controllers
                 await RefreshNoteCount(dbContext, leaderboard);
             }
 
-            if (replay.info.score <= 0) {
-                Thread.Sleep(8000); // Error may not show if returned too quick
-                return BadRequest("The score should be positive");
-            }
-
             if ((leaderboard.Difficulty.Status.WithRating()) && leaderboard.Difficulty.Notes != 0 && replay.notes.Count > (leaderboard.Difficulty.Notes + leaderboard.Difficulty.Chains)) {
                 string? error = ReplayUtils.RemoveDuplicates(replay, leaderboard);
                 if (error != null) {
-                    return BadRequest("Failed to delete duplicate note: " + error);
+                    return new() {
+                        Status = ScoreUploadStatus.Error,
+                        Description = "Failed to delete duplicate note: " + error
+                    };
                 }
             }
 
@@ -510,14 +601,18 @@ namespace BeatLeader_Server.Controllers
             if (!leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles) && 
                 !njsExceptions.Contains(leaderboard.Id) && 
                 !ReplayUtils.IsPlayerCuttingNotesOnPlatform(replay)) {
-                Thread.Sleep(8000); // Error may not show if returned too quick
-                return BadRequest("Please stay on the platform.");
+                return new() {
+                    Status = ScoreUploadStatus.Error,
+                    Description = "Please stay on the platform."
+                };
             }
 
             if (!leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles) && 
                 ReplayUtils.IsPlayerCheesingPauses(replay)) {
-                Thread.Sleep(8000); // Error may not show if returned too quick
-                return BadRequest("Please pause less or stay still on pause.");
+                return new() {
+                    Status = ScoreUploadStatus.Error,
+                    Description = "Please pause less or stay still on pause."
+                };
             }
 
             if (ipLocation != null && ip != null) {
@@ -540,12 +635,13 @@ namespace BeatLeader_Server.Controllers
             SocketController.ScoreWasUploaded(resultScore, dbContext);
             resultScore.LeaderboardId = null;
 
-            ActionResult<ScoreResponse> result = BadRequest("Exception occured, ping NSGolova"); 
-            bool stats = false;
-            bool keepContext = false;
+            var result = new ScoreUploadResponse {
+                Status = ScoreUploadStatus.Error,
+                Description = "Exception occured, ping NSGolova"
+            };
              
             try {
-                (result, stats, keepContext) = await UploadScores(
+                result = await UploadScores(
                     dbContext,
                     storageContext,
                     leaderboard, 
@@ -558,8 +654,10 @@ namespace BeatLeader_Server.Controllers
                     context, 
                     maxScore,
                     allow);
-                if (stats) {
-                    await CollectStats(dbContext, storageContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, replay.frames.Last().time, EndType.Clear, player, null);
+                if (result.Status != ScoreUploadStatus.Uploaded) {
+                    var returnScore = await CollectStats(dbContext, storageContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, replay.frames.Last().time, EndType.Clear, player, null);
+                    result.Score = RemoveLeaderboard(resultScore, resultScore.Rank);
+                    result.Score.Player = PostProcessSettings(result.Score.Player, false);
                     try
                     {
                         await dbContext.SaveChangesAsync();
@@ -593,13 +691,8 @@ namespace BeatLeader_Server.Controllers
                 await dbContext.SaveChangesAsync();
             }
 
-            if (!keepContext) {
+            if (result.Status != ScoreUploadStatus.Uploaded) {
                 await dbContext.DisposeAsync();
-            }
-
-            if (info.platform == "oculuspc" && int.Parse(gameversion[1]) < 30 && int.Parse(version[2]) < 10) {
-                Thread.Sleep(2000); // Error may not show if returned too quick
-                return StatusCode(418, "This version of the mod will be disabled on 8th of August, please update.");
             }
 
             return result;
@@ -612,7 +705,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        private async Task<(ActionResult<ScoreResponse>, bool, bool)> UploadScores(
+        private async Task<ScoreUploadResponse> UploadScores(
             AppContext dbContext,
             StorageContext? storageContext,
             Leaderboard leaderboard,
@@ -696,7 +789,10 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (resultScore.ValidContexts == LeaderboardContexts.None) {
-                return (BadRequest("Score is lower than existing one"), true, false);
+                return new() {
+                    Status = ScoreUploadStatus.NonPB,
+                    Description = "Score is lower than existing one"
+                };
             } else {
                 using (_serverTiming.TimeAction("db"))
                 {
@@ -780,7 +876,11 @@ namespace BeatLeader_Server.Controllers
                 var result = RemoveLeaderboard(resultScore, resultScore.Rank);
                 result.Player = PostProcessSettings(result.Player, false);
 
-                return (result, false, true);
+                return new() {
+                    Status = ScoreUploadStatus.Uploaded,
+                    Score = result,
+                    Description = "PB"
+                };
             }
         }
 
@@ -1484,7 +1584,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        private async Task CollectStats(
+        private async Task<Score> CollectStats(
             AppContext dbContext,
             StorageContext? storageContext,
             Replay replay,
@@ -1499,8 +1599,6 @@ namespace BeatLeader_Server.Controllers
             Score? resultScore = null,
             ScoreStatistic? statistic = null,
             int? forceTimeset = null) {
-
-            if (storageContext == null) return;
             int timeset = forceTimeset ?? (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
             if (resultScore == null) {
@@ -1516,7 +1614,9 @@ namespace BeatLeader_Server.Controllers
                     resultScore.AccLeft = statistic.accuracyTracker.accLeft;
                     resultScore.AccRight = statistic.accuracyTracker.accRight;
                     resultScore.MaxCombo = statistic.hitTracker.maxCombo;
-                    resultScore.FcAccuracy = statistic.accuracyTracker.fcAcc;
+                    if (float.IsFinite(statistic.accuracyTracker.fcAcc) && statistic.accuracyTracker.fcAcc > 0) {
+                        resultScore.FcAccuracy = statistic.accuracyTracker.fcAcc;
+                    }
                     resultScore.MaxStreak = statistic.hitTracker.maxStreak;
                     resultScore.LeftTiming = statistic.hitTracker.leftTiming;
                     resultScore.RightTiming = statistic.hitTracker.rightTiming;
@@ -1535,7 +1635,6 @@ namespace BeatLeader_Server.Controllers
                 }
             }
             resultScore.ReplayOffsets = offsets;
-
 
             if (type != EndType.Practice && type != EndType.Unknown && replay.notes.Count >= 20) {
                 int baseExp = 500;
@@ -1609,18 +1708,22 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            await LeaderboardPlayerStatsService.AddJob(new PlayerStatsJob {
-                replayData = fileName != null ? null : replayData,
-                fileName = fileName ?? $"{replay.info.playerID}-{timeset}{(replay.info.speed != 0 ? "-practice" : "")}{(replay.info.failTime != 0 ? "-fail" : "")}-{replay.info.difficulty}-{replay.info.mode}-{replay.info.hash}.bsor",
-                playerId = playerId,
-                leaderboardId = leaderboard.Id,
-                time = statistic?.winTracker.failTime > 0 ? statistic!.winTracker.failTime : time,
-                startTime = replay.info.startTime,
-                speed = replay.info.speed,
-                type = type,
-                score = resultScore,
-                saveReplay = replay.frames.Count > 0 && replay.info.score > 0 
-            }, dbContext, storageContext, _s3Client);
+            if (storageContext != null) {
+                await LeaderboardPlayerStatsService.AddJob(new PlayerStatsJob {
+                    replayData = fileName != null ? null : replayData,
+                    fileName = fileName ?? $"{replay.info.playerID}-{timeset}{(replay.info.speed != 0 ? "-practice" : "")}{(replay.info.failTime != 0 ? "-fail" : "")}-{replay.info.difficulty}-{replay.info.mode}-{replay.info.hash}.bsor",
+                    playerId = playerId,
+                    leaderboardId = leaderboard.Id,
+                    time = statistic?.winTracker.failTime > 0 ? statistic!.winTracker.failTime : time,
+                    startTime = replay.info.startTime,
+                    speed = replay.info.speed,
+                    type = type,
+                    score = resultScore,
+                    saveReplay = replay.frames.Count > 0 && replay.info.score > 0 
+                }, dbContext, storageContext, _s3Client);
+            }
+
+            return resultScore;
         }
 
         private async Task MigrateOldReplay(AppContext dbContext, StorageContext? storageContext, Score score, string leaderboardId) {
