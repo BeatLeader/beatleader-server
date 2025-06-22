@@ -164,7 +164,12 @@ namespace BeatLeader_Server.Controllers
                 }
             };
             descriptor.Permissions.UnionWith(scopeList);
-            descriptor.RedirectUris.UnionWith(redirectUrls.Split(",").Select(url => new Uri(url)));
+
+            var customRedirects = redirectUrls.Split(",").Select(url => new Uri(url));
+            if (customRedirects.Any(r => r == null)) {
+                return BadRequest("Please specify redirect URL as full url.");
+            }
+            descriptor.RedirectUris.UnionWith(customRedirects);
 
             await manager.CreateAsync(descriptor);
 

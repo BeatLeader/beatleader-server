@@ -360,6 +360,64 @@ namespace BeatLeader_Server.Controllers
             return Redirect(returnUrl);
         }
 
+        [HttpGet("~/user/linkBlueSky")]
+        public async Task<ActionResult> LinkBlueSky([FromQuery] string returnUrl)
+        {
+            string playerId = HttpContext.CurrentUserID(_context);
+            if (playerId == null)
+            {
+                return Redirect(returnUrl);
+            }
+            var auth = await HttpContext.AuthenticateAsync("BlueSky");
+
+            var player = await _context.Players.Include(p => p.Socials).FirstOrDefaultAsync(p => p.Id == playerId);
+            if (player != null && (player.Socials?.FirstOrDefault(s => s.Service == "BlueSky") == null))
+            {
+                player.Socials ??= new List<PlayerSocial>();
+
+                var claims = auth.Principal.Claims;
+
+                var did = claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+                var handle = claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
+
+                string? token = auth?.Properties?.Items[".Token.access_token"];
+
+                if (did != null && handle != null && token != null)
+                {
+                    var existingLink = await _context.BlueSkyLinks.FirstOrDefaultAsync(tl => tl.BlueSkyId == did);
+                    if (existingLink != null) {
+                        if (await _context.Players.AnyAsync(p => p.Id == existingLink.Id)) {
+                            return Unauthorized("This BlueSky profile is already linked");
+                        } else {
+                            _context.BlueSkyLinks.Remove(existingLink);
+                        }
+                    }
+
+                    player.Socials.Add(new PlayerSocial
+                    {
+                        Service = "BlueSky",
+                        User = "@" + handle,
+                        UserId = did,
+                        Link = "https://bsky.app/profile/" + handle
+                    });
+                    _context.BlueSkyLinks.Add(new BlueSkyLink
+                    {
+                        Token = token,
+                        BlueSkyId = did,
+                        Id = playerId
+                    });
+
+                    await _context.SaveChangesAsync();
+                }
+            }
+            else
+            {
+                return Unauthorized("You already have linked BlueSky profile");
+            }
+
+            return Redirect(returnUrl);
+        }
+
         [NonAction]
         public Task<dynamic?> ListChanneld(string token)
         {
@@ -440,6 +498,13 @@ namespace BeatLeader_Server.Controllers
                     if (link5 != null)
                     {
                         _context.GitHubLinks.Remove(link5);
+                    }
+                    break;
+                case "BlueSky":
+                    var link6 = await _context.BlueSkyLinks.FirstOrDefaultAsync(l => l.Id == player.Id);
+                    if (link6 != null)
+                    {
+                        _context.BlueSkyLinks.Remove(link6);
                     }
                     break;
                 default:

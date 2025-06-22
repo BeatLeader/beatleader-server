@@ -201,6 +201,7 @@ namespace BeatLeader_Server {
             .AddCookie("BLDiscord")
             .AddCookie("BLBeatSaver")
             .AddCookie("BLGitHub")
+            .AddCookie("BLBlueSky")
             .AddSteamTicket(options =>
             {
                 options.Key = steamKey;
@@ -312,6 +313,16 @@ namespace BeatLeader_Server {
                     options.ClientId = discordId;
                     options.ClientSecret = discordSecret;
                     options.SignInScheme = "BLDiscord";
+                });
+
+                string blueskyId = Configuration.GetValue<string>("BlueSkyId");
+                string blueskySecret = Configuration.GetValue<string>("BlueSkySecret");
+                authBuilder.AddBlueSky(options =>
+                {
+                    options.SaveTokens = true;
+                    options.ClientId = blueskyId;
+                    options.ClientSecret = blueskySecret;
+                    options.SignInScheme = "BLBlueSky";
                 });
 
                 string googleId = Configuration.GetValue<string>("GoogleId");
@@ -466,6 +477,9 @@ namespace BeatLeader_Server {
                     });
             });
             services.AddHttpClient();
+
+            services.AddHttpClient<ATProtocolService>();
+            services.AddScoped<ATProtocolService>();
 
             services.AddSwaggerGen(c =>
             {

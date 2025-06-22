@@ -23,9 +23,23 @@ namespace BeatLeader_Server.Services
                 if (DateTime.Now.Hour == 0) {
                     Console.WriteLine("SERVICE-STARTED HistoryService");
 
-                    await SetHistories();
-                    await SetLastWeek();
-                    await SetClanRankingHistories();
+                    try {
+                        await SetHistories();
+                    } catch (Exception e) {
+                        Console.WriteLine($"SERVICE-EXCEPTION HistoryService {e}");
+                    }
+
+                    try {
+                        await SetLastWeek();
+                    } catch (Exception e) {
+                        Console.WriteLine($"SERVICE-EXCEPTION HistoryService {e}");
+                    }
+
+                    try {
+                        await SetClanRankingHistories();
+                    } catch (Exception e) {
+                        Console.WriteLine($"SERVICE-EXCEPTION HistoryService {e}");
+                    }
 
                     Console.WriteLine("SERVICE-DONE HistoryService");
                 }

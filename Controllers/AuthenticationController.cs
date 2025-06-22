@@ -90,6 +90,8 @@ namespace BeatLeader_Server.Controllers {
                 redirectUrl = Url.Action("LinkGitHub", "Socials", new { returnUrl = returnUrl ?? "/" });
             } else if (provider == "BeatLeader") {
                 redirectUrl = Url.Action("LinkBeatLeader", "Socials", new { returnUrl = returnUrl ?? "/" });
+            } else if (provider == "BlueSky") {
+                redirectUrl = Url.Action("LinkBlueSky", "Socials", new { returnUrl = returnUrl ?? "/" });
             }
 
             // Instruct the middleware corresponding to the requested external identity
