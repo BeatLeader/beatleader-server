@@ -502,6 +502,9 @@ namespace BeatLeader_Server.Controllers
                     Status = ScoreUploadStatus.Attempt,
                     Description = "New attempt"
                 };
+                returnScore.Player = player;
+                returnScore.PlayerId = player.Id;
+                returnScore.LeaderboardId = leaderboard.Id;
                 resultResponse.Score = RemoveLeaderboard(returnScore, returnScore.Rank);
                 resultResponse.Score.Player = PostProcessSettings(resultResponse.Score.Player, false);
 
@@ -656,6 +659,9 @@ namespace BeatLeader_Server.Controllers
                     allow);
                 if (result.Status != ScoreUploadStatus.Uploaded) {
                     var returnScore = await CollectStats(dbContext, storageContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, replay.frames.Last().time, EndType.Clear, player, null);
+                    returnScore.Player = player;
+                    returnScore.PlayerId = player.Id;
+                    returnScore.LeaderboardId = leaderboard.Id;
                     result.Score = RemoveLeaderboard(resultScore, resultScore.Rank);
                     result.Score.Player = PostProcessSettings(result.Score.Player, false);
                     try
@@ -843,6 +849,7 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 resultScore.Replay = "https://cdn.replays.beatleader.com/" + ReplayUtils.ReplayFilename(replay, resultScore);
+                await CollectStats(dbContext, storageContext, replay, offsets, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, player, resultScore, statistic);
                 await dbContext.SaveChangesAsync();
 
                 await RecalculateRanks(dbContext, resultScore, currentScores, leaderboard, player);
@@ -1434,8 +1441,6 @@ namespace BeatLeader_Server.Controllers
                         Player = replay.info.playerID,
                     });
                 }
-
-                await CollectStats(dbContext, storageContext, replay, offsets, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, player, resultScore, statistic);
                 await dbContext.BulkSaveChangesAsync();
 
                 await SocketController.TryPublishNewScore(resultScore, dbContext);

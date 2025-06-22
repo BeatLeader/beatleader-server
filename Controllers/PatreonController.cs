@@ -13,10 +13,8 @@ using System.Dynamic;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace BeatLeader_Server.Controllers
-{
-    public class PatreonController : Controller
-    {
+namespace BeatLeader_Server.Controllers {
+    public class PatreonController : Controller {
         private readonly AppContext _context;
         IWebHostEnvironment _environment;
         IConfiguration _configuration;
@@ -24,8 +22,7 @@ namespace BeatLeader_Server.Controllers
         public PatreonController(
             AppContext context,
             IWebHostEnvironment env,
-            IConfiguration configuration)
-        {
+            IConfiguration configuration) {
             _context = context;
             _environment = env;
             _configuration = configuration;

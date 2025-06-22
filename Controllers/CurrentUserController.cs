@@ -148,6 +148,10 @@ namespace BeatLeader_Server.Controllers {
                     Avatar = p.Avatar,
                     Country = p.Country,
 
+                    Level = p.Level,
+                    Experience = p.Experience,
+                    Prestige = p.Prestige,
+
                     Pp = p.Pp,
                     Rank = p.Rank,
                     CountryRank = p.CountryRank,
@@ -1602,7 +1606,7 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [HttpPost("~/user/failedscore/retry")]
-        public async Task<ActionResult<ScoreResponse>> RetryFailedScore([FromQuery] int id, [FromQuery] bool allow = false) {
+        public async Task<ActionResult<ScoreUploadResponse>> RetryFailedScore([FromQuery] int id, [FromQuery] bool allow = false) {
             string? playerId = GetId();
             if (playerId == null) {
                 return NotFound();
