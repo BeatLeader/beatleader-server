@@ -128,8 +128,8 @@ namespace BeatLeader_Server.ControllerHelpers {
                     }
                 }
 
-                scoreStats.TopPlatform = platforms.MaxBy(s => s.Value).Key;
-                scoreStats.TopHMD = hmds.MaxBy(s => s.Value).Key;
+                scoreStats.TopPlatform = platforms.Count > 0 ? platforms.MaxBy(s => s.Value).Key : "";
+                scoreStats.TopHMD = hmds.Count > 0 ? hmds.MaxBy(s => s.Value).Key : HMD.unknown;
 
                 var hmdKeys = allScores
                     .GroupBy(s => s.Hmd)

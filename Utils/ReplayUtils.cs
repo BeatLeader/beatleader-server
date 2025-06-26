@@ -268,6 +268,25 @@ namespace BeatLeader_Server.Utils
             score.Modifiers = info.modifiers;
             score.Hmd = HMDFromName(info.hmd);
             score.Controller = ControllerFromName(info.controller);
+            if (score.Hmd == HMD.unknown && (info.hmd.Length == 0 || info.hmd.Contains("lighthouse"))) {
+                score.Hmd = score.Controller switch {
+                    ControllerEnum.vive => HMD.vive,
+                    ControllerEnum.vivePro => HMD.vivePro,
+                    ControllerEnum.wmr => HMD.wmr,
+                    ControllerEnum.odyssey => HMD.wmr,
+                    ControllerEnum.hpMotion => HMD.wmr,
+                    ControllerEnum.vivePro2 => HMD.vivePro2,
+                    ControllerEnum.miramar => HMD.quest2,
+                    ControllerEnum.questPro => HMD.questPro,
+                    ControllerEnum.viveTracker => HMD.vive,
+                    ControllerEnum.viveTracker2 => HMD.vive,
+                    ControllerEnum.knuckles => HMD.index,
+                    ControllerEnum.viveTracker3 => HMD.vive,
+                    ControllerEnum.quest3 => HMD.quest3,
+                    ControllerEnum.viveCosmos => HMD.viveCosmos,
+                    _ => score.Hmd,
+                };
+            }
 
             if (score.Hmd == HMD.psvr2 && score.Controller == ControllerEnum.oculustouch) {
                 score.Controller = ControllerEnum.playstationSense;
@@ -602,6 +621,7 @@ namespace BeatLeader_Server.Utils
             if (lowerController.Contains("pico neo") && lowerController.Contains("3")) return ControllerEnum.picoNeo3;
             if (lowerController.Contains("pico neo") && lowerController.Contains("2")) return ControllerEnum.picoNeo2;
             if (lowerController.Contains("knuckles")) return ControllerEnum.knuckles;
+            if (lowerController.Contains("index")) return ControllerEnum.knuckles;
 
             if (lowerController.Contains("gamepad")) return ControllerEnum.gamepad;
             if (lowerController.Contains("joy-con")) return ControllerEnum.joycon;
