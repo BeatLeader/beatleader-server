@@ -491,6 +491,7 @@ namespace BeatLeader_Server.Controllers {
                     var ces = await _context.PlayerContextExtensions.Where(ce => ce.PlayerId == player.Id).Select(ce => ce.Id).ToListAsync();
                     var cesUpdates = ces.Select(ce => new PlayerContextExtension { Id = ce, Country = country });
                     await _context.BulkUpdateAsync(cesUpdates, options => options.ColumnInputExpression = c => new { c.Country });
+                    await _context.BulkSaveChangesAsync();
 
                     countryList = await _context.Players
                         .Where(p => p.Country == country || p.Id == player.Id)
@@ -1185,6 +1186,7 @@ namespace BeatLeader_Server.Controllers {
                 .Include(p => p.ScoreStats)
                 .Include(p => p.Achievements)
                 .Include(p => p.Socials)
+                .Include(p => p.ContextExtensions)
                 .FirstOrDefaultAsync();
 
             if (currentPlayer == null || migrateToPlayer == null) {
@@ -1246,6 +1248,9 @@ namespace BeatLeader_Server.Controllers {
 
             if (migrateToPlayer.Country == "not set" && currentPlayer.Country != "not set") {
                 migrateToPlayer.Country = currentPlayer.Country;
+                foreach (var item in migrateToPlayer.ContextExtensions) {
+                    item.Country = currentPlayer.Country;
+                }
             }
 
             if (migrateToPlayer.Alias == null && currentPlayer.Alias != null) {

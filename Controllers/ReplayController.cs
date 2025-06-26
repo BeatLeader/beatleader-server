@@ -457,6 +457,9 @@ namespace BeatLeader_Server.Controllers
                     }
                     if (country != null) {
                         player.Country = country;
+                        foreach (var item in player.ContextExtensions) {
+                            item.Country = country;
+                        }
                     }
                 }
             }
