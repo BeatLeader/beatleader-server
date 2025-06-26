@@ -161,7 +161,8 @@ namespace BeatLeader_Server.Controllers {
                     ProfileSettings = p.ProfileSettings,
                     ContextExtensions = p.ContextExtensions,
                     Clans = p.Clans.OrderBy(c => ("," + p.ClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + p.ClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
-                                .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color, Name = c.Name })
+                                .ThenBy(c => c.Id).Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color, Name = c.Name }),
+                    GlobalWatermarkPermissions = p.DeveloperProfile != null ? p.DeveloperProfile.GlobalWatermarkPermissions : false
                 })
                 .AsSplitQuery()
                 .FirstOrDefaultAsync();

@@ -97,6 +97,7 @@ namespace BeatLeader_Server
         public DbSet<MaxScoreGraph> MaxScoreGraph { get; set; }
 
         public DbSet<AliasRequest> AliasRequests { get; set; }
+        public DbSet<WatermarkRequest> WatermarkRequests { get; set; }
         public DbSet<Speedrun> Speedruns { get; set; }
         public DbSet<SanitizerConfig> SanitizerConfigs { get; set; }
         public DbSet<ModVersion> ModVersions { get; set; }
