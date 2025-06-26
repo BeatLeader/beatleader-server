@@ -204,170 +204,194 @@ namespace BeatLeader_Server.Controllers
                     return Unauthorized();
                 }
             }
-
-            _context.ChangeTracker.AutoDetectChangesEnabled = false; 
             
-            var query = _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked);
-
+            var diffStatus = DifficultyStatus.qualified;
+            var query = _context.Leaderboards.Where(lb => true);
             
-                query = (leaderboardId != null ? query.Where(s => s.Id == leaderboardId) : query);
+            query = (leaderboardId != null ? query.Where(lb => lb.Id == leaderboardId) : query.Where(lb => lb.Difficulty.Status == diffStatus));
 
-                var allLeaderboards = await query
-                    .Select(lb => new {
-                        lb.Difficulty,
-                        lb.Difficulty.ModifierValues,
-                        lb.Difficulty.ModifiersRating,
-                        Scores = lb.ContextExtensions.Where(s => s.Context == leaderboardContext).Select(s => new { s.Id, s.LeaderboardId, s.BaseScore, s.Modifiers, s.Context })
-                    }).ToListAsync();
-                await allLeaderboards.ParallelForEachAsync(async leaderboard => {
-                    var allScores = leaderboard.Scores.ToList();
+            var allLeaderboards = await query
+                .AsNoTracking()
+                .Select(lb => new {
+                    lb.Difficulty,
+                    lb.Difficulty.ModifierValues,
+                    lb.Difficulty.ModifiersRating,
+                    lb.Id
+                }).ToListAsync();
 
-                    var status = leaderboard.Difficulty.Status;
-                    var modifiers = leaderboard.Difficulty.ModifierValues;
-                    bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
-                    bool hasPp = status == DifficultyStatus.ranked || qualification;
-                    var newScores = new List<ScoreContextExtension>();
+            var allScores = (await _context
+                .ScoreContextExtensions
+                .AsNoTracking()
+                .Where(s => s.Context == leaderboardContext && !s.Banned && ((leaderboardId == null && s.Leaderboard.Difficulty.Status == diffStatus) || (leaderboardId != null && s.LeaderboardId == leaderboardId)))
+                .Select(s => new ScoreContextExtension { 
+                    Id = s.Id, 
+                    Timepost = s.Timepost, 
+                    LeaderboardId = s.LeaderboardId, 
+                    BaseScore = s.BaseScore, 
+                    Modifiers = s.Modifiers, 
+                    Context = s.Context 
+                }).ToListAsync())
+                .GroupBy(s => s.LeaderboardId)
+                .ToDictionary(s => s.Key, s => s.ToList());
 
-                    foreach (var s in allScores)
+            var changes = new List<ScoreContextExtension>();
+            var saveChanges = async () => {
+                try {
+                    await _context.BulkUpdateAsync(changes, options => options.ColumnInputExpression = c => new { 
+                        c.Rank, 
+                        c.ModifiedScore,
+                        c.Accuracy,
+                        c.Pp,
+                        c.BonusPp,
+                        c.PassPP,
+                        c.AccPP,
+                        c.TechPP,
+                        c.Qualification,
+                        c.Priority
+                    });
+                } catch (Exception e) {
+                    try {
+                        await _context.BulkUpdateAsync(changes, options => options.ColumnInputExpression = c => new { 
+                            c.Rank, 
+                            c.ModifiedScore,
+                            c.Accuracy,
+                            c.Pp,
+                            c.BonusPp,
+                            c.PassPP,
+                            c.AccPP,
+                            c.TechPP,
+                            c.Qualification,
+                            c.Priority
+                        });
+                    } catch {}
+                }
+            };
+
+            foreach (var leaderboard in allLeaderboards) {
+                if (!allScores.ContainsKey(leaderboard.Id)) continue;
+                var scores = allScores[leaderboard.Id];
+
+                var status = leaderboard.Difficulty.Status;
+                var modifiers = leaderboard.ModifierValues;
+                bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
+                bool hasPp = status == DifficultyStatus.ranked || qualification;
+
+                foreach (var s in scores)
+                {
+                    int maxScore = leaderboard.Difficulty.MaxScore > 0 ? leaderboard.Difficulty.MaxScore : ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
+
+                    if (hasPp)
                     {
-                        var score = new ScoreContextExtension() { Id = s.Id };
-                        try {
-                            _context.ScoreContextExtensions.Attach(score);
-                        } catch { }
-
-                        int maxScore = leaderboard.Difficulty.MaxScore > 0 ? leaderboard.Difficulty.MaxScore : ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
-
-                        if (hasPp)
-                        {
-                            score.ModifiedScore = (int)(s.BaseScore * modifiers.GetNegativeMultiplier(s.Modifiers));
-                        }
-                        else
-                        {
-                            score.ModifiedScore = (int)((s.BaseScore + (int)((float)(maxScore - s.BaseScore) * (modifiers.GetPositiveMultiplier(s.Modifiers) - 1))) * modifiers.GetNegativeMultiplier(s.Modifiers));
-                        }
-
-                        score.Accuracy = (float)s.BaseScore / (float)maxScore;
-                        if (s.Modifiers.Contains("NF")) {
-                            score.Priority = 3;
-                        } else if (s.Modifiers.Contains("NB") || s.Modifiers.Contains("NA")) {
-                            score.Priority = 2;
-                        } else if (s.Modifiers.Contains("NO")) {
-                            score.Priority = 1;
-                        }
-
-                        if (score.Accuracy > 1f)
-                        {
-                            maxScore = ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
-                            if (hasPp)
-                            {
-                                score.ModifiedScore = (int)(s.BaseScore * modifiers.GetNegativeMultiplier(s.Modifiers));
-                            }
-                            else
-                            {
-                                score.ModifiedScore = (int)((s.BaseScore + (int)((float)(maxScore - s.BaseScore) * (modifiers.GetPositiveMultiplier(s.Modifiers) - 1))) * modifiers.GetNegativeMultiplier(s.Modifiers));
-                            }
-
-                            score.Accuracy = (float)s.BaseScore / (float)maxScore;
-                        }
-                        if (hasPp)
-                        {
-                            (score.Pp, score.BonusPp, score.PassPP, score.AccPP, score.TechPP) = ReplayUtils.PpFromScore(
-                                leaderboardContext == LeaderboardContexts.Golf ? 1f - score.Accuracy : score.Accuracy,
-                                leaderboardContext,
-                                s.Modifiers,
-                                leaderboard.Difficulty.ModifierValues,
-                                leaderboard.Difficulty.ModifiersRating,
-                                leaderboard.Difficulty.AccRating ?? 0,
-                                leaderboard.Difficulty.PassRating ?? 0,
-                                leaderboard.Difficulty.TechRating ?? 0,
-                                leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard");
-                        }
-                        else
-                        {
-                            score.Pp = 0;
-                            score.BonusPp = 0;
-                        }
-
-                        score.Qualification = qualification;
-
-                        if (float.IsNaN(score.Pp))
-                        {
-                            score.Pp = 0.0f;
-                        }
-                        if (float.IsNaN(score.BonusPp))
-                        {
-                            score.BonusPp = 0.0f;
-                        }
-                        if (float.IsNaN(score.Accuracy))
-                        {
-                            score.Accuracy = 0.0f;
-                        }
-
-                        _context.Entry(score).Property(x => x.ModifiedScore).IsModified = true;
-                        _context.Entry(score).Property(x => x.Accuracy).IsModified = true;
-                        _context.Entry(score).Property(x => x.Pp).IsModified = true;
-                        _context.Entry(score).Property(x => x.BonusPp).IsModified = true;
-                        _context.Entry(score).Property(x => x.PassPP).IsModified = true;
-                        _context.Entry(score).Property(x => x.AccPP).IsModified = true;
-                        _context.Entry(score).Property(x => x.TechPP).IsModified = true;
-                        _context.Entry(score).Property(x => x.Qualification).IsModified = true;
-                        _context.Entry(score).Property(x => x.Priority).IsModified = true;
-
-                        newScores.Add(score);
+                        s.ModifiedScore = (int)(s.BaseScore * modifiers.GetNegativeMultiplier(s.Modifiers));
+                    }
+                    else
+                    {
+                        s.ModifiedScore = (int)((s.BaseScore + (int)((float)(maxScore - s.BaseScore) * (modifiers.GetPositiveMultiplier(s.Modifiers) - 1))) * modifiers.GetNegativeMultiplier(s.Modifiers));
                     }
 
-                    List<ScoreContextExtension> rankedScores;
+                    s.Accuracy = (float)s.BaseScore / (float)maxScore;
+                    if (s.Modifiers.Contains("NF")) {
+                        s.Priority = 3;
+                    } else if (s.Modifiers.Contains("NB") || s.Modifiers.Contains("NA")) {
+                        s.Priority = 2;
+                    } else if (s.Modifiers.Contains("NO")) {
+                        s.Priority = 1;
+                    }
+
+                    if (s.Accuracy > 1f)
+                    {
+                        maxScore = ReplayUtils.MaxScoreForNote(leaderboard.Difficulty.Notes);
+                        if (hasPp)
+                        {
+                            s.ModifiedScore = (int)(s.BaseScore * modifiers.GetNegativeMultiplier(s.Modifiers));
+                        }
+                        else
+                        {
+                            s.ModifiedScore = (int)((s.BaseScore + (int)((float)(maxScore - s.BaseScore) * (modifiers.GetPositiveMultiplier(s.Modifiers) - 1))) * modifiers.GetNegativeMultiplier(s.Modifiers));
+                        }
+
+                        s.Accuracy = (float)s.BaseScore / (float)maxScore;
+                    }
+                    if (hasPp)
+                    {
+                        (s.Pp, s.BonusPp, s.PassPP, s.AccPP, s.TechPP) = ReplayUtils.PpFromScore(
+                            leaderboardContext == LeaderboardContexts.Golf ? 1f - s.Accuracy : s.Accuracy,
+                            leaderboardContext,
+                            s.Modifiers,
+                            leaderboard.ModifierValues,
+                            leaderboard.ModifiersRating,
+                            leaderboard.Difficulty.AccRating ?? 0,
+                            leaderboard.Difficulty.PassRating ?? 0,
+                            leaderboard.Difficulty.TechRating ?? 0,
+                            leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard");
+                    }
+                    else
+                    {
+                        s.Pp = 0;
+                        s.BonusPp = 0;
+                    }
+
+                    s.Qualification = qualification;
+
+                    if (float.IsNaN(s.Pp))
+                    {
+                        s.Pp = 0.0f;
+                    }
+                    if (float.IsNaN(s.BonusPp))
+                    {
+                        s.BonusPp = 0.0f;
+                    }
+                    if (float.IsNaN(s.Accuracy))
+                    {
+                        s.Accuracy = 0.0f;
+                    }
+                }
+
+                List<ScoreContextExtension> rankedScores;
                     
-                    if (leaderboardContext == LeaderboardContexts.Golf) {
-                        rankedScores = hasPp 
-                        ? newScores
-                            .OrderByDescending(el => Math.Round(el.Pp, 2))
-                            .ThenBy(el => Math.Round(el.Accuracy, 4))
-                            .ThenBy(el => el.ModifiedScore)
-                            .ThenBy(el => el.Timepost)
-                            .ToList() 
-                        : newScores
-                            .OrderBy(el => el.Priority)
-                            .ThenBy(el => Math.Round(el.Accuracy, 4))
-                            .ThenBy(el => el.ModifiedScore)
-                            .ThenBy(el => el.Timepost)
-                            .ToList();
-                    } else {
-                        rankedScores = hasPp 
-                        ? newScores
-                            .OrderByDescending(el => Math.Round(el.Pp, 2))
-                            .ThenByDescending(el => Math.Round(el.Accuracy, 4))
-                            .ThenBy(el => el.Timepost)
-                            .ToList() 
-                        : newScores
-                            .OrderBy(el => el.Priority)
-                            .ThenByDescending(el => el.ModifiedScore)
-                            .ThenByDescending(el => Math.Round(el.Accuracy, 4))
-                            .ThenBy(el => el.Timepost)
-                            .ToList();
-                    }
-                    foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
-                    {
-                        s.Rank = i + 1;
-                        _context.Entry(s).Property(x => x.Rank).IsModified = true;
-                    }
+                if (leaderboardContext == LeaderboardContexts.Golf) {
+                    rankedScores = hasPp 
+                    ? scores
+                        .OrderByDescending(el => Math.Round(el.Pp, 2))
+                        .ThenBy(el => Math.Round(el.Accuracy, 4))
+                        .ThenBy(el => el.ModifiedScore)
+                        .ThenBy(el => el.Timepost)
+                        .ToList() 
+                    : scores
+                        .OrderBy(el => el.Priority)
+                        .ThenBy(el => Math.Round(el.Accuracy, 4))
+                        .ThenBy(el => el.ModifiedScore)
+                        .ThenBy(el => el.Timepost)
+                        .ToList();
+                } else {
+                    rankedScores = hasPp 
+                    ? scores
+                        .OrderByDescending(el => Math.Round(el.Pp, 2))
+                        .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                        .ThenBy(el => el.Timepost)
+                        .ToList() 
+                    : scores
+                        .OrderBy(el => el.Priority)
+                        .ThenByDescending(el => el.ModifiedScore)
+                        .ThenByDescending(el => Math.Round(el.Accuracy, 4))
+                        .ThenBy(el => el.Timepost)
+                        .ToList();
+                }
+                foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
+                {
+                    s.Rank = i + 1;
+                }
+                changes.AddRange(scores);
 
-                    if (leaderboardContext == LeaderboardContexts.Funny) {
-                        foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))
-                        {
-                            if (i + 1 == 1 || (i + 1) % 5 == 0) {
-                                s.Pp = 500;
-                            } else {
-                                s.Pp = 0;
-                            }
-                            _context.Entry(s).Property(x => x.Pp).IsModified = true;
-                        }
-                    }
-                }, maxDegreeOfParallelism: 20);
+                if (changes.Count >= 200000) {
+                    await saveChanges();
+                    await _context.BulkSaveChangesAsync();
+                    changes = new List<ScoreContextExtension>();
+                }
+            }
 
+            await saveChanges();
             await _context.BulkSaveChangesAsync();
-
-            _context.ChangeTracker.AutoDetectChangesEnabled = true;
 
             return Ok();
         }

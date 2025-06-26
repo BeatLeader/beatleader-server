@@ -33,7 +33,6 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [HttpGet("~/scores/all")]
-        [Authorize]
         public async Task<ActionResult<ResponseWithMetadata<ScoreResponseWithMyScore>>> AllScores(
             [FromQuery, SwaggerParameter("Sorting criteria for scores, default is by 'date'")] ScoresSortBy sortBy = ScoresSortBy.Date,
             [FromQuery, SwaggerParameter("Order of sorting, default is descending")] Order order = Order.Desc,
@@ -80,8 +79,17 @@ namespace BeatLeader_Server.Controllers {
 
             bool showRatings = player.ProfileSettings?.ShowAllRatings ?? false;
             IQueryable<IScore> sequence = leaderboardContext == LeaderboardContexts.General 
-                ? _context.Scores.AsNoTracking().Where(s => s.ValidForGeneral)
-                : _context.ScoreContextExtensions.AsNoTracking().Include(ce => ce.ScoreInstance).Where(s => s.Context == leaderboardContext);
+                ? _context
+                    .Scores
+                    .AsNoTracking()
+                    .Where(s => s.ValidForGeneral)
+                    .TagWithCaller()
+                : _context
+                    .ScoreContextExtensions
+                    .AsNoTracking()
+                    .Include(ce => ce.ScoreInstance)
+                    .Where(s => s.Context == leaderboardContext)
+                    .TagWithCaller();
 
             (sequence, int? searchId) = await sequence.FilterAll(_context, !player.Banned, showRatings, sortBy, order, thenSortBy, thenOrder, search, diff, mode, mapRequirements, scoreStatus, type, mapType, allTypes, hmd, modifiers, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, eventId, mappers, players);
 

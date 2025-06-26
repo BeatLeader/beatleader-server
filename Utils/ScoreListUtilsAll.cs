@@ -7,7 +7,17 @@ using BeatLeader_Server.Services;
 
 namespace BeatLeader_Server.Utils {
     public static class ScoreListUtilsAll {
-        private static IOrderedQueryable<IScore> ThenSort(IOrderedQueryable<IScore> sequence, ScoresSortBy sortBy, Order order, bool showAllRatings) {
+        private static IOrderedQueryable<IScore> ScoresThenSort(
+            this IQueryable<IScore> unorderedSequence, 
+            IOrderedQueryable<IScore>? sequence,
+            ScoresSortBy sortBy, 
+            Order order, 
+            bool showAllRatings,
+            int? searchId) {
+
+            if (sequence == null) {
+                sequence = unorderedSequence.OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0);
+            }
             switch (sortBy) {
                 case ScoresSortBy.Date: return sequence.ThenOrder(order, t => t.Timepost);
                 case ScoresSortBy.Pp: return sequence.ThenOrder(order, t => t.Pp);
@@ -16,19 +26,19 @@ namespace BeatLeader_Server.Utils {
                 case ScoresSortBy.TechPP: return sequence.ThenOrder(order, t => t.TechPP);
                 case ScoresSortBy.Acc: return sequence.ThenOrder(order, t => t.Accuracy);
                 case ScoresSortBy.Pauses:
-                    if (sequence is IOrderedQueryable<Score>) {
+                    if (unorderedSequence is IQueryable<Score>) {
                         return sequence.ThenOrder(order, t => t.Pauses);
                     } else {
                         return sequence.ThenOrder(order, t => t.ScoreInstance.Pauses);
                     }
                 case ScoresSortBy.PlayCount:
-                    if (sequence is IQueryable<Score>) {
+                    if (unorderedSequence is IQueryable<Score>) {
                         return sequence.ThenOrder(order, t => t.PlayCount);
                     } else {
                         return sequence.ThenOrder(order, t => t.ScoreInstance.PlayCount);
                     }
                 case ScoresSortBy.LastTryTime:
-                    if (sequence is IQueryable<Score>) {
+                    if (unorderedSequence is IQueryable<Score>) {
                         return sequence.ThenOrder(order, t => t.LastTryTime);
                     } else {
                         return sequence.ThenOrder(order, t => t.ScoreInstance.LastTryTime);
@@ -36,13 +46,13 @@ namespace BeatLeader_Server.Utils {
                 case ScoresSortBy.Rank:
                     return sequence.ThenOrder(order, t => t.Rank);
                 case ScoresSortBy.MaxStreak:
-                    if (sequence is IQueryable<Score>) {
+                    if (unorderedSequence is IQueryable<Score>) {
                         return sequence.ThenOrder(order, t => t.MaxStreak);
                     } else {
                         return sequence.ThenOrder(order, t => t.ScoreInstance.MaxStreak);
                     }
                 case ScoresSortBy.Timing:
-                    if (sequence is IQueryable<Score>) {
+                    if (unorderedSequence is IQueryable<Score>) {
                         return sequence.ThenOrder(order, t => (t.LeftTiming + t.RightTiming) / 2);
                     } else {
                         return sequence.ThenOrder(order, t => (t.ScoreInstance.LeftTiming + t.ScoreInstance.RightTiming) / 2);
@@ -59,13 +69,13 @@ namespace BeatLeader_Server.Utils {
                             s.Leaderboard.Difficulty.Stars)))
                             : 0);
                 case ScoresSortBy.Mistakes:
-                    if (sequence is IQueryable<Score>) {
+                    if (unorderedSequence is IQueryable<Score>) {
                         return sequence.ThenOrder(order, t => t.BadCuts + t.BombCuts + t.MissedNotes + t.WallsHit);
                     } else {
                         return sequence.ThenOrder(order, t => t.ScoreInstance.BadCuts + t.ScoreInstance.BombCuts + t.ScoreInstance.MissedNotes + t.ScoreInstance.WallsHit);
                     }
                 case ScoresSortBy.ReplaysWatched:
-                    if (sequence is IQueryable<Score>) {
+                    if (unorderedSequence is IQueryable<Score>) {
                         return sequence.ThenOrder(order, t => t.AnonimusReplayWatched + t.AuthorizedReplayWatched);
                     } else {
                         return sequence.ThenOrder(order, t => t.ScoreInstance.AnonimusReplayWatched + t.ScoreInstance.AuthorizedReplayWatched);
@@ -150,14 +160,10 @@ namespace BeatLeader_Server.Utils {
                 }
             }
 
-            sequence = ThenSort(ThenSort(sequence
-                        .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0),
-                        sortBy,
-                        order,
-                        showAllRatings),
-                           thenSortBy,
-                           thenOrder,
-                           showAllRatings);
+            var orderedSequence = sequence
+                .ScoresThenSort(null, sortBy, order, showAllRatings, searchId);
+
+            sequence = sequence.ScoresThenSort(orderedSequence, thenSortBy, thenOrder, showAllRatings, searchId);
 
             if (eventId != null) {
                 var leaderboardIds = await context.EventRankings.Where(e => e.Id == eventId).Include(e => e.Leaderboards).Select(e => e.Leaderboards.Select(lb => lb.Id)).FirstOrDefaultAsync();
