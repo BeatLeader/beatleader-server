@@ -30,7 +30,8 @@ namespace BeatLeader_Server.Utils {
             float? stars_to = null,
             int? time_from = null,
             int? time_to = null,
-            int? eventId = null) {
+            int? eventId = null,
+            List<PlaylistResponse>? playlists = null) {
             IOrderedQueryable<IScore>? orderedSequence = null;
             int? searchId = null;
             if (search != null) {
@@ -277,7 +278,29 @@ namespace BeatLeader_Server.Utils {
                 }
             }
 
+            if (playlists != null) {
+              sequence = sequence.WherePlaylists(playlists);
+            }
+
             return (sequence, searchId);
         }
+
+
+        
+    private static IQueryable<IScore> WherePlaylists(this IQueryable<IScore> sequence, List<PlaylistResponse>? playlists)
+    {
+        if (playlists == null)
+        {
+            return sequence;
+        }
+
+        var hashes = playlists.SelectMany(p => p.songs.Where(s => s.hash != null).Select(s => (string)s.hash!.ToLower())).ToList();
+        var keys = playlists.SelectMany(p => p.songs.Where(s => s.hash == null && s.key != null).Select(s => (string)s.key!.ToLower())).ToList();
+
+        if (hashes.Count == 0 && keys.Count == 0) {
+            return sequence;
+        }
+        return sequence.Where(s => hashes.Contains(s.Leaderboard.Song.Hash.ToLower()) || keys.Contains(s.Leaderboard.Song.Id));
+    }
     }
 }

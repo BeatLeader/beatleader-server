@@ -1,8 +1,10 @@
-﻿using BeatLeader_Server.Enums;
+﻿using Amazon.S3;
+using BeatLeader_Server.Enums;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Lib.ServerTiming;
+using BeatLeader_Server.ControllerHelpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +23,7 @@ namespace BeatLeader_Server.Controllers {
         IWebHostEnvironment _environment;
 
         private readonly IServerTiming _serverTiming;
+        private readonly IAmazonS3 _s3Client;
 
         public PlayerScoresController(
             AppContext context,
@@ -58,7 +61,8 @@ namespace BeatLeader_Server.Controllers {
             float? stars_to = null,
             int? time_from = null,
             int? time_to = null,
-            int? eventId = null) {
+            int? eventId = null,
+            List<PlaylistResponse>? playlists = null) {
 
             var player = await _context
                     .Players
@@ -80,7 +84,7 @@ namespace BeatLeader_Server.Controllers {
                    .Include(ce => ce.ScoreInstance)
                    .Where(t => t.PlayerId == id && t.Context == leaderboardContext)
                    .TagWithCaller();
-            (var resultQuery, int? searchId) = await query.Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+            (var resultQuery, int? searchId) = await query.Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId, playlists);
             return (resultQuery, searchId, id);
         }
 
@@ -373,6 +377,8 @@ namespace BeatLeader_Server.Controllers {
         [SwaggerResponse(404, "Scores not found for the given player ID")]
         public async Task<ActionResult<ResponseWithMetadata<CompactScoreResponse>>> GetCompactScores(
             [FromRoute, SwaggerParameter("Player's unique identifier")] string id,
+            [FromQuery, SwaggerParameter("Playlits Ids to filter, default is null")] string? playlistIds = null,
+            [FromBody, SwaggerParameter("Types of leaderboards to filter, default is null(All). Same as type but multiple")] List<PlaylistResponse>? playlists = null,
             [FromQuery, SwaggerParameter("Sorting criteria for scores, default is by 'date'")] ScoresSortBy sortBy = ScoresSortBy.Date,
             [FromQuery, SwaggerParameter("Order of sorting, default is descending")] Order order = Order.Desc,
             [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
@@ -411,7 +417,9 @@ namespace BeatLeader_Server.Controllers {
                 sortBy = ScoresSortBy.Pp;
             }
 
-            (IQueryable<IScore>? sequence, int? searchId, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+            var playlistList = await LeaderboardControllerHelper.GetPlaylistList(_context, currentID, _s3Client, playlistIds, playlists);
+            (IQueryable<IScore>? sequence, int? searchId, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId, playlistList);
+
             if (sequence == null) {
                 return NotFound();
             }
