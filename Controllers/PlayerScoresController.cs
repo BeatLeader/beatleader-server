@@ -39,6 +39,8 @@ namespace BeatLeader_Server.Controllers {
             _configuration = configuration;
             _serverTiming = serverTiming;
             _environment = env;
+
+            _s3Client = configuration.GetS3Client();
         }
 
         [NonAction]
