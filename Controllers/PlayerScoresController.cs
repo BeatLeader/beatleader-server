@@ -225,6 +225,7 @@ namespace BeatLeader_Server.Controllers {
                         ScoreImprovement = includeIO ? (leaderboardContext == LeaderboardContexts.General || leaderboardContext == LeaderboardContexts.None ? s.ScoreImprovement : s.ScoreInstance.ScoreImprovement) : null,
                         Offsets = includeIO ? (leaderboardContext == LeaderboardContexts.General || leaderboardContext == LeaderboardContexts.None ? s.ReplayOffsets : s.ScoreInstance.ReplayOffsets) : null,
                         Country = s.Country,
+                        Status = s.Status,
                         Leaderboard = new CompactLeaderboardResponse {
                             Id = s.LeaderboardId,
                             Song = new CompactSongResponse {

@@ -119,6 +119,8 @@ namespace BeatLeader_Server
         public DbSet<ProfileSettings> ProfileSettings { get; set; }
         public DbSet<EarthDayMap> EarthDayMaps { get; set; }
         public DbSet<BlueSkyLink> BlueSkyLinks { get; set; }
+        public DbSet<ScoreNomination> ScoreNominations { get; set; }
+        public DbSet<ScoreExternalStatus> ScoreExternalStatus { get; set; }
         public void RejectChanges()
         {
             foreach (var entry in ChangeTracker.Entries())

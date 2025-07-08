@@ -57,6 +57,12 @@ namespace BeatLeader_Server.Utils {
                     } else {
                         return sequence.ThenOrder(order, t => (t.ScoreInstance.LeftTiming + t.ScoreInstance.RightTiming) / 2);
                     }
+                case ScoresSortBy.SotwNominations:
+                    if (unorderedSequence is IQueryable<Score>) {
+                        return sequence.ThenOrder(order, t => t.SotwNominations);
+                    } else {
+                        return sequence.ThenOrder(order, t => t.ScoreInstance.SotwNominations);
+                    }
                 case ScoresSortBy.Stars:
                     return sequence.ThenOrder(order, s => 
                             showAllRatings || 

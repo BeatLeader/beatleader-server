@@ -77,7 +77,7 @@ namespace BeatLeader_Server.Controllers {
                     .FirstOrDefaultAsync(p => p.Id == userId)
                 : null;
 
-            bool showRatings = player.ProfileSettings?.ShowAllRatings ?? false;
+            bool showRatings = player?.ProfileSettings?.ShowAllRatings ?? false;
             IQueryable<IScore> sequence = leaderboardContext == LeaderboardContexts.General 
                 ? _context
                     .Scores
@@ -91,7 +91,7 @@ namespace BeatLeader_Server.Controllers {
                     .Where(s => s.Context == leaderboardContext)
                     .TagWithCaller();
 
-            (sequence, int? searchId) = await sequence.FilterAll(_context, !player.Banned, showRatings, sortBy, order, thenSortBy, thenOrder, search, diff, mode, mapRequirements, scoreStatus, type, mapType, allTypes, hmd, modifiers, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, eventId, mappers, players);
+            (sequence, int? searchId) = await sequence.FilterAll(_context, true, showRatings, sortBy, order, thenSortBy, thenOrder, search, diff, mode, mapRequirements, scoreStatus, type, mapType, allTypes, hmd, modifiers, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, eventId, mappers, players);
 
             var scoreIds = leaderboardContext == LeaderboardContexts.General 
                 ? (await sequence.Skip((page - 1) * count).Take(count).Select(s => s.Id).ToListAsync()).Where(id => id != null).ToList()
@@ -128,6 +128,8 @@ namespace BeatLeader_Server.Controllers {
                         Timepost = s.Timepost,
                         LeaderboardId = s.LeaderboardId,
                         Platform = s.Platform,
+                        SotwNominations = s.SotwNominations,
+                        Status = s.Status,
                         Player = new PlayerResponse {
                             Id = s.Player.Id,
                             Name = s.Player.Name,

@@ -76,6 +76,27 @@ namespace BeatLeader_Server.Controllers {
             return ar;
         }
 
+        [HttpDelete("~/alias/player/{id}")]
+        public async Task<ActionResult> RemoveAliasRequest(string id)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+            {
+                return Unauthorized();
+            }
+
+            var otherPlayer = await _context.Players.FirstOrDefaultAsync(p => p.Id == id);
+            if (otherPlayer == null) {
+                return NotFound();
+            }
+            otherPlayer.Alias = null;
+            _context.SaveChanges();
+                
+            return Ok();
+        }
+
         [HttpGet("~/alias/requests")]
         public async Task<ActionResult<ResponseWithMetadata<AliasRequest>>> GetAliasRequest(
             [FromQuery] int count = 10,
