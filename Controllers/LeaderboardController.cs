@@ -140,7 +140,7 @@ namespace BeatLeader_Server.Controllers {
                     scoreQuery = scoreQuery.Order(order, s => s.MaxStreak).ThenOrder(oppositeOrder, s => s.Rank);
                     break;
                 case LeaderboardSortBy.Mistakes:
-                    scoreQuery = scoreQuery.Order(order, s => s.BadCuts + s.MissedNotes + s.BombCuts + s.WallsHit);
+                    scoreQuery = scoreQuery.Order(order, s => s.Mistakes);
                     break;
                 case LeaderboardSortBy.Weight:
                     scoreQuery = scoreQuery.Order(order, s => s.Weight);
@@ -484,7 +484,7 @@ namespace BeatLeader_Server.Controllers {
                     scoreQuery = scoreQuery.Order(order, s => s.ScoreInstance.MaxStreak).ThenOrder(oppositeOrder, s => s.Rank);
                     break;
                 case LeaderboardSortBy.Mistakes:
-                    scoreQuery = scoreQuery.Order(order, s => s.ScoreInstance.BadCuts + s.ScoreInstance.MissedNotes + s.ScoreInstance.BombCuts + s.ScoreInstance.WallsHit);
+                    scoreQuery = scoreQuery.Order(order, s => s.ScoreInstance.Mistakes);
                     break;
                 case LeaderboardSortBy.Weight:
                     scoreQuery = scoreQuery.Order(order, s => s.Weight);
@@ -1959,7 +1959,7 @@ namespace BeatLeader_Server.Controllers {
                             Hmd = s.Hmd,
                             Timeset = s.Timeset,
                             Timepost = s.Timepost,
-                            ReplaysWatched = s.AuthorizedReplayWatched + s.AnonimusReplayWatched,
+                            ReplaysWatched = s.ReplayWatchedTotal,
                             LeaderboardId = s.LeaderboardId,
                             Platform = s.Platform,
                             Weight = s.Weight,
@@ -2255,7 +2255,7 @@ namespace BeatLeader_Server.Controllers {
                     Timepost = s.Timepost,
                     Pauses = s.Pauses,
                     MaxStreak = s.MaxStreak,
-                    Mistakes = s.BadCuts + s.MissedNotes + s.WallsHit + s.BombCuts,
+                    Mistakes = s.Mistakes,
                     Modifiers = s.Modifiers,
                     PlayerRank = s.Player.Rank,
                     PlayerName = s.Player.Name,
@@ -2276,7 +2276,7 @@ namespace BeatLeader_Server.Controllers {
                     Timepost = s.Timepost,
                     Pauses = s.ScoreInstance.Pauses,
                     MaxStreak = s.ScoreInstance.MaxStreak,
-                    Mistakes = s.ScoreInstance.BadCuts + s.ScoreInstance.MissedNotes + s.ScoreInstance.WallsHit + s.ScoreInstance.BombCuts,
+                    Mistakes = s.ScoreInstance.Mistakes,
                     Modifiers = s.Modifiers,
                     PlayerRank = s.Player.Rank,
                     PlayerName = s.Player.Name,

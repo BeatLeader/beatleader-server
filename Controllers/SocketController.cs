@@ -83,7 +83,7 @@ namespace BeatLeader_Server.Controllers
                     Controller = s.Controller,
                     MaxCombo = s.MaxCombo,
                     Timeset = s.Timeset,
-                    ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
+                    ReplaysWatched = s.ReplayWatchedTotal,
                     Timepost = s.Timepost,
                     LeaderboardId = s.LeaderboardId,
                     Platform = s.Platform,

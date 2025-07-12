@@ -1,4 +1,5 @@
 ﻿using Amazon.S3;
+using BeatLeader_Server.ControllerHelpers;
 using BeatLeader_Server.Enums;
 using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
@@ -63,7 +64,9 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Filter scores made before unix timestamp, default is null")] int? date_to = null,
             [FromQuery, SwaggerParameter("Show only scores from the event with ID, default is null")] int? eventId = null,
             [FromQuery, SwaggerParameter("Filter maps from a specific mappers. BeatSaver profile ID list, comma separated, default is null")] string? mappers = null,
-            [FromQuery, SwaggerParameter("Filter scores from a specific players. Profile ID list, comma separated, default is null")] string? players = null) {
+            [FromQuery, SwaggerParameter("Filter scores from a specific players. Profile ID list, comma separated, default is null")] string? players = null,
+            [FromQuery, SwaggerParameter("Types of leaderboards to filter, default is null(All). Same as type but multiple")] string? playlistIds = null,
+            [FromBody, SwaggerParameter("Types of leaderboards to filter, default is null(All). Same as type but multiple")] List<PlaylistResponse>? playlists = null) {
 
             if (count < 0 || count > 100) {
                 return BadRequest("Please use count between 0 and 100");
@@ -78,20 +81,23 @@ namespace BeatLeader_Server.Controllers {
                 : null;
 
             bool showRatings = player?.ProfileSettings?.ShowAllRatings ?? false;
+            int treshold = Time.UnixNow() - 60 * 60 * 24 * 2 * 7;
             IQueryable<IScore> sequence = leaderboardContext == LeaderboardContexts.General 
                 ? _context
                     .Scores
                     .AsNoTracking()
-                    .Where(s => s.ValidForGeneral)
+                    .Where(s => s.ValidForGeneral && (sortBy != ScoresSortBy.SotwNominations || s.Timepost > treshold))
                     .TagWithCaller()
                 : _context
                     .ScoreContextExtensions
                     .AsNoTracking()
                     .Include(ce => ce.ScoreInstance)
-                    .Where(s => s.Context == leaderboardContext)
+                    .Where(s => s.Context == leaderboardContext && (sortBy != ScoresSortBy.SotwNominations || s.Timepost > treshold))
                     .TagWithCaller();
 
-            (sequence, int? searchId) = await sequence.FilterAll(_context, true, showRatings, sortBy, order, thenSortBy, thenOrder, search, diff, mode, mapRequirements, scoreStatus, type, mapType, allTypes, hmd, modifiers, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, eventId, mappers, players);
+            var playlistList = await LeaderboardControllerHelper.GetPlaylistList(_context, userId, _s3Client, playlistIds, playlists);
+
+            (sequence, int? searchId, int? scoreCount) = await sequence.FilterAll(_context, true, showRatings, sortBy, order, thenSortBy, thenOrder, search, diff, mode, mapRequirements, scoreStatus, type, mapType, allTypes, hmd, modifiers, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, eventId, mappers, players, playlistList);
 
             var scoreIds = leaderboardContext == LeaderboardContexts.General 
                 ? (await sequence.Skip((page - 1) * count).Take(count).Select(s => s.Id).ToListAsync()).Where(id => id != null).ToList()
@@ -124,7 +130,7 @@ namespace BeatLeader_Server.Controllers {
                         Controller = s.Controller,
                         MaxCombo = s.MaxCombo,
                         Timeset = s.Time,
-                        ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
+                        ReplaysWatched = s.ReplayWatchedTotal,
                         Timepost = s.Timepost,
                         LeaderboardId = s.LeaderboardId,
                         Platform = s.Platform,
@@ -211,7 +217,7 @@ namespace BeatLeader_Server.Controllers {
                 Metadata = new Metadata() {
                     Page = page,
                     ItemsPerPage = count,
-                    Total = await sequence.TagWithCaller().CountAsync()
+                    Total = scoreCount ?? await sequence.TagWithCaller().CountAsync()
                 },
                 Data = resultList.OrderBy(s => scoreIds.IndexOf((int)s.Id))
             };
@@ -247,7 +253,7 @@ namespace BeatLeader_Server.Controllers {
                         Controller = s.Controller,
                         MaxCombo = s.MaxCombo,
                         Timeset = s.Time,
-                        ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
+                        ReplaysWatched = s.ReplayWatchedTotal,
                         Timepost = s.Timepost,
                         LeaderboardId = s.LeaderboardId,
                         Platform = s.Platform,

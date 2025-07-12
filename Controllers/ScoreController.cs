@@ -84,6 +84,9 @@ namespace BeatLeader_Server.Controllers
                     Difficulty = s.Leaderboard.Difficulty,
                     ValidContexts = s.ValidContexts,
                     ScoreImprovement = s.ScoreImprovement,
+                    SotwNominations = s.SotwNominations,
+                    Status = s.Status,
+                    ExternalStatuses = s.ExternalStatuses,
                     Song = new ScoreSongResponse {
                         Id = s.Leaderboard.Song.Id,
                         Hash = s.Leaderboard.Song.Hash,
@@ -1407,6 +1410,111 @@ namespace BeatLeader_Server.Controllers
             .ToList();
 
             return Ok(result);
+        }
+
+        [HttpGet("~/score/sotw")]
+        public async Task<ActionResult<ScoreExternalStatus>> ScoreOfTheWeek()
+        {
+            var score = await _context
+                .ScoreExternalStatus
+                .OrderByDescending(s => s.Timestamp)
+                .FirstOrDefaultAsync();
+            if (score == null)
+            {
+                return NotFound();
+            }
+
+            return score;
+        }
+
+        public enum NominmationStatus {
+            CantNominate,
+            CanNominate,
+            Nominated
+        }
+
+        [HttpGet("~/score/nominations/{id}")]
+        [Authorize]
+        public async Task<ActionResult<NominmationStatus>> ScoreNomations(int id)
+        {
+            string currentId = HttpContext.CurrentUserID(_context);
+            Player? currentPlayer = currentId != null ? await _context.Players.FindAsync(currentId) : null;
+            if (currentPlayer == null)
+            {
+                return Unauthorized();
+            }
+            int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+
+            var score = await _context
+                .Scores
+                .Where(s => s.Id == id && s.Status == ScoreStatus.None && s.Timepost > (timestamp - 60 * 60 * 24 * 14))
+                .FirstOrDefaultAsync();
+            if (score == null)
+            {
+                return NotFound();
+            }
+
+            var nominationsCount = await _context.ScoreNominations.CountAsync(n => n.PlayerId == currentId && n.Timestamp > (timestamp - 60 * 60 * 24 * 14));
+            if (nominationsCount >= 10) {
+                return NominmationStatus.CantNominate;
+            }
+
+            var existingNomination = await _context.ScoreNominations.FirstOrDefaultAsync(n => n.ScoreId == id && n.PlayerId == currentId);
+            if (existingNomination != null) {
+                return NominmationStatus.Nominated;
+            }
+
+            return NominmationStatus.CanNominate;
+        }
+
+        [HttpPost("~/score/nominate/{id}")]
+        [Authorize]
+        public async Task<ActionResult> NominateScore(
+            int id,
+            [FromQuery] string? description = null)
+        {
+            string currentId = HttpContext.CurrentUserID(_context);
+            Player? currentPlayer = currentId != null ? await _context.Players.FindAsync(currentId) : null;
+            if (currentPlayer == null)
+            {
+                return Unauthorized();
+            }
+            var score = await _context
+                .Scores
+                .Where(s => s.Id == id)
+                .FirstOrDefaultAsync();
+            if (score == null)
+            {
+                return NotFound();
+            }
+
+            int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+
+            if (timestamp - score.Timepost > (60 * 60 * 24 * 14 + 60 * 60)) {
+                return BadRequest("This score is too old");
+            }
+
+            var existingNomination = await _context.ScoreNominations.FirstOrDefaultAsync(n => n.ScoreId == id && n.PlayerId == currentId);
+            if (existingNomination != null) {
+                return BadRequest("You already nominated this score");
+            }
+
+            var nominationsCount = await _context.ScoreNominations.CountAsync(n => n.PlayerId == currentId && n.Timestamp > (timestamp - 60 * 60 * 24 * 14));
+            if (nominationsCount >= 10) {
+                return BadRequest("You can nominate up to 10 scores of the last 2 weeks");
+            }
+
+            _context.ScoreNominations.Add(new ScoreNomination {
+                ScoreId = id,
+                PlayerId = currentId,
+                Timestamp = timestamp,
+                Description = description
+            });
+            score.SotwNominations++;
+            
+            await _context.BulkSaveChangesAsync();
+
+            return Ok();
         }
     }
 }

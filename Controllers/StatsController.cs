@@ -200,7 +200,7 @@ namespace BeatLeader_Server.Controllers
                             Controller = s.Controller,
                             MaxCombo = s.MaxCombo,
                             Timeset = s.Timeset,
-                            ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
+                            ReplaysWatched = s.ReplayWatchedTotal,
                             Timepost = s.Timepost,
                             LeaderboardId = s.LeaderboardId,
                             Platform = s.Platform,
@@ -801,7 +801,7 @@ namespace BeatLeader_Server.Controllers
                 score.AnonimusReplayWatched++;
                 scoreMaker.ScoreStats.AnonimusReplayWatched++;
             }
-
+            score.ReplayWatchedTotal++;
             _context.WatchingSessions.Add(new ReplayWatchingSession {
                 ScoreId = scoreId,
                 IP = currentID == null ? ipString : null,

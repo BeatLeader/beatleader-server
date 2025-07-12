@@ -170,18 +170,18 @@ namespace BeatLeader_Server.Utils {
                     if (sequence is IQueryable<Score>) {
                         orderedSequence = sequence
                             .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                            .ThenOrder(order, t => t.BadCuts + t.BombCuts + t.MissedNotes + t.WallsHit);
+                            .ThenOrder(order, t => t.Mistakes);
                     } else {
                         orderedSequence = sequence
                             .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                            .ThenOrder(order, t => t.ScoreInstance.BadCuts + t.ScoreInstance.BombCuts + t.ScoreInstance.MissedNotes + t.ScoreInstance.WallsHit);
+                            .ThenOrder(order, t => t.ScoreInstance.Mistakes);
                     }
                     break;
                 case ScoresSortBy.ReplaysWatched:
                     if (sequence is IQueryable<Score>) {
                         orderedSequence = sequence
                             .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                            .ThenOrder(order, t => t.AnonimusReplayWatched + t.AuthorizedReplayWatched);
+                            .ThenOrder(order, t => t.ReplayWatchedTotal);
                     } else {
                         orderedSequence = sequence
                             .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)

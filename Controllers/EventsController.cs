@@ -350,7 +350,7 @@ namespace BeatLeader_Server.Controllers
                 await Request.Body.CopyToAsync(ms);
                 ms.Position = 0;
 
-                (string extension, MemoryStream stream2) = ImageUtils.GetFormatAndResize(ms);
+                (string extension, MemoryStream stream2) = ImageUtils.GetFormatPng(ms);
                 fileName += extension;
 
                 imageUrl = await _s3Client.UploadAsset(fileName, stream2);

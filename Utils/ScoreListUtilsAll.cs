@@ -44,7 +44,7 @@ namespace BeatLeader_Server.Utils {
                         return sequence.ThenOrder(order, t => t.ScoreInstance.LastTryTime);
                     }
                 case ScoresSortBy.Rank:
-                    return sequence.ThenOrder(order, t => t.Rank);
+                    return order == Order.Desc ? sequence.ThenOrder(Order.Asc, t => t.Rank) : sequence.ThenOrder(Order.Desc, t => t.Rank);
                 case ScoresSortBy.MaxStreak:
                     if (unorderedSequence is IQueryable<Score>) {
                         return sequence.ThenOrder(order, t => t.MaxStreak);
@@ -64,27 +64,18 @@ namespace BeatLeader_Server.Utils {
                         return sequence.ThenOrder(order, t => t.ScoreInstance.SotwNominations);
                     }
                 case ScoresSortBy.Stars:
-                    return sequence.ThenOrder(order, s => 
-                            showAllRatings || 
-                            s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
-                            s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
-                            s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked ? 
-                            (s.Modifiers.Contains("SF") ? s.Leaderboard.Difficulty.ModifiersRating.SFStars :
-                            (s.Modifiers.Contains("SS") ? s.Leaderboard.Difficulty.ModifiersRating.SSStars :
-                            (s.Modifiers.Contains("FS") ? s.Leaderboard.Difficulty.ModifiersRating.FSStars :
-                            s.Leaderboard.Difficulty.Stars)))
-                            : 0);
+                    return sequence.ThenOrder(order, s => s.ModifiedStars);
                 case ScoresSortBy.Mistakes:
                     if (unorderedSequence is IQueryable<Score>) {
-                        return sequence.ThenOrder(order, t => t.BadCuts + t.BombCuts + t.MissedNotes + t.WallsHit);
+                        return sequence.ThenOrder(order, t => t.Mistakes);
                     } else {
-                        return sequence.ThenOrder(order, t => t.ScoreInstance.BadCuts + t.ScoreInstance.BombCuts + t.ScoreInstance.MissedNotes + t.ScoreInstance.WallsHit);
+                        return sequence.ThenOrder(order, t => t.ScoreInstance.Mistakes);
                     }
                 case ScoresSortBy.ReplaysWatched:
                     if (unorderedSequence is IQueryable<Score>) {
-                        return sequence.ThenOrder(order, t => t.AnonimusReplayWatched + t.AuthorizedReplayWatched);
+                        return sequence.ThenOrder(order, t => t.ReplayWatchedTotal);
                     } else {
-                        return sequence.ThenOrder(order, t => t.ScoreInstance.AnonimusReplayWatched + t.ScoreInstance.AuthorizedReplayWatched);
+                        return sequence.ThenOrder(order, t => t.ScoreInstance.ReplayWatchedTotal);
                     }
                 default:
                     break;
@@ -92,7 +83,7 @@ namespace BeatLeader_Server.Utils {
             return sequence;
         }
 
-        public static async Task<(IQueryable<IScore>, int?)> FilterAll(
+        public static async Task<(IQueryable<IScore>, int?, int?)> FilterAll(
             this IQueryable<IScore> sequence,
             AppContext context,
             bool excludeBanned,
@@ -125,8 +116,19 @@ namespace BeatLeader_Server.Utils {
             int? time_to = null,
             int? eventId = null,
             string? mappers = null,
-            string? players = null) {
+            string? players = null,
+            List<PlaylistResponse>? playlists = null) {
+
             int? searchId = null;
+            int? scoreCount = null;
+
+            if (sortBy == ScoresSortBy.Pp || sortBy == ScoresSortBy.AccPP || sortBy == ScoresSortBy.PassPP || sortBy == ScoresSortBy.TechPP) {
+                sequence = sequence.Where(t => t.Pp > 0);
+                scoreCount = MinuteRefresh.PpScoresCount;
+            } else {
+                scoreCount = MinuteRefresh.ScoresCount;
+            }
+
             if (search != null) {
                 List<SongMetadata> matches = SongSearchService.Search(search);
                 Random rnd = new Random();
@@ -150,10 +152,7 @@ namespace BeatLeader_Server.Utils {
                 } else {
                     sequence = sequence.Where(s => ids.Contains(s.Leaderboard.SongId));
                 }
-            }
-
-            if (sortBy == ScoresSortBy.Pp || sortBy == ScoresSortBy.AccPP || sortBy == ScoresSortBy.PassPP || sortBy == ScoresSortBy.TechPP) {
-                sequence = sequence.Where(t => t.Pp > 0);
+                scoreCount = null;
             }
 
             if (sortBy == ScoresSortBy.MaxStreak) {
@@ -164,6 +163,7 @@ namespace BeatLeader_Server.Utils {
                     sequence = sequence
                         .Where(s => !s.ScoreInstance.IgnoreForStats && s.ScoreInstance.MaxStreak != null);
                 }
+                scoreCount = null;
             }
 
             var orderedSequence = sequence
@@ -176,18 +176,23 @@ namespace BeatLeader_Server.Utils {
                 if (leaderboardIds?.Count() != 0) {
                     sequence = sequence.Where(s => leaderboardIds.Contains(s.LeaderboardId));
                 }
+                scoreCount = null;
             }
             if (diff != null) {
                 sequence = sequence.Where(s => s.Leaderboard.Difficulty.DifficultyName == diff);
+                scoreCount = null;
             }
             if (mode != null) {
                 sequence = sequence.Where(s => s.Leaderboard.Difficulty.ModeName == mode);
+                scoreCount = null;
             }
             if (requirements != Requirements.None) {
                 sequence = sequence.Where(s => s.Leaderboard.Difficulty.Requirements.HasFlag(requirements));
+                scoreCount = null;
             }
             if (type != null) {
                 sequence = sequence.Where(s => s.Leaderboard.Difficulty.Status == type);
+                scoreCount = null;
             }
             if (mapType != null) {
                 sequence = allTypes switch
@@ -197,9 +202,11 @@ namespace BeatLeader_Server.Utils {
                     Operation.Not => sequence.Where(s => (s.Leaderboard.Difficulty.Type & mapType) == 0),
                     _             => sequence,
                 };
+                scoreCount = null;
             }
             if (hmd != null) {
                 sequence = sequence.Where(s => s.Hmd == hmd);
+                scoreCount = null;
             }
             if (stars_from != null) {
                 sequence = sequence.Where(s => (
@@ -207,6 +214,7 @@ namespace BeatLeader_Server.Utils {
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) && 
                         s.ModifiedStars >= stars_from);
+                scoreCount = null;
             }
             if (stars_to != null) {
                 sequence = sequence.Where(s => (
@@ -214,6 +222,7 @@ namespace BeatLeader_Server.Utils {
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) && 
                         s.ModifiedStars <= stars_to);
+                scoreCount = null;
             }
             if (accrating_from != null) {
                 sequence = sequence.Where(s => (
@@ -224,6 +233,7 @@ namespace BeatLeader_Server.Utils {
                         (s.Modifiers.Contains("SS") ? s.Leaderboard.Difficulty.ModifiersRating.SSAccRating :
                         (s.Modifiers.Contains("FS") ? s.Leaderboard.Difficulty.ModifiersRating.FSAccRating :
                         s.Leaderboard.Difficulty.AccRating))) >= accrating_from);
+                scoreCount = null;
             }
             if (accrating_to != null) {
                 sequence = sequence.Where(s => (
@@ -234,6 +244,7 @@ namespace BeatLeader_Server.Utils {
                         (s.Modifiers.Contains("SS") ? s.Leaderboard.Difficulty.ModifiersRating.SSAccRating :
                         (s.Modifiers.Contains("FS") ? s.Leaderboard.Difficulty.ModifiersRating.FSAccRating :
                         s.Leaderboard.Difficulty.AccRating))) <= accrating_to);
+                scoreCount = null;
             }
             if (passrating_from != null) {
                 sequence = sequence.Where(s => (
@@ -244,6 +255,7 @@ namespace BeatLeader_Server.Utils {
                         (s.Modifiers.Contains("SS") ? s.Leaderboard.Difficulty.ModifiersRating.SSPassRating :
                         (s.Modifiers.Contains("FS") ? s.Leaderboard.Difficulty.ModifiersRating.FSPassRating :
                         s.Leaderboard.Difficulty.PassRating))) >= passrating_from);
+                scoreCount = null;
             }
             if (passrating_to != null) {
                 sequence = sequence.Where(s => (
@@ -254,6 +266,7 @@ namespace BeatLeader_Server.Utils {
                         (s.Modifiers.Contains("SS") ? s.Leaderboard.Difficulty.ModifiersRating.SSPassRating :
                         (s.Modifiers.Contains("FS") ? s.Leaderboard.Difficulty.ModifiersRating.FSPassRating :
                         s.Leaderboard.Difficulty.PassRating))) <= passrating_to);
+                scoreCount = null;
             }
             if (techrating_from != null) {
                 sequence = sequence.Where(s => (
@@ -264,6 +277,7 @@ namespace BeatLeader_Server.Utils {
                         (s.Modifiers.Contains("SS") ? s.Leaderboard.Difficulty.ModifiersRating.SSTechRating :
                         (s.Modifiers.Contains("FS") ? s.Leaderboard.Difficulty.ModifiersRating.FSTechRating :
                         s.Leaderboard.Difficulty.TechRating))) >= techrating_from);
+                scoreCount = null;
             }
             if (techrating_to != null) {
                 sequence = sequence.Where(s => (
@@ -274,12 +288,15 @@ namespace BeatLeader_Server.Utils {
                         (s.Modifiers.Contains("SS") ? s.Leaderboard.Difficulty.ModifiersRating.SSTechRating :
                         (s.Modifiers.Contains("FS") ? s.Leaderboard.Difficulty.ModifiersRating.FSTechRating :
                         s.Leaderboard.Difficulty.TechRating))) <= techrating_to);
+                scoreCount = null;
             }
             if (time_from != null) {
                 sequence = sequence.Where(s => s.Timepost >= time_from);
+                scoreCount = null;
             }
             if (time_to != null) {
                 sequence = sequence.Where(s => s.Timepost <= time_to);
+                scoreCount = null;
             }
             if (excludeBanned) {
                 sequence = sequence.Where(s => !s.Banned);
@@ -288,14 +305,26 @@ namespace BeatLeader_Server.Utils {
                 var ids = mappers.Split(",").Select(s => int.TryParse(s, out int id) ? id : 0).Where(id => id != 0).ToArray();
                 if (ids.Length > 0 && ids.Length < 100) {
                     sequence = sequence.Where(s => s.Leaderboard.Song.Mappers.Any(m => ids.Contains(m.Id)));
+                    scoreCount = null;
                 }
             }
             if (players != null) {
                 var ids = players.Split(",").ToArray();
                 if (ids.Length > 0 && ids.Length < 100) {
                     sequence = sequence.Where(s => ids.Contains(s.PlayerId));
+                    scoreCount = null;
                 }
             }
+
+            if (playlists != null) {
+                var hashes = playlists.SelectMany(p => p.songs.Where(s => s.hash != null).Select(s => (string)s.hash!.ToLower())).ToList();
+                var keys = playlists.SelectMany(p => p.songs.Where(s => s.hash == null && s.key != null).Select(s => (string)s.key!.ToLower())).ToList();
+
+                if (hashes.Count > 0 || keys.Count > 0) {
+                    sequence = sequence.Where(s => hashes.Contains(s.Leaderboard.Song.Hash.ToLower()) || keys.Contains(s.Leaderboard.SongId));
+                }
+            }
+
             switch (scoreStatus) {
                 case ScoreFilterStatus.None:
                     break;
@@ -331,12 +360,14 @@ namespace BeatLeader_Server.Utils {
                         }
                     }
                     sequence = sequence.Where((Expression<Func<IScore, bool>>)Expression.Lambda(exp, score));
+                    scoreCount = null;
                 } else {
                     sequence = sequence.Where(s => s.Modifiers.Length == 0);
+                    scoreCount = null;
                 }
             }
 
-            return (sequence, searchId);
+            return (sequence, searchId, scoreCount);
         }
     }
 }

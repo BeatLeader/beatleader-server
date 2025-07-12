@@ -249,7 +249,7 @@ namespace BeatLeader_Server.Controllers
                                     Hmd = s.Hmd,
                                     Timeset = s.Timeset,
                                     Timepost = s.Timepost,
-                                    ReplaysWatched = s.AuthorizedReplayWatched + s.AnonimusReplayWatched,
+                                    ReplaysWatched = s.ReplayWatchedTotal,
                                     LeaderboardId = s.LeaderboardId,
                                     Platform = s.Platform,
                                     Weight = s.Weight,
@@ -445,7 +445,7 @@ namespace BeatLeader_Server.Controllers
                                     Hmd = s.Hmd,
                                     Timeset = s.Timeset,
                                     Timepost = s.Timepost,
-                                    ReplaysWatched = s.AuthorizedReplayWatched + s.AnonimusReplayWatched,
+                                    ReplaysWatched = s.ReplayWatchedTotal,
                                     LeaderboardId = s.LeaderboardId,
                                     Platform = s.Platform,
                                     Weight = s.Weight,
@@ -785,6 +785,26 @@ namespace BeatLeader_Server.Controllers
                 if (set.Data.Chains.Count > 0 || set.Data.Arcs.Count > 0)
                 {
                     newDD.Requirements |= Requirements.V3;
+
+                    newDD.Chains = set.Data.Chains.Sum(c => c.SliceCount > 1 ? c.SliceCount - 1 : 0);
+                    newDD.Sliders = set.Data.Arcs.Count;
+
+                    
+                }
+                if (set.Data.njsEvents.Count > 0) {
+                    newDD.Requirements |= Models.Requirements.VNJS;
+                }
+                if (set.Data.lightColorEventBoxGroups.Count > 0 ||
+                    set.Data.lightRotationEventBoxGroups.Count > 0 ||
+                    set.Data.lightTranslationEventBoxGroups.Count > 0 ||
+                    set.Data.vfxEventBoxGroups?.Count() > 0) {
+                    newDD.Requirements |= Models.Requirements.GroupLighting;
+                }
+
+                newDD.MaxScoreGraph = new MaxScoreGraph();
+                newDD.MaxScoreGraph.SaveList(set.MaxScoreGraph());
+                if (newDD.MaxScore == 0) {
+                    newDD.MaxScore = set.MaxScore();
                 }
 
                 diffs.Add(newDD);

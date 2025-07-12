@@ -386,7 +386,8 @@ namespace BeatLeader_Server.Utils
                         break;
                 }
             }
-            score.FullCombo = score.BombCuts == 0 && score.MissedNotes == 0 && score.WallsHit == 0 && score.BadCuts == 0;
+            score.Mistakes = score.BadCuts + score.BombCuts + score.MissedNotes + score.WallsHit;
+            score.FullCombo = score.Mistakes == 0;
             score.ContextExtensions = new List<ScoreContextExtension>();
             var noModsExtension = NoModsContextExtension(score, difficulty);
             if (noModsExtension != null) {

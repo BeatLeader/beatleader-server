@@ -21,7 +21,9 @@ namespace BeatLeader_Server.Services
         private readonly IGauge _scoreCounter;
 
         public static string CurrentHost = "";
+
         public static int ScoresCount = 0;
+        public static int PpScoresCount = 0;
 
         public static List<MassLeaderboardsInfoResponse> massLeaderboards = new List<MassLeaderboardsInfoResponse>();
 
@@ -123,7 +125,8 @@ namespace BeatLeader_Server.Services
                 _rankedPlayerCounter.Set(await _context.Players.Where(p => !p.Banned && p.ScoreStats.LastRankedScoreTime >= timeset).CountAsync());
                 _playerCounter.Set(await _context.Players.CountAsync());
 
-                ScoresCount = await _context.Scores.TagWithCaller().CountAsync();
+                ScoresCount = await _context.Scores.Where(s => s.ValidForGeneral && !s.Banned).TagWithCaller().CountAsync();
+                PpScoresCount = await _context.Scores.Where(s => s.Pp > 0 && s.ValidForGeneral && !s.Banned).TagWithCaller().CountAsync();
 
                 _rankedScoreCounter.Set(await _context.Scores.TagWithCaller().Where(s => s.Pp > 0 && !s.Qualification && !s.Banned).CountAsync());
                 _scoreCounter.Set(ScoresCount);
