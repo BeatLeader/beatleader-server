@@ -252,7 +252,11 @@ namespace BeatLeader_Server.Controllers
             [FromQuery, SwaggerParameter("Context of the leaderboard, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery, SwaggerParameter("Flag to filter only friends, default is false")] bool friends = false,
             [FromQuery, SwaggerParameter("Comma-separated range to filter by amount of pp, default is null")] string? pp_range = null,
-            [FromQuery, SwaggerParameter("Comma-separated range to filter by total score, default is null")] string? score_range = null,
+            [FromQuery, SwaggerParameter("Comma-separated range to filter by amount of acc pp, default is null")] string? acc_pp_range = null,
+            [FromQuery, SwaggerParameter("Comma-separated range to filter by amount of pass pp, default is null")] string? pass_pp_range = null,
+            [FromQuery, SwaggerParameter("Comma-separated range to filter by amount of tech pp, default is null")] string? tech_pp_range = null,
+            [FromQuery, SwaggerParameter("Comma-separated range to filter by total score count, default is null")] string? score_range = null,
+            [FromQuery, SwaggerParameter("Comma-separated range to filter by ranked score count, default is null")] string? ranked_score_range = null,
             [FromQuery, SwaggerParameter("Comma-separated range to filter by platform value, default is null")] string? platform = null,
             [FromQuery, SwaggerParameter("Comma-separated range to filter by role, default is null")] string? role = null,
             [FromQuery, SwaggerParameter("Comma-separated range to filter by hmd (headset), default is null")] string? hmd = null,
@@ -267,7 +271,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
-                return await GetContextPlayers(sortBy, page, count, search, order, countries, mapsType, ppType, leaderboardContext, friends, pp_range, score_range, platform, role, hmd, activityPeriod, mapperStatus, banned);
+                return await GetContextPlayers(sortBy, page, count, search, order, countries, mapsType, ppType, leaderboardContext, friends, pp_range, acc_pp_range, pass_pp_range, tech_pp_range, score_range, ranked_score_range, platform, role, hmd, activityPeriod, mapperStatus, banned);
             }
 
             IQueryable<Player> request = 
@@ -377,29 +381,53 @@ namespace BeatLeader_Server.Controllers
                     }
                 } catch { }
             }
-            if (score_range != null && score_range.Length > 1)
+            if (acc_pp_range != null && acc_pp_range.Length > 1)
             {
-                try
-                {
+                try {
+                    var array = acc_pp_range.Split(",").Select(s => float.Parse(s)).ToArray();
+                    float from = array[0]; float to = array[1];
+                    if (!float.IsNaN(from) && !float.IsNaN(to)) {
+                        request = request.Where(p => p.AccPp >= from && p.AccPp <= to);
+                    }
+                } catch { }
+            }
+            if (pass_pp_range != null && pass_pp_range.Length > 1)
+            {
+                try {
+                    var array = pass_pp_range.Split(",").Select(s => float.Parse(s)).ToArray();
+                    float from = array[0]; float to = array[1];
+                    if (!float.IsNaN(from) && !float.IsNaN(to)) {
+                        request = request.Where(p => p.PassPp >= from && p.PassPp <= to);
+                    }
+                } catch { }
+            }
+            if (tech_pp_range != null && tech_pp_range.Length > 1)
+            {
+                try {
+                    var array = tech_pp_range.Split(",").Select(s => float.Parse(s)).ToArray();
+                    float from = array[0]; float to = array[1];
+                    if (!float.IsNaN(from) && !float.IsNaN(to)) {
+                        request = request.Where(p => p.TechPp >= from && p.TechPp <= to);
+                    }
+                } catch { }
+            }
+            if (score_range != null && score_range.Length > 1) {
+                try {
                     var array = score_range.Split(",").Select(s => int.Parse(s)).ToArray();
                     int from = array[0]; int to = array[1];
                     if (!float.IsNaN(from) && !float.IsNaN(to)) {
-                        switch (mapsType)
-                        {
-                            case MapsType.Ranked:
-                                request = request.Where(p => p.ScoreStats.RankedPlayCount >= from && p.ScoreStats.RankedPlayCount <= to);
-                                break;
-                            case MapsType.Unranked:
-                                request = request.Where(p => p.ScoreStats.UnrankedPlayCount >= from && p.ScoreStats.UnrankedPlayCount <= to);
-                                break;
-                            case MapsType.All:
-                                request = request.Where(p => p.ScoreStats.TotalPlayCount >= from && p.ScoreStats.TotalPlayCount <= to);
-                                break;
-                        }
+                        request = request.Where(p => p.ScoreStats.TotalPlayCount >= from && p.ScoreStats.TotalPlayCount <= to);
                     }
-                    
-                }
-                catch { }
+                } catch { }
+            }
+            if (ranked_score_range != null && ranked_score_range.Length > 1) {
+                try {
+                    var array = ranked_score_range.Split(",").Select(s => int.Parse(s)).ToArray();
+                    int from = array[0]; int to = array[1];
+                    if (!float.IsNaN(from) && !float.IsNaN(to)) {
+                        request = request.Where(p => p.ScoreStats.RankedPlayCount >= from && p.ScoreStats.RankedPlayCount <= to);
+                    }
+                } catch { }
             }
             if (friends) {
                 string? userId = HttpContext.CurrentUserID(_context);
@@ -527,24 +555,28 @@ namespace BeatLeader_Server.Controllers
         // Unfortunately I wasn't able to unify it nicely with General context. So copy-paste we go
         [NonAction]
         public async Task<ActionResult<ResponseWithMetadata<PlayerResponseWithStats>>> GetContextPlayers(
-            [FromQuery] PlayerSortBy sortBy = PlayerSortBy.Pp, 
-            [FromQuery] int page = 1, 
-            [FromQuery] int count = 50, 
-            [FromQuery] string search = "",
-            [FromQuery] Order order = Order.Desc,
-            [FromQuery] string countries = "",
-            [FromQuery] MapsType mapsType = MapsType.Ranked,
-            [FromQuery] PpType ppType = PpType.General,
-            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            [FromQuery] bool friends = false,
-            [FromQuery] string? pp_range = null,
-            [FromQuery] string? score_range = null,
-            [FromQuery] string? platform = null,
-            [FromQuery] string? role = null,
-            [FromQuery] string? hmd = null,
-            [FromQuery] int? activityPeriod = null,
-            [FromQuery] MapperStatus? mapperStatus = null,
-            [FromQuery] bool? banned = null)
+            PlayerSortBy sortBy = PlayerSortBy.Pp, 
+            int page = 1, 
+            int count = 50, 
+            string search = "",
+            Order order = Order.Desc,
+            string countries = "",
+            MapsType mapsType = MapsType.Ranked,
+            PpType ppType = PpType.General,
+            LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
+            bool friends = false,
+            string? pp_range = null,
+            string? acc_pp_range = null,
+            string? pass_pp_range = null,
+            string? tech_pp_range = null,
+            string? score_range = null,
+            string? ranked_score_range = null,
+            string? platform = null,
+            string? role = null,
+            string? hmd = null,
+            int? activityPeriod = null,
+            MapperStatus? mapperStatus = null,
+            bool? banned = null)
         {
             IQueryable<PlayerContextExtension> request = 
                 _context
@@ -655,24 +687,52 @@ namespace BeatLeader_Server.Controllers
                     }
                 } catch { }
             }
+            if (acc_pp_range != null && acc_pp_range.Length > 1)
+            {
+                try {
+                    var array = acc_pp_range.Split(",").Select(s => float.Parse(s)).ToArray();
+                    float from = array[0]; float to = array[1];
+                    if (!float.IsNaN(from) && !float.IsNaN(to)) {
+                        request = request.Where(p => p.AccPp >= from && p.AccPp <= to);
+                    }
+                } catch { }
+            }
+            if (pass_pp_range != null && pass_pp_range.Length > 1)
+            {
+                try {
+                    var array = pass_pp_range.Split(",").Select(s => float.Parse(s)).ToArray();
+                    float from = array[0]; float to = array[1];
+                    if (!float.IsNaN(from) && !float.IsNaN(to)) {
+                        request = request.Where(p => p.PassPp >= from && p.PassPp <= to);
+                    }
+                } catch { }
+            }
+            if (tech_pp_range != null && tech_pp_range.Length > 1)
+            {
+                try {
+                    var array = tech_pp_range.Split(",").Select(s => float.Parse(s)).ToArray();
+                    float from = array[0]; float to = array[1];
+                    if (!float.IsNaN(from) && !float.IsNaN(to)) {
+                        request = request.Where(p => p.TechPp >= from && p.TechPp <= to);
+                    }
+                } catch { }
+            }
             if (score_range != null && score_range.Length > 1) {
                 try {
                     var array = score_range.Split(",").Select(s => int.Parse(s)).ToArray();
                     int from = array[0]; int to = array[1];
                     if (!float.IsNaN(from) && !float.IsNaN(to)) {
-                        switch (mapsType) {
-                            case MapsType.Ranked:
-                                request = request.Where(p => p.ScoreStats.RankedPlayCount >= from && p.ScoreStats.RankedPlayCount <= to);
-                                break;
-                            case MapsType.Unranked:
-                                request = request.Where(p => p.ScoreStats.UnrankedPlayCount >= from && p.ScoreStats.UnrankedPlayCount <= to);
-                                break;
-                            case MapsType.All:
-                                request = request.Where(p => p.ScoreStats.TotalPlayCount >= from && p.ScoreStats.TotalPlayCount <= to);
-                                break;
-                        }
+                        request = request.Where(p => p.ScoreStats.TotalPlayCount >= from && p.ScoreStats.TotalPlayCount <= to);
                     }
-
+                } catch { }
+            }
+            if (ranked_score_range != null && ranked_score_range.Length > 1) {
+                try {
+                    var array = ranked_score_range.Split(",").Select(s => int.Parse(s)).ToArray();
+                    int from = array[0]; int to = array[1];
+                    if (!float.IsNaN(from) && !float.IsNaN(to)) {
+                        request = request.Where(p => p.ScoreStats.RankedPlayCount >= from && p.ScoreStats.RankedPlayCount <= to);
+                    }
                 } catch { }
             }
             if (friends) {
@@ -1009,6 +1069,43 @@ namespace BeatLeader_Server.Controllers
             await _context.SaveChangesAsync();
 
             return Ok();
+        }
+
+        public class PlayersTopResponse {
+            public float Pp { get; set; }
+            public float TechPp { get; set; }
+            public float AccPp { get; set; }
+            public float PassPp { get; set; }
+
+            public int PlayCount { get; set; }
+            public int RankedPlayCount { get; set; }
+        }
+
+        [HttpGet("~/players/top")]
+        public async Task<ActionResult<PlayersTopResponse>> TopPlayers(
+            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
+        {
+            if (leaderboardContext == LeaderboardContexts.General) {
+                return new PlayersTopResponse { 
+                    Pp = await _context.Players.Where(p => !p.Banned).OrderByDescending(p => p.Pp).Select(p => p.Pp).FirstOrDefaultAsync(),
+                    TechPp = await _context.Players.Where(p => !p.Banned).OrderByDescending(p => p.TechPp).Select(p => p.TechPp).FirstOrDefaultAsync(),
+                    AccPp = await _context.Players.Where(p => !p.Banned).OrderByDescending(p => p.AccPp).Select(p => p.AccPp).FirstOrDefaultAsync(),
+                    PassPp = await _context.Players.Where(p => !p.Banned).OrderByDescending(p => p.PassPp).Select(p => p.PassPp).FirstOrDefaultAsync(),
+
+                    PlayCount = await _context.Players.Where(p => !p.Banned).OrderByDescending(p => p.ScoreStats.TotalPlayCount).Select(p => p.ScoreStats.TotalPlayCount).FirstOrDefaultAsync(),
+                    RankedPlayCount = await _context.Players.Where(p => !p.Banned).OrderByDescending(p => p.ScoreStats.RankedPlayCount).Select(p => p.ScoreStats.RankedPlayCount).FirstOrDefaultAsync(),
+                };
+            } else {
+                return new PlayersTopResponse { 
+                    Pp = await _context.PlayerContextExtensions.Where(p => !p.Banned).OrderByDescending(p => p.Pp).Select(p => p.Pp).FirstOrDefaultAsync(),
+                    TechPp = await _context.PlayerContextExtensions.Where(p => !p.Banned && p.Context == leaderboardContext).OrderByDescending(p => p.TechPp).Select(p => p.TechPp).FirstOrDefaultAsync(),
+                    AccPp = await _context.PlayerContextExtensions.Where(p => !p.Banned && p.Context == leaderboardContext).OrderByDescending(p => p.AccPp).Select(p => p.AccPp).FirstOrDefaultAsync(),
+                    PassPp = await _context.PlayerContextExtensions.Where(p => !p.Banned && p.Context == leaderboardContext).OrderByDescending(p => p.PassPp).Select(p => p.PassPp).FirstOrDefaultAsync(),
+
+                    PlayCount = await _context.PlayerContextExtensions.Where(p => !p.Banned && p.Context == leaderboardContext).OrderByDescending(p => p.ScoreStats.TotalPlayCount).Select(p => p.ScoreStats.TotalPlayCount).FirstOrDefaultAsync(),
+                    RankedPlayCount = await _context.PlayerContextExtensions.Where(p => !p.Banned && p.Context == leaderboardContext).OrderByDescending(p => p.ScoreStats.RankedPlayCount).Select(p => p.ScoreStats.RankedPlayCount).FirstOrDefaultAsync(),
+                };
+            }
         }
         
         [HttpGet("~/players/top/pp")]

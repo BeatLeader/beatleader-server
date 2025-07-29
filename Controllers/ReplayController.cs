@@ -1716,6 +1716,10 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
+            if (player?.ScoreStats != null) {
+                player.ScoreStats.ScorePlaytime += (replay.frames.Last().time - replay.frames.First().time) / 60.0 + statistic?.winTracker.totalPauseDuration ?? 0.0;
+            }
+
             if (storageContext != null) {
                 await LeaderboardPlayerStatsService.AddJob(new PlayerStatsJob {
                     replayData = fileName != null ? null : replayData,

@@ -28,6 +28,8 @@ namespace BeatLeader_Server.Utils {
             string? modifiers = null,
             float? stars_from = null,
             float? stars_to = null,
+            float? acc_from = null,
+            float? acc_to = null,
             int? time_from = null,
             int? time_to = null,
             int? eventId = null,
@@ -185,7 +187,18 @@ namespace BeatLeader_Server.Utils {
                     } else {
                         orderedSequence = sequence
                             .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                            .ThenOrder(order, t => t.ScoreInstance.AnonimusReplayWatched + t.ScoreInstance.AuthorizedReplayWatched);
+                            .ThenOrder(order, t => t.ScoreInstance.ReplayWatchedTotal);
+                    }
+                    break;
+                case ScoresSortBy.SotwNominations:
+                    if (sequence is IQueryable<Score>) {
+                        orderedSequence = sequence
+                            .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
+                            .ThenOrder(order, t => t.SotwNominations);
+                    } else {
+                        orderedSequence = sequence
+                            .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
+                            .ThenOrder(order, t => t.ScoreInstance.SotwNominations);
                     }
                     break;
                 default:
@@ -228,6 +241,12 @@ namespace BeatLeader_Server.Utils {
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) && 
                         s.ModifiedStars <= stars_to);
+            }
+            if (acc_from != null) {
+                sequence = sequence.Where(s => s.Accuracy >= acc_from);
+            }
+            if (acc_to != null) {
+                sequence = sequence.Where(s => s.Accuracy <= acc_to);
             }
             if (time_from != null) {
                 sequence = sequence.Where(s => s.Timepost >= time_from);

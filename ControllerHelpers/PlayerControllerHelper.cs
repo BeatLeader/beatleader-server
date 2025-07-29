@@ -151,7 +151,7 @@ namespace BeatLeader_Server.ControllerHelpers {
 
             foreach (var attempt in attempts) {
                 string? name = attempt.Replay?.Split("/").LastOrDefault();
-                if (name != null) {
+                if (!string.IsNullOrEmpty(name)) {
                     if (attempt.Replay.Contains("otherreplay")) {
                         await _s3Client.DeleteOtherReplay(name);
                     } else {
@@ -163,6 +163,13 @@ namespace BeatLeader_Server.ControllerHelpers {
             }
 
             await storageContext.BulkSaveChangesAsync();
+
+            var clanUpdates = await dbContext.ClanUpdates.Where(cu => cu.Player.Id == playerID).ToListAsync();
+            foreach (var item in clanUpdates) {
+                dbContext.ClanUpdates.Remove(item);
+            }
+
+            await dbContext.SaveChangesAsync();
 
             Player? player = await dbContext.Players.Where(p => p.Id == playerID)
                 .Include(p => p.Socials)
@@ -213,6 +220,18 @@ namespace BeatLeader_Server.ControllerHelpers {
 
             if (sortBy == PlayerSortBy.Level) {
                 return preSorted.ThenOrder(order, p => p.Level);
+            }
+
+            if (sortBy == PlayerSortBy.ScorePlaytime) {
+                return preSorted.ThenOrder(order, p => p.ScoreStats.ScorePlaytime);
+            }
+
+            if (sortBy == PlayerSortBy.SteamPlaytime) {
+                return preSorted.ThenOrder(order, p => p.ScoreStats.SteamPlaytimeForever);
+            }
+
+            if (sortBy == PlayerSortBy.SteamPlaytime2Weeks) {
+                return preSorted.ThenOrder(order, p => p.ScoreStats.SteamPlaytime2Weeks);
             }
 
             if (sortBy == PlayerSortBy.Pp) {
@@ -487,8 +506,11 @@ namespace BeatLeader_Server.ControllerHelpers {
                 Mutual = following.Contains(f.FollowerId)
             }).ToList();
 
+            var bannedIds = await dbContext.Players.Where(p => p.Banned).Select(p => p.Id).ToListAsync();
+
             // Step 4: Order and paginate the results
             var pagedFollowersCounts = followersCounts
+                .Where(f => !bannedIds.Contains(f.Id))
                 .OrderByDescending(f => f.Count)
                 .Skip((page - 1) * count)
                 .Take(count)

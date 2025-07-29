@@ -25,8 +25,7 @@ namespace BeatLeader_Server.Services
             do {
                 int hoursUntil21 = (21 - (int)DateTime.Now.Hour + 24) % 24;
 
-                if (hoursUntil21 == 0)
-                {
+                if (hoursUntil21 == 0) {
                     Console.WriteLine("SERVICE-STARTED DailyRefresh");
 
                     try {
@@ -69,7 +68,7 @@ namespace BeatLeader_Server.Services
                         Console.WriteLine($"EXCEPTION DailyRefresh {e}");
                     }
 
-                    hoursUntil21 = 24;
+                    hoursUntil21 = (21 - (int)DateTime.Now.Hour + 24) % 24;
 
                     Console.WriteLine("SERVICE-DONE DailyRefresh");
                 }
@@ -106,6 +105,69 @@ namespace BeatLeader_Server.Services
                 await _patreonController.RefreshPatreon();
             }
         }
+
+        public class PlayerSelect {
+            public string Id { get; set; }
+            public string Avatar { get; set; }
+            public string Country { get; set; }
+            public string ExternalProfileUrl { get; set; }
+            public int? ScoreStatsId { get; set; }
+            public int Rank { get; set; }
+        }
+
+        public async Task<Player?> PlayerUpdates(PlayerSelect p) {
+            Player? update = await PlayerUtils.GetPlayerFromSteam(_configuration.GetValue<string>("SteamApi"), p.Id, _configuration.GetValue<string>("SteamKey"));
+
+            if (update != null)
+            {
+                var player = new Player() { 
+                    Id = p.Id,
+                    ExternalProfileUrl = p.ExternalProfileUrl,
+                    Avatar = p.Avatar,
+                    Country = p.Country
+                };
+                bool urlChanged = false, avatarChanged = false, countryChanged = false;
+
+                if (update.ExternalProfileUrl != p.ExternalProfileUrl) {
+                    player.ExternalProfileUrl = update.ExternalProfileUrl;
+                    urlChanged = true;
+                }
+
+                if (p.Avatar.Contains("steamcdn") && p.Avatar != update.Avatar)
+                {
+                    player.Avatar = update.Avatar;
+                    avatarChanged = true;
+                }
+
+                if (p.Country == "not set" && update.Country != "not set")
+                {
+                    player.Country = update.Country;
+                    countryChanged = true;
+                }
+
+                if (urlChanged || avatarChanged || countryChanged) {
+                    return player;
+                }
+            }
+
+            return null;
+        }
+
+        public async Task<PlayerScoreStats?> PlayerStatsUpdates(PlayerSelect p) {
+            if (p.ScoreStatsId != null) {
+                var playtime = await PlayerUtils.GetPlaytimeFromSteam(_configuration.GetValue<string>("SteamApi"), p.Id, _configuration.GetValue<string>("SteamKey"));
+                if (playtime != null) {
+                    return new PlayerScoreStats {
+                        Id = (int)p.ScoreStatsId,
+                        SteamPlaytime2Weeks = (int)(playtime?.Item1 ?? 0L),
+                        SteamPlaytimeForever = (int)(playtime?.Item2 ?? 0L)
+                    };
+                }
+            }
+
+            return null;
+        }
+
         public async Task RefreshSteamPlayers()
         {
             using (var scope = _serviceScopeFactory.CreateScope())
@@ -113,53 +175,35 @@ namespace BeatLeader_Server.Services
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
                 _context.ChangeTracker.AutoDetectChangesEnabled = false;
 
-                int playerCount = await _context.Players.CountAsync();
+                int playerCount = await _context.Players.Where(p => p.Rank != 0).CountAsync();
 
-                for (int i = 0; i < playerCount; i += 2000)
+                for (int i = 0; i < playerCount; i += 100)
                 {
-                    var players = await _context.Players.OrderByDescending(p => p.Id).Select(p => new { 
-                            Id = p.Id, 
-                            Avatar = p.Avatar, 
+                    var players = (await _context.Players
+                        .Where(p => p.Rank != 0)
+                        .OrderBy(p => p.Rank)
+                        .Skip(i)
+                        .Take(100)
+                        .Select(p => new PlayerSelect { 
+                            Id = p.Id,
+                            Avatar = p.Avatar,
                             Country = p.Country,
-                            ExternalProfileUrl = p.ExternalProfileUrl 
-                        }).Skip(i).Take(2000).ToListAsync();
-                    foreach (var p in players)
-                    {
-                        if (Int64.Parse(p.Id) <= 70000000000000000) { continue; }
-                        Player? update = await PlayerUtils.GetPlayerFromSteam(_configuration.GetValue<string>("SteamApi"), p.Id, _configuration.GetValue<string>("SteamKey"));
+                            ExternalProfileUrl = p.ExternalProfileUrl,
+                            ScoreStatsId = p.ScoreStatsId,
+                            Rank = p.Rank
+                        })
+                        .ToListAsync())
+                        .Where(p => Int64.Parse(p.Id) >= 70000000000000000)
+                        .ToList();
 
-                        if (update != null)
-                        {
-                            var player = new Player() { Id = p.Id };
-                            bool urlChanged = false, avatarChanged = false, countryChanged = false;
+                    var playerUpdates = await Task.WhenAll(players.Select(PlayerUpdates).ToList());
+                    var statsUpdates = await Task.WhenAll(players.Select(PlayerStatsUpdates).ToList());
 
-                            if (update.ExternalProfileUrl != p.ExternalProfileUrl) {
-                                player.ExternalProfileUrl = update.ExternalProfileUrl;
-                                urlChanged = true;
-                            }
-
-                            if (p.Avatar.Contains("steamcdn") && p.Avatar != update.Avatar)
-                            {
-                                player.Avatar = update.Avatar;
-                                avatarChanged = true;
-                            }
-
-                            if (p.Country == "not set" && update.Country != "not set")
-                            {
-                                player.Country = update.Country;
-                                countryChanged = true;
-                            }
-
-                            if (urlChanged || avatarChanged || countryChanged) {
-                                _context.Players.Attach(player);
-                            }
-                            if (urlChanged) _context.Entry(player).Property(x => x.ExternalProfileUrl).IsModified = true;
-                            if (avatarChanged) _context.Entry(player).Property(x => x.Avatar).IsModified = true;
-                            if (countryChanged) _context.Entry(player).Property(x => x.Country).IsModified = true;
-                        }
-                    }
-
+                    await _context.BulkUpdateAsync(playerUpdates.Where(p => p != null).ToList(), options => options.ColumnInputExpression = c => new { c.ExternalProfileUrl, c.Avatar, c.Country });
+                    await _context.BulkUpdateAsync(statsUpdates.Where(p => p != null).ToList(), options => options.ColumnInputExpression = c => new { c.SteamPlaytime2Weeks, c.SteamPlaytimeForever });
                     await _context.BulkSaveChangesAsync();
+
+                    await Task.Delay(TimeSpan.FromSeconds(5));
                 }
             }
         }

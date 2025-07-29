@@ -143,6 +143,10 @@ namespace BeatLeader_Server.Services
                             TopPlatform = p.ScoreStats.TopPlatform,
                             TopHMD = p.ScoreStats.TopHMD,
 
+                            ScorePlaytime = p.ScoreStats.ScorePlaytime,
+                            SteamPlaytime2Weeks = p.ScoreStats.SteamPlaytime2Weeks,
+                            SteamPlaytimeForever = p.ScoreStats.SteamPlaytimeForever,
+
                             ReplaysWatched = p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched,
                             WatchedReplays = p.ScoreStats.WatchedReplays,
                         }));
@@ -246,6 +250,10 @@ namespace BeatLeader_Server.Services
 
                                 TopPlatform = p.ScoreStats.TopPlatform,
                                 TopHMD = p.ScoreStats.TopHMD,
+
+                                ScorePlaytime = p.ScoreStats.ScorePlaytime,
+                                SteamPlaytime2Weeks = p.ScoreStats.SteamPlaytime2Weeks,
+                                SteamPlaytimeForever = p.ScoreStats.SteamPlaytimeForever,
 
                                 ReplaysWatched = p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched,
                                 WatchedReplays = p.ScoreStats.WatchedReplays,

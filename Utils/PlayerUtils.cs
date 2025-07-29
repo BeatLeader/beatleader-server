@@ -422,6 +422,28 @@ namespace BeatLeader_Server.Utils
 
             return result;
         }
+
+        public static async Task<(long, long)?> GetPlaytimeFromSteam(string steamUrl, string playerID, string steamKey)
+        {
+            dynamic? info = await GetPlayer($"{steamUrl}/IPlayerService/GetOwnedGames/v0001/?key={steamKey}&format=json&input_json={{\"steamid\": {playerID}, \"appids_filter\": [ 620980 ]}}");
+
+            if (info == null || !ExpandantoObject.HasProperty(info.response, "game_count") || info.response.game_count == 0) return null;
+
+            dynamic gameInfo = info.response.games[0];
+
+            long playtime_2weeks = 0;
+            if (ExpandantoObject.HasProperty(gameInfo, "playtime_2weeks")) {
+                playtime_2weeks = gameInfo.playtime_2weeks;
+            }
+
+            long playtime_forever = 0;
+            if (ExpandantoObject.HasProperty(gameInfo, "playtime_forever")) {
+                playtime_forever = gameInfo.playtime_forever;
+            }
+
+            return (playtime_2weeks, playtime_forever);
+        }
+
         public static async Task<Player?> GetPlayerFromOculus(string playerID, string token)
         {
             dynamic? info = await GetPlayer("https://graph.oculus.com/" + playerID + "?fields=id,alias,avatar_v2{avatar_image{uri}}", token);

@@ -63,6 +63,9 @@ public enum PlayerSortBy {
     Level,
     Prestige,
     Experience,
+    ScorePlaytime,
+    SteamPlaytime,
+    SteamPlaytime2Weeks,
 }
 
 public enum ClanSortBy {

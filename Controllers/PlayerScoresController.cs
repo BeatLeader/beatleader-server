@@ -48,23 +48,25 @@ namespace BeatLeader_Server.Controllers {
             string id,
             string currentID,
             bool showRatings,
-            ScoresSortBy sortBy = ScoresSortBy.Date,
-            Order order = Order.Desc,
-            string? search = null,
-            string? diff = null,
-            string? mode = null,
-            Requirements requirements = Requirements.None,
-            ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
-            LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            DifficultyStatus? type = null,
-            HMD? hmd = null,
-            string? modifiers = null,
-            float? stars_from = null,
-            float? stars_to = null,
-            int? time_from = null,
-            int? time_to = null,
-            int? eventId = null,
-            List<PlaylistResponse>? playlists = null) {
+            ScoresSortBy sortBy,
+            Order order,
+            string? search,
+            string? diff,
+            string? mode,
+            Requirements requirements,
+            ScoreFilterStatus scoreStatus,
+            LeaderboardContexts leaderboardContext,
+            DifficultyStatus? type,
+            HMD? hmd,
+            string? modifiers,
+            float? stars_from,
+            float? stars_to,
+            float? acc_from,
+            float? acc_to,
+            int? time_from,
+            int? time_to,
+            int? eventId,
+            List<PlaylistResponse>? playlists) {
 
             var player = await _context
                     .Players
@@ -86,7 +88,7 @@ namespace BeatLeader_Server.Controllers {
                    .Include(ce => ce.ScoreInstance)
                    .Where(t => t.PlayerId == id && t.Context == leaderboardContext)
                    .TagWithCaller();
-            (var resultQuery, int? searchId) = await query.Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId, playlists);
+            (var resultQuery, int? searchId) = await query.Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, hmd, modifiers, stars_from, stars_to, acc_from, acc_to, time_from, time_to, eventId, playlists);
             return (resultQuery, searchId, id);
         }
 
@@ -112,10 +114,14 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Filter scores by modifiers(GN, SF, etc), default is null")] string? modifiers = null,
             [FromQuery, SwaggerParameter("Filter scores on ranked maps with stars greater than, default is null")] float? stars_from = null,
             [FromQuery, SwaggerParameter("Filter scores on ranked maps with stars lower than, default is null")] float? stars_to = null,
+            [FromQuery, SwaggerParameter("Filter scores on score accuracy greater than, default is null")] float? acc_from = null,
+            [FromQuery, SwaggerParameter("Filter scores on score accuracy lower than, default is null")] float? acc_to = null,
             [FromQuery, SwaggerParameter("Filter scores made after unix timestamp, default is null")] int? time_from = null,
             [FromQuery, SwaggerParameter("Filter scores made before unix timestamp, default is null")] int? time_to = null,
             [FromQuery, SwaggerParameter("Show only scores from the event with ID, default is null")] int? eventId = null,
-            [FromQuery, SwaggerParameter("Include score improvement and offsets, default is false")] bool includeIO = false) {
+            [FromQuery, SwaggerParameter("Include score improvement and offsets, default is false")] bool includeIO = false,
+            [FromQuery, SwaggerParameter("Playlits Ids to filter, default is null")] string? playlistIds = null,
+            [FromBody, SwaggerParameter("Types of leaderboards to filter, default is null(All). Same as type but multiple")] List<PlaylistResponse>? playlists = null) {
             if (count > 100 || count < 0) {
                 return BadRequest("Please use `count` value in range of 0 to 100");
             }
@@ -145,11 +151,13 @@ namespace BeatLeader_Server.Controllers {
                 sortBy = ScoresSortBy.Pp;
             }
 
+            var playlistList = await LeaderboardControllerHelper.GetPlaylistList(_context, currentID, _s3Client, playlistIds, playlists);
+
             (
                 IQueryable<IScore>? sequence, 
                 int? searchId,
                 string userId
-            ) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+            ) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, hmd, modifiers, stars_from, stars_to, acc_from, acc_to, time_from, time_to, eventId, playlistList);
             if (sequence == null) {
                 return NotFound();
             }
@@ -218,7 +226,8 @@ namespace BeatLeader_Server.Controllers {
                         Controller = s.Controller,
                         MaxCombo = s.MaxCombo,
                         Timeset = s.Time,
-                        ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
+                        ReplaysWatched = s.ReplayWatchedTotal,
+                        SotwNominations = s.SotwNominations,
                         Timepost = s.Timepost,
                         LeaderboardId = s.LeaderboardId,
                         Platform = s.Platform,
@@ -342,7 +351,8 @@ namespace BeatLeader_Server.Controllers {
                             Controller = s.Controller,
                             MaxCombo = s.MaxCombo,
                             Timeset = s.Time,
-                            ReplaysWatched = s.AnonimusReplayWatched + s.AuthorizedReplayWatched,
+                            ReplaysWatched = s.ReplayWatchedTotal,
+                            SotwNominations = s.SotwNominations,
                             Timepost = s.Timepost,
                             LeaderboardId = s.LeaderboardId,
                             Platform = s.Platform,
@@ -397,6 +407,8 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Filter scores by modifiers(GN, SF, etc), default is null")] string? modifiers = null,
             [FromQuery, SwaggerParameter("Filter scores on ranked maps with stars greater than, default is null")] float? stars_from = null,
             [FromQuery, SwaggerParameter("Filter scores on ranked maps with stars lower than, default is null")] float? stars_to = null,
+            [FromQuery, SwaggerParameter("Filter scores on score accuracy greater than, default is null")] float? acc_from = null,
+            [FromQuery, SwaggerParameter("Filter scores on score accuracy lower than, default is null")] float? acc_to = null,
             [FromQuery, SwaggerParameter("Filter scores made after unix timestamp, default is null")] int? time_from = null,
             [FromQuery, SwaggerParameter("Filter scores made before unix timestamp, default is null")] int? time_to = null,
             [FromQuery, SwaggerParameter("Show only scores from the event with ID, default is null")] int? eventId = null) {
@@ -421,7 +433,7 @@ namespace BeatLeader_Server.Controllers {
             }
 
             var playlistList = await LeaderboardControllerHelper.GetPlaylistList(_context, currentID, _s3Client, playlistIds, playlists);
-            (IQueryable<IScore>? sequence, int? searchId, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId, playlistList);
+            (IQueryable<IScore>? sequence, int? searchId, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, hmd, modifiers, stars_from, stars_to, acc_from, acc_to, time_from, time_to, eventId, playlistList);
 
             if (sequence == null) {
                 return NotFound();
@@ -534,10 +546,14 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] string? modifiers = null,
             [FromQuery] float? stars_from = null,
             [FromQuery] float? stars_to = null,
+            [FromQuery] float? acc_from = null,
+            [FromQuery] float? acc_to = null,
             [FromQuery] int? time_from = null,
             [FromQuery] int? time_to = null,
             [FromQuery] int? eventId = null,
-            [FromQuery] float? batch = null) {
+            [FromQuery] float? batch = null,
+            [FromQuery] string? playlistIds = null,
+            [FromBody] List<PlaylistResponse>? playlists = null) {
             if (count > 100 || count < 0) {
                 return BadRequest("Please use `count` value in range of 0 to 100");
             }
@@ -566,7 +582,9 @@ namespace BeatLeader_Server.Controllers {
                 sortBy = ScoresSortBy.Pp;
             }
 
-            (IQueryable<IScore>? sequence, int? searchId, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+            var playlistList = await LeaderboardControllerHelper.GetPlaylistList(_context, currentID, _s3Client, playlistIds, playlists);
+
+            (IQueryable<IScore>? sequence, int? searchId, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, hmd, modifiers, stars_from, stars_to, acc_from, acc_to, time_from, time_to, eventId, playlistList);
             if (sequence == null) {
                 return NotFound();
             }
@@ -601,9 +619,9 @@ namespace BeatLeader_Server.Controllers {
                 case ScoresSortBy.Stars:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Leaderboard.Difficulty.Stars ?? 0).ToListAsync(), Math.Max(batch ?? 0.15f, 0.01f), count);
                 case ScoresSortBy.ReplaysWatched:
-                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.AnonimusReplayWatched + s.AuthorizedReplayWatched).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.ReplayWatchedTotal).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
                 case ScoresSortBy.Mistakes:
-                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.BadCuts + s.MissedNotes + s.BombCuts + s.WallsHit).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);   
+                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Mistakes).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);   
             }
 
             return BadRequest();
