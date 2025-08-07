@@ -92,7 +92,12 @@ namespace BeatLeader_Server.Controllers
 
         [HttpPut("~/badge/{id}")]
         [Authorize]
-        public async Task<ActionResult<Badge>> UpdateBadge(int id, [FromQuery] string? description, [FromQuery] string? image, [FromQuery] string? link = null)
+        public async Task<ActionResult<Badge>> UpdateBadge(
+            int id, 
+            [FromQuery] string? description = null, 
+            [FromQuery] string? image = null, 
+            [FromQuery] string? link = null,
+            [FromQuery] int? priority = null)
         {
             string? currentId = HttpContext.CurrentUserID(_context);
             Player? currentPlayer = currentId != null ? await _context.Players.FindAsync(currentId) : null;
@@ -113,6 +118,10 @@ namespace BeatLeader_Server.Controllers
 
             if (image != null) {
                 badge.Image = image;
+            }
+
+            if (priority != null) {
+                badge.Priority = priority ?? 0;
             }
 
             if (Request.Query.ContainsKey("link"))
@@ -183,6 +192,73 @@ namespace BeatLeader_Server.Controllers
             await _context.SaveChangesAsync();
 
             return player;
+        }
+
+        public class BadgeListingResponse {
+            public int Id { get; set; }
+            public string Description { get; set; }
+            public string Image { get; set; }
+            public string? Link { get; set; }
+            public int Timeset { get; set; }
+            public int Priority { get; set; }
+
+            public ICollection<PlayerResponse> Players { get; set; }
+        }
+
+        [HttpGet("~/badges/all")]
+        public async Task<ActionResult<ICollection<BadgeListingResponse>>> AllBadges()
+        {
+            var badges = await _context.Badges.Where(b => b.PlayerId != null).AsNoTracking().Select(b => new {
+                Description = b.Description,
+                    b.Image,
+                    b.Link,
+                    b.Timeset,
+                    b.Priority,
+                    b.Id,
+                    Player = new PlayerResponse {
+                        Id = b.Player.Id,
+                        Name = b.Player.Name,
+                        Alias = b.Player.Alias,
+                        Platform = b.Player.Platform,
+                        Country = b.Player.Country,
+                        Avatar = b.Player.Avatar,
+                        ProfileSettings = b.Player.ProfileSettings,
+
+                        Pp = b.Player.Pp,
+                        Rank = b.Player.Rank,
+                        CountryRank = b.Player.CountryRank,
+                    }
+            }).ToListAsync();
+
+            var result = badges.GroupBy(b => b.Image).Select(g => { 
+                var badge = g.First();
+                return new BadgeListingResponse {
+                    Description = badge.Description,
+                    Image = badge.Image,
+                    Link = badge.Link,
+                    Timeset = badge.Timeset,
+                    Priority = badge.Priority,
+                    Id = badge.Id,
+                    Players = g.Select(s => s.Player).ToList()
+                };
+            }).OrderByDescending(g => g.Timeset).ThenBy(g => g.Priority).ToList();
+
+            foreach (var item in result) {
+                if (item.Description == "Helped fight cancer by donating a total of $2115! Tier 4, Beat Cancer, December 2024") {
+                    item.Description = "Helped fight cancer by donating more than $300! Tier 4, Beat Cancer, December 2024";
+                }
+                if (item.Description == "Helped fight cancer by donating a total of $185! Tier 3, Beat Cancer, December 2024") {
+                    item.Description = "Helped fight cancer by donating $150-300! Tier 3, Beat Cancer, December 2024";
+                }
+                if (item.Description == "Helped fight cancer by donating a total of $69.99! Tier 2, Beat Cancer, December 2024") {
+                    item.Description = "Helped fight cancer by donating $50-150! Tier 2, Beat Cancer, December 2024";
+                }
+                if (item.Description == "Helped fight cancer by donating a total of $10! Tier 1, Beat Cancer, December 2024") {
+                    item.Description = "Helped fight cancer by donating $5-50! Tier 1, Beat Cancer, December 2024";
+                }
+            }
+
+            return result;
         }
     }
 }
