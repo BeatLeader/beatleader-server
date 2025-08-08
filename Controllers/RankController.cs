@@ -393,7 +393,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] float? accRating,
             [FromQuery] float? passRating,
             [FromQuery] float? techRating,
-            [FromQuery] int? type,
+            [FromQuery] MapTypes? type,
             [FromQuery] int? criteriaCheck,
             [FromQuery] string? criteriaCommentary,
             [FromQuery] string? modifiers = null)
@@ -472,7 +472,7 @@ namespace BeatLeader_Server.Controllers
                             var difficulty = leaderboard.Difficulty;
                             message += $"Acc: {difficulty.AccRating:0.00}★\nPass: {difficulty.PassRating:0.00}★\nTech: {difficulty.TechRating:0.00}★\n";
                             message += " **T**  ";
-                            message += FormatUtils.DescribeType(difficulty.Type);
+                            message += FormatUtils.DescribeType((int)difficulty.Type);
                             message += "\n";
                             message += "https://beatleader.com/leaderboard/global/" + leaderboard.Id;
 
@@ -531,7 +531,7 @@ namespace BeatLeader_Server.Controllers
                         leaderboard.Difficulty.Stars = ReplayUtils.ToStars(leaderboard.Difficulty.AccRating ?? 0, leaderboard.Difficulty.PassRating ?? 0, leaderboard.Difficulty.TechRating ?? 0);
                         if (type != null)
                         {
-                            leaderboard.Difficulty.Type = (int)type;
+                            leaderboard.Difficulty.Type = type ?? MapTypes.None;
                         }
                         if (newStatus == DifficultyStatus.nominated) {
                             leaderboard.Difficulty.Status = DifficultyStatus.nominated;

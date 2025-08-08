@@ -98,9 +98,10 @@ namespace BeatLeader_Server.Utils {
             string? diff = null,
             string? mode = null,
             Requirements requirements = Requirements.None,
+            Operation allRequirements = Operation.Any,
             ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
             DifficultyStatus? type = null,
-            int? mapType = null,
+            MapTypes mapType = MapTypes.None,
             Operation allTypes = Operation.Any,
             HMD? hmd = null,
             string? modifiers = null,
@@ -155,17 +156,6 @@ namespace BeatLeader_Server.Utils {
                 scoreCount = null;
             }
 
-            if (sortBy == ScoresSortBy.MaxStreak) {
-                if (sequence is IQueryable<Score>) {
-                    sequence = sequence
-                        .Where(s => !s.IgnoreForStats && s.MaxStreak != null);
-                } else {
-                    sequence = sequence
-                        .Where(s => !s.ScoreInstance.IgnoreForStats && s.ScoreInstance.MaxStreak != null);
-                }
-                scoreCount = null;
-            }
-
             var orderedSequence = sequence
                 .ScoresThenSort(null, sortBy, order, showAllRatings, searchId);
 
@@ -187,21 +177,51 @@ namespace BeatLeader_Server.Utils {
                 scoreCount = null;
             }
             if (requirements != Requirements.None) {
-                sequence = sequence.Where(s => s.Leaderboard.Difficulty.Requirements.HasFlag(requirements));
+                var score = Expression.Parameter(typeof(IScore), "s");
+                // 1 != 2 is here to trigger `OrElse` further the line.
+                var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(allRequirements == Operation.Any ? 2 : 1));
+
+                foreach (Requirements term in Enum.GetValues(typeof(Requirements))) {
+                    if (term != Requirements.Ignore && term != Requirements.None && requirements.HasFlag(term)) {
+                        var subexpression = Expression.Equal(Expression.Property(Expression.Property(Expression.Property(score, "Leaderboard"), "Difficulty"), $"Requires{term.ToString()}"), Expression.Constant(true));
+                        exp = Expression.OrElse(exp, subexpression);
+
+                        exp = allRequirements switch {
+                            Operation.Any => Expression.OrElse(exp, subexpression),
+                            Operation.All => Expression.And(exp, subexpression),
+                            Operation.Not => Expression.And(exp, Expression.Not(subexpression)),
+                            _ => exp,
+                        };
+                    }
+                }
+                sequence = sequence.Where((Expression<Func<IScore, bool>>)Expression.Lambda(exp, score));
                 scoreCount = null;
             }
             if (type != null) {
-                sequence = sequence.Where(s => s.Leaderboard.Difficulty.Status == type);
+                if (type != DifficultyStatus.ranked && type != DifficultyStatus.OST) {
+                    sequence = sequence.Where(s => s.Leaderboard.Difficulty.Status == type);
+                }
                 scoreCount = null;
             }
-            if (mapType != null) {
-                sequence = allTypes switch
-                {
-                    Operation.Any => sequence.Where(s => (s.Leaderboard.Difficulty.Type & mapType) != 0),
-                    Operation.All => sequence.Where(s => s.Leaderboard.Difficulty.Type == mapType),
-                    Operation.Not => sequence.Where(s => (s.Leaderboard.Difficulty.Type & mapType) == 0),
-                    _             => sequence,
-                };
+            if (mapType != MapTypes.None) {
+                var score = Expression.Parameter(typeof(IScore), "s");
+                // 1 != 2 is here to trigger `OrElse` further the line.
+                var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(allTypes == Operation.Any ? 2 : 1));
+
+                foreach (MapTypes term in Enum.GetValues(typeof(MapTypes))) {
+                    if (term != MapTypes.None && mapType.HasFlag(term)) {
+                        var subexpression = Expression.Equal(Expression.Property(Expression.Property(Expression.Property(score, "Leaderboard"), "Difficulty"), $"Type{term.ToString()}"), Expression.Constant(true));
+                        exp = Expression.OrElse(exp, subexpression);
+
+                        exp = allTypes switch {
+                            Operation.Any => Expression.OrElse(exp, subexpression),
+                            Operation.All => Expression.And(exp, subexpression),
+                            Operation.Not => Expression.And(exp, Expression.Not(subexpression)),
+                            _ => exp,
+                        };
+                    }
+                }
+                sequence = sequence.Where((Expression<Func<IScore, bool>>)Expression.Lambda(exp, score));
                 scoreCount = null;
             }
             if (hmd != null) {

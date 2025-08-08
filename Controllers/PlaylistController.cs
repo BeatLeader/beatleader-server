@@ -595,7 +595,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] Type type = Type.All,
             [FromQuery] string? mode = null,
             [FromQuery] string? difficulty = null,
-            [FromQuery] int? mapType = null,
+            [FromQuery] MapTypes mapType = MapTypes.None,
             [FromQuery] Operation allTypes = Operation.Any,
             [FromQuery] Requirements mapRequirements = Requirements.Ignore,
             [FromQuery] Operation allRequirements = Operation.Any,

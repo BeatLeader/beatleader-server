@@ -63,7 +63,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery, SwaggerParameter("Type of leaderboards to filter, default is All")] Enums.Type type = Enums.Type.All,
             [FromQuery, SwaggerParameter("Mode to filter leaderboards by (Standard, OneSaber, etc...)")] string? mode = null,
             [FromQuery, SwaggerParameter("Difficulty to filter leaderboards by (Easy, Normal, Hard, Expert, ExpertPlus)")] string? difficulty = null,
-            [FromQuery, SwaggerParameter("Map type to filter leaderboards by")] int? mapType = null,
+            [FromQuery, SwaggerParameter("Map type to filter leaderboards by")] MapTypes mapType = MapTypes.None,
             [FromQuery, SwaggerParameter("Operation to filter all types, default is Any")] Operation allTypes = Operation.Any,
             [FromQuery, SwaggerParameter("Requirements to filter leaderboards by, default is Ignore")] Requirements mapRequirements = Requirements.Ignore,
             [FromQuery, SwaggerParameter("Operation to filter all requirements, default is Any")] Operation allRequirements = Operation.Any,
@@ -785,6 +785,7 @@ namespace BeatLeader_Server.Controllers
                 if (set.Data.Chains.Count > 0 || set.Data.Arcs.Count > 0)
                 {
                     newDD.Requirements |= Requirements.V3;
+                    newDD.RequiresV3 = true;
 
                     newDD.Chains = set.Data.Chains.Sum(c => c.SliceCount > 1 ? c.SliceCount - 1 : 0);
                     newDD.Sliders = set.Data.Arcs.Count;
@@ -793,12 +794,15 @@ namespace BeatLeader_Server.Controllers
                 }
                 if (set.Data.njsEvents.Count > 0) {
                     newDD.Requirements |= Models.Requirements.VNJS;
+                    newDD.RequiresVNJS = true;
                 }
                 if (set.Data.lightColorEventBoxGroups.Count > 0 ||
                     set.Data.lightRotationEventBoxGroups.Count > 0 ||
                     set.Data.lightTranslationEventBoxGroups.Count > 0 ||
                     set.Data.vfxEventBoxGroups?.Count() > 0) {
+
                     newDD.Requirements |= Models.Requirements.GroupLighting;
+                    newDD.RequiresGroupLighting = true;
                 }
 
                 newDD.MaxScoreGraph = new MaxScoreGraph();

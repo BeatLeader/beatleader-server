@@ -116,6 +116,7 @@ namespace BeatLeader_Server.Services {
                                 var diff = set.Data;
                                 if (diff.Chains.Count > 0 || diff.Arcs.Count > 0) {
                                     songDiff.Requirements |= Models.Requirements.V3;
+                                    songDiff.RequiresV3 = true;
                                     songDiff.Chains = diff.Chains.Sum(c => c.SliceCount > 1 ? c.SliceCount - 1 : 0);
                                     songDiff.Sliders = diff.Arcs.Count;
 
@@ -128,12 +129,14 @@ namespace BeatLeader_Server.Services {
                                 //}
                                 if (diff.njsEvents.Count > 0) {
                                     songDiff.Requirements |= Models.Requirements.VNJS;
+                                    songDiff.RequiresVNJS = true;
                                 }
                                 if (diff.lightColorEventBoxGroups.Count > 0 ||
                                     diff.lightRotationEventBoxGroups.Count > 0 ||
                                     diff.lightTranslationEventBoxGroups.Count > 0 ||
                                     diff.vfxEventBoxGroups?.Count() > 0) {
                                     songDiff.Requirements |= Models.Requirements.GroupLighting;
+                                    songDiff.RequiresGroupLighting = true;
                                 }
 
                                 songDiff.MaxScoreGraph = new MaxScoreGraph();
@@ -149,6 +152,7 @@ namespace BeatLeader_Server.Services {
                                     if (songDiff == null || diff._customData == null || diff._customData._requirements == null) continue;
                                     if (diff._customData._requirements.Any(r => r.ToLower().Contains("vivify"))) {
                                         songDiff.Requirements |= Models.Requirements.Vivify;
+                                        songDiff.RequiresVivify = true;
                                     }
                                 }
                             }

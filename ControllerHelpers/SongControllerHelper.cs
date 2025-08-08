@@ -137,6 +137,17 @@ namespace BeatLeader_Server.ControllerHelpers {
                         Bombs = difficulty.Bombs,
                         Walls = difficulty.Walls,
                         Requirements = difficulty.Requirements,
+
+                        RequiresChroma = difficulty.RequiresChroma,
+                        RequiresNoodles = difficulty.RequiresNoodles,
+                        RequiresMappingExtensions = difficulty.RequiresMappingExtensions,
+                        RequiresCinema  = difficulty.RequiresCinema,
+                        RequiresV3 = difficulty.RequiresV3,
+                        RequiresOptionalProperties = difficulty.RequiresOptionalProperties,
+                        RequiresVNJS = difficulty.RequiresVNJS,
+                        RequiresVivify = difficulty.RequiresVivify,
+                        RequiresV3Pepega = difficulty.RequiresV3Pepega,
+                        RequiresGroupLighting = difficulty.RequiresGroupLighting
                     };
                     song.Difficulties.Add(difficulty);
                     await dbContext.SaveChangesAsync();

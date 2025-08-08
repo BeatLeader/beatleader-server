@@ -219,8 +219,19 @@ namespace BeatLeader_Server.Utils {
             if (mode != null) {
                 sequence = sequence.Where(s => s.Leaderboard.Difficulty.ModeName == mode);
             }
+
             if (requirements != Requirements.None) {
-                sequence = sequence.Where(s => s.Leaderboard.Difficulty.Requirements.HasFlag(requirements));
+                var score = Expression.Parameter(typeof(IScore), "s");
+                // 1 != 2 is here to trigger `OrElse` further the line.
+                var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
+
+                foreach (Requirements term in Enum.GetValues(typeof(Requirements))) {
+                    if (term != Requirements.Ignore && term != Requirements.None && requirements.HasFlag(term)) {
+                        var subexpression = Expression.Equal(Expression.Property(Expression.Property(Expression.Property(score, "Leaderboard"), "Difficulty"), $"Requires{term.ToString()}"), Expression.Constant(true));
+                        exp = Expression.OrElse(exp, subexpression);
+                    }
+                }
+                sequence = sequence.Where((Expression<Func<IScore, bool>>)Expression.Lambda(exp, score));
             }
             if (type != null) {
                 sequence = sequence.Where(s => s.Leaderboard.Difficulty.Status == type);

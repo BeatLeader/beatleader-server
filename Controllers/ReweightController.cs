@@ -51,7 +51,7 @@ namespace BeatLeader_Server.Controllers
             string diff,
             string mode,
             [FromQuery] bool? keep,
-            [FromQuery] int? type,
+            [FromQuery] MapTypes? type,
             [FromQuery] int? criteriaCheck,
             [FromQuery] string? criteriaCommentary,
             [FromQuery] string? modifiers)
@@ -95,7 +95,7 @@ namespace BeatLeader_Server.Controllers
                     CriteriaMet = criteriaCheck ?? 1,
                     Modifiers = modifierValues ?? leaderboard.Difficulty.ModifierValues,
                     CriteriaCommentary = criteriaCommentary,
-                    Type = type ?? 0,
+                    Type = type ?? MapTypes.None,
                 };
                 leaderboard.Reweight = reweight;
 
@@ -106,7 +106,7 @@ namespace BeatLeader_Server.Controllers
                     if (keep == false) {
                         message += "*UNRANK!*\n Reason: " + criteriaCommentary + "\n";
                     } else {
-                        message += FormatUtils.DescribeTypeChanges(leaderboard.Difficulty.Type, reweight.Type);
+                        message += FormatUtils.DescribeTypeChanges((int)leaderboard.Difficulty.Type, (int)reweight.Type);
                         message += FormatUtils.DescribeModifiersChanges(leaderboard.Difficulty.ModifierValues, reweight.Modifiers);
                     }
                     message += "https://beatleader.com/leaderboard/global/" + leaderboard.Id;
@@ -247,7 +247,7 @@ namespace BeatLeader_Server.Controllers
                     }
                     else
                     {
-                        message += FormatUtils.DescribeTypeChanges(leaderboard.Difficulty.Type, reweight.Type);
+                        message += FormatUtils.DescribeTypeChanges((int)leaderboard.Difficulty.Type, (int)reweight.Type);
                         message += FormatUtils.DescribeModifiersChanges(leaderboard.Difficulty.ModifierValues, reweight.Modifiers);
                     }
                     message += "https://beatleader.com/leaderboard/global/" + leaderboard.Id;

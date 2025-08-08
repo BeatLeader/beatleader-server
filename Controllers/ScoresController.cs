@@ -45,10 +45,11 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Filter scores by map difficulty(Easy, Expert, Expert+, etc), default is null")] string? diff = null,
             [FromQuery, SwaggerParameter("Filter scores by map characteristic(Standard, OneSaber, etc), default is null")] string? mode = null,
             [FromQuery, SwaggerParameter("Filter scores by map requirements, default is 'None'")] Requirements mapRequirements = Requirements.None,
+            [FromQuery, SwaggerParameter("Operation to filter all requirements, default is Any")] Operation allRequirements = Operation.Any,
             [FromQuery, SwaggerParameter("Filter scores by score status, default is 'None'")] ScoreFilterStatus scoreStatus = ScoreFilterStatus.None,
             [FromQuery, SwaggerParameter("Filter scores by leaderboard context, default is 'General'")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery, SwaggerParameter("Filter scores by map status, default is null")] DifficultyStatus? type = null,
-            [FromQuery, SwaggerParameter("Map type to filter leaderboards by")] int? mapType = null,
+            [FromQuery, SwaggerParameter("Map type to filter leaderboards by")] MapTypes mapType = MapTypes.None,
             [FromQuery, SwaggerParameter("Operation to filter all types, default is Any")] Operation allTypes = Operation.Any,
             [FromQuery, SwaggerParameter("Filter scores by headset, default is null")] HMD? hmd = null,
             [FromQuery, SwaggerParameter("Filter scores by modifiers(GN, SF, etc), default is null")] string? modifiers = null,
@@ -97,7 +98,7 @@ namespace BeatLeader_Server.Controllers {
 
             var playlistList = await LeaderboardControllerHelper.GetPlaylistList(_context, userId, _s3Client, playlistIds, playlists);
 
-            (sequence, int? searchId, int? scoreCount) = await sequence.FilterAll(_context, true, showRatings, sortBy, order, thenSortBy, thenOrder, search, diff, mode, mapRequirements, scoreStatus, type, mapType, allTypes, hmd, modifiers, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, eventId, mappers, players, playlistList);
+            (sequence, int? searchId, int? scoreCount) = await sequence.FilterAll(_context, true, showRatings, sortBy, order, thenSortBy, thenOrder, search, diff, mode, mapRequirements, allRequirements, scoreStatus, type, mapType, allTypes, hmd, modifiers, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, eventId, mappers, players, playlistList);
 
             var scoreIds = leaderboardContext == LeaderboardContexts.General 
                 ? (await sequence.Skip((page - 1) * count).Take(count).Select(s => s.Id).ToListAsync()).Where(id => id != null).ToList()

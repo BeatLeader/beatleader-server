@@ -38,20 +38,31 @@ public static partial class LeaderboardListUtils
         }
     }
 
-    private static IQueryable<Leaderboard> WhereMapType(this IQueryable<Leaderboard> sequence, int? mapType, Operation allTypes)
+    private static IQueryable<Leaderboard> WhereMapType(this IQueryable<Leaderboard> sequence, MapTypes mapType, Operation allTypes)
     {
         if (mapType == null)
         {
             return sequence;
         }
 
-        return allTypes switch
-        {
-            Operation.Any => sequence.Where(leaderboard => (leaderboard.Difficulty.Type & mapType) != 0),
-            Operation.All => sequence.Where(leaderboard => leaderboard.Difficulty.Type == mapType),
-            Operation.Not => sequence.Where(leaderboard => (leaderboard.Difficulty.Type & mapType) == 0),
-            _             => sequence,
-        };
+        var score = Expression.Parameter(typeof(Leaderboard), "s");
+        // 1 != 2 is here to trigger `OrElse` further the line.
+        var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(allTypes == Operation.Any ? 2 : 1));
+
+        foreach (MapTypes term in Enum.GetValues(typeof(MapTypes))) {
+            if (term != MapTypes.None && mapType.HasFlag(term)) {
+                var subexpression = Expression.Equal(Expression.Property(Expression.Property(score, "Difficulty"), $"Type{term.ToString()}"), Expression.Constant(true));
+                exp = Expression.OrElse(exp, subexpression);
+
+                exp = allTypes switch {
+                    Operation.Any => Expression.OrElse(exp, subexpression),
+                    Operation.All => Expression.And(exp, subexpression),
+                    Operation.Not => Expression.And(exp, Expression.Not(subexpression)),
+                    _ => exp,
+                };
+            }
+        }
+        return sequence.Where((Expression<Func<Leaderboard, bool>>)Expression.Lambda(exp, score));
     }
 
     private static IQueryable<Leaderboard> WhereSongStatus(this IQueryable<Leaderboard> sequence, SongStatus status)
@@ -149,13 +160,24 @@ public static partial class LeaderboardListUtils
             return sequence;
         }
 
-        return allRequirements switch
-        {
-            Operation.Any => sequence.Where(leaderboard => (leaderboard.Difficulty.Requirements & mapRequirements) != 0),
-            Operation.All => sequence.Where(leaderboard => leaderboard.Difficulty.Requirements == mapRequirements),
-            Operation.Not => sequence.Where(leaderboard => (leaderboard.Difficulty.Requirements & mapRequirements) == 0),
-            _             => sequence,
-        };
+        var score = Expression.Parameter(typeof(Leaderboard), "s");
+        // 1 != 2 is here to trigger `OrElse` further the line.
+        var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(allRequirements == Operation.Any ? 2 : 1));
+
+        foreach (Requirements term in Enum.GetValues(typeof(Requirements))) {
+            if (term != Requirements.Ignore && term != Requirements.None && mapRequirements.HasFlag(term)) {
+                var subexpression = Expression.Equal(Expression.Property(Expression.Property(score, "Difficulty"), $"Requires{term.ToString()}"), Expression.Constant(true));
+                exp = Expression.OrElse(exp, subexpression);
+
+                exp = allRequirements switch {
+                    Operation.Any => Expression.OrElse(exp, subexpression),
+                    Operation.All => Expression.And(exp, subexpression),
+                    Operation.Not => Expression.And(exp, Expression.Not(subexpression)),
+                    _ => exp,
+                };
+            }
+        }
+        return sequence.Where((Expression<Func<Leaderboard, bool>>)Expression.Lambda(exp, score));
     }
 
     private static IQueryable<Leaderboard> WhereRatingFrom(this IQueryable<Leaderboard> sequence, RatingType rating, float? from)

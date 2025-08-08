@@ -25,7 +25,7 @@ public static partial class LeaderboardListUtils
                                                  string? types = null,
                                                  string? mode = null,
                                                  string? difficulty = null,
-                                                 int? mapType = null,
+                                                 MapTypes mapType = MapTypes.None,
                                                  Operation allTypes = Operation.Any,
                                                  Requirements mapRequirements = Requirements.Ignore,
                                                  Operation allRequirements = Operation.Any,

@@ -111,16 +111,20 @@ namespace BeatLeader_Server.Utils
                 var response = await ApiTags(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0);
                 switch (response) {
                     case "acc":
-                        diff.Type = 1;
+                        diff.Type = MapTypes.Acc;
+                        diff.TypeAcc = true;
                         break;
                     case "tech":
-                        diff.Type = 2;
+                        diff.Type = MapTypes.Tech;
+                        diff.TypeTech = true;
                         break;
                     case "midspeed":
-                        diff.Type = 4;
+                        diff.Type = MapTypes.Midspeed;
+                        diff.TypeMidspeed = true;
                         break;
                     case "speed":
-                        diff.Type = 8;
+                        diff.Type = MapTypes.Speed;
+                        diff.TypeSpeed = true;
                         break;
                     default:
                         break;

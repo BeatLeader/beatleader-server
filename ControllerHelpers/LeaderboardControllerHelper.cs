@@ -95,7 +95,7 @@ namespace BeatLeader_Server.ControllerHelpers {
             public float? PassRating { get; set; }
             public float? TechRating { get; set; }
             public int MaxScore { get; set; }
-            public int Type { get; set; }
+            public MapTypes Type { get; set; }
             public ModifiersMap ModifierValues { get; set; }
             public ModifiersRating? ModifiersRating { get; set; }
 

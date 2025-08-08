@@ -15,7 +15,7 @@ public static partial class LeaderboardListUtils
                                                           out int? searchId,
                                                           ref Type type,
                                                           ref string? mode,
-                                                          ref int? mapType,
+                                                          ref MapTypes mapType,
                                                           ref Operation allTypes,
                                                           ref Requirements mapRequirements,
                                                           ref Operation allRequirements,
@@ -61,7 +61,7 @@ public static partial class LeaderboardListUtils
     public static string GetSearchFilters(this string search,
                                           ref Type type,
                                           ref string? mode,
-                                          ref int? mapType,
+                                          ref MapTypes mapType,
                                           ref Operation allTypes,
                                           ref Requirements mapRequirements,
                                           ref Operation allRequirements,
@@ -87,7 +87,7 @@ public static partial class LeaderboardListUtils
             {
                 if (EnumFilter(filter, nameof(type), ref type)
                  || BasicFilter(filter, nameof(mode), ref mode)
-                 || BasicParseFilter(filter, nameof(mapType), ref mapType)
+                 || EnumFilter(filter, nameof(mapType), ref mapType)
                  || EnumFilter(filter, nameof(allTypes), ref allTypes)
                  || EnumFilter(filter, nameof(mapRequirements), ref mapRequirements)
                  || EnumFilter(filter, nameof(allRequirements), ref allRequirements)
