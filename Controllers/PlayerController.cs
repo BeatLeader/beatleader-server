@@ -120,6 +120,7 @@ namespace BeatLeader_Server.Controllers
                     Banned = player.Banned,
                     Inactive = player.Inactive,
                     Bot = player.Bot,
+                    Temporary = player.Temporary,
 
                     ExternalProfileUrl = player.ExternalProfileUrl,
                     RichBioTimeset = player.RichBioTimeset,

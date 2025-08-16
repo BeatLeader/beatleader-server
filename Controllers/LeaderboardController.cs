@@ -217,6 +217,7 @@ namespace BeatLeader_Server.Controllers {
                         Country = s.Player.Country,
 
                         Bot = s.Player.Bot,
+                        Temporary = s.Player.Temporary,
                         Pp = s.Player.Pp,
                         Rank = s.Player.Rank,
                         CountryRank = s.Player.CountryRank,

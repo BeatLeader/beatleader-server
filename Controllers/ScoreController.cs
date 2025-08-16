@@ -586,6 +586,9 @@ namespace BeatLeader_Server.Controllers
                         Avatar = s.Player.Avatar,
                         Country = s.Player.Country,
 
+                        Bot = s.Player.Bot,
+                        Temporary = s.Player.Temporary,
+
                         Pp = s.Player.Pp,
                         Rank = s.Player.Rank,
                         CountryRank = s.Player.CountryRank,
@@ -663,6 +666,8 @@ namespace BeatLeader_Server.Controllers
                         Country = s.Player.Country,
 
                         Bot = s.Player.Bot,
+                        Temporary = s.Player.Temporary,
+
                         Pp = s.Player.Pp,
                         Rank = s.Player.Rank,
                         CountryRank = s.Player.CountryRank,
@@ -1056,6 +1061,10 @@ namespace BeatLeader_Server.Controllers
 
                     if (score.Player.Bot) {
                         score.Player.Name += " [BOT]";
+                    }
+
+                    if (score.Player.Temporary) {
+                        score.Player.Name += " [TMP]";
                     }
                 }
                 result.Data = resultList;

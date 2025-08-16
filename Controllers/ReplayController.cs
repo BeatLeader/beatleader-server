@@ -1452,7 +1452,8 @@ namespace BeatLeader_Server.Controllers
                 if (leaderboard.Difficulty.Status == DifficultyStatus.ranked && 
                     resultScore.ValidContexts.HasFlag(LeaderboardContexts.General) &&
                     resultScore.Rank == 1 && 
-                    !player.Bot)
+                    !player.Bot &&
+                    !player.Temporary)
                 {
                     var dsClient = top1DSClient();
 
@@ -1499,14 +1500,16 @@ namespace BeatLeader_Server.Controllers
 
                 // Calculate clan ranking for this leaderboard
                 await dbContext.BulkSaveChangesAsync();
-                (var changes, var playerClans) = await dbContext.UpdateClanRanking(leaderboard, resultScore);
-                await dbContext.BulkSaveChangesAsync();
+                if (!player.Temporary) {
+                    (var changes, var playerClans) = await dbContext.UpdateClanRanking(leaderboard, resultScore);
+                    await dbContext.BulkSaveChangesAsync();
 
-                if (changes?.Count > 0) {
-                    ClanTaskService.AddJob(new ClanRankingChangesDescription {
-                        Score = resultScore,
-                        Changes = changes
-                    });
+                    if (changes?.Count > 0) {
+                        ClanTaskService.AddJob(new ClanRankingChangesDescription {
+                            Score = resultScore,
+                            Changes = changes
+                        });
+                    }
                 }
             }
             catch (Exception e)

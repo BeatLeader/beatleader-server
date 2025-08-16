@@ -75,9 +75,9 @@ public static partial class MapListUtils
         }
     }
 
-    private static IQueryable<SongHelper> WhereMapType(this IQueryable<SongHelper> sequence, MapTypes? mapType, Operation allTypes)
+    private static IQueryable<SongHelper> WhereMapType(this IQueryable<SongHelper> sequence, MapTypes mapType, Operation allTypes)
     {
-        if (mapType == null)
+        if (mapType == MapTypes.None)
         {
             return sequence;
         }

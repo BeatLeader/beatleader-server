@@ -1787,7 +1787,7 @@ namespace BeatLeader_Server.Controllers {
                 return NotFound();
             }
 
-            if (!player.Banned) { return BadRequest("Player is not banned"); }
+            //if (!player.Banned) { return BadRequest("Player is not banned"); }
             var ban = await _context.Bans.OrderByDescending(x => x.Id).FirstOrDefaultAsync(x => x.PlayerId == player.Id);
             if (ban != null && ban.BannedBy != userId && !adminUnban) {
                 return BadRequest("Good try, but not");
@@ -1802,13 +1802,14 @@ namespace BeatLeader_Server.Controllers {
             var leaderboardsToUpdate = new List<string>();
             foreach (var score in scores) {
                 leaderboardsToUpdate.Add(score.LeaderboardId);
+                if (score.Banned) {
+                    await SocketController.ScoreWasAccepted(score, _context);
+                }
                 score.Banned = false;
                 foreach (var ce in score.ContextExtensions)
                 {
                     ce.Banned = false;
                 }
-
-                await SocketController.ScoreWasAccepted(score, _context);
 
             }
             player.Banned = false;

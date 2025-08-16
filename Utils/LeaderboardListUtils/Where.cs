@@ -40,7 +40,7 @@ public static partial class LeaderboardListUtils
 
     private static IQueryable<Leaderboard> WhereMapType(this IQueryable<Leaderboard> sequence, MapTypes mapType, Operation allTypes)
     {
-        if (mapType == null)
+        if (mapType == MapTypes.None)
         {
             return sequence;
         }
