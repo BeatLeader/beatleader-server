@@ -777,7 +777,7 @@ namespace BeatLeader_Server.Controllers
                 resultScore.MaxStreak = statistic.hitTracker.maxStreak;
                 resultScore.LeftTiming = statistic.hitTracker.leftTiming;
                 resultScore.RightTiming = statistic.hitTracker.rightTiming;
-                if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
+                if (leaderboard.Difficulty.Status == DifficultyStatus.ranked || leaderboard.Difficulty.Status == DifficultyStatus.qualified || leaderboard.Difficulty.Status == DifficultyStatus.inevent) {
                     resultScore.FcPp = ReplayUtils.PpFromScore(
                         resultScore.FcAccuracy, 
                         resultScore.ValidContexts,
@@ -1631,7 +1631,7 @@ namespace BeatLeader_Server.Controllers
                     resultScore.MaxStreak = statistic.hitTracker.maxStreak;
                     resultScore.LeftTiming = statistic.hitTracker.leftTiming;
                     resultScore.RightTiming = statistic.hitTracker.rightTiming;
-                    if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
+                    if (leaderboard.Difficulty.Status == DifficultyStatus.ranked || leaderboard.Difficulty.Status == DifficultyStatus.qualified || leaderboard.Difficulty.Status == DifficultyStatus.inevent) {
                         resultScore.FcPp = ReplayUtils.PpFromScore(
                             resultScore.FcAccuracy, 
                             resultScore.ValidContexts,

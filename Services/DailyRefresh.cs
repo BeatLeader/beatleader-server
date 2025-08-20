@@ -115,6 +115,8 @@ namespace BeatLeader_Server.Services
             public int Rank { get; set; }
         }
 
+        public static List<string> FakedStats = new List<string> { "76561198448231046", "76561198417741030", "76561198124313944", "76561198277807887", "76561198254561713", "76561198260711461", "76561198799965092", "76561199182738448" };
+
         public async Task<Player?> PlayerUpdates(PlayerSelect p) {
             Player? update = await PlayerUtils.GetPlayerFromSteam(_configuration.GetValue<string>("SteamApi"), p.Id, _configuration.GetValue<string>("SteamKey"));
 
@@ -197,7 +199,7 @@ namespace BeatLeader_Server.Services
                         .ToList();
 
                     var playerUpdates = await Task.WhenAll(players.Select(PlayerUpdates).ToList());
-                    var statsUpdates = await Task.WhenAll(players.Select(PlayerStatsUpdates).ToList());
+                    var statsUpdates = await Task.WhenAll(players.Where(p => !FakedStats.Contains(p.Id)).Select(PlayerStatsUpdates).ToList());
 
                     await _context.BulkUpdateAsync(playerUpdates.Where(p => p != null).ToList(), options => options.ColumnInputExpression = c => new { c.ExternalProfileUrl, c.Avatar, c.Country });
                     await _context.BulkUpdateAsync(statsUpdates.Where(p => p != null).ToList(), options => options.ColumnInputExpression = c => new { c.SteamPlaytime2Weeks, c.SteamPlaytimeForever });

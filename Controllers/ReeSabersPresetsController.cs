@@ -130,7 +130,7 @@ namespace BeatLeader_Server.Controllers
                 {
                     Page = 1,
                     ItemsPerPage = 10,
-                    Total = await comments.CountAsync()
+                    Total = comments.Count()
                 }
             };
         }

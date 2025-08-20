@@ -16,7 +16,72 @@ namespace BeatLeader_Server.Utils {
             int? searchId) {
 
             if (sequence == null) {
-                sequence = unorderedSequence.OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0);
+                if (searchId != null) {
+                    sequence = unorderedSequence.OrderByDescending(s => s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score);
+                } else {
+                    switch (sortBy) {
+                        case ScoresSortBy.Date: return unorderedSequence.Order(order, t => t.Timepost);
+                        case ScoresSortBy.Pp: return unorderedSequence.Order(order, t => t.Pp);
+                        case ScoresSortBy.AccPP: return unorderedSequence.Order(order, t => t.AccPP);
+                        case ScoresSortBy.PassPP: return unorderedSequence.Order(order, t => t.PassPP);
+                        case ScoresSortBy.TechPP: return unorderedSequence.Order(order, t => t.TechPP);
+                        case ScoresSortBy.Acc: return unorderedSequence.Order(order, t => t.Accuracy);
+                        case ScoresSortBy.Pauses:
+                            if (unorderedSequence is IQueryable<Score>) {
+                                return unorderedSequence.Order(order, t => t.Pauses);
+                            } else {
+                                return unorderedSequence.Order(order, t => t.ScoreInstance.Pauses);
+                            }
+                        case ScoresSortBy.PlayCount:
+                            if (unorderedSequence is IQueryable<Score>) {
+                                return unorderedSequence.Order(order, t => t.PlayCount);
+                            } else {
+                                return unorderedSequence.Order(order, t => t.ScoreInstance.PlayCount);
+                            }
+                        case ScoresSortBy.LastTryTime:
+                            if (unorderedSequence is IQueryable<Score>) {
+                                return unorderedSequence.Order(order, t => t.LastTryTime);
+                            } else {
+                                return unorderedSequence.Order(order, t => t.ScoreInstance.LastTryTime);
+                            }
+                        case ScoresSortBy.Rank:
+                            return order == Order.Desc ? unorderedSequence.Order(Order.Asc, t => t.Rank) : unorderedSequence.Order(Order.Desc, t => t.Rank);
+                        case ScoresSortBy.MaxStreak:
+                            if (unorderedSequence is IQueryable<Score>) {
+                                return unorderedSequence.Order(order, t => t.MaxStreak);
+                            } else {
+                                return unorderedSequence.Order(order, t => t.ScoreInstance.MaxStreak);
+                            }
+                        case ScoresSortBy.Timing:
+                            if (unorderedSequence is IQueryable<Score>) {
+                                return unorderedSequence.Order(order, t => (t.LeftTiming + t.RightTiming) / 2);
+                            } else {
+                                return unorderedSequence.Order(order, t => (t.ScoreInstance.LeftTiming + t.ScoreInstance.RightTiming) / 2);
+                            }
+                        case ScoresSortBy.SotwNominations:
+                            if (unorderedSequence is IQueryable<Score>) {
+                                return unorderedSequence.Order(order, t => t.SotwNominations);
+                            } else {
+                                return unorderedSequence.Order(order, t => t.ScoreInstance.SotwNominations);
+                            }
+                        case ScoresSortBy.Stars:
+                            return sequence.ThenOrder(order, s => s.ModifiedStars);
+                        case ScoresSortBy.Mistakes:
+                            if (unorderedSequence is IQueryable<Score>) {
+                                return unorderedSequence.Order(order, t => t.Mistakes);
+                            } else {
+                                return unorderedSequence.Order(order, t => t.ScoreInstance.Mistakes);
+                            }
+                        case ScoresSortBy.ReplaysWatched:
+                            if (unorderedSequence is IQueryable<Score>) {
+                                return unorderedSequence.Order(order, t => t.ReplayWatchedTotal);
+                            } else {
+                                return unorderedSequence.Order(order, t => t.ScoreInstance.ReplayWatchedTotal);
+                            }
+                        default:
+                            break;
+                    }
+                }
             }
             switch (sortBy) {
                 case ScoresSortBy.Date: return sequence.ThenOrder(order, t => t.Timepost);
@@ -198,7 +263,7 @@ namespace BeatLeader_Server.Utils {
                 scoreCount = null;
             }
             if (type != null) {
-                if (type != DifficultyStatus.ranked && type != DifficultyStatus.OST) {
+                if (type != DifficultyStatus.OST) {
                     sequence = sequence.Where(s => s.Leaderboard.Difficulty.Status == type);
                 }
                 scoreCount = null;
