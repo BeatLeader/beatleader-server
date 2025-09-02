@@ -20,16 +20,7 @@ namespace BeatLeader_Server.Controllers {
         IHttpClientFactory _httpClientFactory;
 
         private static Dictionary<string, string> OST_MAP = new Dictionary<string, string> {
-            { "Damage", "OST 7 | F.O.O.L - Damage" },
-            { "Lustre", "OST 7 | Camellia - Lustre" },
-            { "TheMaster", "OST 7 | Teminite x Boom Kitty - The Master" },
-            { "Untamed", "OST 7 | Lindsey Stirling - Untamed" },
-            { "WorldWideWeb", "OST 7 | Nitro Fun - World Wide Web" },
-            { "Cathedral", "OST 6 | Boom Kitty - Cathedral" },
-            { "HeavyWeight", "OST 6 | Lindsey Stirling - Heavy Weight" },
-            { "LiftOff", "OST 6 | Far Out - Lift Off" },
-            { "PowerOfTheSaberBlade", "OST 6 | DragonForce - Power of the Saber Blade" },
-            { "TempoKatana", "OST 6 | Camellia - Tempo-Katana" },
+            { "Danger", "Extras | Teminite, Boom Kitty - Danger" },
         };
 
         public BeastSaberController(

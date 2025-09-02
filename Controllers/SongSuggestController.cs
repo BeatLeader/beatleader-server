@@ -608,7 +608,7 @@ namespace BeatLeader_Server.Controllers
                         break;
                     case 2:
                         query = query
-                            .Where(l => l.Song.UploadTime > timeset - 60 * 60 * 24 * 60 && l.Song.MapCreator == SongCreator.Human)
+                            .Where(l => l.Song.UploadTime > timeset - 60 * 60 * 24 * 30 && l.Song.MapCreator == SongCreator.Human)
                             .OrderByDescending(l => l.PositiveVotes);
                         break;
                     default:
@@ -618,8 +618,8 @@ namespace BeatLeader_Server.Controllers
                 tasks[i] = query
                     .TagWithCallerS()
                     .AsNoTracking()
-                    .Select(lb => lb.Id)
-                    .Take(2)
+                    .Select(lb => lb.SongId)
+                    .Take(4)
                     .ToListAsync();
             }
 
@@ -628,15 +628,14 @@ namespace BeatLeader_Server.Controllers
             var result = new Dictionary<string, int>();
             int counter = 0;
             foreach (var group in tasks) {
-                counter++;
+                
                 foreach (var item in group.Result) {
                     if (!result.ContainsKey(item)) {
-                        result[item] = counter - 1;
-                    }
-                    if (result.Count == counter) {
+                        result[item] = counter;
                         break;
                     }
                 }
+                counter++;
             }
             var ids = result.Keys.ToList();
 
@@ -648,7 +647,7 @@ namespace BeatLeader_Server.Controllers
                 },
                 Data = await _context
                     .Leaderboards
-                    .Where(lb => ids.Contains(lb.Id))
+                    .Where(lb => ids.Contains(lb.SongId) && lb.Difficulty.Status != DifficultyStatus.outdated)
                     .Select(lb => new TrendingLeaderboardInfoResponse {
                         Id = lb.Id,
                         Song = new SongResponse {
@@ -702,9 +701,9 @@ namespace BeatLeader_Server.Controllers
                     }).ToListAsync()
             };
 
-            response.Data = response.Data.OrderBy(s => result[s.Id]);
+            response.Data = response.Data.OrderBy(s => result[s.Song.Id]);
             foreach (var item in response.Data) {
-                switch (result[item.Id]) {
+                switch (result[item.Song.Id]) {
                     case 0:
                         item.Description = "Top played today";
                         item.TrendingValue = $"{item.TodayPlays} plays";

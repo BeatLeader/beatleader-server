@@ -499,24 +499,23 @@ namespace BeatLeader_Server.ControllerHelpers {
                 })
                 .ToListAsync();
 
+            var bannedIds = await dbContext.Players.Where(p => p.Banned).Select(p => p.Id).ToListAsync();
+
             // Step 3: Calculate the count of common followings
             var followersCounts = followersWithFollowings.Select(f => new FollowerCounter {
                 Id = f.FollowerId,
                 Count = f.FollowingIds.Intersect(allFollowersIds).Count(),
                 Mutual = following.Contains(f.FollowerId)
-            }).ToList();
-
-            var bannedIds = await dbContext.Players.Where(p => p.Banned).Select(p => p.Id).ToListAsync();
+            }).Where(f => !bannedIds.Contains(f.Id)).ToList();
 
             // Step 4: Order and paginate the results
             var pagedFollowersCounts = followersCounts
-                .Where(f => !bannedIds.Contains(f.Id))
                 .OrderByDescending(f => f.Count)
                 .Skip((page - 1) * count)
                 .Take(count)
                 .ToList();
 
-            return (allFollowersIds, pagedFollowersCounts);
+            return (followersCounts.Select(f => f.Id).ToList(), pagedFollowersCounts);
         }
 
         public static async Task<(List<string>, List<FollowerCounter>)> GetPlayerFollowing(AppContext dbContext, string id, string currentID, int page, int count) {

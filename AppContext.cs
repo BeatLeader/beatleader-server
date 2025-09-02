@@ -81,6 +81,7 @@ namespace BeatLeader_Server
         public DbSet<SongsLastUpdateTime> SongsLastUpdateTimes { get; set; }
         public DbSet<ReeSabersPreset> ReeSabersPresets { get; set; }
         public DbSet<ReePresetDownload> ReePresetDownloads { get; set; }
+        public DbSet<ReeSabersDownload> ReeSabersDownload { get; set; }
 
         public DbSet<ReeSabersComment> ReeSabersComment { get; set; }
         public DbSet<GlobalMapHistory> GlobalMapHistory { get; set; }
