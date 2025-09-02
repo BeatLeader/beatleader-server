@@ -383,6 +383,7 @@ namespace BeatLeader_Server.Controllers {
             return result;
         }
 
+        [HttpPost("~/player/{id}/scores/compact")]
         [HttpGet("~/player/{id}/scores/compact")]
         [SwaggerOperation(Summary = "Retrieve player's scores in a compact form", Description = "Fetches a paginated list of scores for a specified player ID. Returns less info to save bandwith or processing time")]
         [SwaggerResponse(200, "Scores retrieved successfully")]
