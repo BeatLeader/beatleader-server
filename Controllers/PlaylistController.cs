@@ -447,7 +447,7 @@ namespace BeatLeader_Server.Controllers
                 levelAuthorName = lb.Song.Mapper,
                 difficulties = lb.Song.Difficulties.Where(d => d.Status == DifficultyStatus.ranked).Select(d => new {
                     name = d.DifficultyName.FirstCharToLower(),
-                    characteristic = d.ModeName
+                    characteristic = d.ModeName.ToLower()
                 }),
                 rankedTime = lb.Difficulty.RankedTime
             }).ToListAsync();
@@ -508,7 +508,7 @@ namespace BeatLeader_Server.Controllers
                 difficulties = lb.Song.Difficulties.Where(d => d.Status == DifficultyStatus.nominated).Select(d => new
                 {
                     name = d.DifficultyName.FirstCharToLower(),
-                    characteristic = d.ModeName
+                    characteristic = d.ModeName.ToLower()
                 }),
                 nominatedTime = lb.Difficulty.NominatedTime
             }).ToListAsync();
@@ -568,7 +568,7 @@ namespace BeatLeader_Server.Controllers
                 difficulties = lb.Song.Difficulties.Where(d => d.Status == DifficultyStatus.qualified).Select(d => new
                 {
                     name = d.DifficultyName.FirstCharToLower(),
-                    characteristic = d.ModeName
+                    characteristic = d.ModeName.ToLower()
                 }),
                 qualifiedTime = lb.Difficulty.QualifiedTime
             }).ToListAsync();
@@ -655,7 +655,7 @@ namespace BeatLeader_Server.Controllers
                 difficulties = new List<PlaylistDifficulty> { new PlaylistDifficulty
                     {
                         name = lb.Difficulty.DifficultyName.FirstCharToLower(),
-                        characteristic = lb.Difficulty.ModeName
+                        characteristic = lb.Difficulty.ModeName.ToLower()
                     }
                 }
             }).ToListAsync();
@@ -791,7 +791,7 @@ namespace BeatLeader_Server.Controllers
                 difficulties = new List<PlaylistDifficulty> { new PlaylistDifficulty
                     {
                         name = s.Leaderboard.Difficulty.DifficultyName.FirstCharToLower(),
-                        characteristic = s.Leaderboard.Difficulty.ModeName
+                        characteristic = s.Leaderboard.Difficulty.ModeName.ToLower()
                     }
                 }
             }).ToListAsync();
@@ -1008,7 +1008,7 @@ namespace BeatLeader_Server.Controllers
                 difficulties = new List<PlaylistDifficulty> { new PlaylistDifficulty
                     {
                         name = s.DifficultyName.FirstCharToLower(),
-                        characteristic = s.ModeName
+                        characteristic = s.ModeName.ToLower()
                     }
                 }
             }).ToList();

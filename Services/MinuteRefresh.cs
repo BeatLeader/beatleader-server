@@ -176,7 +176,7 @@ namespace BeatLeader_Server.Services
                     difficulties = s.Difficulties.Select(d => new
                     {
                         name = d.DifficultyName.FirstCharToLower(),
-                        characteristic = d.ModeName
+                        characteristic = d.ModeName.ToLower()
                     })
                 }).ToList();
 
