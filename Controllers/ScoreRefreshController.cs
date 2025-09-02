@@ -205,7 +205,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
             
-            var diffStatus = DifficultyStatus.qualified;
+            var diffStatus = DifficultyStatus.ranked;
             var query = _context.Leaderboards.Where(lb => true);
             
             query = (leaderboardId != null ? query.Where(lb => lb.Id == leaderboardId) : query.Where(lb => lb.Difficulty.Status == diffStatus));
@@ -272,7 +272,7 @@ namespace BeatLeader_Server.Controllers
                 var scores = allScores[leaderboard.Id];
 
                 var status = leaderboard.Difficulty.Status;
-                var modifiers = leaderboard.ModifierValues;
+                var modifiers = leaderboard.ModifierValues ?? new ModifiersMap();
                 bool qualification = status == DifficultyStatus.qualified || status == DifficultyStatus.inevent;
                 bool hasPp = status == DifficultyStatus.ranked || qualification;
 
@@ -484,13 +484,13 @@ namespace BeatLeader_Server.Controllers
 
             var lbsCount = await _context.Leaderboards.CountAsync();
 
-            for (int i = 0; i < lbsCount; i += 1000) {
+            for (int i = 0; i < lbsCount; i += 10000) {
                 var allLeaderboards = await _context
                     .Leaderboards
                     .AsNoTracking()
                     .OrderBy(lb => lb.Id)
                     .Skip(i)
-                    .Take(1000)
+                    .Take(10000)
                     .Select(lb => new {
                         lb.Difficulty,
                         Scores = lb.Scores
@@ -519,7 +519,7 @@ namespace BeatLeader_Server.Controllers
                             .ThenBy(el => el.Timeset).ToList() 
                         : allScores
                             .OrderBy(el => el.Priority)
-                            .OrderByDescending(el => el.ModifiedScore)
+                            .ThenByDescending(el => el.ModifiedScore)
                             .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                             .ThenBy(el => el.Timeset).ToList();
                     foreach ((int i, var s) in rankedScores.Select((value, i) => (i, value)))

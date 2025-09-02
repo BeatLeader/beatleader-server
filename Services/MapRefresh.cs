@@ -48,16 +48,6 @@ namespace BeatLeader_Server.Services {
             while (!stoppingToken.IsCancellationRequested) ;
         }
 
-        private bool Overlaps(List<Chain> chains, List<Arc> arcs) {
-            foreach (var arc in arcs) {
-                if (chains.Any(c => c.BpmTime == arc.BpmTime && (c.x == arc.x && c.y == arc.y))) {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         public async Task CheckMaps() {
             using (var scope = _serviceScopeFactory.CreateScope()) {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
@@ -68,7 +58,7 @@ namespace BeatLeader_Server.Services {
 
                 foreach (var song in songs) {
                     try {
-                        var mapPath = downloader.Map(song.Hash);
+                        var mapPath = await downloader.Map(song.Hash);
                         if (mapPath == null) continue;
 
                         var parse = new Parse();
@@ -80,7 +70,7 @@ namespace BeatLeader_Server.Services {
                         catch (FileNotFoundException e)
                         {
                             Directory.Delete(mapPath, true);
-                            mapPath = downloader.Map(song.Hash);
+                            mapPath = await downloader.Map(song.Hash);
                             mapset = parse.TryLoadPath(mapPath);
                         }
 
@@ -120,13 +110,11 @@ namespace BeatLeader_Server.Services {
                                     songDiff.Chains = diff.Chains.Sum(c => c.SliceCount > 1 ? c.SliceCount - 1 : 0);
                                     songDiff.Sliders = diff.Arcs.Count;
 
-                                    //if (Overlaps(diff.Chains, diff.Arcs)) {
-                                    //    songDiff.Requirements |= Models.Requirements.V3Pepega;
-                                    //}
+                                    if (set.IsV3Pepega()) {
+                                        songDiff.Requirements |= Models.Requirements.V3Pepega;
+                                        songDiff.RequiresV3Pepega = true;
+                                    }
                                 }
-                                //if (diff.Notes.FirstOrDefault(n => n.Optional()) != null) {
-                                //    songDiff.Requirements |= Models.Requirements.OptionalProperties;
-                                //}
                                 if (diff.njsEvents.Count > 0) {
                                     songDiff.Requirements |= Models.Requirements.VNJS;
                                     songDiff.RequiresVNJS = true;

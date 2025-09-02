@@ -86,8 +86,7 @@ namespace BeatLeader_Server.Utils {
                         index = 0;
                     }
 
-                    if (param.scoringType != ScoringType.BurstSliderElement
-                     && param.scoringType != ScoringType.BurstSliderHead)
+                    if (param.scoringType != ScoringType.ChainLink)
                     {
                         gridCounts[index]++;
                         result.gridAcc[index] += (float)scoreValue;
@@ -96,24 +95,21 @@ namespace BeatLeader_Server.Utils {
                     (int before, int after, int acc) = CutScoresForNote(note, replay.info.modifiers);
                     if (param.colorType == 0)
                     {
-                        if (param.scoringType != ScoringType.SliderTail && param.scoringType != ScoringType.BurstSliderElement) {
+                        if (param.scoringType != ScoringType.ChainLink) {
                             if (note.noteCutInfo.beforeCutRating < 5) {
                                 result.leftAverageCut[0] += (float)before;
                                 result.leftPreswing += note.noteCutInfo.beforeCutRating;
                                 leftCuts[0]++;
                             }
                         }
-                        if (param.scoringType != ScoringType.BurstSliderElement
-                         && param.scoringType != ScoringType.BurstSliderHead)
+                        if (param.scoringType != ScoringType.ChainLink)
                         {
                             result.leftAverageCut[1] += (float)acc;
                             result.accLeft += (float)scoreValue;
                             result.leftTimeDependence += Math.Abs(note.noteCutInfo.cutNormal.z);
                             leftCuts[1]++;
                         }
-                        if (param.scoringType != ScoringType.SliderHead
-                            && param.scoringType != ScoringType.BurstSliderHead
-                            && param.scoringType != ScoringType.BurstSliderElement)
+                        if (param.scoringType != ScoringType.ChainLink)
                         {
                             if (note.noteCutInfo.afterCutRating < 5) {
                                 result.leftAverageCut[2] += (float)after;
@@ -124,7 +120,7 @@ namespace BeatLeader_Server.Utils {
                     }
                     else
                     {
-                        if (param.scoringType != ScoringType.SliderTail && param.scoringType != ScoringType.BurstSliderElement)
+                        if (param.scoringType != ScoringType.ChainLink)
                         {
                             if (note.noteCutInfo.beforeCutRating < 5) {
                                 result.rightAverageCut[0] += (float)before;
@@ -132,17 +128,14 @@ namespace BeatLeader_Server.Utils {
                                 rightCuts[0]++;
                             }
                         }
-                        if (param.scoringType != ScoringType.BurstSliderElement 
-                         && param.scoringType != ScoringType.BurstSliderHead)
+                        if (param.scoringType != ScoringType.ChainLink)
                         {
                             result.rightAverageCut[1] += (float)acc;
                             result.rightTimeDependence += Math.Abs(note.noteCutInfo.cutNormal.z);
                             result.accRight += (float)scoreValue;
                             rightCuts[1]++;
                         }
-                        if (param.scoringType != ScoringType.SliderHead
-                            && param.scoringType != ScoringType.BurstSliderHead
-                            && param.scoringType != ScoringType.BurstSliderElement)
+                        if (param.scoringType != ScoringType.ChainLink)
                         {
                             if (note.noteCutInfo.afterCutRating < 5) {
                                 result.rightAverageCut[2] += (float)after;
@@ -232,7 +225,7 @@ namespace BeatLeader_Server.Utils {
                 var ordered = group.OrderBy(g => g.time).ToList();
                 for (int i = 1; i < ordered.Count; i++)
                 {
-                    if ((ordered[i].time - ordered[i - 1].time) < 0.01 && ordered[i].scoringType != ScoringType.BurstSliderElement && ordered[i - 1].scoringType != ScoringType.BurstSliderElement) {
+                    if ((ordered[i].time - ordered[i - 1].time) < 0.01 && ordered[i].scoringType != ScoringType.ChainLink && ordered[i - 1].scoringType != ScoringType.ChainLink) {
                         potentiallyPoodle = true;
                         break;
                     }
@@ -268,7 +261,7 @@ namespace BeatLeader_Server.Utils {
                     fcScore += note.score;
                 }
 
-                if (!potentiallyPoodle && note.scoringType != ScoringType.BurstSliderElement) {
+                if (!potentiallyPoodle && note.scoringType != ScoringType.ChainLink) {
                     if (note.score == scoreForMaxScore) {
                         streak++;
                     } else if (note.isBlock) {

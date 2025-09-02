@@ -12,7 +12,7 @@ namespace BeatLeader_Server.Utils
             _mapsDirectory = mapsDirectory;
         }
 
-        public string? Map(string hash)
+        public async Task <string?> Map(string hash)
         {
             string lowerCaseDir = Path.Combine(_mapsDirectory, hash.ToLower());
             if (Directory.Exists(lowerCaseDir))
@@ -32,7 +32,7 @@ namespace BeatLeader_Server.Utils
             dynamic? beatsaverData = null;
             string? downloadURL = null;
             try {
-                var response = httpClient.GetStringAsync(beatsaverUrl).Result;
+                var response = await httpClient.GetStringAsync(beatsaverUrl);
                 beatsaverData = response != null ? JsonConvert.DeserializeObject(response) : null;
                 downloadURL = string.Empty;
             } catch (Exception e) {
@@ -59,9 +59,9 @@ namespace BeatLeader_Server.Utils
 
             using var client = new HttpClient();
             client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (compatible; BeatSaverDownloader/1.0)");
-            var data = client.GetByteArrayAsync(downloadURL);
+            var data = await client.GetByteArrayAsync(downloadURL);
 
-            using var zipStream = new MemoryStream(data.Result);
+            using var zipStream = new MemoryStream(data);
             using var zipArchive = new ZipArchive(zipStream);
             Directory.CreateDirectory(mapDir);
             zipArchive.ExtractToDirectory(mapDir);

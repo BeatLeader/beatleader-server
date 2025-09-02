@@ -184,7 +184,7 @@ namespace BeatLeader_Server.Controllers
 
             foreach (var score in scores)
             {
-                string? mapPath = _downloader.Map(score.Hash);
+                string? mapPath = await _downloader.Map(score.Hash);
                 if (mapPath == null) continue; // Skip if download fails
 
                 Beatmap? mapset = null; // Use alias
