@@ -54,5 +54,8 @@ public class SearchService : BackgroundService
                 Changes = p.Changes != null ? p.Changes.Where(c => c.OldName != null).Select(c => c.OldName).ToArray() : null
             })
             .ToArrayAsync());
+
+
+        ScoreSearch.AvailableScores = await context.Scores.Where(s => s.Leaderboard.Difficulty.Status != Models.DifficultyStatus.outdated).Select(s => s.Id).ToListAsync();
     }
 }

@@ -189,31 +189,35 @@ namespace BeatLeader_Server.Controllers
         {
             int? result = null;
             
-            if (scoreSource == RandomScoreSource.Friends) {
+            if (scoreSource == RandomScoreSource.Friends || scoreSource == RandomScoreSource.Self) {
                 IQueryable<Score> query = _context.Scores;
                 string? userId = HttpContext.CurrentUserID(_context);
                 if (userId != null) {
-                    var friends = await _context
-                        .Friends
-                        .AsNoTracking()
-                        .Where(f => f.Id == userId)
-                        .Include(f => f.Friends)
-                        .FirstOrDefaultAsync();
+                    if (scoreSource == RandomScoreSource.Friends) {
+                        var friends = await _context
+                            .Friends
+                            .AsNoTracking()
+                            .Where(f => f.Id == userId)
+                            .Include(f => f.Friends)
+                            .FirstOrDefaultAsync();
 
-                    var friendsList = new List<string> { userId };
-                    if (friends != null) {
-                        friendsList.AddRange(friends.Friends.Select(f => f.Id));
+                        var friendsList = new List<string> { userId };
+                        if (friends != null) {
+                            friendsList.AddRange(friends.Friends.Select(f => f.Id));
+                        }
+
+                        var score = Expression.Parameter(typeof(Score), "s");
+
+                        // 1 != 2 is here to trigger `OrElse` further the line.
+                        var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
+                        foreach (var term in friendsList)
+                        {
+                            exp = Expression.OrElse(exp, Expression.Equal(Expression.Property(score, "PlayerId"), Expression.Constant(term)));
+                        }
+                        query = query.Where((Expression<Func<Score, bool>>)Expression.Lambda(exp, score));
+                    } else if (scoreSource == RandomScoreSource.Self) {
+                        query = query.Where(s => s.PlayerId == userId);
                     }
-
-                    var score = Expression.Parameter(typeof(Score), "s");
-
-                    // 1 != 2 is here to trigger `OrElse` further the line.
-                    var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
-                    foreach (var term in friendsList)
-                    {
-                        exp = Expression.OrElse(exp, Expression.Equal(Expression.Property(score, "PlayerId"), Expression.Constant(term)));
-                    }
-                    query = query.Where((Expression<Func<Score, bool>>)Expression.Lambda(exp, score));
                     var count = await query.CountAsync();
                     if (count == 0) return NotFound();
                     var offset = Random.Shared.Next(1, count);
@@ -228,14 +232,8 @@ namespace BeatLeader_Server.Controllers
             } 
 
             if (result == null) {
-                var idParam = new SqlParameter("Id", SqlDbType.Int) { Direction = ParameterDirection.Output };
-                await _context.Database.ExecuteSqlRawAsync(
-                    """
-                    SELECT TOP 1 @Id = [s].[Id]
-                    FROM [Scores] AS [s]
-                    TABLESAMPLE (1 PERCENT);
-                    """, idParam);
-                result = (int?)idParam.Value;
+                var offset = Random.Shared.Next(0, ScoreSearch.AvailableScores.Count);
+                result = offset != 0 ? ScoreSearch.AvailableScores[offset] : Random.Shared.Next(10593474);
             }
 
             if (result == null) {

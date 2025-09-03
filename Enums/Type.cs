@@ -27,7 +27,8 @@ public enum FollowerType {
 
 public enum RandomScoreSource {
     General,
-    Friends
+    Friends,
+    Self
 }
 
 public enum DateRangeType {
