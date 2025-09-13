@@ -12,6 +12,7 @@ using beatleader_parser;
 using Parser.Utils;
 using Parser.Map.Difficulty.V3.Grid;
 using Parser.Map;
+using MapPostprocessor;
 
 namespace BeatLeader_Server.Services {
     public class MapRefresh : BackgroundService {
@@ -25,25 +26,12 @@ namespace BeatLeader_Server.Services {
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
             do {
-                int minuteSpan = 60 - DateTime.Now.Minute;
-                int numberOfMinutes = minuteSpan;
-
-                if (minuteSpan == 60) {
-                    Console.WriteLine("SERVICE-STARTED MapRefresh");
-
-                    try {
-                        await CheckMaps();
-                    } catch (Exception e) {
-                        Console.WriteLine($"EXCEPTION MapRefresh {e}");
-                    }
-
-                    Console.WriteLine("SERVICE-DONE MapRefresh");
-
-                    minuteSpan = 60 - DateTime.Now.Minute;
-                    numberOfMinutes = minuteSpan;
+                try {
+                    await CheckMaps();
+                } catch (Exception e) {
+                    Console.WriteLine($"EXCEPTION MapRefresh {e}");
                 }
-
-                await Task.Delay(TimeSpan.FromMinutes(numberOfMinutes), stoppingToken);
+                await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
             }
             while (!stoppingToken.IsCancellationRequested) ;
         }
@@ -59,7 +47,15 @@ namespace BeatLeader_Server.Services {
                 foreach (var song in songs) {
                     try {
                         var mapPath = await downloader.Map(song.Hash);
-                        if (mapPath == null) continue;
+                        if (mapPath == null) { 
+                            if (song.Difficulties.Any(d => d.Status == DifficultyStatus.outdated)) {
+                                song.Checked = true;
+                            }
+
+                            await Task.Delay(TimeSpan.FromSeconds(2));
+
+                            continue;
+                        }
 
                         var parse = new Parse();
                         BeatmapV3? mapset = null;

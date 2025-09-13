@@ -13,3 +13,6 @@
 [submodule "ReplayDecoder"]
 	path = ReplayDecoder
 	url = https://github.com/BeatLeader/ReplayDecoder.git
+[submodule "MapPostprocessor"]
+	path = MapPostprocessor
+	url = https://github.com/BeatLeader/MapPostprocessor.git

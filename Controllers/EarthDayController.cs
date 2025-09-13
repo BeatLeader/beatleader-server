@@ -31,7 +31,8 @@ using Parser.Map.Difficulty.V3.Base; // Added for DifficultyV3 and BpmEvent etc.
 using Parser.Map.Difficulty.V3.Event; // For Light, RotationEvent etc.
 using Parser.Map.Difficulty.V3.Grid;
 using OggVorbisEncoder;
-using System.Security.Cryptography; // For Note, Bomb, Wall etc.
+using System.Security.Cryptography;
+using MapPostprocessor; // For Note, Bomb, Wall etc.
 
 namespace BeatLeader_Server.Controllers
 {

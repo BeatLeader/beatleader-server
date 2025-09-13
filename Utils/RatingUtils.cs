@@ -25,7 +25,7 @@ namespace BeatLeader_Server.Utils
 
         private static void UpdateFromResponse(DifficultyDescription diff, ExmachinaResponse? response, LeaderboardChange? rankChange)
         {
-            if (response != null)
+            if (response != null && response.none != null)
             {
                 diff.PassRating = response.none.LackMapCalculation.PassRating;
                 diff.TechRating = response.none.LackMapCalculation.TechRating;

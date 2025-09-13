@@ -22,6 +22,7 @@ using BeatLeader_Server.ControllerHelpers;
 using System.Net;
 using beatleader_parser;
 using Parser.Utils;
+using MapPostprocessor;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -36,6 +37,8 @@ namespace BeatLeader_Server.Controllers
         private readonly IConfiguration _configuration;
         private readonly IServerTiming _serverTiming;
         private readonly IReplayRecalculator? _replayRecalculator;
+
+        private readonly MapDownloader _downloader;
 
         private readonly IMetricFamily<IGauge> _replayLocation;
         private readonly Geohash.Geohasher _geoHasher;
@@ -59,6 +62,8 @@ namespace BeatLeader_Server.Controllers
 
             _replayLocation = metricFactory.CreateGauge("replay_position", "Posted replay location", new string[] { "geohash" });
             _geoHasher = new Geohash.Geohasher();
+
+            _downloader = new MapDownloader(_configuration.GetValue<string>("MapsPath") ?? "/home/maps");
 
             if (ipLocation == null)
             {
@@ -362,10 +367,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (replay.info.score <= 0) {
-                return new() {
-                    Status = ScoreUploadStatus.Error,
-                    Description = "The score should be positive"
-                };
+                replay.info.score *= -1;
             }
 
             var gameversion = replay.info.gameVersion.Split(".");
@@ -410,6 +412,10 @@ namespace BeatLeader_Server.Controllers
                     Status = ScoreUploadStatus.Error,
                     Description = "Variable NJS maps supported only on 1.40+"
                 };
+            }
+
+            if (gameVersion.Length == 3 && !(int.Parse(gameVersion[1]) > 40 || (int.Parse(gameVersion[1]) == 40 && int.Parse(gameVersion[2].Split("_").First()) > 8)) && leaderboard.Difficulty.Requirements.HasFlag(Requirements.V3Pepega)) {
+                await ReplayUtils.UpgradeScoringType(replay, leaderboard, _downloader);
             }
 
             var ip = context.Request.HttpContext.GetIpAddress();
@@ -893,95 +899,6 @@ namespace BeatLeader_Server.Controllers
                 };
             }
         }
-
-        //[HttpGet("~/fixfailed")]
-        //public async Task<ActionResult> FixFailed() {
-        //    var fscores = _context.FailedScores.OrderByDescending(f => f.Timeset).Take(1000).Include(fs => fs.Leaderboard).ToList();
-        //    foreach (var fscore in fscores)
-        //    {
-        //        var replayLink = fscore.Replay;
-        //        var scoreReplayLink = replayLink.Replace("bsortemp", "bsor");
-        //        var resultScore = _context
-        //            .Scores
-        //            .Include(s => s.Leaderboard)
-        //            .ThenInclude(l => l.Song)
-        //            .Include(s => s.Leaderboard)
-        //            .ThenInclude(l => l.Difficulty)
-        //            .Include(s => s.ContextExtensions)
-        //            .Include(s => s.Player)
-        //            .ThenInclude(l => l.ScoreStats)
-        //            .Where(s => s.LeaderboardId == fscore.Leaderboard.Id && s.PlayerId == fscore.PlayerId && s.BaseScore == fscore.BaseScore)
-        //            .FirstOrDefault();
-
-        //        if (resultScore != null) {
-        //            var player = resultScore.Player;
-        //            if (player == null) continue;
-        //            var leaderboard = resultScore.Leaderboard;
-
-        //            string? name = replayLink.Split("/").LastOrDefault();
-        //            var stream = await _s3Client.DownloadReplay(name);
-
-        //            Replay? replay;
-        //            ReplayOffsets? offsets;
-        //            byte[] replayData;
-
-        //            int length = 0;
-        //            List<byte> replayDataList = new List<byte>(); 
-        //            byte[] buffer = ArrayPool<byte>.Shared.Rent(4096);
-
-        //            while (true)
-        //            {
-        //                var bytesRemaining = await stream.ReadAsync(buffer, offset: 0, buffer.Length);
-        //                if (bytesRemaining == 0)
-        //                {
-        //                    break;
-        //                }
-        //                length += bytesRemaining;
-        //                replayDataList.AddRange(new Span<byte>(buffer, 0, bytesRemaining).ToArray());
-        //            }
-
-        //            ArrayPool<byte>.Shared.Return(buffer);
-
-        //            replayData = replayDataList.ToArray();
-        //            try
-        //            {
-        //                (replay, offsets) = ReplayDecoder.ReplayDecoder.Decode(replayData);
-        //            }
-        //            catch (Exception)
-        //            {
-        //                continue;
-        //            }
-
-        //            await RecalculateRanks(resultScore, new List<Score>(), leaderboard, player, null);
-        //            await PostUploadAction(
-        //                replay,
-        //                replayData,
-        //                leaderboard, 
-        //                player,
-        //                resultScore,
-        //                new List<CurrentScoreWrapper>(),
-        //                null, 
-        //                offsets,
-        //                false);
-
-        //            _context.FailedScores.Remove(fscore);
-        //            _context.SaveChanges();
-        //        } 
-        //        //else {
-        //        //    string? name = fscore.Replay.Split("/").LastOrDefault();
-        //        //    if (name == null) {
-        //        //        continue;
-        //        //    }
-        //        //    var result = await PostReplayFromCDN(fscore.PlayerId, name, fscore.Replay.Contains("/backup/file"), false, fscore.Timeset, HttpContext);
-        //        //    _context.FailedScores.Remove(fscore);
-        //        //    await _context.SaveChangesAsync();
-        //        //}
-
-                
-        //    }
-
-        //    return Ok();
-        //}
 
         [NonAction]
         private async Task GeneralContextScore(

@@ -7,7 +7,6 @@ using BeatLeader_Server.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using Models.Models;
 using ProtoBuf;
 using System.IO.Compression;
 using static BeatLeader_Server.Utils.ResponseUtils;
@@ -199,7 +198,7 @@ namespace BeatLeader_Server.Controllers
                                     ? lb.TodayPlays
                                     : (thisWeekPlays
                                     ? lb.ThisWeekPlays
-                                    : lb.Scores.Where(s => s.ValidContexts.HasFlag(leaderboardContext)).Count(s => date_range != DateRangeType.Score || ((date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to)))))
+                                    : (date_range != DateRangeType.Score || (date_from == null && date_to == null) ? lb.Plays : lb.Scores.Where(s => s.ValidContexts.HasFlag(leaderboardContext)).Count(s => date_range != DateRangeType.Score || ((date_from == null || s.Timepost >= date_from) && (date_to == null || s.Timepost <= date_to))))))
                                 : 0,
                             Attempts = lb.PlayCount,
                             PositiveVotes = lb.PositiveVotes,

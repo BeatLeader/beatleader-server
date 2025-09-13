@@ -36,7 +36,7 @@ namespace BeatLeader_Server.Utils
 
                 foreach (var note in replay.notes)
                 {
-                    NoteParams param = new NoteParams(note.noteID);
+                    NoteParams param = new NoteParams(note.noteID, note.eventType);
                     if (note.noteID < 100000 && note.noteID > 0 && endTime - note.eventTime > 1)
                     {
                         if (note.eventType == NoteEventType.good && param.colorType != note.noteCutInfo.saberType)

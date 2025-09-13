@@ -76,7 +76,7 @@ namespace BeatLeader_Server.Utils {
             List<NoteStruct> allStructs = new List<NoteStruct>();
             foreach (var note in replay.notes)
             {
-                NoteParams param = new NoteParams(note.noteID);
+                NoteParams param = new NoteParams(note.noteID, note.eventType);
                 int scoreValue = ScoreForNote(note, replay.info.modifiers);
 
                 if (scoreValue > 0)

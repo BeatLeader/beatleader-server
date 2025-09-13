@@ -1,6 +1,9 @@
 ﻿using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using ReplayDecoder;
+using MapPostprocessor;
+using beatleader_parser;
+using Parser.Map.Difficulty.V3.Base;
 
 namespace BeatLeader_Server.Utils
 {
@@ -753,6 +756,46 @@ namespace BeatLeader_Server.Utils
             return null;
         }
 
+        public static async Task<string?> UpgradeScoringType(Replay replay, Leaderboard leaderboard, MapDownloader mapDownloader) {
+            try {
+                var mapPath = await mapDownloader.Map(replay.info.hash.Substring(0, 40));
+                if (mapPath == null) return null;
+                var parser = new Parse();
+
+                var map = parser.TryLoadPath(mapPath);
+
+                if (map == null) return null;
+                var wrapper = MapWrapper.Process(map.Difficulties.First(d => d.Characteristic == replay.info.mode && d.Difficulty == replay.info.difficulty));
+                wrapper = wrapper.ForReplay(replay);
+
+                var allElements = new List<IWrapper<BeatmapGridObject>>();
+                allElements.AddRange(wrapper.Notes.Where(n => n.ScoringType > MapPostprocessor.ScoringType.ChainLink && n.Event != null));
+                allElements.AddRange(wrapper.Chains.Where(n => n.ScoringType > MapPostprocessor.ScoringType.ChainLink && n.Event != null));
+
+                foreach (var item in allElements) {
+                    var replayNote = replay.notes.FirstOrDefault(n => item.Event == n);
+                    if (replayNote != null) {
+                        replayNote.noteID = item.IdWithScoring;
+                        replayNote.noteParams = new NoteParams(replayNote.noteID, replayNote.eventType);
+                    }
+                }
+
+                string? error = null;
+                ScoreStatistic? statistic = null;
+                (statistic, error) = ReplayStatisticUtils.ProcessReplay(replay, leaderboard);
+
+                if (statistic != null) {
+                    replay.info.score = statistic.winTracker.totalScore;
+                } else {
+                    return error;
+                }
+            } catch (Exception e) {
+                return e.ToString();
+            }
+
+            return null;
+        }
+
         public static string? RemoveDuplicates(Replay replay, Leaderboard leaderboard) {
             var groups = replay.notes.GroupBy(n => n.noteID + "_" + n.spawnTime).Where(g => g.Count() > 1).ToList();
 
@@ -763,8 +806,8 @@ namespace BeatLeader_Server.Utils
                     bool slider = false;
 
                     var toRemove = group.OrderByDescending(n => {
-                        NoteParams param = new NoteParams(n.noteID);
-                        if (param.scoringType != ScoringType.Default && param.scoringType != ScoringType.Normal) {
+                        NoteParams param = new NoteParams(n.noteID, n.eventType);
+                        if (param.scoringType != ReplayDecoder.ScoringType.Default && param.scoringType != ReplayDecoder.ScoringType.Normal) {
                             slider = true;
                         }
                         return ReplayStatistic.ScoreForNote(n, param.scoringType);

@@ -224,6 +224,13 @@ public static partial class MapListUtils
     }
 
     private static IOrderedQueryable<SongHelper> SortByPlayCount(this IQueryable<SongHelper> sequence, Order order, int? dateFrom, int? dateTo, DateRangeType rangeType, int? searchId, LeaderboardContexts leaderboardContext = LeaderboardContexts.General) { 
+        
+        if ((dateTo == null && dateFrom == null) || rangeType != DateRangeType.Score) {
+            return sequence
+            .OrderByDescending(s => searchId != null ? s.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
+            .ThenOrder(order, s => s.Song.Leaderboards.Sum(l => l.Plays));
+        }
+
         if (dateTo == null && dateFrom != null) {
             var currentTime = Time.UnixNow();
             if (Math.Abs(currentTime - (int)dateFrom - 60 * 60 * 24) < 60 * 30) {
