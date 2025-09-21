@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BeatLeader_Server.ControllerHelpers {
     public class LeaderboardControllerHelper {
-        public static async Task<Leaderboard?> GetByHash(AppContext dbContext, string hash, string diff, string mode, bool recursive = true) {
+        public static async Task<Leaderboard?> GetByHash(AppContext dbContext, string hash, string diff, string mode, bool allowCustom, bool recursive) {
             Leaderboard? leaderboard;
 
             leaderboard = await dbContext
@@ -30,8 +30,8 @@ namespace BeatLeader_Server.ControllerHelpers {
                 }
                 // Song migrated leaderboards
                 if (recursive) {
-                    return await GetByHash(dbContext, hash, diff, mode, false);
-                } else {
+                    return await GetByHash(dbContext, hash, diff, mode, allowCustom, false);
+                } else if (allowCustom || song.Difficulties.Any(d => d.DifficultyName == diff && d.ModeName == mode)) {
                     leaderboard = await SongControllerHelper.NewLeaderboard(dbContext, song, null, diff, mode);
                 }
 

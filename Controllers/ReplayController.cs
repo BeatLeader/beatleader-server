@@ -396,7 +396,7 @@ namespace BeatLeader_Server.Controllers
             Leaderboard? leaderboard;
             using (_serverTiming.TimeAction("ldbrd"))
             {
-                leaderboard = await LeaderboardControllerHelper.GetByHash(dbContext, info.hash, info.difficulty, info.mode);
+                leaderboard = await LeaderboardControllerHelper.GetByHash(dbContext, info.hash, info.difficulty, info.mode, true, true);
                 if (leaderboard == null)
                 {
                     return new() {

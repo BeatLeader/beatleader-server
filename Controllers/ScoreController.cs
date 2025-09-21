@@ -440,7 +440,7 @@ namespace BeatLeader_Server.Controllers
                 hash = hash.Substring(0, 40);
             }
 
-            var leaderboard = await LeaderboardControllerHelper.GetByHash(_context, hash, diff, mode, false);
+            var leaderboard = await LeaderboardControllerHelper.GetByHash(_context, hash, diff, mode, false, false);
             if (leaderboard == null) {
                 return result;
             }
@@ -907,12 +907,13 @@ namespace BeatLeader_Server.Controllers
                     resultList = resultList
                         .OrderByDescending(el => Math.Round(el.Pp, 2))
                         .ThenBy(el => Math.Round(el.Accuracy, 4))
+                        .ThenBy(el => el.ModifiedScore)
                         .ThenBy(el => el.Timeset).ToList();
                 } else {
                     resultList = resultList
                         .OrderBy(el => el.Priority)
-                        .ThenBy(el => el.ModifiedScore)
                         .ThenBy(el => Math.Round(el.Accuracy, 4))
+                        .ThenBy(el => el.ModifiedScore)
                         .ThenBy(el => el.Timeset).ToList();
                 }
             } else {
