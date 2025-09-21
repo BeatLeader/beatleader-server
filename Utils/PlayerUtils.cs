@@ -34,7 +34,6 @@ namespace BeatLeader_Server.Utils
             Player player)
         {
             float oldPp = player.Pp;
-            player.AllContextsPp -= oldPp;
 
             var rankedScores = await context
                 .Scores
@@ -73,7 +72,6 @@ namespace BeatLeader_Server.Utils
             player.AccPp = accPP;
             player.TechPp = techPP;
             player.PassPp = passPP;
-            player.AllContextsPp += resultPP;
 
             int rankOffset = 0;
 
@@ -182,7 +180,6 @@ namespace BeatLeader_Server.Utils
             if (player == null) return;
 
             float oldPp = player.Pp;
-            playerProfile.AllContextsPp -= oldPp;
 
             var rankedScores = await dbContext
                 .ScoreContextExtensions
@@ -219,7 +216,6 @@ namespace BeatLeader_Server.Utils
             player.AccPp = accPP;
             player.TechPp = techPP;
             player.PassPp = passPP;
-            playerProfile.AllContextsPp += resultPP;
 
             int rankOffset = 0;
 

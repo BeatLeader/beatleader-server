@@ -410,8 +410,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            var players = await _context.Players.Select(p => new Player { AllContextsPp = p.Pp + p.ContextExtensions.Sum(ce => ce.Pp), Id = p.Id }).ToListAsync();
-            await _context.BulkUpdateAsync(players, options => options.ColumnInputExpression = c => new { c.AllContextsPp });
+            await PlayerRefreshControllerHelper.RefreshAllContextsPp(_context);
 
             return Ok();
         }

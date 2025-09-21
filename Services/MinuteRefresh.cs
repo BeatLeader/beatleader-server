@@ -44,6 +44,7 @@ namespace BeatLeader_Server.Services
                 try {
                     await RefreshMaps();
                     await RefreshPrometheus();
+                    await RefreshAllContextsPp();
                     //await RefreshTreeMaps();
                 } catch (Exception e) {
                     Console.WriteLine($"EXCEPTION MinuteRefresh {e}");
@@ -130,6 +131,14 @@ namespace BeatLeader_Server.Services
 
                 _rankedScoreCounter.Set(await _context.Scores.TagWithCaller().Where(s => s.Pp > 0 && !s.Qualification && !s.Banned).CountAsync());
                 _scoreCounter.Set(ScoresCount);
+            }
+        }
+
+        public async Task RefreshAllContextsPp() {
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+                await PlayerRefreshControllerHelper.RefreshAllContextsPp(_context);
             }
         }
 

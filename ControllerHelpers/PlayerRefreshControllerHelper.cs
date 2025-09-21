@@ -300,5 +300,11 @@ namespace BeatLeader_Server.ControllerHelpers {
                 scoreStats.CountryTopPercentile = (float)countryPercentile;
             }
         }
+
+        public static async Task RefreshAllContextsPp(
+            AppContext dbContext) {
+            var players = await dbContext.Players.Select(p => new Player { AllContextsPp = p.Pp + p.ContextExtensions.Where(ce => ce.Context != LeaderboardContexts.Funny).Sum(ce => ce.Pp), Id = p.Id }).ToListAsync();
+            await dbContext.BulkUpdateAsync(players, options => options.ColumnInputExpression = c => new { c.AllContextsPp });
+        }
     }
 }

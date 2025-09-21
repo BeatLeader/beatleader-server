@@ -1180,8 +1180,8 @@ namespace BeatLeader_Server.Controllers
                     .AsNoTracking()
                     .Where(s => s.LeaderboardId == leaderboard.Id && s.Context == context && !s.Banned)
                     .OrderByDescending(el => el.Priority)
+                    .ThenBy(el => Math.Round(el.Accuracy, 4))
                     .ThenBy(el => el.ModifiedScore)
-                    .ThenByDescending(el => Math.Round(el.Accuracy, 4))
                     .ThenBy(el => el.Timepost)
                     .Select(s => new ScoreContextExtension() { Id = s.Id, Rank = s.Rank, Timepost = s.Timepost })
                     .ToListAsync();
