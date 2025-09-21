@@ -945,7 +945,7 @@ namespace BeatLeader_Server.Utils
                 if (newScore.Pp > (oldScore?.Pp ?? 0)) return true;
             } else {
                 if (newScore.Context == LeaderboardContexts.Golf) {
-                    if (newScore.ModifiedScore < oldScore.ModifiedScore) return true;
+                    if (newScore.Accuracy < oldScore.Accuracy) return true;
                 } else {
                     if (newScore.ModifiedScore > oldScore.ModifiedScore) return true;
                 }

@@ -19,44 +19,25 @@ namespace BeatLeader_Server.Utils
 
             double dBatch = Convert.ToDouble(batch);
 
-            double minVal = double.MaxValue;
-            double maxVal = double.MinValue;
             Dictionary<double, int> histogram = new Dictionary<double, int>();
 
             // Populate the histogram and find min, max in a single pass
             foreach (var value in values)
             {
                 double dValue = Convert.ToDouble(value);
-                if (dValue < minVal) minVal = dValue;
-                if (dValue > maxVal) maxVal = dValue;
 
                 double bin = Math.Floor(dValue / dBatch) * dBatch;
                 histogram.TryAdd(bin, 0);
                 histogram[bin]++;
             }
 
-            double normalizedMin = Math.Floor(minVal / dBatch) * dBatch;
-            double normalizedMax = Math.Floor(maxVal / dBatch + 1) * dBatch;
-
+            var list = order == Order.Desc 
+                ? histogram.Select(h => new { h.Key, h.Value }).OrderByDescending(h => h.Key).ToList() 
+                : histogram.Select(h => new { h.Key, h.Value }).OrderBy(h => h.Key).ToList();
             int totalCount = 0;
-
-            Action<double> updateResult = (i) =>
-            {
-                if (histogram.TryGetValue(i, out int value))
-                {
-                    result[(T)Convert.ChangeType(i, typeof(T))] = new HistogramValue { Value = value, Page = totalCount / count };
-                    totalCount += value;
-                }
-            };
-
-            if (order == Order.Desc)
-            {
-                for (double i = normalizedMax - dBatch; i >= normalizedMin; i -= dBatch)
-                    updateResult(i);
-            } else
-            {
-                for (double i = normalizedMin; i < normalizedMax; i += dBatch)
-                    updateResult(i);
+            foreach (var item in list) {
+                result[(T)Convert.ChangeType(item.Key, typeof(T))] = new HistogramValue { Value = item.Value, Page = totalCount / count };
+                totalCount += item.Value;
             }
 
             return JsonConvert.SerializeObject(result);
