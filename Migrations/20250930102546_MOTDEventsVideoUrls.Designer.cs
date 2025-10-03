@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20250930102546_MOTDEventsVideoUrls")]
+    partial class MOTDEventsVideoUrls
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1025,9 +1028,6 @@ namespace BeatLeader_Server.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AnimatedImage")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
@@ -1035,9 +1035,6 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("EventType")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("FeaturedPlaylistId")
                         .HasColumnType("int");
 
                     b.Property<string>("Image")
@@ -1063,8 +1060,6 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("FeaturedPlaylistId");
 
                     b.ToTable("EventRankings");
                 });
@@ -5134,15 +5129,6 @@ namespace BeatLeader_Server.Migrations
                     b.Navigation("Event");
 
                     b.Navigation("Player");
-                });
-
-            modelBuilder.Entity("BeatLeader_Server.Models.EventRanking", b =>
-                {
-                    b.HasOne("BeatLeader_Server.Models.FeaturedPlaylist", "FeaturedPlaylist")
-                        .WithMany()
-                        .HasForeignKey("FeaturedPlaylistId");
-
-                    b.Navigation("FeaturedPlaylist");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ExternalStatus", b =>

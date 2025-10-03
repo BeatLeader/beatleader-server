@@ -364,13 +364,15 @@ namespace BeatLeader_Server.Utils
                     }
                 }
 
-                float resultPP = 0f;
-                foreach ((int i, var s) in ranked.Select((value, i) => (i, value)))
-                {
-                    resultPP += s.Pp * MathF.Pow(0.925f, i);
-                }
+                if (eventRanking.EventType == EventRankingType.Playlist) {
+                    float resultPP = 0f;
+                    foreach ((int i, var s) in ranked.Select((value, i) => (i, value)))
+                    {
+                        resultPP += s.Pp * MathF.Pow(0.925f, i);
+                    }
 
-                eventPlayer.Pp = resultPP;
+                    eventPlayer.Pp = resultPP;
+                }
 
                 var players = eventRanking.Players.OrderByDescending(t => t.Pp).ToList();
                 Dictionary<string, int> countries = new Dictionary<string, int>();

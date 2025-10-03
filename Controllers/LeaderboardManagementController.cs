@@ -217,6 +217,89 @@ namespace BeatLeader_Server.Controllers {
             return Ok();
         }
 
+        [HttpPost("~/event/{eventId}/feature")]
+        public async Task<ActionResult> FeatureEvent(
+                int eventId,
+               [FromQuery] string title,
+               [FromQuery] string? owner = null,
+               [FromQuery] string? ownerCover = null,
+               [FromQuery] string? ownerLink = null,
+               [FromQuery] int? id = null,
+               [FromQuery] string? playlistLink = null,
+               [FromQuery] string? linkToSave = null,
+               [FromQuery] string? description = null)
+        {
+            if (HttpContext != null)
+            {
+                string userId = HttpContext.CurrentUserID(_context);
+                var currentPlayer = await _context.Players.FindAsync(userId);
+
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+
+            var eventRanking = await _context.EventRankings.Where(e => e.Id == eventId).FirstOrDefaultAsync();
+            if (eventRanking == null) return NotFound();
+
+            dynamic? playlist = null;
+
+            if (id != null) {
+                using (var stream = await _s3Client.DownloadPlaylist(id + ".bplist"))
+                {
+                    if (stream != null)
+                    {
+                        playlist = stream.ObjectFromStream();
+                    }
+                }
+            } else {
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(playlistLink);
+                playlist = await request.DynamicResponse();
+            }
+
+            if (playlist == null)
+            {
+                return BadRequest("Can't find such plist");
+            }
+
+            string fileName = id + "-featured";
+            string? imageUrl = null;
+            try
+            {
+
+                var ms = new MemoryStream(5);
+                await Request.Body.CopyToAsync(ms);
+                ms.Position = 0;
+
+                (string extension, MemoryStream stream2) = ImageUtils.GetFormat(ms);
+                fileName += extension;
+
+                imageUrl = await _s3Client.UploadAsset(fileName, stream2);
+            } catch (Exception)
+            {
+                return BadRequest("Error saving avatar");
+            }
+
+            var featuredPlaylist = new FeaturedPlaylist
+            {
+                PlaylistLink = linkToSave ?? $"https://beatleader.com/playlist/{id}",
+                Cover = imageUrl,
+                Title = title,
+                MapCount = playlist.songs.Count,
+                Description = description,
+
+                Owner = owner,
+                OwnerCover = ownerCover,
+                OwnerLink = ownerLink
+            };
+            eventRanking.FeaturedPlaylist = featuredPlaylist;
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
         [HttpPost("~/leaderboard/feature")]
         public async Task<ActionResult> FeatureLeaderboard(
             [FromQuery] string leaderboardId,

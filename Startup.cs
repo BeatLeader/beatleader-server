@@ -441,6 +441,8 @@ namespace BeatLeader_Server {
             if (!Environment.IsDevelopment()) {
                 if (Configuration.GetValue<string>("ServicesHost") == "YES")
                 {
+                    services.AddHostedService<EveryMinuteRefresh>();
+                    services.AddHostedService<MinuteRefresh>();
                     services.AddHostedService<HourlyRefresh>();
                     services.AddHostedService<DailyRefresh>();
                     services.AddHostedService<HistoryService>();
@@ -454,7 +456,6 @@ namespace BeatLeader_Server {
 
             services.AddHostedService<ConstantsService>();
             services.AddHostedService<RefreshTaskService>();
-            services.AddHostedService<MinuteRefresh>();
             services.AddHostedService<ClanTaskService>();
             services.AddHostedService<ClanMessageService>();
             services.AddHostedService<ClanCallbackService>();

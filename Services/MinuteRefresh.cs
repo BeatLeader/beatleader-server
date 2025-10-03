@@ -1,6 +1,7 @@
 ﻿using BeatLeader_Server.ControllerHelpers;
 using BeatLeader_Server.Enums;
 using BeatLeader_Server.Extensions;
+using BeatLeader_Server.Models;
 using BeatLeader_Server.Utils;
 using Microsoft.EntityFrameworkCore;
 using Prometheus.Client;
@@ -45,7 +46,6 @@ namespace BeatLeader_Server.Services
                     await RefreshMaps();
                     await RefreshPrometheus();
                     await RefreshAllContextsPp();
-                    //await RefreshTreeMaps();
                 } catch (Exception e) {
                     Console.WriteLine($"EXCEPTION MinuteRefresh {e}");
                 }
@@ -139,59 +139,6 @@ namespace BeatLeader_Server.Services
             {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
                 await PlayerRefreshControllerHelper.RefreshAllContextsPp(_context);
-            }
-        }
-
-        public async Task RefreshTreeMaps() {
-            using (var scope = _serviceScopeFactory.CreateScope())
-            {
-                var now = Time.UnixNow();
-                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
-                var _s3Client = _configuration.GetS3Client();
-                var maps = await _context.TreeMaps.Where(m => m.Timestart < now).OrderByDescending(m => m.Timestart).ToListAsync();
-
-                var ids = maps.Select(m => m.SongId).ToList();
-
-                var songs = _context.Songs.Where(s => ids.Contains(s.Id)).Include(s => s.Leaderboards).ThenInclude(l => l.Difficulty).ToList();
-                foreach (var song in songs) {
-                    foreach (var lb in song.Leaderboards) {
-                        if (lb.Difficulty.Status != Models.DifficultyStatus.inevent) {
-                            lb.Difficulty.Status = Models.DifficultyStatus.inevent;
-                            await RatingUtils.UpdateFromExMachina(lb, null);
-                            await _context.SaveChangesAsync();
-                            await ScoreRefreshControllerHelper.BulkRefreshScores(_context, lb.Id);
-                        }
-                    }
-                }
-
-                dynamic? playlist = null;
-
-                using (var stream = await _s3Client.DownloadPlaylist("83999.bplist")) {
-                    if (stream != null) {
-                        playlist = stream.ObjectFromStream();
-                    }
-                }
-
-                if (playlist == null)
-                {
-                    return;
-                }
-
-                var psongs = songs.Select(s => new
-                {
-                    hash = s.Hash,
-                    songName = s.Name,
-                    levelAuthorName = s.Mapper,
-                    difficulties = s.Difficulties.Select(d => new
-                    {
-                        name = d.DifficultyName.FirstCharToLower(),
-                        characteristic = d.ModeName
-                    })
-                }).ToList();
-
-                playlist.songs = psongs;
-
-                await S3Helper.UploadPlaylist(_s3Client, "83999.bplist", playlist);
             }
         }
     }

@@ -50,7 +50,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? search = null,
             [FromQuery] Order order = Order.Desc)
         {
-            IQueryable<EventRanking> query = _context.EventRankings.Include(e => e.Players);
+            IQueryable<EventRanking> query = _context.EventRankings.Where(e => e.Id != 75).Include(e => e.Players);
 
             switch (sortBy)
             {
@@ -92,6 +92,11 @@ namespace BeatLeader_Server.Controllers
                 Image = e.Image,
                 Downloadable = !undownloadable.Contains(e.Id), 
                 Description = e.Description,
+                EventType = e.EventType,
+                MainColor = e.MainColor,
+                SecondaryColor = e.SecondaryColor,
+                PageAlias = e.PageAlias,
+                AnimatedImage = e.AnimatedImage,
 
                 PlayerCount = e.Players.Count(),
                 Leader = new PlayerResponse {
@@ -112,6 +117,67 @@ namespace BeatLeader_Server.Controllers
 
         [HttpGet("~/mod/events")]
         public async Task<ActionResult<ResponseWithMetadata<EventResponse>>> GetModEvents(
+            [FromQuery] int page = 1,
+            [FromQuery] int count = 10,
+            [FromQuery] string? sortBy = "date",
+            [FromQuery] string? search = null,
+            [FromQuery] Order order = Order.Desc)
+        {
+            IQueryable<EventRanking> query = _context.EventRankings.Where(e => e.Id != 75).Include(e => e.Players);
+
+            switch (sortBy)
+            {
+                case "date":
+                    query = query.Order(order, p => p.EndDate);
+                    break;
+                case "name":
+                    query = query.Order(order, t => t.Name);
+                    break;
+                default:
+                    break;
+            }
+
+            if (search != null)
+            {
+                string lowSearch = search.ToLower();
+                query = query.Where(p => p.Name.ToLower().Contains(lowSearch));
+            }
+
+            var result = new ResponseWithMetadata<EventResponse>
+            {
+                Metadata = new Metadata
+                {
+                    Page = page,
+                    ItemsPerPage = count,
+                    Total = await query.CountAsync()
+                }
+            };
+
+            int[] undownloadable = [48, 46, 32, 63];
+            result.Data = await query
+            .TagWithCaller()
+            .AsNoTracking()
+            .Select(e => new EventResponse {
+                Id = e.Id,
+                Name = e.Name,
+                EndDate = e.EndDate,
+                PlaylistId = e.PlaylistId,
+                Image = e.Image,
+                Downloadable = !undownloadable.Contains(e.Id), 
+                Description = e.Description,
+                EventType = e.EventType,
+                MainColor = e.MainColor,
+                SecondaryColor = e.SecondaryColor
+            })
+            .Skip((page - 1) * count)
+            .Take(count)
+            .ToListAsync();
+
+            return result;
+        }
+
+        [HttpGet("~/mod-test/events")]
+        public async Task<ActionResult<ResponseWithMetadata<EventResponse>>> GetTestModEvents(
             [FromQuery] int page = 1,
             [FromQuery] int count = 10,
             [FromQuery] string? sortBy = "date",
@@ -160,6 +226,9 @@ namespace BeatLeader_Server.Controllers
                 Image = e.Image,
                 Downloadable = !undownloadable.Contains(e.Id), 
                 Description = e.Description,
+                EventType = e.EventType,
+                MainColor = e.MainColor,
+                SecondaryColor = e.SecondaryColor
             })
             .Skip((page - 1) * count)
             .Take(count)
@@ -169,8 +238,12 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/event/{id}")]
-        public async Task<ActionResult<EventRanking?>> GetEvent(int id) {
-            return await _context.EventRankings.FirstOrDefaultAsync(e => e.Id == id);
+        public async Task<ActionResult<EventRanking?>> GetEvent(string id) {
+            if (int.TryParse(id, out var intId)) {
+                return await _context.EventRankings.FirstOrDefaultAsync(e => e.Id == intId);
+            } else {
+                return await _context.EventRankings.Where(e => e.PageAlias == id).FirstOrDefaultAsync();
+            }
         }
 
         [HttpGet("~/event/{id}/players")]
@@ -485,7 +558,9 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult> StartEventWithoutPlaylist(
                [FromQuery] string name,
                [FromQuery] string? description,
-               [FromQuery] int endDate)
+               [FromQuery] int? playlistId,
+               [FromQuery] int endDate,
+               [FromQuery] EventRankingType eventType)
         {
             if (HttpContext != null)
             {
@@ -498,9 +573,9 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            var lastEvent = _context.EventRankings.OrderBy(e => e.Id).FirstOrDefault();
+            var lastEvent = _context.EventRankings.OrderByDescending(e => e.Id).FirstOrDefault();
 
-            string fileName = (lastEvent?.Id ?? 0) + "-event-cover";
+            string fileName = ((lastEvent?.Id ?? 0) + 1) + "-event-cover";
             string? imageUrl = null;
             try
             {
@@ -522,12 +597,133 @@ namespace BeatLeader_Server.Controllers
                 Name = name,
                 EndDate = endDate,
                 Description = description,
-                Image = imageUrl ?? ""
+                Image = imageUrl ?? "",
+                EventType = eventType,
+                PlaylistId = playlistId ?? 0
             };
 
             _context.EventRankings.Add(eventRanking);
 
             await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [ApiExplorerSettings(IgnoreApi = true)]
+        [HttpPost("~/event/add/map")]
+        public async Task<ActionResult> AddMapOTD(
+               [FromQuery] int id,
+               [FromQuery] string songId,
+               [FromQuery] string leaderboardId,
+               [FromQuery] int startDate,
+               [FromQuery] int endDate)
+        {
+            if (HttpContext != null)
+            {
+                string userId = HttpContext.CurrentUserID(_context);
+                var currentPlayer = await _context.Players.FindAsync(userId);
+
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+
+            var eventDescription = await _context.EventRankings.Where(e => e.Id == id).Include(e => e.MapOfTheDays).ThenInclude(m => m.Leaderboards).FirstOrDefaultAsync();
+            if (eventDescription == null || eventDescription.EventType != EventRankingType.MapOfTheDay) return NotFound();
+
+            var mapOfTheDay = eventDescription.MapOfTheDays.Where(s => s.SongId == songId).FirstOrDefault();
+            var leaderboard = await _context.Leaderboards.Where(l => l.Id == leaderboardId).FirstOrDefaultAsync();
+            if (leaderboard == null) return NotFound();
+
+            if (mapOfTheDay != null) {
+                mapOfTheDay.Timestart = startDate;
+                mapOfTheDay.Timeend = endDate;
+
+                if (!mapOfTheDay.Leaderboards.Any(l => l.Id == leaderboardId)) {
+                    mapOfTheDay.Leaderboards.Add(leaderboard);
+                }
+            } else {
+                mapOfTheDay = new MapOfTheDay {
+                    Timestart = startDate,
+                    Timeend = endDate,
+                    SongId = songId,
+                    Leaderboards = new List<Leaderboard> {
+                        leaderboard
+                    }
+                };
+                eventDescription.MapOfTheDays.Add(mapOfTheDay);
+            }
+
+            await _context.BulkSaveChangesAsync();
+
+            return Ok(mapOfTheDay);
+        }
+
+        [ApiExplorerSettings(IgnoreApi = true)]
+        [HttpDelete("~/event/remove/map")]
+        public async Task<ActionResult> RemoveMapOTD(
+               [FromQuery] int id,
+               [FromQuery] string songId)
+        {
+            if (HttpContext != null)
+            {
+                string userId = HttpContext.CurrentUserID(_context);
+                var currentPlayer = await _context.Players.FindAsync(userId);
+
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+
+            var eventDescription = await _context.EventRankings.Where(e => e.Id == id).Include(e => e.MapOfTheDays).ThenInclude(m => m.Leaderboards).FirstOrDefaultAsync();
+            if (eventDescription == null || eventDescription.EventType != EventRankingType.MapOfTheDay) return NotFound();
+
+            var mapOfTheDay = eventDescription.MapOfTheDays.Where(s => s.SongId == songId).FirstOrDefault();
+            eventDescription.MapOfTheDays.Remove(mapOfTheDay);
+            mapOfTheDay.Leaderboards = new List<Leaderboard>();
+            await _context.BulkSaveChangesAsync();
+            _context.MapOfTheDay.Remove(mapOfTheDay);
+            await _context.BulkSaveChangesAsync();
+
+            return Ok();
+        }
+
+        [ApiExplorerSettings(IgnoreApi = true)]
+        [HttpPost("~/event/schedule/map")]
+        public async Task<ActionResult> ScheduleMapOTD(
+               [FromQuery] int id,
+               [FromQuery] string songId,
+               [FromQuery] int startDate,
+               [FromQuery] int endDate,
+               [FromQuery] string? videoUrl)
+        {
+            if (HttpContext != null)
+            {
+                string userId = HttpContext.CurrentUserID(_context);
+                var currentPlayer = await _context.Players.FindAsync(userId);
+
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+
+            var existingSchedule = await _context.ScheduledEventMaps.Where(em => em.SongId == songId).FirstOrDefaultAsync();
+            if (existingSchedule != null) {
+                _context.ScheduledEventMaps.Remove(existingSchedule);
+            }
+
+            _context.ScheduledEventMaps.Add(new ScheduledEventMap {
+                EventId = id,
+                SongId = songId,
+                StartDate = startDate,
+                EndDate = endDate,
+                VideoUrl = videoUrl
+            });
+
+            await _context.BulkSaveChangesAsync();
 
             return Ok();
         }
@@ -577,6 +773,47 @@ namespace BeatLeader_Server.Controllers
 
             var eventRanking = await _context.EventRankings.FirstOrDefaultAsync(e => e.Id == id);
             eventRanking.Description = value;
+            _context.SaveChanges();
+            return Ok();
+        }
+
+        [ApiExplorerSettings(IgnoreApi = true)]
+        [HttpPost("~/event/{id}/colors")]
+        public async Task<ActionResult<EventRanking?>> UpdateColors(int id, [FromQuery] string mainColor, [FromQuery] string secondaryColor) {
+            if (HttpContext != null)
+            {
+                string userId = HttpContext.CurrentUserID(_context);
+                var currentPlayer = await _context.Players.FindAsync(userId);
+
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+
+            var eventRanking = await _context.EventRankings.FirstOrDefaultAsync(e => e.Id == id);
+            eventRanking.MainColor = mainColor;
+            eventRanking.SecondaryColor = secondaryColor;
+            _context.SaveChanges();
+            return Ok();
+        }
+
+        [ApiExplorerSettings(IgnoreApi = true)]
+        [HttpPost("~/event/{id}/alias")]
+        public async Task<ActionResult<EventRanking?>> UpdateAlias(int id, [FromQuery] string newValue) {
+            if (HttpContext != null)
+            {
+                string userId = HttpContext.CurrentUserID(_context);
+                var currentPlayer = await _context.Players.FindAsync(userId);
+
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+
+            var eventRanking = await _context.EventRankings.FirstOrDefaultAsync(e => e.Id == id);
+            eventRanking.PageAlias = newValue;
             _context.SaveChanges();
             return Ok();
         }
@@ -655,6 +892,350 @@ namespace BeatLeader_Server.Controllers
             _context.SaveChanges();
 
             return Ok();
+        }
+
+        [HttpGet("~/event/motd/{id}/status")]
+        public async Task<ActionResult> GetMotdStatus(int id) {
+
+            var currentId = HttpContext.CurrentUserID(_context);
+
+            var now = Time.UnixNow();
+            var previousDays = new List<MapOTDDayStatus>();
+            var result = new MapOTDEventStatus {
+            };
+
+            int[] undownloadable = [48, 46, 32, 63];
+            var eventDescription = await _context.EventRankings.Where(e => e.Id == id)
+                .Select(e => new {
+                    EventDescription = new EventResponse {
+                        Id = e.Id,
+                        Name = e.Name,
+                        EndDate = e.EndDate,
+                        PlaylistId = e.PlaylistId,
+                        Image = e.Image,
+                        Downloadable = !undownloadable.Contains(e.Id), 
+                        Description = e.Description,
+                        EventType = e.EventType,
+                        MainColor = e.MainColor,
+                        SecondaryColor = e.SecondaryColor,
+                    },
+                    MapOfTheDays = e.MapOfTheDays.Where(m => m.Timestart < now).OrderBy(m => m.Timestart).Select(s => new { 
+                        Song = new SongResponse {
+                            Id = s.Song.Id,
+                            Hash = s.Song.Hash,
+                            Name = s.Song.Name,
+                            SubName = s.Song.SubName,
+                            Author = s.Song.Author,
+                            Mapper = s.Song.Mapper,
+                            MapperId  = s.Song.MapperId,
+                            CoverImage   = s.Song.CoverImage,
+                            FullCoverImage = s.Song.FullCoverImage,
+                            DownloadUrl = s.Song.DownloadUrl,
+                            Bpm = s.Song.Bpm,
+                            Duration = s.Song.Duration,
+                            UploadTime = s.Song.UploadTime,
+                            Difficulties = s.Song.Difficulties,
+                            VideoPreviewUrl = s.Song.VideoPreviewUrl
+                        },
+                        LeaderboardIds = s.Leaderboards.Select(l => l.Id).ToList(),
+                        s.Timestart,
+                        s.Timeend
+                    }).ToList()
+                }).FirstOrDefaultAsync();
+
+            if (eventDescription == null) return NotFound();
+
+            var eventPlayer = await _context
+                .EventPlayer
+                .Where(ep => ep.EventRankingId == id && ep.PlayerId == currentId)
+                .Include(ep => ep.MapOfTheDayPoints)
+                .ThenInclude(mp => mp.MapOfTheDay)
+                .FirstOrDefaultAsync();
+
+            for (int i = 0; i < eventDescription.MapOfTheDays.Count; i++) {
+                var map = eventDescription.MapOfTheDays[i];
+
+                var song = map.Song;
+
+                var score = currentId == null ? null : (await _context.Scores.Where(s => s.ValidForGeneral && s.PlayerId == currentId && !s.Modifiers.Contains("NF") && map.LeaderboardIds.Contains(s.LeaderboardId)).Select(s => new ScoreResponseWithAcc {
+                    Id = s.Id,
+                    BaseScore = s.BaseScore,
+                    ModifiedScore = s.ModifiedScore,
+                    PlayerId = s.PlayerId,
+                    Accuracy = s.Accuracy,
+                    Pp = s.Pp,
+                    FcAccuracy = s.FcAccuracy,
+                    FcPp = s.FcPp,
+                    BonusPp = s.BonusPp,
+                    Rank = s.Rank,
+                    Replay = s.Replay,
+                    Offsets = s.ReplayOffsets,
+                    Modifiers = s.Modifiers,
+                    BadCuts = s.BadCuts,
+                    MissedNotes = s.MissedNotes,
+                    BombCuts = s.BombCuts,
+                    WallsHit = s.WallsHit,
+                    Pauses = s.Pauses,
+                    FullCombo = s.FullCombo,
+                    Hmd = s.Hmd,
+                    Timeset = s.Timeset,
+                    Timepost = s.Timepost,
+                    ReplaysWatched = s.ReplayWatchedTotal,
+                    LeaderboardId = s.LeaderboardId,
+                    Platform = s.Platform,
+                    Weight = s.Weight,
+                    AccLeft = s.AccLeft,
+                    AccRight = s.AccRight,
+                    MaxStreak = s.MaxStreak,
+                    Player = new PlayerResponse
+                    {
+                        Id = s.Player.Id,
+                        Name = s.Player.Name,
+                        Alias = s.Player.Alias,
+                        Platform = s.Player.Platform,
+                        Avatar = s.Player.Avatar,
+                        Country = s.Player.Country,
+
+                        Pp = s.Player.Pp,
+                        Rank = s.Player.Rank,
+                        CountryRank = s.Player.CountryRank,
+                        Role = s.Player.Role,
+                        Socials = s.Player.Socials,
+                        ProfileSettings = s.Player.ProfileSettings,
+                        Clans = s.Player.Clans != null ? s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color }) : null
+                    },
+                }).FirstOrDefaultAsync());
+
+                if (now > map.Timestart && now < map.Timeend) {
+                    EarnedPoints? points = null;
+                    
+                    if (score != null) {
+                        points = new EarnedPoints {
+                            Rank = score.Rank
+                        };
+
+                        if (score.Rank == 1) {
+                            points.Points = 10;
+                        } else if (score.Rank == 2) {
+                            points.Points = 5;
+                        } else if (score.Rank == 3) {
+                            points.Points = 3;
+                        } else if (score.Rank <= 10) {
+                            points.Points = 1;
+                        }
+                    }
+
+                    result.today = new MapOTDDayStatus {
+                        song = song,
+                        score = score,
+                        startTime = map.Timestart,
+                        endTime = map.Timeend,
+                        Points = points,
+                        day = i + 1
+                    };
+                } else {
+                    previousDays.Add(new MapOTDDayStatus {
+                        song = song,
+                        score = score,
+                        startTime = map.Timestart,
+                        endTime = map.Timeend,
+                        day = i + 1,
+                        Points = eventPlayer?
+                            .MapOfTheDayPoints
+                            .Where(m => m.MapOfTheDay.Timestart == map.Timestart)
+                            .Select(m => new EarnedPoints {
+                                Points = m.Points,
+                                Rank = m.Rank
+                            })
+                            .FirstOrDefault()
+                    });
+                }
+            }
+
+            result.previousDays = previousDays.ToArray();
+            result.EventDescription = eventDescription.EventDescription;
+
+            return Ok(result);
+        }
+
+        [HttpGet("~/event/motd/{id}/status/today")]
+        public async Task<ActionResult> GetMotdStatusToday(int id) {
+
+            var currentId = HttpContext.CurrentUserID(_context);
+
+            var now = Time.UnixNow();
+            var previousDays = new List<MapOTDDayStatus>();
+            var result = new MapOTDEventStatus {
+            };
+
+            int[] undownloadable = [48, 46, 32, 63];
+            var eventDescription = await _context.EventRankings.Where(e => e.Id == id)
+                .Select(e => new {
+                    EventDescription = new EventResponse {
+                        Id = e.Id,
+                        Name = e.Name,
+                        EndDate = e.EndDate,
+                        PlaylistId = e.PlaylistId,
+                        Image = e.Image,
+                        Downloadable = !undownloadable.Contains(e.Id), 
+                        Description = e.Description,
+                        EventType = e.EventType,
+                        MainColor = e.MainColor,
+                        SecondaryColor = e.SecondaryColor,
+                    },
+                    MapOfTheDays = e.MapOfTheDays.Where(m => m.Timestart < now && m.Timeend > now).OrderBy(m => m.Timestart).Select(s => new { 
+                        Song = new SongResponse {
+                            Id = s.Song.Id,
+                            Hash = s.Song.Hash,
+                            Name = s.Song.Name,
+                            SubName = s.Song.SubName,
+                            Author = s.Song.Author,
+                            Mapper = s.Song.Mapper,
+                            MapperId  = s.Song.MapperId,
+                            CoverImage   = s.Song.CoverImage,
+                            FullCoverImage = s.Song.FullCoverImage,
+                            DownloadUrl = s.Song.DownloadUrl,
+                            Bpm = s.Song.Bpm,
+                            Duration = s.Song.Duration,
+                            UploadTime = s.Song.UploadTime,
+                            Difficulties = s.Song.Difficulties,
+                            VideoPreviewUrl = s.Song.VideoPreviewUrl
+                        },
+                        LeaderboardIds = s.Leaderboards.Select(l => l.Id).ToList(),
+                        s.Timestart,
+                        s.Timeend,
+                        Index = e.MapOfTheDays.Count(m => m.Timestart < s.Timestart)
+                    }).ToList()
+                }).FirstOrDefaultAsync();
+
+            if (eventDescription == null) return NotFound();
+
+            var eventPlayer = await _context
+                .EventPlayer
+                .Where(ep => ep.EventRankingId == id && ep.PlayerId == currentId)
+                .Include(ep => ep.MapOfTheDayPoints)
+                .ThenInclude(mp => mp.MapOfTheDay)
+                .FirstOrDefaultAsync();
+
+            for (int i = 0; i < eventDescription.MapOfTheDays.Count; i++) {
+                var map = eventDescription.MapOfTheDays[i];
+
+                var song = map.Song;
+
+                var score = currentId == null ? null : (await _context.Scores.Where(s => s.ValidForGeneral && s.PlayerId == currentId && !s.Modifiers.Contains("NF") && map.LeaderboardIds.Contains(s.LeaderboardId)).Select(s => new ScoreResponseWithAcc {
+                    Id = s.Id,
+                    BaseScore = s.BaseScore,
+                    ModifiedScore = s.ModifiedScore,
+                    PlayerId = s.PlayerId,
+                    Accuracy = s.Accuracy,
+                    Pp = s.Pp,
+                    FcAccuracy = s.FcAccuracy,
+                    FcPp = s.FcPp,
+                    BonusPp = s.BonusPp,
+                    Rank = s.Rank,
+                    Replay = s.Replay,
+                    Offsets = s.ReplayOffsets,
+                    Modifiers = s.Modifiers,
+                    BadCuts = s.BadCuts,
+                    MissedNotes = s.MissedNotes,
+                    BombCuts = s.BombCuts,
+                    WallsHit = s.WallsHit,
+                    Pauses = s.Pauses,
+                    FullCombo = s.FullCombo,
+                    Hmd = s.Hmd,
+                    Timeset = s.Timeset,
+                    Timepost = s.Timepost,
+                    ReplaysWatched = s.ReplayWatchedTotal,
+                    LeaderboardId = s.LeaderboardId,
+                    Platform = s.Platform,
+                    Weight = s.Weight,
+                    AccLeft = s.AccLeft,
+                    AccRight = s.AccRight,
+                    MaxStreak = s.MaxStreak,
+                    Player = new PlayerResponse
+                    {
+                        Id = s.Player.Id,
+                        Name = s.Player.Name,
+                        Alias = s.Player.Alias,
+                        Platform = s.Player.Platform,
+                        Avatar = s.Player.Avatar,
+                        Country = s.Player.Country,
+
+                        Pp = s.Player.Pp,
+                        Rank = s.Player.Rank,
+                        CountryRank = s.Player.CountryRank,
+                        Role = s.Player.Role,
+                        Socials = s.Player.Socials,
+                        ProfileSettings = s.Player.ProfileSettings,
+                        Clans = s.Player.Clans != null ? s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color }) : null
+                    },
+                }).FirstOrDefaultAsync());
+
+                if (now > map.Timestart && now < map.Timeend) {
+                    EarnedPoints? points = null;
+                    
+                    if (score != null) {
+                        points = new EarnedPoints {
+                            Rank = score.Rank
+                        };
+
+                        if (score.Rank == 1) {
+                            points.Points = 10;
+                        } else if (score.Rank == 2) {
+                            points.Points = 5;
+                        } else if (score.Rank == 3) {
+                            points.Points = 3;
+                        } else if (score.Rank <= 10) {
+                            points.Points = 1;
+                        }
+                    }
+
+                    result.today = new MapOTDDayStatus {
+                        song = song,
+                        score = score,
+                        startTime = map.Timestart,
+                        endTime = map.Timeend,
+                        Points = points,
+                        day = map.Index + 1
+                    };
+                }
+            }
+            result.EventDescription = eventDescription.EventDescription;
+
+            return Ok(result);
+        }
+
+        [HttpGet("~/event/motd/{id}/players")]
+        public async Task<ActionResult> GetMotdPlayers(int id, [FromQuery] int page = 1, [FromQuery] int count = 50) {
+            var result = await _context
+                .EventPlayer
+                .Where(ep => ep.EventRankingId == id)
+            .Select(p => new TreePlayer {
+                Id = p.PlayerId,
+                Rank = p.Rank,
+                Name = p.PlayerName,
+                Avatar = p.Player.Avatar,
+                AvatarBorder = p.Player.ProfileSettings != null ? p.Player.ProfileSettings.EffectName : null,
+                Hue = p.Player.ProfileSettings != null ? p.Player.ProfileSettings.Hue : null,
+                Score = (int)p.Pp
+            }).ToArrayAsync();
+
+            var champions = (await _context.EventRankings.Where(e => e.Id == id).Select(e => e.MapOfTheDays.Select(m => new {
+                m.Timestart,
+                m.Timeend,
+                e.EndDate,
+                Diffs = m.Leaderboards.Select(l => l.Difficulty.Value).ToList(),
+                Champions = m.Champions.Select(c => c.PlayerId).ToList()
+            })).FirstOrDefaultAsync()).OrderBy(m => m.Timestart).Select((value, i) => (i, value));
+            foreach (var item in result) {
+                item.Days.AddRange(champions.Where(c => c.value.Champions.Contains(item.Id)).Select(c => new TreePlayerDay {
+                    Day = c.i + 1,
+                    Diffs = c.value.Diffs.ToArray()
+                }));
+            }
+
+            return Ok(result.OrderBy(c => c.Rank).Skip((page - 1) * count)
+                .Take(count));
         }
     }
 }

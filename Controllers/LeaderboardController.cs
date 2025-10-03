@@ -683,6 +683,7 @@ namespace BeatLeader_Server.Controllers {
                     Duration = l.Song.Duration,
                     UploadTime = l.Song.UploadTime,
                     Explicity = l.Song.Explicity,
+                    VideoPreviewUrl = l.Song.VideoPreviewUrl,
                     Mappers = l.Song != null ? l.Song.Mappers.Select(m => new MapperResponse {
                         Id = m.Id,
                         PlayerId = m.Player != null ? m.Player.Id : null,

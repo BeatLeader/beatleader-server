@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20250928150423_MOTDEventsPlayers2")]
+    partial class MOTDEventsPlayers2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1025,9 +1028,6 @@ namespace BeatLeader_Server.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AnimatedImage")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
@@ -1035,9 +1035,6 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("EventType")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("FeaturedPlaylistId")
                         .HasColumnType("int");
 
                     b.Property<string>("Image")
@@ -1063,8 +1060,6 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("FeaturedPlaylistId");
 
                     b.ToTable("EventRankings");
                 });
@@ -1723,35 +1718,6 @@ namespace BeatLeader_Server.Migrations
                     b.HasIndex("SongId");
 
                     b.ToTable("MapOfTheDay");
-                });
-
-            modelBuilder.Entity("BeatLeader_Server.Models.MapOfTheDayPoints", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("EventPlayerId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("MapOfTheDayId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Points")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Rank")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EventPlayerId");
-
-                    b.HasIndex("MapOfTheDayId");
-
-                    b.ToTable("MapOfTheDayPoints");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Mapper", b =>
@@ -3573,9 +3539,6 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int>("StartDate")
                         .HasColumnType("int");
 
-                    b.Property<string>("VideoUrl")
-                        .HasColumnType("nvarchar(max)");
-
                     b.HasKey("Id");
 
                     b.ToTable("ScheduledEventMaps");
@@ -4161,9 +4124,6 @@ namespace BeatLeader_Server.Migrations
 
                     b.Property<int>("UploadTime")
                         .HasColumnType("int");
-
-                    b.Property<string>("VideoPreviewUrl")
-                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
@@ -5136,15 +5096,6 @@ namespace BeatLeader_Server.Migrations
                     b.Navigation("Player");
                 });
 
-            modelBuilder.Entity("BeatLeader_Server.Models.EventRanking", b =>
-                {
-                    b.HasOne("BeatLeader_Server.Models.FeaturedPlaylist", "FeaturedPlaylist")
-                        .WithMany()
-                        .HasForeignKey("FeaturedPlaylistId");
-
-                    b.Navigation("FeaturedPlaylist");
-                });
-
             modelBuilder.Entity("BeatLeader_Server.Models.ExternalStatus", b =>
                 {
                     b.HasOne("BeatLeader_Server.Models.Song", null)
@@ -5269,21 +5220,6 @@ namespace BeatLeader_Server.Migrations
                     b.Navigation("EventRanking");
 
                     b.Navigation("Song");
-                });
-
-            modelBuilder.Entity("BeatLeader_Server.Models.MapOfTheDayPoints", b =>
-                {
-                    b.HasOne("BeatLeader_Server.Models.EventPlayer", null)
-                        .WithMany("MapOfTheDayPoints")
-                        .HasForeignKey("EventPlayerId");
-
-                    b.HasOne("BeatLeader_Server.Models.MapOfTheDay", "MapOfTheDay")
-                        .WithMany()
-                        .HasForeignKey("MapOfTheDayId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("MapOfTheDay");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ModDescription", b =>
@@ -5854,11 +5790,6 @@ namespace BeatLeader_Server.Migrations
                     b.Navigation("Mods");
 
                     b.Navigation("OauthApps");
-                });
-
-            modelBuilder.Entity("BeatLeader_Server.Models.EventPlayer", b =>
-                {
-                    b.Navigation("MapOfTheDayPoints");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.EventRanking", b =>
