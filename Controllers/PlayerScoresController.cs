@@ -1002,25 +1002,22 @@ namespace BeatLeader_Server.Controllers {
             if (!allHistory.Any()) {
                 return result;
             }
-            
-            var sundayHistory = allHistory
-                .Where(h => {
-                    if (h == first && DateTimeOffset.FromUnixTimeSeconds(h.Timestamp).Day == 1) {
-                        return false; // Skip first if it's a Sunday to avoid duplication
-                    }
-                    return DateTimeOffset.FromUnixTimeSeconds(h.Timestamp).Day == 1;
+
+            foreach (var month in allHistory.GroupBy(h => { 
+                var timeOfsset = DateTimeOffset.FromUnixTimeSeconds(h.Timestamp);
+                    return $"{timeOfsset.Year} {timeOfsset.Month}";
                 })
-                .Take(11)
-                .ToList();
-            result.AddRange(sundayHistory);
+                .OrderByDescending(g => g.FirstOrDefault()?.Timestamp ?? 0)) {
+                var h = month.OrderBy(h => h.Timestamp).FirstOrDefault();
+                if (h != null && h != first) {
+                    result.Add(h);
+                }
+            }
 
             // Find previous Sunday for each entry to calculate differences
-            for (int i = 0; i < result.Count; i++) {
+            for (int i = 0; i < result.Count - 1; i++) {
                 var currentEntry = result[i];
-                var prevSunday = allHistory
-                    .Where(h => h.Timestamp < currentEntry.Timestamp && 
-                               DateTimeOffset.FromUnixTimeSeconds(h.Timestamp).Day == 1)
-                    .FirstOrDefault();
+                var prevSunday = result[i + 1];
 
                 if (prevSunday != null) {
                     currentEntry.Improvements = currentEntry.Improvements - prevSunday.Improvements;
@@ -1031,7 +1028,7 @@ namespace BeatLeader_Server.Controllers {
                 }
             }
             
-            return result;
+            return result.Take(12).ToList();
         }
 
         [HttpGet("~/player/legacygame")]
