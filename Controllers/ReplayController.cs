@@ -610,7 +610,9 @@ namespace BeatLeader_Server.Controllers
 
             string[] njsExceptions = ["8bc991", "30a2e91", "620591"];
 
-            if (!leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles) && 
+            if (gameVersion.Length == 3 && 
+                int.Parse(gameVersion[1]) < 40 && 
+                !leaderboard.Difficulty.Requirements.HasFlag(Requirements.Noodles) && 
                 !njsExceptions.Contains(leaderboard.Id) && 
                 !ReplayUtils.IsPlayerCuttingNotesOnPlatform(replay)) {
                 return new() {
