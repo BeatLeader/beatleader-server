@@ -316,7 +316,12 @@ namespace BeatLeader_Server.Utils {
         }
 
 
-        
+    private static bool NoDifficulties(PlaylistSong s) => s.difficulties == null || s.difficulties.Count == 0;
+    private static bool WithDifficulties(PlaylistSong s) => !NoDifficulties(s);
+    private static bool ContainsDifficulty(IScore s, List<PlaylistDifficulty> difficulties) => difficulties.Any(diff =>
+          diff.name.ToLower() == s.Leaderboard.Difficulty.DifficultyName.ToLower() &&
+          diff.characteristic.ToLower() == s.Leaderboard.Difficulty.ModeName.ToLower()
+        );
     private static IQueryable<IScore> WherePlaylists(this IQueryable<IScore> sequence, List<PlaylistResponse>? playlists)
     {
         if (playlists == null)
@@ -324,13 +329,29 @@ namespace BeatLeader_Server.Utils {
             return sequence;
         }
 
-        var hashes = playlists.SelectMany(p => p.songs.Where(s => s.hash != null).Select(s => (string)s.hash!.ToLower())).ToList();
-        var keys = playlists.SelectMany(p => p.songs.Where(s => s.hash == null && s.key != null).Select(s => (string)s.key!.ToLower())).ToList();
+        var songsByHashes = playlists.SelectMany(p => p.songs.Where(s => NoDifficulties(s) && s.hash != null)).ToList();
+        var songsByHashesAndDiffs = playlists.SelectMany(p => p.songs.Where(s => WithDifficulties(s) && s.hash != null)).ToList();
+        var songsByKeys = playlists.SelectMany(p => p.songs.Where(s => NoDifficulties(s) && s.hash == null && s.key != null)).ToList();
+        var songsByKeysAndDiffs = playlists.SelectMany(p => p.songs.Where(s => WithDifficulties(s) && s.hash == null && s.key != null)).ToList();
 
-        if (hashes.Count == 0 && keys.Count == 0) {
+        if (songsByHashes.Count == 0 && songsByHashesAndDiffs.Count == 0 && songsByKeys.Count == 0 && songsByKeysAndDiffs.Count == 0) {
             return sequence;
         }
-        return sequence.Where(s => hashes.Contains(s.Leaderboard.Song.Hash.ToLower()) || keys.Contains(s.Leaderboard.Song.Id));
+
+
+        return sequence
+          .Where(s =>
+            songsByHashes.Select(x => x.hash.ToLower()).Contains(s.Leaderboard.Song.Hash.ToLower()) ||
+            songsByKeys.Select(x => x.key.ToLower()).Contains(s.Leaderboard.Song.Id) ||
+            songsByHashesAndDiffs.Any(x =>
+              s.Leaderboard.Song.Hash.ToLower() == x.hash.ToLower() &&
+              ContainsDifficulty(s, x.difficulties!) // difficulties are checked in the SelectMany of songsByHashesAndDiffs
+            ) ||
+            songsByKeysAndDiffs.Any(x =>
+              s.Leaderboard.Song.Id.ToLower() == x.key.ToLower() &&
+              ContainsDifficulty(s, x.difficulties) // difficulties are checked in the SelectMany of songsByKeysAndDiffs
+            )
+          );
     }
     }
 }
