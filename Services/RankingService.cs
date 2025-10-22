@@ -54,7 +54,7 @@ namespace BeatLeader_Server.Services
             var oldPp = player.Pp;
             var oldRank = player.Rank;
 
-            await _context.RecalculatePPAndRankFast(player, LeaderboardContexts.General);
+            await _context.RecalculatePPAndRankFast(player, LeaderboardContexts.General, score);
 
             if (score != null && score.ScoreImprovement != null)
             {

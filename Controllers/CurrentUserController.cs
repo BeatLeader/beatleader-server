@@ -1163,6 +1163,7 @@ namespace BeatLeader_Server.Controllers {
                 .Include(p => p.Badges)
                 .Include(p => p.Achievements)
                 .Include(p => p.Socials)
+                .Include(p => p.Mapper)
                 .FirstOrDefaultAsync();
             Player? migrateToPlayer = await _context.Players.Where(p => p.Id == migrateToId)
                 .Include(p => p.Clans)
@@ -1264,6 +1265,10 @@ namespace BeatLeader_Server.Controllers {
                         item.PlayerId = migrateToId;
                     }
                 }
+            }
+
+            if (currentPlayer.Mapper != null) {
+                currentPlayer.Mapper.Player = migrateToPlayer;
             }
 
             PlayerFriends? currentPlayerFriends = await _context.Friends.Where(u => u.Id == currentPlayer.Id).Include(f => f.Friends).FirstOrDefaultAsync();

@@ -176,67 +176,6 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
-        [HttpGet("~/mod-test/events")]
-        public async Task<ActionResult<ResponseWithMetadata<EventResponse>>> GetTestModEvents(
-            [FromQuery] int page = 1,
-            [FromQuery] int count = 10,
-            [FromQuery] string? sortBy = "date",
-            [FromQuery] string? search = null,
-            [FromQuery] Order order = Order.Desc)
-        {
-            IQueryable<EventRanking> query = _context.EventRankings.Include(e => e.Players);
-
-            switch (sortBy)
-            {
-                case "date":
-                    query = query.Order(order, p => p.EndDate);
-                    break;
-                case "name":
-                    query = query.Order(order, t => t.Name);
-                    break;
-                default:
-                    break;
-            }
-
-            if (search != null)
-            {
-                string lowSearch = search.ToLower();
-                query = query.Where(p => p.Name.ToLower().Contains(lowSearch));
-            }
-
-            var result = new ResponseWithMetadata<EventResponse>
-            {
-                Metadata = new Metadata
-                {
-                    Page = page,
-                    ItemsPerPage = count,
-                    Total = await query.CountAsync()
-                }
-            };
-
-            int[] undownloadable = [48, 46, 32, 63];
-            result.Data = await query
-            .TagWithCaller()
-            .AsNoTracking()
-            .Select(e => new EventResponse {
-                Id = e.Id,
-                Name = e.Name,
-                EndDate = e.EndDate,
-                PlaylistId = e.PlaylistId,
-                Image = e.Image,
-                Downloadable = !undownloadable.Contains(e.Id), 
-                Description = e.Description,
-                EventType = e.EventType,
-                MainColor = e.MainColor,
-                SecondaryColor = e.SecondaryColor
-            })
-            .Skip((page - 1) * count)
-            .Take(count)
-            .ToListAsync();
-
-            return result;
-        }
-
         [HttpGet("~/event/{id}")]
         public async Task<ActionResult<EventRanking?>> GetEvent(string id) {
             if (int.TryParse(id, out var intId)) {
@@ -658,6 +597,88 @@ namespace BeatLeader_Server.Controllers
             await _context.BulkSaveChangesAsync();
 
             return Ok(mapOfTheDay);
+        }
+
+        [ApiExplorerSettings(IgnoreApi = true)]
+        [HttpPost("~/event/add/leaderboard")]
+        public async Task<ActionResult> AddLeaderboard(
+               [FromQuery] int id,
+               [FromQuery] string leaderboardId)
+        {
+            if (HttpContext != null)
+            {
+                string userId = HttpContext.CurrentUserID(_context);
+                var currentPlayer = await _context.Players.FindAsync(userId);
+
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+
+            var eventDescription = await _context.EventRankings.Where(e => e.Id == id).Include(e => e.Leaderboards).FirstOrDefaultAsync();
+            if (eventDescription == null || eventDescription.EventType == EventRankingType.MapOfTheDay) return NotFound();
+
+            var leaderboard = await _context.Leaderboards.Where(l => l.Id == leaderboardId).Include(lb => lb.Difficulty).FirstOrDefaultAsync();
+            if (leaderboard == null) return NotFound();
+
+            if (eventDescription.Leaderboards.Any(l => l.Id == leaderboardId)) return BadRequest("Already included");
+
+            if (leaderboard.Difficulty.Stars == null) {
+                await RatingUtils.UpdateFromExMachina(leaderboard, null);
+            }
+            if (leaderboard.Difficulty.Stars != null) {
+
+                if (leaderboard.Difficulty.Status == DifficultyStatus.unranked) {
+                    leaderboard.Difficulty.Status = DifficultyStatus.inevent;
+                    await _context.SaveChangesAsync();
+
+                    await _scoreRefreshController.RefreshScores(leaderboard.Id);
+                }
+                eventDescription.Leaderboards.Add(leaderboard);
+            }
+
+            await _context.BulkSaveChangesAsync();
+
+            return Ok();
+        }
+
+        [ApiExplorerSettings(IgnoreApi = true)]
+        [HttpDelete("~/event/remove/leaderboard")]
+        public async Task<ActionResult> RemoveLeaderboard(
+               [FromQuery] int id,
+               [FromQuery] string leaderboardId)
+        {
+            if (HttpContext != null)
+            {
+                string userId = HttpContext.CurrentUserID(_context);
+                var currentPlayer = await _context.Players.FindAsync(userId);
+
+                if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
+                {
+                    return Unauthorized();
+                }
+            }
+
+            var eventDescription = await _context.EventRankings.Where(e => e.Id == id).Include(e => e.Leaderboards).FirstOrDefaultAsync();
+            if (eventDescription == null || eventDescription.EventType == EventRankingType.MapOfTheDay) return NotFound();
+
+            var leaderboard = await _context.Leaderboards.Where(l => l.Id == leaderboardId).Include(lb => lb.Difficulty).FirstOrDefaultAsync();
+            if (leaderboard == null) return NotFound();
+
+            if (!eventDescription.Leaderboards.Any(l => l.Id == leaderboardId)) return NotFound("Not in event");
+
+            if (leaderboard.Difficulty.Status == DifficultyStatus.inevent) {
+                leaderboard.Difficulty.Status = DifficultyStatus.unranked;
+                await _context.SaveChangesAsync();
+
+                await _scoreRefreshController.RefreshScores(leaderboard.Id);
+            }
+            eventDescription.Leaderboards.Remove(leaderboard);
+
+            await _context.BulkSaveChangesAsync();
+
+            return Ok();
         }
 
         [ApiExplorerSettings(IgnoreApi = true)]
@@ -1220,16 +1241,18 @@ namespace BeatLeader_Server.Controllers
                 Score = (int)p.Pp
             }).ToArrayAsync();
 
-            var champions = (await _context.EventRankings.Where(e => e.Id == id).Select(e => e.MapOfTheDays.Select(m => new {
+            var champions = (await _context.EventRankings.Where(e => e.Id == id).Include(er => er.MapOfTheDays).ThenInclude(m => m.Champions).ThenInclude(c => c.MapOfTheDayPoints).ThenInclude(m => m.MapOfTheDay).Select(e => e.MapOfTheDays.Select(m => new {
+                MapOfTheDayId = m.Id,
                 m.Timestart,
                 m.Timeend,
                 e.EndDate,
                 Diffs = m.Leaderboards.Select(l => l.Difficulty.Value).ToList(),
-                Champions = m.Champions.Select(c => c.PlayerId).ToList()
+                Champions = m.Champions.Select(c => new { c.PlayerId, c.MapOfTheDayPoints }).ToList()
             })).FirstOrDefaultAsync()).OrderBy(m => m.Timestart).Select((value, i) => (i, value));
             foreach (var item in result) {
-                item.Days.AddRange(champions.Where(c => c.value.Champions.Contains(item.Id)).Select(c => new TreePlayerDay {
+                item.Days.AddRange(champions.Where(c => c.value.Champions.Any(cmp => cmp.PlayerId == item.Id)).Select(c => new TreePlayerDay {
                     Day = c.i + 1,
+                    Points = c.value.Champions.Where(cmp => cmp.PlayerId == item.Id).FirstOrDefault()?.MapOfTheDayPoints.Where(mp => mp.MapOfTheDay.Id == c.value.MapOfTheDayId).FirstOrDefault(),
                     Diffs = c.value.Diffs.ToArray()
                 }));
             }

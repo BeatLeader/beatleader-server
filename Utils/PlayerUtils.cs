@@ -16,22 +16,24 @@ namespace BeatLeader_Server.Utils
         public static async Task RecalculatePPAndRankFast(
             this AppContext dbcontext, 
             Player player,
-            LeaderboardContexts leaderboardContexts)
+            LeaderboardContexts leaderboardContexts,
+            Score? currentScore)
         {
             if (leaderboardContexts.HasFlag(LeaderboardContexts.General)) {
-                await dbcontext.RecalculatePPAndRankFastGeneral(player);
+                await dbcontext.RecalculatePPAndRankFastGeneral(player, currentScore);
             }
 
             foreach (var context in ContextExtensions.NonGeneral) {
                 if (leaderboardContexts.HasFlag(context)) {
-                    await dbcontext.RecalculatePPAndRankFastContext(context, player);
+                    await dbcontext.RecalculatePPAndRankFastContext(context, player, currentScore);
                 }
             }
         }
 
         public static async Task RecalculatePPAndRankFastGeneral(
             this AppContext context, 
-            Player player)
+            Player player,
+            Score? currentScore)
         {
             float oldPp = player.Pp;
 
@@ -60,6 +62,9 @@ namespace BeatLeader_Server.Utils
             {
                 float weight = MathF.Pow(0.965f, i);
                 s.Weight = weight;
+                if (currentScore?.Id == s.Id) {
+                    currentScore.Weight = weight;
+                }
                 resultPP += s.Pp * weight;
                 accPP += s.AccPP * weight;
                 techPP += s.TechPP * weight;
@@ -174,7 +179,8 @@ namespace BeatLeader_Server.Utils
         public static async Task RecalculatePPAndRankFastContext(
             this AppContext dbContext, 
             LeaderboardContexts context,
-            Player playerProfile)
+            Player playerProfile,
+            Score? currentScore)
         {
             var player = playerProfile.ContextExtensions?.FirstOrDefault(c => c.Context == context);
             if (player == null) return;
@@ -198,6 +204,8 @@ namespace BeatLeader_Server.Utils
                 })
                 .ToListAsync();
 
+            var currentScoreExtension = currentScore?.ContextExtensions.FirstOrDefault(e => e.Context == context);
+
             float resultPP = 0f;
             float accPP = 0f;
             float techPP = 0f;
@@ -206,6 +214,9 @@ namespace BeatLeader_Server.Utils
             {
                 float weight = MathF.Pow(0.965f, i);
                 s.Weight = weight;
+                if (currentScoreExtension?.Id == s.Id) {
+                    currentScoreExtension.Weight = weight;
+                }
                 resultPP += s.Pp * weight;
                 accPP += s.AccPP * weight;
                 techPP += s.TechPP * weight;

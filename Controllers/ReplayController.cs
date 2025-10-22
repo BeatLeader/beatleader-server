@@ -63,7 +63,7 @@ namespace BeatLeader_Server.Controllers
             _replayLocation = metricFactory.CreateGauge("replay_position", "Posted replay location", new string[] { "geohash" });
             _geoHasher = new Geohash.Geohasher();
 
-            _downloader = new MapDownloader(_configuration.GetValue<string>("MapsPath") ?? "/home/maps");
+            _downloader = new MapDownloader(_configuration.GetValue<string>("MapsPath") ?? "/home/maps", true);
 
             if (ipLocation == null)
             {
@@ -359,10 +359,10 @@ namespace BeatLeader_Server.Controllers
                     Description = "It's not a replay or it has old version."
                 };
             }
-            if (replay.notes.Count == 0 || replay.frames.Count == 0) {
+            if (replay.notes.Count == 0 || replay.frames.Count < 4) {
                 return new() {
                     Status = ScoreUploadStatus.Error,
-                    Description = "Replay is broken, update your mod please."
+                    Description = "Replay is broken, contact us on Discord for further assistance."
                 };
             }
 
@@ -866,9 +866,9 @@ namespace BeatLeader_Server.Controllers
                 await RecalculateRanks(dbContext, resultScore, currentScores, leaderboard, player);
                 if (!player.Bot && leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
                     try {
-                        await dbContext.RecalculatePPAndRankFast(player, resultScore.ValidContexts);
+                        await dbContext.RecalculatePPAndRankFast(player, resultScore.ValidContexts, resultScore);
                     } catch {
-                        await dbContext.RecalculatePPAndRankFast(player, resultScore.ValidContexts);
+                        await dbContext.RecalculatePPAndRankFast(player, resultScore.ValidContexts, resultScore);
                     }
                 }
             
@@ -1490,7 +1490,7 @@ namespace BeatLeader_Server.Controllers
             await dbContext.SaveChangesAsync();
 
             if (leaderboard.Difficulty.Status == DifficultyStatus.ranked) {
-                await dbContext.RecalculatePPAndRankFast(player, score.ValidContexts);
+                await dbContext.RecalculatePPAndRankFast(player, score.ValidContexts, score);
             }
             await LeaderboardRefreshControllerHelper.RefreshLeaderboardsRankAllContexts(dbContext, leaderboard.Id);
 

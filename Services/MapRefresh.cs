@@ -13,6 +13,7 @@ using Parser.Utils;
 using Parser.Map.Difficulty.V3.Grid;
 using Parser.Map;
 using MapPostprocessor;
+using BeatLeader_Server.ControllerHelpers;
 
 namespace BeatLeader_Server.Services {
     public class MapRefresh : BackgroundService {
@@ -125,8 +126,11 @@ namespace BeatLeader_Server.Services {
 
                                 songDiff.MaxScoreGraph = new MaxScoreGraph();
                                 songDiff.MaxScoreGraph.SaveList(set.MaxScoreGraph());
-                                if (songDiff.MaxScore == 0) {
+                                if (songDiff.MaxScore == 0 || songDiff.RequiresV3Pepega) {
                                     songDiff.MaxScore = set.MaxScore();
+
+                                    await _context.SaveChangesAsync();
+                                    await ScoreRefreshControllerHelper.BulkRefreshScores(_context, $"{song.Id}{songDiff.Value}{songDiff.Mode}");
                                 }
                             }
 

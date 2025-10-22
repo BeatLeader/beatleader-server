@@ -39,7 +39,7 @@ namespace BeatLeader_Server.Controllers {
 
         [NonAction]
         public async Task RefreshPlayer(Player player, LeaderboardContexts context, bool refreshRank = true, bool refreshStats = true) {
-            await _context.RecalculatePPAndRankFastContext(context, player);
+            await _context.RecalculatePPAndRankFastContext(context, player, null);
             await _context.BulkSaveChangesAsync();
 
             if (refreshRank)
