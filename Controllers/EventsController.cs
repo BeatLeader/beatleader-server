@@ -978,7 +978,7 @@ namespace BeatLeader_Server.Controllers
 
                 var song = map.Song;
 
-                var score = currentId == null ? null : (await _context.Scores.Where(s => s.ValidForGeneral && s.PlayerId == currentId && !s.Modifiers.Contains("NF") && map.LeaderboardIds.Contains(s.LeaderboardId)).Select(s => new ScoreResponseWithAcc {
+                var score = currentId == null ? null : (await _context.Scores.Where(s => s.ValidForGeneral && s.PlayerId == currentId && map.LeaderboardIds.Contains(s.LeaderboardId)).Select(s => new ScoreResponseWithAcc {
                     Id = s.Id,
                     BaseScore = s.BaseScore,
                     ModifiedScore = s.ModifiedScore,
@@ -1143,7 +1143,7 @@ namespace BeatLeader_Server.Controllers
 
                 var song = map.Song;
 
-                var score = currentId == null ? null : (await _context.Scores.Where(s => s.ValidForGeneral && s.PlayerId == currentId && !s.Modifiers.Contains("NF") && map.LeaderboardIds.Contains(s.LeaderboardId)).Select(s => new ScoreResponseWithAcc {
+                var score = currentId == null ? null : (await _context.Scores.Where(s => s.ValidForGeneral && s.PlayerId == currentId && map.LeaderboardIds.Contains(s.LeaderboardId)).Select(s => new ScoreResponseWithAcc {
                     Id = s.Id,
                     BaseScore = s.BaseScore,
                     ModifiedScore = s.ModifiedScore,

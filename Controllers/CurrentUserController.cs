@@ -554,9 +554,11 @@ namespace BeatLeader_Server.Controllers {
                         return BadRequest("Error. You can change clan order after " + (int)(7 - (timestamp - lastChange.Timestamp) / (60 * 60 * 24)) + " day(s)");
                     }
 
-                    newClanOrder = string.Join(",", player.Clans
+                    var clansInOrder = player.Clans
                         .OrderBy(c => ("," + newClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + newClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
-                        .Select(c => c.Tag));
+                        .ToList();
+
+                    newClanOrder = string.Join(",", clansInOrder.Select(c => c.Tag));
 
                     _context.ClanOrderChanges.Add(new ClanOrderChange {
                         PlayerId = userId,
@@ -566,6 +568,7 @@ namespace BeatLeader_Server.Controllers {
                     });
 
                     player.ClanOrder = newClanOrder;
+                    player.TopClan = clansInOrder.FirstOrDefault();
 
                     ClanTaskService.AddJob(new ClanRankingChangesDescription {
                         GlobalMapEvent = GlobalMapEvent.priorityChange,

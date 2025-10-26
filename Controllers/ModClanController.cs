@@ -162,12 +162,7 @@ namespace BeatLeader_Server.Controllers {
                 
 
             if (primaryClan) {
-                query = query
-                        .Where(p => !p.Banned && 
-                        p.Clans.OrderBy(c => ("," + p.ClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + p.ClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
-                            .ThenBy(c => c.Id)
-                            .Take(1)
-                            .Any(c => c.Id == clanId));
+                query = query.Where(p => !p.Banned && p.TopClan != null && p.TopClan.Id == clanId);
             } else {
                 query = query.Where(p => !p.Banned && p.Clans.Any(c => c.Id == clanId));
             }

@@ -43,9 +43,11 @@ namespace BeatLeader_Server.Services
         {
             do {
                 try {
+                    
                     await RefreshMaps();
                     await RefreshPrometheus();
                     await RefreshAllContextsPp();
+                    await RefreshMainCLan();
                 } catch (Exception e) {
                     Console.WriteLine($"EXCEPTION MinuteRefresh {e}");
                 }
@@ -139,6 +141,35 @@ namespace BeatLeader_Server.Services
             {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
                 await PlayerRefreshControllerHelper.RefreshAllContextsPp(_context);
+            }
+        }
+
+        public async Task RefreshMainCLan() {
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+
+                var players = await _context.Players.Where(p => p.Clans != null && p.Clans.Count > 0).Select(p => new {
+                    Clans = p.Clans.Select(c => new { c.Tag, c.Id }).ToList(),
+                    Id = p.Id,
+                    p.ClanOrder
+                }).ToListAsync();
+
+                var updates = new List<Player>();
+
+                foreach (var item in players) {
+                    if (item.Clans.Count > 0) {
+                        var clansInOrder = item.Clans
+                        .OrderBy(c => ("," + item.ClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + item.ClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
+                        .ToList();
+
+                        updates.Add(new Player { Id = item.Id, TopClanId = clansInOrder.FirstOrDefault()?.Id });
+                    }
+                }
+
+                await _context.BulkUpdateAsync(updates, options => options.ColumnInputExpression = c => new { c.TopClanId });
+
+                await _context.BulkSaveChangesAsync();
             }
         }
     }

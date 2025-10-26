@@ -477,7 +477,8 @@ namespace BeatLeader_Server.Utils
                     c.Tag,
                     Players = c.Players.Select(p => new {
                         p.ClanOrder,
-                        Clans = p.Clans.Select(cc => new { cc.Tag, cc.Id })
+                        Clans = p.Clans.Select(cc => new { cc.Tag, cc.Id }),
+                        p.TopClan
                     })
                 })
                 .ToListAsync();
@@ -486,9 +487,7 @@ namespace BeatLeader_Server.Utils
             foreach (var clan in clans) {
                 updates.Add(new Clan {
                     Id = clan.Id,
-                    MainPlayersCount = clan.Players.Count(p => p.Clans.OrderBy(c => ("," + p.ClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + p.ClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
-                        .ThenBy(c => c.Id)
-                        .Take(1).FirstOrDefault()?.Tag == clan.Tag)
+                    MainPlayersCount = clan.Players.Count(p => p.TopClan != null && p.TopClan.Tag == clan.Tag)
                 });
             }
 

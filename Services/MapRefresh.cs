@@ -126,8 +126,9 @@ namespace BeatLeader_Server.Services {
 
                                 songDiff.MaxScoreGraph = new MaxScoreGraph();
                                 songDiff.MaxScoreGraph.SaveList(set.MaxScoreGraph());
-                                if (songDiff.MaxScore == 0 || songDiff.RequiresV3Pepega) {
-                                    songDiff.MaxScore = set.MaxScore();
+                                var newMaxScore = set.MaxScore();
+                                if (newMaxScore != 0) {
+                                    songDiff.MaxScore = newMaxScore;
 
                                     await _context.SaveChangesAsync();
                                     await ScoreRefreshControllerHelper.BulkRefreshScores(_context, $"{song.Id}{songDiff.Value}{songDiff.Mode}");

@@ -523,10 +523,7 @@ namespace BeatLeader_Server.Controllers
                 var clanId = await _context.Clans.Where(c => c.Tag == clanTag).Select(c => c.Id).FirstOrDefaultAsync();
                 if (clanId != 0) {
                     if (primaryClan) {
-                        query = query.Where(s => s.Player.Clans.OrderBy(c => ("," + s.Player.ClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + s.Player.ClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
-                        .ThenBy(c => c.Id)
-                        .Take(1)
-                        .Any(c => c.Id == clanId));
+                        query = query.Where(s => s.Player.TopClan != null && s.Player.TopClan.Id == clanId);
                     } else {
                         query = query.Where(s => s.Player.Clans.Any(c => c.Id == clanId));
                     }
@@ -733,10 +730,7 @@ namespace BeatLeader_Server.Controllers
                 var clanId = await _context.Clans.Where(c => c.Tag == clanTag).Select(c => c.Id).FirstOrDefaultAsync();
                 if (clanId != 0) {
                     if (primaryClan) {
-                        query = query.Where(s => s.Player.Clans.OrderBy(c => ("," + s.Player.ClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + s.Player.ClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
-                        .ThenBy(c => c.Id)
-                        .Take(1)
-                        .Any(c => c.Id == clanId));
+                        query = query.Where(s => s.Player.TopClan != null && s.Player.TopClan.Id == clanId);
                     } else {
                         query = query.Where(s => s.Player.Clans.Any(c => c.Id == clanId));
                     }

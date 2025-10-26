@@ -390,28 +390,22 @@ namespace BeatLeader_Server.Controllers
                 return File(stream, "application/json");
             }
 
-            var cacheKey = $"modTrendingMaps_{currentId}";
-            var cachedResponse = _cache.Get<ResponseWithMetadata<TrendingLeaderboardInfoResponse>>(cacheKey);
-            if (cachedResponse != null)
-            {
-                return cachedResponse;
-            }
-
             var friends = await _context
                 .Friends
                 .AsNoTracking()
                 .Where(f => f.Id == currentId)
                 .Include(f => f.Friends)
                 .FirstOrDefaultAsync();
+            var unixNow = Time.UnixNow();
 
             var friendsList = new List<string>();
             if (friends != null) {
                 friendsList.AddRange(friends.Friends.Select(f => f.Id));
             }
 
-            var tasks = new Task<List<string>>[5];
+            var tasks = new Task<List<string>>[6];
             var treshold = Time.UnixNow() - 60 * 60 * 24 * 30;
-            for (int i = 0; i < 5; i++) {
+            for (int i = 0; i < 6; i++) {
                 var dbContext = _dbFactory.CreateDbContext();
                 var query = dbContext.Leaderboards.Where(l => 
                     l.Difficulty.Status != DifficultyStatus.outdated && 
@@ -419,30 +413,41 @@ namespace BeatLeader_Server.Controllers
                     !l.Song.Leaderboards.Any(ll => ll.Scores.Any(s => s.PlayerId == currentId)));
                 switch (i) {
                     case 0:
+                        var idOfTheDay = await _context.MapOfTheDay.Where(m => m.Timestart < unixNow && m.Timeend > unixNow).Select(m => m.SongId).FirstOrDefaultAsync();
+                        if (idOfTheDay != null) {
+                            query = query
+                            .Where(l => 
+                                l.Song.Id == idOfTheDay);
+                        } else {
+                            query = query
+                            .Where(l => false);
+                        }
+                        break;
+                    case 1:
                         query = query
                             .Where(l => 
                                 l.Song.UploadTime > treshold && 
                                 l.Song.MapCreator == SongCreator.Human)
                             .OrderByDescending(l => l.TodayPlays);
                         break;
-                    case 1:
+                    case 2:
                         query = query
                             .Where(l => l.Song.UploadTime > Time.UnixNow() - 60 * 60 * 24 * 7 && l.Song.MapCreator == SongCreator.Human)
                             .OrderByDescending(l => l.Plays);
                         break;
-                    case 2:
+                    case 3:
                         if (friendsList.Count > 0) {
                             query = query
                                 .Where(l => l.Song.MapCreator == SongCreator.Human)
                                 .OrderByDescending(l => l.Scores.Where(s => s.Timepost > treshold && friendsList.Contains(s.PlayerId)).Count());
                         }
                         break;
-                    case 3:
+                    case 4:
                         query = query
                             .Where(l => l.Song.Status.HasFlag(SongStatus.Curated) && l.Song.MapCreator == SongCreator.Human)
                             .OrderByDescending(l => l.Song.UploadTime);
                         break;
-                    case 4:
+                    case 5:
                         query = query
                             .Where(l => l.Song.UploadTime > treshold && l.Song.MapCreator == SongCreator.Human)
                             .OrderByDescending(l => l.ThisWeekPlays);
@@ -540,25 +545,34 @@ namespace BeatLeader_Server.Controllers
             };
 
             response.Data = response.Data.OrderBy(s => result[s.Id]);
+            
+            if (HttpContext.Request.Headers["User-Agent"].Contains("0.8.74") || HttpContext.Request.Headers["User-Agent"].Contains("0.9.34")) {
+                response.Data = response.Data.Where(s => result[s.Id] != 0).ToList();
+            }
             foreach (var item in response.Data) {
                 switch (result[item.Id]) {
                     case 0:
+                        item.Song.Name = "[ADOvent] " + item.Song.Name;
+                        item.Description = "Map Of The Day";
+                        item.TrendingValue = $"ADOvent";
+                        break;
+                    case 1:
                         item.Description = "Top played today";
                         item.TrendingValue = $"{item.TodayPlays} plays";
                         break;
-                    case 1:
+                    case 2:
                         item.Description = "Top played new map";
                         item.TrendingValue = $"{item.Plays} plays";
                         break;
-                    case 2:
+                    case 3:
                         item.Description = "Top played by friends";
                         item.TrendingValue = $"{item.ThisWeekPlays} plays";
                         break;
-                    case 3:
+                    case 4:
                         item.Description = "Newly curated map";
                         item.TrendingValue = $"{item.ThisWeekPlays} plays";
                         break;
-                    case 4:
+                    case 5:
                         item.Description = "Top played this week";
                         item.TrendingValue = $"{item.ThisWeekPlays} plays";
                         break;
@@ -571,7 +585,7 @@ namespace BeatLeader_Server.Controllers
                 response.Data = response.Data.Where(it => it.Description != "Top played by friends").OrderBy(s => result[s.Id]);
             }
 
-            _cache.Set(cacheKey, response, TimeSpan.FromDays(1));
+            response.Data = response.Data.DistinctBy(s => s.Song.Id).OrderBy(s => result[s.Id]);
 
             return response;
         }

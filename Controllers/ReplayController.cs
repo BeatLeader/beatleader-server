@@ -557,10 +557,6 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            if ((leaderboard.Difficulty.Notes + leaderboard.Difficulty.Chains) * 0.8 > replay.notes.Count) {
-                await RefreshNoteCount(dbContext, leaderboard);
-            }
-
             if ((leaderboard.Difficulty.Status.WithRating()) && leaderboard.Difficulty.Notes != 0 && replay.notes.Count > (leaderboard.Difficulty.Notes + leaderboard.Difficulty.Chains)) {
                 string? error = ReplayUtils.RemoveDuplicates(replay, leaderboard);
                 if (error != null) {

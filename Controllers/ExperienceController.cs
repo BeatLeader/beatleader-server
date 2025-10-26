@@ -71,13 +71,76 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpPost("~/experience/set/level")]
+        public async Task<ActionResult> SetLevel([FromQuery] int newValue)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("creator")))
+            {
+                return Unauthorized();
+            }
+
+            var player = await _context.Players.Where(p => p.Id == currentID).FirstOrDefaultAsync();
+            if (player == null) {
+                return NotFound("Player not found"); 
+            }
+            player.Level = newValue;
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpPost("~/experience/set/experience")]
+        public async Task<ActionResult> SetExperience([FromQuery] int newValue)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("creator")))
+            {
+                return Unauthorized();
+            }
+
+            var player = await _context.Players.Where(p => p.Id == currentID).FirstOrDefaultAsync();
+            if (player == null) {
+                return NotFound("Player not found"); 
+            }
+            player.Experience = newValue;
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpPost("~/experience/set/prestige")]
+        public async Task<ActionResult> SetPrestige([FromQuery] int newValue)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("creator")))
+            {
+                return Unauthorized();
+            }
+
+            var player = await _context.Players.Where(p => p.Id == currentID).FirstOrDefaultAsync();
+            if (player == null) {
+                return NotFound("Player not found"); 
+            }
+            player.Prestige = newValue;
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
         [HttpDelete("~/experience/reset")]
         public async Task<ActionResult> ResetExperienceSystem()
         {
             string currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.FindAsync(currentID);
 
-            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && currentID != "76561198073989976"))
+            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("creator")))
             {
                 return Unauthorized();
             }
