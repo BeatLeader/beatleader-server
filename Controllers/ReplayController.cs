@@ -1582,6 +1582,9 @@ namespace BeatLeader_Server.Controllers
 
                 // Calculate duration, capped at 1 second between notes
                 float duration = 0;
+
+                if (replay.notes.Count() == 1) duration = 1f;
+
                 List<NoteEvent> notes = replay.notes.OrderBy(x => x.eventTime).ToList();
                 
                 for (int i = 1; i <= notes.Count(); i++)
