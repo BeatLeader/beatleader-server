@@ -1618,14 +1618,14 @@ namespace BeatLeader_Server.Controllers
                 float exp = 9;
                 float accMult = ReplayUtils.GetCurveVal(accuracy);
 
-                float gainedExp = exp * duration * accMult;
+                float gainedExp = (float)Math.Round(exp * duration * accMult);
 
                 resultScore.Experience = gainedExp;
                 
                 // Handle leveling
                 if (player != null && player.Level < 100)
                 {
-                    player.Experience += (int)Math.Round(gainedExp);
+                    player.Experience += (int)gainedExp;
                     while (player.Experience > 0)
                     {
                         var reqExp = baseExp + (incExp * player.Level);
