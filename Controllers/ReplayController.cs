@@ -1566,18 +1566,38 @@ namespace BeatLeader_Server.Controllers
             }
             resultScore.ReplayOffsets = offsets;
 
-            if (type != EndType.Practice && type != EndType.Unknown && replay.notes.Count >= 20) {
+            // Verify if 60% of the notes were cut properly
+            bool awardExp = false;
+            if (replay.notes.Any())
+            {
+                awardExp = replay.notes.Where(x => x.noteCutInfo.directionOK && x.noteCutInfo.saberTypeOK && x.noteCutInfo.speedOK).Count() / replay.notes.Count() >= 0.60f;
+            }
+
+            if (awardExp && type != EndType.Practice && type != EndType.Unknown) {
+                // Base exp and increment for level
                 int baseExp = 500;
                 int incExp = 50;
 
                 float accuracy = resultScore.BaseScore / (float)leaderboard.Difficulty.MaxScore;
-                float firstNoteTime = replay.notes.FirstOrDefault()?.eventTime ?? 0.0f;
-                float lastNoteTime = replay.notes.LastOrDefault()?.eventTime ?? 0.0f;
-                if (time < lastNoteTime)
+
+                // Calculate duration, capped at 1 second between notes
+                float duration = 0;
+                List<NoteEvent> notes = replay.notes.OrderBy(x => x.eventTime).ToList();
+                
+                for (int i = 1; i <= notes.Count(); i++)
                 {
-                    lastNoteTime = time;
+                    NoteEvent note = replay.notes[i];
+                    if (note.eventTime - replay.notes[i - 1].eventTime <= 1)
+                    {
+                        duration += note.eventTime - replay.notes[i - 1].eventTime;
+                    }
+                    else
+                    {
+                        duration += 1f;
+                    }
                 }
-                float duration = lastNoteTime - firstNoteTime;
+
+                // Take into account modifiers
                 if (resultScore.Modifiers.Contains("SS"))
                 {
                     duration /= 0.85f;
@@ -1591,23 +1611,15 @@ namespace BeatLeader_Server.Controllers
                     duration /= 1.5f;
                 }
 
-                float exp;
-                if (leaderboard.Difficulty.Status == DifficultyStatus.ranked)
-                {
-                    float star = Math.Max(resultScore.ModifiedStars, 0);
-                    exp = ReplayUtils.GetCurveVal(0, star);
-                }
-                else
-                {
-                    exp = 1000;
-                }
-                float accMult = ReplayUtils.GetCurveVal(1, accuracy);
-                float durMult = ReplayUtils.GetCurveVal(2, duration);
+                // Calculate gained exp
+                float exp = 11;
+                float accMult = ReplayUtils.GetCurveVal(accuracy);
 
-                float gainedExp = exp * accMult * durMult / (resultScore.Modifiers.Contains("NF") ? 2f : 1f);
+                float gainedExp = exp * duration * accMult;
 
                 resultScore.Experience = gainedExp;
-                        
+                
+                // Handle leveling
                 if (player != null && player.Level < 100)
                 {
                     player.Experience += (int)Math.Round(gainedExp);
@@ -1617,7 +1629,7 @@ namespace BeatLeader_Server.Controllers
 
                         if (player.Prestige != 0)
                         {
-                            reqExp = (int)Math.Round(reqExp * Math.Pow(1.33f, player.Prestige));
+                            reqExp = (int)Math.Round(reqExp * Math.Pow(1.2f, player.Prestige));
                         }
 
                         if (player.Experience >= reqExp)
