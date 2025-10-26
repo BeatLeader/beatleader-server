@@ -1615,7 +1615,7 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 // Calculate gained exp
-                float exp = 11;
+                float exp = 9;
                 float accMult = ReplayUtils.GetCurveVal(accuracy);
 
                 float gainedExp = exp * duration * accMult;
