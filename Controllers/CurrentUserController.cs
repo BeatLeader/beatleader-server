@@ -292,7 +292,7 @@ namespace BeatLeader_Server.Controllers {
             if (playerId == id) {
                 return BadRequest("Couldnt add user as a friend to himself");
             }
-            PlayerFriends? playerFriends = await _context.Friends.Where(u => u.Id == id).FirstOrDefaultAsync();
+            PlayerFriends? playerFriends = await _context.Friends.Where(u => u.Id == id).Include(p => p.Friends).FirstOrDefaultAsync();
             if (playerFriends == null) {
                 playerFriends = new PlayerFriends { Id = id, Friends = new List<Player>() };
                 _context.Friends.Add(playerFriends);
@@ -300,6 +300,10 @@ namespace BeatLeader_Server.Controllers {
 
             if (playerFriends.Friends.Count >= 250) {
                 return BadRequest("You hit the limit of friends, please remove someone first.");
+            }
+
+            if (playerFriends.Friends.Any(p => p.Id == playerId)) {
+                return Ok();
             }
 
             Player? friend = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId);

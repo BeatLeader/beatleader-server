@@ -290,7 +290,7 @@ namespace BeatLeader_Server.Controllers {
                         AccLeft = s.AccLeft,
                         AccRight = s.AccRight,
                         MaxStreak = s.MaxStreak,
-                        Experience = s.Experience
+                        Experience = (int)s.Experience
                     })
                     
                     .ToListAsync();

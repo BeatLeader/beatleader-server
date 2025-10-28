@@ -785,40 +785,42 @@ namespace BeatLeader_Server.Controllers {
                     }
                 }
 
-                List<string>? friendsList = null;
+                if (page > 0) {
+                    List<string>? friendsList = null;
 
-                if (friends) {
-                    if (currentID == null) {
-                        return NotFound();
+                    if (friends) {
+                        if (currentID == null) {
+                            return NotFound();
+                        }
+                        using (_serverTiming.TimeAction("friends")) {
+                        var friendsContainer = await _context
+                            .Friends
+                            .Where(f => f.Id == currentID)
+                            .Include(f => f.Friends)
+                            .Select(f => f.Friends.Select(fs => fs.Id))
+                            .FirstOrDefaultAsync();
+                        if (friendsContainer != null) {
+                            friendsList = friendsContainer.ToList();
+                            friendsList.Add(currentID);
+                        } else {
+                            friendsList = new List<string> { currentID };
+                        }
+                        }
                     }
-                    using (_serverTiming.TimeAction("friends")) {
-                    var friendsContainer = await _context
-                        .Friends
-                        .Where(f => f.Id == currentID)
-                        .Include(f => f.Friends)
-                        .Select(f => f.Friends.Select(fs => fs.Id))
-                        .FirstOrDefaultAsync();
-                    if (friendsContainer != null) {
-                        friendsList = friendsContainer.ToList();
-                        friendsList.Add(currentID);
+
+                    if (prediction) {
+                        await PredictedScores(leaderboard, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList);
                     } else {
-                        friendsList = new List<string> { currentID };
+                        if (leaderboardContext == LeaderboardContexts.General || leaderboardContext == LeaderboardContexts.None) {
+                            await GeneralScores(leaderboard, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, clanTag, hmds);
+                        } else {
+                            await ContextScores(leaderboard, leaderboardContext, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, clanTag, hmds);
+                        }
                     }
-                    }
-                }
 
-                if (prediction) {
-                    await PredictedScores(leaderboard, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList);
-                } else {
-                    if (leaderboardContext == LeaderboardContexts.General || leaderboardContext == LeaderboardContexts.None) {
-                        await GeneralScores(leaderboard, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, clanTag, hmds);
-                    } else {
-                        await ContextScores(leaderboard, leaderboardContext, showBots, voters, showVoters, page, count, sortBy, order, scoreStatus, countries, search, modifiers, friendsList, clanTag, hmds);
+                    foreach (var score in leaderboard.Scores) {
+                        score.Player = PostProcessSettings(score.Player, false);
                     }
-                }
-
-                foreach (var score in leaderboard.Scores) {
-                    score.Player = PostProcessSettings(score.Player, false);
                 }
             }
 
@@ -831,7 +833,7 @@ namespace BeatLeader_Server.Controllers {
 
                     return difficulty == null ? NotFound() : await Get(song.Id + difficulty.Value + difficulty.Mode, page, count, sortBy, order, scoreStatus, leaderboardContext, countries, search, modifiers, friends, voters);
                 }
-            } else if (leaderboard.Difficulty.Status == DifficultyStatus.nominated && isRt) {
+            } else if (leaderboard.Difficulty.Status == DifficultyStatus.nominated && isRt && leaderboard.Scores != null) {
                 var qualification = leaderboard.Qualification;
                 var recalculated = leaderboard.Scores.Select(s => {
 
@@ -863,8 +865,10 @@ namespace BeatLeader_Server.Controllers {
                 leaderboard.Scores = recalculated;
             }
 
-            for (int i = 0; i < leaderboard.Scores?.Count; i++) {
-                leaderboard.Scores[i].ResponseRank = i + (page - 1) * count + 1;
+            if (leaderboard.Scores != null) {
+                for (int i = 0; i < leaderboard.Scores.Count; i++) {
+                    leaderboard.Scores[i].ResponseRank = i + (page - 1) * count + 1;
+                }
             }
 
             return leaderboard;

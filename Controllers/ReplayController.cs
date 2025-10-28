@@ -1564,12 +1564,12 @@ namespace BeatLeader_Server.Controllers
 
             // Verify if 60% of the notes were cut properly
             bool awardExp = false;
-            if (replay.notes.Any())
+            if (type != EndType.Practice && type != EndType.Unknown && replay.notes.Count > 10)
             {
-                awardExp = replay.notes.Where(x => x.noteCutInfo.directionOK && x.noteCutInfo.saberTypeOK && x.noteCutInfo.speedOK).Count() / replay.notes.Count() >= 0.60f;
+                awardExp = (replay.notes.Count(x => x.eventType == NoteEventType.good) / (float)replay.notes.Count) >= 0.60f;
             }
 
-            if (awardExp && type != EndType.Practice && type != EndType.Unknown) {
+            if (awardExp) {
                 // Base exp and increment for level
                 int baseExp = 500;
                 int incExp = 50;
@@ -1583,7 +1583,7 @@ namespace BeatLeader_Server.Controllers
 
                 List<NoteEvent> notes = replay.notes.OrderBy(x => x.eventTime).ToList();
                 
-                for (int i = 1; i <= notes.Count(); i++)
+                for (int i = 1; i < notes.Count; i++)
                 {
                     NoteEvent note = replay.notes[i];
                     if (note.eventTime - replay.notes[i - 1].eventTime <= 1)
