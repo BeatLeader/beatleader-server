@@ -308,7 +308,7 @@ namespace BeatLeader_Server.Services
                     var motwMaps = await _context.Songs.Where(s => s.Id == mapId || s.Id.StartsWith(mapId + "x")).Include(s => s.ExternalStatuses).ToListAsync();
 
                     foreach (var motwMap in motwMaps) {
-                        processedHashes.Add(motwMap.Hash.ToLower());
+                        processedHashes.Add(motwMap.LowerHash);
                         if (motwMap.ExternalStatuses == null) {
                             motwMap.ExternalStatuses = new List<ExternalStatus>();
                         }
@@ -327,7 +327,7 @@ namespace BeatLeader_Server.Services
 
                 // Remove MOTW status from maps not in the current list
                 foreach (var existingMOTW in existingMOTWs) {
-                    if (processedHashes.Contains(existingMOTW.Hash.ToLower())) continue;
+                    if (processedHashes.Contains(existingMOTW.LowerHash)) continue;
 
                     existingMOTW.Status &= ~SongStatus.MapOfTheWeek;
                     existingMOTW.ExternalStatuses.Remove(existingMOTW.ExternalStatuses.First(s => s.Status == SongStatus.MapOfTheWeek));

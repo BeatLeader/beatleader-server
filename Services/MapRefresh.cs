@@ -47,7 +47,7 @@ namespace BeatLeader_Server.Services {
 
                 foreach (var song in songs) {
                     try {
-                        var mapPath = await downloader.Map(song.Hash);
+                        var mapPath = await downloader.Map(song.LowerHash);
                         if (mapPath == null) { 
                             if (song.Difficulties.Any(d => d.Status == DifficultyStatus.outdated)) {
                                 song.Checked = true;
@@ -67,7 +67,7 @@ namespace BeatLeader_Server.Services {
                         catch (FileNotFoundException e)
                         {
                             Directory.Delete(mapPath, true);
-                            mapPath = await downloader.Map(song.Hash);
+                            mapPath = await downloader.Map(song.LowerHash);
                             mapset = parse.TryLoadPath(mapPath);
                         }
 

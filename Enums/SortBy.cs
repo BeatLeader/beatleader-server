@@ -38,6 +38,7 @@ public enum ScoresSortBy {
     Mistakes = 13,
     ReplaysWatched = 14,
     SotwNominations = 15,
+    ScoreValue = 16
 }
 
 public enum PlayerSortBy {

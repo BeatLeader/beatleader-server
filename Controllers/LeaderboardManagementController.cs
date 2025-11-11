@@ -176,7 +176,7 @@ namespace BeatLeader_Server.Controllers {
                         string characteristic = diff.characteristic.ToLower();
 
                         var lb = await _context.Leaderboards.Where(lb =>
-                                lb.Song.Hash.ToLower() == hash &&
+                                lb.Song.LowerHash == hash &&
                                 lb.Difficulty.DifficultyName.ToLower() == diffName &&
                                 lb.Difficulty.ModeName.ToLower() == characteristic)
                                 .Include(lb => lb.FeaturedPlaylists)
@@ -194,7 +194,7 @@ namespace BeatLeader_Server.Controllers {
                     }
                 } else {
                     var lbs = await _context.Leaderboards.Where(lb =>
-                                lb.Song.Hash.ToLower() == hash)
+                                lb.Song.LowerHash == hash)
                                 .Include(lb => lb.FeaturedPlaylists)
                                 .ToListAsync();
                     foreach (var lb in lbs)

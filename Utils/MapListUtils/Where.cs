@@ -137,7 +137,7 @@ public static partial class MapListUtils
         if (hashes.Count == 0 && keys.Count == 0) {
             return sequence;
         }
-        return sequence.Where(s => hashes.Contains(s.Song.Hash.ToLower()) || keys.Contains(s.Song.Id));
+        return sequence.Where(s => hashes.Contains(s.Song.LowerHash) || keys.Contains(s.Song.Id));
     }
 
     private static IQueryable<SongHelper> WhereMyType(this IQueryable<SongHelper> sequence, MyTypeMaps mytype, Player? currentPlayer, LeaderboardContexts leaderboardContext = LeaderboardContexts.General)

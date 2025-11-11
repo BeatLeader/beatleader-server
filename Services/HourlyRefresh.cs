@@ -82,11 +82,11 @@ namespace BeatLeader_Server.Services {
                 var lastUpdateDate = (await _context.SongsLastUpdateTimes.Where(s => s.Status == SongStatus.Curated).OrderByDescending(t => t.Date).FirstOrDefaultAsync())?.Date ?? new DateTime(1970, 1, 1);
                 if (currentDate.Subtract(lastUpdateDate).TotalHours > 1) {
                     var curated = await SongUtils.GetCuratedSongsFromBeatSaver(lastUpdateDate);
-                    var hashes = curated.Select(m => m.Hash.ToLower()).ToList();
-                    var songs = await _context.Songs.Where(s => hashes.Contains(s.Hash.ToLower())).Include(s => s.ExternalStatuses).ToListAsync();
+                    var hashes = curated.Select(m => m.LowerHash).ToList();
+                    var songs = await _context.Songs.Where(s => hashes.Contains(s.LowerHash)).Include(s => s.ExternalStatuses).ToListAsync();
                     foreach (var map in curated)
                     {
-                        var song = songs.FirstOrDefault(s => s.Hash.ToLower() == map.Hash.ToLower());
+                        var song = songs.FirstOrDefault(s => s.LowerHash == map.LowerHash);
                         if (song != null && map.ExternalStatuses != null) {
                             if (song.ExternalStatuses == null) {
                                 song.ExternalStatuses = new List<ExternalStatus>();
@@ -157,7 +157,7 @@ namespace BeatLeader_Server.Services {
                         var lastVersion = await SongUtils.GetSongFromBeatSaverId(id);
 
                         if (lastVersion == null) continue;
-                        var song = await _context.Songs.Where(s => s.Hash.ToLower() == lastVersion.Hash.ToLower()).Include(s => s.ExternalStatuses).FirstOrDefaultAsync();
+                        var song = await _context.Songs.Where(s => s.LowerHash == lastVersion.LowerHash).Include(s => s.ExternalStatuses).FirstOrDefaultAsync();
 
                         if (song == null) continue;
                         if (song.ExternalStatuses == null) {

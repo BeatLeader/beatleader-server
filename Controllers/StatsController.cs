@@ -225,7 +225,7 @@ namespace BeatLeader_Server.Controllers
                         Id = l.Id,
                         Song = new CompactSongResponse {
                             Id = l.Song.Id,
-                            Hash = l.Song.Hash,
+                            Hash = l.Song.LowerHash,
                             Name = l.Song.Name,
             
                             SubName = l.Song.SubName,

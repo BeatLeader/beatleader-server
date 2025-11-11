@@ -441,8 +441,8 @@ namespace BeatLeader_Server.Controllers
 
             var deleted = DeletedSongs();
 
-            var songs = await _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).Where(lb => !deleted.Contains(lb.Song.Hash.ToLower())).Select(lb => new {
-                hash = lb.Song.Hash,
+            var songs = await _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.ranked).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).Where(lb => !deleted.Contains(lb.Song.LowerHash)).Select(lb => new {
+                hash = lb.Song.LowerHash,
                 songName = lb.Song.Name,
                 levelAuthorName = lb.Song.Mapper,
                 difficulties = lb.Song.Difficulties.Where(d => d.Status == DifficultyStatus.ranked).Select(d => new {
@@ -500,9 +500,9 @@ namespace BeatLeader_Server.Controllers
 
             var deleted = DeletedSongs();
 
-            var songs = await _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.nominated).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).Where(lb => !deleted.Contains(lb.Song.Hash.ToLower())).Select(lb => new
+            var songs = await _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.nominated).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).Where(lb => !deleted.Contains(lb.Song.LowerHash)).Select(lb => new
             {
-                hash = lb.Song.Hash,
+                hash = lb.Song.LowerHash,
                 songName = lb.Song.Name,
                 levelAuthorName = lb.Song.Mapper,
                 difficulties = lb.Song.Difficulties.Where(d => d.Status == DifficultyStatus.nominated).Select(d => new
@@ -560,9 +560,9 @@ namespace BeatLeader_Server.Controllers
 
             var deleted = DeletedSongs();
 
-            var songs = await _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.qualified).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).Where(lb => !deleted.Contains(lb.Song.Hash.ToLower())).Select(lb => new
+            var songs = await _context.Leaderboards.Where(lb => lb.Difficulty.Status == DifficultyStatus.qualified).Include(lb => lb.Song).ThenInclude(s => s.Difficulties).Where(lb => !deleted.Contains(lb.Song.LowerHash)).Select(lb => new
             {
-                hash = lb.Song.Hash,
+                hash = lb.Song.LowerHash,
                 songName = lb.Song.Name,
                 levelAuthorName = lb.Song.Mapper,
                 difficulties = lb.Song.Difficulties.Where(d => d.Status == DifficultyStatus.qualified).Select(d => new
@@ -638,7 +638,7 @@ namespace BeatLeader_Server.Controllers
                 .Filter(_context, out int? searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, date_range, mappers, playlistList, currentPlayer);
             (sequence, int totalMatches) = await sequence.WherePage(0, count);
 
-            var diffsList = sequence.Select(s => s.Song.Hash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash);
+            var diffsList = sequence.Select(s => s.Song.LowerHash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash);
 
             var diffsCount = diffsList.Count() == 0 ? 0 : diffsList.Take(count).Last().Index + 1;
 
@@ -649,7 +649,7 @@ namespace BeatLeader_Server.Controllers
                 .Take(diffsCount);
 
             var diffs = await sequence.Select(lb => new {
-                hash = lb.Song.Hash,
+                hash = lb.Song.LowerHash,
                 songName = lb.Song.Name,
                 levelAuthorName = lb.Song.Mapper,
                 difficulties = new List<PlaylistDifficulty> { new PlaylistDifficulty
@@ -782,10 +782,10 @@ namespace BeatLeader_Server.Controllers
 
             if (await sequence.CountAsync() == 0) { return NotFound(); }
 
-            var diffsCount = sequence.Select(s => s.Leaderboard.Song.Hash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash).Take(count).Last().Index + 1;
+            var diffsCount = sequence.Select(s => s.Leaderboard.Song.LowerHash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash).Take(count).Last().Index + 1;
 
             var diffs = await sequence.Take(diffsCount).Select(s => new {
-                hash = s.Leaderboard.Song.Hash,
+                hash = s.Leaderboard.Song.LowerHash,
                 songName = s.Leaderboard.Song.Name,
                 levelAuthorName = s.Leaderboard.Song.Mapper,
                 difficulties = new List<PlaylistDifficulty> { new PlaylistDifficulty
@@ -972,7 +972,7 @@ namespace BeatLeader_Server.Controllers
             .Select(cr => new LeaderboardSelection {
                 Pp = cr.Pp,
                 LeaderboardId = cr.LeaderboardId,
-                Hash = cr.Leaderboard.Song.Hash,
+                Hash = cr.Leaderboard.Song.LowerHash,
                 Mapper = cr.Leaderboard.Song.Mapper,
                 Name = cr.Leaderboard.Song.Name,
                 DifficultyName = cr.Leaderboard.Difficulty.DifficultyName,

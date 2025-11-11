@@ -204,7 +204,9 @@ namespace BeatLeader_Server.Controllers
             
             if (priority != null)
             {
-                if (!(priority <= totalPinnedCount)) return BadRequest("Priority is out of range");
+                if (priority > totalPinnedCount) {
+                    priority = totalPinnedCount;
+                }
 
                 int priorityValue = (int)priority;
                 
@@ -412,7 +414,7 @@ namespace BeatLeader_Server.Controllers
                     Id = lb.Id,
                     Song = new CompactSongResponse {
                         Id = lb.Song.Id,
-                        Hash = lb.Song.Hash,
+                        Hash = lb.Song.LowerHash,
                         Name = lb.Song.Name,
             
                         SubName = lb.Song.SubName,

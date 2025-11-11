@@ -69,7 +69,7 @@ namespace BeatLeader_Server.Services {
                 var existingSong = await _context
                     .Songs
                     .Include(s => s.Mappers)
-                    .Where(el => el.Hash.ToLower() == map.Versions[0].Hash.ToLower())
+                    .Where(el => el.LowerHash == map.Versions[0].Hash.ToLower())
                     .Include(s => s.Difficulties)
                     .Include(s => s.ExternalStatuses)
                     .FirstOrDefaultAsync();
@@ -82,7 +82,7 @@ namespace BeatLeader_Server.Services {
                         song.FromMapDetails(map);
                         await SongControllerHelper.UpdateFromMap(_context, song, map);
 
-                        await SongControllerHelper.AddNewSong(song, song.Hash, _context);
+                        await SongControllerHelper.AddNewSong(song, song.LowerHash, _context);
                         foreach (var item in song.Difficulties) {
                             await SongControllerHelper.NewLeaderboard(_context, song, null, item.DifficultyName, item.ModeName);
                         }

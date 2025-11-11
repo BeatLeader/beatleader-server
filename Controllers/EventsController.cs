@@ -385,7 +385,7 @@ namespace BeatLeader_Server.Controllers
                     string characteristic = diff.characteristic.ToLower();
 
                     var lb = await _context.Leaderboards.Where(lb => 
-                        lb.Song.Hash.ToLower() == hash && 
+                        lb.Song.LowerHash == hash && 
                         lb.Difficulty.DifficultyName.ToLower() == diffName &&
                         lb.Difficulty.ModeName.ToLower() == characteristic)
                         .Include(lb => lb.Difficulty)
@@ -943,7 +943,7 @@ namespace BeatLeader_Server.Controllers
                     MapOfTheDays = e.MapOfTheDays.Where(m => m.Timestart < now).OrderBy(m => m.Timestart).Select(s => new { 
                         Song = new SongResponse {
                             Id = s.Song.Id,
-                            Hash = s.Song.Hash,
+                            Hash = s.Song.LowerHash,
                             Name = s.Song.Name,
                             SubName = s.Song.SubName,
                             Author = s.Song.Author,
@@ -1107,7 +1107,7 @@ namespace BeatLeader_Server.Controllers
                     MapOfTheDays = e.MapOfTheDays.Where(m => m.Timestart < now && m.Timeend > now).OrderBy(m => m.Timestart).Select(s => new { 
                         Song = new SongResponse {
                             Id = s.Song.Id,
-                            Hash = s.Song.Hash,
+                            Hash = s.Song.LowerHash,
                             Name = s.Song.Name,
                             SubName = s.Song.SubName,
                             Author = s.Song.Author,

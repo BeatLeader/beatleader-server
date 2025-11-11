@@ -89,7 +89,7 @@ namespace BeatLeader_Server.Controllers
                     ExternalStatuses = s.ExternalStatuses,
                     Song = new ScoreSongResponse {
                         Id = s.Leaderboard.Song.Id,
-                        Hash = s.Leaderboard.Song.Hash,
+                        Hash = s.Leaderboard.Song.LowerHash,
                         Cover = s.Leaderboard.Song.CoverImage,
                         Name = s.Leaderboard.Song.Name,
                         SubName = s.Leaderboard.Song.SubName,
@@ -167,7 +167,7 @@ namespace BeatLeader_Server.Controllers
                     .AsNoTracking()
                     .Where(s => s.PlayerId == playerID &&
                                 s.ValidContexts.HasFlag(leaderboardContext) &&
-                                s.Leaderboard.Song.Hash.ToLower() == hash.ToLower() &&
+                                s.Leaderboard.Song.LowerHash == hash.ToLower() &&
                                 s.Leaderboard.Difficulty.DifficultyName.ToLower() == diff.ToLower() &&
                                 s.Leaderboard.Difficulty.ModeName.ToLower() == mode.ToLower())
                     .Select(s => s.Id)
@@ -360,7 +360,7 @@ namespace BeatLeader_Server.Controllers
             var song = await _context
                 .Songs
                 .AsNoTracking()
-                .Select(s => new { Id = s.Id, Hash = s.Hash })
+                .Select(s => new { Id = s.Id, Hash = s.LowerHash })
                 .FirstOrDefaultAsync(s => s.Hash == hash);
             if (song == null) {
                 return result;
@@ -580,6 +580,7 @@ namespace BeatLeader_Server.Controllers
                         Platform = s.Player.Platform,
                         Avatar = s.Player.Avatar,
                         Country = s.Player.Country,
+                        Prestige = s.Player.Prestige,
 
                         Bot = s.Player.Bot,
                         Temporary = s.Player.Temporary,
@@ -659,6 +660,7 @@ namespace BeatLeader_Server.Controllers
                         Platform = s.Player.Platform,
                         Avatar = s.Player.Avatar,
                         Country = s.Player.Country,
+                        Prestige = s.Player.Prestige,
 
                         Bot = s.Player.Bot,
                         Temporary = s.Player.Temporary,
@@ -791,6 +793,7 @@ namespace BeatLeader_Server.Controllers
                         Platform = s.Player.Platform,
                         Avatar = s.Player.Avatar,
                         Country = s.Player.Country,
+                        Prestige = s.Player.Prestige,
 
                         Pp = s.Player.Pp,
                         Rank = s.Player.Rank,
@@ -874,6 +877,7 @@ namespace BeatLeader_Server.Controllers
                         Platform = s.Player.Platform,
                         Avatar = s.Player.Avatar,
                         Country = s.Player.Country,
+                        Prestige = s.Player.Prestige,
 
                         Bot = s.Player.Bot,
                         Pp = s.Player.Pp,
@@ -973,6 +977,7 @@ namespace BeatLeader_Server.Controllers
                     Platform = p.Platform,
                     Avatar = p.Avatar,
                     Country = p.Country,
+                    Prestige = p.Prestige,
 
                     Pp = p.Pp,
                     Rank = p.Rank,
@@ -987,7 +992,7 @@ namespace BeatLeader_Server.Controllers
                 .Songs
                 .TagWithCallerS()
                 .AsNoTracking()
-                .Select(s => new { Id = s.Id, Hash = s.Hash })
+                .Select(s => new { Id = s.Id, Hash = s.LowerHash })
                 .FirstOrDefaultAsync(s => s.Hash == hash);
             if (song == null) {
                 return result;
@@ -1080,7 +1085,7 @@ namespace BeatLeader_Server.Controllers
                     .Scores
                     .AsNoTracking()
                     .Where(l => 
-                        l.Leaderboard.Song.Hash == hash && 
+                        l.Leaderboard.Song.LowerHash == hash && 
                         l.Leaderboard.Difficulty.DifficultyName == diff && 
                         l.Leaderboard.Difficulty.ModeName == mode && 
                         l.ValidContexts.HasFlag(leaderboardContext) &&
@@ -1354,7 +1359,7 @@ namespace BeatLeader_Server.Controllers
                     Id = lb.Id,
                     Song = new CompactSongResponse {
                         Id = lb.Song.Id,
-                        Hash = lb.Song.Hash,
+                        Hash = lb.Song.LowerHash,
                         Name = lb.Song.Name,
             
                         SubName = lb.Song.SubName,

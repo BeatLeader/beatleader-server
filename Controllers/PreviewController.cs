@@ -523,7 +523,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             var score = await _context.Leaderboards
-                .Where(lb => lb.Song.Hash == info.hash && lb.Difficulty.DifficultyName == info.difficulty && lb.Difficulty.ModeName == info.mode)
+                .Where(lb => lb.Song.LowerHash == info.hash && lb.Difficulty.DifficultyName == info.difficulty && lb.Difficulty.ModeName == info.mode)
                 .Select(s => new ScoreSelect {
                     SongId = s.Song.Id,
                     CoverImage = s.Song.CoverImage,
@@ -676,7 +676,7 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 song = await _context
-                    .Songs.Select(s => new SongSelect { Hash = s.Hash, CoverImage = s.CoverImage, Name = s.Name })
+                    .Songs.Select(s => new SongSelect { Hash = s.LowerHash, CoverImage = s.CoverImage, Name = s.Name })
                     .FirstOrDefaultAsync(s => s.Hash == hash);
             }
 

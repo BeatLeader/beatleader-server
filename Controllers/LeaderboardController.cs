@@ -670,7 +670,7 @@ namespace BeatLeader_Server.Controllers {
                 Id = l.Id,
                 Song = new SongResponse {
                     Id = l.Song.Id,
-                    Hash = l.Song.Hash,
+                    Hash = l.Song.LowerHash,
                     Name = l.Song.Name,
                     SubName = l.Song.SubName,
                     Author = l.Song.Author,
@@ -922,7 +922,7 @@ namespace BeatLeader_Server.Controllers {
                 Id = l.Id,
                 Song = new SongResponse {
                     Id = l.Song.Id,
-                    Hash = l.Song.Hash,
+                    Hash = l.Song.LowerHash,
                     Name = l.Song.Name,
                     SubName = l.Song.SubName,
                     Author = l.Song.Author,
@@ -1064,7 +1064,7 @@ namespace BeatLeader_Server.Controllers {
                         Id = cr.Leaderboard.Id,
                         Song = new SongResponse {
                             Id = cr.Leaderboard.Song.Id,
-                            Hash = cr.Leaderboard.Song.Hash,
+                            Hash = cr.Leaderboard.Song.LowerHash,
                             Name = cr.Leaderboard.Song.Name,
                             SubName = cr.Leaderboard.Song.SubName,
                             Author = cr.Leaderboard.Song.Author,
@@ -1197,7 +1197,7 @@ namespace BeatLeader_Server.Controllers {
                         Id = cr.Leaderboard.Id,
                         Song = new SongResponse {
                             Id = cr.Leaderboard.Song.Id,
-                            Hash = cr.Leaderboard.Song.Hash,
+                            Hash = cr.Leaderboard.Song.LowerHash,
                             Name = cr.Leaderboard.Song.Name,
                             SubName = cr.Leaderboard.Song.SubName,
                             Author = cr.Leaderboard.Song.Author,
@@ -1377,7 +1377,7 @@ namespace BeatLeader_Server.Controllers {
                     Id = l.Id,
                     Song = new SongResponse {
                         Id = l.Song.Id,
-                        Hash = l.Song.Hash,
+                        Hash = l.Song.LowerHash,
                         Name = l.Song.Name,
                         SubName = l.Song.SubName,
                         Author = l.Song.Author,
@@ -1512,7 +1512,7 @@ namespace BeatLeader_Server.Controllers {
                             Id = cr.Leaderboard.Id,
                             Song = new SongResponse {
                                 Id = cr.Leaderboard.Song.Id,
-                                Hash = cr.Leaderboard.Song.Hash,
+                                Hash = cr.Leaderboard.Song.LowerHash,
                                 Name = cr.Leaderboard.Song.Name,
                                 SubName = cr.Leaderboard.Song.SubName,
                                 Author = cr.Leaderboard.Song.Author,
@@ -1563,7 +1563,7 @@ namespace BeatLeader_Server.Controllers {
             var song = await _context
                 .Songs
                 .AsNoTracking()
-                .Where(s => s.Hash == hash)
+                .Where(s => s.LowerHash == hash.ToLower())
                 .Include(s => s.Difficulties)
                 .ThenInclude(d => d.ModifierValues)
                 .Include(s => s.Difficulties)
@@ -1680,12 +1680,12 @@ namespace BeatLeader_Server.Controllers {
 
             var lb = await _context
                 .Leaderboards
-                .Where(l => l.Song.Hash == hash && l.Difficulty.ModeName == mode && l.Difficulty.DifficultyName == difficulty)
+                .Where(l => l.Song.LowerHash == hash.ToLower() && l.Difficulty.ModeName == mode && l.Difficulty.DifficultyName == difficulty)
                     .Select(l => new CompactLeaderboardResponse {
                     Id = l.Id,
                     Song = new CompactSongResponse {
                         Id = l.Song.Id,
-                        Hash = l.Song.Hash,
+                        Hash = l.Song.LowerHash,
                         Name = l.Song.Name,
 
                         SubName = l.Song.SubName,
@@ -1857,7 +1857,7 @@ namespace BeatLeader_Server.Controllers {
                         Id = lb.Id,
                         Song = type == Type.Staff ? new SongResponse {
                             Id = lb.Song.Id,
-                            Hash = lb.Song.Hash,
+                            Hash = lb.Song.LowerHash,
                             Name = lb.Song.Name,
                             SubName = lb.Song.SubName,
                             Author = lb.Song.Author,
@@ -1878,7 +1878,7 @@ namespace BeatLeader_Server.Controllers {
                             Difficulties = lb.Song.Difficulties,
                         } : new SongResponse {
                             Id = lb.Song.Id,
-                            Hash = lb.Song.Hash,
+                            Hash = lb.Song.LowerHash,
                             Name = lb.Song.Name,
                             SubName = lb.Song.SubName,
                             Author = lb.Song.Author,
@@ -2100,7 +2100,7 @@ namespace BeatLeader_Server.Controllers {
                     Id = lb.Id,
                     Song = new SongResponse {
                         Id = lb.Song.Id,
-                        Hash = lb.Song.Hash,
+                        Hash = lb.Song.LowerHash,
                         Name = lb.Song.Name,
                         SubName = lb.Song.SubName,
                         Author = lb.Song.Author,

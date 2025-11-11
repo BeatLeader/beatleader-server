@@ -109,6 +109,7 @@ namespace BeatLeader_Server.Controllers {
                     .Bans
                     .AsNoTracking()
                     .Where(b => b.PlayerId == player.Id)
+                    .OrderByDescending(b => b.Timeset)
                     .Select(b => new BanReturn { Reason = b.BanReason, Duration = b.Duration, Timeset = b.Timeset })
                     .FirstOrDefaultAsync()) : null,
                 ClanRequest = user.ClanRequest,

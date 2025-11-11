@@ -73,7 +73,7 @@ namespace BeatLeader_Server.Controllers
                 .ThenInclude(q => q.Changes)
                 .Include(l => l.Reweight)
                 .ThenInclude(q => q.Modifiers)
-                .FirstOrDefaultAsync(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+                .FirstOrDefaultAsync(l => l.Song.LowerHash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             bool isRT = true;
             if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
@@ -205,7 +205,7 @@ namespace BeatLeader_Server.Controllers
                 .Include(l => l.Changes)
                 .Include(l => l.Reweight)
                 .ThenInclude(r => r.Modifiers)
-                .FirstOrDefaultAsync(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+                .FirstOrDefaultAsync(l => l.Song.LowerHash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             if (leaderboard != null && leaderboard.Reweight != null)
             {
@@ -319,7 +319,7 @@ namespace BeatLeader_Server.Controllers
                 .ThenInclude(d => d.ModifierValues)
                 .Include(l => l.Song)
                 .Include(l => l.Reweight)
-                .FirstOrDefaultAsync(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+                .FirstOrDefaultAsync(l => l.Song.LowerHash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             if (leaderboard != null && leaderboard.Reweight != null)
             {

@@ -19,7 +19,7 @@ namespace BeatLeader_Server.ControllerHelpers {
             List<Song> songsToMigrate = new List<Song>();
             while (existingSong != null)
             {
-                if (song.Hash.ToLower() == hash.ToLower())
+                if (song.LowerHash == hash.ToLower())
                 {
                     songsToMigrate.Add(existingSong);
                 }
@@ -29,6 +29,7 @@ namespace BeatLeader_Server.ControllerHelpers {
 
             song.Id = songId;
             song.Hash = hash;
+            song.LowerHash = hash.ToLower();
 
             try {
                 dbContext.Songs.Add(song);
@@ -127,7 +128,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                         ModifierValues = modifiersMap,
                         MaxScoreGraph = difficulty.MaxScoreGraph,
                         ModeName = mode,
-                        Hash = song.Hash,
+                        Hash = song.LowerHash,
 
                         Njs = difficulty.Njs,
                         Nps = difficulty.Nps,
@@ -250,7 +251,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                     }
                 }
             } else {
-                if (map.Versions[0].Hash.ToLower() == song.Hash.ToLower() && song.Difficulties.FirstOrDefault(d => d.Status == DifficultyStatus.outdated) != null) {
+                if (map.Versions[0].Hash.ToLower() == song.LowerHash && song.Difficulties.FirstOrDefault(d => d.Status == DifficultyStatus.outdated) != null) {
                     foreach (var diff in song.Difficulties) {
                         if (diff.Status == DifficultyStatus.outdated) {
                             diff.Status = DifficultyStatus.unranked;
@@ -329,7 +330,8 @@ namespace BeatLeader_Server.ControllerHelpers {
         {
             return await dbContext
                 .Songs
-                .Where(el => el.Hash.ToLower() == hash.ToLower())
+                .TagWithCallerS()
+                .Where(el => el.LowerHash == hash.ToLower())
                 .Include(song => song.Difficulties)
                 .ThenInclude(d => d.ModifierValues)
                 .Include(song => song.Difficulties)

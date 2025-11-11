@@ -73,7 +73,7 @@ namespace BeatLeader_Server.Services
                         Id = lb.Id,
                         Song = new SongInfo {
                             Id = lb.Song.Id,
-                            Hash = lb.Song.Hash,
+                            Hash = lb.Song.LowerHash,
                             UploadTime = lb.Song.UploadTime
                         },
                         Difficulty = new MassLeaderboardsDiffInfo {

@@ -133,6 +133,11 @@ namespace BeatLeader_Server.Utils {
                         .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
                         .ThenOrder(order, t => t.Rank);
                     break;
+                case ScoresSortBy.ScoreValue:
+                    orderedSequence = sequence
+                        .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
+                        .ThenOrder(order, t => t.ModifiedScore);
+                    break;
                 case ScoresSortBy.MaxStreak:
                     if (sequence is IQueryable<Score>) {
                         orderedSequence = sequence
@@ -330,7 +335,7 @@ namespace BeatLeader_Server.Utils {
         if (hashes.Count == 0 && keys.Count == 0) {
             return sequence;
         }
-        return sequence.Where(s => hashes.Contains(s.Leaderboard.Song.Hash.ToLower()) || keys.Contains(s.Leaderboard.Song.Id));
+        return sequence.Where(s => hashes.Contains(s.Leaderboard.Song.LowerHash) || keys.Contains(s.Leaderboard.Song.Id));
     }
     }
 }

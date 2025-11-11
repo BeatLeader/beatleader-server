@@ -35,7 +35,7 @@ public class SearchService : BackgroundService
             .AsNoTracking()
             .Select(s => new SongMetadata {
                 Id = s.Id.ToLower(),
-                Hash = s.Hash.ToLower(),
+                Hash = s.LowerHash,
                 Name = s.Name.ToLower(),
                 Author = s.Author.ToLower(),
                 Mapper = s.Mapper.ToLower(),

@@ -152,7 +152,7 @@ namespace BeatLeader_Server.Controllers
                     .TagWithCallerS()
                     .Select(s => new MapInfoResponse {
                         Id = s.Id,
-                        Hash = s.Hash,
+                        Hash = s.LowerHash,
                         Name = s.Name,
                         SubName = s.SubName,
                         Author = s.Author,
@@ -354,7 +354,7 @@ namespace BeatLeader_Server.Controllers
                     .TagWithCallerS()
                     .Select(s => new MapInfoResponseWithUpvotes {
                         Id = s.Id,
-                        Hash = s.Hash,
+                        Hash = s.LowerHash,
                         Name = s.Name,
                         SubName = s.SubName,
                         Author = s.Author,
@@ -564,7 +564,7 @@ namespace BeatLeader_Server.Controllers
         {
 
             var resFromLB = await _context.Leaderboards
-                .Where(lb => lb.Song.Hash == hash)
+                .Where(lb => lb.Song.LowerHash == hash.ToLower())
                 .Include(lb => lb.Difficulty)
                     .ThenInclude(diff => diff.ModifierValues)
                 .Include(lb => lb.Difficulty)
@@ -646,7 +646,7 @@ namespace BeatLeader_Server.Controllers
                         .Select(s => 
                             s.Difficulties.Where(d => d.Stars > 0).Select(d => 
                                 new HashDiffStarTuple(
-                                    s.Hash, 
+                                    s.LowerHash, 
                                     d.DifficultyName + d.ModeName, 
                                     (float)(d.Stars != null ? d.Stars : 0))).ToArray())
                         .ToArrayAsync())
@@ -770,7 +770,7 @@ namespace BeatLeader_Server.Controllers
                     DifficultyName = set.Difficulty,
                     ModeName = set.Characteristic,
                     Status = DifficultyStatus.OST,
-                    Hash = song.Hash,
+                    Hash = song.LowerHash,
 
                     Njs = diff._noteJumpMovementSpeed,
                     Nps = set.Data.Notes.Count() / (float)map.SongLength,
@@ -837,7 +837,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             ms.Position = 0;
-            song.DownloadUrl = await _s3Client.UploadSong(song.Hash + ".zip", ms);
+            song.DownloadUrl = await _s3Client.UploadSong(song.LowerHash + ".zip", ms);
             _context.Songs.Add(song);
 
             foreach (var diff in song.Difficulties) {
@@ -866,7 +866,7 @@ namespace BeatLeader_Server.Controllers
             var song = new Song
             {
                 Id = "EarthDay2025",
-                Hash = "EarthDay2025",
+                LowerHash = "EarthDay2025",
                 Name = "Earth Day 2025",
                 SubName = "RECYCLED",
                 Author = "Various",
@@ -886,7 +886,7 @@ namespace BeatLeader_Server.Controllers
                 DifficultyName = "ExpertPlus",
                 ModeName = "Standard",
                 Status = DifficultyStatus.unranked,
-                Hash = song.Hash,
+                Hash = song.LowerHash,
 
                 Njs = 18,
                 Nps = 0,

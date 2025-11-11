@@ -21,7 +21,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                 .Include(lb => lb.Difficulty)
                 .ThenInclude(d => d.MaxScoreGraph)
                 .AsSplitQuery()
-                .FirstOrDefaultAsync(lb => lb.Song.Hash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff);
+                .FirstOrDefaultAsync(lb => lb.Song.LowerHash == hash && lb.Difficulty.ModeName == mode && lb.Difficulty.DifficultyName == diff);
 
             if (leaderboard == null) {
                 Song? song = await SongControllerHelper.GetOrAddSong(dbContext, hash);

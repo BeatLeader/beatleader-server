@@ -200,7 +200,7 @@ namespace BeatLeader_Server.Controllers
                 .Include(s => s.RankVoting)
                 .Include(s => s.Leaderboard)
                 .TagWithCaller()
-                .FirstOrDefaultAsync(l => l.Leaderboard.Song.Hash == hash && l.Leaderboard.Difficulty.DifficultyName == diff && l.Leaderboard.Difficulty.ModeName == mode && l.PlayerId == userId);
+                .FirstOrDefaultAsync(l => l.Leaderboard.Song.LowerHash == hash && l.Leaderboard.Difficulty.DifficultyName == diff && l.Leaderboard.Difficulty.ModeName == mode && l.PlayerId == userId);
 
             if (score == null)
             {
@@ -295,7 +295,7 @@ namespace BeatLeader_Server.Controllers
             string? currentID = HttpContext.CurrentUserID(_context);
             var currentPlayer = await _context.Players.Where(p => p.Id == currentID).Include(p => p.Socials).FirstOrDefaultAsync();
 
-            Leaderboard? leaderboard = await _context.Leaderboards.Include(l => l.Difficulty).Include(l => l.Song).FirstOrDefaultAsync(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+            Leaderboard? leaderboard = await _context.Leaderboards.Include(l => l.Difficulty).Include(l => l.Song).FirstOrDefaultAsync(l => l.Song.LowerHash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             bool isRT = true;
             bool verified = false;
@@ -323,7 +323,7 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 if (!isRT && alreadyApproved == null) {
-                    int? previous = (await PrevQualificationTime(leaderboard.Song.Hash)).Value?.Time;
+                    int? previous = (await PrevQualificationTime(leaderboard.Song.LowerHash)).Value?.Time;
                     int timestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
                     int timeFromPrevious = (int)(timestamp - previous);
 
@@ -417,7 +417,7 @@ namespace BeatLeader_Server.Controllers
                 .ThenInclude(ch => ch.NewModifiers)
                 .Include(l => l.Qualification)
                 .ThenInclude(q => q.Modifiers)
-                .FirstOrDefaultAsync(l => l.Song.Hash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
+                .FirstOrDefaultAsync(l => l.Song.LowerHash == hash && l.Difficulty.DifficultyName == diff && l.Difficulty.ModeName == mode);
 
             bool isRT = true;
             if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("rankedteam")))
@@ -663,7 +663,7 @@ namespace BeatLeader_Server.Controllers
         {
             string? userId = HttpContext.CurrentUserID(_context);
 
-            if ((await _context.Leaderboards.FirstOrDefaultAsync(lb => lb.Difficulty.Status == DifficultyStatus.nominated && lb.Song.Hash == hash)) != null) {
+            if ((await _context.Leaderboards.FirstOrDefaultAsync(lb => lb.Difficulty.Status == DifficultyStatus.nominated && lb.Song.LowerHash == hash)) != null) {
                 return new PrevQualification
                 {
                     Time = 0

@@ -172,7 +172,7 @@ namespace BeatLeader_Server.Controllers
                         .Where(s => s.Id == score.Leaderboard.SongId)
                         .Select(s => new CompactSongResponse {
                             Id = s.Id,
-                            Hash = s.Hash,
+                            Hash = s.LowerHash,
                             Name = s.Name,
             
                             SubName = s.SubName,
@@ -269,7 +269,7 @@ namespace BeatLeader_Server.Controllers
                         .Where(s => s.Id == score.Leaderboard.SongId)
                         .Select(s => new CompactSongResponse {
                             Id = s.Id,
-                            Hash = s.Hash,
+                            Hash = s.LowerHash,
                             Name = s.Name,
             
                             SubName = s.SubName,

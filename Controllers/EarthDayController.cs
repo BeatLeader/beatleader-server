@@ -140,7 +140,7 @@ namespace BeatLeader_Server.Controllers
             var existingMap = _context.EarthDayMaps.Where(ed => ed.PlayerId == currentID).FirstOrDefault();
             if (existingMap != null) {
                 _context.EarthDayMaps.Remove(existingMap);
-                var score = await _context.Scores.Where(s => s.Leaderboard.Song.Hash == "EarthDay2025" && s.PlayerId == currentID).Include(s => s.ContextExtensions).FirstOrDefaultAsync();
+                var score = await _context.Scores.Where(s => s.Leaderboard.Song.LowerHash == "EarthDay2025" && s.PlayerId == currentID).Include(s => s.ContextExtensions).FirstOrDefaultAsync();
                 if (score != null) {
                     foreach (var extension in score.ContextExtensions) {
                         _context.ScoreContextExtensions.Remove(extension);
@@ -163,7 +163,7 @@ namespace BeatLeader_Server.Controllers
                 .Select(s => new {
                     s.Leaderboard.Difficulty.Requirements,
                     s.Timepost,
-                    s.Leaderboard.Song.Hash,
+                    s.Leaderboard.Song.LowerHash,
                     s.Leaderboard.Song.Duration,
                     s.Leaderboard.Difficulty,
                     LeaderboardId = s.LeaderboardId // Needed for filtering later? Maybe just difficulty.
@@ -185,7 +185,7 @@ namespace BeatLeader_Server.Controllers
 
             foreach (var score in scores)
             {
-                string? mapPath = await _downloader.Map(score.Hash);
+                string? mapPath = await _downloader.Map(score.LowerHash);
                 if (mapPath == null) continue; // Skip if download fails
 
                 Beatmap? mapset = null; // Use alias
@@ -211,7 +211,7 @@ namespace BeatLeader_Server.Controllers
                          };
 
                          parsedMaps.Add(new ParsedMapData {
-                             Hash = score.Hash,
+                             Hash = score.LowerHash,
                              Beatmap = singleDiffMap, // Store the single difficulty Beatmap
                              Difficulty = score.Difficulty, // Keep original DifficultyDescription
                              Duration = score.Duration,
@@ -230,7 +230,7 @@ namespace BeatLeader_Server.Controllers
                 }
                  catch (Exception ex) {
                     // Log general parsing errors
-                    Console.WriteLine($"Error parsing map {score.Hash}: {ex.Message}");
+                    Console.WriteLine($"Error parsing map {score.LowerHash}: {ex.Message}");
                     continue;
                  }
             }

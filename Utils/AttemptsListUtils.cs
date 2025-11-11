@@ -88,7 +88,7 @@ namespace BeatLeader_Server.Utils {
                     string lowSearch = search.ToLower();
                     leaderboards = leaderboards
                         .Where(l => l.Song.Id == lowSearch ||
-                                    l.Song.Hash == lowSearch ||
+                                    l.Song.LowerHash == lowSearch ||
                                     l.Song.Author.ToLower().Contains(lowSearch) ||
                                     l.Song.Mapper.ToLower().Contains(lowSearch) ||
                                     l.Song.Name.ToLower().Contains(lowSearch));

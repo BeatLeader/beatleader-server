@@ -406,7 +406,7 @@ namespace BeatLeader_Server.Utils {
                 var keys = playlists.SelectMany(p => p.songs.Where(s => s.hash == null && s.key != null).Select(s => (string)s.key!.ToLower())).ToList();
 
                 if (hashes.Count > 0 || keys.Count > 0) {
-                    sequence = sequence.Where(s => hashes.Contains(s.Leaderboard.Song.Hash.ToLower()) || keys.Contains(s.Leaderboard.SongId));
+                    sequence = sequence.Where(s => hashes.Contains(s.Leaderboard.Song.LowerHash) || keys.Contains(s.Leaderboard.SongId));
                 }
             }
 

@@ -115,7 +115,7 @@ namespace BeatLeader_Server.Controllers
                 .Select(lb => new {
                     ID = lb.Id,
                     name = lb.Song.Name,
-                    hash = lb.Song.Hash,
+                    hash = lb.Song.LowerHash,
                     difficulty = lb.Difficulty.DifficultyName,
                     mode = lb.Difficulty.ModeName,
                     stars = (float)lb.Difficulty.Stars,
@@ -141,7 +141,7 @@ namespace BeatLeader_Server.Controllers
                     .Select(lb => new {
                         id = lb.Id,
                         name = lb.Song.Name,
-                        hash = lb.Song.Hash,
+                        hash = lb.Song.LowerHash,
                         difficulty = lb.Difficulty.DifficultyName,
                         mode = lb.Difficulty.ModeName,
                         stars = (float)lb.Difficulty.Stars,
@@ -323,7 +323,7 @@ namespace BeatLeader_Server.Controllers
                 .Select(lb => new SongSuggestSong {
                     ID = lb.Id,
                     name = lb.Song.Name,
-                    hash = lb.Song.Hash,
+                    hash = lb.Song.LowerHash,
                     difficulty = lb.Difficulty.DifficultyName,
                     mode = lb.Difficulty.ModeName,
                     stars = (float)lb.Difficulty.Stars,
@@ -494,7 +494,7 @@ namespace BeatLeader_Server.Controllers
                         Id = lb.Id,
                         Song = new SongResponse {
                             Id = lb.Song.Id,
-                            Hash = lb.Song.Hash,
+                            Hash = lb.Song.LowerHash,
                             Name = lb.Song.Name,
                             SubName = lb.Song.SubName,
                             Author = lb.Song.Author,
@@ -666,7 +666,7 @@ namespace BeatLeader_Server.Controllers
                         Id = lb.Id,
                         Song = new SongResponse {
                             Id = lb.Song.Id,
-                            Hash = lb.Song.Hash,
+                            Hash = lb.Song.LowerHash,
                             Name = lb.Song.Name,
                             SubName = lb.Song.SubName,
                             Author = lb.Song.Author,

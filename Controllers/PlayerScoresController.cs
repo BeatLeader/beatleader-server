@@ -239,7 +239,7 @@ namespace BeatLeader_Server.Controllers {
                             Id = s.LeaderboardId,
                             Song = new CompactSongResponse {
                                 Id = s.Leaderboard.Song.Id,
-                                Hash = s.Leaderboard.Song.Hash,
+                                Hash = s.Leaderboard.Song.LowerHash,
                                 Name = s.Leaderboard.Song.Name,
             
                                 SubName = s.Leaderboard.Song.SubName,
@@ -482,7 +482,7 @@ namespace BeatLeader_Server.Controllers {
                             Id = s.LeaderboardId,
                             Difficulty = s.Leaderboard.Difficulty.Value,
                             ModeName = s.Leaderboard.Difficulty.ModeName,
-                            SongHash = s.Leaderboard.Song.Hash
+                            SongHash = s.Leaderboard.Song.LowerHash
                         }
                     })
                     .ToListAsync());
@@ -506,20 +506,12 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [HttpGet("~/player/{id}/scorevalue/{hash}/{difficulty}/{mode}")]
-        [SwaggerOperation(Summary = "Retrieve player's score for a specific map", Description = "Fetches a score made by a Player with ID for a map specified by Hash and difficulty")]
-        [SwaggerResponse(200, "Score retrieved successfully")]
-        [SwaggerResponse(400, "Invalid request parameters")]
-        [SwaggerResponse(404, "Score not found for the given player ID")]
-        public async Task<ActionResult<int>> GetScoreValue(
-            [FromRoute, SwaggerParameter("Player's unique identifier")] string id, 
-            [FromRoute, SwaggerParameter("Maps's hash")] string hash, 
-            [FromRoute, SwaggerParameter("Maps's difficulty(Easy, Expert, Expert+, etc)")] string difficulty, 
-            [FromRoute, SwaggerParameter("Maps's characteristic(Standard, OneSaber, etc)")] string mode) {
+        public async Task<ActionResult<int>> GetScoreValue(string id, string hash, string difficulty, string mode) {
             int? score = await _context
                 .Scores
                 .AsNoTracking()
                 .TagWithCaller()
-                .Where(s => s.PlayerId == id && s.Leaderboard.Song.Hash == hash && s.Leaderboard.Difficulty.DifficultyName == difficulty && s.Leaderboard.Difficulty.ModeName == mode)
+                .Where(s => s.PlayerId == id && s.Leaderboard.Song.LowerHash == hash.ToLower() && s.Leaderboard.Difficulty.DifficultyName == difficulty && s.Leaderboard.Difficulty.ModeName == mode)
                 .Select(s => s.ModifiedScore)
                 .FirstOrDefaultAsync();
 
@@ -633,7 +625,7 @@ namespace BeatLeader_Server.Controllers {
                 LeaderboardId = s.Leaderboard.Id,
                 Diff = s.Leaderboard.Difficulty.DifficultyName,
                 SongName = s.Leaderboard.Song.Name,
-                Hash = s.Leaderboard.Song.Hash,
+                Hash = s.Leaderboard.Song.LowerHash,
                 Mapper = s.Leaderboard.Song.Author,
                 Mode = s.Leaderboard.Difficulty.ModeName,
                 Stars = s.Leaderboard.Difficulty.Stars,
@@ -655,7 +647,7 @@ namespace BeatLeader_Server.Controllers {
                 LeaderboardId = s.Leaderboard.Id,
                 Diff = s.Leaderboard.Difficulty.DifficultyName,
                 SongName = s.Leaderboard.Song.Name,
-                Hash = s.Leaderboard.Song.Hash,
+                Hash = s.Leaderboard.Song.LowerHash,
                 Mapper = s.Leaderboard.Song.Author,
                 Mode = s.Leaderboard.Difficulty.ModeName,
                 Stars = s.Leaderboard.Difficulty.Stars,
@@ -679,7 +671,7 @@ namespace BeatLeader_Server.Controllers {
                 LeaderboardId = s.Leaderboard.Id,
                 Diff = s.Leaderboard.Difficulty.DifficultyName,
                 SongName = s.Leaderboard.Song.Name,
-                Hash = s.Leaderboard.Song.Hash,
+                Hash = s.Leaderboard.Song.LowerHash,
                 Mapper = s.Leaderboard.Song.Author,
                 Mode = s.Leaderboard.Difficulty.ModeName,
                 Stars = s.Leaderboard.Difficulty.Stars,

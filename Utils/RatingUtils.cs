@@ -87,7 +87,7 @@ namespace BeatLeader_Server.Utils
         {
             try
             {
-                var response = await ExmachinaStars(song.Hash, diff.Value, diff.ModeName);
+                var response = await ExmachinaStars(song.LowerHash, diff.Value, diff.ModeName);
                 UpdateFromResponse(diff, response, rankChange);
 
             } catch {}

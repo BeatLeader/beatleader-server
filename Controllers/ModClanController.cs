@@ -66,7 +66,7 @@ namespace BeatLeader_Server.Controllers {
                 .Songs
                 .TagWithCallerS()
                 .AsNoTracking()
-                .Select(s => new { s.Id, s.Hash })
+                .Select(s => new { s.Id, Hash =  s.LowerHash })
                 .FirstOrDefaultAsync(s => s.Hash == hash);
             if (song == null) {
                 return result;
@@ -339,7 +339,7 @@ namespace BeatLeader_Server.Controllers {
                 .Songs
                 .TagWithCallerS()
                 .AsNoTracking()
-                .Select(s => new { Id = s.Id, Hash = s.Hash })
+                .Select(s => new { Id = s.Id, Hash = s.LowerHash })
                 .FirstOrDefaultAsync(s => s.Hash == hash);
             if (song == null) {
                 return result;

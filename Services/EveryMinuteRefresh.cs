@@ -123,7 +123,7 @@ namespace BeatLeader_Server.Services
                         {
                             var songs = eventDescription.MapOfTheDays.SelectMany(m => m.Leaderboards).Select(lb => new
                             {
-                                hash = lb.Song.Hash,
+                                hash = lb.Song.LowerHash,
                                 songName = lb.Song.Name,
                                 levelAuthorName = lb.Song.Mapper,
                                 difficulties = new List<PlaylistDifficulty> { new PlaylistDifficulty
@@ -255,7 +255,7 @@ namespace BeatLeader_Server.Services
 
                 var psongs = songs.Select(s => new
                 {
-                    hash = s.Hash,
+                    hash = s.LowerHash,
                     songName = s.Name,
                     levelAuthorName = s.Mapper,
                     difficulties = s.Difficulties.Select(d => new

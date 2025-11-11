@@ -21,7 +21,7 @@ public class SongMetadata
         new()
         {
             Id = song.Id.ToLower(),
-            Hash = song.Hash.ToLower(),
+            Hash = song.LowerHash,
             Name = song.Name.ToLower(),
             Author = song.Author.ToLower(),
             Mapper = song.Mapper.ToLower(),

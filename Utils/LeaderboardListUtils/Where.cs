@@ -102,7 +102,7 @@ public static partial class LeaderboardListUtils
         if (hashes.Count == 0 && keys.Count == 0) {
             return sequence;
         }
-        return sequence.Where(lb => (hashes.Count > 0 && hashes.Contains(lb.Song.Hash)) || (keys.Count > 0 && keys.Contains(lb.SongId)));
+        return sequence.Where(lb => (hashes.Count > 0 && hashes.Contains(lb.Song.LowerHash)) || (keys.Count > 0 && keys.Contains(lb.SongId)));
     }
 
     private static IQueryable<Leaderboard> WhereMyType(this IQueryable<Leaderboard> sequence, MyType mytype, Player? currentPlayer, LeaderboardContexts leaderboardContext = LeaderboardContexts.General)

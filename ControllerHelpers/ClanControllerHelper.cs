@@ -163,7 +163,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                     Id = cr.Leaderboard.Id,
                     Song = new SongResponse {
                         Id = cr.Leaderboard.Song.Id,
-                        Hash = cr.Leaderboard.Song.Hash,
+                        Hash = cr.Leaderboard.Song.LowerHash,
                         Name = cr.Leaderboard.Song.Name,
                         SubName = cr.Leaderboard.Song.SubName,
                         Author = cr.Leaderboard.Song.Author,
@@ -276,12 +276,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                 .Include(p => p.ProfileSettings)
                 .Include(p => p.Socials);
             if (primary) {
-                players = players
-                        .Where(p => !p.Banned && 
-                        p.Clans.OrderBy(c => ("," + p.ClanOrder + ",").IndexOf("," + c.Tag + ",") >= 0 ? ("," + p.ClanOrder + ",").IndexOf("," + c.Tag + ",") : 1000)
-                            .ThenBy(c => c.Id)
-                            .Take(1)
-                            .Any(c => c.Id == clan.Id));
+                players = players.Where(p => !p.Banned && p.TopClan != null && p.TopClan.Id == clan.Id);
             } else {
                 players = players.Where(p => !p.Banned && p.Clans.Any(c => c.Id == clan.Id));
             }
