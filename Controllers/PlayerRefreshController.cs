@@ -373,26 +373,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            Dictionary<string, int> countries = new Dictionary<string, int>();
-            var ranked = await _context.Players
-                .Where(p => p.Pp > 0 && !p.Banned)
-                .AsNoTracking()
-                .OrderByDescending(t => t.Pp)
-                .Select(p => new Player { Id = p.Id, Country = p.Country })
-                .ToListAsync();
-
-            foreach ((int i, var p) in ranked.Select((value, i) => (i, value)))
-            {
-                p.Rank = i + 1;
-                if (!countries.ContainsKey(p.Country))
-                {
-                    countries[p.Country] = 1;
-                }
-
-                p.CountryRank = countries[p.Country];
-                countries[p.Country]++;
-            }
-            await _context.BulkUpdateAsync(ranked, options => options.ColumnInputExpression = c => new { c.Rank, c.CountryRank });
+            await PlayerRefreshControllerHelper.RefreshRanks(_context);
 
             return Ok();
         }

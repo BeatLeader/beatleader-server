@@ -306,5 +306,29 @@ namespace BeatLeader_Server.ControllerHelpers {
             var players = await dbContext.Players.Select(p => new Player { AllContextsPp = p.Pp + p.ContextExtensions.Where(ce => ce.Context != LeaderboardContexts.Funny).Sum(ce => ce.Pp), Id = p.Id }).ToListAsync();
             await dbContext.BulkUpdateAsync(players, options => options.ColumnInputExpression = c => new { c.AllContextsPp });
         }
+
+        public static async Task RefreshRanks(AppContext dbContext) {
+            Dictionary<string, int> countries = new Dictionary<string, int>();
+            var ranked = await dbContext.Players
+                .Where(p => p.Pp > 0 && !p.Banned)
+                .AsNoTracking()
+                .OrderByDescending(t => t.Pp)
+                .Select(p => new Player { Id = p.Id, Country = p.Country })
+                .ToListAsync();
+
+            foreach ((int i, var p) in ranked.Select((value, i) => (i, value)))
+            {
+                p.Rank = i + 1;
+                if (!countries.ContainsKey(p.Country))
+                {
+                    countries[p.Country] = 1;
+                }
+
+                p.CountryRank = countries[p.Country];
+                countries[p.Country]++;
+            }
+            await dbContext.BulkUpdateAsync(ranked, options => options.ColumnInputExpression = c => new { c.Rank, c.CountryRank });
+            await dbContext.BulkSaveChangesAsync();
+        }
     }
 }

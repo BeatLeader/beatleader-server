@@ -486,7 +486,7 @@ namespace BeatLeader_Server.Controllers {
                     await _context.BulkSaveChangesAsync();
 
                     countryList = await _context.Players
-                        .Where(p => p.Country == country || p.Id == player.Id)
+                        .Where(p => !p.Banned && (p.Country == country || p.Id == player.Id))
                         .OrderByDescending(p => p.Pp)
                         .Select(p => new { p.Id })
                         .AsNoTracking()

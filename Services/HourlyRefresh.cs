@@ -11,6 +11,7 @@ using BeatLeader_Server.Controllers;
 using beatleader_parser;
 using Parser.Utils;
 using Parser.Map.Difficulty.V3.Grid;
+using BeatLeader_Server.ControllerHelpers;
 
 namespace BeatLeader_Server.Services {
     public class HourlyRefresh : BackgroundService {
@@ -35,6 +36,7 @@ namespace BeatLeader_Server.Services {
                         await SortChannels();
                         await RefreshClans();
                         await RefreshPlays();
+                        await RefreshRanks();
                         await FetchCurated();
                         await RefreshMapsPageEndpoints();
                         await CheckNoodleMonday();
@@ -223,6 +225,13 @@ namespace BeatLeader_Server.Services {
 
                 await _context.BulkUpdateAsync(lbs, options => options.ColumnInputExpression = c => new { c.ThisWeekPlays, c.TodayPlays });
                 await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task RefreshRanks() {
+            using (var scope = _serviceScopeFactory.CreateScope()) {
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+                await PlayerRefreshControllerHelper.RefreshRanks(_context);
             }
         }
 
