@@ -12,6 +12,7 @@ using Swashbuckle.AspNetCore.Annotations;
 using static BeatLeader_Server.Utils.ResponseUtils;
 using BeatLeader_Server.ControllerHelpers;
 using Newtonsoft.Json;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -23,18 +24,21 @@ namespace BeatLeader_Server.Controllers
         private readonly IConfiguration _configuration;
         IAmazonS3 _assetsS3Client;
         IWebHostEnvironment _environment;
+        private readonly IMemoryCache _cache;
 
         private readonly IServerTiming _serverTiming;
 
         public PlayerController(
             AppContext context,
             IDbContextFactory<AppContext> dbFactory,
+            IMemoryCache cache,
             IConfiguration configuration, 
             IServerTiming serverTiming,
             IWebHostEnvironment env)
         {
             _context = context;
             _dbFactory = dbFactory;
+            _cache = cache;
 
             _configuration = configuration;
             _serverTiming = serverTiming;
@@ -1086,8 +1090,17 @@ namespace BeatLeader_Server.Controllers
         public async Task<ActionResult<PlayersTopResponse>> TopPlayers(
             [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
         {
+            var cacheKey = $"TopPlayers_{leaderboardContext}";
+            var cachedResponse = _cache.Get<PlayersTopResponse>(cacheKey);
+            if (cachedResponse != null)
+            {
+                return cachedResponse;
+            }
+
+            PlayersTopResponse response;
+
             if (leaderboardContext == LeaderboardContexts.General) {
-                return new PlayersTopResponse { 
+                response = new PlayersTopResponse { 
                     Pp = await _context.Players.Where(p => !p.Banned).OrderByDescending(p => p.Pp).Select(p => p.Pp).FirstOrDefaultAsync(),
                     TechPp = await _context.Players.Where(p => !p.Banned).OrderByDescending(p => p.TechPp).Select(p => p.TechPp).FirstOrDefaultAsync(),
                     AccPp = await _context.Players.Where(p => !p.Banned).OrderByDescending(p => p.AccPp).Select(p => p.AccPp).FirstOrDefaultAsync(),
@@ -1097,8 +1110,8 @@ namespace BeatLeader_Server.Controllers
                     RankedPlayCount = await _context.Players.Where(p => !p.Banned).OrderByDescending(p => p.ScoreStats.RankedPlayCount).Select(p => p.ScoreStats.RankedPlayCount).FirstOrDefaultAsync(),
                 };
             } else {
-                return new PlayersTopResponse { 
-                    Pp = await _context.PlayerContextExtensions.Where(p => !p.Banned).OrderByDescending(p => p.Pp).Select(p => p.Pp).FirstOrDefaultAsync(),
+                response = new PlayersTopResponse { 
+                    Pp = await _context.PlayerContextExtensions.Where(p => !p.Banned && p.Context == leaderboardContext).OrderByDescending(p => p.Pp).Select(p => p.Pp).FirstOrDefaultAsync(),
                     TechPp = await _context.PlayerContextExtensions.Where(p => !p.Banned && p.Context == leaderboardContext).OrderByDescending(p => p.TechPp).Select(p => p.TechPp).FirstOrDefaultAsync(),
                     AccPp = await _context.PlayerContextExtensions.Where(p => !p.Banned && p.Context == leaderboardContext).OrderByDescending(p => p.AccPp).Select(p => p.AccPp).FirstOrDefaultAsync(),
                     PassPp = await _context.PlayerContextExtensions.Where(p => !p.Banned && p.Context == leaderboardContext).OrderByDescending(p => p.PassPp).Select(p => p.PassPp).FirstOrDefaultAsync(),
@@ -1107,6 +1120,9 @@ namespace BeatLeader_Server.Controllers
                     RankedPlayCount = await _context.PlayerContextExtensions.Where(p => !p.Banned && p.Context == leaderboardContext).OrderByDescending(p => p.ScoreStats.RankedPlayCount).Select(p => p.ScoreStats.RankedPlayCount).FirstOrDefaultAsync(),
                 };
             }
+
+            _cache.Set(cacheKey, response, TimeSpan.FromDays(1));
+            return response;
         }
         
         [HttpGet("~/players/top/pp")]
