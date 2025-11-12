@@ -126,21 +126,37 @@ namespace BeatLeader_Server.Controllers {
         }
 
         [HttpGet("~/metadata/u/{playerId}/{*rest}")]
-        public async Task<ActionResult> GetPlayerMeta(string playerId, string? rest = null)
+        public async Task<ActionResult> GetPlayerMeta(string playerId, string? rest = null, [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
         {
             playerId = await _context.PlayerIdToMain(playerId);
             
-            var player = await _context.Players.AsNoTracking().Where(p => p.Id == playerId).Select(p =>
-            new PlayerData
-            {
-                Name = p.Name,
-                Rank = p.Rank,
-                CountryRank = p.CountryRank,
-                CountryName = p.Country,
-                PP = p.Pp,
-                AverageRankedAccuracy = p.ScoreStats.AverageRankedAccuracy,
-                Avatar = p.Avatar
-            }).FirstOrDefaultAsync();
+            PlayerData player;
+            
+            if (leaderboardContext == LeaderboardContexts.None || leaderboardContext == LeaderboardContexts.General) {
+                player = await _context.Players.AsNoTracking().Where(p => p.Id == playerId).Select(p =>
+                new PlayerData
+                {
+                    Name = p.Name,
+                    Rank = p.Rank,
+                    CountryRank = p.CountryRank,
+                    CountryName = p.Country,
+                    PP = p.Pp,
+                    AverageRankedAccuracy = p.ScoreStats.AverageRankedAccuracy,
+                    Avatar = p.Avatar
+                }).FirstOrDefaultAsync();
+            } else {
+                player = await _context.PlayerContextExtensions.AsNoTracking().Where(p => p.PlayerId == playerId && p.Context == leaderboardContext).Select(p =>
+                new PlayerData
+                {
+                    Name = p.Name,
+                    Rank = p.Rank,
+                    CountryRank = p.CountryRank,
+                    CountryName = p.Country,
+                    PP = p.Pp,
+                    AverageRankedAccuracy = p.ScoreStats.AverageRankedAccuracy,
+                    Avatar = p.PlayerInstance.Avatar
+                }).FirstOrDefaultAsync();
+            }
             
             if (player == null)
                 return NotFound();
@@ -156,13 +172,13 @@ namespace BeatLeader_Server.Controllers {
                 description: description,
                 imageUrl: player.Avatar,
                 imageAlt: $"{player.Name} profile picture",
-                siteName: $"Player Profile - {SITE_NAME}"
+                siteName: $"Player Profile - {SITE_NAME}{(leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None ? " - " + leaderboardContext : "")}"
             ), "text/html");
         }
 
         [HttpGet("~/metadata/leaderboard/{leaderboardId}/{*rest}")]
         [HttpGet("~/metadata/leaderboard/{leaderboardType}/{leaderboardId}/{*rest}")]
-        public async Task<IActionResult> GetLeaderboardMeta(string leaderboardId, string? leaderboardType = null, string? rest = null)
+        public async Task<IActionResult> GetLeaderboardMeta(string leaderboardId, string? leaderboardType = null, string? rest = null, [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General)
         {
             var leaderboard = await _context.Leaderboards.Where(l => l.Id == leaderboardId).Select(l =>
 
@@ -189,19 +205,21 @@ namespace BeatLeader_Server.Controllers {
             descriptionBuilder.AppendLine($"Mapped by: {leaderboard.Mapper}");
             descriptionBuilder.AppendLine($"Status: {leaderboard.Status}");
             
-            if (leaderboard.PassRating.HasValue)
-                descriptionBuilder.Append($"Pass: {leaderboard.PassRating.Value:F2}★ ");
-            if (leaderboard.AccRating.HasValue)
-                descriptionBuilder.Append($"Acc: {leaderboard.AccRating.Value:F2}★ ");
-            if (leaderboard.TechRating.HasValue)
-                descriptionBuilder.Append($"Tech: {leaderboard.TechRating.Value:F2}★");
+            if (leaderboard.Status == "inevent" || leaderboard.Status == "OST" || leaderboard.Status == "ranked" || leaderboard.Status == "qualified") {
+                if (leaderboard.PassRating.HasValue)
+                    descriptionBuilder.Append($"Pass: {leaderboard.PassRating.Value:F2}★ ");
+                if (leaderboard.AccRating.HasValue)
+                    descriptionBuilder.Append($"Acc: {leaderboard.AccRating.Value:F2}★ ");
+                if (leaderboard.TechRating.HasValue)
+                    descriptionBuilder.Append($"Tech: {leaderboard.TechRating.Value:F2}★");
+            }
             
             return Content(GenerateMetaTags(
                 title: title,
                 description: descriptionBuilder.ToString(),
                 imageUrl: leaderboard.ImageUrl,
                 imageAlt: $"{leaderboard.SongName} cover",
-                siteName: $"Map - {SITE_NAME}"
+                siteName: $"Map - {SITE_NAME}{(leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None ? " - " + leaderboardContext : "")}"
             ), "text/html");
         }
 
@@ -229,7 +247,7 @@ namespace BeatLeader_Server.Controllers {
             var title = $"{score.PlayerName} on {score.SongName} by {score.Author}";
             var description = $@"
                 #{score.Rank} with {Math.Round(score.Accuracy * 100.0, 2)}%{(score.PP > 0 ? $" and {Math.Round(score.PP, 2)}pp" : "")}{(score.Mods?.Length > 0 ? $"({score.Mods})" : "")}
-                {score.DifficultyName}
+                {(score.DifficultyName == "ExpertPlus" ? "Expert+" : score.DifficultyName)}
                 submitted {GetRelativeTime(score.Timepost)}";
             
             return Content(GenerateMetaTags(
@@ -352,7 +370,7 @@ namespace BeatLeader_Server.Controllers {
                 description: description,
                 imageUrl: $"{BASE_URL}{DEFAULT_IMAGE}",
                 imageAlt: "Ranking logo",
-                siteName: SITE_NAME
+                siteName: $"{SITE_NAME}{(leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None ? " - " + leaderboardContext : "")}"
             ), "text/html");
         }
 

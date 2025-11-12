@@ -38,6 +38,8 @@ namespace BeatLeader_Server.Controllers
         private readonly IServerTiming _serverTiming;
         private readonly IReplayRecalculator? _replayRecalculator;
 
+        private readonly PreviewController _previewController;
+
         private readonly MapDownloader _downloader;
 
         private readonly IMetricFamily<IGauge> _replayLocation;
@@ -47,6 +49,7 @@ namespace BeatLeader_Server.Controllers
         public ReplayController(
             IDbContextFactory<AppContext> dbFactory,
             IDbContextFactory<StorageContext> storageFactory,
+            PreviewController previewController,
             IWebHostEnvironment env,
             IConfiguration configuration,
             IServerTiming serverTiming,
@@ -59,6 +62,7 @@ namespace BeatLeader_Server.Controllers
             _serverTiming = serverTiming;
             _s3Client = configuration.GetS3Client();
             _storageFactory = storageFactory;
+            _previewController = previewController;
 
             _replayLocation = metricFactory.CreateGauge("replay_position", "Posted replay location", new string[] { "geohash" });
             _geoHasher = new Geohash.Geohasher();
@@ -1364,6 +1368,8 @@ namespace BeatLeader_Server.Controllers
                 await SocketController.TryPublishNewScore(resultScore, dbContext);
                 await SocketController.ScoreWasAccepted(resultScore, dbContext);
 
+                await GenerateEmbedImage(resultScore, leaderboard, player);
+
                 if (leaderboard.Difficulty.Status == DifficultyStatus.ranked && 
                     resultScore.ValidContexts.HasFlag(LeaderboardContexts.General) &&
                     resultScore.Rank == 1 && 
@@ -1833,6 +1839,42 @@ namespace BeatLeader_Server.Controllers
                 }
             } catch (Exception e) {
                 Console.WriteLine($"RefreshNoteCount EXCEPTION {e}");
+            }
+        }
+
+        [NonAction]
+        private async Task GenerateEmbedImage(Score score, Leaderboard leaderboard, Player player) {
+            
+            try {
+                var scoreSelect = new PreviewController.ScoreSelect {
+                    SongId = leaderboard.SongId,
+                    CoverImage = leaderboard.Song.CoverImage,
+                    SongName = leaderboard.Song.Name,
+                    Stars = leaderboard.Difficulty.Stars,
+                    ScoreId = score.Id,
+
+                    Accuracy = score.Accuracy,
+                    PlayerId = score.PlayerId,
+                    Pp = score.Pp,
+                    Rank = score.Rank,
+                    Modifiers = score.Modifiers,
+                    FullCombo = score.FullCombo, 
+                    Difficulty = leaderboard.Difficulty.DifficultyName,
+                    ModeName = leaderboard.Difficulty.ModeName,
+                    PlayerAvatar = player.Avatar,
+                    PlayerName = player.Name, 
+                    PlayerRole = player.Role,
+                    PatreonFeatures = player.PatreonFeatures,
+                    ProfileSettings = player.ProfileSettings,
+                    ContextExtensions = score.ContextExtensions,
+                    Context = LeaderboardContexts.General
+                };
+                if (!leaderboard.Difficulty.Status.WithRating()) {
+                    scoreSelect.Stars = null;
+                }
+                await _previewController.GetFromScore(scoreSelect);
+            } catch (Exception e) {
+                Console.Write(e);
             }
         }
 
