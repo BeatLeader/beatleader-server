@@ -158,7 +158,7 @@ namespace BeatLeader_Server.Services
                     var toHistory = await _storageContext.PlayerScoreStatsHistory.Where(sh => sh.PlayerId == job.ToPlayerId).ToListAsync();
                     var fromHistory = await _storageContext.PlayerScoreStatsHistory.Where(sh => sh.PlayerId == job.FromPlayerId).ToListAsync();
 
-                    if (fromHistory.Count > toHistory.Count && fromHistory.First().Pp > 0) {
+                    if (fromHistory.Count > toHistory.Count && fromHistory.OrderByDescending(h => h.Pp).First().Pp > 0) {
                         foreach (var item in fromHistory) {
                             item.PlayerId = job.ToPlayerId;
                         }

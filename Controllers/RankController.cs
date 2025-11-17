@@ -346,6 +346,7 @@ namespace BeatLeader_Server.Controllers
                 difficulty.NominatedTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
                 await RatingUtils.UpdateFromExMachina(leaderboard, null);
+                await RatingUtils.UpdateTags(leaderboard, null);
 
                 leaderboard.Qualification = new RankQualification {
                     Timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds,

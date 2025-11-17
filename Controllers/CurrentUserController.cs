@@ -1279,6 +1279,22 @@ namespace BeatLeader_Server.Controllers {
                 currentPlayer.Mapper.Player = migrateToPlayer;
             }
 
+            if ((migrateToPlayer.RichBioTimeset == 0 && currentPlayer.RichBioTimeset != 0) || currentPlayer.RichBioTimeset > migrateToPlayer.RichBioTimeset) {
+                try {
+                    using (var stream = await _s3Client.DownloadAsset($"player-{currentPlayer.Id}-richbio-{currentPlayer.RichBioTimeset}.html"))
+                    using (var memoryStream = new MemoryStream(5)) {
+                        await stream.CopyToAsync(memoryStream);
+                        memoryStream.Position = 0;
+
+                        var fileName = $"player-{migrateToPlayer.Id}-richbio-{currentPlayer.RichBioTimeset}.html";
+                        _ = await _s3Client.UploadAsset(fileName, memoryStream);
+                        migrateToPlayer.RichBioTimeset = currentPlayer.RichBioTimeset;
+                    }
+                } catch (Exception e) {
+                    Console.WriteLine($"Bio migration exception {e}");
+                }
+            }
+
             PlayerFriends? currentPlayerFriends = await _context.Friends.Where(u => u.Id == currentPlayer.Id).Include(f => f.Friends).FirstOrDefaultAsync();
             PlayerFriends? migrateToPlayerFriends = await _context.Friends.Where(u => u.Id == migrateToPlayer.Id).Include(f => f.Friends).FirstOrDefaultAsync();
             
