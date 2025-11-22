@@ -103,7 +103,7 @@ namespace BeatLeader_Server.Utils
             } catch {}
         }
 
-        public static async Task UpdateTags(Leaderboard leaderboard, LeaderboardChange rankChange)
+        public static async Task UpdateTags(Leaderboard leaderboard, LeaderboardChange? rankChange)
         {
             try
             {
@@ -129,7 +129,9 @@ namespace BeatLeader_Server.Utils
                     default:
                         break;
                 }
-                rankChange.NewType = diff.Type;
+                if (rankChange != null) {
+                    rankChange.NewType = diff.Type;
+                }
 
             } catch {}
         }

@@ -25,6 +25,7 @@ public static class SongSearchService
 
         foreach (SongMetadata songMetadata in songs)
         {
+            songMetadata.Mapper = songMetadata.Mapper.Replace(",", " ").Replace("&", " ");
             AddToLuceneIndex(songMetadata, writer);
         }
 

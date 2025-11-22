@@ -109,7 +109,7 @@ namespace BeatLeader_Server.Controllers
             public string Hash { get; set; }
         }
 
-        class ScoreSelect {
+        public class ScoreSelect {
             public string SongId { get; set; }
             public string CoverImage { get; set; }
             public string SongName { get; set; }
@@ -178,7 +178,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        private async Task<ActionResult> GetFromScore(ScoreSelect? score, bool twitter) {
+        public async Task<ActionResult> GetFromScore(ScoreSelect? score) {
             if (score == null)
             {
                 return NotFound();
@@ -248,7 +248,7 @@ namespace BeatLeader_Server.Controllers
 
             using (_serverTiming.TimeAction("generate"))
             {
-                result = await Task.Run(() => (twitter ? _twitterEmbedGenerator : _generalEmbedGenerator).Generate(
+                result = await Task.Run(() => _twitterEmbedGenerator.Generate(
                     score.PlayerName,
                     score.SongName,
                     (score.FullCombo ? "FC" : "") + (score.Modifiers.Length > 0 ? (score.FullCombo ? ", " : "") + String.Join(", ", score.Modifiers.Split(",")) : ""),
@@ -276,7 +276,7 @@ namespace BeatLeader_Server.Controllers
             {
                 try
                 {
-                    await _s3Client.UploadPreview($"{score.ScoreId}-{(twitter ? "twitter" : "")}preview.png", ms);
+                    await _s3Client.UploadPreview($"{score.ScoreId}preview.png", ms);
                 }
                 catch { }
             }
@@ -293,19 +293,18 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? difficulty = null, 
             [FromQuery] string? mode = null,
             [FromQuery] string? link = null,
-            [FromQuery] int? scoreId = null,
-            [FromQuery] bool twitter = false) {
+            [FromQuery] int? scoreId = null) {
 
             if (scoreId != null)
             {
-                var previewUrl = await _s3Client.GetPresignedUrl($"{scoreId}-{(twitter ? "twitter" : "")}preview.png", S3Container.previews);
+                var previewUrl = await _s3Client.GetPresignedUrl($"{scoreId}preview.png", S3Container.previews);
                 if (previewUrl != null)
                 {
                     return Redirect(previewUrl);
                 }
             }
             else if (link != null) {
-                return await GetLink(link, twitter);
+                return await GetLink(link);
             }
             else
             {
@@ -364,7 +363,7 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            return await GetFromScore(score, twitter);
+            return await GetFromScore(score);
         }
 
         [HttpGet("~/preview/prerender/replay")]
@@ -374,8 +373,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? difficulty = null, 
             [FromQuery] string? mode = null,
             [FromQuery] string? link = null,
-            [FromQuery] int? scoreId = null,
-            [FromQuery] bool twitter = false) {
+            [FromQuery] int? scoreId = null) {
 
             ScoreSelect? score = null;
 
@@ -388,38 +386,10 @@ namespace BeatLeader_Server.Controllers
                         .Where(s => s.PlayerId == playerID && s.Leaderboard.Difficulty.DifficultyName == difficulty && s.Leaderboard.Difficulty.ModeName == mode);
                 
                 score = await query
-                    .Include(s => s.Player)
-                        .ThenInclude(p => p.ProfileSettings)
-                    .Include(s => s.Leaderboard)
-                        .ThenInclude(l => l.Song)
-                    .Include(s => s.Leaderboard)
-                        .ThenInclude(l => l.Difficulty)
-                    .Include(s => s.ContextExtensions)
                     .Select(s => new ScoreSelect {
                         ScoreId = s.Id,
-                        SongId = s.Leaderboard.Song.Id,
-                        ModeName = s.Leaderboard.Difficulty.ModeName,
-                        CoverImage = s.Leaderboard.Song.CoverImage,
                         SongName = s.Leaderboard.Song.Name,
-                        Stars = 
-                            (s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
-                            s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
-                            s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) ? s.Leaderboard.Difficulty.Stars : null,
-
-                        Accuracy = s.Accuracy,
-                        PlayerId = s.PlayerId,
-                        Pp = s.Pp,
-                        Rank = s.Rank,
-                        Modifiers = s.Modifiers,
-                        FullCombo = s.FullCombo,
-                        Difficulty = s.Leaderboard.Difficulty.DifficultyName,
-
-                        PlayerAvatar = s.Player.Avatar,
-                        PlayerName = s.Player.Name,
-                        PlayerRole = s.Player.Role,
-                        PatreonFeatures = s.Player.PatreonFeatures,
-                        ProfileSettings = s.Player.ProfileSettings,
-                        ContextExtensions = s.ContextExtensions
+                        PlayerName = s.Player.Name
                     })
                     .FirstOrDefaultAsync();
                 if (score == null) {
@@ -434,7 +404,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (score != null) {
-                await GetFromScore(score, twitter);
+                Get(scoreId: score.ScoreId);
             }
 
             var title = score != null ? $"Replay | {score.PlayerName} | {score.SongName}" : "Beat Saber Web Replays viewer";
@@ -444,7 +414,7 @@ namespace BeatLeader_Server.Controllers
                 ContentType = "text/html",
                 Content = $"""
                     <!DOCTYPE html>
-                    <html class="a-fullscreen shoqbzame idc0_350"><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+                    <html class="a-fullscreen shoqbzame idc0_350"><head><meta http-equiv="Content-Type" content="text/html">
                         <title>{title}</title>
                         
                         <link rel="apple-touch-icon-precomposed" sizes="57x57" href="https://replay.beatleader.com/assets/img/apple-touch-icon-57x57.png">
@@ -485,8 +455,8 @@ namespace BeatLeader_Server.Controllers
                         {(score != null ? $"""
                         <meta property="og:url" content="https://replay.beatleader.com/?scoreId={score.ScoreId}">
                         <meta property="twitter:player" content="https://replay.beatleader.com/?scoreId={score.ScoreId}">
-                        <meta property="twitter:image" content="https://api.beatleader.com/preview/replay.png?scoreId={score.ScoreId}&twitter=true">
-                        <meta property="og:image" content="https://api.beatleader.com/preview/replay.png?scoreId={score.ScoreId}{(string.Join("", (string[])Request.Headers.UserAgent).ToLower().Contains("bsky") ? "&twitter=true" : "")}">
+                        <meta property="twitter:image" content="https://api.beatleader.com/preview/replay.png?scoreId={score.ScoreId}">
+                        <meta property="og:image" content="https://api.beatleader.com/preview/replay.png?scoreId={score.ScoreId}">
                         """ : """
                         <meta property="og:url" content="https://replay.beatleader.com">
                         <meta property="twitter:player" content="https://replay.beatleader.com">
@@ -502,7 +472,7 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task<ActionResult> GetLink(string link, bool twitter) {
+        public async Task<ActionResult> GetLink(string link) {
             ReplayInfo? info = null;
 
             if (!link.EndsWith("bsor")) {
@@ -561,7 +531,7 @@ namespace BeatLeader_Server.Controllers
             score.Accuracy = (float)info.score / score.Accuracy;
             score.Modifiers = info.modifiers;
 
-            return await GetFromScore(score, twitter);
+            return await GetFromScore(score);
         }
 
         [NonAction]

@@ -205,7 +205,7 @@ namespace BeatLeader_Server.Controllers {
             descriptionBuilder.AppendLine($"Mapped by: {leaderboard.Mapper}");
             descriptionBuilder.AppendLine($"Status: {leaderboard.Status}");
             
-            if (leaderboard.Status == "inevent" || leaderboard.Status == "OST" || leaderboard.Status == "ranked" || leaderboard.Status == "qualified") {
+            if (leaderboard.Status == "inevent" || leaderboard.Status == "OST" || leaderboard.Status == "ranked" || leaderboard.Status == "qualified" || leaderboard.Status == "nominated") {
                 if (leaderboard.PassRating.HasValue)
                     descriptionBuilder.Append($"Pass: {leaderboard.PassRating.Value:F2}★ ");
                 if (leaderboard.AccRating.HasValue)
