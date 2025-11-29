@@ -32,6 +32,8 @@ public static partial class MapListUtils
                                                  float? passRatingTo = null,
                                                  float? techRatingFrom = null,
                                                  float? techRatingTo = null,
+                                                 float? duration_from = null,
+                                                 float? duration_to = null,
                                                  int? dateFrom = null,
                                                  int? dateTo = null,
                                                  DateRangeType date_range = DateRangeType.Upload,
@@ -74,6 +76,8 @@ public static partial class MapListUtils
               .WhereRatingTo(RatingType.Acc, accRatingTo)
               .WhereRatingTo(RatingType.Pass, passRatingTo)
               .WhereRatingTo(RatingType.Tech, techRatingTo)
+              .WhereDurationFrom(duration_from)
+              .WhereDurationTo(duration_to)
               .WhereDateFrom(date_range, type, dateFrom, dateTo)
               .Sort(sortBy, order, type, mytype, dateFrom, dateTo, date_range, searchId, currentPlayer, leaderboardContext);
 }

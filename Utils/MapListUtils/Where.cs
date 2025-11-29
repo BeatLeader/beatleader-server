@@ -289,6 +289,26 @@ public static partial class MapListUtils
         };
     }
 
+    private static IQueryable<SongHelper> WhereDurationFrom(this IQueryable<SongHelper> sequence, float? from)
+    {
+        if (from == null)
+        {
+            return sequence;
+        }
+
+        return sequence.Where(s => s.Song.Duration >= from);
+    }
+
+    private static IQueryable<SongHelper> WhereDurationTo(this IQueryable<SongHelper> sequence, float? to)
+    {
+        if (to == null)
+        {
+            return sequence;
+        }
+
+        return sequence.Where(s => s.Song.Duration <= to);
+    }
+
     private static IQueryable<SongHelper> WhereDateFrom(this IQueryable<SongHelper> sequence, DateRangeType rangeType, Type type, int? dateFrom, int? dateTo)
     {
         if (dateFrom == null && dateTo == null)

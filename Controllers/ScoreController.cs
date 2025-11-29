@@ -707,7 +707,7 @@ namespace BeatLeader_Server.Controllers
             IQueryable<ScoreContextExtension> query = _context
                 .ScoreContextExtensions
                 .AsNoTracking()
-                .Where(s => s.Context == context && (!s.ScoreInstance.Banned || (s.ScoreInstance.Bot && showBots)) && s.LeaderboardId == leaderboardId);
+                .Where(s => s.Context == context && (!s.Banned || (s.Bot && showBots)) && s.LeaderboardId == leaderboardId);
 
             if (scope.ToLower() == "friends")
             {
@@ -758,7 +758,7 @@ namespace BeatLeader_Server.Controllers
                 ScoreResponseWithHeadsets? highlightedScore = await query
                     .TagWithCaller()
                     .AsNoTracking()
-                    .Where(s => s.Context == context && (!s.ScoreInstance.Banned || (s.ScoreInstance.Bot && showBots)) && s.LeaderboardId == leaderboardId && s.PlayerId == player)
+                    .Where(s => s.Context == context && (!s.Banned || (s.Bot && showBots)) && s.LeaderboardId == leaderboardId && s.PlayerId == player)
                     .Select(s => new ScoreResponseWithHeadsets
                 {
                     Id = s.ScoreId != null ? (int)s.ScoreId : 0,
@@ -1462,7 +1462,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             var nominationsCount = await _context.ScoreNominations.CountAsync(n => n.PlayerId == currentId && n.Timestamp > (timestamp - 60 * 60 * 24 * 14));
-            if (nominationsCount >= 10) {
+            if (nominationsCount >= 28) {
                 return NominmationStatus.CantNominate;
             }
 
@@ -1507,7 +1507,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             var nominationsCount = await _context.ScoreNominations.CountAsync(n => n.PlayerId == currentId && n.Timestamp > (timestamp - 60 * 60 * 24 * 14));
-            if (nominationsCount >= 10) {
+            if (nominationsCount >= 28) {
                 return BadRequest("You can nominate up to 10 scores of the last 2 weeks");
             }
 

@@ -15,6 +15,7 @@ using Type = BeatLeader_Server.Enums.Type;
 using System.Security.Cryptography;
 using System.Dynamic;
 using BeatLeader_Server.ControllerHelpers;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -589,35 +590,37 @@ namespace BeatLeader_Server.Controllers
         [HttpGet("~/playlist/generate")]
         public async Task<ActionResult<string>> GetAll(
             [FromQuery] int count = 100,
-            [FromQuery] MapSortBy sortBy = MapSortBy.Stars,
-            [FromQuery] Order order = Order.Desc,
-            [FromQuery] string? search = null,
-            [FromQuery] Type type = Type.All,
-            [FromQuery] string? mode = null,
-            [FromQuery] string? difficulty = null,
-            [FromQuery] MapTypes mapType = MapTypes.None,
-            [FromQuery] Operation allTypes = Operation.Any,
-            [FromQuery] Requirements mapRequirements = Requirements.Ignore,
-            [FromQuery] Operation allRequirements = Operation.Any,
-            [FromQuery] SongStatus songStatus = SongStatus.None,
-            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            [FromQuery] SongCreator mapCreator = SongCreator.Human,
-            [FromQuery] MyType mytype = MyType.None,
-            [FromQuery] string? playlistIds = null,
-            [FromBody] List<PlaylistResponse>? playlists = null,
-            [FromQuery] float? stars_from = null,
-            [FromQuery] float? stars_to = null,
-            [FromQuery] float? accrating_from = null,
-            [FromQuery] float? accrating_to = null,
-            [FromQuery] float? passrating_from = null,
-            [FromQuery] float? passrating_to = null,
-            [FromQuery] float? techrating_from = null,
-            [FromQuery] float? techrating_to = null,
-            [FromQuery] int? date_from = null,
-            [FromQuery] int? date_to = null,
-            [FromQuery] DateRangeType date_range = DateRangeType.Upload,
-            [FromQuery] string? types = null,
-            [FromQuery] string? mappers = null,
+            [FromQuery, SwaggerParameter("Field to sort leaderboards by, default is None")] MapSortBy sortBy = MapSortBy.None,
+            [FromQuery, SwaggerParameter("Order of sorting, default is Desc")] Order order = Order.Desc,
+            [FromQuery, SwaggerParameter("Search term to filter leaderboards by song, author or mapper name")] string? search = null,
+            [FromQuery, SwaggerParameter("Type of leaderboards to filter, default is All")] Enums.Type type = Enums.Type.All,
+            [FromQuery, SwaggerParameter("Mode to filter leaderboards by (Standard, OneSaber, etc...)")] string? mode = null,
+            [FromQuery, SwaggerParameter("Difficulty to filter leaderboards by (Easy, Normal, Hard, Expert, ExpertPlus)")] string? difficulty = null,
+            [FromQuery, SwaggerParameter("Map type to filter leaderboards by")] MapTypes mapType = MapTypes.None,
+            [FromQuery, SwaggerParameter("Operation to filter all types, default is Any")] Operation allTypes = Operation.Any,
+            [FromQuery, SwaggerParameter("Requirements to filter leaderboards by, default is Ignore")] Requirements mapRequirements = Requirements.Ignore,
+            [FromQuery, SwaggerParameter("Operation to filter all requirements, default is Any")] Operation allRequirements = Operation.Any,
+            [FromQuery, SwaggerParameter("Song status to filter leaderboards by, default is None")] SongStatus songStatus = SongStatus.None,
+            [FromQuery, SwaggerParameter("Context of the leaderboard, default is General")] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
+            [FromQuery, SwaggerParameter("Map creator, human by default")] SongCreator mapCreator = SongCreator.Human,
+            [FromQuery, SwaggerParameter("My type to filter leaderboards by, default is None")] MyTypeMaps mytype = MyTypeMaps.None,
+            [FromQuery, SwaggerParameter("Minimum stars to filter leaderboards by")] float? stars_from = null,
+            [FromQuery, SwaggerParameter("Maximum stars to filter leaderboards by")] float? stars_to = null,
+            [FromQuery, SwaggerParameter("Minimum accuracy rating to filter leaderboards by")] float? accrating_from = null,
+            [FromQuery, SwaggerParameter("Maximum accuracy rating to filter leaderboards by")] float? accrating_to = null,
+            [FromQuery, SwaggerParameter("Minimum pass rating to filter leaderboards by")] float? passrating_from = null,
+            [FromQuery, SwaggerParameter("Maximum pass rating to filter leaderboards by")] float? passrating_to = null,
+            [FromQuery, SwaggerParameter("Minimum tech rating to filter leaderboards by")] float? techrating_from = null,
+            [FromQuery, SwaggerParameter("Maximum tech rating to filter leaderboards by")] float? techrating_to = null,
+            [FromQuery, SwaggerParameter("Minimum duration to filter leaderboards by in seconds")] float? duration_from = null,
+            [FromQuery, SwaggerParameter("Maximum duration to filter leaderboards by in seconds")] float? duration_to = null,
+            [FromQuery, SwaggerParameter("Start date to filter leaderboards by (timestamp)")] int? date_from = null,
+            [FromQuery, SwaggerParameter("End date to filter leaderboards by (timestamp)")] int? date_to = null,
+            [FromQuery, SwaggerParameter("Type of the date filter, default by map upload date")] DateRangeType date_range = DateRangeType.Upload,
+            [FromQuery, SwaggerParameter("Types of leaderboards to filter, default is null(All). Same as type but multiple")] string? types = null,
+            [FromQuery, SwaggerParameter("Types of leaderboards to filter, default is null(All). Same as type but multiple")] string? playlistIds = null,
+            [FromBody, SwaggerParameter("Types of leaderboards to filter, default is null(All). Same as type but multiple")] List<PlaylistResponse>? playlists = null,
+            [FromQuery, SwaggerParameter("Filter maps from a specific mappers. BeatSaver profile ID list, comma separated, default is null")] string? mappers = null,
             [FromQuery] bool duplicate_diffs = false,
             [FromQuery] string? title = null)
         {
@@ -625,45 +628,55 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized("Count is too big. 2000 max");
             }
 
-            var sequence = _context.Leaderboards.Where(lb => lb.Song.MapCreator == mapCreator);
             string? currentID = HttpContext.CurrentUserID(_context);
-            Player? currentPlayer = currentID != null ? await _context
+
+            IQueryable<Player>? currentPlayerQuery = currentID != null ? _context
                 .Players
-                .Include(p => p.ProfileSettings)
-                .FirstOrDefaultAsync(p => p.Id == currentID) : null;
+                .AsNoTracking()
+                .Include(p => p.ProfileSettings) : null;
+            if (mytype == MyTypeMaps.FriendsPlayed && currentPlayerQuery != null) {
+                currentPlayerQuery = currentPlayerQuery.Include(p => p.Friends);
+            }
 
-            int searchCount = 0;
+            Player? currentPlayer = currentPlayerQuery != null ? await currentPlayerQuery.FirstOrDefaultAsync(p => p.Id == currentID) : null;
+
             var playlistList = await LeaderboardControllerHelper.GetPlaylistList(_context, currentID, _s3Client, playlistIds, playlists);
-            sequence = sequence
-                .Filter(_context, out int? searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, date_range, mappers, playlistList, currentPlayer);
-            (sequence, int totalMatches) = await sequence.WherePage(0, count);
 
-            var diffsList = sequence.Select(s => s.Song.LowerHash).AsEnumerable().Select(((s, i) => new { Hash = s, Index = i })).DistinctBy(lb => lb.Hash);
+            var sequence = _context
+                .Songs
+                .AsNoTracking()
+                .Where(s => s.MapCreator == mapCreator)
+                .Filter(_context, out int? searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, duration_from, duration_to, date_from, date_to, date_range, mappers, playlistList, currentPlayer);
 
-            var diffsCount = diffsList.Count() == 0 ? 0 : diffsList.Take(count).Last().Index + 1;
+            var helpersList = await sequence
+                .Where(s => s.Difficulties.Any())
+                .Take(count)
+                .Select(s => new { s.Song.LowerHash, Difficulties = s.Difficulties.Select(d => new { d.DifficultyName, d.ModeName }) })
+                .ToListAsync();
 
-            sequence = sequence
-                .Include(lb => lb.Difficulty)
-                .ThenInclude(lb => lb.ModifierValues)
-                .Include(lb => lb.Song)
-                .Take(diffsCount);
+            var idsList = helpersList.Select(s => s.LowerHash).ToList();
 
-            var diffs = await sequence.Select(lb => new {
-                hash = lb.Song.LowerHash,
-                songName = lb.Song.Name,
-                levelAuthorName = lb.Song.Mapper,
-                difficulties = new List<PlaylistDifficulty> { new PlaylistDifficulty
-                    {
-                        name = lb.Difficulty.DifficultyName.FirstCharToLower(),
-                        characteristic = lb.Difficulty.ModeName
-                    }
-                }
-            }).ToListAsync();
+            var songs = await _context
+                .Songs
+                .AsNoTracking()
+                .Where(s => idsList.Contains(s.LowerHash))
+                .TagWithCallerS()
+                .Select(s => new PlaylistSong {
+                    hash = s.LowerHash,
+                    songName = s.Name,
+                    levelAuthorName = s.Mapper,
+                    difficulties = s.Leaderboards.Select(lb => new PlaylistDifficulty
+                        {
+                            name = lb.Difficulty.DifficultyName,
+                            characteristic = lb.Difficulty.ModeName
+                        }
+                    ).ToList()
+                })
+                .ToListAsync();
 
-            if (searchId != null) {
-                var searchRecords = await _context.SongSearches.Where(s => s.SearchId == searchId).ToListAsync();
-                foreach (var item in searchRecords) {
-                    _context.SongSearches.Remove(item);
+            foreach (var item in songs) {
+                foreach (var diff in item.difficulties) {
+                    diff.name = diff.name.FirstCharToLower();
                 }
             }
 
@@ -681,31 +694,45 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (duplicate_diffs) {
-                playlist.songs = diffs.Select(diff => 
-                 new
-                {
-                    hash = diff.hash,
-                    songName = diff.songName,
-                    levelAuthorName = diff.levelAuthorName,
-                    difficulties = diff.difficulties
-                }
-                ).ToList();
-            } else {
-                playlist.songs = diffs.GroupBy(s => s.hash).Select(group => 
-                 new
-                {
-                    hash = group.First().hash,
-                    songName = group.First().songName,
-                    levelAuthorName = group.First().levelAuthorName,
-                    difficulties = group.Select(s => s.difficulties.First())
-                }
-                ).ToList();
+                songs = songs.SelectMany(song => song.difficulties.Select(diff =>
+                    new PlaylistSong {
+                        hash = song.hash,
+                        songName = song.songName,
+                        levelAuthorName = song.levelAuthorName,
+                        difficulties = new List<PlaylistDifficulty> { diff }
+                    }
+                    ).ToList())
+                .ToList();
             }
             playlist.customData = new PlaylisCustomData
             {
                 owner = currentID,
                 syncURL = HttpContext.Request.GetDisplayUrl(),
             };
+
+            if (songs.Count() > 0) {
+                foreach (var song in songs) {
+                    var helper = helpersList.FirstOrDefault(s => s.LowerHash == song.hash);
+                    
+                    if (helper != null) {
+                        song.difficulties = song.difficulties.Where(diff => helper.Difficulties.Any(d => d.DifficultyName.FirstCharToLower() + d.ModeName == diff.name + diff.characteristic)).ToList();
+                    }
+                }
+
+                songs = songs.OrderBy(e => helpersList.FindIndex(s => s.LowerHash == e.hash)).ToList();
+            }
+
+            playlist.songs = songs;
+
+            if (searchId != null) {
+                HttpContext.Response.OnCompleted(async () => {
+                    var searchRecords = await _context.SongSearches.Where(s => s.SearchId == searchId).ToListAsync();
+                    foreach (var item in searchRecords) {
+                        _context.SongSearches.Remove(item);
+                    }
+                    await _context.BulkSaveChangesAsync();
+                });
+            }
 
             if (!string.IsNullOrEmpty(title))
             {

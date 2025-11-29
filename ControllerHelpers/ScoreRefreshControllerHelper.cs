@@ -28,12 +28,14 @@ namespace BeatLeader_Server.ControllerHelpers {
                     lb.Difficulty.ModifierValues,
                     lb.Difficulty.ModifiersRating,
                     lb.Difficulty.ModeName,
+                    lb.Id,
                     Scores = lb.Scores.Select(s => new { s.Id, s.Banned, s.Bot, s.LeaderboardId, s.BaseScore, s.Modifiers, s.FcAccuracy, s.ValidContexts }).ToList()
                 })
                 .AsNoTracking()
                 .ToListAsync();
 
             var changes = new List<Score>();
+            var lbChanges = new List<Leaderboard>();
             var saveChanges = async () => {
                 try {
                     await dbContext.BulkUpdateAsync(changes, options => options.ColumnInputExpression = c => new { 
@@ -49,6 +51,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                         c.Qualification,
                         c.Priority
                     });
+                    await dbContext.BulkUpdateAsync(lbChanges, options => options.ColumnInputExpression = c => new { c.Plays });
                 } catch {
                     try {
                         await dbContext.BulkUpdateAsync(changes, options => options.ColumnInputExpression = c => new { 
@@ -179,6 +182,10 @@ namespace BeatLeader_Server.ControllerHelpers {
                 }
 
                 changes.AddRange(rankedScores);
+                lbChanges.Add(new Leaderboard {
+                    Id = leaderboard.Id,
+                    Plays = rankedScores.Count
+                });
 
                 if (changes.Count > 100000) {
                     await saveChanges();

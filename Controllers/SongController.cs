@@ -78,6 +78,8 @@ namespace BeatLeader_Server.Controllers
             [FromQuery, SwaggerParameter("Maximum pass rating to filter leaderboards by")] float? passrating_to = null,
             [FromQuery, SwaggerParameter("Minimum tech rating to filter leaderboards by")] float? techrating_from = null,
             [FromQuery, SwaggerParameter("Maximum tech rating to filter leaderboards by")] float? techrating_to = null,
+            [FromQuery, SwaggerParameter("Minimum duration to filter leaderboards by in seconds")] float? duration_from = null,
+            [FromQuery, SwaggerParameter("Maximum duration to filter leaderboards by in seconds")] float? duration_to = null,
             [FromQuery, SwaggerParameter("Start date to filter leaderboards by (timestamp)")] int? date_from = null,
             [FromQuery, SwaggerParameter("End date to filter leaderboards by (timestamp)")] int? date_to = null,
             [FromQuery, SwaggerParameter("Type of the date filter, default by map upload date")] DateRangeType date_range = DateRangeType.Upload,
@@ -107,7 +109,7 @@ namespace BeatLeader_Server.Controllers
                 .Songs
                 .AsNoTracking()
                 .Where(s => s.MapCreator == mapCreator)
-                .Filter(dbContext, out int? searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, date_range, mappers, playlistList, currentPlayer);
+                .Filter(dbContext, out int? searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, duration_from, duration_to, date_from, date_to, date_range, mappers, playlistList, currentPlayer);
 
             var result = new ResponseWithMetadata<MapInfoResponse>() {
                 Metadata = new Metadata() {
@@ -339,6 +341,22 @@ namespace BeatLeader_Server.Controllers
             }
 
             var idsList = trendingMaps
+                .Select(s => s.Id)
+                .ToList();
+
+            var lbSongs = await _context
+                .Leaderboards
+                .AsNoTracking()
+                .Where(lb => idsList.Contains(lb.SongId))
+                .Select(lb => new { lb.SongId, Group = lb.LeaderboardGroup != null ? lb.LeaderboardGroup.Leaderboards.Select(l => new { SongId = l.SongId, UploadDate = l.Timestamp }).ToList() : null })
+                .ToListAsync();
+
+            foreach (var group in lbSongs.GroupBy(lb => lb.SongId)) {
+                var recentSong = group.OrderByDescending(g => g.Group.OrderByDescending(s => s.UploadDate).FirstOrDefault()?.UploadDate ?? 0).First();
+                trendingMaps.First(m => m.Id == group.Key).Id = recentSong.SongId;
+            }
+
+            idsList = trendingMaps
                 .Select(s => s.Id)
                 .ToList();
 

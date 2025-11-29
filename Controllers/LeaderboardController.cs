@@ -171,15 +171,20 @@ namespace BeatLeader_Server.Controllers {
                 scoreQuery = scoreQuery
                     .Where(s => s.Player.Clans.FirstOrDefault(c => c.Tag == clanTag.ToUpper()) != null);
             }
-            using (_serverTiming.TimeAction("scorecount")) {
-                leaderboard.Plays = await scoreQuery.CountAsync();
-            }
             using (_serverTiming.TimeAction("scorelist")) {
-            leaderboard.Scores = await scoreQuery
-                .AsSplitQuery()
+                var ids = await scoreQuery
+                .AsNoTracking()
                 .TagWithCaller()
                 .Skip((page - 1) * count)
                 .Take(count)
+                .Select(s => s.Id)
+                .ToListAsync();
+
+            var scores = await _context
+                    .Scores
+                    .AsNoTracking()
+                    .TagWithCaller()
+                    .Where(s => ids.Contains(s.Id))
                 .Select(s => new ScoreResponse {
                     Id = s.Id,
                     BaseScore = s.BaseScore,
@@ -233,6 +238,8 @@ namespace BeatLeader_Server.Controllers {
                     RankVoting = showVoters ? s.RankVoting : null,
                 })
                 .ToListAsync();
+
+                leaderboard.Scores = scores.OrderBy(s => ids.IndexOf(s.Id ?? 0)).ToList();
             }
         }
 
@@ -412,17 +419,17 @@ namespace BeatLeader_Server.Controllers {
 
             if (countries == null) {
                 if (friendsList != null) {
-                    scoreQuery = scoreQuery.Where(s => (!s.ScoreInstance.Banned || (showBots && s.ScoreInstance.Bot)) && friendsList.Contains(s.PlayerId));
+                    scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)) && friendsList.Contains(s.PlayerId));
                 } else if (voters) {
-                    scoreQuery = scoreQuery.Where(s => (!s.ScoreInstance.Banned || (showBots && s.ScoreInstance.Bot)) && s.ScoreInstance.RankVoting != null);
+                    scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)) && s.ScoreInstance.RankVoting != null);
                 } else {
-                    scoreQuery = scoreQuery.Where(s => (!s.ScoreInstance.Banned || (showBots && s.ScoreInstance.Bot)));
+                    scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)));
                 }
             } else {
                 if (friendsList != null) {
-                    scoreQuery = scoreQuery.Where(s => (!s.ScoreInstance.Banned || (showBots && s.ScoreInstance.Bot)) && friendsList.Contains(s.PlayerId) && countries.ToLower().Contains(s.Player.Country.ToLower()));
+                    scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)) && friendsList.Contains(s.PlayerId) && countries.ToLower().Contains(s.Player.Country.ToLower()));
                 } else {
-                    scoreQuery = scoreQuery.Where(s => (!s.ScoreInstance.Banned || (showBots && s.ScoreInstance.Bot)) && countries.ToLower().Contains(s.Player.Country.ToLower()));
+                    scoreQuery = scoreQuery.Where(s => (!s.Banned || (showBots && s.Bot)) && countries.ToLower().Contains(s.Player.Country.ToLower()));
                 }
             }
 
@@ -517,14 +524,22 @@ namespace BeatLeader_Server.Controllers {
                     .Where(s => s.Player.Clans.FirstOrDefault(c => c.Tag == clanTag.ToUpper()) != null);
             }
 
-            leaderboard.Plays = await scoreQuery.CountAsync();
-            leaderboard.Scores = await scoreQuery
-                .AsSplitQuery()
+            var scoreIds = await scoreQuery
+                .AsNoTracking()
                 .TagWithCaller()
                 .Skip((page - 1) * count)
                 .Take(count)
+                .Select(s => s.Id)
+                .ToListAsync();
+
+            var scores = await _context
+                .ScoreContextExtensions
+                .AsNoTracking()
+                .Where(s => scoreIds.Contains(s.Id))
+                .TagWithCaller()
                 .Select(s => new ScoreResponse {
                     Id = s.ScoreId ?? 0,
+                    OriginalId = s.Id,
                     BaseScore = s.BaseScore,
                     ModifiedScore = s.ModifiedScore,
                     PlayerId = s.PlayerId,
@@ -575,6 +590,8 @@ namespace BeatLeader_Server.Controllers {
                     RankVoting = showVoters ? s.ScoreInstance.RankVoting : null,
                 })
                 .ToListAsync();
+
+            leaderboard.Scores = scores.OrderBy(s => scoreIds.IndexOf(s.OriginalId)).ToList();
         }
 
         [HttpGet("~/leaderboard/{id}")]

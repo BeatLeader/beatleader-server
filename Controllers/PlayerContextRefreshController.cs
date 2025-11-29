@@ -194,7 +194,7 @@ namespace BeatLeader_Server.Controllers {
 
             var scoresCount = await _context.ScoreContextExtensions
                 .AsNoTracking()
-                .Where(s => s.Context == context && (!s.ScoreInstance.Banned || s.ScoreInstance.Bot) && !s.ScoreInstance.IgnoreForStats)
+                .Where(s => s.Context == context && (!s.Banned || s.Bot) && !s.ScoreInstance.IgnoreForStats)
                 .CountAsync();
 
             var allScores = new List<SubScore>();
@@ -203,7 +203,7 @@ namespace BeatLeader_Server.Controllers {
                 var sublist = await _context.ScoreContextExtensions
                     .AsNoTracking()
                     .OrderBy(s => s.Id)
-                    .Where(s => s.Context == context && (!s.ScoreInstance.Banned || s.ScoreInstance.Bot) && !s.ScoreInstance.IgnoreForStats)
+                    .Where(s => s.Context == context && (!s.Banned || s.Bot) && !s.ScoreInstance.IgnoreForStats)
                     .Skip(i)
                     .Take(1000000)
                     .Select(s => new SubScore

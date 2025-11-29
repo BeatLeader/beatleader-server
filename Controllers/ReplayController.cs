@@ -768,11 +768,12 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
+            resultScore.Bot = player.Bot;
             foreach (var ce in resultScore.ContextExtensions)
             {
                 ce.Banned = resultScore.Banned;
+                ce.Bot = resultScore.Bot;
             }
-            resultScore.Bot = player.Bot;
 
             await GeneralContextScore(dbContext, storageContext, leaderboard, player, resultScore, currentScores, replay);
 

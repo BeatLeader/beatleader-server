@@ -410,6 +410,7 @@ namespace BeatLeader_Server.Controllers
                 var query = dbContext.Leaderboards.Where(l => 
                     l.Difficulty.Status != DifficultyStatus.outdated && 
                     l.Difficulty.Status != DifficultyStatus.OST && 
+                    l.Song.Duration > 40 &&
                     !l.Song.Leaderboards.Any(ll => ll.Scores.Any(s => s.PlayerId == currentId)));
                 switch (i) {
                     case 0:
@@ -608,21 +609,21 @@ namespace BeatLeader_Server.Controllers
             var timeset = Time.UnixNow();
             for (int i = 0; i < 3; i++) {
                 var dbContext = _dbFactory.CreateDbContext();
-                var query = dbContext.Leaderboards.Where(l => !l.Song.Leaderboards.Any(ll => ll.Difficulty.Status == DifficultyStatus.outdated));
+                var query = dbContext.Leaderboards.Where(l => l.Song.MapCreator == SongCreator.Human && l.Song.Duration > 40 && !l.Song.Leaderboards.Any(ll => ll.Difficulty.Status == DifficultyStatus.outdated));
                 switch (i) {
                     case 0:
                         query = query
-                            .Where(l => l.Song.UploadTime > timeset - 60 * 60 * 24 * 30 && l.Song.MapCreator == SongCreator.Human)
+                            .Where(l => l.Song.UploadTime > timeset - 60 * 60 * 24 * 30)
                             .OrderByDescending(l => l.TodayPlays);
                         break;
                     case 1:
                         query = query
-                            .Where(l => l.Song.UploadTime > timeset - 60 * 60 * 24 * 7 && l.Song.MapCreator == SongCreator.Human)
+                            .Where(l => l.Song.UploadTime > timeset - 60 * 60 * 24 * 7)
                             .OrderByDescending(l => l.Plays);
                         break;
                     case 2:
                         query = query
-                            .Where(l => l.Song.UploadTime > timeset - 60 * 60 * 24 * 30 && l.Song.MapCreator == SongCreator.Human)
+                            .Where(l => l.Song.UploadTime > timeset - 60 * 60 * 24 * 30)
                             .OrderByDescending(l => l.PositiveVotes);
                         break;
                     default:
