@@ -1,42 +1,39 @@
-﻿using Microsoft.OpenApi.Any;
-using Microsoft.OpenApi.Models;
+﻿using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Text.Json.Nodes;
 
 namespace BeatLeader_Server.Utils {
     public class EnumSchemaFilter : ISchemaFilter
     {
-        public void Apply(OpenApiSchema schema, SchemaFilterContext context)
+        public void Apply(IOpenApiSchema schema, SchemaFilterContext context)
         {
             if (context.Type.IsEnum)
             {
                 var enumValues = Enum.GetValues(context.Type)
                     .Cast<object>()
-                    .Select(e => new OpenApiString(e.ToString().Substring(0, 1).ToLower() + e.ToString().Substring(1)))
-                    .ToList<IOpenApiAny>();
+                    .Select(e => (JsonNode)string.Concat(e.ToString().Substring(0, 1).ToLower(), e.ToString().AsSpan(1)))
+                    .ToList();
 
                 var enumIntValues = Enum.GetValues(context.Type)
                     .Cast<object>()
-                    .Select(e => new OpenApiInteger((int)e))
-                    .ToList<IOpenApiAny>();
+                    .Select(e => (JsonNode)(int)e)
+                    .ToList();
 
-                schema.OneOf = new List<OpenApiSchema>
-                    {
-                        new OpenApiSchema { Type = "integer", Enum = enumIntValues },
-                        new OpenApiSchema { Type = "string", Enum = enumValues }
-                    };
-                    schema.Type = "string"; 
-                    schema.Enum = enumValues;
+                var writeSchema = (OpenApiSchema)schema;
 
-                if (context.Type.GetCustomAttributes(typeof(FlagsAttribute), false).Any())
-                {
-                    schema.Description += "Bitmask enum. Values can be combined using bitwise OR operator.";
-                    schema.Example = new OpenApiInteger(enumIntValues
-                        .Cast<OpenApiInteger>()
-                        .Select(i => i.Value)
-                        .Aggregate((a, b) => a | b));
+                writeSchema.OneOf = new List<OpenApiSchema> {
+                    new OpenApiSchema { Type = JsonSchemaType.Integer, Enum = enumIntValues },
+                    new OpenApiSchema { Type = JsonSchemaType.String, Enum = enumValues }
+                }.ToList<IOpenApiSchema>();
+                writeSchema.Type = JsonSchemaType.String; 
+                writeSchema.Enum = enumValues;
+
+                if (context.Type.GetCustomAttributes(typeof(FlagsAttribute), false).Any()) {
+                    writeSchema.Description += "Bitmask enum. Values can be combined using bitwise OR operator.";
+                    writeSchema.Example = Enum.GetValues(context.Type)
+                        .Cast<object>()
+                        .Select(i => (int)i)
+                        .Aggregate((a, b) => a | b);
                     
                 }
             }

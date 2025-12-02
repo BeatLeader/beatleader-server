@@ -12,7 +12,6 @@ using System.Net;
 using BeatLeader_Server.Bot;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using BeatLeader_Server.Models;
-using Microsoft.OpenApi.Models;
 using System.Reflection;
 using ReplayDecoder;
 using System.Security.Cryptography.X509Certificates;
@@ -24,6 +23,7 @@ using Prometheus.Client.Collectors.ProcessStats;
 using System.Security.Claims;
 using BeatLeader_Server.Enums;
 using BeatLeader_Server.Extensions;
+using Microsoft.OpenApi;
 
 namespace BeatLeader_Server {
 
