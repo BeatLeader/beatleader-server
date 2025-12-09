@@ -610,7 +610,18 @@ namespace BeatLeader_Server.Controllers {
                 case ScoresSortBy.Rank:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Rank).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
                 case ScoresSortBy.Stars:
-                    return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.Leaderboard.Difficulty.Stars ?? 0).ToListAsync(), Math.Max(batch ?? 0.15f, 0.01f), count);
+                    return HistogramUtils.GetHistogram(order, (await sequence
+                        .Select(s => new { Stars = (showRatings || 
+                        (s.Leaderboard.Difficulty.Status != DifficultyStatus.unranked && 
+                         s.Leaderboard.Difficulty.Status != DifficultyStatus.unrankable &&
+                         s.Leaderboard.Difficulty.Status != DifficultyStatus.outdated)) ? (s.Leaderboard.Difficulty.Stars ?? 0) : 0,
+                         s.Leaderboard.Difficulty.ModifiersRating,
+                         s.Leaderboard.Difficulty.ModifierValues,
+                         s.Modifiers} )
+                        .Where(s => s.Stars > 0)
+                        .ToListAsync())
+                        .Select(s => ReplayUtils.EffectiveStarRating(s.Modifiers ?? "", s.Stars, s.ModifierValues ?? new ModifiersMap(), s.ModifiersRating))
+                        .ToList(), Math.Max(batch ?? 0.15f, 0.01f), count);
                 case ScoresSortBy.ReplaysWatched:
                     return HistogramUtils.GetHistogram(order, await sequence.Select(s => s.ReplayWatchedTotal).ToListAsync(), Math.Max((int)(batch ?? 1), 1), count);
                 case ScoresSortBy.Mistakes:
