@@ -1032,6 +1032,66 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
+        [HttpGet("~/player/{id}/officialmaps")]
+        [SwaggerOperation(Summary = "Get ranked maps this player mapped", Description = "Retrieves a list of maps this player created that later became ranked and give PP now.")]
+        [SwaggerResponse(200, "Returns brief stats about maps this player ranked, like count, total PP gained, etc...", typeof(RankedMapperResponse))]
+        [SwaggerResponse(404, "Player not found")]
+        public async Task<ActionResult<RankedMapperResponse>> GetOfficialMaps(
+            [FromRoute, SwaggerParameter("The ID of the player")] int id,
+            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
+            [FromQuery] string? sortBy = null) {
+
+            var lbs = await _context
+                .Leaderboards
+                .Where(lb =>
+                    lb.Difficulty.Status == DifficultyStatus.OST &&
+                    lb.Song.Mappers.FirstOrDefault(m => m.Id == id) != null)
+                .Select(lb => new { 
+                    Plays = leaderboardContext == LeaderboardContexts.General ? lb.Plays : lb.ContextExtensions.Where(ce => ce.Context == leaderboardContext).Count(),
+                    lb.Song.UploadTime,
+                    lb.Difficulty.Stars,
+                    lb.SongId })
+                .ToListAsync();
+
+            if (lbs.Count == 0) {
+                return NotFound();
+            }
+
+            var result = new RankedMapperResponse();
+            result.TotalMapCount = lbs.Count;
+            result.PlayersCount = lbs.Sum(lb => lb.Plays);
+
+            switch (sortBy) {
+                case "top-stars":
+                    lbs = lbs.OrderByDescending(s => s.Stars ?? 0).ToList();
+                    break;
+                case "top-played":
+                    lbs = lbs.OrderByDescending(s => s.Plays).ToList();
+                    break;
+                default:
+                    lbs = lbs.OrderByDescending(s => s.UploadTime).ToList();
+                    break;
+            }
+
+            var songIds = lbs.GroupBy(lb => lb.SongId).Take(4).Select(g => g.First().SongId).ToList();
+
+            result.Maps = 
+                (await _context
+                .Songs
+                .Where(s => songIds.Contains(s.Id))
+                .Select(s => new RankedMap {
+                    Name = s.Name,
+                    SongId = s.Id,
+                    Stars = s.Difficulties.OrderByDescending(d => d.Stars).Select(d => d.Stars).First(),
+                    Cover = s.CoverImage
+                })
+                .ToListAsync())
+                .OrderBy(s => songIds.IndexOf(s.SongId))
+                .ToList();
+
+            return result;
+        }
+
         [HttpGet("~/player/{id}/ingameavatar")]
         public async Task<ActionResult<AvatarData>> GetIngameAvatar([FromRoute] string id) {
             AvatarData? result = null;

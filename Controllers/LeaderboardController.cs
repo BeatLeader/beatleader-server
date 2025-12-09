@@ -171,6 +171,9 @@ namespace BeatLeader_Server.Controllers {
                 scoreQuery = scoreQuery
                     .Where(s => s.Player.Clans.FirstOrDefault(c => c.Tag == clanTag.ToUpper()) != null);
             }
+            using (_serverTiming.TimeAction("scorecount")) {
+                leaderboard.Plays = await scoreQuery.CountAsync();
+            }
             using (_serverTiming.TimeAction("scorelist")) {
                 var ids = await scoreQuery
                 .AsNoTracking()
@@ -524,6 +527,7 @@ namespace BeatLeader_Server.Controllers {
                     .Where(s => s.Player.Clans.FirstOrDefault(c => c.Tag == clanTag.ToUpper()) != null);
             }
 
+            leaderboard.Plays = await scoreQuery.CountAsync();
             var scoreIds = await scoreQuery
                 .AsNoTracking()
                 .TagWithCaller()
