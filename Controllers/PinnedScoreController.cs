@@ -76,18 +76,14 @@ namespace BeatLeader_Server.Controllers
                 .Include(s => s.Metadata)
                 .ToListAsync();
 
-            var attempts = new List<PlayerLeaderboardStats>();
-            if (attempt)
-            {
-                attempts = await _storageContext
-                    .PlayerLeaderboardStats
-                    .Where(s => s.PlayerId == currentPlayer.Id && (s.Id == id || s.Metadata != null))
-                    .Include(s => s.Metadata)
-                    .ToListAsync();
-            }
+            var attempts = await _storageContext
+                .PlayerLeaderboardStats
+                .Where(s => s.PlayerId == currentPlayer.Id && (s.Id == id || s.Metadata != null))
+                .Include(s => s.Metadata)
+                .ToListAsync();
 
             // Check if the score exists in either regular scores or attempts
-            bool scoreFound = scores.Any(s => s.Id == id) || attempts.Any(s => s.Id == id);
+            bool scoreFound = scores.Any(s => s.Id == id) || (attempt && attempts.Any(s => s.Id == id));
             if (!scoreFound)
             {
                 return NotFound("Score not found");
@@ -100,7 +96,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             // Get the score to pin from either regular scores or attempts
-            Score? scoreToPin = scores.FirstOrDefault(s => s.Id == id);
+            Score? scoreToPin = attempt ? null : scores.FirstOrDefault(s => s.Id == id);
             PlayerLeaderboardStats? attemptToPin = null;
             bool isAttempt = false;
             
