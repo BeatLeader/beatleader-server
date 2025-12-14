@@ -241,6 +241,7 @@ namespace BeatLeader_Server.Utils {
             }
             if (stars_from != null) {
                 sequence = sequence.Where(s => (
+                        showAllRatings ||
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) && 
@@ -248,6 +249,7 @@ namespace BeatLeader_Server.Utils {
             }
             if (stars_to != null) {
                 sequence = sequence.Where(s => (
+                        showAllRatings ||
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
                         s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) && 
