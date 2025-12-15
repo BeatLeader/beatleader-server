@@ -1014,6 +1014,17 @@ namespace BeatLeader_Server.Controllers
 
             var leaderboardId = hash == "EarthDay2025" ? hash : song.Id + Song.DiffForDiffName(diff).ToString() + modeValue.ToString();
 
+            // BeatLeader / 0.8.73 (BeatSaber/1.40.8_7379) (Oculus)
+            // PC mod 0.9.33 / 1.40.8_7379
+            var userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+            if (userAgent != null && (userAgent.Contains("BeatLeader") || userAgent.Contains("PC mod"))) {
+                var version = userAgent.Replace(" ", "").Split("/").Last().Split(")").First().Split(".").ToList();
+                if (version.Count == 3 && int.Parse(version[1]) < 40 && await _context.Leaderboards.AnyAsync(lb => lb.Id == leaderboardId && lb.Difficulty.RequiresVNJS)) {
+                    HttpContext.Features.Get<IHttpResponseFeature>().ReasonPhrase = "VNJS maps supported from 1.40";
+                    return StatusCode(418, "VNJS maps supported from 1.40");
+                }
+            }
+
             bool showBots = currentPlayer?.ProfileSettings?.ShowBots ?? false;
             LeaderboardContexts contexts = LeaderboardContexts.General;
             switch (context) {
