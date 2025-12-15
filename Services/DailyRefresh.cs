@@ -23,13 +23,19 @@ namespace BeatLeader_Server.Services
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             do {
-                int hoursUntil21 = (21 - (int)DateTime.Now.Hour + 24) % 24;
+                int hoursUntil21 = (6 - (int)DateTime.Now.Hour + 24) % 24;
 
                 if (hoursUntil21 == 0) {
                     Console.WriteLine("SERVICE-STARTED DailyRefresh");
 
                     try {
                         await CleanSearches();
+                    } catch (Exception e) {
+                        Console.WriteLine($"EXCEPTION DailyRefresh {e}");
+                    }
+
+                    try {
+                        await RebuildIndexes();
                     } catch (Exception e) {
                         Console.WriteLine($"EXCEPTION DailyRefresh {e}");
                     }
@@ -50,6 +56,7 @@ namespace BeatLeader_Server.Services
                     } catch (Exception e) {
                         Console.WriteLine($"EXCEPTION DailyRefresh {e}");
                     }
+
                     try {
                         await RefreshBanned();
                     } catch (Exception e) {
@@ -68,7 +75,7 @@ namespace BeatLeader_Server.Services
                         Console.WriteLine($"EXCEPTION DailyRefresh {e}");
                     }
 
-                    hoursUntil21 = (21 - (int)DateTime.Now.Hour + 24) % 24;
+                    hoursUntil21 = (6 - (int)DateTime.Now.Hour + 24) % 24;
 
                     Console.WriteLine("SERVICE-DONE DailyRefresh");
                 }
@@ -115,7 +122,7 @@ namespace BeatLeader_Server.Services
             public int Rank { get; set; }
         }
 
-        public static List<string> FakedStats = new List<string> { "76561198448231046", "76561198417741030", "76561198124313944", "76561198277807887", "76561198254561713", "76561198260711461", "76561198799965092", "76561199182738448" };
+        public static List<string> FakedStats = new List<string> { "76561198448231046", "76561198417741030", "76561198124313944", "76561198277807887", "76561198254561713", "76561198260711461", "76561198799965092", "76561199182738448", "76561198362093221", "76561199146620825", "76561198213935815", "76561198799965092" };
 
         public async Task<Player?> PlayerUpdates(PlayerSelect p) {
             Player? update = await PlayerUtils.GetPlayerFromSteam(_configuration.GetValue<string>("SteamApi"), p.Id, _configuration.GetValue<string>("SteamKey"));
@@ -334,6 +341,88 @@ namespace BeatLeader_Server.Services
                 }
 
                 await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task RebuildIndexes()
+        {
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+                var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+
+                _context.SongSearches.BulkDelete(_context.SongSearches);
+                _context.PlayerSearches.BulkDelete(_context.PlayerSearches);
+
+                await _context.Database.ExecuteSqlRawAsync(
+                    """
+                    SET QUOTED_IDENTIFIER ON;
+                    SET ARITHABORT ON;
+                    SET NUMERIC_ROUNDABORT OFF;
+                    SET CONCAT_NULL_YIELDS_NULL ON;
+                    SET ANSI_NULLS ON;
+                    SET ANSI_PADDING ON;
+                    SET ANSI_WARNINGS ON;
+                    
+                    DECLARE @TableName varchar(255);
+                    DECLARE @IndexName varchar(255);
+                    DECLARE @Fragmentation FLOAT;
+                    DECLARE @IndexScript varchar(255);
+                    DECLARE @DelayTime varchar(8) = '00:00:20'; -- Adjust delay time as needed
+                    
+                    DECLARE TableCursor CURSOR FOR  
+                    SELECT 
+                        dbtables.[name], 
+                        dbindexes.[name],
+                        indexstats.avg_fragmentation_in_percent 
+                    FROM 
+                        sys.dm_db_index_physical_stats (DB_ID(), NULL, NULL, NULL, NULL) AS indexstats
+                        INNER JOIN sys.tables dbtables 
+                            ON dbtables.[object_id] = indexstats.[object_id]
+                        INNER JOIN sys.schemas dbschemas 
+                            ON dbtables.[schema_id] = dbschemas.[schema_id]
+                        INNER JOIN sys.indexes AS dbindexes 
+                            ON dbindexes.[object_id] = indexstats.[object_id]
+                            AND indexstats.index_id = dbindexes.index_id
+                    WHERE 
+                        indexstats.database_id = DB_ID()
+                        AND indexstats.avg_fragmentation_in_percent >= 5.0
+                        AND indexstats.page_count > 10
+                    ORDER BY 
+                        indexstats.avg_fragmentation_in_percent DESC, -- Prioritize more fragmented indexes
+                        indexstats.page_count ASC;
+                    
+                    OPEN TableCursor;
+                    
+                    FETCH NEXT FROM TableCursor INTO
+                        @TableName,
+                        @IndexName,
+                        @Fragmentation;
+                    
+                    WHILE @@FETCH_STATUS = 0 
+                    BEGIN 
+                        IF (@Fragmentation >= 30.0)
+                            SET @IndexScript = 'ALTER INDEX ' + QUOTENAME(@IndexName) + ' ON ' + QUOTENAME(@TableName) + ' REBUILD WITH (ONLINE = ON, MAXDOP = 2)'; -- Use ONLINE option if available
+                        ELSE IF (@Fragmentation >= 5.0)
+                            SET @IndexScript = 'ALTER INDEX ' + QUOTENAME(@IndexName) + ' ON ' + QUOTENAME(@TableName) + ' REORGANIZE';
+                        ELSE
+                            SET @IndexScript = NULL;
+                    
+                        IF (@IndexScript IS NOT NULL)
+                        BEGIN
+                            RAISERROR (@IndexScript, 10, 0) WITH NOWAIT;
+                            EXEC(@IndexScript); 
+                            WAITFOR DELAY @DelayTime; -- Introduce delay between operations
+                        END
+                    
+                        FETCH NEXT FROM TableCursor INTO
+                            @TableName,
+                            @IndexName,
+                            @Fragmentation;
+                    END 
+                    
+                    CLOSE TableCursor;
+                    DEALLOCATE TableCursor;
+                    """);
             }
         }
 
