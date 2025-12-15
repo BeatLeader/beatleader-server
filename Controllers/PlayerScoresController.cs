@@ -50,7 +50,10 @@ namespace BeatLeader_Server.Controllers {
             bool showRatings,
             ScoresSortBy sortBy,
             Order order,
+            ScoresSortBy thenSortBy,
+            Order thenOrder,
             string? search,
+            bool noSearchSort,
             string? diff,
             string? mode,
             Requirements requirements,
@@ -88,7 +91,7 @@ namespace BeatLeader_Server.Controllers {
                    .Include(ce => ce.ScoreInstance)
                    .Where(t => t.PlayerId == id && t.Context == leaderboardContext)
                    .TagWithCaller();
-            (var resultQuery, int? searchId) = await query.Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, hmd, modifiers, stars_from, stars_to, acc_from, acc_to, time_from, time_to, eventId, playlists);
+            (var resultQuery, int? searchId) = await query.Filter(_context, !player.Banned, showRatings, sortBy, order, thenSortBy, thenOrder, search, noSearchSort, diff, mode, requirements, scoreStatus, type, hmd, modifiers, stars_from, stars_to, acc_from, acc_to, time_from, time_to, eventId, playlists);
             return (resultQuery, searchId, id);
         }
 
@@ -99,11 +102,14 @@ namespace BeatLeader_Server.Controllers {
         [SwaggerResponse(404, "Scores not found for the given player ID")]
         public async Task<ActionResult<ResponseWithMetadata<ScoreResponseWithMyScore>>> GetScores(
             [FromRoute, SwaggerParameter("Player's unique identifier")] string id,
-            [FromQuery, SwaggerParameter("Sorting criteria for scores, default is by 'date'")] ScoresSortBy sortBy = ScoresSortBy.Pp,
+            [FromQuery, SwaggerParameter("Sorting criteria for scores, default is by 'pp'")] ScoresSortBy sortBy = ScoresSortBy.Pp,
             [FromQuery, SwaggerParameter("Order of sorting, default is descending")] Order order = Order.Desc,
+            [FromQuery, SwaggerParameter("Additional sorting criteria for scores tied by the first sort, default is by 'date'")] ScoresSortBy thenSortBy = ScoresSortBy.Date,
+            [FromQuery, SwaggerParameter("Order of additional sorting, default is descending")] Order thenOrder = Order.Desc,
             [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
             [FromQuery, SwaggerParameter("Number of scores per page, default is 8")] int count = 8,
             [FromQuery, SwaggerParameter("Filter scores by search term in song name, author or mapper. Default is null")] string? search = null,
+            [FromQuery, SwaggerParameter("Disabled scores sort by search relevance index")] bool noSearchSort = false,
             [FromQuery, SwaggerParameter("Filter scores by map difficulty(Easy, Expert, Expert+, etc), default is null")] string? diff = null,
             [FromQuery, SwaggerParameter("Filter scores by map characteristic(Standard, OneSaber, etc), default is null")] string? mode = null,
             [FromQuery, SwaggerParameter("Filter scores by map requirements, default is 'None'")] Requirements requirements = Requirements.None,
@@ -157,7 +163,7 @@ namespace BeatLeader_Server.Controllers {
                 IQueryable<IScore>? sequence, 
                 int? searchId,
                 string userId
-            ) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, hmd, modifiers, stars_from, stars_to, acc_from, acc_to, time_from, time_to, eventId, playlistList);
+            ) = await ScoresQuery(id, currentID, showRatings, sortBy, order, thenSortBy, thenOrder, search, noSearchSort, diff, mode, requirements, scoreStatus, leaderboardContext, type, hmd, modifiers, stars_from, stars_to, acc_from, acc_to, time_from, time_to, eventId, playlistList);
             if (sequence == null) {
                 return NotFound();
             }
@@ -395,9 +401,12 @@ namespace BeatLeader_Server.Controllers {
             [FromBody, SwaggerParameter("Types of leaderboards to filter, default is null(All). Same as type but multiple")] List<PlaylistResponse>? playlists = null,
             [FromQuery, SwaggerParameter("Sorting criteria for scores, default is by 'date'")] ScoresSortBy sortBy = ScoresSortBy.Date,
             [FromQuery, SwaggerParameter("Order of sorting, default is descending")] Order order = Order.Desc,
+            [FromQuery, SwaggerParameter("Additional sorting criteria for scores tied by the first sort")] ScoresSortBy thenSortBy = ScoresSortBy.Date,
+            [FromQuery, SwaggerParameter("Order of additional sorting, default is descending")] Order thenOrder = Order.Desc,
             [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
             [FromQuery, SwaggerParameter("Number of scores per page, default is 8")] int count = 8,
             [FromQuery, SwaggerParameter("Filter scores by search term in song name, author or mapper. Default is null")] string? search = null,
+            [FromQuery, SwaggerParameter("Disabled scores sort by search relevance index")] bool noSearchSort = false,
             [FromQuery, SwaggerParameter("Filter scores by map difficulty(Easy, Expert, Expert+, etc), default is null")] string? diff = null,
             [FromQuery, SwaggerParameter("Filter scores by map characteristic(Standard, OneSaber, etc), default is null")] string? mode = null,
             [FromQuery, SwaggerParameter("Filter scores by map requirements, default is 'None'")] Requirements requirements = Requirements.None,
@@ -434,7 +443,7 @@ namespace BeatLeader_Server.Controllers {
             }
 
             var playlistList = await LeaderboardControllerHelper.GetPlaylistList(_context, currentID, _s3Client, playlistIds, playlists);
-            (IQueryable<IScore>? sequence, int? searchId, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, hmd, modifiers, stars_from, stars_to, acc_from, acc_to, time_from, time_to, eventId, playlistList);
+            (IQueryable<IScore>? sequence, int? searchId, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, thenSortBy, thenOrder, search, noSearchSort, diff, mode, requirements, scoreStatus, leaderboardContext, type, hmd, modifiers, stars_from, stars_to, acc_from, acc_to, time_from, time_to, eventId, playlistList);
 
             if (sequence == null) {
                 return NotFound();
@@ -527,8 +536,11 @@ namespace BeatLeader_Server.Controllers {
             string id,
             [FromQuery] ScoresSortBy sortBy = ScoresSortBy.Date,
             [FromQuery] Order order = Order.Desc,
+            [FromQuery] ScoresSortBy thenSortBy = ScoresSortBy.Date,
+            [FromQuery] Order thenOrder = Order.Desc,
             [FromQuery] int count = 8,
             [FromQuery] string? search = null,
+            [FromQuery] bool noSearchSort = false,
             [FromQuery] string? diff = null,
             [FromQuery] string? mode = null,
             [FromQuery] Requirements requirements = Requirements.None,
@@ -577,7 +589,7 @@ namespace BeatLeader_Server.Controllers {
 
             var playlistList = await LeaderboardControllerHelper.GetPlaylistList(_context, currentID, _s3Client, playlistIds, playlists);
 
-            (IQueryable<IScore>? sequence, int? searchId, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, leaderboardContext, type, hmd, modifiers, stars_from, stars_to, acc_from, acc_to, time_from, time_to, eventId, playlistList);
+            (IQueryable<IScore>? sequence, int? searchId, string userId) = await ScoresQuery(id, currentID, showRatings, sortBy, order, thenSortBy, thenOrder, search, noSearchSort, diff, mode, requirements, scoreStatus, leaderboardContext, type, hmd, modifiers, stars_from, stars_to, acc_from, acc_to, time_from, time_to, eventId, playlistList);
             if (sequence == null) {
                 return NotFound();
             }

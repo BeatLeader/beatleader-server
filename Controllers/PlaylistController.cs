@@ -749,7 +749,10 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string playerId = "1",
             [FromQuery] ScoresSortBy sortBy = ScoresSortBy.Date,
             [FromQuery] Order order = Order.Desc,
+            [FromQuery, SwaggerParameter("Additional sorting criteria for scores tied by the first sort, default is by 'date'")] ScoresSortBy thenSortBy = ScoresSortBy.Date,
+            [FromQuery, SwaggerParameter("Order of additional sorting, default is descending")] Order thenOrder = Order.Desc,
             [FromQuery] string? search = null,
+            [FromQuery, SwaggerParameter("Disabled scores sort by search relevance index")] bool noSearchSort = false,
             [FromQuery] string? diff = null,
             [FromQuery] DifficultyStatus? type = null,
             [FromQuery] string? mode = null,
@@ -805,7 +808,7 @@ namespace BeatLeader_Server.Controllers
                    .TagWithCaller();
 
             (IQueryable<IScore> sequence, int? searchId) = await query
-                .Filter(_context, !player.Banned, false, sortBy, order, search, diff, mode, requirements, ScoreFilterStatus.None, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId); 
+                .Filter(_context, !player.Banned, false, sortBy, order, thenSortBy, thenOrder, search, noSearchSort, diff, mode, requirements, ScoreFilterStatus.None, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId); 
 
             if (await sequence.CountAsync() == 0) { return NotFound(); }
 

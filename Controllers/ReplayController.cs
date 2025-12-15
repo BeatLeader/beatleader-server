@@ -1752,7 +1752,7 @@ namespace BeatLeader_Server.Controllers
                     var scores = await dbContext
                         .Scores
                         .AsNoTracking()
-                        .Where(s => s.PlayerId == playerId && s.ValidForGeneral)
+                        .Where(s => s.PlayerId == playerId && s.ValidForGeneral && !s.IgnoreForStats)
                         .Select(s => new { s.Rank, s.Leaderboard.Difficulty.Status })
                         .ToListAsync();
 
@@ -1788,7 +1788,7 @@ namespace BeatLeader_Server.Controllers
                     var scores = await dbContext
                         .ScoreContextExtensions
                         .AsNoTracking()
-                        .Where(s => s.PlayerId == playerId && s.Context == context)
+                        .Where(s => s.PlayerId == playerId && s.Context == context && !s.ScoreInstance.IgnoreForStats)
                         .Select(s => new { s.Rank, s.Leaderboard.Difficulty.Status })
                         .ToListAsync();
 

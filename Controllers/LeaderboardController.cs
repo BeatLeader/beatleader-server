@@ -740,6 +740,8 @@ namespace BeatLeader_Server.Controllers {
                     Njs  = l.Difficulty.Njs,
                     Nps  = l.Difficulty.Nps,
                     Notes  = l.Difficulty.Notes,
+                    Chains = l.Difficulty.Chains,
+                    Sliders = l.Difficulty.Sliders,
                     Bombs  = l.Difficulty.Bombs,
                     Walls  = l.Difficulty.Walls,
                     MaxScore = l.Difficulty.MaxScore,

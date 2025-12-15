@@ -11,6 +11,96 @@ namespace BeatLeader_Server.Utils {
         Suspicious = 1
     }
     public static class ScoreListUtils {
+        public static IOrderedQueryable<IScore> OrderBySearch(
+            this IQueryable<IScore> sequence,
+            int searchId) {
+            return sequence.OrderByDescending(s => s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score);
+        }
+
+        public static IOrderedQueryable<IScore> ThenOrderScores(
+            this IOrderedQueryable<IScore> sequence,
+            ScoresSortBy sortBy,
+            Order order,
+            bool isScoreQuery,
+            bool showAllRatings) {
+            switch (sortBy) {
+                case ScoresSortBy.Date:
+                    return sequence.ThenOrder(order, t => t.Timepost);
+                case ScoresSortBy.Pp:
+                    return sequence.ThenOrder(order, t => t.Pp);
+                case ScoresSortBy.AccPP:
+                    return sequence.ThenOrder(order, t => t.AccPP);
+                case ScoresSortBy.PassPP:
+                    return sequence.ThenOrder(order, t => t.PassPP);
+                case ScoresSortBy.TechPP:
+                    return sequence.ThenOrder(order, t => t.TechPP);
+                case ScoresSortBy.Acc:
+                    return sequence.ThenOrder(order, t => t.Accuracy);
+                case ScoresSortBy.Pauses:
+                    if (isScoreQuery) {
+                        return sequence.ThenOrder(order, t => t.Pauses);
+                    } else {
+                        return sequence.ThenOrder(order, t => t.ScoreInstance.Pauses);
+                    }
+                case ScoresSortBy.PlayCount:
+                    if (isScoreQuery) {
+                        return sequence.ThenOrder(order, t => t.PlayCount);
+                    } else {
+                        return sequence.ThenOrder(order, t => t.ScoreInstance.PlayCount);
+                    }
+                case ScoresSortBy.LastTryTime:
+                    if (isScoreQuery) {
+                        return sequence.ThenOrder(order, t => t.LastTryTime);
+                    } else {
+                        return sequence.ThenOrder(order, t => t.ScoreInstance.LastTryTime);
+                    }
+                case ScoresSortBy.Rank:
+                    return sequence.ThenOrder(order, t => t.Rank);
+                case ScoresSortBy.ScoreValue:
+                    return sequence.ThenOrder(order, t => t.ModifiedScore);
+                case ScoresSortBy.MaxStreak:
+                    if (isScoreQuery) {
+                        return sequence.ThenOrder(order, t => t.MaxStreak);
+                    } else {
+                        return sequence.ThenOrder(order, t => t.ScoreInstance.MaxStreak);
+                    }
+                case ScoresSortBy.Timing:
+                    if (isScoreQuery) {
+                        return sequence.ThenOrder(order, t => (t.LeftTiming + t.RightTiming) / 2);
+                    } else {
+                        return sequence.ThenOrder(order, t => (t.ScoreInstance.LeftTiming + t.ScoreInstance.RightTiming) / 2);
+                    }
+                case ScoresSortBy.Stars:
+                    return sequence.ThenOrder(order, s => 
+                        showAllRatings || 
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
+                        s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked 
+                        ? s.ModifiedStars
+                        : 0);
+                case ScoresSortBy.Mistakes:
+                    if (isScoreQuery) {
+                        return sequence.ThenOrder(order, t => t.Mistakes);
+                    } else {
+                        return sequence.ThenOrder(order, t => t.ScoreInstance.Mistakes);
+                    }
+                case ScoresSortBy.ReplaysWatched:
+                    if (isScoreQuery) {
+                        return sequence.ThenOrder(order, t => t.ReplayWatchedTotal);
+                    } else {
+                        return sequence.ThenOrder(order, t => t.ScoreInstance.ReplayWatchedTotal);
+                    }
+                case ScoresSortBy.SotwNominations:
+                    if (isScoreQuery) {
+                        return sequence.ThenOrder(order, t => t.SotwNominations);
+                    } else {
+                        return sequence.ThenOrder(order, t => t.ScoreInstance.SotwNominations);
+                    }
+                default:
+                    return sequence;
+            }
+        }
+
         public static async Task<(IQueryable<IScore>, int?)> Filter(
             this IQueryable<IScore> sequence,
             AppContext context,
@@ -18,7 +108,10 @@ namespace BeatLeader_Server.Utils {
             bool showAllRatings,
             ScoresSortBy sortBy = ScoresSortBy.Date,
             Order order = Order.Desc,
+            ScoresSortBy thenSortBy = ScoresSortBy.Date,
+            Order thenOrder = Order.Desc,
             string? search = null,
+            bool noSearchSort = false,
             string? diff = null,
             string? mode = null,
             Requirements requirements = Requirements.None,
@@ -34,8 +127,10 @@ namespace BeatLeader_Server.Utils {
             int? time_to = null,
             int? eventId = null,
             List<PlaylistResponse>? playlists = null) {
-            IOrderedQueryable<IScore>? orderedSequence = null;
+            
             int? searchId = null;
+            bool isScoreQuery = sequence is IQueryable<Score>;
+
             if (search != null) {
                 List<SongMetadata> matches = SongSearchService.Search(search);
                 Random rnd = new Random();
@@ -54,164 +149,25 @@ namespace BeatLeader_Server.Utils {
 
                 IEnumerable<string> ids = matches.Select(songMetadata => songMetadata.Id);
 
-                if (sequence is IQueryable<Score>) {
+                if (isScoreQuery) {
                     sequence = (IQueryable<Score>)(((IQueryable<Score>)sequence).Where(s => ids.Contains(s.Leaderboard.SongId)));
                 } else {
                     sequence = sequence.Where(s => ids.Contains(s.Leaderboard.SongId));
                 }
             }
-            switch (sortBy) {
-                case ScoresSortBy.Date:
-                    orderedSequence = sequence
-                        .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                        .ThenOrder(order, t => t.Timepost);
-                    break;
-                case ScoresSortBy.Pp:
-                    orderedSequence = sequence
-                        .Where(t => t.Pp > 0)
-                        .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                        .ThenOrder(order, t => t.Pp);
-                    break;
-                case ScoresSortBy.AccPP:
-                    orderedSequence = sequence
-                        .Where(t => t.Pp > 0)
-                        .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                        .ThenOrder(order, t => t.AccPP);
-                    break;
-                case ScoresSortBy.PassPP:
-                    orderedSequence = sequence
-                        .Where(t => t.Pp > 0)
-                        .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                        .ThenOrder(order, t => t.PassPP);
-                    break;
-                case ScoresSortBy.TechPP:
-                    orderedSequence = sequence
-                        .Where(t => t.Pp > 0)
-                        .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                        .ThenOrder(order, t => t.TechPP);
-                    break;
-                case ScoresSortBy.Acc:
-                    orderedSequence = sequence
-                        .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                        .ThenOrder(order, t => t.Accuracy);
-                    break;
-                case ScoresSortBy.Pauses:
-                    if (sequence is IQueryable<Score>) {
-                        orderedSequence = sequence
-                            .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                            .ThenOrder(order, t => t.Pauses);
-                    } else {
-                        orderedSequence = sequence
-                            .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                            .ThenOrder(order, t => t.ScoreInstance.Pauses);
-                    }
-                    break;
-                case ScoresSortBy.PlayCount:
-                    if (sequence is IQueryable<Score>) {
-                        orderedSequence = sequence
-                            .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                            .ThenOrder(order, t => t.PlayCount);
-                    } else {
-                        orderedSequence = sequence
-                            .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                            .ThenOrder(order, t => t.ScoreInstance.PlayCount);
-                    }
-                    break;
-                case ScoresSortBy.LastTryTime:
-                    if (sequence is IQueryable<Score>) {
-                        orderedSequence = sequence
-                            .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                            .ThenOrder(order, t => t.LastTryTime);
-                    } else {
-                        orderedSequence = sequence
-                            .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                            .ThenOrder(order, t => t.ScoreInstance.LastTryTime);
-                    }
-                    break;
-                case ScoresSortBy.Rank:
-                    orderedSequence = sequence
-                        .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                        .ThenOrder(order, t => t.Rank);
-                    break;
-                case ScoresSortBy.ScoreValue:
-                    orderedSequence = sequence
-                        .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                        .ThenOrder(order, t => t.ModifiedScore);
-                    break;
-                case ScoresSortBy.MaxStreak:
-                    if (sequence is IQueryable<Score>) {
-                        orderedSequence = sequence
-                            .Where(s => !s.IgnoreForStats && s.MaxStreak != null)
-                            .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                            .ThenOrder(order, t => t.MaxStreak);
-                    } else {
-                        orderedSequence = sequence
-                            .Where(s => !s.ScoreInstance.IgnoreForStats && s.ScoreInstance.MaxStreak != null)
-                            .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                            .ThenOrder(order, t => t.ScoreInstance.MaxStreak);
-                    }
-                    break;
-                case ScoresSortBy.Timing:
-                    if (sequence is IQueryable<Score>) {
-                        orderedSequence = sequence
-                            .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                            .ThenOrder(order, t => (t.LeftTiming + t.RightTiming) / 2);
-                    } else {
-                        orderedSequence = sequence
-                            .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                            .ThenOrder(order, t => (t.ScoreInstance.LeftTiming + t.ScoreInstance.RightTiming) / 2);
-                    }
-                    break;
-                case ScoresSortBy.Stars:
-                    orderedSequence = sequence
-                        .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                        .ThenOrder(order, s => 
-                        showAllRatings || 
-                        s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
-                        s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
-                        s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked 
-                        ? s.ModifiedStars
-                        : 0);
-                    break;
-                case ScoresSortBy.Mistakes:
-                    if (sequence is IQueryable<Score>) {
-                        orderedSequence = sequence
-                            .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                            .ThenOrder(order, t => t.Mistakes);
-                    } else {
-                        orderedSequence = sequence
-                            .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                            .ThenOrder(order, t => t.ScoreInstance.Mistakes);
-                    }
-                    break;
-                case ScoresSortBy.ReplaysWatched:
-                    if (sequence is IQueryable<Score>) {
-                        orderedSequence = sequence
-                            .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                            .ThenOrder(order, t => t.ReplayWatchedTotal);
-                    } else {
-                        orderedSequence = sequence
-                            .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                            .ThenOrder(order, t => t.ScoreInstance.ReplayWatchedTotal);
-                    }
-                    break;
-                case ScoresSortBy.SotwNominations:
-                    if (sequence is IQueryable<Score>) {
-                        orderedSequence = sequence
-                            .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                            .ThenOrder(order, t => t.SotwNominations);
-                    } else {
-                        orderedSequence = sequence
-                            .OrderByDescending(s => searchId != null ? s.Leaderboard.Song.Searches.FirstOrDefault(s => s.SearchId == searchId)!.Score : 0)
-                            .ThenOrder(order, t => t.ScoreInstance.SotwNominations);
-                    }
-                    break;
-                default:
-                    break;
+
+            if (sortBy == ScoresSortBy.Pp || sortBy == ScoresSortBy.AccPP || sortBy == ScoresSortBy.PassPP || sortBy == ScoresSortBy.TechPP) {
+                sequence = sequence.Where(t => t.Pp > 0);
             }
-            if (orderedSequence != null) {
-                sequence = orderedSequence.ThenByDescending(s => s.Timepost);
+
+            if (sortBy == ScoresSortBy.MaxStreak) {
+                if (isScoreQuery) {
+                    sequence = sequence.Where(s => !s.IgnoreForStats && s.MaxStreak != null);
+                } else {
+                    sequence = sequence.Where(s => !s.ScoreInstance.IgnoreForStats && s.ScoreInstance.MaxStreak != null);
+                }
             }
+            
             if (eventId != null) {
                 var leaderboardIds = await context.EventRankings.Where(e => e.Id == eventId).Include(e => e.Leaderboards).Select(e => e.Leaderboards.Select(lb => lb.Id)).FirstOrDefaultAsync();
                 if (leaderboardIds?.Count() != 0) {
@@ -317,7 +273,10 @@ namespace BeatLeader_Server.Utils {
               sequence = sequence.WherePlaylists(playlists);
             }
 
-            return (sequence, searchId);
+            IOrderedQueryable<IScore> orderedSequence = searchId != null && !noSearchSort ? OrderBySearch(sequence, searchId ?? 0) : sequence.OrderBy(s => 0);
+            orderedSequence = orderedSequence.ThenOrderScores(sortBy, order, isScoreQuery, showAllRatings).ThenOrderScores(thenSortBy, thenOrder, isScoreQuery, showAllRatings);
+
+            return (orderedSequence, searchId);
         }
 
 

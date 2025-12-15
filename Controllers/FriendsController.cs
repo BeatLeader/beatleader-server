@@ -37,9 +37,12 @@ namespace BeatLeader_Server.Controllers {
         public async Task<ActionResult<ResponseWithMetadata<ScoreResponseWithMyScore>>> FriendsScores(
             [FromQuery, SwaggerParameter("Sorting criteria for scores, default is by 'date'")] ScoresSortBy sortBy = ScoresSortBy.Date,
             [FromQuery, SwaggerParameter("Order of sorting, default is descending")] Order order = Order.Desc,
+            [FromQuery, SwaggerParameter("Additional sorting criteria for scores tied by the first sort, default is by 'date'")] ScoresSortBy thenSortBy = ScoresSortBy.Date,
+            [FromQuery, SwaggerParameter("Order of additional sorting, default is descending")] Order thenOrder = Order.Desc,
             [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
             [FromQuery, SwaggerParameter("Number of scores per page, default is 8")] int count = 8,
             [FromQuery, SwaggerParameter("Filter scores by search term in song name, author or mapper. Default is null")] string? search = null,
+            [FromQuery, SwaggerParameter("Disabled scores sort by search relevance index")] bool noSearchSort = false,
             [FromQuery, SwaggerParameter("Filter scores by map difficulty(Easy, Expert, Expert+, etc), default is null")] string? diff = null,
             [FromQuery, SwaggerParameter("Filter scores by map characteristic(Standard, OneSaber, etc), default is null")] string? mode = null,
             [FromQuery, SwaggerParameter("Filter scores by map requirements, default is 'None'")] Requirements requirements = Requirements.None,
@@ -79,7 +82,7 @@ namespace BeatLeader_Server.Controllers {
                     .Include(f => f.Friends)
                     .FirstOrDefaultAsync();
 
-                (sequence, searchId) = await sequence.Filter(_context, !player.Banned, showRatings, sortBy, order, search, diff, mode, requirements, scoreStatus, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId);
+                (sequence, searchId) = await sequence.Filter(_context, !player.Banned, showRatings, sortBy, order, thenSortBy, thenOrder, search, noSearchSort, diff, mode, requirements, scoreStatus, type, hmd, modifiers, stars_from, stars_to, time_from, time_to, eventId);
 
                 var friendsList = new List<string> { player.Id };
                 if (friends != null) {
