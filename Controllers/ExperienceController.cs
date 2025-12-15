@@ -71,6 +71,44 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        [HttpGet("~/experience/levels")]
+        [SwaggerOperation(Summary = "Reset the current player level and prestige", Description = "Reset the current logged in player level and prestige")]
+        [SwaggerResponse(200, "Successful prestige")]
+        [SwaggerResponse(400, "Player is already max prestige")]
+        [SwaggerResponse(404, "Player not found")]
+        public async Task<ActionResult<ICollection<PrestiegeLevel>>> PrestiegeLevels()
+        {
+            return await _context.PrestiegeLevels.OrderBy(l => l.Level).ToListAsync();
+        }
+
+        [HttpPost("~/experience/levels")]
+        public async Task<ActionResult> UpdateLevels(
+            [FromQuery] int level,
+            [FromQuery] string smallIcon,
+            [FromQuery] string bigIcon)
+        {
+            string currentID = HttpContext.CurrentUserID(_context);
+            var currentPlayer = await _context.Players.FindAsync(currentID);
+
+            if (currentPlayer == null || (!currentPlayer.Role.Contains("admin") && !currentPlayer.Role.Contains("creator")))
+            {
+                return Unauthorized();
+            }
+
+            var prestiegeLevel = await _context.PrestiegeLevels.Where(p => p.Level == level).FirstOrDefaultAsync();
+            if (prestiegeLevel == null) {
+                prestiegeLevel = new PrestiegeLevel {
+                    Level = level
+                };
+                _context.PrestiegeLevels.Add(prestiegeLevel);
+            }
+            prestiegeLevel.SmallIcon = smallIcon;
+            prestiegeLevel.BigIcon = bigIcon;
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
         [HttpPost("~/experience/set/level")]
         public async Task<ActionResult> SetLevel([FromQuery] int newValue)
         {

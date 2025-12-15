@@ -124,6 +124,7 @@ namespace BeatLeader_Server
         public DbSet<ScoreExternalStatus> ScoreExternalStatus { get; set; }
         public DbSet<ScheduledEventMap> ScheduledEventMaps { get; set; }
         public DbSet<MapOfTheDay> MapOfTheDay { get; set; }
+        public DbSet<PrestiegeLevel> PrestiegeLevels { get; set; }
         public void RejectChanges()
         {
             foreach (var entry in ChangeTracker.Entries())
