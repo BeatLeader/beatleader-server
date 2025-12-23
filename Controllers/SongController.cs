@@ -58,7 +58,10 @@ namespace BeatLeader_Server.Controllers
             [FromQuery, SwaggerParameter("Number of leaderboards per page, default is 10")] int count = 10,
             [FromQuery, SwaggerParameter("Field to sort leaderboards by, default is None")] MapSortBy sortBy = MapSortBy.None,
             [FromQuery, SwaggerParameter("Order of sorting, default is Desc")] Order order = Order.Desc,
+            [FromQuery, SwaggerParameter("Secondary sorting criteria for maps with the same value for the first sorting")] MapSortBy thenSortBy = MapSortBy.Timestamp,
+            [FromQuery, SwaggerParameter("Secondary order of sorting for maps with the same value for the first sorting")] Order thenOrder = Order.Desc,
             [FromQuery, SwaggerParameter("Search term to filter leaderboards by song, author or mapper name")] string? search = null,
+            [FromQuery, SwaggerParameter("Disabled maps sort by search relevance index")] bool noSearchSort = false,
             [FromQuery, SwaggerParameter("Type of leaderboards to filter, default is All")] Enums.Type type = Enums.Type.All,
             [FromQuery, SwaggerParameter("Mode to filter leaderboards by (Standard, OneSaber, etc...)")] string? mode = null,
             [FromQuery, SwaggerParameter("Difficulty to filter leaderboards by (Easy, Normal, Hard, Expert, ExpertPlus)")] string? difficulty = null,
@@ -109,7 +112,7 @@ namespace BeatLeader_Server.Controllers
                 .Songs
                 .AsNoTracking()
                 .Where(s => s.MapCreator == mapCreator)
-                .Filter(dbContext, out int? searchId, sortBy, order, search, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, duration_from, duration_to, date_from, date_to, date_range, mappers, playlistList, currentPlayer);
+                .Filter(dbContext, out int? searchId, sortBy, order, thenSortBy, thenOrder, search, noSearchSort, type, types, mode, difficulty, mapType, allTypes, mapRequirements, allRequirements, songStatus, leaderboardContext, mytype, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, duration_from, duration_to, date_from, date_to, date_range, mappers, playlistList, currentPlayer);
 
             var result = new ResponseWithMetadata<MapInfoResponse>() {
                 Metadata = new Metadata() {
@@ -352,8 +355,10 @@ namespace BeatLeader_Server.Controllers
                 .ToListAsync();
 
             foreach (var group in lbSongs.GroupBy(lb => lb.SongId)) {
-                var recentSong = group.OrderByDescending(g => g.Group.OrderByDescending(s => s.UploadDate).FirstOrDefault()?.UploadDate ?? 0).First();
-                trendingMaps.First(m => m.Id == group.Key).Id = recentSong.SongId;
+                var recentSong = group.OrderByDescending(g => g.Group?.OrderByDescending(s => s.UploadDate).FirstOrDefault()?.UploadDate ?? 0).First().Group?.OrderByDescending(s => s.UploadDate).FirstOrDefault();
+                if (recentSong != null) {
+                    trendingMaps.First(m => m.Id == group.Key).Id = recentSong.SongId;
+                }
             }
 
             idsList = trendingMaps

@@ -42,6 +42,7 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Page number for pagination, default is 1")] int page = 1,
             [FromQuery, SwaggerParameter("Number of scores per page, default is 8")] int count = 8,
             [FromQuery, SwaggerParameter("Filter scores by search term in song name, author or mapper. Default is null")] string? search = null,
+            [FromQuery, SwaggerParameter("Disabled scores sort by search relevance index")] bool noSearchSort = false,
             [FromQuery, SwaggerParameter("Filter scores by map difficulty(Easy, Expert, Expert+, etc), default is null")] string? diff = null,
             [FromQuery, SwaggerParameter("Filter scores by map characteristic(Standard, OneSaber, etc), default is null")] string? mode = null,
             [FromQuery, SwaggerParameter("Filter scores by map requirements, default is 'None'")] Requirements mapRequirements = Requirements.None,
@@ -98,7 +99,7 @@ namespace BeatLeader_Server.Controllers {
 
             var playlistList = await LeaderboardControllerHelper.GetPlaylistList(_context, userId, _s3Client, playlistIds, playlists);
 
-            (sequence, int? searchId, int? scoreCount) = await sequence.FilterAll(_context, true, showRatings, sortBy, order, thenSortBy, thenOrder, search, diff, mode, mapRequirements, allRequirements, scoreStatus, type, mapType, allTypes, hmd, modifiers, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, eventId, mappers, players, playlistList);
+            (sequence, int? searchId, int? scoreCount) = await sequence.FilterAll(_context, true, showRatings, sortBy, order, thenSortBy, thenOrder, search, noSearchSort, diff, mode, mapRequirements, allRequirements, scoreStatus, type, mapType, allTypes, hmd, modifiers, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, eventId, mappers, players, playlistList);
 
             var scoreIds = leaderboardContext == LeaderboardContexts.General 
                 ? (await sequence.Skip((page - 1) * count).Take(count).Select(s => s.Id).ToListAsync()).Where(id => id != null).ToList()

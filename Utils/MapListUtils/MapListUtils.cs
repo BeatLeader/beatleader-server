@@ -12,7 +12,10 @@ public static partial class MapListUtils
                                                  out int? searchId,
                                                  MapSortBy sortBy = MapSortBy.None,
                                                  Order order = Order.Desc,
+                                                 MapSortBy thenSortBy = MapSortBy.None,
+                                                 Order thenOrder = Order.Desc,
                                                  string? search = null,
+                                                 bool noSearchSort = false,
                                                  Type type = Type.All,
                                                  string? types = null,
                                                  string? mode = null,
@@ -79,5 +82,5 @@ public static partial class MapListUtils
               .WhereDurationFrom(duration_from)
               .WhereDurationTo(duration_to)
               .WhereDateFrom(date_range, type, dateFrom, dateTo)
-              .Sort(sortBy, order, type, mytype, dateFrom, dateTo, date_range, searchId, currentPlayer, leaderboardContext);
+              .Sort(sortBy, order, thenSortBy, thenOrder, type, mytype, dateFrom, dateTo, date_range, noSearchSort ? null : searchId, currentPlayer, leaderboardContext);
 }
