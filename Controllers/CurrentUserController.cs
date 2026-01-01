@@ -513,6 +513,9 @@ namespace BeatLeader_Server.Controllers {
                 }
             }
 
+            var ip = Request.HttpContext.GetIpAddress();
+            Console.WriteLine($"UPDATE_USER {userId} {ip}");
+
             string? fileName = null;
             try {
                 var ms = new MemoryStream(5);
@@ -1719,6 +1722,9 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] int? duration = null,
             [FromQuery] bool? bot = null) {
             string userId = GetId();
+
+            var ip = Request.HttpContext.GetIpAddress();
+            Console.WriteLine($"UPDATE_USER {userId} {ip}");
 
             var player = await _context
                 .Players

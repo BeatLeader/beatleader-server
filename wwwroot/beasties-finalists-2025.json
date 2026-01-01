@@ -1,0 +1,2174 @@
+﻿[
+  {
+    "name": {
+      "en": "Best OST/DLC Map",
+      "jp": "オフィシャルマップ・オブ・ザ・イヤー (Best OST/DLC Map)"
+    },
+    "description": {
+      "en": "Let's take a moment to shine some light on the great work that our community-turned-official mappers have done and celebrate the best official map made in 2025.",
+      "jp": "最高の公式譜面。コミュニティとして公式マッパーの作品も見て、今年最高の公式譜面も祝いましょう。"
+    },
+    "internalName": "Gen-OST",
+    "finalists": [
+      {
+        "name": "Master of Puppets",
+        "artist": "Metallica",
+        "mapper": "Zakka, Freek, Syndicate, Narwall, Kolezan, altrewin, ETAN, AaltopahWi",
+        "id": "Master of Puppets",
+        "type": "3",
+        "iconHash": "3-Master of Puppets"
+      },
+      {
+        "name": "Enter Sandman",
+        "artist": "Metallica",
+        "mapper": "Zakka & AaltopahWi",
+        "id": "Enter Sandman",
+        "type": "3",
+        "iconHash": "3-Enter Sandman"
+      },
+      {
+        "name": "Blackened",
+        "artist": "Metallica",
+        "mapper": "Syndicate, AaltopahWi, Narwall, ETAN",
+        "id": "Blackened",
+        "type": "3",
+        "iconHash": "3-Blackened"
+      },
+      {
+        "name": "Danger",
+        "artist": "Teminite, Boom Kitty",
+        "mapper": "altrewin",
+        "id": "Danger",
+        "type": "3",
+        "iconHash": "3-Danger"
+      },
+      {
+        "name": "Espresso",
+        "artist": "Sabrina Carpenter",
+        "mapper": "ETAN",
+        "id": "Espresso",
+        "type": "3",
+        "iconHash": "3-Espresso"
+      },
+      {
+        "name": "The Master II: Blades Of Chaos",
+        "artist": "Teminite x Boom Kitty",
+        "mapper": "altrewin",
+        "id": "The Master II: Blades Of Chaos",
+        "type": "3",
+        "iconHash": "3-The Master II Blades Of Chaos"
+      },
+      {
+        "name": "Badly (feat. VIVI ZENA)",
+        "artist": "Camellia",
+        "mapper": "Narwall, AaltopahWi, Syndicate, ETAN",
+        "id": "Badly (feat. VIVI ZENA)",
+        "type": "3",
+        "iconHash": "3-Badly (feat VIVI ZENA)"
+      },
+      {
+        "name": "STARLIGHT (feat. juu)",
+        "artist": "dark cat",
+        "mapper": "AaltopahWi, Kolezan",
+        "id": "STARLIGHT (feat. juu)",
+        "type": "3",
+        "iconHash": "3-STARLIGHT (feat juu)"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best Non-Standard Map",
+      "jp": "ベスト・ノンスタンダードマップ(Best Non-Standard Map)"
+    },
+    "description": {
+      "en": "This category celebrates the best of non-standard characteristics: One Saber, No Arrows, and 360/90-Degree maps. (Maps must actually use the alt characteristic and not mods to simulate.)",
+      "jp": "このカテゴリーは、Standard難易度ではない譜面を表彰します。つまりワンセイバー、ノーアロー（全部ドットノーツの譜面）、360/90度譜面が対象です。"
+    },
+    "internalName": "Gen-NonStandard",
+    "finalists": [
+      {
+        "name": "I want You ~Twinkle★Twinkle Sunshine",
+        "artist": "Lin-G",
+        "mapper": "Fuyakeru",
+        "id": "48ba7",
+        "type": "0",
+        "iconHash": "0-48ba7",
+        "diff": "ExpertPlus",
+        "char": "OneSaber"
+      },
+      {
+        "name": "Time Paradox",
+        "artist": "Shinra-Bansho",
+        "mapper": "Ken_Monogatari",
+        "id": "4c5ee",
+        "type": "0",
+        "iconHash": "0-4c5ee",
+        "diff": "ExpertPlus",
+        "char": "OneSaber"
+      },
+      {
+        "name": "Genius [Low Squat][1 Saber]",
+        "artist": "LSD",
+        "mapper": "Scarladore & Irahi",
+        "id": "4985c",
+        "type": "0",
+        "iconHash": "0-4985c",
+        "diff": "ExpertPlus",
+        "char": "OneSaber"
+      },
+      {
+        "name": "Sacrifice",
+        "artist": "G.E.M",
+        "mapper": "RateGyro",
+        "id": "4b575",
+        "type": "0",
+        "iconHash": "0-4b575",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Remember Me",
+        "artist": "d4vd",
+        "mapper": "MadChase",
+        "id": "430fd",
+        "type": "0",
+        "iconHash": "0-430fd",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best Full Spread Map",
+      "jp": "ベスト・フルスプレッドマップ(Best Full Spread Map)"
+    },
+    "description": {
+      "en": "This map has something for players at every level and does it with style and masterful mapping. To qualify, the map must have all five true difficulties — Easy, Normal, Hard, Expert, ExpertPlus.",
+      "jp": "フルスプレッドとはEasy、Normal、Hard、Expert、Expert+の5難易度全て用意された譜面のこと。各難易度はあらゆるレベルのプレーヤーが楽しめる内容であり、全てが高い技術でマッピングされていなくてはなりません。"
+    },
+    "internalName": "Gen-FullSpread",
+    "finalists": [
+      {
+        "name": "Slash Inferno",
+        "artist": "Teminite x Boom Kitty x Waterflame",
+        "mapper": "D7oomyAli x Undeceiver",
+        "id": "49cac",
+        "type": "0",
+        "iconHash": "0-49cac"
+      },
+      {
+        "name": "Holy Knight",
+        "artist": "Eyemedia",
+        "mapper": "Cush",
+        "id": "42690",
+        "type": "0",
+        "iconHash": "0-42690"
+      },
+      {
+        "name": "Kokoro Yohou",
+        "artist": "covered by Nonono Nono",
+        "mapper": "Ken_Monogatari",
+        "id": "481aa",
+        "type": "0",
+        "iconHash": "0-481aa"
+      },
+      {
+        "name": "Enigma",
+        "artist": "Pixel Terror & Aviella",
+        "mapper": "Teuflum",
+        "id": "479d7",
+        "type": "0",
+        "iconHash": "0-479d7"
+      },
+      {
+        "name": "Show",
+        "artist": "Ado",
+        "mapper": "nitronik.exe",
+        "id": "436ca",
+        "type": "0",
+        "iconHash": "0-436ca"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best Vanilla Lightshow",
+      "jp": "ベスト・バニラライトショー (Best Vanilla Lightshow)"
+    },
+    "description": {
+      "en": "The Best Vanilla Lights use ONLY base game V1 and V2 lighting mechanics and not only perfectly represent the music, but also add that ‘WOW’ factor when playing.",
+      "jp": "最高のバニラライト。modを使用せずV1及びV2ライティングシステムのみを使用し、音楽を完璧に表現するだけでなく、プレイ中に心揺さぶるライティングを実現します。"
+    },
+    "internalName": "Lightshow-Vanilla",
+    "finalists": [
+      {
+        "name": "Promise",
+        "artist": "M2U",
+        "mapper": "Psyc0pathic",
+        "id": "47d2d",
+        "type": "0",
+        "iconHash": "0-47d2d"
+      },
+      {
+        "name": "Shut Up and Dance (Radio Edit)",
+        "artist": "Kitten & The Hip",
+        "mapper": "Andynak",
+        "id": "459d5",
+        "type": "0",
+        "iconHash": "0-459d5"
+      },
+      {
+        "name": "Running",
+        "artist": "Ruben",
+        "mapper": "Noveliniel",
+        "id": "47190",
+        "type": "0",
+        "iconHash": "0-47190"
+      },
+      {
+        "name": "Kura Kura",
+        "artist": "Ado",
+        "mapper": "symphonic",
+        "id": "4b2eb",
+        "type": "0",
+        "iconHash": "0-4b2eb"
+      },
+      {
+        "name": "Roaring 20s",
+        "artist": "Panic! At The Disco",
+        "mapper": "SameDach",
+        "id": "4b2dd",
+        "type": "0",
+        "iconHash": "0-4b2dd"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best Vanilla+ Lightshow",
+      "jp": "ベスト・バニラ＋ライトショー (Best Vanilla+ Lightshow)"
+    },
+    "description": {
+      "en": "This category highlights maps that make amazing use of the new enhanced V3 lighting system available when using the new Official Editor.",
+      "jp": "公式エディターのV3ライティングシステムを使用した譜面。いわゆるV3ライトの譜面。"
+    },
+    "internalName": "Lightshow-VanillaPlus",
+    "finalists": [
+      {
+        "name": "SOARING HIGH",
+        "artist": "Walras & Bombei.exe",
+        "mapper": "Alice",
+        "id": "43042",
+        "type": "0",
+        "iconHash": "0-43042"
+      },
+      {
+        "name": "Spiderwebs",
+        "artist": "No Doubt",
+        "mapper": "Grizlor",
+        "id": "463f1",
+        "type": "0",
+        "iconHash": "0-463f1"
+      },
+      {
+        "name": "Nautilus",
+        "artist": "Creo",
+        "mapper": "Pashankie",
+        "id": "49402",
+        "type": "0",
+        "iconHash": "0-49402"
+      },
+      {
+        "name": "No Salvation",
+        "artist": "SWARM",
+        "mapper": "OneSpookyBoi",
+        "id": "4aa2c",
+        "type": "0",
+        "iconHash": "0-4aa2c"
+      },
+      {
+        "name": "The Abyss of Despair",
+        "artist": "Laur",
+        "mapper": "ZeCube",
+        "id": "4b27e",
+        "type": "0",
+        "iconHash": "0-4b27e"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best Chroma Lightshow",
+      "jp": "ベスト・Chromaライトショー (Best Chroma Lightshow)"
+    },
+    "description": {
+      "en": "The Best Chroma Lighting category is full of any and all light shows that might make you drop the Full Combo to marvel at the beauty in the background using RGB color, precise component control, and Light ID.",
+      "jp": "Chroma modによる、フルRGBカラー、巧みなリング・レーザー制御、Light IDを使用して、ライティングの美しさに驚嘆したくなるような譜面。"
+    },
+    "internalName": "Lightshow-Chroma",
+    "finalists": [
+      {
+        "name": "MAAD CITY",
+        "artist": "Kendrick Lamar",
+        "mapper": "Tsunami_Pro",
+        "id": "4c9c5",
+        "type": "0",
+        "iconHash": "0-4c9c5"
+      },
+      {
+        "name": "Final Boss",
+        "artist": "Naeleck & Hige Driver",
+        "mapper": "ImChloe",
+        "id": "49e7f",
+        "type": "0",
+        "iconHash": "0-49e7f"
+      },
+      {
+        "name": "Digital Hallucination",
+        "artist": "OR3O",
+        "mapper": "THMX",
+        "id": "493d6",
+        "type": "0",
+        "iconHash": "0-493d6"
+      },
+      {
+        "name": "Elevatia",
+        "artist": "Bossfight",
+        "mapper": "x-mens",
+        "id": "4235d",
+        "type": "0",
+        "iconHash": "0-4235d"
+      },
+      {
+        "name": "Offset",
+        "artist": "Sad Keyboard Guy",
+        "mapper": "vOid",
+        "id": "48544",
+        "type": "0",
+        "iconHash": "0-48544"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best Chroma+ Lightshow",
+      "jp": "ベスト・Chroma+ライトショー (Best Chroma+ Lightshow)"
+    },
+    "description": {
+      "en": "Chroma+ adds environment enhancement to the overall chroma toolbox to create custom experiences that are out of this world.",
+      "jp": "Chromaの基本機能に加えてEnvironment Enhancementやアニメーションを活用し、この世のものとは思えない新しい体験をさせてくれる譜面。"
+    },
+    "internalName": "Lightshow-ChromaPlus",
+    "finalists": [
+      {
+        "name": "Raised by Bats",
+        "artist": "Aurelio Voltaire",
+        "mapper": "Craedien",
+        "id": "4ad7e",
+        "type": "0",
+        "iconHash": "0-4ad7e"
+      },
+      {
+        "name": "Show",
+        "artist": "Ado",
+        "mapper": "nitronik.exe",
+        "id": "436ca",
+        "type": "0",
+        "iconHash": "0-436ca"
+      },
+      {
+        "name": "GOODRAGE",
+        "artist": "EBIMAYO、KEIGO KOBUCHI",
+        "mapper": "Removable DIsk C",
+        "id": "453f8",
+        "type": "0",
+        "iconHash": "0-453f8"
+      },
+      {
+        "name": "mumei",
+        "artist": "Nanashi Mumei",
+        "mapper": "nasafrasa",
+        "id": "453ba",
+        "type": "0",
+        "iconHash": "0-453ba"
+      },
+      {
+        "name": "burlap scars",
+        "artist": "wishlane",
+        "mapper": "Phøenix",
+        "id": "453ab",
+        "type": "0",
+        "iconHash": "0-453ab"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best Vivify Lightshow",
+      "jp": "ベスト・Vivify・ライトショー (Best Vivify Lightshow)"
+    },
+    "description": {
+      "en": "This category takes custom experiences to a whole new level with jaw dropping art. Who needs gameplay when you have visuals like this? Chroma and Noodle are allowed but the focus is Vivify.",
+      "jp": "芸術を通して開いた口が塞がらなくなるような体験をさせてくれるカテゴリー。こんなに美しいビジュアルがあればゲームプレイなんて関係ない！ChromaとNoodle Extensionsの使用も許可されておりますが、主にVivifyに焦点を当てたカテゴリー。"
+    },
+    "internalName": "Lightshow-Vivify",
+    "finalists": [
+      {
+        "name": "743+Aether*✧ . * 111} + , .",
+        "artist": "Jaron",
+        "mapper": "Swifter",
+        "id": "4968d",
+        "type": "0",
+        "iconHash": "0-4968d"
+      },
+      {
+        "name": "End Times",
+        "artist": "Andrew Prahlow",
+        "mapper": "Chaimzy",
+        "id": "43a24",
+        "type": "0",
+        "iconHash": "0-43a24"
+      },
+      {
+        "name": "Yoi Okashi to Warui Okashi",
+        "artist": "Asatsumei",
+        "mapper": "Elecast",
+        "id": "43a4b",
+        "type": "0",
+        "iconHash": "0-43a4b"
+      },
+      {
+        "name": "HYPERCLOCKED",
+        "artist": "Schwank",
+        "mapper": "SaltyFish",
+        "id": "48a37",
+        "type": "0",
+        "iconHash": "0-48a37"
+      },
+      {
+        "name": "Turret Orchestra",
+        "artist": "Portal 2",
+        "mapper": "MadChase, Xentha",
+        "id": "4a2b3",
+        "type": "0",
+        "iconHash": "0-4a2b3"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best BeatLeader Ranked Map Below 8 Stars",
+      "jp": "ベスト・BeatLeaderランクマップ・星８以下"
+    },
+    "description": {
+      "en": "The best BeatLeader Ranked Map Below 8 Stars embodies top-notch mapping principles and is fine-tuned through rigorous quality checks and adjustments. It strikes the perfect balance between accessibility and challenge, making it an excellent choice for intermediate players looking to develop their skills.",
+      "jp": "最高のBeatLeaderランクマップ 星8以下の中で最高のものは、一流のマッピング原則に従い、繰り返される厳格な品質チェックと調整によって作り上げられています。挑戦しやすく、難易度的にも完璧なバランスを実現しており、スキルの向上を目指す一般プレイヤーにとって最適な選択肢です。"
+    },
+    "internalName": "Ranked-BLLessThan8",
+    "finalists": [
+      {
+        "name": "Birds of Time",
+        "artist": "Enna Alouette x PrettyPatterns",
+        "mapper": "The Lunar Carver",
+        "id": "42282",
+        "type": "0",
+        "iconHash": "0-42282",
+        "diff": "Normal",
+        "char": "Standard"
+      },
+      {
+        "name": "Lay Down",
+        "artist": "Priestess",
+        "mapper": "Uncouth",
+        "id": "46e4f",
+        "type": "0",
+        "iconHash": "0-46e4f",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Astrum",
+        "artist": "Yooh",
+        "mapper": "Serephor",
+        "id": "48445",
+        "type": "0",
+        "iconHash": "0-48445",
+        "diff": "Expert",
+        "char": "Standard"
+      },
+      {
+        "name": "Nobody's Christmas!",
+        "artist": "Yuzuki Choco",
+        "mapper": "Poochy",
+        "id": "427e6",
+        "type": "0",
+        "iconHash": "0-427e6",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "doodle",
+        "artist": "Zachz Winner",
+        "mapper": "BurntSandwich",
+        "id": "43615",
+        "type": "0",
+        "iconHash": "0-43615",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best BeatLeader Ranked Map 8-12 Stars",
+      "jp": "ベスト・BeatLeaderランクマップ・星８-12"
+    },
+    "description": {
+      "en": "The best BeatLeader Ranked Map 8-12 Stars exemplifies top-tier mapping practices, refined through rigorous quality checks and adjustments. It strikes the perfect balance of challenge and fun, making it an excellent choice for advanced players looking to test their skills.",
+      "jp": "最高のBeatLeaderランクマップ星 8-12 の中で最高のものは、トップレベルのマッピングの技術やマッピング原則に従っており、繰り返される厳格な品質チェックと調整によって作り上げられています。挑戦と楽しさの完璧なバランスを実現しており、自分をチャレンジしたい中級プレイヤーにとって最適な選択肢です。"
+    },
+    "internalName": "Ranked-BL8To12",
+    "finalists": [
+      {
+        "name": "Renegade (We Never Run)",
+        "artist": "Stefflon Don, Raja Kumari",
+        "mapper": "Pleo",
+        "id": "440c1",
+        "type": "0",
+        "iconHash": "0-440c1",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Into Dust",
+        "artist": "Noisia",
+        "mapper": "Undeceiver",
+        "id": "46395",
+        "type": "0",
+        "iconHash": "0-46395",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Higher Than the Sky",
+        "artist": "Chroma",
+        "mapper": "GalaxyMaster",
+        "id": "44178",
+        "type": "0",
+        "iconHash": "0-44178",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "One More",
+        "artist": "S3RL, Atef",
+        "mapper": "Blackjack",
+        "id": "48374",
+        "type": "0",
+        "iconHash": "0-48374",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Saishuu Kichiku Imouto Flandre-S",
+        "artist": "beatMARIO",
+        "mapper": "ViSi",
+        "id": "3ff31",
+        "type": "0",
+        "iconHash": "0-3ff31",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best BeatLeader Ranked Map 12+ Stars",
+      "jp": "ベスト・BeatLeaderランクマップ・星12以上"
+    },
+    "description": {
+      "en": "The best BeatLeader Ranked Map 12+ Stars exemplifies top-tier mapping techniques, refined through rigorous quality checks and adjustments. It provides a thrilling challenge for highly skilled players looking to push their limits.",
+      "jp": "最高のBeatLeaderランクマップ星12以上の中で最高のものは、トップレベルのマッピングの技術やマッピング原則に従っており、繰り返される厳格な品質チェックと調整によって作り上げられています。自分の限界に挑戦したい上級プレイヤーにスリルを感じさせてくれるチャレンジを提供します。"
+    },
+    "internalName": "Ranked-BL12Plus",
+    "finalists": [
+      {
+        "name": "MELANCHOLY passing into MANIA",
+        "artist": "The Quick Brown Fox & Klippa",
+        "mapper": "ob1cb & RetrX",
+        "id": "47dcd",
+        "type": "0",
+        "iconHash": "0-47dcd",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Rushiest Rush",
+        "artist": "Camellia",
+        "mapper": "3psilon9",
+        "id": "42148",
+        "type": "0",
+        "iconHash": "0-42148",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "ATTACK FROM MANDRAKE",
+        "artist": "Camellia",
+        "mapper": "shrado",
+        "id": "43bda",
+        "type": "0",
+        "iconHash": "0-43bda",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Vortex",
+        "artist": "kochikok",
+        "mapper": "ViSi",
+        "id": "42fd0",
+        "type": "0",
+        "iconHash": "0-42fd0",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Dies Irae",
+        "artist": "OZIGIRI",
+        "mapper": "Voidless",
+        "id": "4277a",
+        "type": "0",
+        "iconHash": "0-4277a",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best ScoreSaber Ranked Map Below 8 Stars",
+      "jp": "ベスト・ScoreSaberランクマップ・星８以下"
+    },
+    "description": {
+      "en": "The best ScoreSaber Ranked Map Below 8 Stars embodies top-notch mapping principles and is fine-tuned through rigorous quality checks and adjustments. It strikes the perfect balance between accessibility and challenge, making it an excellent choice for intermediate players looking to develop their skills.",
+      "jp": "最高のScoreSaberランクマップ 星8 以下の中で最高のものは、一流のマッピング原則に従い、繰り返される厳格な品質チェックと調整によって作り上げられています。挑戦しやすく、難易度的にも完璧なバランスを実現しており、スキルの向上を目指す一般プレイヤーにとって最適な選択肢です。"
+    },
+    "internalName": "Ranked-SSLessThan8",
+    "finalists": [
+      {
+        "name": "God Is a Dancer",
+        "artist": "Tiësto & Mabel",
+        "mapper": "Taddus",
+        "id": "422a5",
+        "type": "0",
+        "iconHash": "0-422a5",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Gold Rush",
+        "artist": "Emma Stevens",
+        "mapper": "Dereknalox123",
+        "id": "420b7",
+        "type": "0",
+        "iconHash": "0-420b7",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Tic! Tac! Toe!",
+        "artist": "TAK x Corbin",
+        "mapper": "yabje",
+        "id": "4523d",
+        "type": "0",
+        "iconHash": "0-4523d",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "ETA",
+        "artist": "NewJeans",
+        "mapper": "Hener",
+        "id": "4178f",
+        "type": "0",
+        "iconHash": "0-4178f",
+        "diff": "Hard",
+        "char": "Standard"
+      },
+      {
+        "name": "Lover Online",
+        "artist": "NOTD & Maia Wright",
+        "mapper": "Tranch",
+        "id": "44c1b",
+        "type": "0",
+        "iconHash": "0-44c1b",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best ScoreSaber Ranked Map 8-12 Stars",
+      "jp": "ベスト・ScoreSaberランクマップ・星８-12"
+    },
+    "description": {
+      "en": "The best ScoreSaber Ranked Map 8-12 Stars exemplifies top-tier mapping practices, refined through rigorous quality checks and adjustments. It strikes the perfect balance of challenge and fun, making it an excellent choice for advanced players looking to test their skills.",
+      "jp": "最高のScoreSaberランクマップ星8-12の中で最高のものは、トップレベルのマッピングの技術やマッピング原則に従っており、繰り返される厳格な品質チェックと調整によって作り上げられています。挑戦と楽しさの完璧なバランスを実現しており、自分をチャレンジしたい中級プレイヤーにとって最適な選択肢です。"
+    },
+    "internalName": "Ranked-SS8To12",
+    "finalists": [
+      {
+        "name": "HYPER4ID",
+        "artist": "t+pazolite",
+        "mapper": "VoltageO",
+        "id": "3fd94",
+        "type": "0",
+        "iconHash": "0-3fd94",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Gangnam Style",
+        "artist": "PSY",
+        "mapper": "Aquaflee",
+        "id": "4341d",
+        "type": "0",
+        "iconHash": "0-4341d",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Locals (Girls like us)",
+        "artist": "underscores",
+        "mapper": "RetrX",
+        "id": "42b11",
+        "type": "0",
+        "iconHash": "0-42b11",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Ultrasonic Anthem",
+        "artist": "t+pazolite",
+        "mapper": "Mayple",
+        "id": "444b5",
+        "type": "0",
+        "iconHash": "0-444b5",
+        "diff": "Expert",
+        "char": "Standard"
+      },
+      {
+        "name": "Theatore Creatore",
+        "artist": "Toby Fox & Camellia",
+        "mapper": "Nolanimations",
+        "id": "46c3b",
+        "type": "0",
+        "iconHash": "0-46c3b",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best ScoreSaber Ranked Map 12+ Stars",
+      "jp": "ベスト・ScoreSaberランクマップ・星12以上"
+    },
+    "description": {
+      "en": "The best ScoreSaber Ranked Map 12+ Stars exemplifies top-tier mapping techniques, refined through rigorous quality checks and adjustments. It provides a thrilling challenge for highly skilled players looking to push their limits.",
+      "jp": "最高のScoreSaberランクマップ星12以上の中で最高のものは、トップレベルのマッピングの技術やマッピング原則に従っており、繰り返される厳格な品質チェックと調整によって作り上げられています。自分の限界に挑戦したい上級プレイヤーにスリルを感じさせてくれるチャレンジを提供します。"
+    },
+    "internalName": "Ranked-SS12Plus",
+    "finalists": [
+      {
+        "name": "Operation: Zenithfall",
+        "artist": "Camellia",
+        "mapper": "yabje",
+        "id": "45d97",
+        "type": "0",
+        "iconHash": "0-45d97",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Garakuta Doll Play",
+        "artist": "t+pazolite",
+        "mapper": "ComplexFrequency & kizuflux",
+        "id": "482bd",
+        "type": "0",
+        "iconHash": "0-482bd",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Medicine",
+        "artist": "Sasuke Haraguchi",
+        "mapper": "Hener",
+        "id": "40e10",
+        "type": "0",
+        "iconHash": "0-40e10",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Man's First Inhibition",
+        "artist": "NGHTMRE & ZHU",
+        "mapper": "Aquaflee",
+        "id": "480c0",
+        "type": "0",
+        "iconHash": "0-480c0",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "QUATTUORUX",
+        "artist": "Tanchiky & D-D-Dice",
+        "mapper": "Azurii",
+        "id": "41c67",
+        "type": "0",
+        "iconHash": "0-41c67",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best Balanced Map",
+      "jp": "ベスト・バランスマップ(Best Balanced Map)"
+    },
+    "description": {
+      "en": "Look in the sky! Is it a tech map? Is it a dance map? Is it a speed map? WE DON'T KNOW! The Best Balanced Style Map is the mutt of the neighborhood - a little of this, a little of that - all combining into one fantastic map.",
+      "jp": "この譜面はテック？ダンス？スピード？バランスマップはどのジャンルにも当てはまらず、しかしどのジャンルの要素も少しずつ持ち合わせていて、全てが素晴らしいバランスで1つの譜面として完成されている譜面です。"
+    },
+    "internalName": "Style-Balanced",
+    "finalists": [
+      {
+        "name": "Party Time",
+        "artist": "Teminite",
+        "mapper": "Avexus",
+        "id": "43119",
+        "type": "0",
+        "iconHash": "0-43119",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Gold Rush",
+        "artist": "Emma Stevens",
+        "mapper": "Dereknalox123",
+        "id": "420b7",
+        "type": "0",
+        "iconHash": "0-420b7",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Hard Times",
+        "artist": "Paramore",
+        "mapper": "VoltageO",
+        "id": "49a95",
+        "type": "0",
+        "iconHash": "0-49a95",
+        "diff": "Expert",
+        "char": "Standard"
+      },
+      {
+        "name": "Batsubyou",
+        "artist": "Nanahoshi Kangen Gakudan",
+        "mapper": "Gabriel",
+        "id": "456c5",
+        "type": "0",
+        "iconHash": "0-456c5",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Nowhere To Go",
+        "artist": "Bad Omens",
+        "mapper": "muffn",
+        "id": "433a5",
+        "type": "0",
+        "iconHash": "0-433a5",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best Low-Tech Map",
+      "jp": "ベスト・ローテックマップ (Best Low-Tech Map)"
+    },
+    "description": {
+      "en": "With slightly less angles than a dodecahedron, the best map in the \"Low-Tech\" category bends the concept of parity to that perfect sweet spot to create a pleasantly surprising gameplay experience, while still maintaining great flow.",
+      "jp": "ノーツ角度を適度に操作し、プレーヤーの手の向きを曲げて、優れたフローを維持しながらも驚かせてくれるノーツ配置を体験させてくれる譜面。(いわゆる「ゆるテック」）"
+    },
+    "internalName": "Style-LowTech",
+    "finalists": [
+      {
+        "name": "Married to the Bag",
+        "artist": "Shotgun Willy",
+        "mapper": "Kassi",
+        "id": "4b455",
+        "type": "0",
+        "iconHash": "0-4b455",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Shoninyokkyu",
+        "artist": "Sakurazaka46",
+        "mapper": "minsiii",
+        "id": "49ce6",
+        "type": "0",
+        "iconHash": "0-49ce6",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "CASINO RAVE",
+        "artist": "MADZI",
+        "mapper": "Miljon",
+        "id": "49436",
+        "type": "0",
+        "iconHash": "0-49436",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Panorama",
+        "artist": "IZ*ONE",
+        "mapper": "Jabob",
+        "id": "462e4",
+        "type": "0",
+        "iconHash": "0-462e4",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "All Night Radio",
+        "artist": "Ado",
+        "mapper": "Ken_Monogatari",
+        "id": "4b0f1",
+        "type": "0",
+        "iconHash": "0-4b0f1",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best High-Tech Map",
+      "jp": "ベスト・ハイテックマップ (Best High-Tech Map)"
+    },
+    "description": {
+      "en": "With more angles than a dodecahedron, the best map in the “High-Tech” category bends the concept of parity to its will to create a challenging sight-read that retains great flow.",
+      "jp": "ノーツ角度を多彩に操作し、プレーヤーの手の向きを自由に曲げて、優れたフローを維持しながら挑戦的なノーツ配置を体験させてくれる譜面。"
+    },
+    "internalName": "Style-HighTech",
+    "finalists": [
+      {
+        "name": "Blues",
+        "artist": "Geordie Greep",
+        "mapper": "ob1cb",
+        "id": "421a8",
+        "type": "0",
+        "iconHash": "0-421a8",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Circles of Death",
+        "artist": "Camellia",
+        "mapper": "Hener",
+        "id": "483bf",
+        "type": "0",
+        "iconHash": "0-483bf",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Boingo",
+        "artist": "Hukae",
+        "mapper": "VoltageO",
+        "id": "43258",
+        "type": "0",
+        "iconHash": "0-43258",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Eternity",
+        "artist": "Yooh",
+        "mapper": "ZenithGD",
+        "id": "4a758",
+        "type": "0",
+        "iconHash": "0-4a758",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Renegade (We Never Run)",
+        "artist": "Stefflon Don, Raja Kumari",
+        "mapper": "Pleo",
+        "id": "440c1",
+        "type": "0",
+        "iconHash": "0-440c1",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best Speed Map",
+      "jp": "ベスト・スピードマップ (Best Speed Map)"
+    },
+    "description": {
+      "en": "Nothing screams \"speed\" more than that feeling of lactic acid setting in after tackling thousands of notes at mind-blowing BPMs, and the best map in the \"Speed\" category delivers an extra helping.",
+      "jp": "疲れ果てるほどの速いBPM、たくさんのノーツ、その魅力が最大限に発揮されている譜面。"
+    },
+    "internalName": "Style-Speed",
+    "finalists": [
+      {
+        "name": "EXXTRA JUDGEMENT",
+        "artist": "seatrus",
+        "mapper": "RetrX",
+        "id": "48159",
+        "type": "0",
+        "iconHash": "0-48159",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "GRAVITY ZOИE",
+        "artist": "seatrus",
+        "mapper": "zeon",
+        "id": "48d26",
+        "type": "0",
+        "iconHash": "0-48d26",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "ABSTRUCT JOKER",
+        "artist": "seatrus",
+        "mapper": "Helloiamdaan & Mayple",
+        "id": "48fee",
+        "type": "0",
+        "iconHash": "0-48fee",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Bad Apple!!",
+        "artist": "Masayoshi Minoshima",
+        "mapper": "Aquaflee",
+        "id": "4b07c",
+        "type": "0",
+        "iconHash": "0-4b07c",
+        "diff": "Expert",
+        "char": "Standard"
+      },
+      {
+        "name": "B.B.K.K.B.K.K.",
+        "artist": "nora2r",
+        "mapper": "HicqLlie",
+        "id": "48b57",
+        "type": "0",
+        "iconHash": "0-48b57",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best Dance Map",
+      "jp": "ベスト・ダンスマップ (Best Dance Map)"
+    },
+    "description": {
+      "en": "With a blend of big arm swings, high movement, and a bit lower density, the best map in the \"Dance\" category gets players of all ages grooving to the beat and sweating up a storm.",
+      "jp": "大きな腕の振りや激しい動き、そしてやや少なめのノーツ密度によって作られ、あらゆる年齢層のプレーヤーがリズムに乗って踊り、汗をかける譜面。"
+    },
+    "internalName": "Style-Dance",
+    "finalists": [
+      {
+        "name": "15 Minutes",
+        "artist": "Sabrina Carpenter",
+        "mapper": "Lekrkoekj",
+        "id": "443f3",
+        "type": "0",
+        "iconHash": "0-443f3",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "FOCUS",
+        "artist": "Hearts2Hearts",
+        "mapper": "Jonas",
+        "id": "4b6f1",
+        "type": "0",
+        "iconHash": "0-4b6f1",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Cherry Sky",
+        "artist": "MINNIE",
+        "mapper": "Yana",
+        "id": "44506",
+        "type": "0",
+        "iconHash": "0-44506",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "God Is a Dancer",
+        "artist": "Tiësto & Mabel",
+        "mapper": "Taddus",
+        "id": "422a5",
+        "type": "0",
+        "iconHash": "0-422a5",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "The Dead Dance",
+        "artist": "Lady Gaga",
+        "mapper": "Tonkie",
+        "id": "4ba35",
+        "type": "0",
+        "iconHash": "0-4ba35",
+        "diff": "Expert",
+        "char": "Standard"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best Fitness Map",
+      "jp": "ベスト・フィットネスマップ (Best Fitness Map)"
+    },
+    "description": {
+      "en": "Build strength to the beat. The best fitness map forces constant natural movement in all dimensions with walls and bloqs that keep the flow until your legs give out.",
+      "jp": "いわゆるFitbeat。壁避けやしゃがみ壁、ノーツ配置によってプレーヤーの足腰に悲鳴をあげさせ、リズムに乗りながら自然な動きで絶え間ない運動をさせてくれる譜面。"
+    },
+    "internalName": "Style-Fitness",
+    "finalists": [
+      {
+        "name": "Don't Care Crown",
+        "artist": "Fox Stevenson",
+        "mapper": "MadChase",
+        "id": "46e6c",
+        "type": "0",
+        "iconHash": "0-46e6c",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "[Fitbeat] 1-800",
+        "artist": "bbno$, Ironmouse",
+        "mapper": "Bellus",
+        "id": "48912",
+        "type": "0",
+        "iconHash": "0-48912",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Soulmate",
+        "artist": "Lizzo",
+        "mapper": "Noveliniel",
+        "id": "4c64a",
+        "type": "0",
+        "iconHash": "0-4c64a",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Hai Yorokonde",
+        "artist": "Kocchi no Kento",
+        "mapper": "oegoe",
+        "id": "49659",
+        "type": "0",
+        "iconHash": "0-49659",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "[Fitbeat] Born Again",
+        "artist": "LISA",
+        "mapper": "minsiii",
+        "id": "4bbaa",
+        "type": "0",
+        "iconHash": "0-4bbaa",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best Challenge Map",
+      "jp": "ベスト・チャレンジマップ (Best Challenge Map)"
+    },
+    "description": {
+      "en": "Ranking Criteria? Curation? Mapping fundamentals? These are but chains to restrict the seemingly endless and wild imagination of challenge mappers. The best map in the \"Challenge\" category pushes the limits in every way.",
+      "jp": "ランク基準？キュレーション基準？マッピングのセオリー？この部門ではそれらの制限を取り払い、素晴らしい創造力で限界に挑戦する譜面が評価されます。"
+    },
+    "internalName": "Style-Challenge",
+    "finalists": [
+      {
+        "name": "Nhelv",
+        "artist": "Silentroom",
+        "mapper": "Remec",
+        "id": "45051",
+        "type": "0",
+        "iconHash": "0-45051",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "ENÛMA∇ELIŠ ~Camellia Saga~",
+        "artist": "Camellia VS. Gram",
+        "mapper": "The Senate ft. GalaxyMaster",
+        "id": "44cfe",
+        "type": "0",
+        "iconHash": "0-44cfe",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Stupid",
+        "artist": "underscores",
+        "mapper": "fakechi",
+        "id": "474e3",
+        "type": "0",
+        "iconHash": "0-474e3",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "2011",
+        "artist": "DJ GHEPARD",
+        "mapper": "Bluephrama",
+        "id": "4a5a6",
+        "type": "0",
+        "iconHash": "0-4a5a6",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "La Lune",
+        "artist": "Madeon",
+        "mapper": "Joey & sketchur31",
+        "id": "4a34b",
+        "type": "0",
+        "iconHash": "0-4a34b",
+        "diff": "Expert",
+        "char": "Standard"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best Acc Map",
+      "jp": "ベスト・精度マップ (Best Acc Map)"
+    },
+    "description": {
+      "en": "Chase that sweet high accuracy in a very, very careful dance. The best map in the Accuracy category has excellent rhythmic choice and well-placed emphasis with the fewest amount of notes.",
+      "jp": "ノーツ密度が低く高い精度を出せる譜面ということだけでなく、リズムの取り方が優れていて、少ないノーツで適切な強調を行い、譜面としても高品質であることが求められる。"
+    },
+    "internalName": "Style-Acc",
+    "finalists": [
+      {
+        "name": "Body Language",
+        "artist": "Grafix",
+        "mapper": "Taddus",
+        "id": "49201",
+        "type": "0",
+        "iconHash": "0-49201",
+        "diff": "Hard",
+        "char": "Standard"
+      },
+      {
+        "name": "Lunar Reincarnation",
+        "artist": "清风最梦",
+        "mapper": "wangyufy",
+        "id": "4afd7",
+        "type": "0",
+        "iconHash": "0-4afd7",
+        "diff": "Hard",
+        "char": "Standard"
+      },
+      {
+        "name": "Killshot",
+        "artist": "Magdalena Bay",
+        "mapper": "Tiku",
+        "id": "49857",
+        "type": "0",
+        "iconHash": "0-49857",
+        "diff": "Expert",
+        "char": "Standard"
+      },
+      {
+        "name": "I Can Talk",
+        "artist": "Two Door Cinema Club",
+        "mapper": "suzuki",
+        "id": "44562",
+        "type": "0",
+        "iconHash": "0-44562",
+        "diff": "Hard",
+        "char": "Standard"
+      },
+      {
+        "name": "CASINO RAVE",
+        "artist": "MADZI",
+        "mapper": "Miljon",
+        "id": "49436",
+        "type": "0",
+        "iconHash": "0-49436",
+        "diff": "Hard",
+        "char": "Standard"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best Poodle Map",
+      "jp": "ベスト・プードルマップ (Best Poodle Map)"
+    },
+    "description": {
+      "en": "Poodles and Pauls. The best map in the Poodle category has excellent flow and well-placed emphasis with the long hold note swing style. Spirals, Switch-backs, and more!",
+      "jp": "プードル、及びポールが対象。優れたフローを備えており、長くホールドさせるノーツで適切な強調・表現を行っている譜面。スパイラル、スイッチバック、その他多様なプードルパターンも対象です。"
+    },
+    "internalName": "Style-Poodle",
+    "finalists": [
+      {
+        "name": "Did I Forget Something",
+        "artist": "Venjent",
+        "mapper": "Mozz_Zm",
+        "id": "4930d",
+        "type": "0",
+        "iconHash": "0-4930d",
+        "diff": "ExpertPlus",
+        "char": "Lawless"
+      },
+      {
+        "name": "I Can’t Hear It Now",
+        "artist": "Freya Ridings",
+        "mapper": "HypersonicSharkz",
+        "id": "447ee",
+        "type": "0",
+        "iconHash": "0-447ee",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Bite Marks",
+        "artist": "League of Legends",
+        "mapper": "MadChase",
+        "id": "434e4",
+        "type": "0",
+        "iconHash": "0-434e4",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Ma Meilleure Ennemie",
+        "artist": "Stromae, Pomme",
+        "mapper": "RateGyro",
+        "id": "422bd",
+        "type": "0",
+        "iconHash": "0-422bd",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Raised by Bats",
+        "artist": "Aurelio Voltaire",
+        "mapper": "Craedien",
+        "id": "4ad7e",
+        "type": "0",
+        "iconHash": "0-4ad7e",
+        "diff": "Expert",
+        "char": "Lawless"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best Wildcard Map",
+      "jp": "ベスト・ワイルドカード マップ (Best Wildcard Map)"
+    },
+    "description": {
+      "en": "This category shines a light on maps that explore beyond \"normal\" mapping. Cult classics, bending of mechanics, and different ways of thinking can be found here. This is the catch all category. Have something that is unique and doesn't fit a category? Nominate it here!",
+      "jp": "「普通」のマッピングの範囲を超え、それ以上を模索し、超えた譜面に焦点を当てた譜面。カルトクラシック、メカニクスの改変をはじめ、様々な譜面への考え方を集めたカテゴリー。包括的なカテゴリーなので、「ユニークで斬新な譜面だが、ここまでのとのジャンルにも当てはまらない！」と言う譜面はここで推薦してください！"
+    },
+    "internalName": "Style-Wildcard",
+    "finalists": [
+      {
+        "name": "Burn Like Fire",
+        "artist": "Protokseed",
+        "mapper": "Baguette",
+        "id": "4618e",
+        "type": "0",
+        "iconHash": "0-4618e",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Exhibition Match",
+        "artist": "Rhythm Heaven",
+        "mapper": "Jabob",
+        "id": "48951",
+        "type": "0",
+        "iconHash": "0-48951",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Blow My Mind",
+        "artist": "3R2",
+        "mapper": "Tseska",
+        "id": "4af4b",
+        "type": "0",
+        "iconHash": "0-4af4b",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "えんじぇるきどり",
+        "artist": "Dopam!ne",
+        "mapper": "Gabyan",
+        "id": "4a0c0",
+        "type": "0",
+        "iconHash": "0-4a0c0",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Everybody Do The Flop",
+        "artist": "LilDeuceDeuce",
+        "mapper": "VoltageO",
+        "id": "45242",
+        "type": "0",
+        "iconHash": "0-45242",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Best Gameplay Modchart",
+      "jp": "ベスト・ゲームプレイ・モッドチャート (Best Gameplay Modchart)"
+    },
+    "description": {
+      "en": "Here? There? Where is the next note coming from?! This category includes maps that feature solid mapping AND alter the gameplay in mind-blowing ways through animation and manipulation of notes and obstacles.",
+      "jp": "ノーツが動く？跳ねる？えっ、次のノーツはどこから来るの？！この部門では、しっかりとしたマッピングに併せてアニメーション、ノーツや壁・ボム、時にはプレーヤーの操作を通してゲームプレイを驚くほど変化させるModchart譜面が対象です。"
+    },
+    "internalName": "Mods-GameplayModchart",
+    "finalists": [
+      {
+        "name": "Through The Screen",
+        "artist": "RXLZQ",
+        "mapper": "Mawntee & fatalution",
+        "id": "43a5d",
+        "type": "0",
+        "iconHash": "0-43a5d",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "HYPERCLOCKED",
+        "artist": "Schwank",
+        "mapper": "SaltyFish",
+        "id": "48a37",
+        "type": "0",
+        "iconHash": "0-48a37",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "42-flux",
+        "artist": "rN vs. nm-y",
+        "mapper": "Aeroluna",
+        "id": "43999",
+        "type": "0",
+        "iconHash": "0-43999",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      },
+      {
+        "name": "Pandemonium",
+        "artist": "t+pazolite",
+        "mapper": "Jevk",
+        "id": "43cb4",
+        "type": "0",
+        "iconHash": "0-43cb4",
+        "diff": "ExpertPlus",
+        "char": "Lawless"
+      },
+      {
+        "name": "3 BIG SHOTS FROM [KITCHEN GUN]",
+        "artist": "Grambam36",
+        "mapper": "Droobix",
+        "id": "43a4a",
+        "type": "0",
+        "iconHash": "0-43a4a",
+        "diff": "ExpertPlus",
+        "char": "Standard"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Pack of the Year",
+      "jp": "パック・オブ・ザ・イヤー(Pack of the Year)"
+    },
+    "description": {
+      "en": "The map pack that has it all: a tight theme, new high-quality maps, and a great presentation across all difficulties, all wrapped up in a beautiful \".bplist\" bow.",
+      "jp": "しっかりとしたテーマがあり、高品質な譜面、あらゆる難易度での素晴らしい表現、全てが揃ったマップPack。推薦対象期間内にプレイリストが作成されたPackが対象。"
+    },
+    "internalName": "OTY-Pack",
+    "finalists": [
+      {
+        "name": "Arcane Season 2 Pack",
+        "artist": "",
+        "mapper": "MadChase",
+        "id": "823788",
+        "type": "2",
+        "iconHash": "2-823788"
+      },
+      {
+        "name": "Extra Sensory II",
+        "artist": "",
+        "mapper": "TotalBS",
+        "id": "797071",
+        "type": "2",
+        "iconHash": "2-797071"
+      },
+      {
+        "name": "Terraria Calamity Pack",
+        "artist": "",
+        "mapper": "Sonoluminn",
+        "id": "806978",
+        "type": "2",
+        "iconHash": "2-806978"
+      },
+      {
+        "name": "Bubble (Sped Up) (English Ver.) (Bubble (Sped Up) (English Ver.)) Pack",
+        "artist": "",
+        "mapper": "Jonas",
+        "id": "857327",
+        "type": "2",
+        "iconHash": "2-857327"
+      },
+      {
+        "name": "B.B.K.K.B.K.K. 10TH ANNIVERSARY PACK",
+        "artist": "",
+        "mapper": "komeijisan051",
+        "id": "959887",
+        "type": "2",
+        "iconHash": "2-959887"
+      },
+      {
+        "name": "Genres of Halloween (Vol. 2)",
+        "artist": "",
+        "mapper": "TGMappingGroup",
+        "id": "1033478",
+        "type": "2",
+        "iconHash": "2-1033478"
+      },
+      {
+        "name": "Kpop Demon Hunters pack",
+        "artist": "",
+        "mapper": "Tonkie",
+        "id": "934618",
+        "type": "2",
+        "iconHash": "2-934618"
+      },
+      {
+        "name": "ADOvent Calendar Pack",
+        "artist": "",
+        "mapper": "nitronik.exe",
+        "id": "1020231",
+        "type": "2",
+        "iconHash": "2-1020231"
+      },
+      {
+        "name": "90s Rock Pack",
+        "artist": "",
+        "mapper": "SneakySpeckMan",
+        "id": "1055892",
+        "type": "2",
+        "iconHash": "2-1055892"
+      },
+      {
+        "name": "Rock Mixtape 2.0",
+        "artist": "",
+        "mapper": "FeudBoy_YT",
+        "id": "759572",
+        "type": "2",
+        "iconHash": "2-759572"
+      },
+      {
+        "name": "Virtual Riot Pack Vol. 2",
+        "artist": "",
+        "mapper": "Avexus",
+        "id": "893033",
+        "type": "2",
+        "iconHash": "2-893033"
+      },
+      {
+        "name": "Fitbeat BLACKPINK Pack",
+        "artist": "",
+        "mapper": "Bellus",
+        "id": "1038788",
+        "type": "2",
+        "iconHash": "2-1038788"
+      },
+      {
+        "name": "GD Mash Pack II",
+        "artist": "",
+        "mapper": "x-mens",
+        "id": "977262",
+        "type": "2",
+        "iconHash": "2-977262"
+      },
+      {
+        "name": "Christmas Pop Music Pack",
+        "artist": "",
+        "mapper": "Lekrkoekj",
+        "id": "754406",
+        "type": "2",
+        "iconHash": "2-754406"
+      },
+      {
+        "name": "Eurovision 2025 Pack",
+        "artist": "",
+        "mapper": "sammy",
+        "id": "1064158",
+        "type": "2",
+        "iconHash": "2-1064158"
+      },
+      {
+        "name": "wishlane - Nobody's listening!",
+        "artist": "",
+        "mapper": "Phoenix",
+        "id": "842329",
+        "type": "2",
+        "iconHash": "2-842329"
+      },
+      {
+        "name": "Love Live! Birthday Pack",
+        "artist": "",
+        "mapper": "symphonic",
+        "id": "268749",
+        "type": "2",
+        "iconHash": "2-268749"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Rookie Lighter of the Year",
+      "jp": "ルーキー・ライター・オブ・ザ・イヤー(Rookie Lighter of the Year)"
+    },
+    "description": {
+      "en": "The best up-and-coming lighter whose first map/lightshow was released during the nomination period. (Previously deleted maps count as first map releases.)",
+      "jp": "最も将来有望な新人ライター。初譜面（あるいは初めてのライティング）のリリースが推薦対象期間内であるマッパーが対象。（現在は削除されていても、対象期間より前に最初の譜面をリリースしている場合はルーキーにはなりませんのでご注意ください。）"
+    },
+    "internalName": "OTY-RookieLighter",
+    "finalists": [
+      {
+        "name": "Pashankie",
+        "artist": "",
+        "mapper": "",
+        "id": "277521",
+        "type": "1",
+        "iconHash": "1-277521",
+        "preview": "4c979"
+      },
+      {
+        "name": "AmeliaGL0_0",
+        "artist": "",
+        "mapper": "",
+        "id": "207297",
+        "type": "1",
+        "iconHash": "1-207297",
+        "preview": "https://www.youtube.com/watch?v=bJIgvC60j7E"
+      },
+      {
+        "name": "sammy",
+        "artist": "",
+        "mapper": "",
+        "id": "244209",
+        "type": "1",
+        "iconHash": "1-244209",
+        "preview": "https://drive.google.com/file/d/1FANYsadrbr9xceag4a4CkGdCWM5HGGMr/view?usp=sharing"
+      },
+      {
+        "name": "wasas387",
+        "artist": "",
+        "mapper": "",
+        "id": "223956",
+        "type": "1",
+        "iconHash": "1-223956"
+      },
+      {
+        "name": "WhiteWolf",
+        "artist": "",
+        "mapper": "",
+        "id": "303597",
+        "type": "1",
+        "iconHash": "1-303597"
+      },
+      {
+        "name": "Zeyrox_Gaming",
+        "artist": "",
+        "mapper": "",
+        "id": "299344",
+        "type": "1",
+        "iconHash": "1-299344"
+      },
+      {
+        "name": "3psilon9",
+        "artist": "",
+        "mapper": "",
+        "id": "4343565",
+        "type": "1",
+        "iconHash": "1-4343565",
+        "preview": "https://youtu.be/bMps-g8oG6g"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Rookie Mapper of the Year",
+      "jp": "ルーキー・マッパー・オブ・ザ・イヤー(Rookie Mapper of the Year)"
+    },
+    "description": {
+      "en": "The best up-and-coming mapper whose first map was released during the nomination period. (Previously deleted maps count as first map releases.)",
+      "jp": "最も将来有望な新人マッパー。初譜面のリリースが推薦対象期間内であるマッパーが対象。（現在は削除されていても、対象期間より前に最初の譜面をリリースしている場合はルーキーにはなりませんのでご注意ください。）"
+    },
+    "internalName": "OTY-RookieMapper",
+    "finalists": [
+      {
+        "name": "penguiin",
+        "artist": "",
+        "mapper": "",
+        "id": "219791",
+        "type": "1",
+        "iconHash": "1-219791"
+      },
+      {
+        "name": "Tiku",
+        "artist": "",
+        "mapper": "",
+        "id": "227613",
+        "type": "1",
+        "iconHash": "1-227613"
+      },
+      {
+        "name": "ZenithGD",
+        "artist": "",
+        "mapper": "",
+        "id": "219475",
+        "type": "1",
+        "iconHash": "1-219475",
+        "preview": "4a758"
+      },
+      {
+        "name": "Barnotek",
+        "artist": "",
+        "mapper": "",
+        "id": "231520",
+        "type": "1",
+        "iconHash": "1-231520",
+        "preview": "49330"
+      },
+      {
+        "name": "McMelon_XoXo",
+        "artist": "",
+        "mapper": "",
+        "id": "213727",
+        "type": "1",
+        "iconHash": "1-213727",
+        "preview": "45ef2"
+      },
+      {
+        "name": "thenamesashley",
+        "artist": "",
+        "mapper": "",
+        "id": "231907",
+        "type": "1",
+        "iconHash": "1-231907"
+      },
+      {
+        "name": "Beatboo",
+        "artist": "",
+        "mapper": "",
+        "id": "223227",
+        "type": "1",
+        "iconHash": "1-223227"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Lighter of the Year",
+      "jp": "ライター・オブ・ザ・イヤー(Lighter of the Year)"
+    },
+    "description": {
+      "en": "A lighter, vanilla or chroma, who not only excels in their art but also shares their experience, leads, and mentors as they are able.",
+      "jp": "ライターの頂点。バニラやChromaのライティング技術に優れているだけでなく、時には経験・知識を共有し、コミュニティを先導するようなライター。"
+    },
+    "internalName": "OTY-Lighter",
+    "finalists": [
+      {
+        "name": "ZeCube",
+        "artist": "",
+        "mapper": "",
+        "id": "18491",
+        "type": "1",
+        "iconHash": "1-18491",
+        "preview": "https://www.youtube.com/watch?v=8xlexUxzB8I"
+      },
+      {
+        "name": "OneSpookyBoi",
+        "artist": "",
+        "mapper": "",
+        "id": "4285074",
+        "type": "1",
+        "iconHash": "1-4285074",
+        "preview": "https://youtu.be/EIV-s0i_x0c"
+      },
+      {
+        "name": "Swifter",
+        "artist": "",
+        "mapper": "",
+        "id": "4284246",
+        "type": "1",
+        "iconHash": "1-4284246",
+        "preview": "https://www.youtube.com/watch?v=qZ1prxep0Wc"
+      },
+      {
+        "name": "Fuyakeru",
+        "artist": "",
+        "mapper": "",
+        "id": "4324464",
+        "type": "1",
+        "iconHash": "1-4324464",
+        "preview": "https://www.youtube.com/watch?v=_-r0Bo3RvBM"
+      },
+      {
+        "name": "grizlor",
+        "artist": "",
+        "mapper": "",
+        "id": "212798",
+        "type": "1",
+        "iconHash": "1-212798"
+      },
+      {
+        "name": "Gabriel",
+        "artist": "",
+        "mapper": "",
+        "id": "4285647",
+        "type": "1",
+        "iconHash": "1-4285647"
+      },
+      {
+        "name": "FeudBoy_YT",
+        "artist": "",
+        "mapper": "",
+        "id": "4285280",
+        "type": "1",
+        "iconHash": "1-4285280"
+      },
+      {
+        "name": "P90KILLR",
+        "artist": "",
+        "mapper": "",
+        "id": "4295464",
+        "type": "1",
+        "iconHash": "1-4295464",
+        "preview": "https://youtu.be/Bp7AvecK9uU"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Mapper of the Year",
+      "jp": "マッパー・オブ・ザ・イヤー(Mapper of the Year)"
+    },
+    "description": {
+      "en": "A mapper who not only excels in their art but also shares their experience, leads, and mentors as they are able.",
+      "jp": "マッパーの頂点。マッピング技術に優れているだけでなく、時には経験・知識を共有し、コミュニティを先導するようなマッパー。"
+    },
+    "internalName": "OTY-Mapper",
+    "finalists": [
+      {
+        "name": "nitronik.exe",
+        "artist": "",
+        "mapper": "",
+        "id": "4284201",
+        "type": "1",
+        "iconHash": "1-4284201",
+        "preview": "https://youtube.com/shorts/K_kVjS4vifg"
+      },
+      {
+        "name": "Lekrkoekj",
+        "artist": "",
+        "mapper": "",
+        "id": "4285738",
+        "type": "1",
+        "iconHash": "1-4285738"
+      },
+      {
+        "name": "Bellus",
+        "artist": "",
+        "mapper": "",
+        "id": "145971",
+        "type": "1",
+        "iconHash": "1-145971"
+      },
+      {
+        "name": "pleo",
+        "artist": "",
+        "mapper": "",
+        "id": "4318869",
+        "type": "1",
+        "iconHash": "1-4318869"
+      },
+      {
+        "name": "VoltageO",
+        "artist": "",
+        "mapper": "",
+        "id": "4330286",
+        "type": "1",
+        "iconHash": "1-4330286"
+      },
+      {
+        "name": "ob1cb",
+        "artist": "",
+        "mapper": "",
+        "id": "4284804",
+        "type": "1",
+        "iconHash": "1-4284804",
+        "preview": "https://www.youtube.com/watch?v=f5AIcM9VrGI"
+      },
+      {
+        "name": "MadChase",
+        "artist": "",
+        "mapper": "",
+        "id": "4286182",
+        "type": "1",
+        "iconHash": "1-4286182",
+        "preview": "46e6c"
+      },
+      {
+        "name": "Danny.",
+        "artist": "",
+        "mapper": "",
+        "id": "185402",
+        "type": "1",
+        "iconHash": "1-185402",
+        "preview": "48e81"
+      },
+      {
+        "name": "Miljon",
+        "artist": "",
+        "mapper": "",
+        "id": "4286972",
+        "type": "1",
+        "iconHash": "1-4286972"
+      },
+      {
+        "name": "Gabriel",
+        "artist": "",
+        "mapper": "",
+        "id": "4285647",
+        "type": "1",
+        "iconHash": "1-4285647"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Modded Map of the Year",
+      "jp": "モデッド・マップ・オブ・ザ・イヤー(Modded Map of the Year)"
+    },
+    "description": {
+      "en": "The best modded map of the year. Full stop. Combining the full power of Vivify, Noodle Extensions, Chroma, or any other gameplay or visual mods; this map using mods to truly capture and convey the music and/or alter the gameplay in mind-blowing ways.",
+      "jp": "`今年最高のモデッド(modded)譜面。以上。Vivify、Noodle Extensions、Chromaなどのゲームプレイ/ビジュアルModをフル活用して音楽やゲームプレイを表現し、想像を超えるプレイ体験を実現した譜面。"
+    },
+    "internalName": "OTY-ModdedMap",
+    "finalists": [
+      {
+        "name": "3 BIG SHOTS FROM [KITCHEN GUN]",
+        "artist": "Grambam36",
+        "mapper": "Droobix",
+        "id": "43a4a",
+        "type": "0",
+        "iconHash": "0-43a4a"
+      },
+      {
+        "name": "743+Aether*✧ . * 111} + , .",
+        "artist": "Jaron",
+        "mapper": "Swifter",
+        "id": "4968d",
+        "type": "0",
+        "iconHash": "0-4968d"
+      },
+      {
+        "name": "End Times",
+        "artist": "Andrew Prahlow",
+        "mapper": "Chaimzy",
+        "id": "43a24",
+        "type": "0",
+        "iconHash": "0-43a24"
+      },
+      {
+        "name": "Through The Screen",
+        "artist": "RXLZQ",
+        "mapper": "Mawntee & fatalution",
+        "id": "43a5d",
+        "type": "0",
+        "iconHash": "0-43a5d"
+      },
+      {
+        "name": "Pandemonium",
+        "artist": "t+pazolite",
+        "mapper": "Jevk",
+        "id": "43cb4",
+        "type": "0",
+        "iconHash": "0-43cb4"
+      },
+      {
+        "name": "Turret Orchestra",
+        "artist": "Portal 2",
+        "mapper": "MadChase, RateGyro, Xentha",
+        "id": "4a2b3",
+        "type": "0",
+        "iconHash": "0-4a2b3"
+      },
+      {
+        "name": "GOODRAGE",
+        "artist": "EBIMAYO、KEIGO KOBUCHI",
+        "mapper": "Removable DIsk C/Amo",
+        "id": "453f8",
+        "type": "0",
+        "iconHash": "0-453f8"
+      },
+      {
+        "name": "luminescent",
+        "artist": "sxth sns",
+        "mapper": "nasafrasa",
+        "id": "43a26",
+        "type": "0",
+        "iconHash": "0-43a26"
+      }
+    ]
+  },
+  {
+    "name": {
+      "en": "Map of the Year",
+      "jp": "マップ・オブ・ザ・イヤー(Map of the Year)"
+    },
+    "description": {
+      "en": "The best unmodded map of the year. Full stop. It has it all - representation, emphasis, flow - everything coming together for an incredible playing experience to go with the song.",
+      "jp": "今年最高の譜面。表現、強調、フロー、すべてが揃っており、曲に合わせた素晴らしいプレイ体験を実現します。※Noodle extensionsによりノーツを操作している譜面は対象外"
+    },
+    "internalName": "OTY-Map",
+    "finalists": [
+      {
+        "name": "Party Time",
+        "artist": "Teminite",
+        "mapper": "Avexus",
+        "id": "43119",
+        "type": "0",
+        "iconHash": "0-43119"
+      },
+      {
+        "name": "15 Minutes",
+        "artist": "Sabrina Carpenter",
+        "mapper": "Lekrkoekj",
+        "id": "443f3",
+        "type": "0",
+        "iconHash": "0-443f3"
+      },
+      {
+        "name": "check",
+        "artist": "bbno$",
+        "mapper": "Pleo, Ögö, Kassi, Steeak, Mimerss & Sine",
+        "id": "467c1",
+        "type": "0",
+        "iconHash": "0-467c1"
+      },
+      {
+        "name": "Soulmate",
+        "artist": "Lizzo",
+        "mapper": "Noveliniel",
+        "id": "4c64a",
+        "type": "0",
+        "iconHash": "0-4c64a"
+      },
+      {
+        "name": "Danger",
+        "artist": "Teminite x Boom Kitty",
+        "mapper": "Darkrealm7",
+        "id": "491b6",
+        "type": "0",
+        "iconHash": "0-491b6"
+      },
+      {
+        "name": "Bad Apple!!",
+        "artist": "Masayoshi Minoshima",
+        "mapper": "Bitz, Aquaflee, DiamondBob08 & Brakepie",
+        "id": "4b07c",
+        "type": "0",
+        "iconHash": "0-4b07c"
+      },
+      {
+        "name": "LOVETiCON",
+        "artist": "CSR",
+        "mapper": "Danny",
+        "id": "48e81",
+        "type": "0",
+        "iconHash": "0-48e81"
+      },
+      {
+        "name": "M◇◇nlit",
+        "artist": "seatrus",
+        "mapper": "zeon-gitien, marsh_era, komeijisan051, take_nyan, Gabriel",
+        "id": "4be4a",
+        "type": "0",
+        "iconHash": "0-4be4a"
+      },
+      {
+        "name": "Dimension",
+        "artist": "Sennzai",
+        "mapper": "Vassa",
+        "id": "43ea5",
+        "type": "0",
+        "iconHash": "0-43ea5"
+      },
+      {
+        "name": "Consumed",
+        "artist": "SWARM",
+        "mapper": "nitronik.exe, OneSpookyBoi",
+        "id": "4a9ef",
+        "type": "0",
+        "iconHash": "0-4a9ef"
+      }
+    ]
+  }
+]
