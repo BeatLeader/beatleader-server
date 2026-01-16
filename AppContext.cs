@@ -1,4 +1,4 @@
-﻿using BeatLeader_Server.Models;
+using BeatLeader_Server.Models;
 using Microsoft.EntityFrameworkCore;
 using OpenIddict.EntityFrameworkCore.Models;
 
@@ -125,6 +125,13 @@ namespace BeatLeader_Server
         public DbSet<ScheduledEventMap> ScheduledEventMaps { get; set; }
         public DbSet<MapOfTheDay> MapOfTheDay { get; set; }
         public DbSet<PrestiegeLevel> PrestiegeLevels { get; set; }
+
+        public DbSet<IdolDescription> IdolDescriptions { get; set; }
+        public DbSet<IdolDecoration> IdolDecorations { get; set; }
+        public DbSet<IdolBackground> IdolBackgrounds { get; set; }
+        public DbSet<IdolCanvas> IdolCanvases { get; set; }
+        public DbSet<PlayerBonusIdol> PlayerBonusIdols { get; set; }
+        public DbSet<PlayerIdolDecoration> PlayerIdolDecorations { get; set; }
         public void RejectChanges()
         {
             foreach (var entry in ChangeTracker.Entries())

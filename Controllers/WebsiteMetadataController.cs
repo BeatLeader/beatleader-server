@@ -317,7 +317,7 @@ namespace BeatLeader_Server.Controllers {
             var title = eventData.Name;
             var currentTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var description = currentTime < eventData.EndDate 
-                ? $"Beat Saber competition.\nWill end {GetRelativeTime(eventData.EndDate)}" 
+                ? $"Beat Saber competition.\nWill end in {GetRelativeTimeFuture(eventData.EndDate)}" 
                 : $"Beat Saber competition.\nEnded {GetRelativeTime(eventData.EndDate)}";
             
             return Content(GenerateMetaTags(
@@ -696,13 +696,29 @@ namespace BeatLeader_Server.Controllers {
             var diff = now - date;
 
             if (diff.TotalDays < 1)
-                return $"{(int)diff.TotalHours} hours ago";
+                return $"{(int)diff.TotalHours} hour{((int)diff.TotalHours > 1 ? "s" : "")} ago";
             if (diff.TotalDays < 30)
-                return $"{(int)diff.TotalDays} days ago";
+                return $"{(int)diff.TotalDays} day{((int)diff.TotalDays > 1 ? "s" : "")} ago";
             if (diff.TotalDays < 365)
-                return $"{(int)(diff.TotalDays / 30)} months ago";
+                return $"{(int)(diff.TotalDays / 30)} month{((int)diff.TotalDays / 30 > 1 ? "s" : "")} ago";
             
             return $"{(int)(diff.TotalDays / 365)} years ago";
+        }
+
+        private string GetRelativeTimeFuture(long unixTimestamp)
+        {
+            var date = DateTimeOffset.FromUnixTimeSeconds(unixTimestamp);
+            var now = DateTimeOffset.UtcNow;
+            var diff = date - now;
+
+            if (diff.TotalDays < 1)
+                return $"{(int)diff.TotalHours} hour{((int)diff.TotalHours > 1 ? "s" : "")}";
+            if (diff.TotalDays < 30)
+                return $"{(int)diff.TotalDays} day{((int)diff.TotalDays > 1 ? "s" : "")}";
+            if (diff.TotalDays < 365)
+                return $"{(int)(diff.TotalDays / 30)} month{((int)diff.TotalDays / 30 > 1 ? "s" : "")}";
+            
+            return $"{(int)(diff.TotalDays / 365)} years";
         }
 
         private string GetCountryName(string countryCode)

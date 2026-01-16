@@ -1012,7 +1012,8 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
-            var leaderboardId = hash == "EarthDay2025" ? hash : song.Id + Song.DiffForDiffName(diff).ToString() + modeValue.ToString();
+            var diffValue = Song.DiffForDiffName(diff);
+            var leaderboardId = hash == "EarthDay2025" ? hash : song.Id + diffValue.ToString() + modeValue.ToString();
 
             // BeatLeader / 0.8.73 (BeatSaber/1.40.8_7379) (Oculus)
             // PC mod 0.9.33 / 1.40.8_7379
@@ -1050,6 +1051,7 @@ namespace BeatLeader_Server.Controllers
                 : await ContextScoreList(result, contexts, showBots, leaderboardId, scope, player, method, page, count, currentPlayer, primaryClan);
 
             if (resultList != null) {
+                var withPP = (await _context.DifficultyDescription.Where(d => d.SongId == song.Id && d.Value == diffValue && d.Mode == modeValue).Select(d => d.Status).FirstOrDefaultAsync()).WithPP();
                 int shift = 0;
                 for (int i = 0; i < resultList.Count; i++)
                 {
@@ -1075,6 +1077,11 @@ namespace BeatLeader_Server.Controllers
                     if (score.Player.Temporary) {
                         score.Player.Name += " [TMP]";
                     }
+
+                    score.WithPp = withPP;
+                }
+                if (result.Selection != null) {
+                    result.Selection.WithPp = withPP;
                 }
                 result.Data = resultList;
             }

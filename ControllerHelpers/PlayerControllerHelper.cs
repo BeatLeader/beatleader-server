@@ -50,8 +50,10 @@ namespace BeatLeader_Server.ControllerHelpers {
 
                         (string extension, MemoryStream stream) = ImageUtils.GetFormatAndResize(readStream);
                         fileName += extension;
-                        ;
                         player.Avatar = await _configuration.GetS3Client().UploadAsset(fileName, stream);
+                        readStream.Position = 0;
+                        MemoryStream webpstream = ImageUtils.ResizeToWebp(readStream, 40);
+                        player.WebAvatar = await _configuration.GetS3Client().UploadAsset(fileName.Replace(extension, ".webp"), webpstream);
                     }
                 } else {
                     player = await GetPlayerFromBL(dbContext, id);

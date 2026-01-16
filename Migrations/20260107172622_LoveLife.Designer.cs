@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20260107172622_LoveLife")]
+    partial class LoveLife
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1422,36 +1425,6 @@ namespace BeatLeader_Server.Migrations
                     b.ToTable("Headsets");
                 });
 
-            modelBuilder.Entity("BeatLeader_Server.Models.IdolBackground", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("GloballyAvailable")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("ImageUrl")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ThumbnailUrl")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("IdolBackgrounds");
-                });
-
             modelBuilder.Entity("BeatLeader_Server.Models.IdolCanvas", b =>
                 {
                     b.Property<int>("Id")
@@ -1459,9 +1432,6 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("BackgroundId")
-                        .HasColumnType("int");
 
                     b.Property<string>("CanvasState")
                         .IsRequired()
@@ -1472,9 +1442,6 @@ namespace BeatLeader_Server.Migrations
 
                     b.Property<string>("PlayerId")
                         .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("SeenIdolIds")
-                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
@@ -1561,9 +1528,6 @@ namespace BeatLeader_Server.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RewardGif")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("SmallPicturePro")

@@ -327,7 +327,8 @@ namespace BeatLeader_Server.Controllers
                int id, 
                [FromQuery] string name,
                [FromQuery] string? description,
-               [FromQuery] int endDate)
+               [FromQuery] int endDate,
+               [FromQuery] bool freshContext = false)
         {
             if (HttpContext != null)
             {
@@ -401,6 +402,12 @@ namespace BeatLeader_Server.Controllers
                         if (lb.Difficulty.Stars != null) {
 
                             if (lb.Difficulty.Status == DifficultyStatus.unranked) {
+                                if (freshContext) {
+                                    foreach (var score in lb.Scores) {
+                                        score.ValidForGeneral = false;
+                                        score.ValidContexts &= ~LeaderboardContexts.General;
+                                    }
+                                }
                                 lb.Difficulty.Status = DifficultyStatus.inevent;
                                 await _context.SaveChangesAsync();
 
@@ -410,21 +417,22 @@ namespace BeatLeader_Server.Controllers
                         } else { continue; }
 
                         leaderboards.Add(lb);
-                        
-                        foreach (var score in lb.Scores)
-                        {
-                            if (score.Player.Banned) continue;
-                            if (players.FirstOrDefault(p => p.PlayerId == score.PlayerId) == null) {
-                                players.Add(new EventPlayer {
-                                    PlayerId = score.PlayerId,
-                                    Country = score.Player.Country,
-                                    EventName = name,
-                                    PlayerName = score.Player.Name
-                                });
-                                basicPlayers.Add(score.Player);
-                                playerScores[score.PlayerId] = new List<Score> { score };
-                            } else {
-                                playerScores[score.PlayerId].Add(score);
+
+                        if (!freshContext) {
+                            foreach (var score in lb.Scores) {
+                                if (score.Player.Banned) continue;
+                                if (players.FirstOrDefault(p => p.PlayerId == score.PlayerId) == null) {
+                                    players.Add(new EventPlayer {
+                                        PlayerId = score.PlayerId,
+                                        Country = score.Player.Country,
+                                        EventName = name,
+                                        PlayerName = score.Player.Name
+                                    });
+                                    basicPlayers.Add(score.Player);
+                                    playerScores[score.PlayerId] = new List<Score> { score };
+                                } else {
+                                    playerScores[score.PlayerId].Add(score);
+                                }
                             }
                         }
                     }
