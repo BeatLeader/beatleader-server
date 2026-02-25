@@ -149,7 +149,7 @@ namespace BeatLeader_Server.Services
             {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
 
-                var players = await _context.Players.Where(p => p.Clans != null && p.Clans.Count > 0).Select(p => new {
+                var players = await _context.Players.Where(p => p.Clans.Count() > 0).Select(p => new {
                     Clans = p.Clans.Select(c => new { c.Tag, c.Id }).ToList(),
                     Id = p.Id,
                     p.ClanOrder

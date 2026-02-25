@@ -802,6 +802,7 @@ namespace BeatLeader_Server.Controllers
                 scoreMaker.ScoreStats.AnonimusReplayWatched++;
             }
             score.ReplayWatchedTotal++;
+            scoreMaker.ScoreStats.ReplaysWatched++;
             _context.WatchingSessions.Add(new ReplayWatchingSession {
                 ScoreId = scoreId,
                 IP = currentID == null ? ipString : null,

@@ -465,7 +465,12 @@ namespace BeatLeader_Server {
             services.AddSingleton<RTNominationsForum>();
             services.AddSingleton<SpeedrunService>();
 
-            services.AddMvc ().AddControllersAsServices ().AddJsonOptions (options => {
+            services
+            .AddMvc(options => {
+                options.ModelBinderProviders.Insert(0, new NaNModelBinderProvider());
+            })
+            .AddControllersAsServices()
+            .AddJsonOptions (options => {
                 options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
             });
             services.AddCors (options => {

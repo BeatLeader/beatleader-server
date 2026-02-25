@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,13 +12,15 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20260126205406_MapOffsetAndCustomDiffs")]
+    partial class MapOffsetAndCustomDiffs
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.2")
+                .HasAnnotation("ProductVersion", "10.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -771,7 +774,8 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("CustomDifficultyName")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("DifficultyName")
                         .IsRequired()
@@ -2695,9 +2699,6 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("RankedTop1Score")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ReplaysWatched")
                         .HasColumnType("int");
 
                     b.Property<int>("SPPlays")
@@ -4931,7 +4932,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.ToTable("WorkTasks");
 
-                    b.HasDiscriminator<string>("Discriminator").HasValue("WorkTask");
+                    b.HasDiscriminator().HasValue("WorkTask");
 
                     b.UseTphMappingStrategy();
                 });

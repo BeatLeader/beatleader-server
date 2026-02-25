@@ -326,7 +326,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                             request = preSorted.ThenOrder(order, p => p.ScoreStats.RankedMaxStreak);
                             break;
                         case PlayerSortBy.ReplaysWatched:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.ReplaysWatched);
                             break;
                         default:
                             break;
@@ -381,7 +381,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                             request = preSorted.ThenOrder(order, p => p.ScoreStats.UnrankedMaxStreak);
                             break;
                         case PlayerSortBy.ReplaysWatched:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.ReplaysWatched);
                             break;
                         default:
                             break;
@@ -438,7 +438,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                             request = preSorted.ThenOrder(order, p => (p.ScoreStats.AverageLeftTiming + p.ScoreStats.AverageRightTiming) / 2);
                             break;
                         case PlayerSortBy.ReplaysWatched:
-                            request = preSorted.ThenOrder(order, p => p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched);
+                            request = preSorted.ThenOrder(order, p => p.ScoreStats.ReplaysWatched);
                             break;
                         default:
                             break;

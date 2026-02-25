@@ -1172,9 +1172,11 @@ namespace BeatLeader_Server.Controllers {
                 .Include(p => p.ProfileSettings)
                 .Include(p => p.Changes)
                 .Include(p => p.Badges)
+                .Include(p => p.ScoreStats)
                 .Include(p => p.Achievements)
                 .Include(p => p.Socials)
                 .Include(p => p.Mapper)
+                .Include(p => p.IdolCanvas)
                 .FirstOrDefaultAsync();
             Player? migrateToPlayer = await _context.Players.Where(p => p.Id == migrateToId)
                 .Include(p => p.Clans)
@@ -1186,6 +1188,7 @@ namespace BeatLeader_Server.Controllers {
                 .Include(p => p.Achievements)
                 .Include(p => p.Socials)
                 .Include(p => p.ContextExtensions)
+                .Include(p => p.IdolCanvas)
                 .FirstOrDefaultAsync();
 
             if (currentPlayer == null || migrateToPlayer == null) {
@@ -1257,6 +1260,27 @@ namespace BeatLeader_Server.Controllers {
                 migrateToPlayer.OldAlias = currentPlayer.OldAlias;
             }
 
+            if (currentPlayer.ScoreStats != null) {
+                if (migrateToPlayer.ScoreStats == null) {
+                    migrateToPlayer.ScoreStats = new PlayerScoreStats();
+                }
+
+                if (currentPlayer.ScoreStats.FirstScoreTime > 0 && 
+                    (migrateToPlayer.ScoreStats.FirstScoreTime == 0 || currentPlayer.ScoreStats.FirstScoreTime < migrateToPlayer.ScoreStats.FirstScoreTime)) {
+                    migrateToPlayer.ScoreStats.FirstScoreTime = currentPlayer.ScoreStats.FirstScoreTime;
+                }
+
+                if (currentPlayer.ScoreStats.FirstRankedScoreTime > 0 && 
+                    (migrateToPlayer.ScoreStats.FirstRankedScoreTime == 0 || currentPlayer.ScoreStats.FirstRankedScoreTime < migrateToPlayer.ScoreStats.FirstRankedScoreTime)) {
+                    migrateToPlayer.ScoreStats.FirstRankedScoreTime = currentPlayer.ScoreStats.FirstRankedScoreTime;
+                }
+
+                if (currentPlayer.ScoreStats.FirstUnrankedScoreTime > 0 && 
+                    (migrateToPlayer.ScoreStats.FirstUnrankedScoreTime == 0 || currentPlayer.ScoreStats.FirstUnrankedScoreTime < migrateToPlayer.ScoreStats.FirstUnrankedScoreTime)) {
+                    migrateToPlayer.ScoreStats.FirstUnrankedScoreTime = currentPlayer.ScoreStats.FirstUnrankedScoreTime;
+                }
+            }
+
             if (currentPlayer.Changes?.Count >= 0) {
                 foreach (var item in currentPlayer.Changes) {
                     item.PlayerId = migrateToId;
@@ -1275,6 +1299,12 @@ namespace BeatLeader_Server.Controllers {
                     if (existing == null) {
                         item.PlayerId = migrateToId;
                     }
+                }
+            }
+
+            if (currentPlayer.IdolCanvas != null) {
+                if (migrateToPlayer.IdolCanvas == null) {
+                    migrateToPlayer.IdolCanvas = currentPlayer.IdolCanvas;
                 }
             }
 

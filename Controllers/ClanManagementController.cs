@@ -237,6 +237,16 @@ namespace BeatLeader_Server.Controllers
                 }
             }
 
+            var players = await _context.Players.Include(lb => lb.TopClan).Where(lb => lb.TopClanId == clan.Id).ToListAsync();
+
+            foreach (var player1 in players)
+            {
+                if (player1.TopClan?.Id == clan.Id) {
+                    player1.TopClan = null;
+                    player1.TopClanId = null;
+                }
+            }
+
             await _context.BulkSaveChangesAsync();
 
             await _context.BulkDeleteAsync(_context.ClanUpdates.Where(cu => cu.Clan == clan));

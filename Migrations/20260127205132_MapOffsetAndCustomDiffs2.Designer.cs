@@ -4,6 +4,7 @@ using BeatLeader_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,13 +12,15 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeatLeader_Server.Migrations
 {
     [DbContext(typeof(AppContext))]
-    partial class AppContextModelSnapshot : ModelSnapshot
+    [Migration("20260127205132_MapOffsetAndCustomDiffs2")]
+    partial class MapOffsetAndCustomDiffs2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.2")
+                .HasAnnotation("ProductVersion", "10.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -2697,9 +2700,6 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int>("RankedTop1Score")
                         .HasColumnType("int");
 
-                    b.Property<int>("ReplaysWatched")
-                        .HasColumnType("int");
-
                     b.Property<int>("SPPlays")
                         .HasColumnType("int");
 
@@ -4931,7 +4931,7 @@ namespace BeatLeader_Server.Migrations
 
                     b.ToTable("WorkTasks");
 
-                    b.HasDiscriminator<string>("Discriminator").HasValue("WorkTask");
+                    b.HasDiscriminator().HasValue("WorkTask");
 
                     b.UseTphMappingStrategy();
                 });

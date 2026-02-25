@@ -215,6 +215,7 @@ namespace BeatLeader_Server.Controllers {
                     Platform = s.Platform,
                     Controller = s.Controller,
                     FcPp = s.FcPp,
+                    LeaderboardId = s.LeaderboardId,
                     Offsets = offsets ? s.ReplayOffsets : null,
                     Replay = offsets ? s.Replay : null,
                     Player = new PlayerResponse {
@@ -370,6 +371,7 @@ namespace BeatLeader_Server.Controllers {
                     Weight = s.Weight,
                     FcAccuracy = s.FcAccuracy,
                     FcPp = s.FcPp,
+                    LeaderboardId = s.LeaderboardId,
                     Player = new PlayerResponse {
                         Id = s.Player.Id,
                         Name = s.Player.Name,
@@ -569,6 +571,7 @@ namespace BeatLeader_Server.Controllers {
                     Controller = s.ScoreInstance.Controller,
                     FcAccuracy = s.ScoreInstance.FcAccuracy,
                     FcPp = s.ScoreInstance.FcPp,
+                    LeaderboardId = s.LeaderboardId,
                     Offsets = offsets ? s.ScoreInstance.ReplayOffsets : null,
                     Replay = offsets ? s.ScoreInstance.Replay : null,
                     Player = new PlayerResponse {
@@ -722,6 +725,7 @@ namespace BeatLeader_Server.Controllers {
                     Value = l.Difficulty.Value,
                     Mode = l.Difficulty.Mode,
                     DifficultyName = l.Difficulty.DifficultyName,
+                    CustomDifficultyName = l.Difficulty.CustomDifficultyName,
                     ModeName = l.Difficulty.ModeName,
                     Status = l.Difficulty.Status,
                     ModifierValues = l.Difficulty.ModifierValues,
@@ -1043,13 +1047,15 @@ namespace BeatLeader_Server.Controllers {
                 foreach (var score in leaderboard.Scores) {
                     score.Player = PostProcessSettings(score.Player, false);
                 }
-            }
 
-            for (int i = 0; i < leaderboard.Scores?.Count; i++) {
-                leaderboard.Scores[i].ResponseRank = i + (page - 1) * count + 1;
-            }
+                for (int i = 0; i < leaderboard.Scores?.Count; i++) {
+                    leaderboard.Scores[i].ResponseRank = i + (page - 1) * count + 1;
+                }
 
-            return leaderboard;
+                return leaderboard;
+            } else {
+                return NotFound();
+            }
         }
 
         [HttpGet("~/leaderboard/clanRankings/{leaderboardId}/clan/{clanId}")]

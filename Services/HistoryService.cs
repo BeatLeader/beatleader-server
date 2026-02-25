@@ -147,7 +147,7 @@ namespace BeatLeader_Server.Services
                             SteamPlaytime2Weeks = p.ScoreStats.SteamPlaytime2Weeks,
                             SteamPlaytimeForever = p.ScoreStats.SteamPlaytimeForever,
 
-                            ReplaysWatched = p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched,
+                            ReplaysWatched = p.ScoreStats.ReplaysWatched,
                             WatchedReplays = p.ScoreStats.WatchedReplays,
                         }));
                 }
@@ -255,7 +255,7 @@ namespace BeatLeader_Server.Services
                                 SteamPlaytime2Weeks = p.ScoreStats.SteamPlaytime2Weeks,
                                 SteamPlaytimeForever = p.ScoreStats.SteamPlaytimeForever,
 
-                                ReplaysWatched = p.ScoreStats.AnonimusReplayWatched + p.ScoreStats.AuthorizedReplayWatched,
+                                ReplaysWatched = p.ScoreStats.ReplaysWatched,
                                 WatchedReplays = p.ScoreStats.WatchedReplays,
                             }));
                     }
