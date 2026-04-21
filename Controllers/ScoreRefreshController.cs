@@ -203,6 +203,8 @@ namespace BeatLeader_Server.Controllers
                     return Unauthorized();
                 }
             }
+
+            if (leaderboardContext == LeaderboardContexts.LeftLeader) return NotFound();
             
             var diffStatus = DifficultyStatus.ranked;
             var query = _context.Leaderboards.Where(lb => true);
@@ -228,7 +230,9 @@ namespace BeatLeader_Server.Controllers
                     LeaderboardId = s.LeaderboardId, 
                     BaseScore = s.BaseScore, 
                     Modifiers = s.Modifiers, 
-                    Context = s.Context 
+                    Context = s.Context,
+                    AccLeft = s.AccLeft,
+                    AccRight = s.AccRight
                 }).ToListAsync())
                 .GroupBy(s => s.LeaderboardId)
                 .ToDictionary(s => s.Key, s => s.ToList());
@@ -288,7 +292,11 @@ namespace BeatLeader_Server.Controllers
                         s.ModifiedScore = (int)((s.BaseScore + (int)((float)(maxScore - s.BaseScore) * (modifiers.GetPositiveMultiplier(s.Modifiers) - 1))) * modifiers.GetNegativeMultiplier(s.Modifiers));
                     }
 
-                    s.Accuracy = (float)s.BaseScore / (float)maxScore;
+                    if (leaderboardContext == LeaderboardContexts.LeftLeader) {
+                        s.Accuracy = s.AccLeft / 115f - s.AccRight / 115f;
+                    } else {
+                        s.Accuracy = (float)s.BaseScore / (float)maxScore;
+                    }
                     if (s.Modifiers.Contains("NF")) {
                         s.Priority = 3;
                     } else if (s.Modifiers.Contains("NB") || s.Modifiers.Contains("NA")) {

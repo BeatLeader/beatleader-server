@@ -36,6 +36,9 @@ public static partial class MapListUtils
             MapSortBy.NJS        => sequence.SortByNJS(order),
             MapSortBy.NPS        => sequence.SortByNPS(order),
             MapSortBy.BPM        => sequence.SortByBPM(order),
+            MapSortBy.MultiRating=> sequence.SortByMultiRating(order),
+            MapSortBy.EBPM       => sequence.SortByEBPM(order),
+            MapSortBy.LinearPercentage => sequence.SortByLinearPercentage(order),
             _                    => sequence.SortByName(order),
         };
 
@@ -67,7 +70,7 @@ public static partial class MapListUtils
         {
             Type.Nominated => sequence.ThenOrder(order, s => s.Difficulties.First(d => d.Status == DifficultyStatus.nominated).NominatedTime),
             Type.Qualified => sequence.ThenOrder(order, s => s.Difficulties.First(d => d.Status == DifficultyStatus.qualified).QualifiedTime),
-            Type.Ranked    => sequence.ThenOrder(order, s => s.Difficulties.First(d => d.Status == DifficultyStatus.ranked).RankedTime),
+            Type.Ranked    => sequence.ThenOrder(order, s => s.Difficulties.First().RankedTime),
             _             => sequence.ThenOrder(order, s => s.Song.UploadTime),
         };
 
@@ -242,8 +245,10 @@ public static partial class MapListUtils
     private static IOrderedQueryable<SongHelper> SortByVoteRatio(this IOrderedQueryable<SongHelper> sequence, Order order) => 
         sequence
         .ThenOrder(order, s => 
-            (int)(s.Song.Leaderboards.Where(l => l.PositiveVotes > 0 || l.NegativeVotes > 0).Sum(l => l.PositiveVotes) / 
-            s.Song.Leaderboards.Where(l => l.PositiveVotes > 0 || l.NegativeVotes > 0).Sum(l => l.PositiveVotes + l.NegativeVotes) * 100.0))
+            (int)(
+            s.Song.Leaderboards.Where(l => l.PositiveVotes > 0 || l.NegativeVotes > 0).Sum(l => l.PositiveVotes) / 
+        (s.Song.Leaderboards.Where(l => l.PositiveVotes > 0 || l.NegativeVotes > 0).Count() > 0 ?
+            s.Song.Leaderboards.Where(l => l.PositiveVotes > 0 || l.NegativeVotes > 0).Sum(l => l.PositiveVotes + l.NegativeVotes) : 1.0f) * 100.0))
         .ThenOrder(order, s => s.Song.Leaderboards.Sum(l => l.PositiveVotes + l.NegativeVotes));
 
     private static IOrderedQueryable<SongHelper> SortByDuration(this IOrderedQueryable<SongHelper> sequence, Order order) => 
@@ -268,7 +273,30 @@ public static partial class MapListUtils
             return sequence.ThenOrder(order, s => s.Difficulties.Min(d => d.Nps));
         }
     }
-
     private static IOrderedQueryable<SongHelper> SortByBPM(this IOrderedQueryable<SongHelper> sequence, Order order) =>
         sequence.ThenOrder(order, s => s.Song.Bpm);
+
+    private static IOrderedQueryable<SongHelper> SortByMultiRating(this IOrderedQueryable<SongHelper> sequence, Order order) {
+        if (order == Order.Desc) {
+            return sequence.ThenOrder(order, s => s.Difficulties.Max(d => d.MultiRating));
+        } else {
+            return sequence.ThenOrder(order, s => s.Difficulties.Min(d => d.MultiRating));
+        }
+    }
+
+    private static IOrderedQueryable<SongHelper> SortByEBPM(this IOrderedQueryable<SongHelper> sequence, Order order) {
+        if (order == Order.Desc) {
+            return sequence.ThenOrder(order, s => s.Difficulties.Max(d => d.PeakSustainedEBPM));
+        } else {
+            return sequence.ThenOrder(order, s => s.Difficulties.Min(d => d.PeakSustainedEBPM));
+        }
+    }
+
+    private static IOrderedQueryable<SongHelper> SortByLinearPercentage(this IOrderedQueryable<SongHelper> sequence, Order order) {
+        if (order == Order.Desc) {
+            return sequence.ThenOrder(order, s => s.Difficulties.Max(d => d.LinearPercentage));
+        } else {
+            return sequence.ThenOrder(order, s => s.Difficulties.Min(d => d.LinearPercentage));
+        }
+    }
 }

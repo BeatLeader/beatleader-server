@@ -80,9 +80,13 @@ namespace BeatLeader_Server.Services {
                     if (map.Versions[0].State == "Published") {
                         Song song = new Song();
                         song.FromMapDetails(map);
-                        await SongControllerHelper.UpdateFromMap(_context, song, map);
+                        var persistedSong = await SongControllerHelper.AddNewSong(song, song.LowerHash, _context);
+                        if (persistedSong == null) {
+                            return;
+                        }
 
-                        await SongControllerHelper.AddNewSong(song, song.LowerHash, _context);
+                        song = persistedSong;
+                        await SongControllerHelper.UpdateFromMap(_context, song, map);
                         foreach (var item in song.Difficulties) {
                             await SongControllerHelper.NewLeaderboard(_context, song, null, item.DifficultyName, item.ModeName);
                         }

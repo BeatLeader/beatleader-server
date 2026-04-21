@@ -44,7 +44,6 @@ namespace BeatLeader_Server.Controllers
         private readonly IServerTiming _serverTiming;
         private readonly IConfiguration _configuration;
         private readonly MapDownloader _downloader; // Add downloader field
-        private readonly Parse _parser; // Add parser field
 
         public EarthDayController(
             AppContext context,
@@ -58,7 +57,6 @@ namespace BeatLeader_Server.Controllers
             _webHostEnvironment = env;
             _configuration = configuration;
             _downloader = new MapDownloader(_configuration.GetValue<string>("MapsPath") ?? "/home/maps"); // Initialize downloader
-            _parser = new Parse(); // Initialize parser
         }
 
         private class ParsedMapData
@@ -190,7 +188,7 @@ namespace BeatLeader_Server.Controllers
                 Beatmap? mapset = null; // Use alias
                 try
                 {
-                    mapset = _parser.TryLoadPath(mapPath);
+                    mapset = MapParser.TryLoadPath(mapPath);
                     if (mapset == null || mapset.Info == null) continue; // Skip if parsing fails or Info is missing
                     if (!(mapset.Info._songFilename.Contains(".ogg") || mapset.Info._songFilename.Contains(".egg"))) continue;
 

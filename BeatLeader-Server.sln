@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.0.32112.339
+# Visual Studio Version 18
+VisualStudioVersion = 18.2.11408.102 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BeatLeader-Server", "BeatLeader-Server.csproj", "{F55CEF0D-5EC5-49A9-8525-484E7EEF7102}"
 EndProject
@@ -13,7 +13,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Parser", "beatleader-parser
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReplayDecoder", "ReplayDecoder\ReplayDecoder\ReplayDecoder.csproj", "{8AF76585-A77C-4C3E-9EB6-7DD4C609416C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Renderer", "Renderer\Renderer.csproj", "{090AA90C-84EF-4F2E-9587-3118D91E9EC5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Renderer", "Renderer\Renderer.csproj", "{090AA90C-84EF-4F2E-9587-3118D91E9EC5}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BeatLeader-Replay-Sockets", "BeatLeader-Replay-Sockets\BeatLeader-Replay-Sockets.csproj", "{DAFB28E2-B36D-48EB-9CE0-7327BF35550D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MapPostprocessor", "MapPostprocessor\MapPostprocessor.csproj", "{2571F355-317A-C9B5-FAB8-A296D9F817AF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Analyzer", "RatingAPI\beatleader-analyzer\beatleader-analyzer\Analyzer.csproj", "{5853B3C5-71D5-1945-A4DC-7C103ED75A99}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -45,6 +51,18 @@ Global
 		{090AA90C-84EF-4F2E-9587-3118D91E9EC5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{090AA90C-84EF-4F2E-9587-3118D91E9EC5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{090AA90C-84EF-4F2E-9587-3118D91E9EC5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DAFB28E2-B36D-48EB-9CE0-7327BF35550D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DAFB28E2-B36D-48EB-9CE0-7327BF35550D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DAFB28E2-B36D-48EB-9CE0-7327BF35550D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DAFB28E2-B36D-48EB-9CE0-7327BF35550D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2571F355-317A-C9B5-FAB8-A296D9F817AF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2571F355-317A-C9B5-FAB8-A296D9F817AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2571F355-317A-C9B5-FAB8-A296D9F817AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2571F355-317A-C9B5-FAB8-A296D9F817AF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5853B3C5-71D5-1945-A4DC-7C103ED75A99}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5853B3C5-71D5-1945-A4DC-7C103ED75A99}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5853B3C5-71D5-1945-A4DC-7C103ED75A99}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5853B3C5-71D5-1945-A4DC-7C103ED75A99}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

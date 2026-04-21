@@ -783,7 +783,7 @@ namespace BeatLeader_Server.Controllers {
                 if (score.Modifiers.Length > 0) {
                     var modifierValues = score.ModifierValues ?? defaultModifiers; 
                     var modifiersRating = score.ModifiersRating;
-                    float mp = modifierValues.GetTotalMultiplier(score.Modifiers, modifiersRating == null);
+                    float mp = modifierValues.GetTotalMultiplier(score.Modifiers, modifiersRating == null, leaderboardContext);
 
                     if (modifiersRating != null) {
                         var modifiersMap = modifiersRating.ToDictionary<float>();
@@ -992,8 +992,8 @@ namespace BeatLeader_Server.Controllers {
                 PassPp = p.PassPp,
                 TechPp = p.TechPp,
 
-                Improvements = p.ScoreStats.RankedImprovementsCount,
-                NewScores = p.ScoreStats.RankedPlayCount
+                Improvements = p.ScoreStats != null ? p.ScoreStats.RankedImprovementsCount : 0,
+                NewScores = p.ScoreStats != null ? p.ScoreStats.RankedPlayCount : 0
             })
             .FirstOrDefault() : _context
                 .PlayerContextExtensions
@@ -1006,8 +1006,8 @@ namespace BeatLeader_Server.Controllers {
                 PassPp = p.PassPp,
                 TechPp = p.TechPp,
 
-                Improvements = p.ScoreStats.RankedImprovementsCount,
-                NewScores = p.ScoreStats.RankedPlayCount
+                Improvements = p.ScoreStats != null ? p.ScoreStats.RankedImprovementsCount : 0,
+                NewScores = p.ScoreStats != null ? p.ScoreStats.RankedPlayCount : 0
             })
             .FirstOrDefault();
             if (first == null) return NotFound();

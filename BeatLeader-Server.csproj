@@ -18,6 +18,7 @@
     <Compile Remove="bs-simulator\ReplayRecalculatorRunner\**" />
     <Compile Remove="bs-simulator\ReplayRecalculator\obj\**" />
     <Compile Remove="MapPostprocessor\**" />
+    <Compile Remove="RatingAPI\**" />
     <Compile Remove="Renderer\**" />
     <Compile Remove="ReplayDecoder\**" />
     <Content Remove="beatleader-parser\**" />
@@ -28,6 +29,7 @@
     <Content Remove="bs-simulator\ReplayRecalculatorRunner\**" />
     <Content Remove="bs-simulator\ReplayRecalculator\obj\**" />
     <Content Remove="MapPostprocessor\**" />
+    <Content Remove="RatingAPI\**" />
     <Content Remove="Renderer\**" />
     <Content Remove="ReplayDecoder\**" />
     <EmbeddedResource Remove="beatleader-parser\**" />
@@ -38,6 +40,7 @@
     <EmbeddedResource Remove="bs-simulator\ReplayRecalculatorRunner\**" />
     <EmbeddedResource Remove="bs-simulator\ReplayRecalculator\obj\**" />
     <EmbeddedResource Remove="MapPostprocessor\**" />
+    <EmbeddedResource Remove="RatingAPI\**" />
     <EmbeddedResource Remove="Renderer\**" />
     <EmbeddedResource Remove="ReplayDecoder\**" />
     <None Remove="beatleader-parser\**" />
@@ -52,6 +55,7 @@
     <EmbeddedResource Remove="BeatLeader-Server-Sockets\**" />
     <None Remove="BeatLeader-Server-Sockets\**" />
     <None Remove="MapPostprocessor\**" />
+    <None Remove="RatingAPI\**" />
     <None Remove="Renderer\**" />
     <None Remove="ReplayDecoder\**" />
   </ItemGroup>
@@ -69,36 +73,36 @@
     <PackageReference Include="AspNetCoreRateLimit" Version="5.0.0" />
     <PackageReference Include="AWSSDK.S3" Version="3.7.411.4" />
     <PackageReference Include="CoreHtmlToImage" Version="1.0.6" />
-    <PackageReference Include="Discord.Net.Webhook" Version="3.18.0" />
-    <PackageReference Include="Discord.Net.WebSocket" Version="3.18.0" />
-    <PackageReference Include="geohash-dotnet" Version="2.2.0" />
-    <PackageReference Include="Google.Apis.YouTube.v3" Version="1.70.0.3847" />
+    <PackageReference Include="Discord.Net.Webhook" Version="3.19.1" />
+    <PackageReference Include="Discord.Net.WebSocket" Version="3.19.1" />
+    <PackageReference Include="geohash-dotnet" Version="2.3.0" />
+    <PackageReference Include="Google.Apis.YouTube.v3" Version="1.73.0.4099" />
     <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
-    <PackageReference Include="HtmlSanitizer" Version="9.0.889" />
-    <PackageReference Include="IP2Location.IPGeolocation" Version="9.1.0" />
+    <PackageReference Include="HtmlSanitizer" Version="9.0.892" />
+    <PackageReference Include="IP2Location.IPGeolocation" Version="9.1.1" />
     <PackageReference Include="Lib.AspNetCore.ServerTiming" Version="6.0.0" />
     <PackageReference Include="Lucene.Net" Version="4.8.0-beta00016" />
     <PackageReference Include="Lucene.Net.Analysis.Common" Version="4.8.0-beta00016" />
     <PackageReference Include="Lucene.Net.QueryParser" Version="4.8.0-beta00016" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.0">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.5">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.15.0" />
     <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.15.0" />
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.23.2" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.24.4" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="OggVorbisEncoder" Version="1.2.2" />
     <PackageReference Include="OpenIddict.AspNetCore" Version="5.7.0" />
     <PackageReference Include="OpenIddict.EntityFrameworkCore" Version="5.7.0" />
-    <PackageReference Include="Prometheus.Client" Version="6.1.0" />
-    <PackageReference Include="Prometheus.Client.Abstractions" Version="6.1.0" />
+    <PackageReference Include="Prometheus.Client" Version="6.3.0" />
+    <PackageReference Include="Prometheus.Client.Abstractions" Version="6.3.0" />
     <PackageReference Include="Prometheus.Client.AspNetCore" Version="6.0.0" />
     <PackageReference Include="Prometheus.Client.DependencyInjection" Version="1.6.0" />
     <PackageReference Include="Prometheus.Client.HealthChecks" Version="2.2.0" />
@@ -108,11 +112,11 @@
     <PackageReference Include="SharpZipLib" Version="1.4.2" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
     <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.7" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.0.1" />
-    <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.0.1" />
-    <PackageReference Include="System.Drawing.Common" Version="10.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
+    <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.1.7" />
+    <PackageReference Include="System.Drawing.Common" Version="10.0.5" />
     <PackageReference Include="System.Interactive.Async" Version="7.0.0" />
-    <PackageReference Include="Z.EntityFramework.Extensions.EFCore" Version="10.105.0" />
+    <PackageReference Include="Z.EntityFramework.Extensions.EFCore" Version="10.105.3" />
   </ItemGroup>
 
   <ItemGroup>
@@ -129,13 +133,23 @@
     <None Remove="bs-simulator\.gitattributes" />
     <None Remove="bs-simulator\.gitignore" />
     <None Remove="bs-simulator\.gitmodules" />
+    <None Remove="RatingsGenerator\model_sleep_bl.onnx" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="beatleader-parser\beatleader-parser\Parser.csproj" />
     <ProjectReference Include="beatleader-server-models\Models.csproj" />
     <ProjectReference Include="MapPostprocessor\MapPostprocessor.csproj" />
+    <ProjectReference Include="RatingAPI\beatleader-analyzer\beatleader-analyzer\Analyzer.csproj" />
     <ProjectReference Include="ReplayDecoder\ReplayDecoder\ReplayDecoder.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="model_sleep_bl.onnx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="tagging_model.onnx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ProjectExtensions>
     <MonoDevelop>

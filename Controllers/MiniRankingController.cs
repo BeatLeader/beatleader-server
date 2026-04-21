@@ -19,7 +19,7 @@ namespace BeatLeader_Server.Controllers
         public class MiniRankingPlayer {
             public string Name { get; set; }
             public string Id { get; set; }
-            public string Alias { get; set; }
+            public string? Alias { get; set; }
             public string Country { get; set; }
 
             public int Rank { get; set; }
@@ -41,23 +41,21 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
             [FromQuery] bool friends = false)
         {
-
-            var players = _context
-                .PlayerContextExtensions
-                .Include(ce => ce.PlayerInstance)
-                .Where(p => 
-                    !p.Banned && 
-                    p.Context == leaderboardContext &&
-                    (
-                        (p.Country == country && p.CountryRank <= countryRank + 1 && p.CountryRank >= countryRank - 3) || 
-                        (p.Rank <= rank + 1 && p.Rank >= rank - 3)
-                    ))
-                .Select(p => new MiniRankingPlayer { Id = p.PlayerId, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Alias = p.PlayerInstance.Alias, Pp = p.Pp });
-
             var result = new MiniRankingResponse()
             {
-                Global = await players.Where(p => p.Rank <= rank + 1 && p.Rank >= rank - 3).OrderBy(s => s.Rank).ToListAsync(),
-                Country = await players.Where(p => p.Country == country && p.CountryRank <= countryRank + 1 && p.CountryRank >= countryRank - 3).OrderBy(s => s.CountryRank).ToListAsync()
+                Global = await _context
+                    .PlayerContextExtensions
+                    .AsNoTracking()
+                    .Where(p => !p.Banned && p.Context == leaderboardContext && p.Rank <= rank + 1 && p.Rank >= rank - 3)
+                    .OrderBy(s => s.Rank)
+                    .Select(p => new MiniRankingPlayer { Id = p.PlayerId, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Alias = p.Alias, Pp = p.Pp })
+                    .ToListAsync(),
+                Country = await _context
+                    .PlayerContextExtensions
+                    .Where(p => !p.Banned && p.Context == leaderboardContext && p.Country == country && p.CountryRank <= countryRank + 1 && p.CountryRank >= countryRank - 3)
+                    .OrderBy(s => s.CountryRank)
+                    .Select(p => new MiniRankingPlayer { Id = p.PlayerId, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Alias = p.Alias, Pp = p.Pp })
+                    .ToListAsync()
             };
 
             if (friends) {
@@ -83,7 +81,7 @@ namespace BeatLeader_Server.Controllers
                             !p.Banned && 
                             p.Context == leaderboardContext &&
                             friendsList.Contains(p.PlayerId))
-                        .Select(p => new MiniRankingPlayer { Id = p.PlayerId, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Alias = p.PlayerInstance.Alias, Pp = p.Pp })
+                        .Select(p => new MiniRankingPlayer { Id = p.PlayerId, Rank = p.Rank, CountryRank = p.CountryRank, Country = p.Country, Name = p.Name, Alias = p.Alias, Pp = p.Pp })
                         .ToListAsync();
 
                     var currentPlayer = friendsPlayers.FirstOrDefault(p => p.Id == currentID);
@@ -116,6 +114,8 @@ namespace BeatLeader_Server.Controllers
 
             var players = _context
                 .Players
+                .TagWithCallerS()
+                .AsNoTracking()
                 .Where(p => 
                     !p.Banned && 
                     (

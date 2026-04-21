@@ -76,18 +76,20 @@ namespace BeatLeader_Server.Controllers {
                 if (!modifiers.Contains("none")) {
                     var score = Expression.Parameter(typeof(Score), "s");
 
-                    var contains = typeof(string).GetMethod("Contains", new[] { typeof(string) });
-
                     var any = modifiers.Contains("any");
                     var not = modifiers.Contains("not");
                     // 1 != 2 is here to trigger `OrElse` further the line.
                     var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(any ? 2 : 1));
-                    var modifiersList = modifiers.Split(",").Where(m => m != "any" && m != "none" && m != "not");
+                    var modifiersList = modifiers.Split(",").Where(m => m != "any" && m != "none" && m != "not" && ModifiersMap.KnownModifiers.Contains(m));
 
-                    foreach (var term in modifiersList) {
-                        var subexpression = Expression.Call(Expression.Property(score, "Modifiers"), contains, Expression.Constant(term));
+                    foreach (var modifier in modifiersList) {
+                        var subexpression = Expression.Property(score, $"Has{modifier}");
                         if (not) {
-                            exp = Expression.And(exp, Expression.Not(subexpression));
+                            if (any) {
+                                exp = Expression.And(exp, Expression.Not(subexpression));
+                            } else {
+                                exp = Expression.And(exp, subexpression);
+                            }
                         } else {
                             if (any) {
                                 exp = Expression.OrElse(exp, subexpression);
@@ -96,7 +98,7 @@ namespace BeatLeader_Server.Controllers {
                             }
                         }
                     }
-                    scoreQuery = scoreQuery.Where((Expression<Func<Score, bool>>)Expression.Lambda(exp, score));
+                    scoreQuery = scoreQuery.Where((Expression<Func<Score, bool>>)Expression.Lambda(not && !any ? Expression.Not(exp) : exp, score));
                 } else {
                     scoreQuery = scoreQuery.Where(s => s.Modifiers.Length == 0);
                 }
@@ -272,18 +274,20 @@ namespace BeatLeader_Server.Controllers {
                 if (!modifiers.Contains("none")) {
                     var score = Expression.Parameter(typeof(PredictedScore), "s");
 
-                    var contains = typeof(string).GetMethod("Contains", new[] { typeof(string) });
-
                     var any = modifiers.Contains("any");
                     var not = modifiers.Contains("not");
                     // 1 != 2 is here to trigger `OrElse` further the line.
                     var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(any ? 2 : 1));
-                    var modifiersList = modifiers.Split(",").Where(m => m != "any" && m != "none" && m != "not");
+                    var modifiersList = modifiers.Split(",").Where(m => m != "any" && m != "none" && m != "not" && ModifiersMap.KnownModifiers.Contains(m));
 
-                    foreach (var term in modifiersList) {
-                        var subexpression = Expression.Call(Expression.Property(score, "Modifiers"), contains, Expression.Constant(term));
+                    foreach (var modifier in modifiersList) {
+                        var subexpression = Expression.Property(score, $"Has{modifier}");
                         if (not) {
-                            exp = Expression.And(exp, Expression.Not(subexpression));
+                            if (any) {
+                                exp = Expression.And(exp, Expression.Not(subexpression));
+                            } else {
+                                exp = Expression.And(exp, subexpression);
+                            }
                         } else {
                             if (any) {
                                 exp = Expression.OrElse(exp, subexpression);
@@ -292,7 +296,7 @@ namespace BeatLeader_Server.Controllers {
                             }
                         }
                     }
-                    scoreQuery = scoreQuery.Where((Expression<Func<PredictedScore, bool>>)Expression.Lambda(exp, score));
+                    scoreQuery = scoreQuery.Where((Expression<Func<PredictedScore, bool>>)Expression.Lambda(not && !any ? Expression.Not(exp) : exp, score));
                 } else {
                     scoreQuery = scoreQuery.Where(s => s.Modifiers.Length == 0);
                 }
@@ -442,18 +446,20 @@ namespace BeatLeader_Server.Controllers {
                 if (!modifiers.Contains("none")) {
                     var score = Expression.Parameter(typeof(ScoreContextExtension), "s");
 
-                    var contains = typeof(string).GetMethod("Contains", new[] { typeof(string) });
-
                     var any = modifiers.Contains("any");
                     var not = modifiers.Contains("not");
                     // 1 != 2 is here to trigger `OrElse` further the line.
                     var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(any ? 2 : 1));
-                    var modifiersList = modifiers.Split(",").Where(m => m != "any" && m != "none" && m != "not");
+                    var modifiersList = modifiers.Split(",").Where(m => m != "any" && m != "none" && m != "not" && ModifiersMap.KnownModifiers.Contains(m));
 
-                    foreach (var term in modifiersList) {
-                        var subexpression = Expression.Call(Expression.Property(score, "Modifiers"), contains, Expression.Constant(term));
+                    foreach (var modifier in modifiersList) {
+                        var subexpression = Expression.Property(score, $"Has{modifier}");
                         if (not) {
-                            exp = Expression.And(exp, Expression.Not(subexpression));
+                            if (any) {
+                                exp = Expression.And(exp, Expression.Not(subexpression));
+                            } else {
+                                exp = Expression.And(exp, subexpression);
+                            }
                         } else {
                             if (any) {
                                 exp = Expression.OrElse(exp, subexpression);
@@ -462,7 +468,7 @@ namespace BeatLeader_Server.Controllers {
                             }
                         }
                     }
-                    scoreQuery = scoreQuery.Where((Expression<Func<ScoreContextExtension, bool>>)Expression.Lambda(exp, score));
+                    scoreQuery = scoreQuery.Where((Expression<Func<ScoreContextExtension, bool>>)Expression.Lambda(not && !any ? Expression.Not(exp) : exp, score));
                 } else {
                     scoreQuery = scoreQuery.Where(s => s.Modifiers.Length == 0);
                 }
@@ -726,6 +732,7 @@ namespace BeatLeader_Server.Controllers {
                     Mode = l.Difficulty.Mode,
                     DifficultyName = l.Difficulty.DifficultyName,
                     CustomDifficultyName = l.Difficulty.CustomDifficultyName,
+                    MapVersion = l.Difficulty.MapVersion,
                     ModeName = l.Difficulty.ModeName,
                     Status = l.Difficulty.Status,
                     ModifierValues = l.Difficulty.ModifierValues,
@@ -739,10 +746,14 @@ namespace BeatLeader_Server.Controllers {
                     PassRating  = l.Difficulty.PassRating,
                     AccRating  = l.Difficulty.AccRating,
                     TechRating  = l.Difficulty.TechRating,
+                    MultiRating = l.Difficulty.MultiRating,
                     Type  = l.Difficulty.Type,
 
                     Njs  = l.Difficulty.Njs,
                     Nps  = l.Difficulty.Nps,
+                    PeakSustainedEBPM = l.Difficulty.PeakSustainedEBPM,
+                    LinearPercentage = l.Difficulty.LinearPercentage,
+                    NoteJumpStartBeatOffset = (float)l.Difficulty.NoteJumpStartBeatOffset,
                     Notes  = l.Difficulty.Notes,
                     Chains = l.Difficulty.Chains,
                     Sliders = l.Difficulty.Sliders,
@@ -752,6 +763,7 @@ namespace BeatLeader_Server.Controllers {
                     Duration  = l.Difficulty.Duration,
 
                     Requirements = l.Difficulty.Requirements,
+                    DifficultyStatistics = l.Difficulty.DifficultyStatistics,
                 },
                 Plays = l.Plays,
                 Qualification = l.Qualification,
@@ -1591,13 +1603,75 @@ namespace BeatLeader_Server.Controllers {
 
             var song = await _context
                 .Songs
+                .TagWithCallerS()
                 .AsNoTracking()
                 .Where(s => s.LowerHash == hash.ToLower())
-                .Include(s => s.Difficulties)
-                .ThenInclude(d => d.ModifierValues)
-                .Include(s => s.Difficulties)
-                .ThenInclude(d => d.ModifiersRating)
-                .AsSplitQuery()
+                .Select(s => new SongResponse2 {
+                    Id = s.Id,
+                    Hash = s.LowerHash,
+                    Name = s.Name,
+                    SubName = s.SubName,
+                    Author = s.Author,
+                    Mapper = s.Mapper,
+                    MapperId  = s.MapperId,
+                    CoverImage   = s.CoverImage,
+                    FullCoverImage = s.FullCoverImage,
+                    DownloadUrl = s.DownloadUrl,
+                    Bpm = s.Bpm,
+                    Duration = s.Duration,
+                    UploadTime = s.UploadTime,
+                    Explicity = s.Explicity,
+                    VideoPreviewUrl = s.VideoPreviewUrl,
+                    LeaderboardIds = s.Leaderboards.Select(l => l.Id).ToList(),
+                    Mappers = s.Mappers.Select(m => new MapperResponse {
+                        Id = m.Id,
+                        PlayerId = m.Player != null ? m.Player.Id : null,
+                        Name = m.Player != null ? m.Player.Name : m.Name,
+                        Avatar = m.Player != null ? m.Player.Avatar : m.Avatar,
+                        Curator = m.Curator,
+                        VerifiedMapper = m.VerifiedMapper,
+                        Status = m.Status,
+                    }).ToList(),
+                    Difficulties = s.Difficulties.Select(d => new DifficultyResponse {
+                        Id = d.Id,
+                        Value = d.Value,
+                        Mode = d.Mode,
+                        DifficultyName = d.DifficultyName,
+                        CustomDifficultyName = d.CustomDifficultyName,
+                        MapVersion = d.MapVersion,
+                        ModeName = d.ModeName,
+                        Status = d.Status,
+                        ModifierValues = d.ModifierValues,
+                        ModifiersRating = d.ModifiersRating,
+                        NominatedTime  = d.NominatedTime,
+                        QualifiedTime  = d.QualifiedTime,
+                        RankedTime = d.RankedTime,
+
+                        Stars  = d.Stars,
+                        PredictedAcc  = d.PredictedAcc,
+                        PassRating  = d.PassRating,
+                        AccRating  = d.AccRating,
+                        TechRating  = d.TechRating,
+                        MultiRating = d.MultiRating,
+                        Type  = d.Type,
+
+                        Njs  = d.Njs,
+                        Nps  = d.Nps,
+                        PeakSustainedEBPM = d.PeakSustainedEBPM,
+                        LinearPercentage = d.LinearPercentage,
+                        NoteJumpStartBeatOffset = (float)d.NoteJumpStartBeatOffset,
+                        Notes  = d.Notes,
+                        Chains = d.Chains,
+                        Sliders = d.Sliders,
+                        Bombs  = d.Bombs,
+                        Walls  = d.Walls,
+                        MaxScore = d.MaxScore,
+                        Duration  = d.Duration,
+
+                        Requirements = d.Requirements,
+                    }).ToList(),
+                    ExternalStatuses = s.ExternalStatuses,
+                })
                 .FirstOrDefaultAsync();
 
             if (song == null) {
@@ -1605,16 +1679,12 @@ namespace BeatLeader_Server.Controllers {
             }
 
             var query = _context
-            .Leaderboards
-            .AsNoTracking()
-            .Where(lb => lb.SongId == song.Id);
-
-            if (my_scores && currentID != null) {
-                query = query.Include(lb => lb.Scores.Where(s => s.PlayerId == currentID));
-            }
+                .Leaderboards
+                .TagWithCallerS()
+                .AsNoTracking()
+                .Where(lb => song.LeaderboardIds.Contains(lb.Id));
 
             var resultList = await query
-            .Include(lb => lb.Qualification)
             .AsSplitQuery()
             .Select(lb => new LeaderboardsInfoResponseWithScore {
                 Id = lb.Id,
@@ -1637,6 +1707,9 @@ namespace BeatLeader_Server.Controllers {
                     PassRating  = lb.Difficulty.PassRating,
                     AccRating  = lb.Difficulty.AccRating,
                     TechRating  = lb.Difficulty.TechRating,
+                    MultiRating = lb.Difficulty.MultiRating,
+                    LinearPercentage = lb.Difficulty.LinearPercentage,
+                    PeakSustainedEBPM = lb.Difficulty.PeakSustainedEBPM,
                     Type  = lb.Difficulty.Type,
 
                     Njs  = lb.Difficulty.Njs,
@@ -1648,6 +1721,7 @@ namespace BeatLeader_Server.Controllers {
                     Duration  = lb.Difficulty.Duration,
 
                     Requirements = lb.Difficulty.Requirements,
+                    DifficultyStatistics = lb.Difficulty.DifficultyStatistics
                 },
                 Clan = lb.Clan == null ? null : new ClanResponseFull {
                     Id = lb.Clan.Id,
@@ -1660,23 +1734,93 @@ namespace BeatLeader_Server.Controllers {
                     Pp = lb.Clan.Pp,
                     Rank = lb.Clan.Rank
                 },
-                ClanRankingContested = lb.ClanRankingContested,
-                MyScore = my_scores && currentID != null 
-                    ? lb.Scores.AsQueryable().Where(s => s.PlayerId == currentID && s.ValidForGeneral).Select(ScoreResponseQuery.SelectWithAcc()).FirstOrDefault()
-                    : null
+                ClanRankingContested = lb.ClanRankingContested
             }).ToListAsync();
 
             if (resultList.Count > 0) {
                 Player? currentPlayer = currentID != null 
                     ? await _context.Players.Include(p => p.ProfileSettings).FirstOrDefaultAsync(p => p.Id == currentID) 
                     : null;
+                if (currentPlayer != null) {
+                    if (my_scores) {
+                        var scores = await _context
+                            .Scores
+                            .TagWithCaller()
+                            .AsNoTracking()
+                            .Where(s => s.PlayerId == currentID && s.ValidForGeneral && song.LeaderboardIds.Contains(s.LeaderboardId))
+                            .Select(s => new ScoreResponseWithAcc {
+                                Id = s.Id,
+                                BaseScore = s.BaseScore,
+                                ModifiedScore = s.ModifiedScore,
+                                PlayerId = s.PlayerId,
+                                Accuracy = s.Accuracy,
+                                Pp = s.Pp,
+                                PassPP = s.PassPP,
+                                AccPP = s.AccPP,
+                                TechPP = s.TechPP,
+                                FcAccuracy = s.FcAccuracy,
+                                FcPp = s.FcPp,
+                                BonusPp = s.BonusPp,
+                                Rank = s.Rank,
+                                Replay = s.Replay,
+                                Modifiers = s.Modifiers,
+                                BadCuts = s.BadCuts,
+                                MissedNotes = s.MissedNotes,
+                                BombCuts = s.BombCuts,
+                                WallsHit = s.WallsHit,
+                                Pauses = s.Pauses,
+                                FullCombo = s.FullCombo,
+                                Hmd = s.Hmd,
+                                Controller = s.Controller,
+                                MaxCombo = s.MaxCombo,
+                                Timeset = s.Timeset,
+                                ReplaysWatched = s.ReplayWatchedTotal,
+                                Timepost = s.Timepost,
+                                LeaderboardId = s.LeaderboardId,
+                                Platform = s.Platform,
+                                Player = new PlayerResponse
+                                {
+                                    Id = s.Player.Id,
+                                    Name = s.Player.Name,
+                                    Alias = s.Player.Alias,
+                                    Platform = s.Player.Platform,
+                                    Avatar = s.Player.Avatar,
+                                    Country = s.Player.Country,
 
-                bool showRatings = currentPlayer?.ProfileSettings?.ShowAllRatings ?? false;
-                foreach (var leaderboard in resultList) {
-                    if (!showRatings && !leaderboard.Difficulty.Status.WithRating()) {
-                        leaderboard.HideRatings();
-                    } else {
-                        leaderboard.RemoveSpeedMultipliers();
+                                    Pp = s.Player.Pp,
+                                    Rank = s.Player.Rank,
+                                    CountryRank = s.Player.CountryRank,
+                                    Role = s.Player.Role,
+                                    Socials = s.Player.Socials,
+                                    PatreonFeatures = s.Player.PatreonFeatures,
+                                    ProfileSettings = s.Player.ProfileSettings,
+                                    ClanOrder = s.Player.ClanOrder,
+                                    Clans = s.Player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                                },
+                                ScoreImprovement = s.ScoreImprovement,
+                                RankVoting = s.RankVoting,
+                                Metadata = s.Metadata,
+                                Country = s.Country,
+                                Offsets = s.ReplayOffsets,
+                                Weight = s.Weight,
+                                AccLeft = s.AccLeft,
+                                AccRight = s.AccRight,
+                                MaxStreak = s.MaxStreak
+                            })
+                            .ToListAsync();
+
+                        foreach (var item in resultList) {
+                            item.MyScore = scores.FirstOrDefault(s => s.LeaderboardId == item.Id);
+                        }
+                    }
+
+                    bool showRatings = currentPlayer?.ProfileSettings?.ShowAllRatings ?? false;
+                    foreach (var leaderboard in resultList) {
+                        if (!showRatings && !leaderboard.Difficulty.Status.WithRating()) {
+                            leaderboard.HideRatings();
+                        } else {
+                            leaderboard.RemoveSpeedMultipliers();
+                        }
                     }
                 }
             }

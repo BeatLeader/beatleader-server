@@ -50,14 +50,14 @@ namespace BeatLeader_Server.Controllers
 
             var watchedScores = await _context
                 .WatchingSessions
-                .Where(ws => ws.Id < 1730859 && (ws.IP == ip || ws.Player == currentID))
+                .Where(ws => ws.Id > 4461718 && ws.Id < 7392598 && (ws.IP == ip || ws.Player == currentID))
                 .Select(ws => ws.ScoreId)
                 .ToListAsync();
 
             var playerIds = await _context
                 .Scores
-                .Where(s => 
-                    s.PlayerId != currentID && 
+                .Where(s =>
+                    s.PlayerId != currentID &&
                     !s.Player.Banned &&
                     watchedScores.Contains(s.Id))
                 .Select(s => s.PlayerId)
@@ -72,7 +72,7 @@ namespace BeatLeader_Server.Controllers
 
             foreach (var topPlayer in topPlayers)
             {
-                var valentine = await _context.ValentineMessages.Where(vm => vm.SenderId == currentID && vm.ReceiverId == topPlayer.Id).FirstOrDefaultAsync();
+                var valentine = await _context.ValentineMessages2026.Where(vm => vm.SenderId == currentID && vm.ReceiverId == topPlayer.Id).FirstOrDefaultAsync();
                 topPlayer.Sent = valentine != null;
                 topPlayer.Viewed = valentine?.Viewed ?? false;
             }
@@ -103,7 +103,7 @@ namespace BeatLeader_Server.Controllers
             var topPlayer = topViewed[index];
             if (!topPlayer.Sent) {
 
-                _context.ValentineMessages.Add(new ValentineMessage {
+                _context.ValentineMessages2026.Add(new ValentineMessage2026 {
                     SenderId = currentID,
                     ReceiverId = topPlayer.Id,
                     Message = message,
@@ -117,11 +117,11 @@ namespace BeatLeader_Server.Controllers
         }
 
         [HttpGet("~/valentines/")]
-        public async Task<ActionResult<List<ValentineMessage>>> getvalentines()
+        public async Task<ActionResult<List<ValentineMessage2026>>> getvalentines()
         {
             string? currentID = HttpContext.CurrentUserID(_context);
 
-            return await _context.ValentineMessages.Where(vm => vm.SenderId == currentID || vm.ReceiverId == currentID).ToListAsync();
+            return await _context.ValentineMessages2026.Where(vm => vm.SenderId == currentID || vm.ReceiverId == currentID).ToListAsync();
         }
 
         [HttpGet("~/valentine/viewed")]
@@ -129,7 +129,7 @@ namespace BeatLeader_Server.Controllers
         {
             string? currentID = HttpContext.CurrentUserID(_context);
 
-            var message = await _context.ValentineMessages.Where(vm => vm.ReceiverId == currentID && vm.Id == id).FirstOrDefaultAsync();
+            var message = await _context.ValentineMessages2026.Where(vm => vm.ReceiverId == currentID && vm.Id == id).FirstOrDefaultAsync();
             if (message == null) {
                 return NotFound();
             }

@@ -128,16 +128,21 @@ namespace BeatLeader_Server.Utils
         public static float ToStars(float accRating, float passRating, float techRating) {
             (float passPP, float accPP, float techPP) = GetPp(LeaderboardContexts.General, 0.96f, accRating, passRating, techRating);
 
-            return Inflate(passPP + accPP + techPP) / 52f;
+            var result = Inflate(passPP + accPP + techPP) / 52f;
+            if (float.IsNaN(result) || float.IsInfinity(result)) {
+                return 0;
+            } else {
+                return result;
+            }
         }
 
         public static float EffectiveStarRating(
             string modifiers,
             float baseStars,
-            ModifiersMap modifierValues, 
+            ModifiersMap? modifierValues, 
             ModifiersRating? modifiersRating) {
 
-            float mp = modifierValues.GetTotalMultiplier(modifiers, modifiersRating == null);
+            float mp = (modifierValues ?? new ModifiersMap()).GetTotalMultiplier(modifiers, modifiersRating == null, LeaderboardContexts.General);
 
             if (modifiersRating != null) {
                 if (modifiers.Contains("SS")) {
@@ -165,7 +170,7 @@ namespace BeatLeader_Server.Utils
         {
             if (accuracy <= 0 || accuracy > 1) return (0, 0, 0, 0, 0);
 
-            float mp = modifierValues.GetTotalMultiplier(modifiers, modifiersRating == null);
+            float mp = modifierValues.GetTotalMultiplier(modifiers, modifiersRating == null, context);
 
             if (accuracy < 0) {
                 accuracy = 0;
@@ -250,8 +255,10 @@ namespace BeatLeader_Server.Utils
             
             score.BaseScore = info.score;
             score.Modifiers = info.modifiers;
+            score.ModifiersUpdated();
             score.Hmd = HMDFromName(info.hmd);
             score.Controller = ControllerFromName(info.controller);
+            score.LeftHanded = info.leftHanded;
             if (score.Hmd == HMD.unknown && (info.hmd.Length == 0 || info.hmd.Contains("lighthouse"))) {
                 score.Hmd = score.Controller switch {
                     ControllerEnum.vive => HMD.vive,
@@ -306,7 +313,7 @@ namespace BeatLeader_Server.Utils
             {
                 score.ModifiedScore = (int)(score.BaseScore * modifers.GetNegativeMultiplier(info.modifiers, true));
             } else if (replay.info.mode.StartsWith(ReBeatUtils.MODE_IDENTIFIER)) {
-                score.ModifiedScore = (int)(score.BaseScore * modifers.GetTotalMultiplier(info.modifiers, true));
+                score.ModifiedScore = (int)(score.BaseScore * modifers.GetTotalMultiplier(info.modifiers, true, LeaderboardContexts.General));
             } else
             {
                 score.ModifiedScore = (int)((score.BaseScore + (int)((float)(maxScore - score.BaseScore) * (modifers.GetPositiveMultiplier(info.modifiers) - 1))) * modifers.GetNegativeMultiplier(info.modifiers));
@@ -343,7 +350,7 @@ namespace BeatLeader_Server.Utils
 
             if (info.modifiers.Contains("NF")) {
                 score.Priority = 3;
-            } else if (info.modifiers.Contains("NB") || info.modifiers.Contains("NA")) {
+            } else if (info.modifiers.Contains("NB") || info.modifiers.Contains("NA") || info.modifiers.Contains("SC")) {
                 score.Priority = 2;
             } else if (info.modifiers.Contains("NO")) {
                 score.Priority = 1;
@@ -448,13 +455,14 @@ namespace BeatLeader_Server.Utils
             }
 
             result.ModifiedStars = EffectiveStarRating(result.Modifiers, difficulty.Stars ?? 0, difficulty.ModifierValues, difficulty.ModifiersRating);
+            result.ModifiersUpdated();
             
             return result;
         }
 
         public static ScoreContextExtension? NoPauseContextExtension(Score score) {
             if (score.Pauses != 0) return null;
-            return new ScoreContextExtension {
+            var result = new ScoreContextExtension {
                 Context = LeaderboardContexts.NoPause,
                 BaseScore = score.BaseScore,
                 ModifiedScore = score.ModifiedScore,
@@ -468,6 +476,9 @@ namespace BeatLeader_Server.Utils
                 Qualification = score.Qualification,
                 ModifiedStars = score.ModifiedStars
             };
+
+            result.ModifiersUpdated();
+            return result;
         }
 
         public static ScoreContextExtension? SCPMContextExtension(Score score, DifficultyDescription difficulty) {
@@ -485,6 +496,7 @@ namespace BeatLeader_Server.Utils
                 Qualification = score.Qualification,
                 ModifiedStars = score.ModifiedStars
             };
+            result.ModifiersUpdated();
 
             if (score.Pp > 0) {
                 (result.Pp, result.BonusPp, result.PassPP, result.AccPP, result.TechPP) = PpFromScore(score.Accuracy, LeaderboardContexts.SCPM, score.Modifiers, difficulty.ModifierValues, 
@@ -513,6 +525,72 @@ namespace BeatLeader_Server.Utils
                 Qualification = score.Qualification,
                 ModifiedStars = score.ModifiedStars
             };
+        }
+
+        public static ScoreContextExtension? Funny2ContextExtension(Score score, Replay replay, DifficultyDescription difficulty, ModifiersMap modifers, bool hasPp) {
+            if (difficulty.ModeName == "OneSaber" || replay.info.hash.ToLower().StartsWith("397f4485345e33cc0ca1212425c19274ec855740")) return null;
+
+            (var stats, var error) = FunnyReplayStatistic.ProcessReplay(replay);
+            if (stats == null) return null;
+
+
+            var contextScore = new ScoreContextExtension {
+                Context = LeaderboardContexts.LeftLeader,
+                Timepost = score.Timepost,
+                Modifiers = score.Modifiers,
+                Qualification = score.Qualification,
+                ModifiedStars = score.ModifiedStars
+            };
+
+            contextScore.Accuracy = stats.scoreGraphTracker.graph.Last();
+            if (float.IsPositiveInfinity(contextScore.Accuracy) || float.IsNegativeInfinity(contextScore.Accuracy) || float.IsNaN(contextScore.Accuracy)) {
+                contextScore.Accuracy = -1f;
+            }
+            contextScore.BaseScore = stats.winTracker.totalScore;
+
+            contextScore.AccLeft = stats.accuracyTracker.accLeft;
+            contextScore.AccRight = stats.accuracyTracker.accRight;
+            contextScore.FcAccuracy = stats.accuracyTracker.fcAcc;
+
+            if (float.IsPositiveInfinity(contextScore.FcAccuracy) || float.IsNegativeInfinity(contextScore.FcAccuracy) || float.IsNaN(contextScore.FcAccuracy)) {
+                contextScore.FcAccuracy = -1f;
+            }
+
+            if (hasPp)
+            {
+                contextScore.ModifiedScore = (int)(contextScore.BaseScore * modifers.GetNegativeMultiplier(replay.info.modifiers, true));
+            } else if (replay.info.mode.StartsWith(ReBeatUtils.MODE_IDENTIFIER)) {
+                contextScore.ModifiedScore = (int)(contextScore.BaseScore * modifers.GetTotalMultiplier(replay.info.modifiers, true, LeaderboardContexts.General));
+            } else
+            {
+                contextScore.ModifiedScore = (int)((contextScore.BaseScore + (int)((float)(stats.winTracker.maxScore - contextScore.BaseScore) * (modifers.GetPositiveMultiplier(replay.info.modifiers) - 1))) * modifers.GetNegativeMultiplier(replay.info.modifiers));
+            }
+
+            if (hasPp) {
+                (contextScore.Pp, contextScore.BonusPp, contextScore.PassPP, contextScore.AccPP, contextScore.TechPP) = PpFromScore(
+                contextScore.Accuracy, 
+                LeaderboardContexts.LeftLeader,
+                contextScore.Modifiers, 
+                difficulty.ModifierValues, 
+                difficulty.ModifiersRating,
+                difficulty.AccRating ?? 0.0f, 
+                difficulty.PassRating ?? 0.0f, 
+                difficulty.TechRating ?? 0.0f, 
+                difficulty.ModeName.ToLower() == "rhythmgamestandard");
+
+                contextScore.FcPp = ReplayUtils.PpFromScore(
+                        contextScore.FcAccuracy, 
+                        LeaderboardContexts.LeftLeader,
+                        contextScore.Modifiers ?? "", 
+                        modifers, 
+                        difficulty.ModifiersRating,
+                    difficulty.AccRating ?? 0.0f, 
+                    difficulty.PassRating ?? 0.0f, 
+                    difficulty.TechRating ?? 0.0f, 
+                    difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
+            }
+
+            return contextScore;
         }
 
         public static HMD HMDFromName(string hmdName) {
@@ -655,7 +733,7 @@ namespace BeatLeader_Server.Utils
           return note_score * (41 + (count - 13) * 8);
         }
 
-        public static float GetTotalMultiplier(this ModifiersMap modifiersObject, string modifiers, bool speedModifiers)
+        public static float GetTotalMultiplier(this ModifiersMap modifiersObject, string modifiers, bool speedModifiers, LeaderboardContexts context)
 		{
 			float multiplier = 1;
 
@@ -663,6 +741,7 @@ namespace BeatLeader_Server.Utils
             foreach (var modifier in modifiersMap.Keys)
             {
                 if (!speedModifiers && (modifier == "SF" || modifier == "SS" || modifier == "FS")) continue;
+                if (context == LeaderboardContexts.SCPM && (modifier == "SC" || modifier == "PM")) continue;
 
                 if (modifiers.Contains(modifier)) { multiplier += modifiersMap[modifier]; }
             }
@@ -741,9 +820,8 @@ namespace BeatLeader_Server.Utils
             try {
                 var mapPath = await mapDownloader.Map(replay.info.hash.Substring(0, 40));
                 if (mapPath == null) return null;
-                var parser = new Parse();
 
-                var map = parser.TryLoadPath(mapPath);
+                var map = MapParser.TryLoadPath(mapPath);
 
                 if (map == null) return null;
                 var wrapper = MapWrapper.Process(map.Difficulties.First(d => d.Characteristic == replay.info.mode && d.Difficulty == replay.info.difficulty));
@@ -867,11 +945,11 @@ namespace BeatLeader_Server.Utils
             var beforeX = 0f;
             var beforeY = 0f;
             var pauseStarted = false;
-            for (int i = 0; i < replay.frames.Count; i++) {
+            for (int i = 1; i < replay.frames.Count; i++) {
                 var currentFrame = replay.frames[i];
                 if (currentFrame.time >= currentPause.time && !pauseStarted) {
-                    beforeX = currentFrame.head.position.x;
-                    beforeY = currentFrame.head.position.y;
+                    beforeX = replay.frames[i - 1].head.position.x;
+                    beforeY = replay.frames[i - 1].head.position.y;
                     pauseStarted = true;
                     continue;
                 }

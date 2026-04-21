@@ -27,8 +27,10 @@ namespace BeatLeader_Server.ControllerHelpers {
                     .Where(c => c.Tag == tag);
             }
 
-            return await query.AsNoTracking()
-                    .Include(c => c.FeaturedPlaylists)
+            return await query
+                    .TagWithCaller()
+                    .AsNoTracking()
+                    //.Include(c => c.FeaturedPlaylists)
                     .Select(c => new ClanResponseFull {
                         Id = c.Id,
                         Name = c.Name,
@@ -47,153 +49,115 @@ namespace BeatLeader_Server.ControllerHelpers {
                         AverageAccuracy = c.AverageAccuracy,
                         RankedPoolPercentCaptured = c.RankedPoolPercentCaptured,
                         CaptureLeaderboardsCount = c.CaptureLeaderboardsCount,
-                        FeaturedPlaylists = c.FeaturedPlaylists.Select(fp => new FeaturedPlaylistResponse {
-                            Id = fp.Id,
-                            PlaylistLink = fp.PlaylistLink,
-                            Cover = fp.Cover,
-                            Title = fp.Title,
-                            Description = fp.Description,
+                        //FeaturedPlaylists = c.FeaturedPlaylists.Select(fp => new FeaturedPlaylistResponse {
+                        //    Id = fp.Id,
+                        //    PlaylistLink = fp.PlaylistLink,
+                        //    Cover = fp.Cover,
+                        //    Title = fp.Title,
+                        //    Description = fp.Description,
 
-                            Owner = fp.Owner,
-                            OwnerCover = fp.OwnerCover,
-                            OwnerLink = fp.OwnerLink,
-                        }).ToList(),
+                        //    Owner = fp.Owner,
+                        //    OwnerCover = fp.OwnerCover,
+                        //    OwnerLink = fp.OwnerLink,
+                        //}).ToList(),
                         ClanRankingDiscordHook = currentID == c.LeaderID ? c.ClanRankingDiscordHook : null,
                         PlayerChangesCallback = currentID == c.LeaderID ? c.PlayerChangesCallback : null
                     })
                     .FirstOrDefaultAsync();
         }
 
-        public static async Task<ActionResult<ResponseWithMetadataAndContainer<ClanRankingResponse, ClanResponseFull>>> PopulateClanWithMaps(
-            AppContext _context,
-            ClanResponseFull clan,
-            string? currentID,
-            int page = 1,
-            int count = 10,
-            ClanMapsSortBy sortBy = ClanMapsSortBy.Pp,
-            LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
-            Order order = Order.Desc,
-            PlayedStatus playedStatus = PlayedStatus.Any)
+        private sealed class ClanMapPageRow
         {
-            var rankings = _context
-                .ClanRanking
+            public int Id { get; set; }
+            public string LeaderboardId { get; set; }
+            public float DisplayPp { get; set; }
+        }
+
+        private static IQueryable<ClanRankingResponse> BuildClanRankingDetailsQuery(
+            AppContext context,
+            List<int> rankingIds)
+        {
+            return context.ClanRanking
                 .AsNoTracking()
-                .Include(p => p.Leaderboard)
-                .ThenInclude(l => l.Difficulty)
-                .Include(p => p.Leaderboard)
-                .ThenInclude(l => l.Song)
-                .ThenInclude(s => s.Difficulties)
-                .ThenInclude(d => d.ModifiersRating)
-                .Where(p => p.Leaderboard.Difficulty.Status == DifficultyStatus.ranked && p.ClanId == clan.Id);
-
-            if (currentID != null && playedStatus != PlayedStatus.Any) {
-                if (playedStatus == PlayedStatus.Played) {
-                    rankings = rankings.Where(p => p.Leaderboard.Scores.Any(s => s.PlayerId == currentID));
-                } else {
-                    rankings = rankings.Where(p => !p.Leaderboard.Scores.Any(s => s.PlayerId == currentID));
-                }
-            }
-
-            switch (sortBy)
-            {
-                case ClanMapsSortBy.Pp:
-                    rankings = rankings.Order(order, t => t.Pp);
-                    break;
-                case ClanMapsSortBy.Acc:
-                    rankings = rankings.Order(order, t => t.AverageAccuracy);
-                    break;
-                case ClanMapsSortBy.Rank:
-                    rankings = rankings.Order(order, t => t.Rank);
-                    break;
-                case ClanMapsSortBy.Date:
-                    rankings = rankings.Order(order, t => t.LastUpdateTime);
-                    break;
-                case ClanMapsSortBy.Tohold:
-                    rankings = rankings
-                        .Where(cr => cr.Rank == 1 && cr.Leaderboard.ClanRanking.Count > 1)
-                        .Order(
-                            order.Reverse(), 
-                            t => t.Pp - t
-                                    .Leaderboard
-                                    .ClanRanking
-                                    .Where(cr => cr.ClanId != clan.Id && cr.Rank == 2)
-                                    .Select(cr => cr.Pp)
-                                    .First());
-                    break;
-                case ClanMapsSortBy.Toconquer:
-                    rankings = rankings
-                        .Where(cr => cr.Rank != 1 || cr.Leaderboard.ClanRankingContested)
-                        .Order(
-                            order, 
-                            t => t.Pp - t
-                                    .Leaderboard
-                                    .ClanRanking
-                                    .Where(cr => cr.ClanId != clan.Id && cr.Rank == 1)
-                                    .Select(cr => cr.Pp)
-                                    .First());
-                    break;
-                default:
-                    break;
-            }
-
-            var rankingList = await rankings
-            .TagWithCaller()
-            .Skip((page - 1) * count)
-            .Take(count)
-            .Select(cr => new ClanRankingResponse {
-                Id = cr.Id,
-                Clan = cr.Leaderboard.Clan == null ? null : new ClanResponseFull {
-                    Id = cr.Leaderboard.Clan.Id,
-                    Name = cr.Leaderboard.Clan.Name,
-                    Color = cr.Leaderboard.Clan.Color,
-                    Icon = cr.Leaderboard.Clan.Icon,
-                    Tag = cr.Leaderboard.Clan.Tag,
-                    LeaderID = cr.Leaderboard.Clan.LeaderID,
-                    Description = cr.Leaderboard.Clan.Description,
-                    Pp = cr.Leaderboard.Clan.Pp,
-                    Rank = cr.Leaderboard.Clan.Rank
-                },
-                LastUpdateTime = cr.LastUpdateTime,
-                AverageRank = cr.AverageRank,
-                Pp = cr.Pp,
-                AverageAccuracy = cr.AverageAccuracy,
-                TotalScore = cr.TotalScore,
-                LeaderboardId = cr.LeaderboardId,
-                Leaderboard = new LeaderboardResponse {
-                    Id = cr.Leaderboard.Id,
-                    Song = new SongResponse {
-                        Id = cr.Leaderboard.Song.Id,
-                        Hash = cr.Leaderboard.Song.LowerHash,
-                        Name = cr.Leaderboard.Song.Name,
-                        SubName = cr.Leaderboard.Song.SubName,
-                        Author = cr.Leaderboard.Song.Author,
-                        Mapper = cr.Leaderboard.Song.Mapper,
-                        CoverImage  = cr.Leaderboard.Song.CoverImage,
-                        FullCoverImage = cr.Leaderboard.Song.FullCoverImage,
-                        DownloadUrl = cr.Leaderboard.Song.DownloadUrl
+                .TagWithCaller()
+                .Where(cr => rankingIds.Contains(cr.Id))
+                .Select(cr => new ClanRankingResponse
+                {
+                    Id = cr.Id,
+                    Clan = cr.Leaderboard.Clan == null ? null : new ClanResponseFull
+                    {
+                        Id = cr.Leaderboard.Clan.Id,
+                        Name = cr.Leaderboard.Clan.Name,
+                        Color = cr.Leaderboard.Clan.Color,
+                        Icon = cr.Leaderboard.Clan.Icon,
+                        Tag = cr.Leaderboard.Clan.Tag,
+                        LeaderID = cr.Leaderboard.Clan.LeaderID,
+                        Description = cr.Leaderboard.Clan.Description,
+                        Pp = cr.Leaderboard.Clan.Pp,
+                        Rank = cr.Leaderboard.Clan.Rank
                     },
-                    Difficulty = new DifficultyResponse {
-                        Id = cr.Leaderboard.Difficulty.Id,
-                        Value = cr.Leaderboard.Difficulty.Value,
-                        Mode = cr.Leaderboard.Difficulty.Mode,
-                        DifficultyName = cr.Leaderboard.Difficulty.DifficultyName,
-                        ModeName = cr.Leaderboard.Difficulty.ModeName,
-                        Status = cr.Leaderboard.Difficulty.Status,
-                        ModifierValues = cr.Leaderboard.Difficulty.ModifierValues,
-                        ModifiersRating = cr.Leaderboard.Difficulty.ModifiersRating,
-
-                        Stars  = cr.Leaderboard.Difficulty.Stars,
-                        PredictedAcc  = cr.Leaderboard.Difficulty.PredictedAcc,
-                        PassRating  = cr.Leaderboard.Difficulty.PassRating,
-                        AccRating  = cr.Leaderboard.Difficulty.AccRating,
-                        TechRating  = cr.Leaderboard.Difficulty.TechRating,
-                        Type  = cr.Leaderboard.Difficulty.Type,
-                        MaxScore = cr.Leaderboard.Difficulty.MaxScore,
+                    LastUpdateTime = cr.LastUpdateTime,
+                    AverageRank = cr.AverageRank,
+                    Pp = cr.Pp,
+                    AverageAccuracy = cr.AverageAccuracy,
+                    TotalScore = cr.TotalScore,
+                    LeaderboardId = cr.LeaderboardId,
+                    Leaderboard = new LeaderboardResponse
+                    {
+                        Id = cr.Leaderboard.Id,
+                        Song = new SongResponse
+                        {
+                            Id = cr.Leaderboard.Song.Id,
+                            Hash = cr.Leaderboard.Song.LowerHash,
+                            Name = cr.Leaderboard.Song.Name,
+                            SubName = cr.Leaderboard.Song.SubName,
+                            Author = cr.Leaderboard.Song.Author,
+                            Mapper = cr.Leaderboard.Song.Mapper,
+                            CoverImage = cr.Leaderboard.Song.CoverImage,
+                            FullCoverImage = cr.Leaderboard.Song.FullCoverImage,
+                            DownloadUrl = cr.Leaderboard.Song.DownloadUrl
+                        },
+                        Difficulty = new DifficultyResponse
+                        {
+                            Id = cr.Leaderboard.Difficulty.Id,
+                            Value = cr.Leaderboard.Difficulty.Value,
+                            Mode = cr.Leaderboard.Difficulty.Mode,
+                            DifficultyName = cr.Leaderboard.Difficulty.DifficultyName,
+                            ModeName = cr.Leaderboard.Difficulty.ModeName,
+                            Status = cr.Leaderboard.Difficulty.Status,
+                            ModifierValues = cr.Leaderboard.Difficulty.ModifierValues,
+                            ModifiersRating = cr.Leaderboard.Difficulty.ModifiersRating,
+                            Stars = cr.Leaderboard.Difficulty.Stars,
+                            PredictedAcc = cr.Leaderboard.Difficulty.PredictedAcc,
+                            PassRating = cr.Leaderboard.Difficulty.PassRating,
+                            AccRating = cr.Leaderboard.Difficulty.AccRating,
+                            TechRating = cr.Leaderboard.Difficulty.TechRating,
+                            Type = cr.Leaderboard.Difficulty.Type,
+                            MaxScore = cr.Leaderboard.Difficulty.MaxScore,
+                        },
+                        Plays = cr.Leaderboard.Plays,
                     },
-                    Plays = cr.Leaderboard.Plays,
-                },
-                Rank = cr.Rank,
-                MyScore = currentID == null ? null : cr.Leaderboard.Scores.Where(s => s.PlayerId == currentID && s.ValidContexts.HasFlag(leaderboardContext) && !s.Banned).Select(s => new ScoreResponseWithAcc {
+                    Rank = cr.Rank,
+                    MyScore = null
+                });
+        }
+
+        private static IQueryable<ScoreResponseWithAcc> BuildMyScoresQuery(
+            AppContext context,
+            string currentID,
+            List<string> leaderboardIds,
+            LeaderboardContexts leaderboardContext)
+        {
+            return context.Scores
+                .AsNoTracking()
+                .TagWithCaller()
+                .Where(s =>
+                    s.PlayerId == currentID &&
+                    leaderboardIds.Contains(s.LeaderboardId) &&
+                    !s.Banned &&
+                    (s.ValidContexts & leaderboardContext) == leaderboardContext)
+                .Select(s => new ScoreResponseWithAcc
+                {
                     Id = s.Id,
                     BaseScore = s.BaseScore,
                     ModifiedScore = s.ModifiedScore,
@@ -223,30 +187,200 @@ namespace BeatLeader_Server.ControllerHelpers {
                     AccLeft = s.AccLeft,
                     AccRight = s.AccRight,
                     MaxStreak = s.MaxStreak,
-                }).FirstOrDefault(),
-            })
-            .ToListAsync();
+                });
+        }
 
-            if (sortBy == ClanMapsSortBy.Tohold || sortBy == ClanMapsSortBy.Toconquer) {
-                var pps = await rankings
-                    .TagWithCaller()
-                    .Skip((page - 1) * count)
-                    .Take(count)
-                    .Select(t => new { t.LeaderboardId, Pp = t.Pp, SecondPp = t
-                        .Leaderboard
-                        .ClanRanking
-                        .Where(cr => cr.ClanId != clan.Id && (cr.Rank == (sortBy == ClanMapsSortBy.Tohold ? 2 : 1)))
-                        .Select(cr => cr.Pp)
-                        .FirstOrDefault()
-                    })
-                    .AsSplitQuery()
+        public static async Task<ActionResult<ResponseWithMetadataAndContainer<ClanRankingResponse, ClanResponseFull>>> PopulateClanWithMaps(
+            AppContext context,
+            ClanResponseFull clan,
+            string? currentID,
+            int page = 1,
+            int count = 10,
+            ClanMapsSortBy sortBy = ClanMapsSortBy.Pp,
+            LeaderboardContexts leaderboardContext = LeaderboardContexts.General,
+            Order order = Order.Desc,
+            PlayedStatus playedStatus = PlayedStatus.Any)
+        {
+            page = Math.Max(page, 1);
+            count = Math.Max(count, 1);
+
+            var filtered = context.ClanRanking
+                .AsNoTracking()
+                .TagWithCaller()
+                .Where(cr =>
+                    cr.ClanId == clan.Id &&
+                    cr.Leaderboard.Difficulty.Status == DifficultyStatus.ranked);
+
+            if (currentID != null && playedStatus != PlayedStatus.Any)
+            {
+                filtered = playedStatus == PlayedStatus.Played
+                    ? filtered.Where(cr => cr.Leaderboard.Scores.Any(s => s.PlayerId == currentID))
+                    : filtered.Where(cr => !cr.Leaderboard.Scores.Any(s => s.PlayerId == currentID));
+            }
+
+            IQueryable<ClanMapPageRow> pageBaseQuery;
+
+            switch (sortBy)
+            {
+                case ClanMapsSortBy.Pp:
+                    pageBaseQuery = (order == Order.Desc
+                            ? filtered.OrderByDescending(cr => cr.Pp).ThenBy(cr => cr.Id)
+                            : filtered.OrderBy(cr => cr.Pp).ThenBy(cr => cr.Id))
+                        .Select(cr => new ClanMapPageRow
+                        {
+                            Id = cr.Id,
+                            LeaderboardId = cr.LeaderboardId,
+                            DisplayPp = cr.Pp
+                        });
+                    break;
+
+                case ClanMapsSortBy.Acc:
+                    pageBaseQuery = (order == Order.Desc
+                            ? filtered.OrderByDescending(cr => cr.AverageAccuracy).ThenBy(cr => cr.Id)
+                            : filtered.OrderBy(cr => cr.AverageAccuracy).ThenBy(cr => cr.Id))
+                        .Select(cr => new ClanMapPageRow
+                        {
+                            Id = cr.Id,
+                            LeaderboardId = cr.LeaderboardId,
+                            DisplayPp = cr.Pp
+                        });
+                    break;
+
+                case ClanMapsSortBy.Rank:
+                    pageBaseQuery = (order == Order.Desc
+                            ? filtered.OrderByDescending(cr => cr.Rank).ThenBy(cr => cr.Id)
+                            : filtered.OrderBy(cr => cr.Rank).ThenBy(cr => cr.Id))
+                        .Select(cr => new ClanMapPageRow
+                        {
+                            Id = cr.Id,
+                            LeaderboardId = cr.LeaderboardId,
+                            DisplayPp = cr.Pp
+                        });
+                    break;
+
+                case ClanMapsSortBy.Date:
+                    pageBaseQuery = (order == Order.Desc
+                            ? filtered.OrderByDescending(cr => cr.LastUpdateTime).ThenBy(cr => cr.Id)
+                            : filtered.OrderBy(cr => cr.LastUpdateTime).ThenBy(cr => cr.Id))
+                        .Select(cr => new ClanMapPageRow
+                        {
+                            Id = cr.Id,
+                            LeaderboardId = cr.LeaderboardId,
+                            DisplayPp = cr.Pp
+                        });
+                    break;
+
+                case ClanMapsSortBy.Tohold:
+                {
+                    var holdBase =
+                        from cr in filtered
+                        where cr.Rank == 1
+                        join rival in context.ClanRanking.AsNoTracking()
+                                .Where(x => x.Rank == 2 && x.ClanId != clan.Id)
+                            on cr.LeaderboardId equals rival.LeaderboardId
+                        select new ClanMapPageRow
+                        {
+                            Id = cr.Id,
+                            LeaderboardId = cr.LeaderboardId,
+                            DisplayPp = cr.Pp - rival.Pp
+                        };
+
+                    pageBaseQuery = (order.Reverse() == Order.Desc
+                            ? holdBase.OrderByDescending(x => x.DisplayPp).ThenBy(x => x.Id)
+                            : holdBase.OrderBy(x => x.DisplayPp).ThenBy(x => x.Id));
+                    break;
+                }
+
+                case ClanMapsSortBy.Toconquer:
+                {
+                    var conquerBase =
+                        from cr in filtered
+                        where cr.Rank != 1 || cr.Leaderboard.ClanRankingContested
+                        join rival in context.ClanRanking.AsNoTracking()
+                                .Where(x => x.Rank == 1 && x.ClanId != clan.Id)
+                            on cr.LeaderboardId equals rival.LeaderboardId into rivalJoin
+                        from rival in rivalJoin.DefaultIfEmpty()
+                        select new ClanMapPageRow
+                        {
+                            Id = cr.Id,
+                            LeaderboardId = cr.LeaderboardId,
+                            DisplayPp = cr.Pp - (rival == null ? 0 : rival.Pp)
+                        };
+
+                    pageBaseQuery = (order == Order.Desc
+                            ? conquerBase.OrderByDescending(x => x.DisplayPp).ThenBy(x => x.Id)
+                            : conquerBase.OrderBy(x => x.DisplayPp).ThenBy(x => x.Id));
+                    break;
+                }
+
+                default:
+                    pageBaseQuery = filtered
+                        .OrderByDescending(cr => cr.Pp)
+                        .ThenBy(cr => cr.Id)
+                        .Select(cr => new ClanMapPageRow
+                        {
+                            Id = cr.Id,
+                            LeaderboardId = cr.LeaderboardId,
+                            DisplayPp = cr.Pp
+                        });
+                    break;
+            }
+
+            var total = await pageBaseQuery.CountAsync();
+
+            var pageRows = await pageBaseQuery
+                .Skip((page - 1) * count)
+                .Take(count)
+                .ToListAsync();
+
+            if (pageRows.Count == 0)
+            {
+                return new ResponseWithMetadataAndContainer<ClanRankingResponse, ClanResponseFull>
+                {
+                    Container = clan,
+                    Data = new List<ClanRankingResponse>(),
+                    Metadata = new Metadata
+                    {
+                        Page = page,
+                        ItemsPerPage = count,
+                        Total = total
+                    }
+                };
+            }
+
+            var rankingIds = pageRows.Select(x => x.Id).ToList();
+            var leaderboardIds = pageRows.Select(x => x.LeaderboardId).Distinct().ToList();
+
+            var detailItems = await BuildClanRankingDetailsQuery(context, rankingIds).ToListAsync();
+            var detailById = detailItems.ToDictionary(x => x.Id);
+
+            if (!string.IsNullOrEmpty(currentID))
+            {
+                // If there can be multiple rows per player+leaderboard, add an explicit ordering rule here.
+                var myScores = await BuildMyScoresQuery(context, currentID, leaderboardIds, leaderboardContext)
                     .ToListAsync();
 
-                foreach (var item in pps)
+                var myScoreByLeaderboardId = myScores
+                    .GroupBy(s => s.LeaderboardId)
+                    .ToDictionary(g => g.Key, g => g.First());
+
+                foreach (var item in detailItems)
                 {
-                    rankingList.First(cr => cr.LeaderboardId == item.LeaderboardId).Pp = item.Pp - item.SecondPp;
+                    if (myScoreByLeaderboardId.TryGetValue(item.LeaderboardId, out var myScore))
+                    {
+                        item.MyScore = myScore;
+                    }
                 }
             }
+
+            var rankingList = pageRows
+                .Select(row =>
+                {
+                    var item = detailById[row.Id];
+                    item.Pp = row.DisplayPp;
+                    return item;
+                })
+                .ToList();
 
             return new ResponseWithMetadataAndContainer<ClanRankingResponse, ClanResponseFull>
             {
@@ -256,7 +390,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                 {
                     Page = page,
                     ItemsPerPage = count,
-                    Total = await rankings.CountAsync()
+                    Total = total
                 }
             };
         }

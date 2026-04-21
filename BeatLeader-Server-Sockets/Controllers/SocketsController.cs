@@ -8,7 +8,7 @@ namespace BeatLeader_Server_Sockets.Controllers
     [ApiExplorerSettings(IgnoreApi = true)]
     public class SocketsController : Controller
     {
-        public static Dictionary<string, List<(WebSocket, TaskCompletionSource)>> outputSockets = new();
+        public static Dictionary<string, List<(WebSocket?, TaskCompletionSource)?>> outputSockets = new();
         public static List<(WebSocket, TaskCompletionSource)> inputSockets = new();
 
         private readonly IConfiguration _configuration;
@@ -28,14 +28,20 @@ namespace BeatLeader_Server_Sockets.Controllers
 
                 lifetime.ApplicationStopping.Register(async () => {
                     var newList = outputSockets.ToList();
-                    foreach (var item in newList)
+                    int i = 0;
+                    while (i < newList.Count)
                     {
-                        foreach (var socket in item.Value)
+                        var item = newList[i];
+                        var j = 0;
+                        while (j < item.Value.Count)
                         {
-                            if (socket.Item1.State == WebSocketState.Open) {
-                                await socket.Item1.CloseAsync(WebSocketCloseStatus.EndpointUnavailable, "Server shutdown!", CancellationToken.None);
+                            var socket = item.Value[j];
+                            if (socket?.Item1?.State == WebSocketState.Open) {
+                                await socket?.Item1?.CloseAsync(WebSocketCloseStatus.EndpointUnavailable, "Server shutdown!", CancellationToken.None);
                             }
+                            j++;
                         }
+                        i++;
                     }
                 });
             }
@@ -54,7 +60,7 @@ namespace BeatLeader_Server_Sockets.Controllers
                 var name = HttpContext.Request.Path.ToString().Replace("/", "");
 
                 if (!outputSockets.ContainsKey(name)) {
-                    outputSockets[name] = new List<(WebSocket, TaskCompletionSource)>();
+                    outputSockets[name] = new List<(WebSocket?, TaskCompletionSource)?>();
                 }
 
                 outputSockets[name].Add(socketWithTask);
@@ -80,6 +86,7 @@ namespace BeatLeader_Server_Sockets.Controllers
                         }
                     }
                 } catch (Exception ex) {
+                    Console.WriteLine("OUTPUT EXCEPTION");
                     Console.WriteLine(ex.ToString());
                 }
 
@@ -99,21 +106,28 @@ namespace BeatLeader_Server_Sockets.Controllers
 
             var bytes = Encoding.UTF8.GetBytes(message);
             var arraySegment = new ArraySegment<byte>(bytes);
+            var sockets = outputSockets[socketName];
 
-            foreach (var t in outputSockets[socketName])
+            for (int i = 0; i < sockets.Count; i++)
             {
-                if (t.Item1.State != WebSocketState.Open) {
-                    t.Item2.TrySetResult();
+                var socket = sockets[i];
+                if (socket?.Item1?.State == WebSocketState.Open) {
+                    await socket?.Item1?.SendAsync(
+                        arraySegment,
+                        WebSocketMessageType.Text,
+                        true,
+                        _lifetime.ApplicationStopping
+                    );
                 }
             }
 
-            await Task.WhenAll(outputSockets[socketName].Select(t => 
-                t.Item1.SendAsync(
-                    arraySegment,
-                    WebSocketMessageType.Text,
-                    true,
-                    _lifetime.ApplicationStopping))
-                );
+            for (int i = 0; i < sockets.Count; i++)
+            {
+                var socket = sockets[i];
+                if (socket?.Item1?.State != WebSocketState.Open) {
+                    socket?.Item2?.TrySetResult();
+                }
+            }
         }
 
         private string? GetIpAddress()
@@ -172,7 +186,10 @@ namespace BeatLeader_Server_Sockets.Controllers
                             break;
                         }
                     }
-                } catch (Exception ex) { }
+                } catch (Exception ex) {
+                    Console.WriteLine("INPUT EXCEPTION");
+                    Console.WriteLine(ex.ToString());
+                }
 
                 inputSockets.Remove(socketWithTask);
 

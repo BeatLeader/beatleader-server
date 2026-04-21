@@ -72,7 +72,9 @@ namespace BeatLeader_Server.ControllerHelpers {
                             Context = context,
                             ScoreStats = new PlayerScoreStats(),
                             PlayerId = player.Id,
-                            Country = player.Country
+                            Country = player.Country,
+                            Name = player.Name,
+                            Alias = player.Alias
                         });
                     }
                 }
@@ -213,7 +215,7 @@ namespace BeatLeader_Server.ControllerHelpers {
             }
 
             if (sortBy == PlayerSortBy.Prestige) {
-                return preSorted.ThenOrder(order, p => p.Prestige);
+                return preSorted.ThenOrder(order, p => p.Prestige).ThenOrder(order, p => p.Level).ThenOrder(order, p => p.Experience);
             }
 
             if (sortBy == PlayerSortBy.Experience) {
@@ -276,11 +278,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                     switch (sortBy)
                     {
                         case PlayerSortBy.Name:
-                            if (ganeralContext) {
-                                request = preSorted.ThenOrder(order, p => p.Name);
-                            } else {
-                                request = preSorted.ThenOrder(order, p => p.PlayerInstance.Name);
-                            }
+                            request = preSorted.ThenOrder(order, p => p.Name);
                             break;
                         case PlayerSortBy.Rank:
                             request = request
@@ -336,11 +334,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                     switch (sortBy)
                     {
                         case PlayerSortBy.Name:
-                            if (ganeralContext) {
-                                request = preSorted.ThenOrder(order, p => p.Name);
-                            } else {
-                                request = preSorted.ThenOrder(order, p => p.PlayerInstance.Name);
-                            }
+                            request = preSorted.ThenOrder(order, p => p.Name);
                             break;
                         case PlayerSortBy.Rank:
                             request = request
@@ -391,11 +385,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                     switch (sortBy)
                     {
                         case PlayerSortBy.Name:
-                            if (ganeralContext) {
-                                request = preSorted.ThenOrder(order, p => p.Name);
-                            } else {
-                                request = preSorted.ThenOrder(order, p => p.PlayerInstance.Name);
-                            }
+                            request = preSorted.ThenOrder(order, p => p.Name);
                             break;
                         case PlayerSortBy.Rank:
                             request = request

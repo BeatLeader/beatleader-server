@@ -82,22 +82,26 @@ public static partial class MapListUtils
             return sequence;
         }
 
-        return allTypes switch
-        {
-            Operation.Any => sequence.Select(s => new SongHelper {
-                Song = s.Song,
-                Difficulties = s.Difficulties.Where(d => (d.Type & mapType) != 0)
-            }),
-            Operation.All => sequence.Select(s => new SongHelper {
-                Song = s.Song,
-                Difficulties = s.Difficulties.Where(d => d.Type == mapType)
-            }),
-            Operation.Not => sequence.Select(s => new SongHelper {
-                Song = s.Song,
-                Difficulties = s.Difficulties.Where(d => (d.Type & mapType) == 0)
-            }),
-            _             => sequence,
-        };
+        var difficulty = Expression.Parameter(typeof(DifficultyDescription), "d");
+        // 1 != 2 is here to trigger `OrElse` further the line.
+        var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(allTypes == Operation.Any ? 2 : 1));
+
+        foreach (MapTypes term in Enum.GetValues(typeof(MapTypes))) {
+            if (term != MapTypes.None && mapType.HasFlag(term)) {
+                var subexpression = Expression.Equal(Expression.Property(difficulty, $"Type{term.ToString()}"), Expression.Constant(true));
+
+                exp = allTypes switch {
+                    Operation.Any => Expression.OrElse(exp, subexpression),
+                    Operation.All => Expression.And(exp, subexpression),
+                    Operation.Not => Expression.And(exp, Expression.Not(subexpression)),
+                    _ => exp,
+                };
+            }
+        }
+        return sequence.Select(s => new SongHelper {
+            Song = s.Song,
+            Difficulties = s.Difficulties.AsQueryable().Where((Expression<Func<DifficultyDescription, bool>>)Expression.Lambda(exp, difficulty)).ToList()
+        });
     }
 
     private static IQueryable<SongHelper> WhereSongStatus(this IQueryable<SongHelper> sequence, SongStatus status)
@@ -107,7 +111,18 @@ public static partial class MapListUtils
             return sequence;
         }
 
-        return sequence.Where(s => (s.Song.Status & status) != 0);
+        var song = Expression.Parameter(typeof(SongHelper), "s");
+        // 1 != 2 is here to trigger `OrElse` further the line.
+        var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
+
+        foreach (SongStatus term in Enum.GetValues(typeof(SongStatus))) {
+            if (term != SongStatus.None && status.HasFlag(term)) {
+                var subexpression = Expression.Equal(Expression.Property(Expression.Property(song, "Song"), $"Is{term.ToString()}"), Expression.Constant(true));
+                exp = Expression.OrElse(exp, subexpression);
+            }
+        }
+
+        return sequence.Where((Expression<Func<SongHelper, bool>>)Expression.Lambda(exp, song));
     }
 
     private static IQueryable<SongHelper> WhereMapper(this IQueryable<SongHelper> sequence, string? mapper)

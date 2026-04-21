@@ -188,6 +188,7 @@ namespace BeatLeader_Server.Controllers
                             Value = lb.Difficulty.Value,
                             Mode = lb.Difficulty.Mode,
                             DifficultyName = lb.Difficulty.DifficultyName,
+                            CustomDifficultyName = lb.Difficulty.CustomDifficultyName,
                             ModeName = lb.Difficulty.ModeName,
                             Status = lb.Difficulty.Status,
                             ModifierValues = lb.Difficulty.ModifierValues,
@@ -215,6 +216,7 @@ namespace BeatLeader_Server.Controllers
                             PassRating = lb.Difficulty.PassRating,
                             AccRating = lb.Difficulty.AccRating,
                             TechRating = lb.Difficulty.TechRating,
+                            MultiRating = lb.Difficulty.MultiRating,
                             Type = lb.Difficulty.Type,
 
                             SpeedTags = lb.Difficulty.SpeedTags,
@@ -223,6 +225,8 @@ namespace BeatLeader_Server.Controllers
 
                             Njs = lb.Difficulty.Njs,
                             Nps = lb.Difficulty.Nps,
+                            PeakSustainedEBPM = lb.Difficulty.PeakSustainedEBPM,
+                            LinearPercentage = lb.Difficulty.LinearPercentage,
                             Notes = lb.Difficulty.Notes,
                             Bombs = lb.Difficulty.Bombs,
                             Walls = lb.Difficulty.Walls,
@@ -755,10 +759,9 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
 
-            var parse = new Parse(); 
             var ms = new MemoryStream();
             await Request.Body.CopyToAsync(ms);
-            var map = parse.TryLoadZip(ms)?.FirstOrDefault();
+            var map = MapParser.TryLoadZip(ms);
             if (map == null) return BadRequest();
             var info = map.Info;
 

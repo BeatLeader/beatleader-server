@@ -130,7 +130,7 @@ namespace BeatLeader_Server.Controllers {
         {
             playerId = await _context.PlayerIdToMain(playerId);
             
-            PlayerData player;
+            PlayerData? player = null;
             
             if (leaderboardContext == LeaderboardContexts.None || leaderboardContext == LeaderboardContexts.General) {
                 player = await _context.Players.AsNoTracking().Where(p => p.Id == playerId).Select(p =>
@@ -141,7 +141,7 @@ namespace BeatLeader_Server.Controllers {
                     CountryRank = p.CountryRank,
                     CountryName = p.Country,
                     PP = p.Pp,
-                    AverageRankedAccuracy = p.ScoreStats.AverageRankedAccuracy,
+                    AverageRankedAccuracy = p.ScoreStats != null ? p.ScoreStats.AverageRankedAccuracy : 0,
                     Avatar = p.Avatar
                 }).FirstOrDefaultAsync();
             } else {
@@ -153,7 +153,7 @@ namespace BeatLeader_Server.Controllers {
                     CountryRank = p.CountryRank,
                     CountryName = p.Country,
                     PP = p.Pp,
-                    AverageRankedAccuracy = p.ScoreStats.AverageRankedAccuracy,
+                    AverageRankedAccuracy = p.ScoreStats != null ? p.ScoreStats.AverageRankedAccuracy : 0,
                     Avatar = p.PlayerInstance.Avatar
                 }).FirstOrDefaultAsync();
             }

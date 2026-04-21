@@ -803,12 +803,12 @@ namespace BeatLeader_Server.Controllers
                     {
                         Id = p.PlayerId,
                         ExtensionId = p.Id,
-                        Name = p.PlayerInstance.Name,
+                        Name = p.Name,
                         Platform = p.PlayerInstance.Platform,
                         Avatar = p.PlayerInstance.Avatar,
                         Country = p.Country,
                         ScoreStats = p.ScoreStats,
-                        Alias = p.PlayerInstance.Alias,
+                        Alias = p.Alias,
 
                         Pp = p.Pp,
                         TechPp= p.TechPp,

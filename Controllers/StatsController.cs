@@ -119,7 +119,6 @@ namespace BeatLeader_Server.Controllers
                         .Skip((page - 1) * count)
                         .Take(count)
                         .TagWithCaller()
-                        .AsSplitQuery()
                         .Select(s => new AttemptResponseWithMyScore {
                             Id = s.Id,
                             EndType = s.Type,
@@ -139,7 +138,7 @@ namespace BeatLeader_Server.Controllers
                             BonusPp = s.BonusPp,
                             Rank = s.Rank,
                             Replay = s.Replay,
-                            Modifiers = s.Modifiers,
+                            Modifiers = s.ModifiersList,
                             BadCuts = s.BadCuts,
                             MissedNotes = s.MissedNotes,
                             BombCuts = s.BombCuts,
@@ -308,6 +307,7 @@ namespace BeatLeader_Server.Controllers
             return Ok(
                 await _storageContext
                 .PlayerLeaderboardStats
+                .TagWithCaller()
                 .Where(s => s.PlayerId == playerId && s.LeaderboardId == leaderboardId)
                 .ToListAsync());
         }
@@ -343,12 +343,13 @@ namespace BeatLeader_Server.Controllers
                 .PlayerLeaderboardStats
                 .Where(s => s.LeaderboardId == leaderboardId)
                 .AsNoTracking()
+                .TagWithCaller()
                 .Select(ls => new AttemptsSelection {
                     Time = ls.Time,
                     Type = ls.Type,
                     Timepost = ls.Timepost,
                     PlayerId = ls.PlayerId,
-                    Modifiers = ls.Modifiers
+                    Modifiers = ls.ModifiersList
                 })
                 .ToListAsync();
 

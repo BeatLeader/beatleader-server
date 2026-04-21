@@ -19,7 +19,14 @@ namespace BeatLeader_Server.Utils {
                     .Select(e => (JsonNode)(int)e)
                     .ToList();
 
-                var writeSchema = (OpenApiSchema)schema;
+                OpenApiSchema? writeSchema = null;
+                
+                if (schema is OpenApiSchemaReference) {
+                    writeSchema = (OpenApiSchema)((OpenApiSchemaReference)schema).Target;
+                } else if (schema is OpenApiSchema) {
+                    writeSchema = (OpenApiSchema)schema;
+                }
+                if (writeSchema == null) return;
 
                 writeSchema.OneOf = new List<OpenApiSchema> {
                     new OpenApiSchema { Type = JsonSchemaType.Integer, Enum = enumIntValues },

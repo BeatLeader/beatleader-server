@@ -16,3 +16,6 @@
 [submodule "MapPostprocessor"]
 	path = MapPostprocessor
 	url = https://github.com/BeatLeader/MapPostprocessor.git
+[submodule "RatingAPI"]
+	path = RatingAPI
+	url = https://github.com/BeatLeader/RatingAPI.git

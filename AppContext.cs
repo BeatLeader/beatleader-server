@@ -92,6 +92,7 @@ namespace BeatLeader_Server
         public DbSet<ClanManager> ClanManagers { get; set; }
         public DbSet<ClanUpdate> ClanUpdates { get; set; }
         public DbSet<ValentineMessage> ValentineMessages { get; set; }
+        public DbSet<ValentineMessage2026> ValentineMessages2026 { get; set; }
         public DbSet<DeveloperProfile> DeveloperProfile { get; set; }
         public DbSet<ExternalStatus> ExternalStatus { get; set; }
         public DbSet<PredictedScore> PredictedScores { get; set; }
@@ -132,6 +133,23 @@ namespace BeatLeader_Server
         public DbSet<IdolCanvas> IdolCanvases { get; set; }
         public DbSet<PlayerBonusIdol> PlayerBonusIdols { get; set; }
         public DbSet<PlayerIdolDecoration> PlayerIdolDecorations { get; set; }
+        public DbSet<WorkTask> WorkTasks { get; set; }
+        public DbSet<BugReport> BugReports { get; set; }
+        public DbSet<Suggestion> Suggestions { get; set; }
+        public DbSet<HelpRequest> HelpRequests { get; set; }
+        public DbSet<WorkTaskStatus> WorkTaskStatuses { get; set; }
+        public DbSet<WorkTaskTag> WorkTaskTags { get; set; }
+        public DbSet<WorkTaskTagAssignment> WorkTaskTagAssignments { get; set; }
+        public DbSet<WorkTaskComment> WorkTaskComments { get; set; }
+        public DbSet<WorkTaskCommentVote> WorkTaskCommentVotes { get; set; }
+        public DbSet<WorkTaskCommentAttachment> WorkTaskCommentAttachments { get; set; }
+        public DbSet<WorkTaskVote> WorkTaskVotes { get; set; }
+        public DbSet<WorkTaskAttachment> WorkTaskAttachments { get; set; }
+        public DbSet<WorkTaskAssignment> WorkTaskAssignments { get; set; }
+        public DbSet<WorkTaskHistory> WorkTaskHistory { get; set; }
+
+        public DbSet<FavoriteMap> FavoriteMaps { get; set; }
+
         public void RejectChanges()
         {
             foreach (var entry in ChangeTracker.Entries())

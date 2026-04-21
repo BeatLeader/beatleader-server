@@ -20,6 +20,7 @@ namespace BeatLeader_Server.ControllerHelpers {
         public float Weight;
         public bool Qualification;
         public int? MaxStreak;
+        public bool IgnoreForStats;
         public float LeftTiming { get; set; }
         public float RightTiming { get; set; }
     }
@@ -42,7 +43,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                     allScores = await dbContext
                         .Scores
                         .AsNoTracking()
-                        .Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && (!s.Banned || s.Bot) && s.PlayerId == playerId && !s.IgnoreForStats)
+                        .Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General) && (!s.Banned || s.Bot) && s.PlayerId == playerId)
                         .Select(s => new SubScore
                         {
                             PlayerId = s.PlayerId,
@@ -62,12 +63,13 @@ namespace BeatLeader_Server.ControllerHelpers {
                             MaxStreak = s.MaxStreak,
                             RightTiming = s.RightTiming,
                             LeftTiming = s.LeftTiming,
+                            IgnoreForStats = s.IgnoreForStats
                         }).ToListAsync();
                 } else {
                     allScores = await dbContext
                         .ScoreContextExtensions
                         .AsNoTracking()
-                        .Where(s => s.PlayerId == playerId && s.Context == leaderboardContext && !s.ScoreInstance.IgnoreForStats)
+                        .Where(s => s.PlayerId == playerId && s.Context == leaderboardContext)
                         .Select(s => new SubScore
                         {
                             PlayerId = s.PlayerId,
@@ -87,6 +89,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                             MaxStreak = s.ScoreInstance.MaxStreak,
                             RightTiming = s.ScoreInstance.RightTiming,
                             LeftTiming = s.ScoreInstance.LeftTiming,
+                            IgnoreForStats = s.ScoreInstance.IgnoreForStats
                         }).ToListAsync();
                 }
             }
@@ -96,8 +99,8 @@ namespace BeatLeader_Server.ControllerHelpers {
 
             if (allScores.Count() > 0) {
 
-                rankedScores = allScores.Where(s => s.Pp != 0 && !s.Qualification).ToList();
-                unrankedScores = allScores.Where(s => s.Pp == 0 || s.Qualification).ToList();
+                rankedScores = allScores.Where(s => s.Pp != 0 && !s.Qualification && !s.IgnoreForStats).ToList();
+                unrankedScores = allScores.Where(s => (s.Pp == 0 || s.Qualification) && !s.IgnoreForStats).ToList();
 
                 var lastScores = allScores.OrderByDescending(s => s.Timeset).Take(50).ToList();
                 Dictionary<string, int> platforms = new Dictionary<string, int>();
@@ -151,6 +154,8 @@ namespace BeatLeader_Server.ControllerHelpers {
                     scoreStats.PeakRank = rank;
                 }
             }
+
+            allScores = allScores.Where(s => !s.IgnoreForStats).ToList();
 
             int allScoresCount = allScores.Count();
             int unrankedScoresCount = unrankedScores.Count();

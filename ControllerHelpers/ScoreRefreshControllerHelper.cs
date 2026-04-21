@@ -70,7 +70,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                 }
             };
             foreach (var leaderboard in allLeaderboards) {
-                var allScores = leaderboard.Scores.Where(s => (!s.Banned || s.Bot) && s.ValidContexts.HasFlag(LeaderboardContexts.General)).ToList();
+                var allScores = leaderboard.Scores.Where(s => s.ValidContexts.HasFlag(LeaderboardContexts.General)).ToList();
 
                 var status = leaderboard.Status;
                 var modifiers = leaderboard.ModifierValues ?? new ModifiersMap();

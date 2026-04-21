@@ -14,15 +14,18 @@ using Parser.Map.Difficulty.V3.Grid;
 using Parser.Map;
 using MapPostprocessor;
 using BeatLeader_Server.ControllerHelpers;
+using RatingAPI.Controllers;
 
 namespace BeatLeader_Server.Services {
     public class MapRefresh : BackgroundService {
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly IConfiguration _configuration;
+        private readonly InferPublish _aiSession;
 
         public MapRefresh(IServiceScopeFactory serviceScopeFactory, IConfiguration configuration) {
             _serviceScopeFactory = serviceScopeFactory;
             _configuration = configuration;
+            _aiSession = new InferPublish();
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
@@ -58,17 +61,16 @@ namespace BeatLeader_Server.Services {
                             continue;
                         }
 
-                        var parse = new Parse();
                         BeatmapV3? mapset = null;
                         try
                         {
-                            mapset = parse.TryLoadPath(mapPath);
+                            mapset = MapParser.TryLoadPath(mapPath);
                         }
                         catch (FileNotFoundException e)
                         {
                             Directory.Delete(mapPath, true);
                             mapPath = await downloader.Map(song.LowerHash);
-                            mapset = parse.TryLoadPath(mapPath);
+                            mapset = MapParser.TryLoadPath(mapPath);
                         }
 
                         if (mapset != null) {
@@ -92,6 +94,40 @@ namespace BeatLeader_Server.Services {
                                                 }
                                             }
                                         }
+                                    }
+                                }
+                            }
+
+                            song.MapVersion = info._version;
+
+                            foreach (var mode in info._difficultyBeatmapSets) {
+                                foreach (var diff in mode._difficultyBeatmaps) {
+                                    var songDiff = song.Difficulties.FirstOrDefault(d => d.DifficultyName == diff._difficulty && d.ModeName == mode._beatmapCharacteristicName);
+                                    if (songDiff == null || diff._customData == null || diff._customData._requirements == null) continue;
+
+                                    if (diff._customData._requirements.Any(r => r.ToLower().Contains("vivify"))) {
+                                        songDiff.Requirements |= Models.Requirements.Vivify;
+                                        songDiff.RequiresVivify = true;
+                                    }
+
+                                    if (diff._customData._requirements.Any(r => r.ToLower().Contains("noodle"))) {
+                                        songDiff.Requirements |= Models.Requirements.Noodles;
+                                        songDiff.RequiresNoodles = true;
+                                    }
+
+                                    if (diff._customData._requirements.Any(r => r.ToLower().Contains("mapping"))) {
+                                        songDiff.Requirements |= Models.Requirements.MappingExtensions;
+                                        songDiff.RequiresMappingExtensions = true;
+                                    }
+
+                                    if (diff._customData._requirements.Any(r => r.ToLower().Contains("chroma"))) {
+                                        songDiff.Requirements |= Models.Requirements.Chroma;
+                                        songDiff.RequiresChroma = true;
+                                    }
+
+                                    if (diff._customData._requirements.Any(r => r.ToLower().Contains("cinema"))) {
+                                        songDiff.Requirements |= Models.Requirements.Cinema;
+                                        songDiff.RequiresCinema = true;
                                     }
                                 }
                             }
@@ -124,6 +160,122 @@ namespace BeatLeader_Server.Services {
                                     songDiff.RequiresGroupLighting = true;
                                 }
 
+                                var mapDiff = mapset.Info._difficultyBeatmapSets.First(d => d._beatmapCharacteristicName == songDiff.ModeName)._difficultyBeatmaps.First(d => d._difficulty == songDiff.DifficultyName);
+                                songDiff.Njs = mapDiff._noteJumpMovementSpeed;
+                                songDiff.NoteJumpStartBeatOffset = mapDiff._noteJumpStartBeatOffset;
+                                songDiff.MapVersion = diff.Version;
+                                var response = (!songDiff.Requirements.HasFlag(Requirements.Noodles) && !songDiff.Requirements.HasFlag(Requirements.MappingExtensions)) ? await RatingsGenerator.RatingAPI.Calculate(mapset, _aiSession, songDiff.ModeName, songDiff.Value) : null;
+                                if (response != null && response["none"] != null) {
+                                    //var rankChange = new RankUpdateChange
+                                    var modrating = songDiff.ModifiersRating;
+
+                                    if (songDiff.Status != DifficultyStatus.ranked) {
+                                        songDiff.PassRating = (float)response["none"].Ratings.PassRating;
+                                        songDiff.TechRating = (float)response["none"].Ratings.TechRating;
+                                        songDiff.PredictedAcc = (float)response["none"].PredictedAcc;
+                                        songDiff.AccRating = (float)response["none"].AccRating;
+
+                                        modrating = songDiff.ModifiersRating = new ModifiersRating {
+                                            SSPassRating = (float)response["SS"].Ratings.PassRating,
+                                            SSTechRating = (float)response["SS"].Ratings.TechRating,
+                                            SSPredictedAcc = (float)response["SS"].PredictedAcc,
+                                            SSAccRating = (float)response["SS"].AccRating,
+
+
+                                            FSPassRating = (float)response["FS"].Ratings.PassRating,
+                                            FSTechRating = (float)response["FS"].Ratings.TechRating,
+                                            FSPredictedAcc = (float)response["FS"].PredictedAcc,
+                                            FSAccRating = (float)response["FS"].AccRating,
+
+
+                                            SFPassRating = (float)response["SFS"].Ratings.PassRating,
+                                            SFTechRating = (float)response["SFS"].Ratings.TechRating,
+                                            SFPredictedAcc = (float)response["SFS"].PredictedAcc,
+                                            SFAccRating = (float)response["SFS"].AccRating,
+
+
+                                            BFSPassRating = (float)response["BFS"].Ratings.PassRating,
+                                            BFSTechRating = (float)response["BFS"].Ratings.TechRating,
+                                            BFSPredictedAcc = (float)response["BFS"].PredictedAcc,
+                                            BFSAccRating = (float)response["BFS"].AccRating,
+
+
+                                            BSFPassRating = (float)response["BSF"].Ratings.PassRating,
+                                            BSFTechRating = (float)response["BSF"].Ratings.TechRating,
+                                            BSFPredictedAcc = (float)response["BSF"].PredictedAcc,
+                                            BSFAccRating = (float)response["BSF"].AccRating,
+
+                                        };
+                                    }
+
+                                    if (modrating != null) {
+                                        modrating.SSPeakSustainedEBPM = (float)response["SS"].Ratings.PeakSustainedEBPM;
+                                        modrating.FSPeakSustainedEBPM = (float)response["FS"].Ratings.PeakSustainedEBPM;
+                                        modrating.SFPeakSustainedEBPM = (float)response["SFS"].Ratings.PeakSustainedEBPM;
+                                        modrating.BFSPeakSustainedEBPM = (float)response["BFS"].Ratings.PeakSustainedEBPM;
+                                        modrating.BSFPeakSustainedEBPM = (float)response["BSF"].Ratings.PeakSustainedEBPM;
+
+                                        modrating.SFStars = ReplayUtils.ToStars(modrating.SFAccRating, modrating.SFPassRating, modrating.SFTechRating);
+                                        modrating.FSStars = ReplayUtils.ToStars(modrating.FSAccRating, modrating.FSPassRating, modrating.FSTechRating);
+                                        modrating.BSFStars = ReplayUtils.ToStars(modrating.BSFAccRating, modrating.BSFPassRating, modrating.BSFTechRating);
+                                        modrating.BFSStars = ReplayUtils.ToStars(modrating.BFSAccRating, modrating.BFSPassRating, modrating.BFSTechRating);
+                                        modrating.SSStars = ReplayUtils.ToStars(modrating.SSAccRating, modrating.SSPassRating, modrating.SSTechRating);
+                                    }
+
+                                    if (songDiff.AccRating != null && songDiff.PassRating != null && songDiff.TechRating != null) {
+                                        songDiff.Stars = ReplayUtils.ToStars(songDiff.AccRating ?? 0, songDiff.PassRating ?? 0, songDiff.TechRating ?? 0);
+                                    }
+                                    songDiff.MultiRating = (float)response["none"].Ratings.MultiPercentage;
+                                    songDiff.LinearPercentage = (float)response["none"].Ratings.LinearPercentage;
+                                    songDiff.PeakSustainedEBPM = (float)response["none"].Ratings.PeakSustainedEBPM;
+
+                                    var diffStatistic = response["none"].Ratings.Statistics;
+                                    var swingData = response["none"].Ratings.SwingData;
+
+                                    songDiff.DifficultyStatistics = new DifficultyStatistics {
+                                        Stacks = diffStatistic.Stacks,
+                                        Towers = diffStatistic.Towers,
+                                        Sliders = diffStatistic.Sliders,
+                                        CurvedSliders = diffStatistic.CurvedSliders,
+                                        Windows = diffStatistic.Windows,
+                                        SlantedWindows = diffStatistic.SlantedWindows,
+                                        DodgeWalls = diffStatistic.DodgeWalls,
+                                        CrouchWalls = diffStatistic.CrouchWalls,
+                                        ParityErrors = diffStatistic.ParityErrors,
+                                        BombAvoidances = diffStatistic.BombAvoidances,
+                                        LinearSwings = diffStatistic.LinearSwings,
+                                        SwingData = swingData.Select(sd => new MapSwingData {
+                                            BpmTime = sd.BpmTime,
+                                            Direction = sd.Direction,
+                                            Forehand = sd.Forehand,
+                                            ParityErrors = sd.ParityErrors,
+                                            BombAvoidance = sd.BombAvoidance,
+                                            IsLinear = sd.IsLinear,
+                                            AngleStrain = sd.AngleStrain,
+                                            RepositioningDistance = sd.RepositioningDistance,
+                                            RotationAmount = sd.RotationAmount,
+                                            SwingFrequency = sd.SwingFrequency,
+                                            DistanceDiff = sd.DistanceDiff,
+                                            SwingSpeed = sd.SwingSpeed,
+                                            HitDistance = sd.HitDistance,
+                                            Stress = sd.Stress,
+                                            LowSpeedFalloff = sd.LowSpeedFalloff,
+                                            StressMultiplier = sd.StressMultiplier,
+                                            NjsBuff = sd.NjsBuff,
+                                            WallBuff = sd.WallBuff,
+                                            IsStream = sd.IsStream,
+                                            SwingDiff = sd.SwingDiff,
+                                            SwingTech = sd.SwingTech
+                                        }).ToList()
+                                    };
+
+                                    songDiff.Type |= response["none"].MapType;
+
+                                    songDiff.TypeFitbeat = songDiff.Type.HasFlag(MapTypes.Fitbeat);
+                                    songDiff.TypeLinear = songDiff.Type.HasFlag(MapTypes.Linear);
+                                    songDiff.TypeBombReset = songDiff.Type.HasFlag(MapTypes.BombReset);
+                                }
+
                                 songDiff.MaxScoreGraph = new MaxScoreGraph();
                                 songDiff.MaxScoreGraph.SaveList(set.MaxScoreGraph());
                                 var newMaxScore = set.MaxScore();
@@ -134,27 +286,10 @@ namespace BeatLeader_Server.Services {
                                     await ScoreRefreshControllerHelper.BulkRefreshScores(_context, $"{song.Id}{songDiff.Value}{songDiff.Mode}");
                                 }
                             }
-
-                            foreach (var mode in info._difficultyBeatmapSets) {
-                                foreach (var diff in mode._difficultyBeatmaps) {
-                                    var songDiff = song.Difficulties.FirstOrDefault(d => d.DifficultyName == diff._difficulty && d.ModeName == mode._beatmapCharacteristicName);
-                                    if (songDiff == null || diff._customData == null || diff._customData._requirements == null) continue;
-                                    if (diff._customData._requirements.Any(r => r.ToLower().Contains("vivify"))) {
-                                        songDiff.Requirements |= Models.Requirements.Vivify;
-                                        songDiff.RequiresVivify = true;
-                                    }
-                                }
-                            }
                         }
                     } 
                     catch (Exception e) { 
                         Console.WriteLine($"MapRefresh EXPETION: {e}");
-                    }
-
-                    foreach (var diff in song.Difficulties) {
-                        if (!diff.Requirements.HasFlag(Requirements.Noodles) && !diff.Requirements.HasFlag(Requirements.MappingExtensions)) {
-                            await RatingUtils.UpdateFromExMachina(diff, song, null);
-                        }
                     }
 
                     song.Checked = true;

@@ -365,7 +365,7 @@ namespace BeatLeader_Server.Controllers
                         BonusPp = s.BonusPp,
                         Rank = s.Rank,
                         Replay = s.Replay,
-                        Modifiers = s.Modifiers,
+                        Modifiers = s.ModifiersList,
                         BadCuts = s.BadCuts,
                         MissedNotes = s.MissedNotes,
                         BombCuts = s.BombCuts,
@@ -485,6 +485,30 @@ namespace BeatLeader_Server.Controllers
 
             }
             return resultList.OrderBy(s => s.Metadata.Priority).ToList();
+        }
+
+        [HttpGet("~/player/{id}/favoriteMaps")]
+        [SwaggerOperation(Summary = "Retrieve player's favorite maps", Description = "Fetches a paginated list of maps selected by player for their ID.")]
+        [SwaggerResponse(200, "Maps retrieved successfully")]
+        [SwaggerResponse(400, "Invalid request parameters")]
+        [SwaggerResponse(404, "Maps not found for the given player ID")]
+        public async Task<ActionResult<ResponseWithMetadata<FavoriteMap>>> GetFavoriteMaps(
+            [FromRoute, SwaggerParameter("Player's unique identifier")] string id,
+            [FromQuery] int count = 5,
+            [FromQuery] int page = 1) {
+
+            id = await _context.PlayerIdToMain(id);
+
+            var sequence = _context.FavoriteMaps.Where(fm => fm.PlayerId == id).OrderByDescending(fm => fm.Timeset);
+
+            return new ResponseWithMetadata<FavoriteMap>() {
+                Metadata = new Metadata() {
+                    Page = page,
+                    ItemsPerPage = count,
+                    Total = await sequence.CountAsync()
+                },
+                Data = await sequence.Skip((page - 1) * count).Take(count).ToListAsync()
+            };
         }
     }
 }

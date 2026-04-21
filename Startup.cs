@@ -24,6 +24,8 @@ using System.Security.Claims;
 using BeatLeader_Server.Enums;
 using BeatLeader_Server.Extensions;
 using Microsoft.OpenApi;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 
 namespace BeatLeader_Server {
 
@@ -268,6 +270,17 @@ namespace BeatLeader_Server {
                         },
                     };
             });
+            services.AddRateLimiter(options =>
+            {
+                options.AddConcurrencyLimiter("scores-all", opt =>
+                {
+                    opt.PermitLimit = 1;
+                    opt.QueueLimit = 10;
+                    opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                });
+
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            });
             services.AddSingleton<IIpPolicyStore, MemoryCacheIpPolicyStore>();
             services.AddSingleton<IRateLimitCounterStore, MemoryCacheRateLimitCounterStore>();
             services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
@@ -461,6 +474,7 @@ namespace BeatLeader_Server {
             services.AddHostedService<ClanCallbackService>();
             services.AddHostedService<SearchService>();
             services.AddHostedService<OauthService>();
+            services.AddHostedService<LeaderboardPlayerStatsService>();
 
             services.AddSingleton<RTNominationsForum>();
             services.AddSingleton<SpeedrunService>();
@@ -583,8 +597,9 @@ namespace BeatLeader_Server {
                 KeepAliveInterval = TimeSpan.FromMinutes(2)
             });
             app.UseIpRateLimiting();
-
+            
             app.UseRouting ();
+            app.UseRateLimiter();
             app.UseCookiePolicy(new CookiePolicyOptions {
                 MinimumSameSitePolicy = SameSiteMode.None,
                 Secure = CookieSecurePolicy.Always

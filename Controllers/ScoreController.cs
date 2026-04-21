@@ -1,4 +1,5 @@
 ﻿using Amazon.S3;
+using beatleader_parser;
 using BeatLeader_Server.ControllerHelpers;
 using BeatLeader_Server.Enums;
 using BeatLeader_Server.Extensions;
@@ -6,10 +7,14 @@ using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
 using Lib.ServerTiming;
+using MapPostprocessor;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Parser.Map;
+using Parser.Utils;
 using ReplayDecoder;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Data;
@@ -22,6 +27,7 @@ namespace BeatLeader_Server.Controllers
     public class ScoreController : Controller
     {
         private readonly AppContext _context;
+        private readonly StorageContext _storageContext;
 
         private readonly IAmazonS3 _s3Client;
 
@@ -30,23 +36,28 @@ namespace BeatLeader_Server.Controllers
 
         public ScoreController(
             AppContext context,
+            StorageContext storageContext,
             IWebHostEnvironment env,
             IServerTiming serverTiming,
             IConfiguration configuration)
         {
             _context = context;
+            _storageContext = storageContext;
             _serverTiming = serverTiming;
             _s3Client = configuration.GetS3Client();
             _configuration = configuration;
         }
 
         [HttpGet("~/score/{id}")]
-        public async Task<ActionResult<ScoreResponseWithDifficulty>> GetScore(int id, [FromQuery] bool fallbackToRedirect = false)
+        public async Task<ActionResult<ScoreResponseWithDifficulty>> GetScore(
+            int id, 
+            [FromQuery] bool fallbackToRedirect = false,
+            [FromQuery] LeaderboardContexts leaderboardContext = LeaderboardContexts.None)
         {
             var score = await _context
                 .Scores
                 .AsNoTracking()
-                .Where(l => l.Id == id)
+                .Where(s => s.Id == id && (leaderboardContext == LeaderboardContexts.None || s.ValidContexts.HasFlag(leaderboardContext)))
                 .Include(s => s.Leaderboard)
                 .ThenInclude(l => l.Difficulty)
                 .ThenInclude(d => d.ModifiersRating)
@@ -138,14 +149,128 @@ namespace BeatLeader_Server.Controllers
 
             if (score != null)
             {
+                if (leaderboardContext != LeaderboardContexts.General && leaderboardContext != LeaderboardContexts.None) {
+                    var extension = score.ContextExtensions.FirstOrDefault(ce => ce.Context == leaderboardContext);
+                    if (extension == null) {
+                        return NotFound();
+                    }
+                    score.ToContext(extension);
+
+                    var playerExtension = await _context
+                        .PlayerContextExtensions
+                        .Where(p => p.PlayerId == score.PlayerId && p.Context == leaderboardContext)
+                        .Select(p => new PlayerResponse
+                        {
+
+                            Pp = p.Pp,
+                            Rank = p.Rank,
+                            CountryRank = p.CountryRank
+                        })
+                        .FirstOrDefaultAsync();
+                    if (playerExtension != null) {
+                        score.Player.ToContext(playerExtension);
+                    }
+                }
                 score.Player = PostProcessSettings(score.Player, false);
                 return score;
             }
             else
             {
+                var attemptId = await _storageContext
+                .PlayerLeaderboardStats
+                .AsNoTracking()
+                .TagWithCaller()
+                .Where(s => s.ScoreId == id && s.Replay != null)
+                .Select(s => s.Id)
+                .FirstOrDefaultAsync();
+
+                if (attemptId != 0) {
+                    var attempt = await _storageContext
+                        .PlayerLeaderboardStats
+                        .AsNoTracking()
+                        .TagWithCaller()
+                        .Where(s => s.Id == attemptId)
+                        .Select(s => new ScoreResponseWithDifficulty {
+                            Id = s.ScoreId,
+                            PlayerId = s.PlayerId,
+                            BaseScore = s.BaseScore,
+                            ModifiedScore = s.ModifiedScore,
+                            Accuracy = s.Accuracy,
+                            Pp = s.Pp,
+                            FcAccuracy = s.FcAccuracy,
+                            FcPp = s.FcPp,
+                            Rank = s.Rank,
+                            Replay = s.Replay,
+                            Offsets = s.ReplayOffsets,
+                            Modifiers = s.ModifiersList,
+                            BadCuts = s.BadCuts,
+                            MissedNotes = s.MissedNotes,
+                            BombCuts = s.BombCuts,
+                            WallsHit = s.WallsHit,
+                            Pauses = s.Pauses,
+                            FullCombo = s.FullCombo,
+                            Hmd = s.Hmd,
+                            Controller = s.Controller,
+                            MaxCombo = s.MaxCombo,
+                            Timeset = s.Timeset.ToString(),
+                            Timepost = s.Timepost,
+                            Platform = s.Platform,
+                            LeaderboardId = s.LeaderboardId,
+                            ScoreImprovement = s.ScoreImprovement,
+                        })
+                        .FirstAsync();
+
+                    var song = await _context.Leaderboards
+                        .Where(lb => lb.Id == attempt.LeaderboardId)
+                        .AsNoTracking()
+                        .Select(lb => new {
+                            Song = new ScoreSongResponse {
+                                Id = lb.Song.Id,
+                                Hash = lb.Song.LowerHash,
+                                Cover = lb.Song.CoverImage,
+                                Name = lb.Song.Name,
+                                SubName = lb.Song.SubName,
+                                Author = lb.Song.Author,
+                                Mapper = lb.Song.Mapper,
+                                DownloadUrl = lb.Song.DownloadUrl,
+                            },
+                            Difficulty = lb.Difficulty,
+                        })
+                        .FirstOrDefaultAsync();
+
+                    var player = await _context.Players
+                        .Where(p => p.Id == attempt.PlayerId)
+                        .Select(p => new PlayerResponse {
+                            Id = p.Id,
+                            Name = p.Name,
+                            Alias = p.Alias,
+                            Platform = p.Platform,
+                            Avatar = p.Avatar,
+                            Country = p.Country,
+
+                            Pp = p.Pp,
+                            Rank = p.Rank,
+                            CountryRank = p.CountryRank,
+                            Role = p.Role,
+                            Socials = p.Socials,
+                            ProfileSettings = p.ProfileSettings,
+                            PatreonFeatures = p.PatreonFeatures
+                        })
+                        .FirstOrDefaultAsync();
+
+                    if (song != null && player != null) {
+                        attempt.Song = song.Song;
+                        attempt.Difficulty = song.Difficulty;
+                        attempt.Player = player;
+
+                        attempt.Player = PostProcessSettings(attempt.Player, false);
+                        return attempt;
+                    }
+                }
+
                 var redirect = fallbackToRedirect ? await _context.ScoreRedirects.FirstOrDefaultAsync(sr => sr.OldScoreId == id) : null;
                 if (redirect != null && redirect.NewScoreId != id) {
-                    return await GetScore(redirect.NewScoreId, true);
+                    return await GetScore(redirect.NewScoreId, true, leaderboardContext);
                 } else {
                     return NotFound();
                 }
@@ -175,7 +300,7 @@ namespace BeatLeader_Server.Controllers
 
             if (score != null)
             {
-                return await GetScore((int)score, false);
+                return await GetScore((int)score, false, leaderboardContext);
             }
             else
             {
@@ -784,6 +909,7 @@ namespace BeatLeader_Server.Controllers
                     Timeset = s.ScoreInstance.Timeset,
                     Timepost = s.ScoreInstance.Timepost,
                     Platform = s.ScoreInstance.Platform,
+                    Speed = s.ScoreInstance.Speed,
                     LeaderboardId = s.LeaderboardId,
                     Player = new PlayerResponse
                     {
@@ -946,6 +1072,10 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] int count = 10,
             [FromQuery] bool primaryClan = false)
         {
+            if (method.ToLower() != "around" && page < 1) {
+                page = 1;
+            }
+
             var result = new ResponseWithMetadataAndSelection<ScoreResponseWithHeadsets>
             {
                 Data = new List<ScoreResponseWithHeadsets>(),
@@ -1040,6 +1170,9 @@ namespace BeatLeader_Server.Controllers
                     break;
                 case "scpm":
                     contexts = LeaderboardContexts.SCPM;
+                    break;
+                case "funnyv2":
+                    contexts = LeaderboardContexts.LeftLeader;
                     break;
                 default:
                     break;

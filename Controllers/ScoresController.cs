@@ -7,6 +7,7 @@ using BeatLeader_Server.Utils;
 using Lib.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Swashbuckle.AspNetCore.Annotations;
@@ -33,6 +34,7 @@ namespace BeatLeader_Server.Controllers {
             _configuration = configuration;
         }
 
+        [EnableRateLimiting("scores-all")]
         [HttpGet("~/scores/all")]
         public async Task<ActionResult<ResponseWithMetadata<ScoreResponseWithMyScore>>> AllScores(
             [FromQuery, SwaggerParameter("Sorting criteria for scores, default is by 'date'")] ScoresSortBy sortBy = ScoresSortBy.Date,
@@ -62,6 +64,8 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery, SwaggerParameter("Filter scores on ranked maps with pass rating lower than, default is null")] float? passrating_to = null,
             [FromQuery, SwaggerParameter("Filter scores on ranked maps with tech rating greater than, default is null")] float? techrating_from = null,
             [FromQuery, SwaggerParameter("Filter scores on ranked maps with tech rating lower than, default is null")] float? techrating_to = null,
+            [FromQuery, SwaggerParameter("Filter scores with accuracy greater than, default is null")] float? acc_from = null,
+            [FromQuery, SwaggerParameter("Filter scores with accuracy lower than, default is null")] float? acc_to = null,
             [FromQuery, SwaggerParameter("Filter scores made after unix timestamp, default is null")] int? date_from = null,
             [FromQuery, SwaggerParameter("Filter scores made before unix timestamp, default is null")] int? date_to = null,
             [FromQuery, SwaggerParameter("Show only scores from the event with ID, default is null")] int? eventId = null,
@@ -72,6 +76,10 @@ namespace BeatLeader_Server.Controllers {
 
             if (count < 0 || count > 100) {
                 return BadRequest("Please use count between 0 and 100");
+            }
+
+            if (page < 1) {
+                return BadRequest("Please use page above 1");
             }
 
             string? userId = HttpContext.CurrentUserID(_context);
@@ -99,7 +107,7 @@ namespace BeatLeader_Server.Controllers {
 
             var playlistList = await LeaderboardControllerHelper.GetPlaylistList(_context, userId, _s3Client, playlistIds, playlists);
 
-            (sequence, int? searchId, int? scoreCount) = await sequence.FilterAll(_context, true, showRatings, sortBy, order, thenSortBy, thenOrder, search, noSearchSort, diff, mode, mapRequirements, allRequirements, scoreStatus, type, mapType, allTypes, hmd, modifiers, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, date_from, date_to, eventId, mappers, players, playlistList);
+            (sequence, int? searchId, int? scoreCount) = await sequence.FilterAll(_context, true, showRatings, sortBy, order, thenSortBy, thenOrder, search, noSearchSort, diff, mode, mapRequirements, allRequirements, scoreStatus, type, mapType, allTypes, hmd, modifiers, stars_from, stars_to, accrating_from, accrating_to, passrating_from, passrating_to, techrating_from, techrating_to, acc_from, acc_to, date_from, date_to, eventId, mappers, players, playlistList);
 
             var scoreIds = leaderboardContext == LeaderboardContexts.General 
                 ? (await sequence.Skip((page - 1) * count).Take(count).Select(s => s.Id).ToListAsync()).Where(id => id != null).ToList()

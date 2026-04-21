@@ -328,6 +328,7 @@ namespace BeatLeader_Server.Services
                                 Link = "https://bsaber.com/maps-of-the-week/1"
                             });
                             motwMap.Status |= SongStatus.MapOfTheWeek;
+                            motwMap.IsMapOfTheWeek = true;
                         }
                     }
                 }
@@ -337,6 +338,7 @@ namespace BeatLeader_Server.Services
                     if (processedHashes.Contains(existingMOTW.LowerHash)) continue;
 
                     existingMOTW.Status &= ~SongStatus.MapOfTheWeek;
+                    existingMOTW.IsMapOfTheWeek = false;
                     existingMOTW.ExternalStatuses.Remove(existingMOTW.ExternalStatuses.First(s => s.Status == SongStatus.MapOfTheWeek));
                 }
 

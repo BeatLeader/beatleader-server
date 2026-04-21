@@ -18,7 +18,10 @@ public enum MapSortBy
     Attempts,
     NJS,
     NPS,
-    BPM
+    BPM,
+    MultiRating,
+    EBPM,
+    LinearPercentage
 }
 
 public enum ScoresSortBy {

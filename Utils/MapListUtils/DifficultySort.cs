@@ -85,6 +85,23 @@ public static class DifficultySort
                         .ThenBy(d => d.PositiveVotes + d.NegativeVotes);
                 break;
 
+            case MapSortBy.EBPM:
+                difficulties = order == Order.Desc
+                    ? difficulties.ThenByDescending(d => d.PeakSustainedEBPM)
+                    : difficulties.ThenBy(d => d.PeakSustainedEBPM);
+                break;
+
+            case MapSortBy.LinearPercentage:
+                difficulties = order == Order.Desc
+                    ? difficulties.ThenByDescending(d => d.LinearPercentage)
+                    : difficulties.ThenBy(d => d.LinearPercentage);
+                break;
+            case MapSortBy.MultiRating:
+                difficulties = order == Order.Desc
+                    ? difficulties.ThenByDescending(d => d.MultiRating)
+                    : difficulties.ThenBy(d => d.MultiRating);
+                break;
+
             default:
                 // Default sorting by mode and value
                 difficulties = difficulties.ThenBy(d => d.Mode > 0 ? d.Mode : 2000)

@@ -156,9 +156,13 @@ namespace BeatLeader_Server.Controllers {
 
                 player.OldAlias = player.Alias;
                 player.Alias = ar.Value;
+
+                var ces = await _context.PlayerContextExtensions.Where(ce => ce.PlayerId == player.Id).Select(ce => ce.Id).ToListAsync();
+                var cesUpdates = ces.Select(ce => new PlayerContextExtension { Id = ce, Alias = ar.Value });
+                await _context.BulkUpdateAsync(cesUpdates, options => options.ColumnInputExpression = c => new { c.Alias });
             }
             ar.Status = status;
-            _context.SaveChanges();
+            await _context.BulkSaveChangesAsync();
 
             return ar;
         }

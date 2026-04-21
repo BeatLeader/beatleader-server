@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BeatLeader_Server.ControllerHelpers {
     public class SongControllerHelper {
-        public static async Task AddNewSong(Song song, string hash, AppContext dbContext) {
+        public static async Task<Song?> AddNewSong(Song song, string hash, AppContext dbContext) {
             string songId = song.Id;
             Song? existingSong = await dbContext
                 .Songs
@@ -56,6 +56,8 @@ namespace BeatLeader_Server.ControllerHelpers {
                 Console.WriteLine($"ADD SONG EXCEPTION: {e.Message}");
                 dbContext.RejectChanges();
             }
+
+            return await GetSongWithDiffsFromHash(dbContext, hash);
         }
 
         public static async Task<Song?> GetOrAddSong(AppContext dbContext, string hash)
@@ -74,8 +76,10 @@ namespace BeatLeader_Server.ControllerHelpers {
                 {
                     song = new Song();
                     song.FromMapDetails(map);
-                    await AddNewSong(song, hash, dbContext);
-                    await UpdateFromMap(dbContext, song, map);
+                    song = await AddNewSong(song, hash, dbContext);
+                    if (song != null) {
+                        await UpdateFromMap(dbContext, song, map);
+                    }
                 }
             }
 
@@ -156,7 +160,7 @@ namespace BeatLeader_Server.ControllerHelpers {
             }
 
             string newLeaderboardId = $"{song.Id}{difficulty.Value}{difficulty.Mode}";
-            var leaderboard = await dbContext.Leaderboards.Include(lb => lb.Difficulty).Where(l => l.Id == newLeaderboardId).FirstOrDefaultAsync();
+            var leaderboard = await GetLeaderboardWithDiffs(dbContext, newLeaderboardId);
 
             if (leaderboard == null) {
                 leaderboard = new Leaderboard();
@@ -208,7 +212,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                 dbContext.RejectChanges();
             }
 
-            return leaderboard;
+            return await GetLeaderboardWithDiffs(dbContext, newLeaderboardId) ?? leaderboard;
         }
 
         public static async Task MigrateLeaderboards(AppContext dbContext, Song newSong, Song oldSong, Song? baseSong, DifficultyDescription diff)
@@ -321,6 +325,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                             song.ExternalStatuses.Remove(curatedStatus);
                         }
                         song.Status &= ~SongStatus.Curated;
+                        song.IsCurated = false;
                     }
                 }
             }
@@ -336,6 +341,21 @@ namespace BeatLeader_Server.ControllerHelpers {
                 .ThenInclude(d => d.ModifierValues)
                 .Include(song => song.Difficulties)
                 .ThenInclude(d => d.ModifiersRating)
+                .FirstOrDefaultAsync();
+        }
+
+        private static async Task<Leaderboard?> GetLeaderboardWithDiffs(AppContext dbContext, string leaderboardId)
+        {
+            return await dbContext
+                .Leaderboards
+                .Where(lb => lb.Id == leaderboardId)
+                .Include(lb => lb.Song)
+                .Include(lb => lb.Difficulty)
+                .ThenInclude(d => d.ModifierValues)
+                .Include(lb => lb.Difficulty)
+                .ThenInclude(d => d.ModifiersRating)
+                .Include(lb => lb.Difficulty)
+                .ThenInclude(d => d.MaxScoreGraph)
                 .FirstOrDefaultAsync();
         }
     }

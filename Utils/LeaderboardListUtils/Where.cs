@@ -52,7 +52,6 @@ public static partial class LeaderboardListUtils
         foreach (MapTypes term in Enum.GetValues(typeof(MapTypes))) {
             if (term != MapTypes.None && mapType.HasFlag(term)) {
                 var subexpression = Expression.Equal(Expression.Property(Expression.Property(score, "Difficulty"), $"Type{term.ToString()}"), Expression.Constant(true));
-                exp = Expression.OrElse(exp, subexpression);
 
                 exp = allTypes switch {
                     Operation.Any => Expression.OrElse(exp, subexpression),
@@ -72,7 +71,18 @@ public static partial class LeaderboardListUtils
             return sequence;
         }
 
-        return sequence.Where(leaderboard => leaderboard.Difficulty.Status != DifficultyStatus.outdated && (leaderboard.Song.Status & status) != 0);
+        var song = Expression.Parameter(typeof(Leaderboard), "s");
+        // 1 != 2 is here to trigger `OrElse` further the line.
+        var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
+
+        foreach (SongStatus term in Enum.GetValues(typeof(SongStatus))) {
+            if (term != SongStatus.None && status.HasFlag(term)) {
+                var subexpression = Expression.Equal(Expression.Property(Expression.Property(song, "Song"), $"Is{term.ToString()}"), Expression.Constant(true));
+                exp = Expression.OrElse(exp, subexpression);
+            }
+        }
+
+        return sequence.Where((Expression<Func<Leaderboard, bool>>)Expression.Lambda(exp, song));
     }
 
     private static IQueryable<Leaderboard> WhereMapper(this IQueryable<Leaderboard> sequence, string? mapper)
@@ -167,7 +177,6 @@ public static partial class LeaderboardListUtils
         foreach (Requirements term in Enum.GetValues(typeof(Requirements))) {
             if (term != Requirements.Ignore && term != Requirements.None && mapRequirements.HasFlag(term)) {
                 var subexpression = Expression.Equal(Expression.Property(Expression.Property(score, "Difficulty"), $"Requires{term.ToString()}"), Expression.Constant(true));
-                exp = Expression.OrElse(exp, subexpression);
 
                 exp = allRequirements switch {
                     Operation.Any => Expression.OrElse(exp, subexpression),

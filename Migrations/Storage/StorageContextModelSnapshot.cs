@@ -17,7 +17,7 @@ namespace BeatLeader_Server.Migrations.Storage
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.6")
+                .HasAnnotation("ProductVersion", "10.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -84,6 +84,63 @@ namespace BeatLeader_Server.Migrations.Storage
                     b.Property<bool>("FullCombo")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("HasBFS")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasBSF")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasDA")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasEZ")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasFS")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasGN")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasHD")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasNA")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasNB")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasNF")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasNO")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasOHP")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasOP")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasPM")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasSA")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasSC")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasSF")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasSMC")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasSS")
+                        .HasColumnType("bit");
+
                     b.Property<int>("Hmd")
                         .HasColumnType("int");
 
@@ -112,6 +169,11 @@ namespace BeatLeader_Server.Migrations.Storage
 
                     b.Property<string>("Modifiers")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ModifiersList")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<float>("PassPP")
                         .HasColumnType("real");

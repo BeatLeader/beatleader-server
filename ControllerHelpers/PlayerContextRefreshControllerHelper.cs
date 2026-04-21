@@ -107,6 +107,21 @@ namespace BeatLeader_Server.ControllerHelpers {
                 await CalculateBatch(dbContext, scoreGroups.Skip(i).Take(5000).ToList(), playerMap, weights);
             }
 
+            var zeroPlayers = playerMap.Keys.ToHashSet().Except(scoreGroups.Select(g => g.Key).Distinct().ToHashSet()).ToList();
+            var playerUpdates = new List<PlayerContextExtension>();
+            foreach (var zeroPlayer in zeroPlayers) {
+                
+
+                if (playerMap.ContainsKey(zeroPlayer)) {
+                    var player = new PlayerContextExtension { Id = playerMap[zeroPlayer] };
+                    playerUpdates.Add(player);
+                }
+                
+                
+            }
+
+            await dbContext.BulkUpdateAsync(playerUpdates, options => options.ColumnInputExpression = c => new { c.Pp, c.AccPp, c.TechPp, c.PassPp });
+
             Dictionary<string, int> countries = new Dictionary<string, int>();
             var ranked = await dbContext.PlayerContextExtensions
                 .Where(ce => ce.Context == context && !ce.Banned && ce.Pp > 0)

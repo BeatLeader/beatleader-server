@@ -98,6 +98,7 @@ namespace BeatLeader_Server.Services {
                                 {
                                     song.ExternalStatuses.Add(status);
                                     song.Status |= SongStatus.Curated;
+                                    song.IsCurated = true;
                                 }
                             }
                         }
@@ -173,6 +174,7 @@ namespace BeatLeader_Server.Services {
                             Link = videoUrl
                         });
                         song.Status |= SongStatus.NoodleMonday;
+                        song.IsNoodleMonday = true;
                     }
 
                     await _context.SaveChangesAsync();

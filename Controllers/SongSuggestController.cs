@@ -381,6 +381,12 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        public class LeaderboardSelection {
+            public string LeaderboardId { get; set; }
+            public string? SongId { get; set; }
+            public bool HasScore { get; set; }
+        }
+
         [HttpGet("~/mod/maps/trending/")]
         public async Task<ActionResult<ResponseWithMetadata<TrendingLeaderboardInfoResponse>>> ModTrendingMaps() {
             var currentId = HttpContext.CurrentUserID(_context);
@@ -403,7 +409,7 @@ namespace BeatLeader_Server.Controllers
                 friendsList.AddRange(friends.Friends.Select(f => f.Id));
             }
 
-            var tasks = new Task<List<string>>[6];
+            var tasks = new Task<List<LeaderboardSelection>>[6];
             var treshold = Time.UnixNow() - 60 * 60 * 24 * 30;
             for (int i = 0; i < 6; i++) {
                 var dbContext = _dbFactory.CreateDbContext();
@@ -411,7 +417,7 @@ namespace BeatLeader_Server.Controllers
                     l.Difficulty.Status != DifficultyStatus.outdated && 
                     l.Difficulty.Status != DifficultyStatus.OST && 
                     l.Song.Duration > 40 &&
-                    !l.Song.Leaderboards.Any(ll => ll.Scores.Any(s => s.PlayerId == currentId)));
+                    l.Song.MapCreator == SongCreator.Human);
                 switch (i) {
                     case 0:
                         var idOfTheDay = await _context.MapOfTheDay.Where(m => m.Timestart < unixNow && m.Timeend > unixNow).Select(m => m.SongId).FirstOrDefaultAsync();
@@ -426,31 +432,27 @@ namespace BeatLeader_Server.Controllers
                         break;
                     case 1:
                         query = query
-                            .Where(l => 
-                                l.Song.UploadTime > treshold && 
-                                l.Song.MapCreator == SongCreator.Human)
+                            .Where(l => l.Song.UploadTime > treshold)
                             .OrderByDescending(l => l.TodayPlays);
                         break;
                     case 2:
                         query = query
-                            .Where(l => l.Song.UploadTime > Time.UnixNow() - 60 * 60 * 24 * 7 && l.Song.MapCreator == SongCreator.Human)
+                            .Where(l => l.Song.UploadTime > Time.UnixNow() - 60 * 60 * 24 * 7)
                             .OrderByDescending(l => l.Plays);
                         break;
                     case 3:
                         if (friendsList.Count > 0) {
-                            query = query
-                                .Where(l => l.Song.MapCreator == SongCreator.Human)
-                                .OrderByDescending(l => l.Scores.Where(s => s.Timepost > treshold && friendsList.Contains(s.PlayerId)).Count());
+                            query = query.OrderByDescending(l => l.Scores.Where(s => s.Timepost > treshold && friendsList.Contains(s.PlayerId)).Count());
                         }
                         break;
                     case 4:
                         query = query
-                            .Where(l => l.Song.Status.HasFlag(SongStatus.Curated) && l.Song.MapCreator == SongCreator.Human)
+                            .Where(l => l.Song.IsCurated)
                             .OrderByDescending(l => l.Song.UploadTime);
                         break;
                     case 5:
                         query = query
-                            .Where(l => l.Song.UploadTime > treshold && l.Song.MapCreator == SongCreator.Human)
+                            .Where(l => l.Song.UploadTime > treshold)
                             .OrderByDescending(l => l.ThisWeekPlays);
                         break;
                     default:
@@ -460,20 +462,23 @@ namespace BeatLeader_Server.Controllers
                 tasks[i] = query
                     .TagWithCallerS()
                     .AsNoTracking()
-                    .Select(lb => lb.Id)
+                    .Select(lb => new LeaderboardSelection { LeaderboardId = lb.Id, SongId = lb.SongId, HasScore = lb.Scores.Any(s => s.PlayerId == currentId) })
                     .Take(2)
                     .ToListAsync();
             }
 
             await Task.WhenAll(tasks);
 
+            var playedSongs = tasks.SelectMany(t => t.Result.Where(m => m.HasScore).Select(m => m.SongId)).Distinct().ToList();
             var result = new Dictionary<string, int>();
             int counter = 0;
             foreach (var group in tasks) {
                 counter++;
                 foreach (var item in group.Result) {
-                    if (!result.ContainsKey(item)) {
-                        result[item] = counter - 1;
+                    if (playedSongs.Contains(item.SongId)) continue;
+
+                    if (!result.ContainsKey(item.LeaderboardId)) {
+                        result[item.LeaderboardId] = counter - 1;
                     }
                     if (result.Count == counter) {
                         break;
@@ -716,20 +721,24 @@ namespace BeatLeader_Server.Controllers
                     }).ToListAsync()
             };
 
-            response.Data = response.Data.OrderBy(s => result[s.Song.Id]);
+            var maxPlays = response.Data.OrderByDescending(s => s.TodayPlays).First().TodayPlays;
+            var maxWeekPlays = response.Data.OrderByDescending(s => s.ThisWeekPlays).First().ThisWeekPlays;
+            var maxVotes = response.Data.OrderByDescending(s => s.PositiveVotes).First().PositiveVotes;
+
+            response.Data = response.Data.DistinctBy(s => s.Song.Id).OrderBy(s => result[s.Song.Id]);
             foreach (var item in response.Data) {
                 switch (result[item.Song.Id]) {
                     case 0:
                         item.Description = "Top played today";
-                        item.TrendingValue = $"{item.TodayPlays} plays";
+                        item.TrendingValue = $"{maxPlays} plays";
                         break;
                     case 1:
                         item.Description = "Top played this week";
-                        item.TrendingValue = $"{item.ThisWeekPlays} plays";
+                        item.TrendingValue = $"{maxWeekPlays} plays";
                         break;
                     case 2:
                         item.Description = "Top voted new map";
-                        item.TrendingValue = $"{item.PositiveVotes} votes";
+                        item.TrendingValue = $"{maxVotes} votes";
                         break;
                     default:
                         break;

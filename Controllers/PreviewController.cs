@@ -20,6 +20,7 @@ using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.Formats.Webp;
 using ReplayDecoder;
 using System.Linq.Expressions;
+using BeatLeader_Server.Extensions;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -27,6 +28,7 @@ namespace BeatLeader_Server.Controllers
     {
         private readonly HttpClient _client;
         private readonly AppContext _context;
+        private readonly StorageContext _storageContext;
 
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly IAmazonS3 _s3Client;
@@ -56,11 +58,13 @@ namespace BeatLeader_Server.Controllers
 
         public PreviewController(
             AppContext context,
+            StorageContext storageContext,
             IWebHostEnvironment webHostEnvironment, 
             IServerTiming serverTiming,
             IConfiguration configuration) {
             _client = new HttpClient();
             _context = context;
+            _storageContext = storageContext;
             _webHostEnvironment = webHostEnvironment;
             _serverTiming = serverTiming;
             _s3Client = configuration.GetS3Client();
@@ -118,6 +122,7 @@ namespace BeatLeader_Server.Controllers
 
             public float Accuracy { get; set; }
             public string PlayerId { get; set; }
+            public string LeaderboardId { get; set; }
             public float Pp { get; set; }
             public int Rank { get; set; }
             public string Modifiers { get; set; }
@@ -182,6 +187,13 @@ namespace BeatLeader_Server.Controllers
             if (score == null)
             {
                 return NotFound();
+            }
+
+            var cacheFile = $"{score.ScoreId}-{score.Rank}-{score.Pp}-preview.png";
+            var previewUrl = await _s3Client.GetPresignedUrl(cacheFile, S3Container.previews);
+            if (previewUrl != null)
+            {
+                return Redirect(previewUrl);
             }
 
             Image<Rgba32> avatarImage;
@@ -276,7 +288,7 @@ namespace BeatLeader_Server.Controllers
             {
                 try
                 {
-                    await _s3Client.UploadPreview($"{score.ScoreId}preview.png", ms);
+                    await _s3Client.UploadPreview(cacheFile, ms);
                 }
                 catch { }
             }
@@ -295,20 +307,12 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? link = null,
             [FromQuery] int? scoreId = null) {
 
-            if (scoreId != null)
-            {
-                var previewUrl = await _s3Client.GetPresignedUrl($"{scoreId}preview.png", S3Container.previews);
-                if (previewUrl != null)
-                {
-                    return Redirect(previewUrl);
+            if (scoreId == null) { 
+                if (link != null) {
+                    return await GetLink(link);
+                } else {
+                    return await GetOld(playerID, id, difficulty, mode);
                 }
-            }
-            else if (link != null) {
-                return await GetLink(link);
-            }
-            else
-            {
-                return await GetOld(playerID, id, difficulty, mode);
             }
 
             ScoreSelect? score = null;
@@ -318,13 +322,8 @@ namespace BeatLeader_Server.Controllers
                 if (scoreId != null) {
                     score = await _context.Scores
                         .Where(s => s.Id == scoreId)
-                        .Include(s => s.Player)
-                            .ThenInclude(p => p.ProfileSettings)
-                        .Include(s => s.Leaderboard)
-                            .ThenInclude(l => l.Song)
-                        .Include(s => s.Leaderboard)
-                            .ThenInclude(l => l.Difficulty)
-                        .Include(s => s.ContextExtensions)
+                        .AsNoTracking()
+                        .TagWithCaller()
                         .Select(s => new ScoreSelect {
                             SongId = s.Leaderboard.Song.Id,
                             CoverImage = s.Leaderboard.Song.CoverImage,
@@ -352,6 +351,65 @@ namespace BeatLeader_Server.Controllers
                         })
                         .FirstOrDefaultAsync();
                     if (score == null) {
+                        var previousPB = await _storageContext.PlayerLeaderboardStats
+                            .Where(st => st.ScoreId == scoreId)
+                            .TagWithCaller()
+                            .Select(s => new ScoreSelect {
+                                Accuracy = s.Accuracy,
+                                PlayerId = s.PlayerId,
+                                LeaderboardId = s.LeaderboardId,
+                                Pp = s.Pp,
+                                Rank = s.Rank,
+                                Modifiers = s.ModifiersList,
+                                FullCombo = s.FullCombo,
+                            })
+                            .FirstOrDefaultAsync();
+                        if (previousPB != null) {
+                            var leaderboard = await _context.Leaderboards
+                                .Where(lb => lb.Id == previousPB.LeaderboardId)
+                                .AsNoTracking()
+                                .Select(lb => new {
+                                    lb.SongId,
+                                    lb.Song.CoverImage,
+                                    lb.Song.Name,
+                                    Stars =
+                                        (lb.Difficulty.Status == DifficultyStatus.nominated ||
+                                        lb.Difficulty.Status == DifficultyStatus.qualified ||
+                                        lb.Difficulty.Status == DifficultyStatus.ranked) ? lb.Difficulty.Stars : null,
+                                    Difficulty = lb.Difficulty.DifficultyName,
+                                    ModeName = lb.Difficulty.ModeName,
+                                })
+                                .FirstOrDefaultAsync();
+                            var player = await _context.Players
+                                .Where(p => p.Id == previousPB.PlayerId)
+                                .AsNoTracking()
+                                .Select(p => new {
+                                    PlayerAvatar = p.Avatar,
+                                    PlayerName = p.Name,
+                                    PlayerRole = p.Role,
+                                    PatreonFeatures = p.PatreonFeatures,
+                                    ProfileSettings = p.ProfileSettings,
+                                })
+                                .FirstOrDefaultAsync();
+
+                            if (leaderboard != null && player != null) {
+                                previousPB.SongId = leaderboard.SongId;
+                                previousPB.CoverImage = leaderboard.CoverImage;
+                                previousPB.SongName = leaderboard.Name;
+                                previousPB.Stars = leaderboard.Stars;
+                                previousPB.ModeName = leaderboard.ModeName;
+                                previousPB.Difficulty = leaderboard.Difficulty;
+
+                                previousPB.PlayerAvatar = player.PlayerAvatar;
+                                previousPB.PlayerName = player.PlayerName;
+                                previousPB.PlayerRole = player.PlayerRole;
+                                previousPB.PatreonFeatures = player.PatreonFeatures;
+                                previousPB.ProfileSettings = player.ProfileSettings;
+
+                                return await GetFromScore(previousPB);
+                            }
+                        }
+
                         var redirect = await _context.ScoreRedirects.FirstOrDefaultAsync(sr => sr.OldScoreId == scoreId);
                         if (redirect != null && redirect.NewScoreId != scoreId)
                         {
@@ -387,9 +445,29 @@ namespace BeatLeader_Server.Controllers
                 
                 score = await query
                     .Select(s => new ScoreSelect {
-                        ScoreId = s.Id,
+                        SongId = s.Leaderboard.Song.Id,
+                        CoverImage = s.Leaderboard.Song.CoverImage,
                         SongName = s.Leaderboard.Song.Name,
-                        PlayerName = s.Player.Name
+                        Stars = 
+                            (s.Leaderboard.Difficulty.Status == DifficultyStatus.nominated ||
+                            s.Leaderboard.Difficulty.Status == DifficultyStatus.qualified ||
+                            s.Leaderboard.Difficulty.Status == DifficultyStatus.ranked) ? s.Leaderboard.Difficulty.Stars : null,
+
+                        Accuracy = s.Accuracy,
+                        PlayerId = s.PlayerId,
+                        Pp = s.Pp,
+                        Rank = s.Rank,
+                        Modifiers = s.Modifiers,
+                        FullCombo = s.FullCombo,
+                        Difficulty = s.Leaderboard.Difficulty.DifficultyName,
+                        ModeName = s.Leaderboard.Difficulty.ModeName,
+
+                        PlayerAvatar = s.Player.Avatar,
+                        PlayerName = s.Player.Name,
+                        PlayerRole = s.Player.Role,
+                        PatreonFeatures = s.Player.PatreonFeatures,
+                        ProfileSettings = s.Player.ProfileSettings,
+                        ContextExtensions = s.ContextExtensions
                     })
                     .FirstOrDefaultAsync();
                 if (score == null) {
@@ -404,7 +482,7 @@ namespace BeatLeader_Server.Controllers
             }
 
             if (score != null) {
-                Get(scoreId: score.ScoreId);
+                GetFromScore(score);
             }
 
             var title = score != null ? $"Replay | {score.PlayerName} | {score.SongName}" : "Beat Saber Web Replays viewer";

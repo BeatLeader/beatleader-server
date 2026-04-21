@@ -50,18 +50,20 @@ namespace BeatLeader_Server.Utils {
                 if (!modifiers.Contains("none")) {
                     var score = Expression.Parameter(typeof(PlayerLeaderboardStats), "s");
 
-                    var contains = typeof(string).GetMethod("Contains", new[] { typeof(string) });
-
                     var any = modifiers.Contains("any");
                     var not = modifiers.Contains("not");
                     // 1 != 2 is here to trigger `OrElse` further the line.
                     var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(any ? 2 : 1));
-                    var modifiersList = modifiers.Split(",").Where(m => m != "any" && m != "none" && m != "not");
+                    var modifiersList = modifiers.Split(",").Where(m => m != "any" && m != "none" && m != "not" && ModifiersMap.KnownModifiers.Contains(m));
 
-                    foreach (var term in modifiersList) {
-                        var subexpression = Expression.Call(Expression.Property(score, "Modifiers"), contains, Expression.Constant(term));
+                    foreach (var modifier in modifiersList) {
+                        var subexpression = Expression.Property(score, $"Has{modifier}");
                         if (not) {
-                            exp = Expression.And(exp, Expression.Not(subexpression));
+                            if (any) {
+                                exp = Expression.And(exp, Expression.Not(subexpression));
+                            } else {
+                                exp = Expression.And(exp, subexpression);
+                            }
                         } else {
                             if (any) {
                                 exp = Expression.OrElse(exp, subexpression);
@@ -70,9 +72,9 @@ namespace BeatLeader_Server.Utils {
                             }
                         }
                     }
-                    sequence = sequence.Where((Expression<Func<PlayerLeaderboardStats, bool>>)Expression.Lambda(exp, score));
+                    sequence = sequence.Where((Expression<Func<PlayerLeaderboardStats, bool>>)Expression.Lambda(not && !any ? Expression.Not(exp) : exp, score));
                 } else {
-                    sequence = sequence.Where(s => s.Modifiers.Length == 0);
+                    sequence = sequence.Where(s => s.ModifiersList.Length == 0);
                 }
             }
 

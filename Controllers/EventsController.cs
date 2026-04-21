@@ -109,6 +109,9 @@ namespace BeatLeader_Server.Controllers
 
             foreach (var item in result.Data)
             {
+                if (item.Id == 81) {
+                    item.Leader = new PlayerResponse { Id = "76561198253526777" };
+                }
                 item.Leader = ResponseFromPlayer(await _context.Players.Include(p => p.Clans).FirstOrDefaultAsync(p => p.Id == item.Leader.Id));
             }
 
@@ -183,6 +186,111 @@ namespace BeatLeader_Server.Controllers
             } else {
                 return await _context.EventRankings.Where(e => e.PageAlias == id).FirstOrDefaultAsync();
             }
+        }
+
+        [HttpGet("~/event/81/players")]
+        public async Task<ActionResult<ResponseWithMetadata<PlayerResponseWithStats>>> GetLeftLeaderPlayers(
+            int id,
+            [FromQuery] string sortBy = "pp", 
+            [FromQuery] int page = 1, 
+            [FromQuery] int count = 50, 
+            [FromQuery] string search = "",
+            [FromQuery] Order order = Order.Desc,
+            [FromQuery] string countries = ""
+            )
+        {
+            var request = _context
+                .PlayerContextExtensions
+                .Where(p => p.Context == LeaderboardContexts.LeftLeader);
+            
+            if (countries.Length != 0)
+            {
+                var player = Expression.Parameter(typeof(PlayerContextExtension), "p");
+
+                // 1 != 2 is here to trigger `OrElse` further the line.
+                var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
+                foreach (var term in countries.ToLower().Split(","))
+                {
+                    exp = Expression.OrElse(exp, Expression.Equal(Expression.Property(player, "Country"), Expression.Constant(term)));
+                }
+                request = request.Where((Expression<Func<PlayerContextExtension, bool>>)Expression.Lambda(exp, player));
+            }
+
+            if (search.Length != 0)
+            {
+                var player = Expression.Parameter(typeof(PlayerContextExtension), "p");
+
+                var contains = "".GetType().GetMethod("Contains", new[] { typeof(string) });
+
+                // 1 != 2 is here to trigger `OrElse` further the line.
+                var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(2));
+                foreach (var term in search.ToLower().Split(","))
+                {
+                    exp = Expression.OrElse(exp, Expression.Call(Expression.Property(Expression.Property(player, "PlayerInstance"), "PlayerName"), contains, Expression.Constant(term)));
+                }
+                request = request.Where((Expression<Func<PlayerContextExtension, bool>>)Expression.Lambda(exp, player));
+            }
+
+            var eventPlayers = request
+                .AsNoTracking()
+                .OrderByDescending(ep => ep.Pp)
+                .Skip((page - 1) * count)
+                .Take(count)
+                .Select(p => new {
+                    p.PlayerId,
+                    p.Rank,
+                    p.Pp,
+                    p.CountryRank
+                })
+                .ToList();
+            var ids = eventPlayers.Select(ep => ep.PlayerId).ToList();
+
+            var players = await _context
+                .Players
+                .AsNoTracking()
+                .Where(p => ids.Contains(p.Id))
+                .Select(p => new PlayerResponseWithStats {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Alias = p.Alias,
+                    Platform = p.Platform,
+                    Avatar = p.Avatar,
+                    Country = p.Country,
+                    ScoreStats = p.ScoreStats,
+
+                    Pp = p.Pp,
+                    Rank = p.Rank,
+                    CountryRank = p.CountryRank,
+                    LastWeekPp = p.LastWeekPp,
+                    LastWeekRank = p.LastWeekRank,
+                    LastWeekCountryRank = p.LastWeekCountryRank,
+                    Role = p.Role,
+                    PatreonFeatures = p.PatreonFeatures,
+                    ProfileSettings = p.ProfileSettings,
+                    ClanOrder = p.ClanOrder,
+                    Clans = p.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color })
+                }).ToListAsync();
+
+            foreach (var resultPlayer in players)
+            {
+                var eventPlayer = eventPlayers.First(p => p.PlayerId == resultPlayer.Id);
+
+                resultPlayer.Rank = eventPlayer.Rank;
+                resultPlayer.Pp = eventPlayer.Pp;
+                resultPlayer.CountryRank = eventPlayer.CountryRank;
+                PostProcessSettings(resultPlayer, false);
+            }
+
+            return new ResponseWithMetadata<PlayerResponseWithStats>()
+            {
+                Metadata = new Metadata()
+                {
+                    Page = page,
+                    ItemsPerPage = count,
+                    Total = await request.CountAsync()
+                },
+                Data = players.OrderByDescending(ep => ep.Pp)
+            };
         }
 
         [HttpGet("~/event/{id}/players")]

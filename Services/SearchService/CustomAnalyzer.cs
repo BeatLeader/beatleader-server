@@ -4,7 +4,7 @@ using Lucene.Net.Util;
 
 namespace BeatLeader_Server.Services
 {
-    public class CustomAnalyzer : Analyzer
+    public class CustomAnalyzer : Lucene.Net.Analysis.Analyzer
     {
         private readonly LuceneVersion _luceneVersion;
         public CustomAnalyzer(LuceneVersion luceneVersion) {

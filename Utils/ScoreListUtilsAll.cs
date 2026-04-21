@@ -110,6 +110,8 @@ namespace BeatLeader_Server.Utils {
             float? passrating_to = null,
             float? techrating_from = null,
             float? techrating_to = null,
+            float? acc_from = null,
+            float? acc_to = null,
             int? time_from = null,
             int? time_to = null,
             int? eventId = null,
@@ -182,7 +184,6 @@ namespace BeatLeader_Server.Utils {
                 foreach (Requirements term in Enum.GetValues(typeof(Requirements))) {
                     if (term != Requirements.Ignore && term != Requirements.None && requirements.HasFlag(term)) {
                         var subexpression = Expression.Equal(Expression.Property(Expression.Property(Expression.Property(score, "Leaderboard"), "Difficulty"), $"Requires{term.ToString()}"), Expression.Constant(true));
-                        exp = Expression.OrElse(exp, subexpression);
 
                         exp = allRequirements switch {
                             Operation.Any => Expression.OrElse(exp, subexpression),
@@ -199,6 +200,7 @@ namespace BeatLeader_Server.Utils {
                 if (type != DifficultyStatus.OST) {
                     sequence = sequence.Where(s => s.Leaderboard.Difficulty.Status == type);
                 }
+
                 scoreCount = null;
             }
             if (mapType != MapTypes.None) {
@@ -209,7 +211,6 @@ namespace BeatLeader_Server.Utils {
                 foreach (MapTypes term in Enum.GetValues(typeof(MapTypes))) {
                     if (term != MapTypes.None && mapType.HasFlag(term)) {
                         var subexpression = Expression.Equal(Expression.Property(Expression.Property(Expression.Property(score, "Leaderboard"), "Difficulty"), $"Type{term.ToString()}"), Expression.Constant(true));
-                        exp = Expression.OrElse(exp, subexpression);
 
                         exp = allTypes switch {
                             Operation.Any => Expression.OrElse(exp, subexpression),
@@ -318,6 +319,14 @@ namespace BeatLeader_Server.Utils {
                 sequence = sequence.Where(s => s.Timepost <= time_to);
                 scoreCount = null;
             }
+            if (acc_from != null) {
+                sequence = sequence.Where(s => s.Accuracy >= acc_from);
+                scoreCount = null;
+            }
+            if (acc_to != null) {
+                sequence = sequence.Where(s => s.Accuracy <= acc_to);
+                scoreCount = null;
+            }
             if (excludeBanned) {
                 sequence = sequence.Where(s => !s.Banned);
             }
@@ -359,18 +368,20 @@ namespace BeatLeader_Server.Utils {
                 if (!modifiers.Contains("none")) {
                     var score = Expression.Parameter(typeof(IScore), "s");
 
-                    var contains = typeof(string).GetMethod("Contains", new[] { typeof(string) });
-
                     var any = modifiers.Contains("any");
                     var not = modifiers.Contains("not");
                     // 1 != 2 is here to trigger `OrElse` further the line.
                     var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(any ? 2 : 1));
-                    var modifiersList = modifiers.Split(",").Where(m => m != "any" && m != "none" && m != "not");
+                    var modifiersList = modifiers.Split(",").Where(m => m != "any" && m != "none" && m != "not" && ModifiersMap.KnownModifiers.Contains(m));
 
-                    foreach (var term in modifiersList) {
-                        var subexpression = Expression.Call(Expression.Property(score, "Modifiers"), contains, Expression.Constant(term));
+                    foreach (var modifier in modifiersList) {
+                        var subexpression = Expression.Property(score, $"Has{modifier}");
                         if (not) {
-                            exp = Expression.And(exp, Expression.Not(subexpression));
+                            if (any) {
+                                exp = Expression.And(exp, Expression.Not(subexpression));
+                            } else {
+                                exp = Expression.And(exp, subexpression);
+                            }
                         } else {
                             if (any) {
                                 exp = Expression.OrElse(exp, subexpression);
@@ -379,7 +390,7 @@ namespace BeatLeader_Server.Utils {
                             }
                         }
                     }
-                    sequence = sequence.Where((Expression<Func<IScore, bool>>)Expression.Lambda(exp, score));
+                    sequence = sequence.Where((Expression<Func<IScore, bool>>)Expression.Lambda(not && !any ? Expression.Not(exp) : exp, score));
                     scoreCount = null;
                 } else {
                     sequence = sequence.Where(s => s.Modifiers.Length == 0);

@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Primitives;
 using Prometheus.Client;
 using System.Buffers;
@@ -22,6 +21,7 @@ using System.Net;
 using beatleader_parser;
 using Parser.Utils;
 using MapPostprocessor;
+using Parser.Map;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -30,7 +30,6 @@ namespace BeatLeader_Server.Controllers
     {
         private readonly IAmazonS3 _s3Client;
         private readonly IDbContextFactory<AppContext> _dbFactory;
-        private readonly IDbContextFactory<StorageContext> _storageFactory;
 
         private readonly IWebHostEnvironment _environment;
         private readonly IConfiguration _configuration;
@@ -47,7 +46,6 @@ namespace BeatLeader_Server.Controllers
 
         public ReplayController(
             IDbContextFactory<AppContext> dbFactory,
-            IDbContextFactory<StorageContext> storageFactory,
             PreviewController previewController,
             IWebHostEnvironment env,
             IConfiguration configuration,
@@ -60,7 +58,6 @@ namespace BeatLeader_Server.Controllers
             _configuration = configuration;
             _serverTiming = serverTiming;
             _s3Client = configuration.GetS3Client();
-            _storageFactory = storageFactory;
             _previewController = previewController;
 
             _replayLocation = metricFactory.CreateGauge("replay_position", "Posted replay location", new string[] { "geohash" });
@@ -82,11 +79,9 @@ namespace BeatLeader_Server.Controllers
         {
             // DB Context disposed manually
             var dbContext = _dbFactory.CreateDbContext();
-            var storageContext = _storageFactory.CreateDbContext();
             (string? id, string? error) = await SteamHelper.GetPlayerIDFromTicket(ticket, _configuration);
             if (id == null && error != null) {
                 dbContext.Dispose();
-                storageContext.Dispose();
                 return Unauthorized(error);
             }
             long intId = long.Parse(id);
@@ -97,7 +92,7 @@ namespace BeatLeader_Server.Controllers
                     id = accountLink.SteamID;
                 }
             }
-            var result = await PostReplayFromBody(dbContext, storageContext, id);
+            var result = await PostReplayFromBody(dbContext, id);
             if (result.Value.Status == ScoreUploadStatus.Uploaded) {
                 return result.Value.Score;
             } else {
@@ -113,31 +108,17 @@ namespace BeatLeader_Server.Controllers
         {
             // DB Context disposed manually
             var dbContext = _dbFactory.CreateDbContext();
-            StorageContext? storageContext = _storageFactory.CreateDbContext();
             string? userId = HttpContext.CurrentUserID(dbContext);
 
             if (userId == null)
             {
                 dbContext.Dispose();
-                if (storageContext != null) {
-                    storageContext.Dispose();
-                }
                 return Unauthorized("User is not authorized");
             }
 
-            try {
-                await storageContext.PlayerLeaderboardStats.Select(s => s.Id).FirstAsync();
-            } catch (Exception e) {
-                Console.WriteLine($"EXCEPTION storage DB: {e}");
-                storageContext = null;
-            }
-
-            var result = await PostReplayFromBody(dbContext, storageContext, userId, time, type);
+            var result = await PostReplayFromBody(dbContext, userId, time, type);
             if (result.Value.Status == ScoreUploadStatus.Error) {
                 await dbContext.DisposeAsync();
-                if (storageContext != null) {
-                    await storageContext.DisposeAsync();
-                }
             }
             if (Response.Headers.ContainsKey("Set-Cookie")) {
                 Response.Headers.Remove("Set-Cookie");
@@ -159,31 +140,17 @@ namespace BeatLeader_Server.Controllers
         {
             // DB Context disposed manually
             var dbContext = _dbFactory.CreateDbContext();
-            StorageContext? storageContext = _storageFactory.CreateDbContext();
             string? userId = HttpContext.CurrentUserID(dbContext);
 
             if (userId == null)
             {
                 dbContext.Dispose();
-                if (storageContext != null) {
-                    storageContext.Dispose();
-                }
                 return Unauthorized("User is not authorized");
             }
 
-            try {
-                await storageContext.PlayerLeaderboardStats.Select(s => s.Id).FirstAsync();
-            } catch (Exception e) {
-                Console.WriteLine($"EXCEPTION storage DB: {e}");
-                storageContext = null;
-            }
-
-            var result = await PostReplayFromBody(dbContext, storageContext, userId, time, type);
+            var result = await PostReplayFromBody(dbContext, userId, time, type);
             if (result.Value.Status == ScoreUploadStatus.Error) {
                 await dbContext.DisposeAsync();
-                if (storageContext != null) {
-                    await storageContext.DisposeAsync();
-                }
             }
             if (Response.Headers.ContainsKey("Set-Cookie")) {
                 Response.Headers.Remove("Set-Cookie");
@@ -201,13 +168,11 @@ namespace BeatLeader_Server.Controllers
         {
             // DB Context disposed manually
             var dbContext = _dbFactory.CreateDbContext();
-            var storageContext = _storageFactory.CreateDbContext();
             string? userId = HttpContext.CurrentUserID(dbContext);
 
             if (userId == null)
             {
                 dbContext.Dispose();
-                storageContext.Dispose();
                 return Unauthorized("User is not authorized");
             }
 
@@ -218,10 +183,9 @@ namespace BeatLeader_Server.Controllers
                 return Unauthorized();
             }
             
-            var result = await PostReplay(dbContext, storageContext, playerId, Request.Body, HttpContext, time, type, false, 0);
+            var result = await PostReplay(dbContext, playerId, Request.Body, HttpContext, time, type, false, 0);
             if (result.Status == ScoreUploadStatus.Error) {
                 await dbContext.DisposeAsync();
-                await storageContext.DisposeAsync();
             }
             return result;
         }
@@ -237,20 +201,11 @@ namespace BeatLeader_Server.Controllers
         {
             // DB Context disposed manually
             var dbContext = _dbFactory.CreateDbContext();
-            var storageContext = _storageFactory.CreateDbContext();
             string? userId = HttpContext.CurrentUserID(dbContext);
-
-            try {
-                await storageContext.PlayerLeaderboardStats.Select(s => s.Id).FirstAsync();
-            } catch (Exception e) {
-                Console.WriteLine($"EXCEPTION storage DB: {e}");
-                storageContext = null;
-            }
 
             if (userId == null)
             {
                 dbContext.Dispose();
-                storageContext.Dispose();
                 return Unauthorized("User is not authorized");
             }
 
@@ -263,7 +218,7 @@ namespace BeatLeader_Server.Controllers
 
             foreach (var file in System.IO.Directory.EnumerateFiles(directory)) {
                 if (file.Contains("exit")) {
-                    await PostReplay(dbContext, storageContext, playerId, System.IO.File.OpenRead(file), HttpContext, time, type, false, 0);
+                    await PostReplay(dbContext, playerId, System.IO.File.OpenRead(file), HttpContext, time, type, false, 0);
                 }
             } 
 
@@ -271,9 +226,9 @@ namespace BeatLeader_Server.Controllers
         }
 
         [NonAction]
-        public async Task<ActionResult<ScoreUploadResponse>> PostReplayFromBody(AppContext dbContext, StorageContext? storage, string authenticatedPlayerID, float time = 0, EndType type = 0)
+        public async Task<ActionResult<ScoreUploadResponse>> PostReplayFromBody(AppContext dbContext, string authenticatedPlayerID, float time = 0, EndType type = 0)
         {
-            return await PostReplay(dbContext, storage, authenticatedPlayerID, Request.Body, HttpContext, time, type);
+            return await PostReplay(dbContext, authenticatedPlayerID, Request.Body, HttpContext, time, type);
         }
 
         [NonAction]
@@ -281,7 +236,6 @@ namespace BeatLeader_Server.Controllers
         {
             // DB Context disposed manually
             var dbContext = _dbFactory.CreateDbContext();
-            var storageContext = _storageFactory.CreateDbContext();
             ActionResult<ScoreUploadResponse> result;
             if (backup) {
                 string directoryPath = Path.Combine("/root/replays");
@@ -293,13 +247,13 @@ namespace BeatLeader_Server.Controllers
 
                 // Use FileMode.Create to overwrite the file if it already exists.
                 using (FileStream stream = new FileStream(filePath, FileMode.Open)) {
-                    result = await PostReplay(dbContext, storageContext, authenticatedPlayerID, stream, context, allow: allow, timesetForce: int.Parse(timeset));
+                    result = await PostReplay(dbContext, authenticatedPlayerID, stream, context, allow: allow, timesetForce: int.Parse(timeset));
                 }
             } else {
                 using (var stream = await _s3Client.DownloadReplay(name)) {
                     
                     if (stream != null) {
-                        result = await PostReplay(dbContext, storageContext, authenticatedPlayerID, stream, context, allow: allow, timesetForce: int.Parse(timeset));
+                        result = await PostReplay(dbContext, authenticatedPlayerID, stream, context, allow: allow, timesetForce: int.Parse(timeset));
                     } else {
                         result = NotFound();
                     }
@@ -308,7 +262,6 @@ namespace BeatLeader_Server.Controllers
 
             if (result.Value == null) {
                 dbContext.Dispose();
-                storageContext.Dispose();
             }
             return result;
         }
@@ -316,7 +269,6 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         public async Task<ScoreUploadResponse> PostReplay(
             AppContext dbContext,
-            StorageContext? storageContext,
             string authenticatedPlayerID, 
             Stream replayStream,
             HttpContext context,
@@ -369,7 +321,14 @@ namespace BeatLeader_Server.Controllers
                 };
             }
 
-            if (replay.info.score <= 0) {
+            if (replay.info.score == 0) {
+                return new() {
+                    Status = ScoreUploadStatus.Error,
+                    Description = "Zero score replays are not accepted."
+                };
+            }
+
+            if (replay.info.score < 0) {
                 replay.info.score *= -1;
             }
 
@@ -440,7 +399,9 @@ namespace BeatLeader_Server.Controllers
                                 Context = contxt,
                                 ScoreStats = new PlayerScoreStats(),
                                 PlayerId = player.Id,
-                                Country = player.Country
+                                Country = player.Country,
+                                Name = player.Name,
+                                Alias = player.Alias
                             });
                         }
                     }
@@ -508,7 +469,7 @@ namespace BeatLeader_Server.Controllers
                     time = replay.info.failTime;
                     forcetimeset = int.Parse(replay.info.timestamp);
                 }
-                var returnScore = await CollectStats(dbContext, storageContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, time, type, player, null, null, forcetimeset);
+                var returnScore = await CollectStats(dbContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, time, type, player, null, null, forcetimeset);
 
                 var resultResponse = new ScoreUploadResponse {
                     Status = ScoreUploadStatus.Attempt,
@@ -656,7 +617,6 @@ namespace BeatLeader_Server.Controllers
             try {
                 result = await UploadScores(
                     dbContext,
-                    storageContext,
                     leaderboard, 
                     player,
                     resultScore, 
@@ -668,7 +628,7 @@ namespace BeatLeader_Server.Controllers
                     maxScore,
                     allow);
                 if (result.Status != ScoreUploadStatus.Uploaded) {
-                    var returnScore = await CollectStats(dbContext, storageContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, replay.frames.Last().time, EndType.Clear, player, null);
+                    var returnScore = await CollectStats(dbContext, replay, offsets, replayData, null, authenticatedPlayerID, leaderboard, replay.frames.Last().time, EndType.Clear, player, null);
                     returnScore.Player = player;
                     returnScore.PlayerId = player.Id;
                     returnScore.LeaderboardId = leaderboard.Id;
@@ -723,7 +683,6 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         private async Task<ScoreUploadResponse> UploadScores(
             AppContext dbContext,
-            StorageContext? storageContext,
             Leaderboard leaderboard,
             Player player,
             Score resultScore,
@@ -774,7 +733,7 @@ namespace BeatLeader_Server.Controllers
                 ce.Bot = resultScore.Bot;
             }
 
-            await GeneralContextScore(dbContext, storageContext, leaderboard, player, resultScore, currentScores, replay);
+            await GeneralContextScore(dbContext, leaderboard, player, resultScore, currentScores, replay);
 
             (ScoreStatistic? statistic, string? statisticError) = ScoreControllerHelper.CalculateStatisticFromReplay(replay, leaderboard, allow);
             if (statistic != null) {
@@ -796,6 +755,15 @@ namespace BeatLeader_Server.Controllers
                         leaderboard.Difficulty.PassRating ?? 0, 
                         leaderboard.Difficulty.TechRating ?? 0, 
                         leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
+                }
+
+                foreach (var ce in resultScore.ContextExtensions) {
+                    if (ce.FcAccuracy == 0) {
+                        ce.AccRight = resultScore.AccRight;
+                        ce.AccLeft = resultScore.AccLeft;
+                        ce.FcAccuracy = resultScore.FcAccuracy;
+                        ce.FcPp = resultScore.FcPp;
+                    }
                 }
             }
 
@@ -860,7 +828,7 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 resultScore.Replay = "https://cdn.replays.beatleader.com/" + ReplayUtils.ReplayFilename(replay, resultScore);
-                await CollectStats(dbContext, storageContext, replay, offsets, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, player, resultScore, statistic);
+                await CollectStats(dbContext, replay, offsets, replayData, resultScore.Replay, resultScore.PlayerId, leaderboard, replay.frames.Last().time, EndType.Clear, player, resultScore, statistic);
                 await dbContext.SaveChangesAsync();
 
                 await RecalculateRanks(dbContext, resultScore, currentScores, leaderboard, player);
@@ -875,7 +843,6 @@ namespace BeatLeader_Server.Controllers
                 context.Response.OnCompleted(async () => {
                     await PostUploadAction(
                         dbContext,
-                        storageContext,
                         replay,
                         replayData,
                         leaderboard, 
@@ -905,7 +872,6 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         private async Task GeneralContextScore(
             AppContext dbContext,
-            StorageContext? storageContext,
             Leaderboard leaderboard,
             Player player,
             Score resultScore,
@@ -923,8 +889,6 @@ namespace BeatLeader_Server.Controllers
                 currentScore.ValidContexts &= ~LeaderboardContexts.General;
                 currentScore.ValidForGeneral = false;
                 resultScore.PlayCount = currentScore.PlayCount;
-            } else if (storageContext != null) {
-                resultScore.PlayCount = await storageContext.PlayerLeaderboardStats.Where(st => st.PlayerId == player.Id && st.LeaderboardId == leaderboard.Id).CountAsync();
             }
 
             resultScore.ValidContexts |= LeaderboardContexts.General;
@@ -1204,7 +1168,6 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         private async Task PostUploadAction(
             AppContext dbContext,
-            StorageContext? storageContext,
             Replay replay,
             byte[] replayData,
             Leaderboard leaderboard, 
@@ -1264,7 +1227,7 @@ namespace BeatLeader_Server.Controllers
             {
                 foreach (var scoreToDelete in currentScores) {
                     if (scoreToDelete.Score.ValidContexts == LeaderboardContexts.None) {
-                        await MigrateOldReplay(dbContext, storageContext, scoreToDelete.Score, leaderboard.Id);
+                        LeaderboardPlayerStatsService.AddMigrateReplayJob(new OldReplayJob { Score = scoreToDelete.Score, LeaderboardId = leaderboard.Id });
                     }
                 }
 
@@ -1343,9 +1306,7 @@ namespace BeatLeader_Server.Controllers
 
                 resultScore.Country = (context?.Request.Headers["cf-ipcountry"] ?? "") == StringValues.Empty ? "not set" : context?.Request.Headers["cf-ipcountry"].ToString();
 
-                if (resultScore.Rank <= 4) {
-                    await UpdateTop4(dbContext, leaderboard.Id);
-                }
+                await UpdateTop4(dbContext, resultScore, currentScores, leaderboard.Difficulty.Status == DifficultyStatus.ranked);
                 if (oldPlayerStats.Count > 0) {
                     UpdateImprovements(resultScore, currentScores, player, oldPlayerStats, leaderboard);
                 }
@@ -1417,6 +1378,10 @@ namespace BeatLeader_Server.Controllers
                         await Task.Delay(TimeSpan.FromSeconds(30));
                         await Bot.BotService.PublishAnnouncement(1016157747668074627, messageId);
                     }
+                }
+
+                if (currentScores?.Any(s => s.ValidContexts.HasFlag(LeaderboardContexts.General)) != true) {
+                    LeaderboardPlayerStatsService.AddRefreshPlaycountJob(new PlaycountJob { ScoreId = resultScore.Id, PlayerId = player.Id, LeaderboardId = leaderboard.Id });
                 }
 
                 // Calculate clan ranking for this leaderboard
@@ -1518,7 +1483,6 @@ namespace BeatLeader_Server.Controllers
         [NonAction]
         private async Task<Score> CollectStats(
             AppContext dbContext,
-            StorageContext? storageContext,
             Replay replay,
             ReplayOffsets offsets,
             byte[] replayData,
@@ -1659,186 +1623,208 @@ namespace BeatLeader_Server.Controllers
                 player.ScoreStats.ScorePlaytime += (replay.frames.Last().time - replay.frames.First().time) / 60.0 + statistic?.winTracker.totalPauseDuration ?? 0.0;
             }
 
-            if (storageContext != null) {
-                await LeaderboardPlayerStatsService.AddJob(new PlayerStatsJob {
-                    replayData = fileName != null ? null : replayData,
-                    fileName = fileName ?? $"{replay.info.playerID}-{timeset}{(replay.info.speed != 0 ? "-practice" : "")}{(replay.info.failTime != 0 ? "-fail" : "")}-{replay.info.difficulty}-{replay.info.mode}-{replay.info.hash}.bsor",
-                    playerId = playerId,
-                    leaderboardId = leaderboard.Id,
-                    time = statistic?.winTracker.failTime > 0 ? statistic!.winTracker.failTime : time,
-                    startTime = replay.info.startTime,
-                    speed = replay.info.speed,
-                    type = type,
-                    score = resultScore,
-                    saveReplay = replay.frames.Count > 0 && replay.info.score > 0 
-                }, dbContext, storageContext, _s3Client);
-            }
+            await dbContext.BulkSaveChangesAsync();
+
+            LeaderboardPlayerStatsService.AddStatsJob(new PlayerStatsJob {
+                replayData = fileName != null ? null : replayData,
+                fileName = fileName ?? $"{replay.info.playerID}-{timeset}{(replay.info.speed != 0 ? "-practice" : "")}{(replay.info.failTime != 0 ? "-fail" : "")}-{replay.info.difficulty}-{replay.info.mode}-{replay.info.hash}.bsor",
+                playerId = playerId,
+                leaderboardId = leaderboard.Id,
+                time = statistic?.winTracker.failTime > 0 ? statistic!.winTracker.failTime : time,
+                startTime = replay.info.startTime,
+                speed = replay.info.speed,
+                type = type,
+                score = resultScore,
+                saveReplay = replay.frames.Count > 0 && replay.info.score > 0 
+            });
 
             return resultScore;
         }
 
-        private async Task MigrateOldReplay(AppContext dbContext, StorageContext? storageContext, Score score, string leaderboardId) {
-            if (score.Replay == null || storageContext == null) return;
-            var stats = await storageContext.PlayerLeaderboardStats
-                .Where(s => s.LeaderboardId == leaderboardId && s.Score == score.BaseScore && s.PlayerId == score.PlayerId && (s.Replay == null || s.Replay == score.Replay))
-                .Include(s => s.Metadata)
-                .FirstOrDefaultAsync();
-            
-            string? name = score.Replay.Split("/").LastOrDefault();
-            if (name == null) return;
+        private static int NormalizeBoardRank(int? rank)
+            => rank is > 0 and <= 4 ? rank.Value : 5; // 5 = "outside tracked leaderboard range"
 
-            string fileName = $"{score.Id}.bsor";
-            bool uploaded = false;
-            try {
-                using (var stream = await _s3Client.DownloadReplay(name)) {
-                    if (stream == null) return;
-                    using (var ms = new MemoryStream()) {
-                        await stream.CopyToAsync(ms);
-                        ms.Position = 0;
-                        await _s3Client.UploadOtherReplayStream(fileName, ms);
+        private static int NormalizeStatRank(int? rank, bool countsForStats)
+            => countsForStats && rank is > 0 and <= 4 ? rank.Value : 5;
 
-                        uploaded = true;
-                    }
-                    await _s3Client.DeleteReplay(name);
+        private static int Top1CountDelta(int oldRank, int newRank)
+            => (newRank == 1 ? 1 : 0) - (oldRank == 1 ? 1 : 0);
+
+        private static int ScoreDelta(int oldRank, int newRank)
+            => ReplayUtils.ScoreForRank(newRank) - ReplayUtils.ScoreForRank(oldRank);
+
+        private static void ApplyDelta(PlayerScoreStats stats, bool isRanked, int oldStatRank, int newStatRank)
+        {
+            var countDelta = Top1CountDelta(oldStatRank, newStatRank);
+            var scoreDelta = ScoreDelta(oldStatRank, newStatRank);
+
+            stats.Top1Count += countDelta;
+            stats.Top1Score += scoreDelta;
+
+            if (isRanked)
+            {
+                stats.RankedTop1Count += countDelta;
+                stats.RankedTop1Score += scoreDelta;
+            }
+            else
+            {
+                stats.UnrankedTop1Count += countDelta;
+                stats.UnrankedTop1Score += scoreDelta;
+            }
+        }
+
+        public async Task UpdateScoreStatsDeltaAsync(
+            AppContext dbContext, 
+            IScore resultScore, 
+            IScore? oldScore,
+            LeaderboardContexts context,
+            bool isRanked)
+        {
+            // Only relevant if the old or new leaderboard position is in top 4.
+            var oldBoardRank = NormalizeBoardRank(oldScore?.Rank);
+            var newBoardRank = NormalizeBoardRank(resultScore.Rank);
+
+            if (oldBoardRank == 5 && newBoardRank == 5)
+                return;
+
+            // Whether this leaderboard entry itself contributes to stats.
+            var oldCountsForStats =
+                oldScore is not null &&
+                oldScore.ValidContexts.HasFlag(context) &&
+                !oldScore.IgnoreForStats;
+
+            var newCountsForStats =
+                resultScore.ValidContexts.HasFlag(context) &&
+                !resultScore.IgnoreForStats;
+
+            var oldStatRank = NormalizeStatRank(oldScore?.Rank, oldCountsForStats);
+            var newStatRank = NormalizeStatRank(resultScore.Rank, newCountsForStats);
+
+            // Query only the rows whose final rank changed because of this move.
+            // Since ranks are already re-assigned, use FINAL ranks here.
+            var shiftedRowsQuery = dbContext
+                .Scores
+                .TagWithCaller()
+                .AsNoTracking()
+                .Where(s => s.LeaderboardId == resultScore.LeaderboardId && s.ValidForGeneral);
+
+            List<(string PlayerId, int FinalRank, bool IgnoreForStats)> shiftedRows;
+
+            if (newBoardRank < oldBoardRank)
+            {
+                // Player moved up / inserted into top 4.
+                // Others shifted down by 1.
+                shiftedRows = await shiftedRowsQuery
+                    .Where(s => s.Rank > newBoardRank && s.Rank < oldBoardRank)
+                    .Select(s => new ValueTuple<string, int, bool>(s.PlayerId, s.Rank, s.IgnoreForStats))
+                    .ToListAsync();
+            }
+            else if (newBoardRank > oldBoardRank)
+            {
+                // Player moved down / left top 4.
+                // Others shifted up by 1.
+                shiftedRows = await shiftedRowsQuery
+                    .Where(s => s.Rank >= oldBoardRank && s.Rank < newBoardRank)
+                    .Select(s => new ValueTuple<string, int, bool>(s.PlayerId, s.Rank, s.IgnoreForStats))
+                    .ToListAsync();
+            }
+            else
+            {
+                shiftedRows = new();
+            }
+
+            var affectedPlayerIds = shiftedRows
+                .Select(x => x.PlayerId)
+                .Append(resultScore.PlayerId)
+                .Distinct()
+                .ToList();
+
+            var updates = new List<PlayerScoreStats>();
+
+            var players = context == LeaderboardContexts.General ? (await dbContext.Players
+                .Where(p => affectedPlayerIds.Contains(p.Id))
+                .Select(p => new { ScoreStats = p.ScoreStats == null ? null : new PlayerScoreStats { 
+                    Id = p.ScoreStats.Id,
+                    Top1Count = p.ScoreStats.Top1Count,
+                    Top1Score = p.ScoreStats.Top1Score,
+                    RankedTop1Count = p.ScoreStats.RankedTop1Count,
+                    RankedTop1Score = p.ScoreStats.RankedTop1Score,
+                    UnrankedTop1Count = p.ScoreStats.UnrankedTop1Count,
+                    UnrankedTop1Score = p.ScoreStats.UnrankedTop1Score
+                }, p.Id })
+                .ToDictionaryAsync(p => p.Id)) : (await dbContext.PlayerContextExtensions
+                .Where(p => affectedPlayerIds.Contains(p.PlayerId) && p.Context == context)
+                .Select(p => new { ScoreStats = p.ScoreStats == null ? null : new PlayerScoreStats { 
+                    Id = p.ScoreStats.Id,
+                    Top1Count = p.ScoreStats.Top1Count,
+                    Top1Score = p.ScoreStats.Top1Score,
+                    RankedTop1Count = p.ScoreStats.RankedTop1Count,
+                    RankedTop1Score = p.ScoreStats.RankedTop1Score,
+                    UnrankedTop1Count = p.ScoreStats.UnrankedTop1Count,
+                    UnrankedTop1Score = p.ScoreStats.UnrankedTop1Score
+                }, Id = p.PlayerId })
+                .ToDictionaryAsync(p => p.Id));
+
+            // 1) Apply delta for the submitting player
+            if (players.TryGetValue(resultScore.PlayerId, out var currentPlayer) &&
+                currentPlayer.ScoreStats != null)
+            {
+                ApplyDelta(currentPlayer.ScoreStats, isRanked, oldStatRank, newStatRank);
+                updates.Add(currentPlayer.ScoreStats);
+            }
+
+            // 2) Apply deltas for shifted players
+            foreach (var row in shiftedRows)
+            {
+                if (row.IgnoreForStats)
+                    continue;
+
+                if (!players.TryGetValue(row.PlayerId, out var player) || player.ScoreStats == null)
+                    continue;
+
+                if (newBoardRank < oldBoardRank)
+                {
+                    // final rank N means old rank was N-1
+                    ApplyDelta(player.ScoreStats, isRanked, row.FinalRank - 1, row.FinalRank);
+                    updates.Add(player.ScoreStats);
                 }
-            } catch {}
-
-            if (uploaded) {
-                if (stats != null) {
-                    stats.Replay = "https://api.beatleader.com/otherreplays/" + fileName;
-                    if (score.Metadata != null) {
-                        stats.Metadata = new ScoreMetadata {
-                            PinnedContexts = score.Metadata.PinnedContexts,
-                            HighlightedInfo = score.Metadata.HighlightedInfo,
-                            Priority = score.Metadata.Priority,
-                            Description = score.Metadata.Description,
-
-                            LinkService = score.Metadata.LinkService,
-                            LinkServiceIcon = score.Metadata.LinkServiceIcon,
-                            Link = score.Metadata.Link
-                        };
-                    }
-                    storageContext.SaveChanges();
-                } else {
-                     await LeaderboardPlayerStatsService.AddJob(new PlayerStatsJob {
-                        fileName = "https://api.beatleader.com/otherreplays/" + fileName,
-                        playerId = score.PlayerId,
-                        leaderboardId = leaderboardId,
-                        timeset = score.Timepost > 0 ? score.Timepost : int.Parse(score.Timeset),
-                        type = EndType.Clear,
-                        time = 0,
-                        score = score
-                    }, dbContext, storageContext, _s3Client);
+                else if (newBoardRank > oldBoardRank)
+                {
+                    // final rank N means old rank was N+1
+                    ApplyDelta(player.ScoreStats, isRanked, row.FinalRank + 1, row.FinalRank);
+                    updates.Add(player.ScoreStats);
                 }
             }
+
+            await dbContext.BulkUpdateAsync(updates, options => options.ColumnInputExpression = c => new { 
+                c.Top1Count,
+                c.Top1Score,
+                c.RankedTop1Count,
+                c.RankedTop1Score,
+                c.UnrankedTop1Count,
+                c.UnrankedTop1Score
+            });
         }
 
         [NonAction]
         private async Task UpdateTop4(
             AppContext dbContext,
-            string leaderboardId) {
+            Score resultScore,
+            List<CurrentScoreWrapper> currentScores,
+            bool isRanked) {
 
-            {
-                var playerIds = await dbContext
-                    .Scores
-                    .Where(s => s.LeaderboardId == leaderboardId && s.Rank <= 4 && s.ValidForGeneral)
-                    .Select(s => s.PlayerId)
-                    .ToListAsync();
-
-                foreach (var playerId in playerIds) {
-                    var stats = await dbContext.Players.Where(p => p.Id == playerId).Select(p => p.ScoreStats).FirstOrDefaultAsync();
-                    if (stats == null) continue;
-
-                    var scores = await dbContext
-                        .Scores
-                        .AsNoTracking()
-                        .Where(s => s.PlayerId == playerId && s.ValidForGeneral && !s.IgnoreForStats)
-                        .Select(s => new { s.Rank, s.Leaderboard.Difficulty.Status })
-                        .ToListAsync();
-
-                    stats.RankedTop1Count = scores.Count(s => s.Status == DifficultyStatus.ranked && s.Rank == 1);
-                    stats.UnrankedTop1Count = scores.Count(s => s.Status != DifficultyStatus.ranked && s.Rank == 1);
-                    stats.Top1Count = scores.Count(s => s.Rank == 1);
-
-                    if (scores.Where(s => s.Status == DifficultyStatus.ranked).Count() > 0) {
-                        stats.RankedTop1Score = scores.Where(s => s.Status == DifficultyStatus.ranked).Sum(s => ReplayUtils.ScoreForRank(s.Rank));
-                    } else {
-                        stats.RankedTop1Score = 0;
-                    }
-                    if (scores.Where(s => s.Status != DifficultyStatus.ranked).Count() > 0) {
-                        stats.UnrankedTop1Score = scores.Where(s => s.Status != DifficultyStatus.ranked).Sum(s => ReplayUtils.ScoreForRank(s.Rank));
-                    } else {
-                        stats.UnrankedTop1Score = 0;
-                    }
-                    stats.Top1Score = scores.Sum(s => ReplayUtils.ScoreForRank(s.Rank));
-                }
-            }
-
-            foreach (var context in ContextExtensions.NonGeneral) {
-                var playerIds = await dbContext
-                .ScoreContextExtensions
-                .Where(s => s.LeaderboardId == leaderboardId && s.Rank <= 4 && s.Context == context)
-                .Select(s => s.PlayerId)
-                .ToListAsync();
-
-                foreach (var playerId in playerIds) {
-                    var stats = await dbContext.PlayerContextExtensions.Where(p => p.PlayerId == playerId && p.Context == context).Select(p => p.ScoreStats).FirstOrDefaultAsync();
-                    if (stats == null) continue;
-
-                    var scores = await dbContext
-                        .ScoreContextExtensions
-                        .AsNoTracking()
-                        .Where(s => s.PlayerId == playerId && s.Context == context && !s.ScoreInstance.IgnoreForStats)
-                        .Select(s => new { s.Rank, s.Leaderboard.Difficulty.Status })
-                        .ToListAsync();
-
-                    stats.RankedTop1Count = scores.Count(s => s.Status == DifficultyStatus.ranked && s.Rank == 1);
-                    stats.UnrankedTop1Count = scores.Count(s => s.Status != DifficultyStatus.ranked && s.Rank == 1);
-                    stats.Top1Count = scores.Count(s => s.Rank == 1);
-
-                    if (scores.Where(s => s.Status == DifficultyStatus.ranked).Count() > 0) {
-                        stats.RankedTop1Score = scores.Where(s => s.Status == DifficultyStatus.ranked).Sum(s => ReplayUtils.ScoreForRank(s.Rank));
-                    } else {
-                        stats.RankedTop1Score = 0;
-                    }
-
-                    if (scores.Where(s => s.Status != DifficultyStatus.ranked).Count() > 0) {
-                        stats.UnrankedTop1Score = scores.Where(s => s.Status != DifficultyStatus.ranked).Sum(s => ReplayUtils.ScoreForRank(s.Rank));
-                    } else {
-                        stats.UnrankedTop1Score = 0;
-                    }
-                    stats.Top1Score = scores.Sum(s => ReplayUtils.ScoreForRank(s.Rank));
-                }
-            }
-        }
-
-        [NonAction]
-        private async Task RefreshNoteCount(AppContext dbContext, Leaderboard leaderboard) {
             try {
-                var downloadUrl = dbContext.Songs.Where(s => s.Id == leaderboard.SongId).Select(s => s.DownloadUrl).FirstOrDefault();
-                if (downloadUrl == null) return;
-                HttpWebResponse res = (HttpWebResponse)await WebRequest.Create(downloadUrl).GetResponseAsync();
-                if (res.StatusCode != HttpStatusCode.OK) return;
+            if (resultScore.Rank <= 4 && resultScore.Rank > 0) {
+                await UpdateScoreStatsDeltaAsync(dbContext, resultScore, currentScores.FirstOrDefault(s => s.ValidContexts.HasFlag(LeaderboardContexts.General))?.Score, LeaderboardContexts.General, isRanked);
+            }
 
-                var memoryStream = new MemoryStream();
-                await res.GetResponseStream().CopyToAsync(memoryStream);
-                var parse = new Parse();
-                memoryStream.Position = 0;
-                var map = parse.TryLoadZip(memoryStream)?.FirstOrDefault();
-                var songDiff = map?.Difficulties.FirstOrDefault(d => d.Difficulty == leaderboard.Difficulty.DifficultyName && d.Characteristic == leaderboard.Difficulty.ModeName);
-                if (songDiff != null) {
-                    leaderboard.Difficulty.Notes = songDiff.Data.Notes.Where(n => n.Seconds >= 0 && n.Seconds <= leaderboard.Difficulty.Duration).Count();
-                    leaderboard.Difficulty.Chains = songDiff.Data.Chains.Where(n => n.Seconds >= 0 && n.Seconds <= leaderboard.Difficulty.Duration).Sum(c => c.SliceCount > 1 ? c.SliceCount - 1 : 0);
-                    leaderboard.Difficulty.Sliders = songDiff.Data.Arcs.Where(n => n.Seconds >= 0 && n.Seconds <= leaderboard.Difficulty.Duration).Count();
-
-                    leaderboard.Difficulty.MaxScore = songDiff.MaxScore();
-
-                    await dbContext.BulkUpdateAsync(new List<DifficultyDescription> { leaderboard.Difficulty }, options => options.ColumnInputExpression = c => new { c.Notes, c.Chains, c.Sliders, c.MaxScore });
-                    await ScoreRefreshControllerHelper.BulkRefreshScores(dbContext, leaderboard.Id);
-
+            foreach (var contextExtension in resultScore.ContextExtensions) {
+                if (contextExtension.Rank <= 4 && contextExtension.Rank > 0) {
+                    await UpdateScoreStatsDeltaAsync(dbContext, contextExtension, currentScores.FirstOrDefault(s => s.ValidContexts.HasFlag(contextExtension.Context))?.ContextExtensions?.FirstOrDefault(e => e.Context == contextExtension.Context), contextExtension.Context, isRanked);
                 }
+            }
             } catch (Exception e) {
-                Console.WriteLine($"RefreshNoteCount EXCEPTION {e}");
+                Console.WriteLine($"UpdateTop4 {e}");
             }
         }
 

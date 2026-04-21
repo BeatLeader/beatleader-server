@@ -39,13 +39,16 @@ namespace BeatLeader_Server.Extensions
         [NotParameterized] [CallerLineNumber] int lineNumber = 0) where T : TrackedEntity
         {
             //return source;
-            var currentLine = $"{filePath.Split("\\").Last()}:{lineNumber}";
+            //var currentLine = $"{filePath.Split("\\").Last()}:{lineNumber}";
 
-            var toString = 1.GetType().GetMethod("ToString", new System.Type[] { });
+            //var toString = 1.GetType().GetMethod("ToString", new System.Type[] { });
 
-            var entity = Expression.Parameter(typeof(T), "s");
-            var exp = Expression.NotEqual(Expression.Call(Expression.Property(entity, "Id"), toString), Expression.Constant(currentLine));
-            return source.Where((Expression<Func<T, bool>>)Expression.Lambda(exp, entity));
+            //var entity = Expression.Parameter(typeof(T), "s");
+            //var exp = Expression.NotEqual(Expression.Call(Expression.Property(entity, "Id"), toString), Expression.Constant(currentLine));
+            //return source.Where((Expression<Func<T, bool>>)Expression.Lambda(exp, entity));
+
+            var file = Path.GetFileName(filePath);
+            return source.TagWith($"CallSite:{file}:{lineNumber}");
         }
 
         public static IQueryable<T> TagWithCallerS<T>(
@@ -54,11 +57,14 @@ namespace BeatLeader_Server.Extensions
         [NotParameterized] [CallerLineNumber] int lineNumber = 0) where T : StringTrackedEntity
         {
             //return source;
-            var currentLine = $"{filePath.Split("\\").Last()}:{lineNumber}";
+            //var currentLine = $"{filePath.Split("\\").Last()}:{lineNumber}";
 
-            var entity = Expression.Parameter(typeof(T), "s");
-            var exp = Expression.NotEqual(Expression.Property(entity, "Id"), Expression.Constant(currentLine));
-            return source.Where((Expression<Func<T, bool>>)Expression.Lambda(exp, entity));
+            //var entity = Expression.Parameter(typeof(T), "s");
+            //var exp = Expression.NotEqual(Expression.Property(entity, "Id"), Expression.Constant(currentLine));
+            //return source.Where((Expression<Func<T, bool>>)Expression.Lambda(exp, entity));
+
+            var file = Path.GetFileName(filePath);
+            return source.TagWith($"CallSite:{file}:{lineNumber}");
         }
 
         public static async Task SafeBulkUpdateAsync<T>(this DbContext @this, IEnumerable<T> entities, Action<BulkOperation<T>> options, int attempt = 1) where T : class {

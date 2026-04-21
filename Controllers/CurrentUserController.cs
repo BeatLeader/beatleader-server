@@ -103,6 +103,31 @@ namespace BeatLeader_Server.Controllers {
 
             int timeset = Time.UnixNow();
 
+            var valentines = _context
+                    .ValentineMessages2026
+                    .Where(vm => vm.ReceiverId == id)
+                    .Select(vm => new ValentineMessageResponse {
+                        Id = vm.Id,
+                        SenderId = vm.SenderId,
+                        ReceiverId = vm.ReceiverId,
+
+                        Message = vm.Message,
+                        Timeset = vm.Timeset,
+                        Viewed = vm.Viewed,
+
+                        ViewCount = vm.ViewCount
+                    })
+                    .ToList();
+            if (friends != null) {
+                foreach (var vm in valentines)
+                {
+                    if (friends.Friends.FirstOrDefault(f => f.Id == vm.SenderId) != null) {
+                        vm.Followed = true;
+                    }
+                }
+            }
+
+
             return new UserReturn {
                 Player = playerResponse,
                 Ban = player.Banned ? (await _context
@@ -126,7 +151,8 @@ namespace BeatLeader_Server.Controllers {
 
                 Migrated = (await _context.AccountLinks.AsNoTracking().FirstOrDefaultAsync(a => a.SteamID == id)) != null,
                 Patreoned = await _context.PatreonLinks.FindAsync(id) != null,
-                Clan = clanReturn
+                Clan = clanReturn,
+                Valentines = valentines
             };
         }
 
@@ -439,6 +465,11 @@ namespace BeatLeader_Server.Controllers {
 
                         player.Name = name;
                         newChange.NewName = name;
+
+                        var ces = await _context.PlayerContextExtensions.Where(ce => ce.PlayerId == player.Id).Select(ce => ce.Id).ToListAsync();
+                        var cesUpdates = ces.Select(ce => new PlayerContextExtension { Id = ce, Name = name });
+                        await _context.BulkUpdateAsync(cesUpdates, options => options.ColumnInputExpression = c => new { c.Name });
+                        await _context.BulkSaveChangesAsync();
                     }
                 }
 
@@ -1258,6 +1289,10 @@ namespace BeatLeader_Server.Controllers {
             if (migrateToPlayer.Alias == null && currentPlayer.Alias != null) {
                 migrateToPlayer.Alias = currentPlayer.Alias;
                 migrateToPlayer.OldAlias = currentPlayer.OldAlias;
+
+                foreach (var item in migrateToPlayer.ContextExtensions) {
+                    item.Alias = currentPlayer.Alias;
+                }
             }
 
             if (currentPlayer.ScoreStats != null) {
