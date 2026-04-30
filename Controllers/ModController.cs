@@ -134,49 +134,49 @@ namespace BeatLeader_Server.Controllers
             return new List<MapsTypeDescription> {
                 new MapsTypeDescription {
                     Id = MapTypes.Acc,
-                    Icon = "https://cdn.assets.beatleader.com/Ingame_BL_MapTypesAcc.png",
+                    Icon = "https://cdn.assets.beatleader.com/Ingame_BL_MapTypesAcc_Small.png",
                     Name = "Acc",
                     Description = "Slower map suitable for high accuracy plays.",
                     Color = "#800080"
                 },
                 new MapsTypeDescription {
                     Id = MapTypes.Tech,
-                    Icon = "https://cdn.assets.beatleader.com/Ingame_BL_MapTypesTechSnek.png",
+                    Icon = "https://cdn.assets.beatleader.com/Ingame_BL_MapTypesTech_Small.png",
                     Name = "Tech",
                     Description = "Tech map with quirky patterns",
                     Color = "#ff0000"
                 },
                 new MapsTypeDescription {
                     Id = MapTypes.Midspeed,
-                    Icon = "https://cdn.assets.beatleader.com/Ingame_BL_MapTypesMidspeed.png",
+                    Icon = "https://cdn.assets.beatleader.com/Ingame_BL_MapTypesMidspeed_Small.png",
                     Name = "Midspeed",
                     Description = "Medium speed map with regular patterns",
                     Color = "#ffa500"
                 },
                 new MapsTypeDescription {
                     Id = MapTypes.Speed,
-                    Icon = "https://cdn.assets.beatleader.com/Ingame_BL_MapTypesSpeed.png",
+                    Icon = "https://cdn.assets.beatleader.com/Ingame_BL_MapTypesSpeed_Small.png",
                     Name = "Speed",
                     Description = "High speed map. Please warm up before playing!",
                     Color = "#ffa500"
                 },
                 new MapsTypeDescription {
                     Id = MapTypes.Fitbeat,
-                    Icon = "https://cdn.assets.beatleader.com/Ingame_BL_MapTypesFitbeat.png",
+                    Icon = "https://cdn.assets.beatleader.com/Ingame_BL_MapTypesFitbeat_Small.png",
                     Name = "Fitbeat",
                     Description = "Maps that focus on moving the player with walls (mostly crouch walls, but also dodge walls)",
                     Color = "#800080"
                 },
                 new MapsTypeDescription {
                     Id = MapTypes.Linear,
-                    Icon = "https://cdn.assets.beatleader.com/Ingame_BL_MapTypesLinear.png",
+                    Icon = "https://cdn.assets.beatleader.com/Ingame_BL_MapTypesLinear_Small.png",
                     Name = "Linear",
                     Description = "Maps with low amount of repositioning and rotation required.",
                     Color = "#0000ff"
                 },
                 new MapsTypeDescription {
                     Id = MapTypes.BombReset,
-                    Icon = "https://cdn.assets.beatleader.com/Ingame_BL_MapTypesBombReset.png",
+                    Icon = "https://cdn.assets.beatleader.com/Ingame_BL_MapTypesBombReset_Small.png",
                     Name = "Bomb Avoidance",
                     Description = "Maps that contains bomb avoidances.",
                     Color = "#ff0000"

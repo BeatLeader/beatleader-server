@@ -91,6 +91,7 @@ namespace BeatLeader_Server.Controllers
                         .Include(p => p.ProfileSettings)
                         .Include(p => p.Socials)
                         .Include(p => p.Changes)
+                        .Include(p => p.RichPresence)
                         .AsSplitQuery()
                         .FirstOrDefaultAsync();
                 } else {
@@ -148,6 +149,7 @@ namespace BeatLeader_Server.Controllers
                     Role = player.Role,
                     Socials = player.Socials,
                     ProfileSettings = player.ProfileSettings,
+                    RichPresence = player.RichPresence,
                     ClanOrder = player.ClanOrder,
                     Clans = stats && player.Clans != null
                         ? player.Clans.Select(c => new ClanResponse { Id = c.Id, Tag = c.Tag, Color = c.Color }) 

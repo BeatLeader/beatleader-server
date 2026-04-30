@@ -2611,6 +2611,9 @@ namespace BeatLeader_Server.Migrations
                     b.Property<int>("RichBioTimeset")
                         .HasColumnType("int");
 
+                    b.Property<int?>("RichPresenceId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -2649,6 +2652,8 @@ namespace BeatLeader_Server.Migrations
                     b.HasIndex("ProfileSettingsId");
 
                     b.HasIndex("Rank");
+
+                    b.HasIndex("RichPresenceId");
 
                     b.HasIndex("ScoreStatsId");
 
@@ -3362,6 +3367,9 @@ namespace BeatLeader_Server.Migrations
                     b.Property<string>("RankedMapperSort")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("RichPresenceEnabled")
+                        .HasColumnType("bit");
+
                     b.Property<string>("RightSaberColor")
                         .HasColumnType("nvarchar(max)");
 
@@ -3385,6 +3393,12 @@ namespace BeatLeader_Server.Migrations
 
                     b.Property<string>("StarredFriends")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("StreamingCommentPermissions")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StreamingViewPermissions")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -4044,6 +4058,22 @@ namespace BeatLeader_Server.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("ReservedTags");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.RichPresence", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ActivityStatus")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("RichPresence");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.SanitizerConfig", b =>
@@ -6714,6 +6744,10 @@ namespace BeatLeader_Server.Migrations
                         .WithMany()
                         .HasForeignKey("ProfileSettingsId");
 
+                    b.HasOne("BeatLeader_Server.Models.RichPresence", "RichPresence")
+                        .WithMany()
+                        .HasForeignKey("RichPresenceId");
+
                     b.HasOne("BeatLeader_Server.Models.PlayerScoreStats", "ScoreStats")
                         .WithMany()
                         .HasForeignKey("ScoreStatsId");
@@ -6729,6 +6763,8 @@ namespace BeatLeader_Server.Migrations
                     b.Navigation("PatreonFeatures");
 
                     b.Navigation("ProfileSettings");
+
+                    b.Navigation("RichPresence");
 
                     b.Navigation("ScoreStats");
 

@@ -405,6 +405,9 @@ namespace BeatLeader_Server.Controllers {
             [FromQuery] bool? horizontalRichBio = null,
             [FromQuery] string? rankedMapperSort = null,
             [FromQuery] string? hiddenSocials = null,
+            [FromQuery] bool? richPresenceEnabled = null,
+            [FromQuery] ReplayStreaming? streamingViewPermissions = null,
+            [FromQuery] ReplayStreaming? streamingCommentPermissions = null,
             [FromQuery] string? id = null) {
             string userId = GetId();
             var player = await _context
@@ -634,6 +637,18 @@ namespace BeatLeader_Server.Controllers {
             }
             if (Request.Query.ContainsKey("starredFriends")) {
                 settings.StarredFriends = starredFriends;
+            }
+
+            if (Request.Query.ContainsKey("richPresenceEnabled")) {
+                settings.RichPresenceEnabled = richPresenceEnabled ?? false;
+            }
+
+            if (Request.Query.ContainsKey("streamingViewPermissions")) {
+                settings.StreamingViewPermissions = streamingViewPermissions ?? ReplayStreaming.Private;
+            }
+
+            if (Request.Query.ContainsKey("streamingCommentPermissions")) {
+                settings.StreamingCommentPermissions = streamingCommentPermissions ?? ReplayStreaming.Private;
             }
 
             if (Request.Query.ContainsKey("message")) {

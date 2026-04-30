@@ -9,19 +9,30 @@ namespace BeatLeader_Server.Bot
 {
     public class BotService : BackgroundService
     {
+        private const int SpamChannelThreshold = 3;
+        private static readonly TimeSpan SpamDetectionWindow = TimeSpan.FromMinutes(1);
+        private static readonly TimeSpan SpamTimeoutDuration = TimeSpan.FromHours(24);
+
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly IConfiguration _configuration;
         private Dictionary<ulong, int> _originalChannelPositions = new();
         private bool _isRestoringPositions = false;
         private System.Timers.Timer? _debounceTimer;
         private readonly object _timerLock = new object();
+        private readonly object _spamLock = new object();
         private bool _autoOrderEnabled = true;
         private readonly HashSet<ulong> _allowedRoles = new() { 961336531442864219, 1273803067912884285 };
+        private readonly Dictionary<SpamMessageKey, List<TrackedSpamMessage>> _recentMessages = new();
+        private DateTimeOffset _lastSpamCleanup = DateTimeOffset.MinValue;
 
         public const ulong BLServerID = 921820046345523311;
         public const ulong BLBoosterRoleID = 934229583325175809;
         public const ulong BLWelcomeChannelID = 1042959852261089301;
-        public static DiscordSocketClient Client { get; private set; } = new();
+        public const ulong SpamReportChannelID = 934225461951750254;
+        public static DiscordSocketClient Client { get; private set; } = new(new DiscordSocketConfig
+        {
+            GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent
+        });
 
         public BotService(IServiceScopeFactory serviceScopeFactory, IConfiguration configuration)
         {
@@ -196,10 +207,179 @@ namespace BeatLeader_Server.Bot
                     await PlayerUtils.UpdateBoosterRole(_context, message.Author.Id);
                 }
             }
+
+            if (message is not SocketUserMessage userMessage || message.Source != MessageSource.User)
+            {
+                return;
+            }
+
+            await HandleSpamDetection(userMessage);
         }
 
         public const ulong ReviewHubForumID = 1034817071894237194;
         public const ulong NQTRoleId = 1064783598206599258;
+
+        private sealed record SpamMessageKey(ulong UserId, string Content);
+
+        private sealed record TrackedSpamMessage(ulong ChannelId, ulong MessageId, DateTimeOffset Timestamp);
+
+        private async Task HandleSpamDetection(SocketUserMessage message)
+        {
+            if (message.Channel is not SocketGuildChannel guildChannel)
+            {
+                return;
+            }
+
+            var normalizedContent = NormalizeSpamContent(message.Content);
+            if (normalizedContent == null)
+            {
+                return;
+            }
+
+            var matchedMessages = TrackPotentialSpam(message.Author.Id, guildChannel.Id, message.Id, normalizedContent);
+            if (matchedMessages.Count == 0)
+            {
+                return;
+            }
+
+            await DeleteTrackedMessages(guildChannel.Guild, matchedMessages);
+            await TimeoutUser(guildChannel.Guild, message.Author.Id);
+            await SendSpamReport(guildChannel.Guild, message.Author.Id, message.Content);
+        }
+
+        private List<TrackedSpamMessage> TrackPotentialSpam(ulong userId, ulong channelId, ulong messageId, string normalizedContent)
+        {
+            lock (_spamLock)
+            {
+                var now = DateTimeOffset.UtcNow;
+                CleanupSpamTracking(now);
+
+                var key = new SpamMessageKey(userId, normalizedContent);
+                if (!_recentMessages.TryGetValue(key, out var trackedMessages))
+                {
+                    trackedMessages = new List<TrackedSpamMessage>();
+                    _recentMessages[key] = trackedMessages;
+                }
+
+                trackedMessages.Add(new TrackedSpamMessage(channelId, messageId, now));
+
+                if (trackedMessages.Select(entry => entry.ChannelId).Distinct().Count() < SpamChannelThreshold)
+                {
+                    return new List<TrackedSpamMessage>();
+                }
+
+                var result = trackedMessages.ToList();
+                _recentMessages.Remove(key);
+                return result;
+            }
+        }
+
+        private void CleanupSpamTracking(DateTimeOffset now)
+        {
+            if (now - _lastSpamCleanup < TimeSpan.FromSeconds(30))
+            {
+                return;
+            }
+
+            var cutoff = now - SpamDetectionWindow;
+            var expiredKeys = new List<SpamMessageKey>();
+
+            foreach (var (key, entries) in _recentMessages)
+            {
+                entries.RemoveAll(entry => entry.Timestamp < cutoff);
+                if (entries.Count == 0)
+                {
+                    expiredKeys.Add(key);
+                }
+            }
+
+            foreach (var key in expiredKeys)
+            {
+                _recentMessages.Remove(key);
+            }
+
+            _lastSpamCleanup = now;
+        }
+
+        private async Task DeleteTrackedMessages(SocketGuild guild, IReadOnlyCollection<TrackedSpamMessage> trackedMessages)
+        {
+            foreach (var trackedMessage in trackedMessages)
+            {
+                if (guild.GetChannel(trackedMessage.ChannelId) is not IMessageChannel channel)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    await channel.DeleteMessageAsync(trackedMessage.MessageId);
+                }
+                catch (Exception exception)
+                {
+                    Console.WriteLine($"Failed to delete spam message {trackedMessage.MessageId}: {exception.Message}");
+                }
+            }
+        }
+
+        private async Task TimeoutUser(SocketGuild guild, ulong userId)
+        {
+            var user = guild.GetUser(userId);
+            if (user == null)
+            {
+                return;
+            }
+
+            var timeoutUntil = DateTimeOffset.UtcNow.Add(SpamTimeoutDuration);
+            if (user.TimedOutUntil.HasValue && user.TimedOutUntil.Value > timeoutUntil)
+            {
+                timeoutUntil = user.TimedOutUntil.Value;
+            }
+
+            try
+            {
+                await user.ModifyAsync(properties =>
+                {
+                    properties.TimedOutUntil = timeoutUntil;
+                });
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine($"Failed to time out spammer {userId}: {exception.Message}");
+            }
+        }
+
+        private async Task SendSpamReport(SocketGuild guild, ulong userId, string messageContent)
+        {
+            if (SpamReportChannelID == 0 || guild.GetChannel(SpamReportChannelID) is not IMessageChannel reportChannel)
+            {
+                return;
+            }
+
+            var prefix = $"<@{userId}> {userId} Automated spam detection, messages deleted, issued time out. Message content:{Environment.NewLine}";
+            var content = messageContent;
+            var maxContentLength = Math.Max(0, 2000 - prefix.Length);
+            if (content.Length > maxContentLength)
+            {
+                content = content.Substring(0, maxContentLength);
+            }
+
+            try
+            {
+                await reportChannel.SendMessageAsync(
+                    prefix + content,
+                    allowedMentions: new AllowedMentions { UserIds = new List<ulong> { userId } });
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine($"Failed to send spam report for {userId}: {exception.Message}");
+            }
+        }
+
+        private static string? NormalizeSpamContent(string content)
+        {
+            var normalized = content.Replace("\r\n", "\n").Trim();
+            return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+        }
 
 
         private async Task OnReactionAdded(Cacheable<IUserMessage, ulong> message, Cacheable<IMessageChannel, ulong> channel, SocketReaction reaction)
