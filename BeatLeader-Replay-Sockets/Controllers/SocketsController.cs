@@ -24,6 +24,7 @@ namespace BeatLeader_Server_Sockets.Controllers
         private static readonly SemaphoreSlim _presenceSendLock = new(1, 1);
         private static readonly ConcurrentDictionary<string, TaskCompletionSource<SocketAuthResponse>> _pendingAuth = new();
         private static readonly ConcurrentDictionary<string, TaskCompletionSource<SocketMapResponse>> _pendingMapRequests = new();
+        private static readonly ConcurrentDictionary<string, TaskCompletionSource<SocketPlayerIdResponse>> _pendingPlayerIdRequests = new();
 
         private readonly IConfiguration _configuration;
         IWebHostEnvironment _environment;
@@ -82,9 +83,13 @@ namespace BeatLeader_Server_Sockets.Controllers
         {
             if (HttpContext.WebSockets.IsWebSocketRequest)
             {
-                string? viewerUserId = HttpContext?.User?.Claims?
+                string? localViewerId = HttpContext?.User?.Claims?
                     .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value
                     .Split("/").LastOrDefault();
+
+                string? viewerUserId = localViewerId != null
+                    ? await RequestPlayerIdToMain(localViewerId)
+                    : null;
 
                 using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
                 var socketFinished = new TaskCompletionSource();
@@ -110,10 +115,12 @@ namespace BeatLeader_Server_Sockets.Controllers
         {
             if (HttpContext.WebSockets.IsWebSocketRequest)
             {
-                string? currentID = HttpContext?.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value.Split("/").LastOrDefault();
-                if (currentID == null) {
+                string? localID = HttpContext?.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value.Split("/").LastOrDefault();
+                if (localID == null) {
                     return Unauthorized();
                 }
+
+                string currentID = await RequestPlayerIdToMain(localID) ?? localID;
 
                 using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
                 var socketFinished = new TaskCompletionSource();
@@ -218,6 +225,11 @@ namespace BeatLeader_Server_Sockets.Controllers
                                 if (response?.RequestId != null && _pendingMapRequests.TryRemove(response.RequestId, out var mapTcs)) {
                                     mapTcs.TrySetResult(response);
                                 }
+                            } else if (msgType == "playerIdToMainResponse") {
+                                var response = obj.ToObject<SocketPlayerIdResponse>();
+                                if (response?.RequestId != null && _pendingPlayerIdRequests.TryRemove(response.RequestId, out var pidTcs)) {
+                                    pidTcs.TrySetResult(response);
+                                }
                             }
                         } catch { }
                     }
@@ -230,6 +242,9 @@ namespace BeatLeader_Server_Sockets.Controllers
                 pending.TrySetCanceled();
             }
             foreach (var pending in _pendingMapRequests.Values) {
+                pending.TrySetCanceled();
+            }
+            foreach (var pending in _pendingPlayerIdRequests.Values) {
                 pending.TrySetCanceled();
             }
 
@@ -315,6 +330,44 @@ namespace BeatLeader_Server_Sockets.Controllers
             }
         }
 
+        public static async Task<string?> RequestPlayerIdToMain(string localId)
+        {
+            WebSocket? ws;
+            lock (PresenceListenersLock) {
+                ws = presenceListeners.FirstOrDefault(s => s.State == WebSocketState.Open);
+            }
+            if (ws == null) return localId;
+
+            var requestId = Guid.NewGuid().ToString();
+            var tcs = new TaskCompletionSource<SocketPlayerIdResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _pendingPlayerIdRequests[requestId] = tcs;
+
+            try {
+                var request = JsonConvert.SerializeObject(new {
+                    Type = "playerIdToMain",
+                    RequestId = requestId,
+                    LocalId = localId
+                });
+                var bytes = Encoding.UTF8.GetBytes(request);
+
+                await _presenceSendLock.WaitAsync();
+                try {
+                    await ws.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                } finally {
+                    _presenceSendLock.Release();
+                }
+
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                cts.Token.Register(() => tcs.TrySetCanceled());
+                var response = await tcs.Task;
+                return response?.MainId ?? localId;
+            } catch (TaskCanceledException) {
+                return localId;
+            } finally {
+                _pendingPlayerIdRequests.TryRemove(requestId, out _);
+            }
+        }
+
         public static async Task BroadcastPresenceUpdate(string playerId, string status)
         {
             var msg = JsonConvert.SerializeObject(new {
@@ -368,5 +421,12 @@ namespace BeatLeader_Server_Sockets.Controllers
         public string Type { get; set; }
         public string RequestId { get; set; }
         public BeatLeader_Server.Utils.ResponseUtils.CompactLeaderboardResponse? Map { get; set; }
+    }
+
+    public class SocketPlayerIdResponse
+    {
+        public string Type { get; set; }
+        public string RequestId { get; set; }
+        public string? MainId { get; set; }
     }
 }

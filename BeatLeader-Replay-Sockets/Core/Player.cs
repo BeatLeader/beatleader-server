@@ -7,6 +7,19 @@ using System.Net.WebSockets;
 using System.Text;
 using static BeatLeader_Server.Utils.ResponseUtils;
 
+public class StatusCommand {
+    public string status { get; set; }
+}
+
+public enum LevelEndType {
+        Unknown = 0,
+        Clear = 1,
+        Fail = 2,
+        Restart = 3,
+        Quit = 4,
+        Practice = 5
+    }
+
 namespace BeatLeader_Replay_Sockets {
     public class Player {
 
@@ -19,7 +32,7 @@ namespace BeatLeader_Replay_Sockets {
         public Replay? replay = null;
         public CompactLeaderboardResponse? map = null;
 
-        public int endType = -1;
+        public LevelEndType endType = LevelEndType.Unknown;
         public float failTime = -1;
         public bool shouldUpload = false;
 
@@ -66,7 +79,7 @@ namespace BeatLeader_Replay_Sockets {
             this.finishTask = null;
             this.replay = null;
             this.map = null;
-            this.endType = -1;
+            this.endType = LevelEndType.Unknown;
             this.failTime = -1;
             this.shouldUpload = false;
             ResetScoreTracking();
@@ -199,10 +212,17 @@ namespace BeatLeader_Replay_Sockets {
                         var text = Encoding.UTF8.GetString(messageStream.ToArray());
                         messageStream.SetLength(0);
 
-                        await BroadcastPlayerState(new PlayerState {
-                            Id = playerId,
-                            Status = text
-                        });
+                        StatusCommand? statusMessage = null;
+                        try {
+                            statusMessage = JsonConvert.DeserializeObject<StatusCommand>(text);
+                        } catch {}
+
+                        if (statusMessage != null) {
+                            await BroadcastPlayerState(new PlayerState {
+                                Id = playerId,
+                                Status = statusMessage.status
+                            });
+                        }
                     }
 
                     if (finishTask != null && finishTask.Task.IsCompleted) break;
@@ -257,7 +277,7 @@ namespace BeatLeader_Replay_Sockets {
                                     foreach (var pause in newPauses) {
                                         await BroadcastPlayerState(new PlayerState {
                                             Id = playerId,
-                                            Status = "playing",
+                                            Status = "paused",
                                             Context = BuildPlayingContext(),
                                             Event = new StreamEvent { AtTime = pause.time, Event = EventType.Pause }
                                         });
@@ -269,18 +289,15 @@ namespace BeatLeader_Replay_Sockets {
                         if (replay != null) {
                             replay.info = ReplayDecoder.ReplayDecoder.DecodeInfo(data, ref pointer);
                         }
-                        endType = ReplayDecoder.ReplayDecoder.DecodeInt(data, ref pointer);
+                        endType = (LevelEndType)ReplayDecoder.ReplayDecoder.DecodeInt(data, ref pointer);
                         failTime = ReplayDecoder.ReplayDecoder.DecodeFloat(data, ref pointer);
                         shouldUpload = ReplayDecoder.ReplayDecoder.DecodeBool(data, ref pointer);
 
-                        if (failTime > 0.01f) {
-                            await BroadcastPlayerState(new PlayerState {
-                                Id = playerId,
-                                Status = "playing",
-                                Context = BuildPlayingContext(),
-                                Event = new StreamEvent { AtTime = failTime, Event = EventType.Fail }
-                            });
-                        }
+                        await BroadcastPlayerState(new PlayerState {
+                            Id = playerId,
+                            Status = endType.ToString(),
+                            Context = BuildPlayingContext()
+                        });
                     }
                 } catch (Exception e) {
                     Console.WriteLine($"Chunk parse exception {e}"); 
@@ -407,6 +424,10 @@ namespace BeatLeader_Replay_Sockets {
         }
 
         public async Task AddViewer(Viewer viewer) {
+            if (viewer.viewerType == ViewerType.Replay) {
+                AddReplayViewer(viewer);
+            }
+
             if (viewer.viewerType == ViewerType.Status) {
                 AddStatusViewer(viewer);
 
@@ -449,10 +470,6 @@ namespace BeatLeader_Replay_Sockets {
                 await SafeSendTextAsync(viewer, new ArraySegment<byte>(bytes));
 
                 return;
-            }
-
-            if (viewer.viewerType == ViewerType.Replay) {
-                AddReplayViewer(viewer);
             }
 
             if (replay != null && viewer.viewerType == ViewerType.Replay) {

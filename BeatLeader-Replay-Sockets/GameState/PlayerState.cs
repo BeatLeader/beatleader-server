@@ -18,8 +18,7 @@ namespace BeatLeader_Replay_Sockets {
         BadCut,
         BombHit,
         WallHit,
-        Pause,
-        Fail
+        Pause
     }
 
     public class StreamEvent {

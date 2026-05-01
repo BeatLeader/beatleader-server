@@ -1,3 +1,4 @@
+using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
@@ -114,6 +115,9 @@ namespace BeatLeader_Server.Services
                         break;
                     case "mapRequest":
                         await ProcessMapRequest(ws, obj);
+                        break;
+                    case "playerIdToMain":
+                        await ProcessPlayerIdToMain(ws, obj);
                         break;
                 }
             } catch (Exception ex) {
@@ -286,6 +290,39 @@ namespace BeatLeader_Server.Services
                 Type = "mapResponse",
                 RequestId = requestId,
                 Map = map
+            });
+            var bytes = Encoding.UTF8.GetBytes(response);
+
+            await _wsSendLock.WaitAsync();
+            try {
+                await ws.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+            } finally {
+                _wsSendLock.Release();
+            }
+        }
+
+        private async Task ProcessPlayerIdToMain(ClientWebSocket ws, JObject obj)
+        {
+            var requestId = obj["RequestId"]?.ToString();
+            var localId = obj["LocalId"]?.ToString();
+
+            string? mainId = localId;
+
+            try {
+                if (!string.IsNullOrEmpty(localId)) {
+                    using var scope = _serviceScopeFactory.CreateScope();
+                    var context = scope.ServiceProvider.GetRequiredService<AppContext>();
+
+                    mainId = await context.PlayerIdToMain(localId);
+                }
+            } catch (Exception ex) {
+                _logger.LogError(ex, "Failed to resolve player ID {LocalId}", localId);
+            }
+
+            var response = JsonConvert.SerializeObject(new {
+                Type = "playerIdToMainResponse",
+                RequestId = requestId,
+                MainId = mainId
             });
             var bytes = Encoding.UTF8.GetBytes(response);
 
