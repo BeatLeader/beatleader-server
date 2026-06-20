@@ -152,7 +152,8 @@ namespace BeatLeader_Server.ControllerHelpers {
                         RequiresVNJS = difficulty.RequiresVNJS,
                         RequiresVivify = difficulty.RequiresVivify,
                         RequiresV3Pepega = difficulty.RequiresV3Pepega,
-                        RequiresGroupLighting = difficulty.RequiresGroupLighting
+                        RequiresGroupLighting = difficulty.RequiresGroupLighting,
+                        RequiresAudioLink = difficulty.RequiresAudioLink
                     };
                     song.Difficulties.Add(difficulty);
                     await dbContext.SaveChangesAsync();

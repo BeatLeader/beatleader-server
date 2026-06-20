@@ -129,6 +129,11 @@ namespace BeatLeader_Server.Services {
                                         songDiff.Requirements |= Models.Requirements.Cinema;
                                         songDiff.RequiresCinema = true;
                                     }
+
+                                    if (diff._customData._requirements.Any(r => r.ToLower().Contains("audiolink"))) {
+                                        songDiff.Requirements |= Models.Requirements.AudioLink;
+                                        songDiff.RequiresAudioLink = true;
+                                    }
                                 }
                             }
 
