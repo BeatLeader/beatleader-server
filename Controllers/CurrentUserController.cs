@@ -1416,6 +1416,16 @@ namespace BeatLeader_Server.Controllers {
                 }
             }
 
+            if (currentPlayer.Prestige > migrateToPlayer.Prestige || (currentPlayer.Prestige == migrateToPlayer.Prestige && currentPlayer.Level > migrateToPlayer.Level)) {
+                migrateToPlayer.Prestige = currentPlayer.Prestige;
+                migrateToPlayer.Level = currentPlayer.Level;
+                migrateToPlayer.Experience = currentPlayer.Experience;
+            }
+
+            if (currentPlayer.ScoreStats != null && migrateToPlayer.ScoreStats != null) {
+                migrateToPlayer.ScoreStats.ScorePlaytime += currentPlayer.ScoreStats.ScorePlaytime;
+            }
+
             var patreonLink = await _context.PatreonLinks.FindAsync(currentPlayer.Id);
             if (patreonLink != null) {
                 var newLink = new PatreonLink {
