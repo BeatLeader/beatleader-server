@@ -23,6 +23,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Analyzer", "RatingAPI\beatl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BeatLeader-Replay-Sockets-Tester", "BeatLeader-Replay-Sockets-Tester\BeatLeader-Replay-Sockets-Tester.csproj", "{5E219153-E4F5-46AF-8769-8DA24162F7D1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BeatLeader-RankedPlay-Sockets", "BeatLeader-RankedPlay-Sockets\BeatLeader-RankedPlay-Sockets.csproj", "{ACF19559-B9D4-CD1C-C5C9-A0E7C0E264D2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BeatLeader-RankedPlay-Tester", "BeatLeader-RankedPlay-Tester\BeatLeader-RankedPlay-Tester.csproj", "{B7A3D1F2-4C5E-6D8A-9F0B-1C2E3D4F5A6B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,6 +73,14 @@ Global
 		{5E219153-E4F5-46AF-8769-8DA24162F7D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5E219153-E4F5-46AF-8769-8DA24162F7D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5E219153-E4F5-46AF-8769-8DA24162F7D1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ACF19559-B9D4-CD1C-C5C9-A0E7C0E264D2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ACF19559-B9D4-CD1C-C5C9-A0E7C0E264D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ACF19559-B9D4-CD1C-C5C9-A0E7C0E264D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ACF19559-B9D4-CD1C-C5C9-A0E7C0E264D2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B7A3D1F2-4C5E-6D8A-9F0B-1C2E3D4F5A6B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B7A3D1F2-4C5E-6D8A-9F0B-1C2E3D4F5A6B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B7A3D1F2-4C5E-6D8A-9F0B-1C2E3D4F5A6B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B7A3D1F2-4C5E-6D8A-9F0B-1C2E3D4F5A6B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

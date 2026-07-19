@@ -150,6 +150,13 @@ namespace BeatLeader_Server
 
         public DbSet<FavoriteMap> FavoriteMaps { get; set; }
 
+
+        public DbSet<RankedPlaySeason> RankedPlaySeasons { get; set; }
+        public DbSet<RankedPlayProfile> RankedPlayProfiles { get; set; }
+        public DbSet<RankedPlayMatch> RankedPlayMatches { get; set; }
+        public DbSet<RankedPlayGame> RankedPlayGames { get; set; }
+        public DbSet<RankedPlayMapBan> RankedPlayMapBans { get; set; }
+
         public void RejectChanges()
         {
             foreach (var entry in ChangeTracker.Entries())

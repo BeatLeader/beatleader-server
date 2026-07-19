@@ -11,6 +11,8 @@
 
   <ItemGroup>
     <Compile Remove="beatleader-parser\**" />
+    <Compile Remove="BeatLeader-RankedPlay-Sockets\**" />
+    <Compile Remove="BeatLeader-RankedPlay-Tester\**" />
     <Compile Remove="BeatLeader-Replay-Sockets-Tester\**" />
     <Compile Remove="BeatLeader-Replay-Sockets\**" />
     <Compile Remove="beatleader-server-models\**" />
@@ -23,6 +25,8 @@
     <Compile Remove="Renderer\**" />
     <Compile Remove="ReplayDecoder\**" />
     <Content Remove="beatleader-parser\**" />
+    <Content Remove="BeatLeader-RankedPlay-Sockets\**" />
+    <Content Remove="BeatLeader-RankedPlay-Tester\**" />
     <Content Remove="BeatLeader-Replay-Sockets-Tester\**" />
     <Content Remove="BeatLeader-Replay-Sockets\**" />
     <Content Remove="beatleader-server-models\**" />
@@ -35,6 +39,8 @@
     <Content Remove="Renderer\**" />
     <Content Remove="ReplayDecoder\**" />
     <EmbeddedResource Remove="beatleader-parser\**" />
+    <EmbeddedResource Remove="BeatLeader-RankedPlay-Sockets\**" />
+    <EmbeddedResource Remove="BeatLeader-RankedPlay-Tester\**" />
     <EmbeddedResource Remove="BeatLeader-Replay-Sockets-Tester\**" />
     <EmbeddedResource Remove="BeatLeader-Replay-Sockets\**" />
     <EmbeddedResource Remove="beatleader-server-models\**" />
@@ -47,6 +53,8 @@
     <EmbeddedResource Remove="Renderer\**" />
     <EmbeddedResource Remove="ReplayDecoder\**" />
     <None Remove="beatleader-parser\**" />
+    <None Remove="BeatLeader-RankedPlay-Sockets\**" />
+    <None Remove="BeatLeader-RankedPlay-Tester\**" />
     <None Remove="BeatLeader-Replay-Sockets-Tester\**" />
     <None Remove="BeatLeader-Replay-Sockets\**" />
     <None Remove="beatleader-server-models\**" />
@@ -120,7 +128,7 @@
     <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.1.7" />
     <PackageReference Include="System.Drawing.Common" Version="10.0.5" />
     <PackageReference Include="System.Interactive.Async" Version="7.0.0" />
-    <PackageReference Include="Z.EntityFramework.Extensions.EFCore" Version="10.105.4" />
+    <PackageReference Include="Z.EntityFramework.Extensions.EFCore" Version="10.105.6" />
   </ItemGroup>
 
   <ItemGroup>

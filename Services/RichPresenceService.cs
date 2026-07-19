@@ -164,39 +164,46 @@ namespace BeatLeader_Server.Services
             string? error = null;
 
             try {
-                using var scope = _serviceScopeFactory.CreateScope();
-                var context = scope.ServiceProvider.GetRequiredService<AppContext>();
+                bool rankedPlayOverride =
+                    !string.IsNullOrEmpty(playerId)
+                    && (action == "status" || action == "replay")
+                    && RankedPlayBridgeService.IsPlayerInActiveRankedPlay(playerId);
 
-                var player = await context.Players
-                    .Include(p => p.ProfileSettings)
-                    .FirstOrDefaultAsync(p => p.Id == playerId);
+                if (!rankedPlayOverride) {
+                    using var scope = _serviceScopeFactory.CreateScope();
+                    var context = scope.ServiceProvider.GetRequiredService<AppContext>();
 
-                if (player?.ProfileSettings != null) {
-                    if (action == "status") {
-                        allowed = player.ProfileSettings.RichPresenceEnabled;
-                        if (!allowed) error = "Rich presence is disabled for this player";
-                    } else if (action == "replay") {
-                        switch (player.ProfileSettings.StreamingViewPermissions) {
-                            case ReplayStreaming.Public:
-                                allowed = true;
-                                break;
-                            case ReplayStreaming.Friends:
-                                if (string.IsNullOrEmpty(viewerId)) {
+                    var player = await context.Players
+                        .Include(p => p.ProfileSettings)
+                        .FirstOrDefaultAsync(p => p.Id == playerId);
+
+                    if (player?.ProfileSettings != null) {
+                        if (action == "status") {
+                            allowed = player.ProfileSettings.RichPresenceEnabled;
+                            if (!allowed) error = "Rich presence is disabled for this player";
+                        } else if (action == "replay") {
+                            switch (player.ProfileSettings.StreamingViewPermissions) {
+                                case ReplayStreaming.Public:
+                                    allowed = true;
+                                    break;
+                                case ReplayStreaming.Friends:
+                                    if (string.IsNullOrEmpty(viewerId)) {
+                                        allowed = false;
+                                        error = "Authentication required to view this stream";
+                                    } else {
+                                        var isFriend = await context.Friends
+                                            .Where(f => f.Id == playerId)
+                                            .SelectMany(f => f.Friends)
+                                            .AnyAsync(f => f.Id == viewerId);
+                                        allowed = isFriend;
+                                        if (!allowed) error = "Only friends can view this stream";
+                                    }
+                                    break;
+                                case ReplayStreaming.Private:
                                     allowed = false;
-                                    error = "Authentication required to view this stream";
-                                } else {
-                                    var isFriend = await context.Friends
-                                        .Where(f => f.Id == playerId)
-                                        .SelectMany(f => f.Friends)
-                                        .AnyAsync(f => f.Id == viewerId);
-                                    allowed = isFriend;
-                                    if (!allowed) error = "Only friends can view this stream";
-                                }
-                                break;
-                            case ReplayStreaming.Private:
-                                allowed = false;
-                                error = "Streaming is set to private";
-                                break;
+                                    error = "Streaming is set to private";
+                                    break;
+                            }
                         }
                     }
                 }

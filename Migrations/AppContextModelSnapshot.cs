@@ -280,6 +280,9 @@ namespace BeatLeader_Server.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Details")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("Hidden")
                         .HasColumnType("bit");
 
@@ -856,6 +859,9 @@ namespace BeatLeader_Server.Migrations
 
                     b.Property<int>("Requirements")
                         .HasColumnType("int");
+
+                    b.Property<bool>("RequiresAudioLink")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("RequiresChroma")
                         .HasColumnType("bit");
@@ -2062,87 +2068,6 @@ namespace BeatLeader_Server.Migrations
                     b.HasIndex("MapOfTheDayId");
 
                     b.ToTable("MapOfTheDayPoints");
-                });
-
-            modelBuilder.Entity("BeatLeader_Server.Models.MapSwingData", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<double>("AngleStrain")
-                        .HasColumnType("float");
-
-                    b.Property<bool>("BombAvoidance")
-                        .HasColumnType("bit");
-
-                    b.Property<double>("BpmTime")
-                        .HasColumnType("float");
-
-                    b.Property<int?>("DifficultyStatisticsId")
-                        .HasColumnType("int");
-
-                    b.Property<double>("Direction")
-                        .HasColumnType("float");
-
-                    b.Property<double>("DistanceDiff")
-                        .HasColumnType("float");
-
-                    b.Property<bool>("Forehand")
-                        .HasColumnType("bit");
-
-                    b.Property<double>("HitDistance")
-                        .HasColumnType("float");
-
-                    b.Property<bool>("IsLinear")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsStream")
-                        .HasColumnType("bit");
-
-                    b.Property<double>("LowSpeedFalloff")
-                        .HasColumnType("float");
-
-                    b.Property<double>("NjsBuff")
-                        .HasColumnType("float");
-
-                    b.Property<bool>("ParityErrors")
-                        .HasColumnType("bit");
-
-                    b.Property<double>("RepositioningDistance")
-                        .HasColumnType("float");
-
-                    b.Property<double>("RotationAmount")
-                        .HasColumnType("float");
-
-                    b.Property<double>("Stress")
-                        .HasColumnType("float");
-
-                    b.Property<double>("StressMultiplier")
-                        .HasColumnType("float");
-
-                    b.Property<double>("SwingDiff")
-                        .HasColumnType("float");
-
-                    b.Property<double>("SwingFrequency")
-                        .HasColumnType("float");
-
-                    b.Property<double>("SwingSpeed")
-                        .HasColumnType("float");
-
-                    b.Property<double>("SwingTech")
-                        .HasColumnType("float");
-
-                    b.Property<double>("WallBuff")
-                        .HasColumnType("float");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DifficultyStatisticsId");
-
-                    b.ToTable("MapSwingData");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.Mapper", b =>
@@ -3830,6 +3755,278 @@ namespace BeatLeader_Server.Migrations
                     b.ToTable("RankVotings");
                 });
 
+            modelBuilder.Entity("BeatLeader_Server.Models.RankedPlayGame", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("HandJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LeaderboardId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("MatchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PickerId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<float>("PlayerAAccuracy")
+                        .HasColumnType("real");
+
+                    b.Property<string>("PlayerADiscardLeaderboardId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("PlayerAFailed")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("PlayerAFinalScore")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("PlayerAForfeit")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("PlayerAReplay")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PlayerAScore")
+                        .HasColumnType("int");
+
+                    b.Property<float>("PlayerBAccuracy")
+                        .HasColumnType("real");
+
+                    b.Property<string>("PlayerBDiscardLeaderboardId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("PlayerBFailed")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("PlayerBFinalScore")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("PlayerBForfeit")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("PlayerBReplay")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PlayerBScore")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ReplacementsJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("RoundNumber")
+                        .HasColumnType("int");
+
+                    b.Property<string>("WinnerId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeaderboardId");
+
+                    b.HasIndex("MatchId", "RoundNumber")
+                        .IsUnique();
+
+                    b.ToTable("RankedPlayGames");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.RankedPlayMapBan", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BannedAt")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LeaderboardId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("SeasonId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeaderboardId");
+
+                    b.HasIndex("SeasonId", "LeaderboardId")
+                        .IsUnique()
+                        .HasFilter("[SeasonId] IS NOT NULL AND [LeaderboardId] IS NOT NULL");
+
+                    b.ToTable("RankedPlayMapBans");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.RankedPlayMatch", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("DrawnGames")
+                        .HasColumnType("int");
+
+                    b.Property<float>("Duration")
+                        .HasColumnType("real");
+
+                    b.Property<int>("PlayerAGamesWon")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PlayerAId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<float>("PlayerAMMRChange")
+                        .HasColumnType("real");
+
+                    b.Property<float>("PlayerAPreMatchMMR")
+                        .HasColumnType("real");
+
+                    b.Property<int>("PlayerBGamesWon")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PlayerBId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<float>("PlayerBMMRChange")
+                        .HasColumnType("real");
+
+                    b.Property<float>("PlayerBPreMatchMMR")
+                        .HasColumnType("real");
+
+                    b.Property<int?>("ProfileAId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ProfileBId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Result")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SeasonId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Timestamp")
+                        .HasColumnType("int");
+
+                    b.Property<string>("WinnerId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProfileAId");
+
+                    b.HasIndex("ProfileBId");
+
+                    b.HasIndex("PlayerAId", "SeasonId");
+
+                    b.HasIndex("PlayerBId", "SeasonId");
+
+                    b.HasIndex("SeasonId", "Timestamp");
+
+                    b.ToTable("RankedPlayMatches");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.RankedPlayProfile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CalibrationMatchesPlayed")
+                        .HasColumnType("int");
+
+                    b.Property<float>("DecayedMMR")
+                        .HasColumnType("real");
+
+                    b.Property<int>("Draws")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("GrandmasterRank")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsCalibrated")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("LastMatchTime")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Losses")
+                        .HasColumnType("int");
+
+                    b.Property<float>("MMR")
+                        .HasColumnType("real");
+
+                    b.Property<float>("PeakMMR")
+                        .HasColumnType("real");
+
+                    b.Property<string>("PlayerId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int?>("SeasonId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Tier")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TierDivision")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Wins")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlayerId", "SeasonId")
+                        .IsUnique()
+                        .HasFilter("[PlayerId] IS NOT NULL AND [SeasonId] IS NOT NULL");
+
+                    b.HasIndex("SeasonId", "MMR");
+
+                    b.ToTable("RankedPlayProfiles");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.RankedPlaySeason", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("EndDate")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("StartDate")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("RankedPlaySeasons");
+                });
+
             modelBuilder.Entity("BeatLeader_Server.Models.ReePresetDownload", b =>
                 {
                     b.Property<int>("Id")
@@ -4348,6 +4545,9 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("real");
 
                     b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StorageTier")
                         .HasColumnType("int");
 
                     b.Property<bool>("Suspicious")
@@ -6712,13 +6912,6 @@ namespace BeatLeader_Server.Migrations
                     b.Navigation("MapOfTheDay");
                 });
 
-            modelBuilder.Entity("BeatLeader_Server.Models.MapSwingData", b =>
-                {
-                    b.HasOne("BeatLeader_Server.Models.DifficultyStatistics", null)
-                        .WithMany("SwingData")
-                        .HasForeignKey("DifficultyStatisticsId");
-                });
-
             modelBuilder.Entity("BeatLeader_Server.Models.ModDescription", b =>
                 {
                     b.HasOne("BeatLeader_Server.Models.DeveloperProfile", null)
@@ -6989,6 +7182,86 @@ namespace BeatLeader_Server.Migrations
                         .HasForeignKey("BeatLeader_Server.Models.RankVoting", "ScoreId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.RankedPlayGame", b =>
+                {
+                    b.HasOne("BeatLeader_Server.Models.Leaderboard", "Leaderboard")
+                        .WithMany()
+                        .HasForeignKey("LeaderboardId");
+
+                    b.HasOne("BeatLeader_Server.Models.RankedPlayMatch", "Match")
+                        .WithMany("Games")
+                        .HasForeignKey("MatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Leaderboard");
+
+                    b.Navigation("Match");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.RankedPlayMapBan", b =>
+                {
+                    b.HasOne("BeatLeader_Server.Models.Leaderboard", "Leaderboard")
+                        .WithMany()
+                        .HasForeignKey("LeaderboardId");
+
+                    b.HasOne("BeatLeader_Server.Models.RankedPlaySeason", "Season")
+                        .WithMany("MapBans")
+                        .HasForeignKey("SeasonId");
+
+                    b.Navigation("Leaderboard");
+
+                    b.Navigation("Season");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.RankedPlayMatch", b =>
+                {
+                    b.HasOne("BeatLeader_Server.Models.Player", "PlayerA")
+                        .WithMany("MatchesAsPlayerA")
+                        .HasForeignKey("PlayerAId");
+
+                    b.HasOne("BeatLeader_Server.Models.Player", "PlayerB")
+                        .WithMany("MatchesAsPlayerB")
+                        .HasForeignKey("PlayerBId");
+
+                    b.HasOne("BeatLeader_Server.Models.RankedPlayProfile", "ProfileA")
+                        .WithMany("MatchesAsPlayerA")
+                        .HasForeignKey("ProfileAId");
+
+                    b.HasOne("BeatLeader_Server.Models.RankedPlayProfile", "ProfileB")
+                        .WithMany("MatchesAsPlayerB")
+                        .HasForeignKey("ProfileBId");
+
+                    b.HasOne("BeatLeader_Server.Models.RankedPlaySeason", "Season")
+                        .WithMany("Matches")
+                        .HasForeignKey("SeasonId");
+
+                    b.Navigation("PlayerA");
+
+                    b.Navigation("PlayerB");
+
+                    b.Navigation("ProfileA");
+
+                    b.Navigation("ProfileB");
+
+                    b.Navigation("Season");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.RankedPlayProfile", b =>
+                {
+                    b.HasOne("BeatLeader_Server.Models.Player", "Player")
+                        .WithMany("RankedPlayProfiles")
+                        .HasForeignKey("PlayerId");
+
+                    b.HasOne("BeatLeader_Server.Models.RankedPlaySeason", "Season")
+                        .WithMany("Profiles")
+                        .HasForeignKey("SeasonId");
+
+                    b.Navigation("Player");
+
+                    b.Navigation("Season");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ReeSabersComment", b =>
@@ -7570,11 +7843,6 @@ namespace BeatLeader_Server.Migrations
                     b.Navigation("Extensions");
                 });
 
-            modelBuilder.Entity("BeatLeader_Server.Models.DifficultyStatistics", b =>
-                {
-                    b.Navigation("SwingData");
-                });
-
             modelBuilder.Entity("BeatLeader_Server.Models.EventPlayer", b =>
                 {
                     b.Navigation("MapOfTheDayPoints");
@@ -7639,6 +7907,10 @@ namespace BeatLeader_Server.Migrations
 
                     b.Navigation("ManagingClans");
 
+                    b.Navigation("MatchesAsPlayerA");
+
+                    b.Navigation("MatchesAsPlayerB");
+
                     b.Navigation("Ornaments");
 
                     b.Navigation("PlayerBonusIdols");
@@ -7646,6 +7918,8 @@ namespace BeatLeader_Server.Migrations
                     b.Navigation("PlayerIdolDecorations");
 
                     b.Navigation("Presets");
+
+                    b.Navigation("RankedPlayProfiles");
 
                     b.Navigation("Searches");
 
@@ -7673,6 +7947,27 @@ namespace BeatLeader_Server.Migrations
                     b.Navigation("FavoriteMap");
 
                     b.Navigation("Feedbacks");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.RankedPlayMatch", b =>
+                {
+                    b.Navigation("Games");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.RankedPlayProfile", b =>
+                {
+                    b.Navigation("MatchesAsPlayerA");
+
+                    b.Navigation("MatchesAsPlayerB");
+                });
+
+            modelBuilder.Entity("BeatLeader_Server.Models.RankedPlaySeason", b =>
+                {
+                    b.Navigation("MapBans");
+
+                    b.Navigation("Matches");
+
+                    b.Navigation("Profiles");
                 });
 
             modelBuilder.Entity("BeatLeader_Server.Models.ReeSabersComment", b =>
