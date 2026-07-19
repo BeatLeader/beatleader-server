@@ -3,7 +3,6 @@ using BeatLeader_Server.Extensions;
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Services;
 using BeatLeader_Server.Utils;
-using Dasync.Collections;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -751,60 +750,6 @@ namespace BeatLeader_Server.Controllers
                 }
                 
             }
-
-            await _context.SaveChangesAsync();
-
-            return Ok();
-        }
-
-        [HttpGet("~/admin/maps/newranking2")]
-        public async Task<ActionResult> newranking2()
-        {
-            string currentID = HttpContext.CurrentUserID(_context);
-            var currentPlayer = await _context.Players.FindAsync(currentID);
-
-            if (currentPlayer == null || !currentPlayer.Role.Contains("admin"))
-            {
-                return Unauthorized();
-            }
-            var songs = _context.Songs.Where(el => el.Difficulties.FirstOrDefault(d => d.Status == DifficultyStatus.ranked || d.Status == DifficultyStatus.qualified || d.Status == DifficultyStatus.nominated) != null).Include(song => song.Difficulties).ThenInclude(d => d.ModifiersRating).ToList();
-
-            await songs.ParallelForEachAsync(async song => {
-                foreach (var diff in song.Difficulties)
-                {
-                    if (diff.Status == DifficultyStatus.ranked || diff.Status == DifficultyStatus.qualified || diff.Status == DifficultyStatus.nominated) {
-                        //diff.AccRating = ReplayUtils.AccRating(
-                        //        diff.PredictedAcc, 
-                        //        diff.PassRating,
-                        //        diff.TechRating);
-
-                        diff.Stars = ReplayUtils.ToStars(diff.AccRating ?? 0, diff.PassRating ?? 0, diff.TechRating ?? 0);
-
-                        var modifiersRating = diff.ModifiersRating;
-                        if (modifiersRating != null) {
-                            modifiersRating.SSStars = ReplayUtils.ToStars(modifiersRating.SSAccRating, modifiersRating.SSPassRating, modifiersRating.SSTechRating);
-                            modifiersRating.SFStars = ReplayUtils.ToStars(modifiersRating.SFAccRating, modifiersRating.SFPassRating, modifiersRating.SFTechRating);
-                            modifiersRating.FSStars = ReplayUtils.ToStars(modifiersRating.FSAccRating, modifiersRating.FSPassRating, modifiersRating.FSTechRating);
-                        }
-
-                        //var rating = diff.ModifiersRating;
-                        //if (rating != null) {
-                        //    rating.SSAccRating = ReplayUtils.AccRating(
-                        //            rating.SSPredictedAcc, 
-                        //            rating.SSPassRating, 
-                        //            rating.SSTechRating);
-                        //    rating.SFAccRating = ReplayUtils.AccRating(
-                        //            rating.SFPredictedAcc, 
-                        //            rating.SFPassRating, 
-                        //            rating.SFTechRating);
-                        //    rating.FSAccRating = ReplayUtils.AccRating(
-                        //            rating.FSPredictedAcc, 
-                        //            rating.FSPassRating, 
-                        //            rating.FSTechRating);
-                        //}
-                    }
-                }
-            }, maxDegreeOfParallelism: 20);
 
             await _context.SaveChangesAsync();
 

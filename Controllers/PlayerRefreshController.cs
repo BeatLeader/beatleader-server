@@ -345,9 +345,6 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
-            return Ok();
-        }
-
         [HttpGet("~/players/stats/refresh/slowly")]
         public async Task<ActionResult> RefreshPlayersStatsSlowly()
         {
