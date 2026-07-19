@@ -898,6 +898,22 @@ namespace BeatLeader_Server.Controllers
             return Ok();
         }
 
+        public Dictionary<string, int> ostmappers = new() {
+            { "Freeek", 47581 },
+            {  "GreatYazer", 41378 },
+            {  "Rustic", 12996 },
+            {  "BennyDaBeast", 30311 },
+            {  "Purphoros", 49373 },
+            {  "Kolezan", 4285318 },
+            {  "altrewin", 567 },
+            {  "ConnorJC", 4285668 },
+            {  "ETAN",  4235140 },
+            {  "Ruckus", 4286278 },
+            {  "Narwall", 72110 },
+            {  "Syndicate", 4302897 },
+            {  "AaltopahWi", 4284269 },
+            { "Pink", 4284800 }
+        };
         [HttpPost("~/map/uploadEarthDay")]
         public async Task<ActionResult> uploadEarthDay()
         {
