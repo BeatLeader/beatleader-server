@@ -310,6 +310,11 @@ namespace BeatLeader_Server.Controllers {
                 EndDate = e.EndDate,
                 Image = e.Image
             }).FirstOrDefaultAsync();
+
+            if (numericalId == 84 || eventId == "gamifiedvivify") {
+                eventData.Image = "https://cdn.assets.beatleader.com/gamifiedvivifycover.jpg";
+                eventData.Name = "Gamified Vivify";
+            }
             
             if (eventData == null)
                 return NotFound();

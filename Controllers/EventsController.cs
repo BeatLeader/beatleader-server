@@ -50,7 +50,7 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? search = null,
             [FromQuery] Order order = Order.Desc)
         {
-            IQueryable<EventRanking> query = _context.EventRankings.Where(e => e.Id != 75).Include(e => e.Players);
+            IQueryable<EventRanking> query = _context.EventRankings.Where(e => e.Id != 75 && e.Id != 83).Include(e => e.Players);
 
             switch (sortBy)
             {
@@ -112,6 +112,21 @@ namespace BeatLeader_Server.Controllers
                 if (item.Id == 81) {
                     item.Leader = new PlayerResponse { Id = "76561198253526777" };
                 }
+                if (item.Id == 84) {
+                    item.Image = "https://cdn.assets.beatleader.com/gamifiedvivifycover.jpg";
+                    item.Name = "Gamified Vivify";
+
+                    var poodleEvent = await _context.EventRankings.Where(e => e.Id == 83).Select(e => new {
+                            PlayerCount = e.Players.Count(),
+                            Leader = new PlayerResponse {
+                                Id = e.Players.OrderByDescending(p => p.Pp).FirstOrDefault().PlayerId
+                            }
+                        }).FirstOrDefaultAsync();
+                    if (poodleEvent != null) {
+                        item.PlayerCount += poodleEvent.PlayerCount;
+                        item.Leader2 = ResponseFromPlayer(await _context.Players.Include(p => p.Clans).FirstOrDefaultAsync(p => p.Id == poodleEvent.Leader.Id));
+                    }
+                }
                 item.Leader = ResponseFromPlayer(await _context.Players.Include(p => p.Clans).FirstOrDefaultAsync(p => p.Id == item.Leader.Id));
             }
 
@@ -126,7 +141,10 @@ namespace BeatLeader_Server.Controllers
             [FromQuery] string? search = null,
             [FromQuery] Order order = Order.Desc)
         {
-            IQueryable<EventRanking> query = _context.EventRankings.Where(e => e.Id != 75).Include(e => e.Players);
+            IQueryable<EventRanking> query =
+               !HttpContext.Request.Headers["User-Agent"].Contains("(Oculus)")
+                ? _context.EventRankings.Where(e => e.Id != 75).Include(e => e.Players)
+                : _context.EventRankings.Where(e => e.Id != 75 && e.Id != 83 && e.Id != 84).Include(e => e.Players);
 
             switch (sortBy)
             {
