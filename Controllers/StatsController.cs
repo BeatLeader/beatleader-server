@@ -719,50 +719,6 @@ namespace BeatLeader_Server.Controllers
             return result;
         }
 
-        [HttpGet("~/otherreplays/{name}")]
-        public async Task<ActionResult> GetOtherReplay(string name) {
-
-            string? currentID = HttpContext.CurrentUserID(_context);
-            bool admin = currentID != null ? ((await _context
-                .Players
-                .Where(p => p.Id == currentID)
-                .Select(p => p.Role)
-                .FirstOrDefaultAsync())
-                ?.Contains("admin") ?? false) : false;
-
-            var replayFile = $"https://api.beatleader.com/otherreplays/{name}";
-            var stats = await _storageContext.PlayerLeaderboardStats.Where(p => p.Replay == replayFile)
-                .AsNoTracking()
-                .TagWithCaller()
-                .Select(s => new { PinnedContexts = s.Metadata != null ? s.Metadata.PinnedContexts : LeaderboardContexts.None, s.PlayerId })
-                .ToListAsync();
-
-            if (stats.Count == 0) return NotFound();
-            
-            if (!stats.Any(s => s.PinnedContexts != LeaderboardContexts.None)) {
-                string? playerId = await _context.PlayerIdToMain(stats.First().PlayerId);
-
-                if (playerId != currentID) {
-                    var features = await _context
-                        .Players
-                        .Where(p => p.Id == playerId)
-                        .Select(p => p.ProfileSettings)
-                        .FirstOrDefaultAsync();
-
-                    if (!(currentID == playerId || admin || (features != null && features.ShowStatsPublic))) {
-                        return Unauthorized();
-                    }
-                }
-            }
-
-            var stream = await _s3Client.DownloadOtherReplay(name);
-            if (stream == null) {
-                return NotFound();
-            }
-
-            return Ok(stream);
-        }
-
         [ApiExplorerSettings(IgnoreApi = true)]
         [HttpGet("~/watched/{scoreId}/")]
         public async Task<ActionResult> Played(

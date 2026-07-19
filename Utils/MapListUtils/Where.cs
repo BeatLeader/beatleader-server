@@ -230,22 +230,26 @@ public static partial class MapListUtils
             return sequence;
         }
 
-        return allRequirements switch
-        {
-            Operation.Any => sequence.Select(s => new SongHelper {
-                Song = s.Song,
-                Difficulties = s.Difficulties.Where(d => (d.Requirements & mapRequirements) != 0)
-            }),
-            Operation.All => sequence.Select(s => new SongHelper {
-                Song = s.Song,
-                Difficulties = s.Difficulties.Where(d => d.Requirements == mapRequirements)
-            }),
-            Operation.Not => sequence.Select(s => new SongHelper {
-                Song = s.Song,
-                Difficulties = s.Difficulties.Where(d => (d.Requirements & mapRequirements) == 0)
-            }),
-            _             => sequence,
-        };
+        var difficulty = Expression.Parameter(typeof(DifficultyDescription), "d");
+        // 1 != 2 is here to trigger `OrElse` further the line.
+        var exp = Expression.Equal(Expression.Constant(1), Expression.Constant(allRequirements == Operation.Any ? 2 : 1));
+
+        foreach (Requirements term in Enum.GetValues(typeof(Requirements))) {
+            if (term != Requirements.Ignore && term != Requirements.None && mapRequirements.HasFlag(term)) {
+                var subexpression = Expression.Equal(Expression.Property(difficulty, $"Requires{term.ToString()}"), Expression.Constant(true));
+
+                exp = allRequirements switch {
+                    Operation.Any => Expression.OrElse(exp, subexpression),
+                    Operation.All => Expression.And(exp, subexpression),
+                    Operation.Not => Expression.And(exp, Expression.Not(subexpression)),
+                    _ => exp,
+                };
+            }
+        }
+        return sequence.Select(s => new SongHelper {
+            Song = s.Song,
+            Difficulties = s.Difficulties.AsQueryable().Where((Expression<Func<DifficultyDescription, bool>>)Expression.Lambda(exp, difficulty)).ToList()
+        });
     }
 
     private static IQueryable<SongHelper> WhereRatingFrom(this IQueryable<SongHelper> sequence, RatingType rating, float? from)

@@ -43,6 +43,7 @@ namespace BeatLeader_Server.Services {
         public async Task CheckMaps() {
             using (var scope = _serviceScopeFactory.CreateScope()) {
                 var _context = scope.ServiceProvider.GetRequiredService<AppContext>();
+                var _storageContext = scope.ServiceProvider.GetRequiredService<StorageContext>();
                 var _s3Client = _configuration.GetS3Client();
                 var downloader = new MapDownloader(_configuration.GetValue<string>("MapsPath") ?? "/home/maps");
                 
@@ -248,31 +249,33 @@ namespace BeatLeader_Server.Services {
                                         CrouchWalls = diffStatistic.CrouchWalls,
                                         ParityErrors = diffStatistic.ParityErrors,
                                         BombAvoidances = diffStatistic.BombAvoidances,
-                                        LinearSwings = diffStatistic.LinearSwings,
-                                        SwingData = swingData.Select(sd => new MapSwingData {
-                                            BpmTime = sd.BpmTime,
-                                            Direction = sd.Direction,
-                                            Forehand = sd.Forehand,
-                                            ParityErrors = sd.ParityErrors,
-                                            BombAvoidance = sd.BombAvoidance,
-                                            IsLinear = sd.IsLinear,
-                                            AngleStrain = sd.AngleStrain,
-                                            RepositioningDistance = sd.RepositioningDistance,
-                                            RotationAmount = sd.RotationAmount,
-                                            SwingFrequency = sd.SwingFrequency,
-                                            DistanceDiff = sd.DistanceDiff,
-                                            SwingSpeed = sd.SwingSpeed,
-                                            HitDistance = sd.HitDistance,
-                                            Stress = sd.Stress,
-                                            LowSpeedFalloff = sd.LowSpeedFalloff,
-                                            StressMultiplier = sd.StressMultiplier,
-                                            NjsBuff = sd.NjsBuff,
-                                            WallBuff = sd.WallBuff,
-                                            IsStream = sd.IsStream,
-                                            SwingDiff = sd.SwingDiff,
-                                            SwingTech = sd.SwingTech
-                                        }).ToList()
+                                        LinearSwings = diffStatistic.LinearSwings
                                     };
+
+                                    _storageContext.MapSwingData.AddRange(swingData.Select(sd => new MapSwingData {
+                                        BpmTime = sd.BpmTime,
+                                        Direction = sd.Direction,
+                                        Forehand = sd.Forehand,
+                                        ParityErrors = sd.ParityErrors,
+                                        BombAvoidance = sd.BombAvoidance,
+                                        IsLinear = sd.IsLinear,
+                                        AngleStrain = sd.AngleStrain,
+                                        RepositioningDistance = sd.RepositioningDistance,
+                                        RotationAmount = sd.RotationAmount,
+                                        SwingFrequency = sd.SwingFrequency,
+                                        DistanceDiff = sd.DistanceDiff,
+                                        SwingSpeed = sd.SwingSpeed,
+                                        HitDistance = sd.HitDistance,
+                                        Stress = sd.Stress,
+                                        LowSpeedFalloff = sd.LowSpeedFalloff,
+                                        StressMultiplier = sd.StressMultiplier,
+                                        NjsBuff = sd.NjsBuff,
+                                        WallBuff = sd.WallBuff,
+                                        IsStream = sd.IsStream,
+                                        SwingDiff = sd.SwingDiff,
+                                        SwingTech = sd.SwingTech,
+                                        DifficultyStatisticsId = songDiff.Id
+                                    }).ToList());
 
                                     songDiff.Type |= response["none"].MapType;
 
@@ -300,6 +303,7 @@ namespace BeatLeader_Server.Services {
                     song.Checked = true;
                 }
                 await _context.SaveChangesAsync();
+                await _storageContext.SaveChangesAsync();
             }
         }
     }

@@ -19,15 +19,19 @@ namespace BeatLeader_Server.Controllers {
         private readonly AppContext _context;
         private readonly IDbContextFactory<AppContext> _dbFactory;
 
+        private readonly StorageContext _storageContext;
+
         private readonly IAmazonS3 _s3Client;
         private readonly IServerTiming _serverTiming;
 
         public LeaderboardController(
             AppContext context,
             IDbContextFactory<AppContext> dbFactory,
+            StorageContext storageContext,
             IConfiguration configuration,
             IServerTiming serverTiming) {
             _context = context;
+            _storageContext = storageContext;
             _dbFactory = dbFactory;
             _s3Client = configuration.GetS3Client();
             _serverTiming = serverTiming;
@@ -763,7 +767,20 @@ namespace BeatLeader_Server.Controllers {
                     Duration  = l.Difficulty.Duration,
 
                     Requirements = l.Difficulty.Requirements,
-                    DifficultyStatistics = l.Difficulty.DifficultyStatistics,
+                    DifficultyStatistics = l.Difficulty.DifficultyStatistics != null ? new DifficultyStatisticsResponse {
+                        Id = l.Difficulty.DifficultyStatistics.Id,
+                        Stacks = l.Difficulty.DifficultyStatistics.Stacks,
+                        Towers = l.Difficulty.DifficultyStatistics.Towers,
+                        Sliders = l.Difficulty.DifficultyStatistics.Sliders,
+                        CurvedSliders = l.Difficulty.DifficultyStatistics.CurvedSliders,
+                        Windows = l.Difficulty.DifficultyStatistics.Windows,
+                        SlantedWindows = l.Difficulty.DifficultyStatistics.SlantedWindows,
+                        DodgeWalls = l.Difficulty.DifficultyStatistics.DodgeWalls,
+                        CrouchWalls = l.Difficulty.DifficultyStatistics.CrouchWalls,
+                        ParityErrors = l.Difficulty.DifficultyStatistics.ParityErrors,
+                        BombAvoidances = l.Difficulty.DifficultyStatistics.BombAvoidances,
+                        LinearSwings = l.Difficulty.DifficultyStatistics.LinearSwings,
+                    } : null
                 },
                 Plays = l.Plays,
                 Qualification = l.Qualification,
@@ -798,6 +815,10 @@ namespace BeatLeader_Server.Controllers {
                 if (leaderboard.Qualification != null && (isRt || leaderboard.Song.MapperId == currentPlayer?.MapperId)) {
                     leaderboard.Qualification.Comments = await _context.QualificationCommentary.Where(c => c.RankQualificationId == leaderboard.Qualification.Id).ToListAsync();
                 }
+
+                //if (leaderboard.Difficulty?.DifficultyStatistics != null) {
+                //    leaderboard.Difficulty.DifficultyStatistics.SwingData = await _storageContext.MapSwingData.Where(sd => sd.DifficultyStatisticsId == leaderboard.Difficulty.Id).ToListAsync();
+                //}
 
                 bool showRatings = currentPlayer?.ShowAllRatings ?? false;
 
@@ -1721,7 +1742,20 @@ namespace BeatLeader_Server.Controllers {
                     Duration  = lb.Difficulty.Duration,
 
                     Requirements = lb.Difficulty.Requirements,
-                    DifficultyStatistics = lb.Difficulty.DifficultyStatistics
+                    DifficultyStatistics = lb.Difficulty.DifficultyStatistics != null ? new DifficultyStatisticsResponse {
+                        Id = lb.Difficulty.DifficultyStatistics.Id,
+                        Stacks = lb.Difficulty.DifficultyStatistics.Stacks,
+                        Towers = lb.Difficulty.DifficultyStatistics.Towers,
+                        Sliders = lb.Difficulty.DifficultyStatistics.Sliders,
+                        CurvedSliders = lb.Difficulty.DifficultyStatistics.CurvedSliders,
+                        Windows = lb.Difficulty.DifficultyStatistics.Windows,
+                        SlantedWindows = lb.Difficulty.DifficultyStatistics.SlantedWindows,
+                        DodgeWalls = lb.Difficulty.DifficultyStatistics.DodgeWalls,
+                        CrouchWalls = lb.Difficulty.DifficultyStatistics.CrouchWalls,
+                        ParityErrors = lb.Difficulty.DifficultyStatistics.ParityErrors,
+                        BombAvoidances = lb.Difficulty.DifficultyStatistics.BombAvoidances,
+                        LinearSwings = lb.Difficulty.DifficultyStatistics.LinearSwings,
+                    } : null
                 },
                 Clan = lb.Clan == null ? null : new ClanResponseFull {
                     Id = lb.Clan.Id,
@@ -1738,6 +1772,12 @@ namespace BeatLeader_Server.Controllers {
             }).ToListAsync();
 
             if (resultList.Count > 0) {
+                //foreach (var leaderboard in resultList) {
+                //    if (leaderboard.Difficulty?.DifficultyStatistics != null) {
+                //        leaderboard.Difficulty.DifficultyStatistics.SwingData = await _storageContext.MapSwingData.Where(sd => sd.DifficultyStatisticsId == leaderboard.Difficulty.Id).ToListAsync();
+                //    }
+                //}
+
                 Player? currentPlayer = currentID != null 
                     ? await _context.Players.Include(p => p.ProfileSettings).FirstOrDefaultAsync(p => p.Id == currentID) 
                     : null;

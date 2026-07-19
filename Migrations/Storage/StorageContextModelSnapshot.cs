@@ -22,6 +22,87 @@ namespace BeatLeader_Server.Migrations.Storage
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("BeatLeader_Server.Models.MapSwingData", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<double>("AngleStrain")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("BombAvoidance")
+                        .HasColumnType("bit");
+
+                    b.Property<double>("BpmTime")
+                        .HasColumnType("float");
+
+                    b.Property<int>("DifficultyStatisticsId")
+                        .HasColumnType("int");
+
+                    b.Property<double>("Direction")
+                        .HasColumnType("float");
+
+                    b.Property<double>("DistanceDiff")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("Forehand")
+                        .HasColumnType("bit");
+
+                    b.Property<double>("HitDistance")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("IsLinear")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsStream")
+                        .HasColumnType("bit");
+
+                    b.Property<double>("LowSpeedFalloff")
+                        .HasColumnType("float");
+
+                    b.Property<double>("NjsBuff")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("ParityErrors")
+                        .HasColumnType("bit");
+
+                    b.Property<double>("RepositioningDistance")
+                        .HasColumnType("float");
+
+                    b.Property<double>("RotationAmount")
+                        .HasColumnType("float");
+
+                    b.Property<double>("Stress")
+                        .HasColumnType("float");
+
+                    b.Property<double>("StressMultiplier")
+                        .HasColumnType("float");
+
+                    b.Property<double>("SwingDiff")
+                        .HasColumnType("float");
+
+                    b.Property<double>("SwingFrequency")
+                        .HasColumnType("float");
+
+                    b.Property<double>("SwingSpeed")
+                        .HasColumnType("float");
+
+                    b.Property<double>("SwingTech")
+                        .HasColumnType("float");
+
+                    b.Property<double>("WallBuff")
+                        .HasColumnType("float");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DifficultyStatisticsId");
+
+                    b.ToTable("MapSwingData");
+                });
+
             modelBuilder.Entity("BeatLeader_Server.Models.PlayerLeaderboardStats", b =>
                 {
                     b.Property<int>("Id")

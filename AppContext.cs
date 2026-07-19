@@ -177,5 +177,6 @@ namespace BeatLeader_Server
 
         public DbSet<PlayerScoreStatsHistory> PlayerScoreStatsHistory { get; set; }
         public DbSet<PlayerLeaderboardStats> PlayerLeaderboardStats { get; set; }
+        public DbSet<MapSwingData> MapSwingData { get; set; }
     }
 }
