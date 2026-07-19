@@ -7,7 +7,10 @@ using Lib.ServerTiming;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 using System.Linq.Expressions;
+using System.Security.Cryptography;
+using System.Text;
 using BeatLeader_Server.Enums;
 using Swashbuckle.AspNetCore.Annotations;
 using static BeatLeader_Server.Services.SearchService;
@@ -259,6 +262,215 @@ namespace BeatLeader_Server.Controllers
             }
 
             return result;
+        }
+
+        [ApiExplorerSettings(IgnoreApi = true)]
+        [HttpPost("~/badges/beatkhanahook")]
+        public async Task<IActionResult> BeatKhanaHook()
+        {
+            byte[] bodyBytes;
+            using (var ms = new MemoryStream()) {
+                await Request.Body.CopyToAsync(ms);
+                bodyBytes = ms.ToArray();
+            }
+
+            string? signature = Request.Headers["x-beatkhana-signature-256"].FirstOrDefault();
+            if (signature == null || !IsValidBeatKhanaSignature(bodyBytes, signature)) {
+                return Unauthorized("Invalid signature.");
+            }
+
+            BeatKhanaWebhookPayload? payload;
+            try {
+                payload = JsonConvert.DeserializeObject<BeatKhanaWebhookPayload>(Encoding.UTF8.GetString(bodyBytes));
+            } catch {
+                return BadRequest("Invalid payload.");
+            }
+            if (payload == null) {
+                return BadRequest("Invalid payload.");
+            }
+
+            string? eventType = Request.Headers["x-beatkhana-event"].FirstOrDefault();
+            if (eventType != "request_accepted") {
+                return Ok();
+            }
+
+            if (payload.Provider?.ContextId != "beatleader") {
+                return BadRequest("Not supported badge provider");
+            }
+
+            var badges = payload.Request?.Version?.Badges;
+            if (badges == null) {
+                return Ok();
+            }
+
+            int timeset = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+            var grantedKeys = new HashSet<string>();
+            int granted = 0;
+
+            foreach (var badge in badges) {
+                if (badge?.Recipients == null || string.IsNullOrEmpty(badge.ImageUrl) || string.IsNullOrEmpty(badge.Name)) {
+                    continue;
+                }
+
+                string? image = null;
+                bool imageResolved = false;
+
+                foreach (var recipient in badge.Recipients) {
+                    string? blId = FirstNonEmpty(
+                        recipient.User?.BeatleaderId,
+                        recipient.User?.BlSteamId,
+                        recipient.User?.BlOculusPCId,
+                        recipient.User?.BlQuestId,
+                        recipient.IdentifierValue);
+                    if (blId == null) {
+                        continue;
+                    }
+
+                    string mainId = await _context.PlayerIdToMain(blId);
+                    Player? player = await _context.Players.Include(p => p.Badges).FirstOrDefaultAsync(p => p.Id == mainId);
+                    if (player == null) {
+                        continue;
+                    }
+
+                    string key = player.Id + "|" + badge.Name + "|" + badge.Href;
+                    if (!grantedKeys.Add(key)) {
+                        continue;
+                    }
+                    if (player.Badges != null && player.Badges.Any(b => b.Description == badge.Name && b.Link == badge.Href)) {
+                        continue;
+                    }
+
+                    if (!imageResolved) {
+                        image = await ReuploadBadgeImage(badge.ImageUrl) ?? badge.ImageUrl;
+                        imageResolved = true;
+                    }
+
+                    _context.Badges.Add(new Badge {
+                        Description = (badge.Name ?? ""),
+                        Details = badge.Description,
+                        Image = image ?? "",
+                        Link = badge.Href,
+                        Timeset = timeset,
+                        PlayerId = player.Id,
+                    });
+                    granted++;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { granted });
+        }
+
+        private static string? FirstNonEmpty(params string?[] values) {
+            foreach (var value in values) {
+                if (!string.IsNullOrEmpty(value)) {
+                    return value;
+                }
+            }
+            return null;
+        }
+
+        private async Task<string?> ReuploadBadgeImage(string? imageUrl) {
+            if (string.IsNullOrEmpty(imageUrl)) {
+                return null;
+            }
+            try {
+                using var httpClient = new HttpClient();
+                var ms = new MemoryStream(await httpClient.GetByteArrayAsync(imageUrl));
+                ms.Position = 0;
+
+                (string extension, MemoryStream stream) = ImageUtils.GetFormatPng(ms);
+                string fileName = "badge-beatkhana-" + Guid.NewGuid().ToString("N") + extension;
+
+                return await _assetsS3Client.UploadAsset(fileName, stream);
+            } catch {
+                return null;
+            }
+        }
+
+        private bool IsValidBeatKhanaSignature(byte[] body, string signatureHeader)
+        {
+            string signature = (signatureHeader.StartsWith("sha256=", StringComparison.OrdinalIgnoreCase)
+                ? signatureHeader.Substring("sha256=".Length)
+                : signatureHeader).Trim().ToLowerInvariant();
+
+            string? beatKhanaWebhookSecret = _configuration.GetValue<string?>("BeatKhanaWebhookSecret");
+            if (beatKhanaWebhookSecret == null) return false;
+
+            // The secret is a base64-encoded key, but accept its raw string form as a fallback.
+            var keys = new List<byte[]> { Encoding.UTF8.GetBytes(beatKhanaWebhookSecret) };
+            try {
+                keys.Insert(0, Convert.FromBase64String(beatKhanaWebhookSecret));
+            } catch {}
+
+            foreach (var key in keys) {
+                using var hmac = new HMACSHA256(key);
+                string computed = Convert.ToHexString(hmac.ComputeHash(body)).ToLowerInvariant();
+                if (string.Equals(computed, signature, StringComparison.Ordinal)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public class BeatKhanaWebhookPayload {
+            [JsonProperty("event")]
+            public string? Event { get; set; }
+            [JsonProperty("request")]
+            public BeatKhanaRequest? Request { get; set; }
+            [JsonProperty("provider")]
+            public BeatKhanaProvider? Provider { get; set; }
+        }
+
+        public class BeatKhanaRequest {
+            [JsonProperty("version")]
+            public BeatKhanaVersion? Version { get; set; }
+        }
+
+        public class BeatKhanaProvider {
+            [JsonProperty("contextId")]
+            public string ContextId { get; set; }
+        }
+
+        public class BeatKhanaVersion {
+            [JsonProperty("badges")]
+            public List<BeatKhanaBadge>? Badges { get; set; }
+        }
+
+        public class BeatKhanaBadge {
+            [JsonProperty("name")]
+            public string? Name { get; set; }
+            [JsonProperty("description")]
+            public string? Description { get; set; }
+            [JsonProperty("imageUrl")]
+            public string? ImageUrl { get; set; }
+            [JsonProperty("href")]
+            public string? Href { get; set; }
+            [JsonProperty("sortOrder")]
+            public int SortOrder { get; set; }
+            [JsonProperty("recipients")]
+            public List<BeatKhanaRecipient>? Recipients { get; set; }
+        }
+
+        public class BeatKhanaRecipient {
+            [JsonProperty("identifierType")]
+            public string? IdentifierType { get; set; }
+            [JsonProperty("identifierValue")]
+            public string? IdentifierValue { get; set; }
+            [JsonProperty("user")]
+            public BeatKhanaUser? User { get; set; }
+        }
+
+        public class BeatKhanaUser {
+            [JsonProperty("beatleaderId")]
+            public string? BeatleaderId { get; set; }
+            [JsonProperty("blSteamId")]
+            public string? BlSteamId { get; set; }
+            [JsonProperty("blOculusPCId")]
+            public string? BlOculusPCId { get; set; }
+            [JsonProperty("blQuestId")]
+            public string? BlQuestId { get; set; }
         }
     }
 }
