@@ -45,6 +45,7 @@ namespace BeatLeader_Replay_Sockets {
         private int _totalScore;
         private int _maxScore;
         private int _combo;
+        private int _mistakes;
         private int _processedNoteCount;
 
         public bool IsConnected => socket != null && socket.State == WebSocketState.Open;
@@ -311,6 +312,7 @@ namespace BeatLeader_Replay_Sockets {
             _totalScore = 0;
             _maxScore = 0;
             _combo = 0;
+            _mistakes = 0;
             _processedNoteCount = 0;
         }
 
@@ -355,6 +357,7 @@ namespace BeatLeader_Replay_Sockets {
                 if (scoreValue < 0) {
                     _normalCounter.Decrease();
                     _combo = 0;
+                    _mistakes++;
 
                     switch (note.eventType) {
                         case NoteEventType.miss:
@@ -386,7 +389,9 @@ namespace BeatLeader_Replay_Sockets {
                     Time = lastTime,
                     Accuracy = accuracy,
                     Score = _totalScore,
-                    Pp = 0
+                    Pp = 0,
+                    Combo = _combo,
+                    Mistakes = _mistakes
                 },
                 Event = lastEvent
             });
@@ -396,6 +401,7 @@ namespace BeatLeader_Replay_Sockets {
             foreach (var wall in newWalls) {
                 _normalCounter.Decrease();
                 _combo = 0;
+                _mistakes++;
 
                 await BroadcastPlayerState(new PlayerState {
                     Id = playerId,
@@ -415,7 +421,9 @@ namespace BeatLeader_Replay_Sockets {
                 Time = lastTime,
                 Accuracy = accuracy,
                 Score = _totalScore,
-                Pp = 0
+                Pp = 0,
+                Combo = _combo,
+                Mistakes = _mistakes
             };
         }
 
@@ -443,6 +451,8 @@ namespace BeatLeader_Replay_Sockets {
                                 Accuracy = _maxScore > 0 ? (float)_totalScore / _maxScore : 1f,
                                 Score = _totalScore,
                                 Pp = 0,
+                                Combo = _combo,
+                                Mistakes = _mistakes,
                                 Map = map
                             }
                         };

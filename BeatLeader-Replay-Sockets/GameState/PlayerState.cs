@@ -7,6 +7,8 @@ namespace BeatLeader_Replay_Sockets {
         public float Accuracy { get; set; }
         public float Pp { get; set; }
         public int Score { get; set; }
+        public int Combo { get; set; }
+        public int Mistakes { get; set; }
     }
 
     public class PlayingWithMap : Playing {

@@ -13,8 +13,8 @@ namespace BeatLeader_Replay_Sockets {
     }
 
     public class ViewerCommand {
-        public string action { get; set; }
-        public string playerId { get; set; }
+        public string action { get; set; } = "";
+        public string? playerId { get; set; }
     }
 
     public class Viewer {
@@ -25,6 +25,10 @@ namespace BeatLeader_Replay_Sockets {
         public WebSocket socket;
         public TaskCompletionSource finishTask;
         public CancellationToken cancellationToken;
+
+        private readonly object _subscriptionsLock = new();
+        private string? _replayPlayerId;
+        private readonly HashSet<string> _statusPlayerIds = new(StringComparer.Ordinal);
 
         public Viewer(
                 WebSocket socket, 
@@ -38,20 +42,102 @@ namespace BeatLeader_Replay_Sockets {
         }
 
         public void DetachFromCurrentPlayer() {
-            if (playerId == null) return;
+            string? replayPlayerId;
+            List<string> statusPlayerIds;
 
-            lock (SocketsController.PlayersLock) {
-                var current = SocketsController.players.FirstOrDefault(p => p.playerId == playerId);
-                if (current != null) {
-                    current.RemoveViewer(this);
-                    if (!current.IsConnected && !current.HasViewers) {
-                        SocketsController.players.Remove(current);
-                    }
+            lock (_subscriptionsLock) {
+                replayPlayerId = _replayPlayerId;
+                statusPlayerIds = _statusPlayerIds.ToList();
+
+                _replayPlayerId = null;
+                _statusPlayerIds.Clear();
+                RefreshSubscriptionStateUnsafe();
+            }
+
+            if (!string.IsNullOrEmpty(replayPlayerId)) {
+                DetachFromPlayer(replayPlayerId, ViewerType.Replay);
+            }
+
+            foreach (var statusPlayerId in statusPlayerIds) {
+                DetachFromPlayer(statusPlayerId, ViewerType.Status);
+            }
+        }
+
+        private void DetachFromReplayPlayer() {
+            string? replayPlayerId;
+
+            lock (_subscriptionsLock) {
+                replayPlayerId = _replayPlayerId;
+                _replayPlayerId = null;
+                RefreshSubscriptionStateUnsafe();
+            }
+
+            if (!string.IsNullOrEmpty(replayPlayerId)) {
+                DetachFromPlayer(replayPlayerId, ViewerType.Replay);
+            }
+        }
+
+        private void DetachFromStatusPlayer(string targetPlayerId) {
+            bool removed;
+
+            lock (_subscriptionsLock) {
+                removed = _statusPlayerIds.Remove(targetPlayerId);
+                if (removed) {
+                    RefreshSubscriptionStateUnsafe();
                 }
             }
 
-            playerId = null;
+            if (removed) {
+                DetachFromPlayer(targetPlayerId, ViewerType.Status);
+            }
+        }
+
+        private void DetachTargetPlayer(string targetPlayerId) {
+            bool isReplayTarget;
+
+            lock (_subscriptionsLock) {
+                isReplayTarget = string.Equals(_replayPlayerId, targetPlayerId, StringComparison.Ordinal);
+            }
+
+            if (isReplayTarget) {
+                DetachFromReplayPlayer();
+            } else {
+                DetachFromStatusPlayer(targetPlayerId);
+            }
+        }
+
+        private void DetachFromPlayer(string targetPlayerId, ViewerType targetViewerType) {
+            lock (SocketsController.PlayersLock) {
+                var current = SocketsController.players.FirstOrDefault(p => p.playerId == targetPlayerId);
+                if (current == null) return;
+
+                if (targetViewerType == ViewerType.Replay) {
+                    current.RemoveReplayViewer(this);
+                } else {
+                    current.RemoveStatusViewer(this);
+                }
+
+                if (!current.IsConnected && !current.HasViewers) {
+                    SocketsController.players.Remove(current);
+                }
+            }
+        }
+
+        private void RefreshSubscriptionStateUnsafe() {
+            if (_replayPlayerId != null) {
+                viewerType = ViewerType.Replay;
+                playerId = _replayPlayerId;
+                return;
+            }
+
+            if (_statusPlayerIds.Count > 0) {
+                viewerType = ViewerType.Status;
+                playerId = _statusPlayerIds.FirstOrDefault();
+                return;
+            }
+
             viewerType = null;
+            playerId = null;
         }
 
         public async Task StartProcessing() {
@@ -76,21 +162,34 @@ namespace BeatLeader_Replay_Sockets {
 
                         if (actionMessage != null) {
                             if (actionMessage.action == "disconnect") {
-                                DetachFromCurrentPlayer();
+                                if (string.IsNullOrEmpty(actionMessage.playerId)) {
+                                    DetachFromCurrentPlayer();
+                                } else {
+                                    DetachTargetPlayer(actionMessage.playerId);
+                                }
                                 continue;
                             }
 
-                            DetachFromCurrentPlayer();
+                            if (string.IsNullOrEmpty(actionMessage.playerId)) {
+                                continue;
+                            }
 
                             if (actionMessage.action == "replay") {
-                                viewerType = ViewerType.Replay;
+                                lock (_subscriptionsLock) {
+                                    if (string.Equals(_replayPlayerId, actionMessage.playerId, StringComparison.Ordinal)) {
+                                        continue;
+                                    }
+                                }
                             } else {
-                                viewerType = ViewerType.Status;
+                                lock (_subscriptionsLock) {
+                                    if (_statusPlayerIds.Contains(actionMessage.playerId)) {
+                                        continue;
+                                    }
+                                }
                             }
-                            playerId = actionMessage.playerId;
 
                             var authResult = await SocketsController.RequestViewerAuth(
-                                playerId, viewerUserId, actionMessage.action);
+                                actionMessage.playerId, viewerUserId, actionMessage.action);
 
                             if (authResult != null && !authResult.Allowed) {
                                 var errorMsg = Encoding.UTF8.GetBytes(
@@ -98,12 +197,26 @@ namespace BeatLeader_Replay_Sockets {
                                 await socket.SendAsync(
                                     new ArraySegment<byte>(errorMsg),
                                     WebSocketMessageType.Text, true, cancellationToken);
-                                playerId = null;
-                                viewerType = null;
                                 continue;
                             }
 
-                            var player = SocketsController.GetOrCreatePlayer(playerId);
+                            if (actionMessage.action == "replay") {
+                                DetachFromCurrentPlayer();
+
+                                lock (_subscriptionsLock) {
+                                    _replayPlayerId = actionMessage.playerId;
+                                    RefreshSubscriptionStateUnsafe();
+                                }
+                            } else {
+                                DetachFromReplayPlayer();
+
+                                lock (_subscriptionsLock) {
+                                    _statusPlayerIds.Add(actionMessage.playerId);
+                                    RefreshSubscriptionStateUnsafe();
+                                }
+                            }
+
+                            var player = SocketsController.GetOrCreatePlayer(actionMessage.playerId);
                             await player.AddViewer(this);
                         }
                     }
