@@ -285,8 +285,9 @@ namespace BeatLeader_Server.Services {
                                 }
 
                                 songDiff.MaxScoreGraph = new MaxScoreGraph();
-                                songDiff.MaxScoreGraph.SaveList(set.MaxScoreGraph());
-                                var newMaxScore = set.MaxScore();
+                                var wrapper = MapWrapper.Process(set);
+                                songDiff.MaxScoreGraph.SaveList(wrapper.MaxScoreGraph());
+                                var newMaxScore = wrapper.MaxScore();
                                 if (newMaxScore != 0) {
                                     songDiff.MaxScore = newMaxScore;
 

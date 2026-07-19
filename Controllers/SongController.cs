@@ -24,6 +24,7 @@ using System.Dynamic;
 using System.Net;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.Formats.Webp;
+using MapPostprocessor;
 
 namespace BeatLeader_Server.Controllers
 {
@@ -789,6 +790,8 @@ namespace BeatLeader_Server.Controllers
                     ._difficultyBeatmaps
                     .First(b => b._difficulty == set.Difficulty);
 
+                var wrapper = MapWrapper.Process(set);
+
                 var newDD = new DifficultyDescription
                 {
                     Value = Song.DiffForDiffName(set.Difficulty),
@@ -799,11 +802,13 @@ namespace BeatLeader_Server.Controllers
                     Hash = song.LowerHash,
 
                     Njs = diff._noteJumpMovementSpeed,
+                    NoteJumpStartBeatOffset = diff._noteJumpStartBeatOffset,
+                    MapVersion = set.Data.Version,
                     Nps = set.Data.Notes.Count() / (float)map.SongLength,
                     Notes = set.Data.Notes.Count(),
                     Bombs = set.Data.Bombs.Count(),
                     Walls = set.Data.Walls.Count(),
-                    MaxScore = set.MaxScore(),
+                    MaxScore = wrapper.MaxScore(),
                     Duration = map.SongLength,
                 };
 
@@ -831,9 +836,9 @@ namespace BeatLeader_Server.Controllers
                 }
 
                 newDD.MaxScoreGraph = new MaxScoreGraph();
-                newDD.MaxScoreGraph.SaveList(set.MaxScoreGraph());
+                newDD.MaxScoreGraph.SaveList(wrapper.MaxScoreGraph());
                 if (newDD.MaxScore == 0) {
-                    newDD.MaxScore = set.MaxScore();
+                    newDD.MaxScore = wrapper.MaxScore();
                 }
 
                 diffs.Add(newDD);
@@ -864,6 +869,21 @@ namespace BeatLeader_Server.Controllers
 
             ms.Position = 0;
             song.DownloadUrl = await _s3Client.UploadSong(song.LowerHash + ".zip", ms);
+
+            var mappers = song.Mapper.Split(", ")
+                .SelectMany(m => m.Split("& "))
+                .Select(m => m.Replace(" ", ""))
+                .Distinct()
+                .ToList();
+
+                if (mappers.All(m => ostmappers.ContainsKey(m))) {
+                    song.Mappers = new List<Mapper>();
+
+                    foreach (var mapper in mappers) {
+                        song.Mappers.Add(_context.Mappers.Find(ostmappers[mapper]));
+                    }
+                }
+
             _context.Songs.Add(song);
 
             foreach (var diff in song.Difficulties) {
