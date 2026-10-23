@@ -1,6 +1,4 @@
 #if RATINGAPI_PARITY
-// The two RatingAPI.Controllers types RatingAPI's Pp/PpCalculator.cs uses, without the rest of RatingAPI (map analysis,
-// ONNX). BaseTable / BaseValue are copied from RatingAPI Controllers/Curve.cs @ ce61152.
 namespace RatingAPI.Controllers
 {
     public class Point

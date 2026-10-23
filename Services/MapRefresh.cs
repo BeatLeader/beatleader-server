@@ -172,7 +172,6 @@ namespace BeatLeader_Server.Services {
                                 songDiff.MapVersion = diff.Version;
                                 bool rateable = !songDiff.Requirements.HasFlag(Requirements.Noodles) && !songDiff.Requirements.HasFlag(Requirements.MappingExtensions);
 
-                                // Ratings, curves and stars from RatingAPI (RatingApiUrl), the same as every other rating update
                                 if (rateable && songDiff.Status != DifficultyStatus.ranked) {
                                     var ratings = await SongUtils.ExmachinaStars(song.LowerHash, songDiff.Value, songDiff.ModeName);
                                     if (ratings?.none != null) {
@@ -180,7 +179,6 @@ namespace BeatLeader_Server.Services {
                                     }
                                 }
 
-                                // The in-process analyzer only for the map analysis RatingAPI doesn't return (EBPM, statistics, swings, type)
                                 var response = rateable ? await RatingsGenerator.RatingAPI.Calculate(mapset, _aiSession, songDiff.ModeName, songDiff.Value) : null;
                                 if (response != null && response["none"] != null) {
                                     var modrating = songDiff.ModifiersRating;

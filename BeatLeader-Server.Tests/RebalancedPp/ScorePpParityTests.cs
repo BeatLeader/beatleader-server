@@ -7,8 +7,6 @@ using RA = RatingAPI.Pp;
 
 namespace BeatLeader_Server.Tests.RebalancedPp
 {
-    // Score pp from the server (ReplayUtils.PpFromScore, General context, ranked modifier values, curves built locally)
-    // against RatingAPI's own PpCalculator.ScorePp (compiled in from portaBLe/RatingAPI) with RatingAPI's pointlist curves.
     public class ScorePpParityTests
     {
         private static readonly float[] Accuracies = { 0.5f, 0.6f, 0.75f, 0.9f, 0.94f, 0.95f, 0.955f, 0.96f, 0.965f, 0.97f, 0.975f, 0.98f, 0.985f, 0.99f, 0.9925f, 0.995f, 0.9975f, 0.999f, 1f };
@@ -18,7 +16,6 @@ namespace BeatLeader_Server.Tests.RebalancedPp
             new((float)v.AccRating, (float)v.PassRating, (float)v.TechRating,
                 RA.PpCalculator.ToCurve(v.PointList.Select(p => new RatingAPI.Controllers.Point(p.x, p.y))));
 
-        // portaBLe's ReplayUtils: the first of SS / FS / SF in the modifiers picks the speed ratings (SF: RatingAPI's SFS)
         private static RA.MapRatings? RaSpeedRatings(Ppai2Fixtures.Fixture fixture, string modifiers)
         {
             foreach (var modifier in modifiers.ToUpper().Split(","))
@@ -34,10 +31,8 @@ namespace BeatLeader_Server.Tests.RebalancedPp
         public void PpFromScore_MatchesRatingApiScorePp(string name)
         {
             var fixture = Ppai2Fixtures.Load(name);
-            // Notes comes from the map (BeatSaver / parser), the same color note count as RatingAPI's note_count
             var diff = new DifficultyDescription { Notes = fixture.Variants["none"].NoteCount };
             RatingUtils.UpdateFromResponse(diff, Ppai2Fixtures.Response(fixture), null);
-            // Ranked maps' modifier values (RankController sets them at nomination)
             var modifierValues = ModifiersMap.RankedMap();
 
             foreach (var modifiers in Modifiers)
@@ -83,7 +78,6 @@ namespace BeatLeader_Server.Tests.RebalancedPp
             }
         }
 
-        // pp to 0.01, or 1e-4 relative: the server builds curves from float inputs, RatingAPI from double
         private static void AssertClose(float expected, float actual, string what)
         {
             double tolerance = Math.Max(0.01, Math.Abs(expected) * 1e-4);

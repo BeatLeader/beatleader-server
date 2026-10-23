@@ -55,7 +55,6 @@ namespace BeatLeader_Server.Utils
             return (float)(accMult[i - 1].Item2 + middle_dis * (accMult[i].Item2 - accMult[i - 1].Item2));
         }
 
-        // Stars of ratings with the map's curve, rebalanced formula (RebalancedPp)
         public static float ToStars(float accRating, float passRating, float techRating, CurveInputs curve) {
             var result = PpCalculator.ToStars(accRating, passRating, techRating, Curve.GetCurve(curve));
             if (float.IsNaN(result) || float.IsInfinity(result)) {
@@ -65,15 +64,12 @@ namespace BeatLeader_Server.Utils
             }
         }
 
-        // What the map's pp curve without modifiers is built from
-        // noteCount: the difficulty's Notes (color notes, the same count as RatingAPI's note_count)
         public static CurveInputs GetCurveInputs(float? predictedAcc, float? sliderPercentage, int? noteCount) =>
             new CurveInputs(predictedAcc ?? 0, sliderPercentage ?? 0, noteCount ?? 0);
 
         public static CurveInputs GetCurveInputs(DifficultyDescription difficulty) =>
             GetCurveInputs(difficulty.PredictedAcc, difficulty.SliderPercentage, difficulty.Notes);
 
-        // The curve that goes with a speed modifier's ratings: its own (SS, FS, SF), else the map's (BFS, BSF)
         public static CurveInputs SpeedCurveInputs(ModifiersRating modifiersRating, string modifier, CurveInputs curve) =>
             modifier switch {
                 "SS" => new CurveInputs(modifiersRating.SSPredictedAcc, modifiersRating.SSSliderPercentage, curve.NoteCount),
@@ -103,9 +99,6 @@ namespace BeatLeader_Server.Utils
             return baseStars * mp;
         }
 
-        // Score pp with the rebalanced formula (RebalancedPp.PpCalculator, RatingAPI loloppe-rebalancer).
-        // curve: what the map's acc curve without modifiers is built from (CurveInputs); speed modifiers build theirs from
-        // modifiersRating. Returns (pp, bonus pp, pass pp, acc pp, tech pp).
         public static (float, float, float, float, float) PpFromScore(
             float accuracy, 
             LeaderboardContexts context,

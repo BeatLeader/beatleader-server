@@ -5,7 +5,6 @@ using Xunit;
 
 namespace BeatLeader_Server.Tests.RebalancedPp
 {
-    // RatingUtils.UpdateFromResponse with real rebalanced RatingAPI responses
     public class RatingIngestTests
     {
         [Theory]
@@ -30,7 +29,6 @@ namespace BeatLeader_Server.Tests.RebalancedPp
             var mr = diff.ModifiersRating!;
             AssertVariant(fixture.Variants["SS"], mr.SSAccRating, mr.SSPassRating, mr.SSTechRating, mr.SSPredictedAcc, mr.SSStars);
             AssertVariant(fixture.Variants["FS"], mr.FSAccRating, mr.FSPassRating, mr.FSTechRating, mr.FSPredictedAcc, mr.FSStars);
-            // RatingAPI's SFS is stored as SF
             AssertVariant(fixture.Variants["SFS"], mr.SFAccRating, mr.SFPassRating, mr.SFTechRating, mr.SFPredictedAcc, mr.SFStars);
             AssertVariant(fixture.Variants["BFS"], mr.BFSAccRating, mr.BFSPassRating, mr.BFSTechRating, mr.BFSPredictedAcc, mr.BFSStars);
             AssertVariant(fixture.Variants["BSF"], mr.BSFAccRating, mr.BSFPassRating, mr.BSFTechRating, mr.BSFPredictedAcc, mr.BSFStars);
@@ -52,7 +50,6 @@ namespace BeatLeader_Server.Tests.RebalancedPp
         [Fact]
         public void UpdateFromResponse_WithoutBfsBsf_KeepsTheOtherRatings()
         {
-            // /ppai2/link only returns none, SS, FS, SFS: this threw halfway through before
             var fixture = Ppai2Fixtures.Load(Ppai2Fixtures.Names().First());
             var response = Ppai2Fixtures.Response(fixture);
             response.BFS = null!;

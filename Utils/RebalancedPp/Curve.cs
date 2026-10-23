@@ -1,14 +1,8 @@
-// Adapted from portaBLe/RatingAPI Controllers/Curve.cs (GetCurve, PerMapValue, SmoothBaseValue, ModifiableCurve,
-// CurveRow, CurveSettings), branch loloppe-rebalancer @ ce61152. Keep in sync with that file. Differences: the points
-// are returned as Vector2 (as RatingAPI's PpCalculator.ToCurve converts them), and curves are cached by their inputs.
-// The base table and BaseValue are in PpCalculator.
 using System.Collections.Concurrent;
 using System.Numerics;
 
 namespace BeatLeader_Server.Utils.RebalancedPp
 {
-    // What a map's acc curve is built from, for no modifier or one speed modifier: RatingAPI's predicted_acc,
-    // lack_map_calculation.slider_percentage and lack_map_calculation.note_count (0 = unknown, no low note nerf)
     public readonly record struct CurveInputs(float PredictedAcc, float SliderPercentage, int NoteCount);
 
     public static class Curve
@@ -16,7 +10,6 @@ namespace BeatLeader_Server.Utils.RebalancedPp
         private static readonly ConcurrentDictionary<CurveInputs, Vector2[]> Cache = new();
         private const int MaxCached = 50000;
 
-        // The map's acc curve (points from 100% down), as RatingAPI's pointlist for these inputs
         public static IReadOnlyList<Vector2> GetCurve(CurveInputs inputs)
         {
             if (Cache.TryGetValue(inputs, out var cached)) return cached;
@@ -30,14 +23,12 @@ namespace BeatLeader_Server.Utils.RebalancedPp
             return result;
         }
 
-        // Base curve for every map (maps without a usable predicted acc)
         public static List<(double x, double y)> GetCurve(int noteCount)
         {
             double nerf = CurveSettings.Current.LowNoteMultiplier(noteCount);
             return PpCalculator.BaseTable.Select(p => (p.x, p.y * nerf)).ToList();
         }
 
-        // Per-map acc curve (RatingAPI Curve.GetCurve(LackMapCalculation, predictedAcc))
         public static List<(double x, double y)> GetCurve(double predictedAcc, double sliderPercentage, int noteCount)
         {
             var curves = PerMapCurves(predictedAcc);
@@ -49,7 +40,6 @@ namespace BeatLeader_Server.Utils.RebalancedPp
             double a = curves?.modified.A ?? 1.0;
             double nerf = CurveSettings.Current.LowNoteMultiplier(noteCount);
 
-            // Base table points, 0.5% steps from 60% to 95%, 0.05% steps from 95% to 100%, and A
             var xs = PpCalculator.BaseTable.Select(p => p.x)
                 .Concat(Enumerable.Range(0, 71).Select(i => 0.6 + i * 0.005))
                 .Concat(Enumerable.Range(0, 101).Select(i => 0.95 + i * 0.0005))
@@ -64,7 +54,6 @@ namespace BeatLeader_Server.Utils.RebalancedPp
                 double value = curves == null ? PpCalculator.BaseValue(x) : PerMapValue(curves.Value, x);
                 if (tilt != 0)
                 {
-                    // Slider tilt: steeper around the predicted acc (unchanged there), up to SliderTiltRange away from it
                     double distance = Math.Clamp(x - predictedAcc, -CurveSettings.Current.SliderTiltRange, CurveSettings.Current.SliderTiltRange);
                     value *= Math.Exp(tilt * distance * 100);
                 }
@@ -72,7 +61,6 @@ namespace BeatLeader_Server.Utils.RebalancedPp
             }).ToList();
         }
 
-        // Slider tilt per 1% acc of a map's curve (0: none)
         private static double SliderTilt(double sliderPercentage, double predictedAcc)
         {
             var settings = CurveSettings.Current;
@@ -80,14 +68,12 @@ namespace BeatLeader_Server.Utils.RebalancedPp
             return settings.SliderTilt * sliderPercentage;
         }
 
-        // Value of the per-map curve (without slider tilt or low note nerf) at acc
         public static double PerMapValue(double predictedAcc, double acc)
         {
             var curves = PerMapCurves(predictedAcc);
             return curves == null ? PpCalculator.BaseValue(acc) : PerMapValue(curves.Value, acc);
         }
 
-        // The modified and default ModifiableCurve of a map, null when it gets the base curve
         private static (ModifiableCurve modified, ModifiableCurve standard)? PerMapCurves(double predictedAcc)
         {
             var settings = CurveSettings.Current;
@@ -112,8 +98,6 @@ namespace BeatLeader_Server.Utils.RebalancedPp
             return Math.Min(baseValue, value);
         }
 
-        // The base table with monotone cubic interpolation (Fritsch-Carlson) instead of linear: through every table point,
-        // with a continuous slope. Per-map curves only (PerMapValue); the base curve stays linear.
         public static double SmoothBaseValue(double acc)
         {
             var (xs, ys, slopes) = Smooth.Value;
@@ -128,7 +112,6 @@ namespace BeatLeader_Server.Utils.RebalancedPp
                 + (-2 * t3 + 3 * t2) * ys[i + 1] + (t3 - t2) * h * slopes[i + 1];
         }
 
-        // Table points ascending and the slope at each (weighted harmonic mean of the neighbouring segments' slopes)
         private static readonly Lazy<(double[] xs, double[] ys, double[] slopes)> Smooth = new(() =>
         {
             var points = PpCalculator.BaseTable.OrderBy(p => p.x).ToArray();
@@ -158,9 +141,7 @@ namespace BeatLeader_Server.Utils.RebalancedPp
             public double W { get; set; } = 0.6;
             public double K2 { get; set; } = 2.88;
             public double P2 { get; set; } = 2.46;
-            // Taper of the extension above A: 0 = keeps the slope at A (straight line), 1 = the slope fades out (flattens)
             public double C { get; set; } = 1.0;
-            // Where the extension starts
             public double A { get; set; } = 1.0;
 
             public double GetValue(double x)
@@ -171,7 +152,6 @@ namespace BeatLeader_Server.Utils.RebalancedPp
                 return GetL(x);
             }
 
-            // Slope at x = 0.95
             public double GetM()
             {
                 double term1 = (1.0 - Y0) / 0.35;
@@ -179,7 +159,6 @@ namespace BeatLeader_Server.Utils.RebalancedPp
                 return term1 * term2;
             }
 
-            // 0.60 < x <= 0.95
             public double GetF1(double x)
             {
                 double u = (x - 0.6) / 0.35;
@@ -187,7 +166,6 @@ namespace BeatLeader_Server.Utils.RebalancedPp
                 return Y0 + (1.0 - Y0) * blend;
             }
 
-            // 0.95 < x <= A
             public double GetF2(double x)
             {
                 double m = GetM();
@@ -196,7 +174,6 @@ namespace BeatLeader_Server.Utils.RebalancedPp
                 return 1.0 + m * (x - 0.95) + (6.424 - 0.05 * m) * expTerm;
             }
 
-            // High-pass extension above A: starts with the slope S at A, which decays towards S * (1 - C)
             public double GetL(double x)
             {
                 double s = GetS();
@@ -212,7 +189,6 @@ namespace BeatLeader_Server.Utils.RebalancedPp
                 return f2A + s1 * (x - A) + (s - s1) * (1.0 - A) * expTerm;
             }
 
-            // Slope at x = A
             public double GetS()
             {
                 double m = GetM();
@@ -226,7 +202,6 @@ namespace BeatLeader_Server.Utils.RebalancedPp
         }
     }
 
-    // One row of CurveSettings.Table: ModifiableCurve parameters for a predicted acc
     public class CurveRow
     {
         public double PredictedAcc { get; set; }
@@ -237,12 +212,9 @@ namespace BeatLeader_Server.Utils.RebalancedPp
         public double K2 { get; set; } = 2.88;
         public double P2 { get; set; } = 2.46;
 
-        // A at 100% and the default shape: the base curve
         public bool IsDefault => A >= 0.9995 && K == 4.86 && W == 0.6 && K2 == 2.88 && P2 == 2.46;
     }
 
-    // Settings of the per-map curves: ModifiableCurve parameters by predicted acc, linearly interpolated between the rows;
-    // the first / last row applies below / above them. Slider tilt and low note nerf: see RatingAPI CurveSettings.
     public class CurveSettings
     {
         public bool Enabled { get; set; } = true;
@@ -260,7 +232,6 @@ namespace BeatLeader_Server.Utils.RebalancedPp
             new CurveRow { PredictedAcc = 0.995, A = 0.9915,  C = -1.20, K = 4.86, W = 0.60, K2 = 2.88, P2 = 2.46 },
         };
 
-        // C never goes above 1 (the curve would go down)
         public double MaxC { get; set; } = 1;
 
         public double SliderTilt { get; set; } = 0.2;

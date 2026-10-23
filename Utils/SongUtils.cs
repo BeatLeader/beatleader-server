@@ -94,7 +94,6 @@ namespace BeatLeader_Server.Utils
             public float TechRating { get; set; } = 0;
             [JsonProperty("low_note_nerf")]
             public float LowNoteNerf { get; set; } = 0;
-            // Pp curve inputs (RatingAPI loloppe-rebalancer, RebalancedPp.Curve)
             [JsonProperty("slider_percentage")]
             public float SliderPercentage { get; set; } = 0;
             [JsonProperty("note_count")]
@@ -117,7 +116,6 @@ namespace BeatLeader_Server.Utils
             public LackMapCalculation LackMapCalculation { get; set; } = new();
             [JsonProperty("pointlist")]
             public List<CurvePoint> PointList { get; set; } = new();
-            // Stars of these ratings with their pp curve (RatingAPI loloppe-rebalancer)
             [JsonProperty("stars")]
             public float Stars { get; set; } = 0;
         }
@@ -132,7 +130,6 @@ namespace BeatLeader_Server.Utils
             public RatingResult? none { get; set; }
         }
 
-        // RatingAPI host, from the "RatingApiUrl" config key (set in Startup)
         public static string RatingApiUrl { get; set; } = "https://stage.api.beatleader.net";
 
         public static async Task<ExmachinaResponse?> ExmachinaStars(string hash, int diff, string mode)

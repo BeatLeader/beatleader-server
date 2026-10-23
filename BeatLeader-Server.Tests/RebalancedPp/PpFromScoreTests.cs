@@ -6,7 +6,6 @@ using Xunit;
 
 namespace BeatLeader_Server.Tests.RebalancedPp
 {
-    // ReplayUtils.PpFromScore rules kept from before the rebalance
     public class PpFromScoreTests
     {
         private static DifficultyDescription RatedDifficulty()
@@ -58,7 +57,6 @@ namespace BeatLeader_Server.Tests.RebalancedPp
         {
             var diff = RatedDifficulty();
             var mr = diff.ModifiersRating!;
-            // Without speed ratings the FS multiplier (0.4 on ranked maps) would apply; with them FS only swaps ratings
             var expected = PpCalculator.ScorePp(0.97f, "FS", 1f,
                 new MapRatings(diff.AccRating!.Value, diff.PassRating!.Value, diff.TechRating!.Value, Curve.GetCurve(ReplayUtils.GetCurveInputs(diff))),
                 new MapRatings(mr.FSAccRating, mr.FSPassRating, mr.FSTechRating, Curve.GetCurve(new CurveInputs(mr.FSPredictedAcc, mr.FSSliderPercentage, diff.Notes))));

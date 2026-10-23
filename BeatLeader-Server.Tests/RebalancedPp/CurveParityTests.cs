@@ -5,11 +5,8 @@ using Xunit;
 
 namespace BeatLeader_Server.Tests.RebalancedPp
 {
-    // The server builds each map's pp curve from predicted acc, slider share and note count (Curve.GetCurve); RatingAPI
-    // sends the curve it built as pointlist. They must be the same curve.
     public class CurveParityTests
     {
-        // The server stores the inputs as float (RatingAPI computes with double)
         private static CurveInputs Inputs(Ppai2Fixtures.Variant v) =>
             new CurveInputs((float)v.PredictedAcc, (float)v.SliderPercentage, v.NoteCount);
 
@@ -59,7 +56,6 @@ namespace BeatLeader_Server.Tests.RebalancedPp
                 {
                     Assert.Equal((float)PpCalculator.BaseTable[i].x, plain[i].X);
                     Assert.Equal((float)PpCalculator.BaseTable[i].y, plain[i].Y);
-                    // 20 notes: x0.8 (CurveSettings.LowNoteRefMultiplier); no slider tilt outside the per-map range
                     Assert.Equal((float)(PpCalculator.BaseTable[i].y * 0.8), nerfed[i].Y, 5);
                 }
             }

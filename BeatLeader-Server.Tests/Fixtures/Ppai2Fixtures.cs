@@ -3,9 +3,6 @@ using BeatLeader_Server.Utils;
 
 namespace BeatLeader_Server.Tests.Fixtures
 {
-    // Real /ppai2/{hash}/{mode}/{diff} responses of the rebalanced RatingAPI (loloppe-rebalancer @ ce61152), saved from a
-    // local run. Maps picked to cover the curve's branches: low note nerf (20, 21, 103 notes), slider tilt (slider share
-    // 0.11-0.34), predicted acc from 95% to 99.9%.
     public static class Ppai2Fixtures
     {
         public static readonly string[] SpeedKeys = { "none", "SS", "FS", "SFS", "BFS", "BSF" };
@@ -45,7 +42,6 @@ namespace BeatLeader_Server.Tests.Fixtures
             return new Fixture(name, json, variants);
         }
 
-        // As the server reads it (SongUtils.ExmachinaStars: Newtonsoft)
         public static SongUtils.ExmachinaResponse Response(Fixture fixture) =>
             Newtonsoft.Json.JsonConvert.DeserializeObject<SongUtils.ExmachinaResponse>(fixture.Json)!;
 

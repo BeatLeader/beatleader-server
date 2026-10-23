@@ -24,7 +24,6 @@ namespace BeatLeader_Server.Utils
             await UpdateFromExMachina(leaderboard.Difficulty, leaderboard.Song, rankChange);
         }
 
-        // Stars of a RatingAPI result: its own (rebalanced formula with its curve); recomputed if the API didn't send them
         private static float ResultStars(RatingResult result) =>
             result.Stars > 0 ? result.Stars : ReplayUtils.ToStars(result.AccRating, result.LackMapCalculation.PassRating, result.LackMapCalculation.TechRating, ResultCurve(result));
 
@@ -79,7 +78,6 @@ namespace BeatLeader_Server.Utils
                     modrating.SFStars = ResultStars(response.SFS);
                 }
 
-                // BFS / BSF: ratings and stars only (not ranked yet; scored with the map's curve)
                 if (response.BFS != null) {
                     modrating.BFSPassRating = response.BFS.LackMapCalculation.PassRating;
                     modrating.BFSTechRating = response.BFS.LackMapCalculation.TechRating;

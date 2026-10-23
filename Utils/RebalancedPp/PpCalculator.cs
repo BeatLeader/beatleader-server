@@ -1,26 +1,17 @@
-// Adapted from portaBLe/RatingAPI Pp/PpCalculator.cs and Controllers/Curve.cs (BaseTable, BaseValue),
-// branch loloppe-rebalancer @ ce61152. Keep the formula in sync with those files. Differences:
-// - ScorePp takes the modifier multiplier from the caller (the leaderboard's ModifierValues, so contexts like SCPM keep
-//   their own exclusions) instead of RatingAPI's fixed ModifiersMap.RankedMap();
-// - golf: the Golf context's acc pp stays linear (accuracy * accRating * 42), as before the rebalance;
-// - curves come from RatingCurve.Parse instead of RatingAPI's Point list.
 using System.Numerics;
 
+// The curve (Curve.cs) and pp formula (PpFormula.cs, PpCalculator.cs) must stay identical to RatingAPI (loloppe-rebalancer) and the website. Any change here must be made in all three.
+// See portaBLe branch for detailed comments.
 namespace BeatLeader_Server.Utils.RebalancedPp
 {
-    // A map's ratings for no modifier or one speed modifier, and its acc curve for them (points from 100% down; null or
-    // fewer than 2 points: the base curve)
     public readonly record struct MapRatings(float AccRating, float PassRating, float TechRating, IReadOnlyList<Vector2>? Curve = null);
 
-    // A map's ratings with what all of its scores' pp share: their stars and their curve's value at StarAccuracy
     public readonly record struct PreparedRatings(MapRatings Ratings, float Stars, float StarCurveValue);
 
     public static class PpCalculator
     {
-        // Stars are what a score at this accuracy is worth
         public const float StarAccuracy = 0.96f;
 
-        // The base acc curve (RatingAPI Curve.BaseTable)
         public static readonly (double x, double y)[] BaseTable =
         {
                 (1.0, 7.424),
@@ -57,7 +48,6 @@ namespace BeatLeader_Server.Utils.RebalancedPp
                 (0.0, 0.000)
         };
 
-        // RatingAPI Curve.BaseValue
         public static double BaseValue(double acc)
         {
             int i = 0;
@@ -71,7 +61,6 @@ namespace BeatLeader_Server.Utils.RebalancedPp
             return BaseTable[i - 1].y + middle_dis * (BaseTable[i].y - BaseTable[i - 1].y);
         }
 
-        // Value of a map's acc curve at acc (points from 100% down). Null or fewer than 2 points: the base curve.
         public static float CurveValue(float acc, IReadOnlyList<Vector2>? curve)
         {
             if (curve == null || curve.Count < 2)
@@ -79,7 +68,6 @@ namespace BeatLeader_Server.Utils.RebalancedPp
                 return CurveValue(acc);
             }
 
-            // The first point at or below acc (the points go down from 100%)
             int i = 0, hi = curve.Count;
             while (i < hi)
             {
@@ -99,11 +87,8 @@ namespace BeatLeader_Server.Utils.RebalancedPp
             return (float)(curve[i - 1].Y + middle_dis * (curve[i].Y - curve[i - 1].Y));
         }
 
-        // Value of the base curve at acc
         public static float CurveValue(float acc) => (float)BaseValue(acc);
 
-        // Pass, acc and tech pp at accuracy, before PpMultiplier. curve: the map's acc curve (null: the base curve). stars: the
-        // map's, for the acc curve power (PpFormula.CurvePowerAt; null: AccCurvePower).
         public static (float pass, float acc, float tech) GetPp(float accuracy, float accRating, float passRating, float techRating, IReadOnlyList<Vector2>? curve = null, float? stars = null)
         {
             var formula = PpFormula.Current;
@@ -111,7 +96,6 @@ namespace BeatLeader_Server.Utils.RebalancedPp
             return GetPp(accuracy, accRating, passRating, techRating, curve, power, power != 1 ? CurveValue(StarAccuracy, curve) : 0, false);
         }
 
-        // GetPp with the acc curve power and the curve's value at StarAccuracy given
         private static (float pass, float acc, float tech) GetPp(float accuracy, float accRating, float passRating, float techRating, IReadOnlyList<Vector2>? curve, double power, float starCurveValue, bool golf)
         {
             var formula = PpFormula.Current;
@@ -126,15 +110,11 @@ namespace BeatLeader_Server.Utils.RebalancedPp
             return (formula.PassPp(passRating), accPP, formula.TechPp(accuracy, techRating));
         }
 
-        // A map's ratings prepared for ScorePp (their stars and their curve's value at StarAccuracy)
         public static PreparedRatings Prepare(MapRatings ratings) =>
             new(ratings, ToStars(ratings), CurveValue(StarAccuracy, ratings.Curve));
 
-        // pp from the sum of pass, acc and tech pp (PpMultiplier), before the low star bonus
         public static float Scale(float pp) => PpFormula.Current.Scale(pp);
 
-        // Stars: what a StarAccuracy score without modifiers is worth, on the star scale (PpFormula.StarsFromPp). With a
-        // speed modifier's ratings and curve: that modifier's stars.
         public static float ToStars(float accRating, float passRating, float techRating, IReadOnlyList<Vector2>? curve = null)
         {
             var formula = PpFormula.Current;
@@ -144,10 +124,6 @@ namespace BeatLeader_Server.Utils.RebalancedPp
 
         public static float ToStars(MapRatings ratings) => ToStars(ratings.AccRating, ratings.PassRating, ratings.TechRating, ratings.Curve);
 
-        // pp of a score: (pp, pp gained from the modifiers, pass pp, acc pp, tech pp).
-        // mp: the modifier multiplier (1 + the sum of the score's modifier values; speed modifiers only count when the map has
-        // no speed modifier ratings). ratings: the map's without modifiers. speedRatings: the map's for the score's speed
-        // modifier, null when it has none.
         public static (float, float, float, float, float) ScorePp(
             float accuracy,
             string modifiers,
@@ -162,7 +138,6 @@ namespace BeatLeader_Server.Utils.RebalancedPp
             if (!modifiers.Contains("NF"))
             {
                 var formula = PpFormula.Current;
-                // The low star bonus (PpFormula.LowStarMultiplier) and the acc curve power use the stars of the ratings each pp uses
                 var prepared = Prepare(ratings);
                 var map = prepared.Ratings;
                 float stars = prepared.Stars;
