@@ -181,6 +181,7 @@ namespace BeatLeader_Server.Controllers {
 
                                 Stars  = s.Leaderboard.Difficulty.Stars,
                                 PredictedAcc  = s.Leaderboard.Difficulty.PredictedAcc,
+                                SliderPercentage = s.Leaderboard.Difficulty.SliderPercentage,
                                 PassRating  = s.Leaderboard.Difficulty.PassRating,
                                 AccRating  = s.Leaderboard.Difficulty.AccRating,
                                 TechRating  = s.Leaderboard.Difficulty.TechRating,

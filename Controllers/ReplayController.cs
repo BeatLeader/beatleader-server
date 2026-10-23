@@ -754,6 +754,7 @@ namespace BeatLeader_Server.Controllers
                         leaderboard.Difficulty.AccRating ?? 0, 
                         leaderboard.Difficulty.PassRating ?? 0, 
                         leaderboard.Difficulty.TechRating ?? 0, 
+                        ReplayUtils.GetCurveInputs(leaderboard.Difficulty),
                         leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
                 }
 
@@ -1526,6 +1527,7 @@ namespace BeatLeader_Server.Controllers
                             leaderboard.Difficulty.AccRating ?? 0, 
                             leaderboard.Difficulty.PassRating ?? 0, 
                             leaderboard.Difficulty.TechRating ?? 0, 
+                            ReplayUtils.GetCurveInputs(leaderboard.Difficulty),
                             leaderboard.Difficulty.ModeName.ToLower() == "rhythmgamestandard").Item1;
                     }
                 }

@@ -747,6 +747,7 @@ namespace BeatLeader_Server.Controllers {
 
                     Stars  = l.Difficulty.Stars,
                     PredictedAcc  = l.Difficulty.PredictedAcc,
+                    SliderPercentage = l.Difficulty.SliderPercentage,
                     PassRating  = l.Difficulty.PassRating,
                     AccRating  = l.Difficulty.AccRating,
                     TechRating  = l.Difficulty.TechRating,
@@ -911,7 +912,8 @@ namespace BeatLeader_Server.Controllers {
                         leaderboard.Difficulty.PassRating ?? 0,
                         leaderboard.Difficulty.TechRating ?? 0,
                         leaderboard.Difficulty.ModifierValues,
-                        leaderboard.Difficulty.ModifiersRating
+                        leaderboard.Difficulty.ModifiersRating,
+                        ReplayUtils.GetCurveInputs(leaderboard.Difficulty.PredictedAcc, leaderboard.Difficulty.SliderPercentage, leaderboard.Difficulty.Notes)
                         );
 
                     return s;
@@ -1022,6 +1024,7 @@ namespace BeatLeader_Server.Controllers {
 
                     Stars  = l.Difficulty.Stars,
                     PredictedAcc  = l.Difficulty.PredictedAcc,
+                    SliderPercentage = l.Difficulty.SliderPercentage,
                     PassRating  = l.Difficulty.PassRating,
                     AccRating  = l.Difficulty.AccRating,
                     TechRating  = l.Difficulty.TechRating,
@@ -1148,6 +1151,8 @@ namespace BeatLeader_Server.Controllers {
 
                             Stars  = cr.Leaderboard.Difficulty.Stars,
                             PredictedAcc  = cr.Leaderboard.Difficulty.PredictedAcc,
+                            SliderPercentage = cr.Leaderboard.Difficulty.SliderPercentage,
+                            Notes = cr.Leaderboard.Difficulty.Notes,
                             PassRating  = cr.Leaderboard.Difficulty.PassRating,
                             AccRating  = cr.Leaderboard.Difficulty.AccRating,
                             TechRating  = cr.Leaderboard.Difficulty.TechRating,
@@ -1280,6 +1285,8 @@ namespace BeatLeader_Server.Controllers {
 
                             Stars  = cr.Leaderboard.Difficulty.Stars,
                             PredictedAcc  = cr.Leaderboard.Difficulty.PredictedAcc,
+                            SliderPercentage = cr.Leaderboard.Difficulty.SliderPercentage,
+                            Notes = cr.Leaderboard.Difficulty.Notes,
                             PassRating  = cr.Leaderboard.Difficulty.PassRating,
                             AccRating  = cr.Leaderboard.Difficulty.AccRating,
                             TechRating  = cr.Leaderboard.Difficulty.TechRating,
@@ -1479,6 +1486,7 @@ namespace BeatLeader_Server.Controllers {
 
                         Stars  = l.Difficulty.Stars,
                         PredictedAcc  = l.Difficulty.PredictedAcc,
+                        SliderPercentage = l.Difficulty.SliderPercentage,
                         PassRating  = l.Difficulty.PassRating,
                         AccRating  = l.Difficulty.AccRating,
                         TechRating  = l.Difficulty.TechRating,
@@ -1595,6 +1603,8 @@ namespace BeatLeader_Server.Controllers {
 
                                 Stars  = cr.Leaderboard.Difficulty.Stars,
                                 PredictedAcc  = cr.Leaderboard.Difficulty.PredictedAcc,
+                                SliderPercentage = cr.Leaderboard.Difficulty.SliderPercentage,
+                                Notes = cr.Leaderboard.Difficulty.Notes,
                                 PassRating  = cr.Leaderboard.Difficulty.PassRating,
                                 AccRating  = cr.Leaderboard.Difficulty.AccRating,
                                 TechRating  = cr.Leaderboard.Difficulty.TechRating,
@@ -1670,6 +1680,7 @@ namespace BeatLeader_Server.Controllers {
 
                         Stars  = d.Stars,
                         PredictedAcc  = d.PredictedAcc,
+                        SliderPercentage = d.SliderPercentage,
                         PassRating  = d.PassRating,
                         AccRating  = d.AccRating,
                         TechRating  = d.TechRating,
@@ -1725,6 +1736,7 @@ namespace BeatLeader_Server.Controllers {
 
                     Stars  = lb.Difficulty.Stars,
                     PredictedAcc  = lb.Difficulty.PredictedAcc,
+                    SliderPercentage = lb.Difficulty.SliderPercentage,
                     PassRating  = lb.Difficulty.PassRating,
                     AccRating  = lb.Difficulty.AccRating,
                     TechRating  = lb.Difficulty.TechRating,
@@ -1929,6 +1941,7 @@ namespace BeatLeader_Server.Controllers {
 
                         Stars  = l.Difficulty.Stars,
                         PredictedAcc  = l.Difficulty.PredictedAcc,
+                        SliderPercentage = l.Difficulty.SliderPercentage,
                         PassRating  = l.Difficulty.PassRating,
                         AccRating  = l.Difficulty.AccRating,
                         TechRating  = l.Difficulty.TechRating,
@@ -2118,6 +2131,7 @@ namespace BeatLeader_Server.Controllers {
 
                             Stars  = lb.Difficulty.Stars,
                             PredictedAcc  = lb.Difficulty.PredictedAcc,
+                            SliderPercentage = lb.Difficulty.SliderPercentage,
                             PassRating  = lb.Difficulty.PassRating,
                             AccRating  = lb.Difficulty.AccRating,
                             TechRating  = lb.Difficulty.TechRating,
@@ -2338,6 +2352,7 @@ namespace BeatLeader_Server.Controllers {
 
                         Stars  = lb.Difficulty.Stars,
                         PredictedAcc  = lb.Difficulty.PredictedAcc,
+                        SliderPercentage = lb.Difficulty.SliderPercentage,
                         PassRating  = lb.Difficulty.PassRating,
                         AccRating  = lb.Difficulty.AccRating,
                         TechRating  = lb.Difficulty.TechRating,

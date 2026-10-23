@@ -893,6 +893,9 @@ namespace BeatLeader_Server.Migrations
                     b.Property<bool>("RequiresVivify")
                         .HasColumnType("bit");
 
+                    b.Property<float?>("SliderPercentage")
+                        .HasColumnType("real");
+
                     b.Property<int>("Sliders")
                         .HasColumnType("int");
 
@@ -2328,6 +2331,9 @@ namespace BeatLeader_Server.Migrations
                     b.Property<float>("FSPredictedAcc")
                         .HasColumnType("real");
 
+                    b.Property<float>("FSSliderPercentage")
+                        .HasColumnType("real");
+
                     b.Property<float>("FSStars")
                         .HasColumnType("real");
 
@@ -2346,6 +2352,9 @@ namespace BeatLeader_Server.Migrations
                     b.Property<float>("SFPredictedAcc")
                         .HasColumnType("real");
 
+                    b.Property<float>("SFSliderPercentage")
+                        .HasColumnType("real");
+
                     b.Property<float>("SFStars")
                         .HasColumnType("real");
 
@@ -2362,6 +2371,9 @@ namespace BeatLeader_Server.Migrations
                         .HasColumnType("real");
 
                     b.Property<float>("SSPredictedAcc")
+                        .HasColumnType("real");
+
+                    b.Property<float>("SSSliderPercentage")
                         .HasColumnType("real");
 
                     b.Property<float>("SSStars")

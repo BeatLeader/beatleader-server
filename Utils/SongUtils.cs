@@ -94,6 +94,11 @@ namespace BeatLeader_Server.Utils
             public float TechRating { get; set; } = 0;
             [JsonProperty("low_note_nerf")]
             public float LowNoteNerf { get; set; } = 0;
+            // Pp curve inputs (RatingAPI loloppe-rebalancer, RebalancedPp.Curve)
+            [JsonProperty("slider_percentage")]
+            public float SliderPercentage { get; set; } = 0;
+            [JsonProperty("note_count")]
+            public int NoteCount { get; set; } = 0;
         }
 
         public class CurvePoint
@@ -112,6 +117,9 @@ namespace BeatLeader_Server.Utils
             public LackMapCalculation LackMapCalculation { get; set; } = new();
             [JsonProperty("pointlist")]
             public List<CurvePoint> PointList { get; set; } = new();
+            // Stars of these ratings with their pp curve (RatingAPI loloppe-rebalancer)
+            [JsonProperty("stars")]
+            public float Stars { get; set; } = 0;
         }
 
         public class ExmachinaResponse
@@ -124,24 +132,12 @@ namespace BeatLeader_Server.Utils
             public RatingResult? none { get; set; }
         }
 
+        // RatingAPI host, from the "RatingApiUrl" config key (set in Startup)
+        public static string RatingApiUrl { get; set; } = "https://stage.api.beatleader.net";
+
         public static async Task<ExmachinaResponse?> ExmachinaStars(string hash, int diff, string mode)
         {
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"https://stage.api.beatleader.net/ppai2/{hash}/{mode}/{diff}");
-            request.Method = "GET";
-            request.Proxy = null;
-
-            try
-            {
-                return await request.DynamicResponse<ExmachinaResponse>();
-            } catch (Exception e)
-            {
-                return null;
-            }
-        }
-
-        public static async Task<ExmachinaResponse?> LocalExmachinaStars(string hash, int diff, string mode)
-        {
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"http://localhost:5168/ppai2/{hash}/{mode}/{diff}");
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"{RatingApiUrl}/ppai2/{hash}/{mode}/{diff}");
             request.Method = "GET";
             request.Proxy = null;
 
@@ -156,7 +152,7 @@ namespace BeatLeader_Server.Utils
 
         public static async Task<string?> ApiTags(float acc, float pass, float tech)
         {
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"https://stage.api.beatleader.net/ppai2/tag?acc={acc}&pass={pass}&tech={tech}");
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"{RatingApiUrl}/ppai2/tag?acc={acc}&pass={pass}&tech={tech}");
             request.Method = "GET";
             request.Proxy = null;
 
@@ -172,7 +168,7 @@ namespace BeatLeader_Server.Utils
         public static async Task<ExmachinaResponse?> ExmachinaStarsLink(string link, int diff, string mode)
         {
 
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"https://stage.api.beatleader.net/ppai2/link/{mode}/{diff}?link={link}");
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"{RatingApiUrl}/ppai2/link/{mode}/{diff}?link={link}");
             request.Method = "GET";
             request.Proxy = null;
 
@@ -195,7 +191,7 @@ namespace BeatLeader_Server.Utils
 
         public static async Task<PredictedAcc?> ExmachinaAcc(string hash, int diff, string mode, float speed)
         {
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"https://stage.api.beatleader.net/json/{hash}/{mode}/{diff}/full/time-scale/{speed}");
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"{RatingApiUrl}/json/{hash}/{mode}/{diff}/full/time-scale/{speed}");
             request.Method = "GET";
             request.Proxy = null;
 

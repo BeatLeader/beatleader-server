@@ -129,6 +129,8 @@ namespace BeatLeader_Server.ControllerHelpers {
                             ModifiersRating = cr.Leaderboard.Difficulty.ModifiersRating,
                             Stars = cr.Leaderboard.Difficulty.Stars,
                             PredictedAcc = cr.Leaderboard.Difficulty.PredictedAcc,
+                            SliderPercentage = cr.Leaderboard.Difficulty.SliderPercentage,
+                            Notes = cr.Leaderboard.Difficulty.Notes,
                             PassRating = cr.Leaderboard.Difficulty.PassRating,
                             AccRating = cr.Leaderboard.Difficulty.AccRating,
                             TechRating = cr.Leaderboard.Difficulty.TechRating,

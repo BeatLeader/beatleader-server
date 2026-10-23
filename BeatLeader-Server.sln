@@ -27,6 +27,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BeatLeader-RankedPlay-Socke
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BeatLeader-RankedPlay-Tester", "BeatLeader-RankedPlay-Tester\BeatLeader-RankedPlay-Tester.csproj", "{B7A3D1F2-4C5E-6D8A-9F0B-1C2E3D4F5A6B}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BeatLeader-Server.Tests", "BeatLeader-Server.Tests\BeatLeader-Server.Tests.csproj", "{C9DBC9C0-FBC1-40B2-97A6-6F5E61C1F955}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -37,6 +39,10 @@ Global
 		{F55CEF0D-5EC5-49A9-8525-484E7EEF7102}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F55CEF0D-5EC5-49A9-8525-484E7EEF7102}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F55CEF0D-5EC5-49A9-8525-484E7EEF7102}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C9DBC9C0-FBC1-40B2-97A6-6F5E61C1F955}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C9DBC9C0-FBC1-40B2-97A6-6F5E61C1F955}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C9DBC9C0-FBC1-40B2-97A6-6F5E61C1F955}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C9DBC9C0-FBC1-40B2-97A6-6F5E61C1F955}.Release|Any CPU.Build.0 = Release|Any CPU
 		{54363C81-2307-465E-93FE-150CD3515B34}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{54363C81-2307-465E-93FE-150CD3515B34}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{54363C81-2307-465E-93FE-150CD3515B34}.Release|Any CPU.ActiveCfg = Release|Any CPU

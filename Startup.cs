@@ -145,6 +145,11 @@ namespace BeatLeader_Server {
             string beatSaverId = Configuration.GetValue<string>("BeatSaverId");
             string beatSaverSecret = Configuration.GetValue<string>("BeatSaverSecret");
 
+            var ratingApiUrl = Configuration.GetValue<string>("RatingApiUrl");
+            if (!string.IsNullOrWhiteSpace(ratingApiUrl)) {
+                SongUtils.RatingApiUrl = ratingApiUrl.TrimEnd('/');
+            }
+
             services.AddDataProtection()
                 .PersistKeysToFileSystem(new DirectoryInfo(@"../keys/"))
                 .SetApplicationName("/home/site/wwwroot/");

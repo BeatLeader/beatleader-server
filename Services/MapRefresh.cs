@@ -170,49 +170,20 @@ namespace BeatLeader_Server.Services {
                                 songDiff.Njs = mapDiff._noteJumpMovementSpeed;
                                 songDiff.NoteJumpStartBeatOffset = mapDiff._noteJumpStartBeatOffset;
                                 songDiff.MapVersion = diff.Version;
-                                var response = (!songDiff.Requirements.HasFlag(Requirements.Noodles) && !songDiff.Requirements.HasFlag(Requirements.MappingExtensions)) ? await RatingsGenerator.RatingAPI.Calculate(mapset, _aiSession, songDiff.ModeName, songDiff.Value) : null;
-                                if (response != null && response["none"] != null) {
-                                    //var rankChange = new RankUpdateChange
-                                    var modrating = songDiff.ModifiersRating;
+                                bool rateable = !songDiff.Requirements.HasFlag(Requirements.Noodles) && !songDiff.Requirements.HasFlag(Requirements.MappingExtensions);
 
-                                    if (songDiff.Status != DifficultyStatus.ranked) {
-                                        songDiff.PassRating = (float)response["none"].Ratings.PassRating;
-                                        songDiff.TechRating = (float)response["none"].Ratings.TechRating;
-                                        songDiff.PredictedAcc = (float)response["none"].PredictedAcc;
-                                        songDiff.AccRating = (float)response["none"].AccRating;
-
-                                        modrating = songDiff.ModifiersRating = new ModifiersRating {
-                                            SSPassRating = (float)response["SS"].Ratings.PassRating,
-                                            SSTechRating = (float)response["SS"].Ratings.TechRating,
-                                            SSPredictedAcc = (float)response["SS"].PredictedAcc,
-                                            SSAccRating = (float)response["SS"].AccRating,
-
-
-                                            FSPassRating = (float)response["FS"].Ratings.PassRating,
-                                            FSTechRating = (float)response["FS"].Ratings.TechRating,
-                                            FSPredictedAcc = (float)response["FS"].PredictedAcc,
-                                            FSAccRating = (float)response["FS"].AccRating,
-
-
-                                            SFPassRating = (float)response["SFS"].Ratings.PassRating,
-                                            SFTechRating = (float)response["SFS"].Ratings.TechRating,
-                                            SFPredictedAcc = (float)response["SFS"].PredictedAcc,
-                                            SFAccRating = (float)response["SFS"].AccRating,
-
-
-                                            BFSPassRating = (float)response["BFS"].Ratings.PassRating,
-                                            BFSTechRating = (float)response["BFS"].Ratings.TechRating,
-                                            BFSPredictedAcc = (float)response["BFS"].PredictedAcc,
-                                            BFSAccRating = (float)response["BFS"].AccRating,
-
-
-                                            BSFPassRating = (float)response["BSF"].Ratings.PassRating,
-                                            BSFTechRating = (float)response["BSF"].Ratings.TechRating,
-                                            BSFPredictedAcc = (float)response["BSF"].PredictedAcc,
-                                            BSFAccRating = (float)response["BSF"].AccRating,
-
-                                        };
+                                // Ratings, curves and stars from RatingAPI (RatingApiUrl), the same as every other rating update
+                                if (rateable && songDiff.Status != DifficultyStatus.ranked) {
+                                    var ratings = await SongUtils.ExmachinaStars(song.LowerHash, songDiff.Value, songDiff.ModeName);
+                                    if (ratings?.none != null) {
+                                        RatingUtils.UpdateFromResponse(songDiff, ratings, null);
                                     }
+                                }
+
+                                // The in-process analyzer only for the map analysis RatingAPI doesn't return (EBPM, statistics, swings, type)
+                                var response = rateable ? await RatingsGenerator.RatingAPI.Calculate(mapset, _aiSession, songDiff.ModeName, songDiff.Value) : null;
+                                if (response != null && response["none"] != null) {
+                                    var modrating = songDiff.ModifiersRating;
 
                                     if (modrating != null) {
                                         modrating.SSPeakSustainedEBPM = (float)response["SS"].Ratings.PeakSustainedEBPM;
@@ -220,17 +191,8 @@ namespace BeatLeader_Server.Services {
                                         modrating.SFPeakSustainedEBPM = (float)response["SFS"].Ratings.PeakSustainedEBPM;
                                         modrating.BFSPeakSustainedEBPM = (float)response["BFS"].Ratings.PeakSustainedEBPM;
                                         modrating.BSFPeakSustainedEBPM = (float)response["BSF"].Ratings.PeakSustainedEBPM;
-
-                                        modrating.SFStars = ReplayUtils.ToStars(modrating.SFAccRating, modrating.SFPassRating, modrating.SFTechRating);
-                                        modrating.FSStars = ReplayUtils.ToStars(modrating.FSAccRating, modrating.FSPassRating, modrating.FSTechRating);
-                                        modrating.BSFStars = ReplayUtils.ToStars(modrating.BSFAccRating, modrating.BSFPassRating, modrating.BSFTechRating);
-                                        modrating.BFSStars = ReplayUtils.ToStars(modrating.BFSAccRating, modrating.BFSPassRating, modrating.BFSTechRating);
-                                        modrating.SSStars = ReplayUtils.ToStars(modrating.SSAccRating, modrating.SSPassRating, modrating.SSTechRating);
                                     }
 
-                                    if (songDiff.AccRating != null && songDiff.PassRating != null && songDiff.TechRating != null) {
-                                        songDiff.Stars = ReplayUtils.ToStars(songDiff.AccRating ?? 0, songDiff.PassRating ?? 0, songDiff.TechRating ?? 0);
-                                    }
                                     songDiff.MultiRating = (float)response["none"].Ratings.MultiPercentage;
                                     songDiff.LinearPercentage = (float)response["none"].Ratings.LinearPercentage;
                                     songDiff.PeakSustainedEBPM = (float)response["none"].Ratings.PeakSustainedEBPM;

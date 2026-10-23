@@ -24,6 +24,7 @@
     <Compile Remove="RatingAPI\**" />
     <Compile Remove="Renderer\**" />
     <Compile Remove="ReplayDecoder\**" />
+    <Compile Remove="BeatLeader-Server.Tests\**" />
     <Content Remove="beatleader-parser\**" />
     <Content Remove="BeatLeader-RankedPlay-Sockets\**" />
     <Content Remove="BeatLeader-RankedPlay-Tester\**" />
@@ -38,6 +39,7 @@
     <Content Remove="RatingAPI\**" />
     <Content Remove="Renderer\**" />
     <Content Remove="ReplayDecoder\**" />
+    <Content Remove="BeatLeader-Server.Tests\**" />
     <EmbeddedResource Remove="beatleader-parser\**" />
     <EmbeddedResource Remove="BeatLeader-RankedPlay-Sockets\**" />
     <EmbeddedResource Remove="BeatLeader-RankedPlay-Tester\**" />
@@ -52,6 +54,7 @@
     <EmbeddedResource Remove="RatingAPI\**" />
     <EmbeddedResource Remove="Renderer\**" />
     <EmbeddedResource Remove="ReplayDecoder\**" />
+    <EmbeddedResource Remove="BeatLeader-Server.Tests\**" />
     <None Remove="beatleader-parser\**" />
     <None Remove="BeatLeader-RankedPlay-Sockets\**" />
     <None Remove="BeatLeader-RankedPlay-Tester\**" />
@@ -70,6 +73,11 @@
     <None Remove="RatingAPI\**" />
     <None Remove="Renderer\**" />
     <None Remove="ReplayDecoder\**" />
+    <None Remove="BeatLeader-Server.Tests\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="BeatLeader-Server.Tests" />
   </ItemGroup>
 
   <ItemGroup>

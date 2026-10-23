@@ -293,7 +293,7 @@ namespace BeatLeader_Server.Controllers
                         {
                             leaderboard.Difficulty.TechRating = techRating;
                         }
-                        leaderboard.Difficulty.Stars = ReplayUtils.ToStars(leaderboard.Difficulty.AccRating ?? 0, leaderboard.Difficulty.PassRating ?? 0, leaderboard.Difficulty.TechRating ?? 0);
+                        leaderboard.Difficulty.Stars = ReplayUtils.ToStars(leaderboard.Difficulty.AccRating ?? 0, leaderboard.Difficulty.PassRating ?? 0, leaderboard.Difficulty.TechRating ?? 0, ReplayUtils.GetCurveInputs(leaderboard.Difficulty));
                         if (type != null)
                         {
                             leaderboard.Difficulty.Type = type ?? MapTypes.None;

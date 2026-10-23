@@ -276,6 +276,7 @@ namespace BeatLeader_Server.Controllers {
 
                                 Stars  = s.Leaderboard.Difficulty.Stars,
                                 PredictedAcc  = s.Leaderboard.Difficulty.PredictedAcc,
+                                SliderPercentage = s.Leaderboard.Difficulty.SliderPercentage,
                                 PassRating  = s.Leaderboard.Difficulty.PassRating,
                                 AccRating  = s.Leaderboard.Difficulty.AccRating,
                                 TechRating  = s.Leaderboard.Difficulty.TechRating,
@@ -660,6 +661,9 @@ namespace BeatLeader_Server.Controllers {
                 ModifiersRating = s.Leaderboard.Difficulty.ModifiersRating,
                 ModifierValues = s.Leaderboard.Difficulty.ModifierValues,
                 AccRating = s.Leaderboard.Difficulty.AccRating,
+                PredictedAcc = s.Leaderboard.Difficulty.PredictedAcc,
+                SliderPercentage = s.Leaderboard.Difficulty.SliderPercentage,
+                Notes = s.Leaderboard.Difficulty.Notes,
                 PassRating = s.Leaderboard.Difficulty.PassRating,
                 TechRating = s.Leaderboard.Difficulty.TechRating,
             });
@@ -684,6 +688,9 @@ namespace BeatLeader_Server.Controllers {
                 ModifiersRating = s.Leaderboard.Difficulty.ModifiersRating,
                 ModifierValues = s.Leaderboard.Difficulty.ModifierValues,
                 AccRating = s.Leaderboard.Difficulty.AccRating,
+                PredictedAcc = s.Leaderboard.Difficulty.PredictedAcc,
+                SliderPercentage = s.Leaderboard.Difficulty.SliderPercentage,
+                Notes = s.Leaderboard.Difficulty.Notes,
                 PassRating = s.Leaderboard.Difficulty.PassRating,
                 TechRating = s.Leaderboard.Difficulty.TechRating,
             });
@@ -706,6 +713,9 @@ namespace BeatLeader_Server.Controllers {
                 ModifiersRating = s.Leaderboard.Difficulty.ModifiersRating,
                 ModifierValues = s.Leaderboard.Difficulty.ModifierValues,
                 AccRating = s.Leaderboard.Difficulty.AccRating,
+                PredictedAcc = s.Leaderboard.Difficulty.PredictedAcc,
+                SliderPercentage = s.Leaderboard.Difficulty.SliderPercentage,
+                Notes = s.Leaderboard.Difficulty.Notes,
                 PassRating = s.Leaderboard.Difficulty.PassRating,
                 TechRating = s.Leaderboard.Difficulty.TechRating,
             });
@@ -784,6 +794,8 @@ namespace BeatLeader_Server.Controllers {
                     var modifierValues = score.ModifierValues ?? defaultModifiers; 
                     var modifiersRating = score.ModifiersRating;
                     float mp = modifierValues.GetTotalMultiplier(score.Modifiers, modifiersRating == null, leaderboardContext);
+                    var mapCurve = ReplayUtils.GetCurveInputs(score.PredictedAcc, score.SliderPercentage, score.Notes);
+                    var curve = mapCurve;
 
                     if (modifiersRating != null) {
                         var modifiersMap = modifiersRating.ToDictionary<float>();
@@ -793,6 +805,7 @@ namespace BeatLeader_Server.Controllers {
                                 score.AccRating = modifiersMap[modifier + "AccRating"]; 
                                 score.PassRating = modifiersMap[modifier + "PassRating"]; 
                                 score.TechRating = modifiersMap[modifier + "TechRating"]; 
+                                curve = ReplayUtils.SpeedCurveInputs(modifiersRating, modifier, mapCurve);
 
                                 break;
                             }
@@ -803,7 +816,7 @@ namespace BeatLeader_Server.Controllers {
                     score.PassRating *= mp;
                     score.TechRating *= mp;
 
-                    score.Stars = ReplayUtils.ToStars(score.AccRating ?? 0, score.PassRating ?? 0, score.TechRating ?? 0);
+                    score.Stars = ReplayUtils.ToStars(score.AccRating ?? 0, score.PassRating ?? 0, score.TechRating ?? 0, curve);
                 }
             }
 
