@@ -1,6 +1,7 @@
 using BeatLeader_Server.Models;
 using BeatLeader_Server.Tests.Fixtures;
 using BeatLeader_Server.Utils;
+using BeatLeader_Server.Utils.RebalancedPp;
 using Xunit;
 
 namespace BeatLeader_Server.Tests.RebalancedPp
@@ -36,6 +37,16 @@ namespace BeatLeader_Server.Tests.RebalancedPp
             Assert.Equal((float)fixture.Variants["SS"].SliderPercentage, mr.SSSliderPercentage);
             Assert.Equal((float)fixture.Variants["FS"].SliderPercentage, mr.FSSliderPercentage);
             Assert.Equal((float)fixture.Variants["SFS"].SliderPercentage, mr.SFSliderPercentage);
+            Assert.Equal((float)none.NoteSpan, diff.NoteSpan);
+
+            diff.Notes = none.NoteCount;
+            var mapCurve = ReplayUtils.GetCurveInputs(diff);
+            foreach (var (modifier, key) in new[] { ("SS", "SS"), ("FS", "FS"), ("SF", "SFS") })
+            {
+                var v = fixture.Variants[key];
+                var curve = Curve.GetCurve(ReplayUtils.SpeedCurveInputs(mr, modifier, mapCurve));
+                Ppai2Fixtures.AssertCurveMatches($"{name} {key}", v, curve);
+            }
         }
 
         private static void AssertVariant(Ppai2Fixtures.Variant v, float acc, float pass, float tech, float predictedAcc, float stars)

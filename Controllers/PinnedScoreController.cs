@@ -440,6 +440,7 @@ namespace BeatLeader_Server.Controllers
                         Stars  = lb.Difficulty.Stars,
                         PredictedAcc  = lb.Difficulty.PredictedAcc,
                         SliderPercentage = lb.Difficulty.SliderPercentage,
+                        NoteSpan = lb.Difficulty.NoteSpan,
                         PassRating  = lb.Difficulty.PassRating,
                         AccRating  = lb.Difficulty.AccRating,
                         TechRating  = lb.Difficulty.TechRating,

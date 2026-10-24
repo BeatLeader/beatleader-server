@@ -21,7 +21,7 @@ namespace BeatLeader_Server.Utils.RebalancedPp
         public double StarDivisor { get; set; } = 83.6925;
         public double StarScale { get; set; } = 1.2131;
         public double StarExponent { get; set; } = 1.17507;
-        public double PpMultiplier { get; set; } = 1.0369;
+        public double PpMultiplier { get; set; } = 1.0230;
 
         public double LowStarBonus { get; set; } = 0.006;
         public double LowStarBonusEnd { get; set; } = 9;
@@ -29,7 +29,7 @@ namespace BeatLeader_Server.Utils.RebalancedPp
 
         public static PpFormula Current { get; set; } = new();
 
-        public double PassTopKnee { get; set; } = 10.4;
+        public double PassTopKnee { get; set; } = 13;
         public double PassTopSlope { get; set; } = 0.5;
 
         public double TechTopKnee { get; set; } = 12;
@@ -40,7 +40,7 @@ namespace BeatLeader_Server.Utils.RebalancedPp
         public float PassPp(float passRating)
         {
             float pass = passRating;
-            if (pass > PassTopKnee) pass = (float)(PassTopKnee + (pass - PassTopKnee) * PassTopSlope);
+            if (PassTopSlope != 1 && pass > PassTopKnee) pass = (float)(PassTopKnee + (pass - PassTopKnee) * PassTopSlope);
             float passPP = (float)PassScale * MathF.Exp((float)PassInner * MathF.Pow(pass, 1 / (float)PassExponent)) - (float)PassOffset;
             if (float.IsInfinity(passPP) || float.IsNaN(passPP) || passPP < 0) passPP = 0;
             return passPP;

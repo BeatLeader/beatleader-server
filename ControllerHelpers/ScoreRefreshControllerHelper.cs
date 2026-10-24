@@ -26,6 +26,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                     lb.Difficulty.TechRating,
                     lb.Difficulty.PredictedAcc,
                     lb.Difficulty.SliderPercentage,
+                    lb.Difficulty.NoteSpan,
                     lb.Difficulty.ModifierValues,
                     lb.Difficulty.ModifiersRating,
                     lb.Difficulty.ModeName,
@@ -127,7 +128,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                             leaderboard.AccRating ?? 0,
                             leaderboard.PassRating ?? 0,
                             leaderboard.TechRating ?? 0,
-                            ReplayUtils.GetCurveInputs(leaderboard.PredictedAcc, leaderboard.SliderPercentage, leaderboard.Notes),
+                            ReplayUtils.GetCurveInputs(leaderboard.PredictedAcc, leaderboard.SliderPercentage, leaderboard.Notes, leaderboard.NoteSpan),
                             leaderboard.ModeName.ToLower() == "rhythmgamestandard");
                         (score.FcPp, _, _, _, _) = ReplayUtils.PpFromScore(
                             s.FcAccuracy, 
@@ -138,7 +139,7 @@ namespace BeatLeader_Server.ControllerHelpers {
                             leaderboard.AccRating ?? 0, 
                             leaderboard.PassRating ?? 0, 
                             leaderboard.TechRating ?? 0, 
-                            ReplayUtils.GetCurveInputs(leaderboard.PredictedAcc, leaderboard.SliderPercentage, leaderboard.Notes),
+                            ReplayUtils.GetCurveInputs(leaderboard.PredictedAcc, leaderboard.SliderPercentage, leaderboard.Notes, leaderboard.NoteSpan),
                             leaderboard.ModeName.ToLower() == "rhythmgamestandard");
                     }
                     else

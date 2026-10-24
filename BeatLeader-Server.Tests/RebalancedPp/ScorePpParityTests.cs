@@ -72,7 +72,7 @@ namespace BeatLeader_Server.Tests.RebalancedPp
                     var v = fixture.Variants[key];
                     float expected = RA.PpCalculator.ToStars(RaRatings(v));
                     float actual = ReplayUtils.ToStars((float)v.AccRating, (float)v.PassRating, (float)v.TechRating,
-                        new Utils.RebalancedPp.CurveInputs((float)v.PredictedAcc, (float)v.SliderPercentage, v.NoteCount));
+                        new Utils.RebalancedPp.CurveInputs((float)v.PredictedAcc, (float)v.SliderPercentage, v.NoteCount, (float)v.NoteSpan));
                     AssertClose(expected, actual, $"{name} {key} stars");
                 }
             }

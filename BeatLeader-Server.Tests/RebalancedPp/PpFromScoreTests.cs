@@ -59,7 +59,7 @@ namespace BeatLeader_Server.Tests.RebalancedPp
             var mr = diff.ModifiersRating!;
             var expected = PpCalculator.ScorePp(0.97f, "FS", 1f,
                 new MapRatings(diff.AccRating!.Value, diff.PassRating!.Value, diff.TechRating!.Value, Curve.GetCurve(ReplayUtils.GetCurveInputs(diff))),
-                new MapRatings(mr.FSAccRating, mr.FSPassRating, mr.FSTechRating, Curve.GetCurve(new CurveInputs(mr.FSPredictedAcc, mr.FSSliderPercentage, diff.Notes))));
+                new MapRatings(mr.FSAccRating, mr.FSPassRating, mr.FSTechRating, Curve.GetCurve(new CurveInputs(mr.FSPredictedAcc, mr.FSSliderPercentage, diff.Notes, (diff.NoteSpan ?? 0) / 1.2f))));
             Assert.Equal(expected, Pp(diff, 0.97f, "FS"));
             Assert.True(Pp(diff, 0.97f, "FS").Item1 > Pp(diff, 0.97f, "").Item1);
         }

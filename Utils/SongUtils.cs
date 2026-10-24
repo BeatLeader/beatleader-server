@@ -96,6 +96,8 @@ namespace BeatLeader_Server.Utils
             public float LowNoteNerf { get; set; } = 0;
             [JsonProperty("slider_percentage")]
             public float SliderPercentage { get; set; } = 0;
+            [JsonProperty("note_span")]
+            public float NoteSpan { get; set; } = 0;
             [JsonProperty("note_count")]
             public int NoteCount { get; set; } = 0;
         }

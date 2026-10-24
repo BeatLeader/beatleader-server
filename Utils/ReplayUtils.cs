@@ -64,17 +64,17 @@ namespace BeatLeader_Server.Utils
             }
         }
 
-        public static CurveInputs GetCurveInputs(float? predictedAcc, float? sliderPercentage, int? noteCount) =>
-            new CurveInputs(predictedAcc ?? 0, sliderPercentage ?? 0, noteCount ?? 0);
+        public static CurveInputs GetCurveInputs(float? predictedAcc, float? sliderPercentage, int? noteCount, float? noteSpan) =>
+            new CurveInputs(predictedAcc ?? 0, sliderPercentage ?? 0, noteCount ?? 0, noteSpan ?? 0);
 
         public static CurveInputs GetCurveInputs(DifficultyDescription difficulty) =>
-            GetCurveInputs(difficulty.PredictedAcc, difficulty.SliderPercentage, difficulty.Notes);
+            GetCurveInputs(difficulty.PredictedAcc, difficulty.SliderPercentage, difficulty.Notes, difficulty.NoteSpan);
 
         public static CurveInputs SpeedCurveInputs(ModifiersRating modifiersRating, string modifier, CurveInputs curve) =>
             modifier switch {
-                "SS" => new CurveInputs(modifiersRating.SSPredictedAcc, modifiersRating.SSSliderPercentage, curve.NoteCount),
-                "FS" => new CurveInputs(modifiersRating.FSPredictedAcc, modifiersRating.FSSliderPercentage, curve.NoteCount),
-                "SF" => new CurveInputs(modifiersRating.SFPredictedAcc, modifiersRating.SFSliderPercentage, curve.NoteCount),
+                "SS" => new CurveInputs(modifiersRating.SSPredictedAcc, modifiersRating.SSSliderPercentage, curve.NoteCount, curve.NoteSpan / 0.85f),
+                "FS" => new CurveInputs(modifiersRating.FSPredictedAcc, modifiersRating.FSSliderPercentage, curve.NoteCount, curve.NoteSpan / 1.2f),
+                "SF" => new CurveInputs(modifiersRating.SFPredictedAcc, modifiersRating.SFSliderPercentage, curve.NoteCount, curve.NoteSpan / 1.5f),
                 _ => curve
             };
 

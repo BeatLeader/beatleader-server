@@ -836,6 +836,9 @@ namespace BeatLeader_Server.Migrations
                     b.Property<double>("NoteJumpStartBeatOffset")
                         .HasColumnType("float");
 
+                    b.Property<float?>("NoteSpan")
+                        .HasColumnType("real");
+
                     b.Property<int>("Notes")
                         .HasColumnType("int");
 

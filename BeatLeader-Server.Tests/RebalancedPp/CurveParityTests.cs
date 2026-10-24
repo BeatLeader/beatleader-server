@@ -8,7 +8,7 @@ namespace BeatLeader_Server.Tests.RebalancedPp
     public class CurveParityTests
     {
         private static CurveInputs Inputs(Ppai2Fixtures.Variant v) =>
-            new CurveInputs((float)v.PredictedAcc, (float)v.SliderPercentage, v.NoteCount);
+            new CurveInputs((float)v.PredictedAcc, (float)v.SliderPercentage, v.NoteCount, (float)v.NoteSpan);
 
         [Theory]
         [MemberData(nameof(Ppai2Fixtures.FixtureNames), MemberType = typeof(Ppai2Fixtures))]
@@ -20,13 +20,7 @@ namespace BeatLeader_Server.Tests.RebalancedPp
                 var v = fixture.Variants[key];
                 var curve = Curve.GetCurve(Inputs(v));
 
-                Assert.Equal(v.PointList.Count, curve.Count);
-                for (int i = 0; i < curve.Count; i++)
-                {
-                    Assert.True(Math.Abs(curve[i].X - v.PointList[i].x) < 1e-6, $"{name} {key} x[{i}] {curve[i].X} vs {v.PointList[i].x}");
-                    double tolerance = Math.Max(1e-5, Math.Abs(v.PointList[i].y) * 1e-5);
-                    Assert.True(Math.Abs(curve[i].Y - v.PointList[i].y) < tolerance, $"{name} {key} y[{i}] at {curve[i].X}: {curve[i].Y} vs {v.PointList[i].y}");
-                }
+                Ppai2Fixtures.AssertCurveMatches($"{name} {key}", v, curve);
             }
         }
 
@@ -46,10 +40,10 @@ namespace BeatLeader_Server.Tests.RebalancedPp
         [Fact]
         public void Curve_OutsidePerMapRange_IsBaseTableWithLowNoteNerf()
         {
-            foreach (var predictedAcc in new[] { 0f, 0.5f, 0.59f, 0.9996f, 1f })
+            foreach (var predictedAcc in new[] { 0f, 0.5f, 0.59f, 1f })
             {
-                var plain = Curve.GetCurve(new CurveInputs(predictedAcc, 0, 0));
-                var nerfed = Curve.GetCurve(new CurveInputs(predictedAcc, 0.4f, 20));
+                var plain = Curve.GetCurve(new CurveInputs(predictedAcc, 0, 0, 0));
+                var nerfed = Curve.GetCurve(new CurveInputs(predictedAcc, 0.4f, 20, 0));
 
                 Assert.Equal(PpCalculator.BaseTable.Length, plain.Count);
                 for (int i = 0; i < plain.Count; i++)

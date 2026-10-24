@@ -28,7 +28,7 @@ namespace BeatLeader_Server.Utils
             result.Stars > 0 ? result.Stars : ReplayUtils.ToStars(result.AccRating, result.LackMapCalculation.PassRating, result.LackMapCalculation.TechRating, ResultCurve(result));
 
         private static CurveInputs ResultCurve(RatingResult result) =>
-            new CurveInputs(result.PredictedAcc, result.LackMapCalculation.SliderPercentage, result.LackMapCalculation.NoteCount);
+            new CurveInputs(result.PredictedAcc, result.LackMapCalculation.SliderPercentage, result.LackMapCalculation.NoteCount, result.LackMapCalculation.NoteSpan);
 
         public static void UpdateFromResponse(DifficultyDescription diff, ExmachinaResponse? response, LeaderboardChange? rankChange)
         {
@@ -39,6 +39,7 @@ namespace BeatLeader_Server.Utils
                 diff.PredictedAcc = response.none.PredictedAcc;
                 diff.AccRating = response.none.AccRating;
                 diff.SliderPercentage = response.none.LackMapCalculation.SliderPercentage;
+                diff.NoteSpan = response.none.LackMapCalculation.NoteSpan;
                 diff.Stars = ResultStars(response.none);
 
                 if (rankChange != null)

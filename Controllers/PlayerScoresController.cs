@@ -277,6 +277,7 @@ namespace BeatLeader_Server.Controllers {
                                 Stars  = s.Leaderboard.Difficulty.Stars,
                                 PredictedAcc  = s.Leaderboard.Difficulty.PredictedAcc,
                                 SliderPercentage = s.Leaderboard.Difficulty.SliderPercentage,
+                                NoteSpan = s.Leaderboard.Difficulty.NoteSpan,
                                 PassRating  = s.Leaderboard.Difficulty.PassRating,
                                 AccRating  = s.Leaderboard.Difficulty.AccRating,
                                 TechRating  = s.Leaderboard.Difficulty.TechRating,
@@ -663,6 +664,7 @@ namespace BeatLeader_Server.Controllers {
                 AccRating = s.Leaderboard.Difficulty.AccRating,
                 PredictedAcc = s.Leaderboard.Difficulty.PredictedAcc,
                 SliderPercentage = s.Leaderboard.Difficulty.SliderPercentage,
+                NoteSpan = s.Leaderboard.Difficulty.NoteSpan,
                 Notes = s.Leaderboard.Difficulty.Notes,
                 PassRating = s.Leaderboard.Difficulty.PassRating,
                 TechRating = s.Leaderboard.Difficulty.TechRating,
@@ -690,6 +692,7 @@ namespace BeatLeader_Server.Controllers {
                 AccRating = s.Leaderboard.Difficulty.AccRating,
                 PredictedAcc = s.Leaderboard.Difficulty.PredictedAcc,
                 SliderPercentage = s.Leaderboard.Difficulty.SliderPercentage,
+                NoteSpan = s.Leaderboard.Difficulty.NoteSpan,
                 Notes = s.Leaderboard.Difficulty.Notes,
                 PassRating = s.Leaderboard.Difficulty.PassRating,
                 TechRating = s.Leaderboard.Difficulty.TechRating,
@@ -715,6 +718,7 @@ namespace BeatLeader_Server.Controllers {
                 AccRating = s.Leaderboard.Difficulty.AccRating,
                 PredictedAcc = s.Leaderboard.Difficulty.PredictedAcc,
                 SliderPercentage = s.Leaderboard.Difficulty.SliderPercentage,
+                NoteSpan = s.Leaderboard.Difficulty.NoteSpan,
                 Notes = s.Leaderboard.Difficulty.Notes,
                 PassRating = s.Leaderboard.Difficulty.PassRating,
                 TechRating = s.Leaderboard.Difficulty.TechRating,
@@ -794,7 +798,7 @@ namespace BeatLeader_Server.Controllers {
                     var modifierValues = score.ModifierValues ?? defaultModifiers; 
                     var modifiersRating = score.ModifiersRating;
                     float mp = modifierValues.GetTotalMultiplier(score.Modifiers, modifiersRating == null, leaderboardContext);
-                    var mapCurve = ReplayUtils.GetCurveInputs(score.PredictedAcc, score.SliderPercentage, score.Notes);
+                    var mapCurve = ReplayUtils.GetCurveInputs(score.PredictedAcc, score.SliderPercentage, score.Notes, score.NoteSpan);
                     var curve = mapCurve;
 
                     if (modifiersRating != null) {
