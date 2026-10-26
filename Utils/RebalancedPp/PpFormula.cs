@@ -10,21 +10,21 @@ namespace BeatLeader_Server.Utils.RebalancedPp
         public double AccRatingPower { get; set; } = 1.2163;
         public double AccCurvePower { get; set; } = 0.9;
         public double LowStarCurvePower { get; set; } = 1.0;
-        public double LowStarCurveStart { get; set; } = 7;
-        public double LowStarCurveEnd { get; set; } = 10;
+        public double LowStarCurveStart { get; set; } = 6.7242;
+        public double LowStarCurveEnd { get; set; } = 9.606;
         public double VeryLowStarCurvePower { get; set; } = 1.08;
-        public double VeryLowStarCurveStart { get; set; } = 3;
-        public double VeryLowStarCurveEnd { get; set; } = 5;
+        public double VeryLowStarCurveStart { get; set; } = 2.8818;
+        public double VeryLowStarCurveEnd { get; set; } = 4.803;
         public double TechWeight { get; set; } = 0.1612;
         public double TechRatingPower { get; set; } = 1.2477;
         public double TechAccExponent { get; set; } = 3.5;
         public double StarDivisor { get; set; } = 83.6925;
-        public double StarScale { get; set; } = 1.2131;
+        public double StarScale { get; set; } = 1.1653;
         public double StarExponent { get; set; } = 1.17507;
         public double PpMultiplier { get; set; } = 1.0230;
 
-        public double LowStarBonus { get; set; } = 0.006;
-        public double LowStarBonusEnd { get; set; } = 9;
+        public double LowStarBonus { get; set; } = 0.0063371;
+        public double LowStarBonusEnd { get; set; } = 8.6454;
         public double LowStarBonusPower { get; set; } = 1.36;
 
         public static PpFormula Current { get; set; } = new();

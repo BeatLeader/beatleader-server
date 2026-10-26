@@ -34,11 +34,8 @@ namespace BeatLeader_Server.Utils.RebalancedPp
             var curves = PerMapCurves(predictedAcc);
             double tilt = SliderTilt(sliderPercentage, predictedAcc);
             var settings = CurveSettings.Current;
-            double nerf = settings.LowNoteUniformShare * (1 - settings.LowNoteMultiplier(noteCount, noteSpan));
-            double cut = predictedAcc > 0.6 && predictedAcc < 1 ? settings.LowNoteGainCutAt(noteCount, noteSpan) : 0;
-            double bonus = settings.LowNoteBonusAt(noteCount, noteSpan);
-            bool gainCut = cut != 0 || bonus != 0;
-            if (curves == null && tilt == 0 && !gainCut)
+            double nerf = settings.LowNoteMultiplier(noteCount, noteSpan);
+            if (curves == null && tilt == 0)
             {
                 return GetCurve(noteCount, noteSpan);
             }
@@ -48,7 +45,6 @@ namespace BeatLeader_Server.Utils.RebalancedPp
                 .Concat(Enumerable.Range(0, 71).Select(i => 0.6 + i * 0.005))
                 .Concat(Enumerable.Range(0, 101).Select(i => 0.95 + i * 0.0005))
                 .Append(a)
-                .Concat(gainCut ? new[] { predictedAcc } : Array.Empty<double>())
                 .Select(x => Math.Round(x, 6))
                 .Where(x => x >= 0 && x <= 1)
                 .Distinct()
@@ -64,8 +60,7 @@ namespace BeatLeader_Server.Utils.RebalancedPp
                 }
                 return value;
             }
-            double atPredicted = gainCut ? Raw(predictedAcc) : 0;
-            return xs.Select(x => (x, settings.LowNoteValue(Raw(x), x, atPredicted, predictedAcc, nerf, cut, bonus))).ToList();
+            return xs.Select(x => (x, Raw(x) * nerf)).ToList();
         }
 
         private static double SliderTilt(double sliderPercentage, double predictedAcc)
@@ -246,58 +241,28 @@ namespace BeatLeader_Server.Utils.RebalancedPp
 
         public double LowNoteStart { get; set; } = 115;
         public double LowNoteRefNotes { get; set; } = 20;
-        public double LowNoteRefMultiplier { get; set; } = 0.8;
-        public double LowNoteMinMultiplier { get; set; } = 0.5;
-        public double LowNoteUniformShare { get; set; } = 0;
-        public double LowNoteGainCut { get; set; } = 0.4;
-        public double LowNoteGainFullBelow { get; set; } = 70;
+        public double LowNoteRefMultiplier { get; set; } = 0.95;
+        public double LowNoteMinMultiplier { get; set; } = 0.95;
 
-        public double LowNoteSpanStart { get; set; } = 18;
-        public double LowNoteSpanRef { get; set; } = 75;
-        public double LowNoteSpanWeight { get; set; } = 1;
-        public double LowNoteSpanMinFactor { get; set; } = 0;
-        public double LowNoteSpanMaxFactor { get; set; } = 1.5;
-        public double LowNoteSpanBonus { get; set; } = 0.2;
-        public double LowNoteSpanBonusMax { get; set; } = 0.1;
+        public double ShortStart { get; set; } = 75;
+        public double ShortRefSpan { get; set; } = 12;
+        public double ShortRefMultiplier { get; set; } = 0.9;
+        public double ShortMinMultiplier { get; set; } = 0.9;
 
-        public double LowNoteGainCutAt(int notes, double span)
+        public double LowNoteMultiplier(int notes, double span = 0) => LowNoteFactor(notes) * ShortFactor(span);
+
+        public double LowNoteFactor(int notes)
         {
-            if (LowNoteGainCut <= 0) return 0;
-            return LowNoteGainCut * LowNoteShare(notes) * LowNoteSpanFactor(span);
-        }
-
-        public double LowNoteBonusAt(int notes, double span)
-        {
-            if (LowNoteSpanBonus <= 0 || span <= 0 || LowNoteSpanRef <= LowNoteSpanStart) return 0;
-            double raw = 1 - LowNoteSpanWeight * Math.Log(span / LowNoteSpanStart) / Math.Log(LowNoteSpanRef / LowNoteSpanStart);
-            return raw >= 0 ? 0 : Math.Min(LowNoteSpanBonus * -raw, LowNoteSpanBonusMax) * LowNoteShare(notes);
-        }
-
-        public double LowNoteShare(int notes)
-        {
-            if (LowNoteStart <= 0 || notes <= 0 || notes >= LowNoteStart) return 0;
-            return notes <= LowNoteGainFullBelow ? 1 : Math.Log(LowNoteStart / notes) / Math.Log(LowNoteStart / LowNoteGainFullBelow);
-        }
-
-        public double LowNoteValue(double value, double x, double atPredicted, double predictedAcc, double nerf, double cut, double bonus = 0)
-        {
-            if (cut != 0 && x > predictedAcc && predictedAcc > 0.6)
-                value = atPredicted + (value - atPredicted) * Math.Max(1 - cut, 0);
-            return value * Math.Max(1 - nerf, 0) * (1 + bonus);
-        }
-
-        public double LowNoteMultiplier(int notes, double span = 0)
-        {
-            if (LowNoteStart <= 0 || notes <= 0 || notes >= LowNoteStart) return 1;
+            if (LowNoteStart <= 0 || notes <= 0 || notes >= LowNoteStart || LowNoteRefNotes >= LowNoteStart) return 1;
             double nerf = (1 - LowNoteRefMultiplier) * Math.Log(LowNoteStart / notes) / Math.Log(LowNoteStart / LowNoteRefNotes);
-            return 1 - (1 - Math.Max(1 - nerf, LowNoteMinMultiplier)) * LowNoteSpanFactor(span);
+            return Math.Clamp(1 - nerf, LowNoteMinMultiplier, 1);
         }
 
-        public double LowNoteSpanFactor(double span)
+        public double ShortFactor(double span)
         {
-            if (LowNoteSpanWeight <= 0 || span <= 0 || LowNoteSpanRef <= LowNoteSpanStart) return 1;
-            return Math.Clamp(1 - LowNoteSpanWeight * Math.Log(span / LowNoteSpanStart) / Math.Log(LowNoteSpanRef / LowNoteSpanStart),
-                LowNoteSpanMinFactor, LowNoteSpanMaxFactor);
+            if (ShortStart <= 0 || span <= 0 || span >= ShortStart || ShortRefSpan >= ShortStart) return 1;
+            double nerf = (1 - ShortRefMultiplier) * Math.Log(ShortStart / span) / Math.Log(ShortStart / ShortRefSpan);
+            return Math.Clamp(1 - nerf, ShortMinMultiplier, 1);
         }
 
         public CurveRow ParamsAt(double predictedAcc)

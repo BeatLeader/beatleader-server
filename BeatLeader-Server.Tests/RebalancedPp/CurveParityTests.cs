@@ -50,7 +50,7 @@ namespace BeatLeader_Server.Tests.RebalancedPp
                 {
                     Assert.Equal((float)PpCalculator.BaseTable[i].x, plain[i].X);
                     Assert.Equal((float)PpCalculator.BaseTable[i].y, plain[i].Y);
-                    Assert.Equal((float)(PpCalculator.BaseTable[i].y * 0.8), nerfed[i].Y, 5);
+                    Assert.Equal((float)(PpCalculator.BaseTable[i].y * 0.95), nerfed[i].Y, 5);
                 }
             }
         }
@@ -61,8 +61,12 @@ namespace BeatLeader_Server.Tests.RebalancedPp
             var settings = new CurveSettings();
             Assert.Equal(1, settings.LowNoteMultiplier(0));
             Assert.Equal(1, settings.LowNoteMultiplier(115));
-            Assert.Equal(0.8, settings.LowNoteMultiplier(20), 6);
-            Assert.Equal(0.5, settings.LowNoteMultiplier(1), 6);
+            Assert.Equal(0.95, settings.LowNoteMultiplier(20), 6);
+            Assert.Equal(0.95, settings.LowNoteMultiplier(1), 6);
+            Assert.Equal(1, settings.LowNoteMultiplier(200, 75));
+            Assert.Equal(0.9, settings.LowNoteMultiplier(200, 12), 6);
+            Assert.Equal(0.9, settings.LowNoteMultiplier(200, 5), 6);
+            Assert.Equal(0.855, settings.LowNoteMultiplier(20, 12), 6);
         }
     }
 }
